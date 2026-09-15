@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="OvertimeHotel.HRM.Core/OvertimeHotel.HRM.Core.csproj" />
+  <Project Path="OvertimeHotel.HRM.Data/OvertimeHotel.HRM.Data.csproj" />
+  <Project Path="OvertimeHotel.HRM.MobileApp/OvertimeHotel.HRM.MobileApp.csproj" />
+  <Project Path="OvertimeHotel.HRM.WebAdmin/OvertimeHotel.HRM.WebAdmin.csproj" />
+</Solution>

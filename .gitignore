@@ -1,0 +1,53 @@
+## ==============================================================================
+## Visual Studio 2026 & .NET Build Artifacts
+## ==============================================================================
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+TestResults/
+
+## ==============================================================================
+## .NET MAUI / Android / iOS / Windows Package Artifacts
+## ==============================================================================
+*.apk
+*.aab
+*.keystore
+*.jks
+.gradle/
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+
+## ==============================================================================
+## Sensitive & Local Environment Configuration
+## ==============================================================================
+.env
+.env.*
+*.local.json
+appsettings.Development.json
+
+## ==============================================================================
+## OS & Office Temporary Files
+## ==============================================================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
+~$*.docx
+~$*.xlsx
+~$*.pptx
+*.tmp
