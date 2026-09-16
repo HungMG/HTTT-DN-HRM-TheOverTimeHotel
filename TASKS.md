@@ -9,13 +9,13 @@
 ## 📊 TIẾN ĐỘ TỔNG QUAN HỆ THỐNG
 
 - **Tổng số nhiệm vụ:** 30 Tasks
-- **Đã hoàn thành:** 10 / 30 Tasks (33.3%)
+- **Đã hoàn thành:** 11 / 30 Tasks (36.7%)
 - **Đang thực hiện:** 0 Task
-- **Chưa bắt đầu:** 20 Tasks
+- **Chưa bắt đầu:** 19 Tasks
 - **Mốc chấm đồ án chính thức:** **Tuần 10 (10/11/2026)**
 
 ```text
-[██████████░░░░░░░░░░░░░░░░░░░░] 33.3% Hoàn thành (10/30)
+[███████████░░░░░░░░░░░░░░░░░░░] 36.7% Hoàn thành (11/30)
 ```
 
 ---
@@ -92,11 +92,11 @@
 
 ### GIAI ĐOẠN 3: LẬP TRÌNH BACKEND & CỔNG WEB ADMIN (TUẦN 5 - 6)
 
-- [ ] **TSK-11:** Nạp dữ liệu mẫu (Seed Data) phong phú lên Supabase
+- [x] **TSK-11:** Nạp dữ liệu mẫu (Seed Data) phong phú lên Supabase
   - **Phân hệ:** Cơ sở dữ liệu
   - **Mô tả & Output:** Tạo sẵn 8 phòng ban, 10 chức vụ, 4 vai trò RBAC, 3 mẫu ca 24/7, 20 nhân viên, 20 hợp đồng lao động
-  - **Người phụ trách:** *Chưa phân công* | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 06/10/2026
-  - **Trạng thái:** `Chưa bắt đầu`
+  - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 06/10/2026
+  - **Trạng thái:** `Hoàn thành`
 
 - [ ] **TSK-12:** Lập trình Xác thực đăng nhập & Phân quyền RBAC
   - **Phân hệ:** Web Admin (MVC)
