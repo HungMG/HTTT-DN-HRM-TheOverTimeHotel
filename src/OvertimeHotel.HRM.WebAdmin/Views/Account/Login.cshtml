@@ -1,0 +1,434 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.LoginViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Đăng Nhập Quản Trị · The OverTime Hotel";
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <!-- Google Fonts: Plus Jakarta Sans & Playfair Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 & Bootstrap Icons -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        :root {
+            --brand-primary: #0F172A;
+            --brand-navy: #1E3A8A;
+            --brand-gold: #D4AF37;
+            --brand-gold-dark: #B8860B;
+            --brand-gold-light: #FDE047;
+            --surface-bg: #F8FAFC;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0B1325;
+            color: #1E293B;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* KHUNG HÌNH SHOWCASE KHÁCH SẠN BÊN TRÁI */
+        .hotel-showcase {
+            position: relative;
+            flex: 1.1;
+            background-image: url('https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=85');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 3.5rem;
+            color: #FFFFFF;
+            overflow: hidden;
+        }
+
+        .hotel-showcase::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 58, 138, 0.75) 50%, rgba(11, 19, 37, 0.95) 100%);
+            backdrop-filter: blur(2px);
+            z-index: 1;
+        }
+
+        .showcase-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hotel-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--brand-gold-light);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            backdrop-filter: blur(10px);
+        }
+
+        .brand-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.2rem;
+            font-weight: 700;
+            line-height: 1.15;
+            color: #FFFFFF;
+            margin-top: 1.5rem;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .brand-title span {
+            color: var(--brand-gold);
+            font-style: italic;
+        }
+
+        .showcase-glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(16px);
+            border-radius: 20px;
+            padding: 1.8rem;
+            max-width: 520px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            margin-top: 2rem;
+        }
+
+        /* KHUNG FORM ĐĂNG NHẬP BÊN PHẢI */
+        .login-panel {
+            flex: 0.9;
+            background: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 4rem;
+            position: relative;
+            box-shadow: -15px 0 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .hotel-emblem {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%);
+            border: 2px solid var(--brand-gold);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--brand-gold);
+            font-size: 1.75rem;
+            box-shadow: 0 8px 16px rgba(30, 58, 138, 0.25);
+            margin-bottom: 1.25rem;
+        }
+
+        .form-floating > .form-control {
+            border-radius: 12px;
+            border: 1.5px solid #E2E8F0;
+            padding-left: 2.8rem;
+            font-size: 0.95rem;
+            transition: all 0.25s ease;
+        }
+
+        .form-floating > .form-control:focus {
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.12);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94A3B8;
+            font-size: 1.15rem;
+            z-index: 5;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748B;
+            cursor: pointer;
+            z-index: 5;
+            padding: 4px;
+        }
+
+        .password-toggle:hover {
+            color: var(--brand-navy);
+        }
+
+        .btn-hotel-primary {
+            background: linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%);
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            color: #FFFFFF;
+            padding: 0.85rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.35);
+        }
+
+        .btn-hotel-primary:hover {
+            background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%);
+            color: var(--brand-gold-light);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(30, 58, 138, 0.45);
+        }
+
+        .btn-hotel-primary:active {
+            transform: translateY(0);
+        }
+
+        /* CHIPS DEMO TÀI KHOẢN TEST NHANH */
+        .demo-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid #E2E8F0;
+            background: #F8FAFC;
+            color: #475569;
+        }
+
+        .demo-chip:hover {
+            background: #EFF6FF;
+            border-color: #93C5FD;
+            color: #1D4ED8;
+            transform: translateY(-1px);
+        }
+
+        .demo-chip.admin-chip { border-left: 3px solid #DC2626; }
+        .demo-chip.hr-chip { border-left: 3px solid #2563EB; }
+        .demo-chip.mgr-chip { border-left: 3px solid #D97706; }
+        .demo-chip.emp-chip { border-left: 3px solid #16A34A; }
+
+        @@media (max-width: 991px) {
+            .login-wrapper {
+                flex-direction: column;
+            }
+            .hotel-showcase {
+                padding: 2.5rem 1.5rem;
+                flex: none;
+                min-height: 280px;
+            }
+            .brand-title {
+                font-size: 2.2rem;
+            }
+            .showcase-glass-card {
+                display: none;
+            }
+            .login-panel {
+                padding: 2.5rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-wrapper">
+    <!-- CỘT TRÁI: SHOWCASE HÌNH ẢNH KHÁCH SẠN 5 SAO THƯỢNG LƯU -->
+    <div class="hotel-showcase">
+        <div class="showcase-content">
+            <div class="hotel-badge">
+                <i class="bi bi-stars"></i> Khách Sạn Nghỉ Dưỡng Quốc Tế 5★
+            </div>
+            <h1 class="brand-title">
+                The OverTime<br /><span>Hotel & Resort</span>
+            </h1>
+            <p class="text-white-50 mt-2 fs-5" style="max-width: 480px;">
+                Cổng quản trị thông tin nhân sự và điều hành tiền lương tự động 24/7
+            </p>
+        </div>
+
+        <div class="showcase-content">
+            <div class="showcase-glass-card">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="text-warning fs-5 me-2">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <span class="text-white-50 small">Vận hành liên tục 24 giờ / 7 ngày</span>
+                </div>
+                <h6 class="fw-bold text-white mb-2">Hệ Thống Quản Trị Nhân Sự Cấp Cao (HRM Enterprise)</h6>
+                <p class="text-white-50 small mb-0">
+                    Phân tách cổng quản trị máy chủ (Web Admin) và ứng dụng di động (.NET MAUI App) kết nối đồng bộ cơ sở dữ liệu Supabase Cloud.
+                </p>
+            </div>
+            <div class="mt-4 text-white-50 small">
+                &copy; 2026 The OverTime Hotel HRM · Phiên bản .NET 10 & Supabase Cloud
+            </div>
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: FORM ĐĂNG NHẬP SANG TRỌNG -->
+    <div class="login-panel">
+        <div class="login-box">
+            <!-- Logo & Insignia -->
+            <div class="text-center mb-4">
+                <div class="hotel-emblem mx-auto">
+                    <i class="bi bi-buildings"></i>
+                </div>
+                <h3 class="fw-bold text-dark mb-1" style="font-family: 'Playfair Display', serif;">Đăng Nhập Quản Trị</h3>
+                <p class="text-muted small">Nhập thông tin tài khoản được cấp để truy cập hệ thống</p>
+            </div>
+
+            <!-- THÔNG BÁO LỖI NẾU CÓ -->
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="alert alert-danger alert-dismissible fade show py-2 px-3 mb-3 border-0 shadow-sm" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill fs-5 me-2 text-danger"></i>
+                        <div class="small" asp-validation-summary="All"></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <!-- THÔNG BÁO CHẶN PHÂN QUYỀN (NẾU MANAGER/EMPLOYEE ĐĂNG NHẬP WEB) -->
+            @if (ViewBag.RoleNotice != null)
+            {
+                <div class="alert alert-warning alert-dismissible fade show p-3 mb-4 border-0 shadow-sm" role="alert">
+                    <div class="d-flex">
+                        <i class="bi bi-phone text-warning fs-3 me-3"></i>
+                        <div>
+                            <h6 class="alert-heading fw-bold mb-1">Hướng Dẫn Phân Quyền Vai Trò</h6>
+                            <p class="small mb-0 text-dark">@ViewBag.RoleNotice</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <!-- FORM ĐĂNG NHẬP -->
+            <form asp-action="Login" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="ReturnUrl" />
+
+                <div class="position-relative mb-3">
+                    <i class="bi bi-person input-icon"></i>
+                    <div class="form-floating">
+                        <input asp-for="Username" id="usernameInput" class="form-control" placeholder="Tên đăng nhập" required autocomplete="username" />
+                        <label asp-for="Username" style="padding-left: 2.8rem;">Tên đăng nhập</label>
+                    </div>
+                    <span asp-validation-for="Username" class="text-danger small"></span>
+                </div>
+
+                <div class="position-relative mb-3">
+                    <i class="bi bi-shield-lock input-icon"></i>
+                    <div class="form-floating">
+                        <input asp-for="Password" id="passwordInput" class="form-control" placeholder="Mật khẩu" required autocomplete="current-password" />
+                        <label asp-for="Password" style="padding-left: 2.8rem;">Mật khẩu</label>
+                    </div>
+                    <span class="password-toggle" id="togglePasswordBtn" title="Hiện/Ẩn mật khẩu">
+                        <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                    </span>
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" asp-for="RememberMe" id="rememberCheck">
+                        <label class="form-check-label small text-muted" for="rememberCheck">
+                            Ghi nhớ 7 ngày
+                        </label>
+                    </div>
+                    <a href="javascript:void(0)" onclick="alert('Vui lòng liên hệ Quản trị viên (Admin) hoặc Chuyên viên Nhân sự để được cấp lại mật khẩu.');" class="small text-decoration-none text-primary fw-semibold">
+                        Quên mật khẩu?
+                    </a>
+                </div>
+
+                <div class="d-grid mb-4">
+                    <button type="submit" class="btn btn-hotel-primary">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Đăng Nhập Hệ Thống
+                    </button>
+                </div>
+            </form>
+
+            <!-- KHU VỰC TEST NHANH 4 TÀI KHOẢN DEMO -->
+            <div class="mt-4 pt-3 border-top">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small fw-bold text-uppercase text-muted" style="letter-spacing: 0.5px; font-size: 0.75rem;">
+                        <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Tài khoản Demo nhanh:
+                    </span>
+                    <span class="badge bg-light text-secondary border font-monospace">Click để điền</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="demo-chip admin-chip" onclick="fillAccount('admin', 'Admin@123')">
+                        <i class="bi bi-shield-shaded text-danger"></i> Admin (Cường)
+                    </button>
+                    <button type="button" class="demo-chip hr-chip" onclick="fillAccount('hr_sang', 'Hr@123')">
+                        <i class="bi bi-person-badge text-primary"></i> HR (Sang)
+                    </button>
+                    <button type="button" class="demo-chip mgr-chip" onclick="fillAccount('mgr_long', 'Manager@123')">
+                        <i class="bi bi-person-workspace text-warning"></i> Manager (Long)
+                    </button>
+                    <button type="button" class="demo-chip emp-chip" onclick="fillAccount('emp_bao', 'Emp@123')">
+                        <i class="bi bi-person text-success"></i> Employee (Bảo)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Hàm bật/tắt hiển thị mật khẩu
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('passwordInput');
+    const toggleIcon = document.getElementById('togglePasswordIcon');
+
+    toggleBtn.addEventListener('click', function () {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        toggleIcon.classList.toggle('bi-eye');
+        toggleIcon.classList.toggle('bi-eye-slash');
+    });
+
+    // Hàm tự động điền tài khoản test nhanh
+    function fillAccount(username, password) {
+        document.getElementById('usernameInput').value = username;
+        document.getElementById('passwordInput').value = password;
+        // Hiệu ứng focus nhẹ
+        document.getElementById('usernameInput').focus();
+    }
+</script>
+
+</body>
+</html>
