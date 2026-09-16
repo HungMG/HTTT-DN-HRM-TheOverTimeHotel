@@ -1,7 +1,31 @@
+using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.Data.Supabase;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Cấu hình kết nối Entity Framework Core với Supabase PostgreSQL
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    if (!string.IsNullOrWhiteSpace(connectionString))
+    {
+        options.UseNpgsql(connectionString);
+    }
+});
+
+// Cấu hình Supabase Client cho các tác vụ Realtime / Storage
+var supabaseSection = builder.Configuration.GetSection("Supabase");
+var supabaseUrl = supabaseSection["Url"] ?? "";
+var supabaseKey = supabaseSection["PublishableKey"] ?? supabaseSection["AnonKey"] ?? "";
+if (!string.IsNullOrWhiteSpace(supabaseUrl) && !string.IsNullOrWhiteSpace(supabaseKey))
+{
+    builder.Services.AddSingleton(provider =>
+        SupabaseClientFactory.CreateClient(supabaseUrl, supabaseKey));
+}
 
 var app = builder.Build();
 
@@ -24,6 +48,5 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
-
 
 app.Run();
