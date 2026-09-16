@@ -153,15 +153,22 @@
                     <div class="border rounded-3 p-3 h-100 d-flex flex-column justify-content-between">
                         <div>
                             <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="badge bg-secondary-subtle text-secondary border">TSK-13 · Tiếp theo</span>
+                                <span class="badge bg-success-subtle text-success border">TSK-13 · Hoàn thành</span>
                                 <i class="bi bi-person-gear text-info fs-4"></i>
                             </div>
                             <h6 class="fw-bold mb-1">Quản Trị Tài Khoản</h6>
                             <p class="text-muted small mb-3">Thêm, sửa, khóa tài khoản và cấp phát vai trò RBAC cho nhân sự.</p>
                         </div>
-                        <button class="btn btn-light btn-sm w-100 text-muted" disabled>
-                            Sẵn sàng triển khai
-                        </button>
+                        @if (role == "Admin")
+                        {
+                            <a asp-controller="UserAccounts" asp-action="Index" class="btn btn-outline-primary btn-sm w-100">
+                                Truy cập chức năng
+                            </a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-light btn-sm w-100 text-muted" disabled>Chỉ dành cho Admin</button>
+                        }
                     </div>
                 </div>
 

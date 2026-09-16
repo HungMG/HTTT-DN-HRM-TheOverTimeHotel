@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
@@ -47,8 +46,8 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // Băm mật khẩu người dùng nhập bằng SHA-256
-        var inputHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(model.Password))).ToLower();
+        // Băm mật khẩu theo cùng cơ chế đang dùng trong dữ liệu tài khoản.
+        var inputHash = PasswordHasher.Hash(model.Password);
 
         // Kiểm tra thông tin tài khoản trên Supabase
         var account = await _context.TaiKhoans

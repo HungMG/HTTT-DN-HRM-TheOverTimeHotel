@@ -19,6 +19,38 @@ html {
 
 body {
   margin-bottom: 60px;
+  background-color: #f8fafc;
+}
+
+.account-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 14px;
+  font-size: 1.35rem;
+}
+
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1d4ed8, #0f172a);
+  color: #fff;
+  font-weight: 700;
+}
+
+.account-avatar-lg {
+  width: 64px;
+  height: 64px;
+  flex-basis: 64px;
+  font-size: 1.5rem;
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
