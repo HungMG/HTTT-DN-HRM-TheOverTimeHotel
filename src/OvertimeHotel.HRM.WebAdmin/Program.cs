@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.Data.Supabase;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(connectionString);
     }
 });
+
+// Đăng ký dịch vụ sao lưu & phục hồi CSDL
+builder.Services.AddScoped<IBackupService, BackupService>();
 
 // Cấu hình Supabase Client cho các tác vụ Realtime / Storage
 var supabaseSection = builder.Configuration.GetSection("Supabase");

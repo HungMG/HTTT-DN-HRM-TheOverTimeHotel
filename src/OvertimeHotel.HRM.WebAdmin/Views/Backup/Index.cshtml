@@ -1,0 +1,179 @@
+@model Dictionary<string, int>
+@{
+    ViewData["Title"] = "An Toàn CSDL - Sao Lưu & Phục Hồi";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary mb-1">
+                <i class="bi bi-shield-check me-2"></i>An Toàn Dữ Liệu & Sao Lưu CSDL (Supabase)
+            </h2>
+            <p class="text-muted mb-0">Quản trị bản sao lưu CSDL đám mây PostgreSQL (17 bảng chuẩn 3NF) cho The OverTime Hotel HRM</p>
+        </div>
+        <div>
+            <a asp-action="Export" class="btn btn-success me-2">
+                <i class="bi bi-download me-1"></i> Xuất Bản Sao Lưu (.JSON)
+            </a>
+            <a href="@ViewBag.SupabaseProjectUrl" target="_blank" class="btn btn-outline-primary">
+                <i class="bi bi-cloud-arrow-up me-1"></i> Mở Supabase Dashboard
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (ViewBag.DbWarning != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-info-circle-fill me-2"></i>@ViewBag.DbWarning
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row g-4 mb-4">
+        <!-- Card 1: Cơ chế sao lưu tự động Supabase -->
+        <div class="col-lg-6">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="card-title mb-0 fw-bold">
+                        <i class="bi bi-cloud-check me-2"></i>1. Cơ Chế Sao Lưu Tự Động (Supabase Cloud)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text text-muted">
+                        Hệ thống CSDL được lưu trữ trực tuyến trên nền tảng đám mây Supabase PostgreSQL tại cụm máy chủ <strong>Singapore (ap-southeast-1)</strong>, đáp ứng tiêu chuẩn an toàn dữ liệu doanh nghiệp:
+                    </p>
+                    <ul class="list-group list-group-flush mb-3">
+                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-clock-history text-primary me-2"></i>Tự động sao lưu hàng ngày (Daily Backups):</span>
+                            <span class="badge bg-success">Đang bật (Active)</span>
+                        </li>
+                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-hdd-network text-info me-2"></i>Database Host:</span>
+                            <code>@ViewBag.DbHost</code>
+                        </li>
+                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-shield-lock text-warning me-2"></i>Mã hóa đường truyền (SSL/TLS):</span>
+                            <span class="badge bg-primary">SSL Mode Required</span>
+                        </li>
+                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-arrow-counterclockwise text-danger me-2"></i>Khôi phục vật lý (Physical Restore):</span>
+                            <span class="text-muted">Hỗ trợ 1-click trong 90 ngày</span>
+                        </li>
+                    </ul>
+                    <small class="text-muted fst-italic">
+                        * Quản trị viên có thể tải toàn bộ file Dump dữ liệu trực tiếp từ Supabase Studio mục <em>Database -> Backups</em>.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Sao lưu & Khôi phục thủ công qua Web Admin -->
+        <div class="col-lg-6">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="card-title mb-0 fw-bold">
+                        <i class="bi bi-file-earmark-arrow-up me-2"></i>2. Sao Lưu Tức Thì & Phục Hồi Nhanh
+                    </h5>
+                </div>
+                <div class="card-body d-flex flex-column justify-content-between">
+                    <div>
+                        <p class="card-text text-muted">
+                            Tính năng cho phép Quản trị viên trích xuất toàn bộ dữ liệu 17 bảng dạng <strong>JSON Snapshot</strong> để lưu trữ cục bộ hoặc di chuyển hệ thống:
+                        </p>
+                        <div class="d-grid mb-4">
+                            <a asp-action="Export" class="btn btn-outline-success btn-lg">
+                                <i class="bi bi-download me-2"></i>Tải Snapshot CSDL Tức Thì (.JSON)
+                            </a>
+                        </div>
+
+                        <hr class="my-3" />
+
+                        <h6 class="fw-bold mb-2"><i class="bi bi-upload text-warning me-2"></i>Khôi phục dữ liệu từ file Snapshot:</h6>
+                        <form asp-action="Restore" method="post" enctype="multipart/form-data" onsubmit="return confirm('Bạn có chắc chắn muốn khôi phục dữ liệu? Các bản ghi trùng lặp sẽ được bỏ qua và bản ghi mới sẽ được nạp vào hệ thống.');">
+                            @Html.AntiForgeryToken()
+                            <div class="input-group mb-2">
+                                <input type="file" name="backupFile" class="form-control" accept=".json" required />
+                                <button class="btn btn-warning fw-semibold" type="submit">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Khôi Phục
+                                </button>
+                            </div>
+                            <small class="text-muted">Chỉ chọn file <code>.json</code> được xuất từ hệ thống The OverTime Hotel HRM.</small>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bảng thống kê hiện trạng 17 bảng CSDL -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0 fw-bold text-dark">
+                <i class="bi bi-table text-primary me-2"></i>Thống Kê Bản Ghi Hiện Có Trên 17 Bảng CSDL
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">STT</th>
+                            <th>Tên Bảng (Ý Nghĩa Nghiệp Vụ)</th>
+                            <th class="text-end pe-4">Số Lượng Bản Ghi</th>
+                            <th class="text-center">Trạng Thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Count > 0)
+                        {
+                            var idx = 1;
+                            foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td class="ps-4 fw-semibold text-muted">@idx</td>
+                                    <td><code>@item.Key</code></td>
+                                    <td class="text-end pe-4 fw-bold">@item.Value.ToString("N0")</td>
+                                    <td class="text-center">
+                                        @if (item.Value > 0)
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">Có dữ liệu</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Trống</span>
+                                        }
+                                    </td>
+                                </tr>
+                                idx++;
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">
+                                    <em>Chưa có dữ liệu thống kê bảng hoặc chưa kết nối trực tiếp đến PostgreSQL.</em>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
