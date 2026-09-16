@@ -1,0 +1,85 @@
+@{
+    ViewData["Title"] = "Quản trị danh mục hệ thống";
+}
+
+<div class="catalog-page">
+    <section class="catalog-hero mb-4">
+        <div class="catalog-eyebrow"><i class="bi bi-stars me-1"></i> TSK-14 · Quản trị hệ thống</div>
+        <h1 class="catalog-title display-6 mb-2">Danh mục hệ thống</h1>
+        <p class="text-white-50 mb-0" style="max-width: 720px;">
+            Trung tâm quản lý các danh mục nền tảng phục vụ tổ chức nhân sự, vận hành ca 24/7
+            và cấu hình các khoản tính lương của The OverTime Hotel.
+        </p>
+    </section>
+
+    <div class="alert alert-info border-0 shadow-sm mb-4">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-info-circle-fill fs-5"></i>
+            <div>
+                <strong>Chế độ xem trước giao diện</strong>
+                <div class="small">
+                    Khi Supabase chưa được cấu hình mật khẩu, các trang danh sách sẽ hiển thị dữ liệu minh họa.
+                    Sau khi bổ sung mật khẩu CSDL, hệ thống tự động chuyển sang dữ liệu thật.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <a asp-controller="PhongBan" asp-action="Index" class="text-decoration-none">
+                <article class="catalog-card catalog-hub-card h-100 p-4">
+                    <div class="d-flex align-items-start justify-content-between mb-4">
+                        <span class="catalog-icon catalog-hub-icon"><i class="bi bi-building"></i></span>
+                        <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">Cơ cấu tổ chức</span>
+                    </div>
+                    <h2 class="h4 catalog-title text-dark mb-2">Quản lý phòng ban</h2>
+                    <p class="text-muted mb-4">Quản lý các đơn vị vận hành, mô tả chức năng và cơ cấu phòng ban trong khách sạn.</p>
+                    <span class="btn btn-hotel-primary px-4"><i class="bi bi-arrow-right-circle me-1"></i> Vào quản lý phòng ban</span>
+                </article>
+            </a>
+        </div>
+
+        <div class="col-md-6">
+            <a asp-controller="ChucVu" asp-action="Index" class="text-decoration-none">
+                <article class="catalog-card catalog-hub-card h-100 p-4">
+                    <div class="d-flex align-items-start justify-content-between mb-4">
+                        <span class="catalog-icon catalog-hub-icon"><i class="bi bi-person-badge"></i></span>
+                        <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2">Vị trí công việc</span>
+                    </div>
+                    <h2 class="h4 catalog-title text-dark mb-2">Quản lý chức vụ</h2>
+                    <p class="text-muted mb-4">Chuẩn hóa chức danh, trách nhiệm và vị trí công việc của đội ngũ nhân sự.</p>
+                    <span class="btn btn-hotel-primary px-4"><i class="bi bi-arrow-right-circle me-1"></i> Vào quản lý chức vụ</span>
+                </article>
+            </a>
+        </div>
+
+        <div class="col-md-6">
+            <a asp-controller="CaLamViec" asp-action="Index" class="text-decoration-none">
+                <article class="catalog-card catalog-hub-card h-100 p-4">
+                    <div class="d-flex align-items-start justify-content-between mb-4">
+                        <span class="catalog-icon catalog-hub-icon"><i class="bi bi-clock-history"></i></span>
+                        <span class="badge bg-dark rounded-pill px-3 py-2">Vận hành 24/7</span>
+                    </div>
+                    <h2 class="h4 catalog-title text-dark mb-2">Quản lý ca làm việc</h2>
+                    <p class="text-muted mb-4">Thiết lập ca sáng, chiều, đêm và quy tắc nhận diện ca làm việc qua ngày mới.</p>
+                    <span class="btn btn-hotel-primary px-4"><i class="bi bi-arrow-right-circle me-1"></i> Vào quản lý ca</span>
+                </article>
+            </a>
+        </div>
+
+        <div class="col-md-6">
+            <a asp-controller="CauHinhKhoanLuong" asp-action="Index" class="text-decoration-none">
+                <article class="catalog-card catalog-hub-card h-100 p-4">
+                    <div class="d-flex align-items-start justify-content-between mb-4">
+                        <span class="catalog-icon catalog-hub-icon"><i class="bi bi-cash-coin"></i></span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-2">Tiền lương</span>
+                    </div>
+                    <h2 class="h4 catalog-title text-dark mb-2">Cấu hình khoản lương</h2>
+                    <p class="text-muted mb-4">Quản lý phụ cấp, thưởng, phạt và giá trị mặc định phục vụ tính lương tự động.</p>
+                    <span class="btn btn-hotel-primary px-4"><i class="bi bi-arrow-right-circle me-1"></i> Vào cấu hình khoản lương</span>
+                </article>
+            </a>
+        </div>
+    </div>
+</div>

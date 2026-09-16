@@ -200,7 +200,7 @@
                         <h5 class="fw-bold text-dark mb-0 font-serif">Phân Hệ Quản Trị Hệ Thống (Lộ Trình Đồ Án)</h5>
                     </div>
                     <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
-                        <i class="bi bi-check2-all me-1"></i> 13 / 30 Nhiệm vụ
+                        <i class="bi bi-check2-all me-1"></i> 14 / 30 Nhiệm vụ
                     </span>
                 </div>
                 <div class="card-body px-4 pt-1 pb-4">
@@ -273,18 +273,33 @@
 
                         <!-- TSK-14 -->
                         <div class="col-md-6">
-                            <div class="module-card">
+                            <div class="module-card border-success" style="background: linear-gradient(180deg, #f8fafc 0%, #f0fdf4 100%);">
                                 <div>
                                     <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <span class="badge bg-secondary-subtle text-secondary border rounded-pill">TSK-14 · Tuần 6</span>
+                                        <span class="badge bg-success text-white rounded-pill">TSK-14 · Hoàn thành</span>
                                         <i class="bi bi-sliders text-success fs-4"></i>
                                     </div>
-                                    <h6 class="fw-bold mb-1">Quản Trị Danh Mục Hệ Thống</h6>
+                                    <h6 class="fw-bold mb-1 text-success">Quản Trị Danh Mục Hệ Thống</h6>
                                     <p class="text-muted small mb-3">Quản lý 8 phòng ban, 10 chức vụ, 3 khung ca 24/7 và 7 khoản lương.</p>
                                 </div>
-                                <button class="btn btn-light btn-sm w-100 text-muted rounded-pill" disabled>
-                                    <i class="bi bi-hourglass-split me-1"></i> Sẵn sàng triển khai
-                                </button>
+                                @if (role == "Admin" || role == "HR")
+                                {
+                                    <a asp-controller="SystemCatalog" asp-action="Index" class="btn btn-success btn-sm w-100 rounded-pill fw-bold shadow-sm">
+                                        <i class="bi bi-grid-fill me-1"></i> Vào quản trị danh mục
+                                    </a>
+                                }
+                                else if (!isAuthenticated)
+                                {
+                                    <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="/SystemCatalog" class="btn btn-warning btn-sm w-100 text-dark fw-bold rounded-pill shadow-sm">
+                                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập Admin/HR để mở
+                                    </a>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-light btn-sm w-100 text-muted rounded-pill" disabled>
+                                        <i class="bi bi-lock-fill me-1"></i> Chỉ dành cho Admin và HR
+                                    </button>
+                                }
                             </div>
                         </div>
 

@@ -1,0 +1,11 @@
+@model OvertimeHotel.HRM.Core.Models.CaLamViec
+@{ ViewData["Title"] = "Cập nhật ca làm việc"; }
+<div class="catalog-page">
+    <section class="catalog-hero mb-4"><div class="catalog-eyebrow">Danh mục hệ thống · #@Model.MaCa</div><h1 class="catalog-title h2 mb-1">Cập nhật ca làm việc</h1><p class="text-white-50 mb-0">Điều chỉnh khung giờ và đặc điểm ca.</p></section>
+    <form asp-action="Edit" asp-route-id="@Model.MaCa" method="post" class="catalog-card catalog-form-card">
+        <input asp-for="MaCa" type="hidden" />
+        <div class="d-flex align-items-center gap-3 mb-4"><span class="catalog-icon"><i class="bi bi-pencil-square"></i></span><div><h2 class="h5 fw-bold mb-1">Thông tin ca làm việc</h2><small class="text-muted">Thay đổi có thể ảnh hưởng việc lập lịch sau này.</small></div></div>
+        <partial name="_Form" model="Model" />
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

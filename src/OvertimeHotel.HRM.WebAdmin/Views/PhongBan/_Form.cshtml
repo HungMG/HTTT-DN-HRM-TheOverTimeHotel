@@ -1,0 +1,16 @@
+@model OvertimeHotel.HRM.Core.Models.PhongBan
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+<div class="form-floating mb-3">
+    <input asp-for="TenPhongBan" class="form-control" placeholder="Tên phòng ban" maxlength="150" />
+    <label asp-for="TenPhongBan">Tên phòng ban <span class="text-danger">*</span></label>
+    <span asp-validation-for="TenPhongBan" class="text-danger small"></span>
+</div>
+<div class="form-floating mb-4">
+    <textarea asp-for="MoTa" class="form-control" placeholder="Mô tả" maxlength="255" style="height:120px"></textarea>
+    <label asp-for="MoTa">Mô tả</label>
+    <span asp-validation-for="MoTa" class="text-danger small"></span>
+</div>
+<div class="d-flex justify-content-end gap-2">
+    <a asp-action="Index" class="btn btn-light border rounded-3 px-4"><i class="bi bi-arrow-left me-1"></i> Quay lại</a>
+    <button type="submit" class="btn btn-hotel-primary px-4"><i class="bi bi-check2-circle me-1"></i> Lưu thông tin</button>
+</div>

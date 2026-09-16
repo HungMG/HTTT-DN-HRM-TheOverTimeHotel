@@ -1,0 +1,11 @@
+@model OvertimeHotel.HRM.Core.Models.CauHinhKhoanLuong
+@{ ViewData["Title"] = "Cập nhật khoản lương"; }
+<div class="catalog-page">
+    <section class="catalog-hero mb-4"><div class="catalog-eyebrow">Danh mục hệ thống · #@Model.MaKhoan</div><h1 class="catalog-title h2 mb-1">Cập nhật khoản lương</h1><p class="text-white-50 mb-0">Điều chỉnh phân loại và giá trị mặc định.</p></section>
+    <form asp-action="Edit" asp-route-id="@Model.MaKhoan" method="post" class="catalog-card catalog-form-card">
+        <input asp-for="MaKhoan" type="hidden" />
+        <div class="d-flex align-items-center gap-3 mb-4"><span class="catalog-icon"><i class="bi bi-pencil-square"></i></span><div><h2 class="h5 fw-bold mb-1">Thông tin khoản lương</h2><small class="text-muted">Thay đổi áp dụng cho các kỳ lương tạo sau này.</small></div></div>
+        <partial name="_Form" model="Model" />
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

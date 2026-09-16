@@ -1,0 +1,33 @@
+@model IReadOnlyList<OvertimeHotel.HRM.Core.Models.ChucVu>
+@{ ViewData["Title"] = "Quản lý chức vụ"; }
+@section Scripts {
+<script>function confirmDelete(name){return confirm(`Xóa chức vụ “${name}”? Thao tác này không thể hoàn tác.`);}</script>
+}
+<div class="catalog-page">
+    <section class="catalog-hero mb-4 d-flex justify-content-between align-items-center gap-3">
+        <div><div class="catalog-eyebrow"><i class="bi bi-stars me-1"></i> Danh mục hệ thống</div><h1 class="catalog-title h2 mb-1">Quản lý chức vụ</h1><p class="text-white-50 mb-0">Chuẩn hóa vị trí công việc tại The OverTime Hotel.</p></div>
+        <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative"><i class="bi bi-plus-lg me-1 text-primary"></i> Thêm chức vụ</a>
+    </section>
+    <partial name="_CatalogAlerts" />
+    <section class="catalog-card">
+        <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <form method="get" class="d-flex gap-2 flex-grow-1" style="max-width:520px">
+                <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên hoặc mô tả..." />
+                <button class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+                @if (!string.IsNullOrWhiteSpace(ViewBag.Keyword as string)) { <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a> }
+            </form>
+            <span class="catalog-badge"><i class="bi bi-person-badge me-1"></i> @ViewBag.Total chức vụ</span>
+        </div>
+        <div class="table-responsive"><table class="table catalog-table">
+            <thead><tr><th style="width:90px">Mã</th><th>Tên chức vụ</th><th>Mô tả</th><th class="text-end" style="width:160px">Thao tác</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0) { <tr><td colspan="4" class="catalog-empty"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Không tìm thấy chức vụ phù hợp.</td></tr> }
+            else { @foreach (var item in Model) {
+                <tr><td class="text-muted fw-semibold">#@item.MaChucVu</td><td><div class="d-flex align-items-center gap-2"><span class="catalog-icon"><i class="bi bi-person-badge"></i></span><strong>@item.TenChucVu</strong></div></td><td class="text-muted">@(item.MoTa ?? "—")</td>
+                <td class="text-end"><a asp-action="Edit" asp-route-id="@item.MaChucVu" class="btn btn-sm btn-outline-primary rounded-3"><i class="bi bi-pencil"></i></a>
+                <form asp-action="Delete" asp-route-id="@item.MaChucVu" method="post" class="d-inline" onsubmit="return confirmDelete('@item.TenChucVu.Replace("'", "\\'")')"><button class="btn btn-sm btn-outline-danger rounded-3"><i class="bi bi-trash"></i></button></form></td></tr>
+            }}
+            </tbody>
+        </table></div>
+    </section>
+</div>

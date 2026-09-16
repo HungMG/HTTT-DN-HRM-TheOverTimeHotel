@@ -1,0 +1,20 @@
+@model OvertimeHotel.HRM.Core.Models.PhongBan
+@{
+    ViewData["Title"] = "Cập nhật phòng ban";
+}
+<div class="catalog-page">
+    <section class="catalog-hero mb-4">
+        <div class="catalog-eyebrow">Danh mục hệ thống · #@Model.MaPhongBan</div>
+        <h1 class="catalog-title h2 mb-1">Cập nhật phòng ban</h1>
+        <p class="text-white-50 mb-0">Điều chỉnh thông tin đơn vị trong cơ cấu tổ chức.</p>
+    </section>
+    <form asp-action="Edit" asp-route-id="@Model.MaPhongBan" method="post" class="catalog-card catalog-form-card">
+        <input asp-for="MaPhongBan" type="hidden" />
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <span class="catalog-icon"><i class="bi bi-pencil-square"></i></span>
+            <div><h2 class="h5 fw-bold mb-1">Thông tin phòng ban</h2><small class="text-muted">Kiểm tra kỹ trước khi lưu thay đổi.</small></div>
+        </div>
+        <partial name="_Form" model="Model" />
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

@@ -1,0 +1,10 @@
+@model OvertimeHotel.HRM.Core.Models.ChucVu
+@{ ViewData["Title"] = "Thêm chức vụ"; }
+<div class="catalog-page">
+    <section class="catalog-hero mb-4"><div class="catalog-eyebrow">Danh mục hệ thống</div><h1 class="catalog-title h2 mb-1">Thêm chức vụ</h1><p class="text-white-50 mb-0">Khai báo vị trí công việc mới trong khách sạn.</p></section>
+    <form asp-action="Create" method="post" class="catalog-card catalog-form-card">
+        <div class="d-flex align-items-center gap-3 mb-4"><span class="catalog-icon"><i class="bi bi-person-plus"></i></span><div><h2 class="h5 fw-bold mb-1">Thông tin chức vụ</h2><small class="text-muted">Các trường có dấu * là bắt buộc.</small></div></div>
+        <partial name="_Form" model="Model" />
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
