@@ -58,44 +58,60 @@ public class UserAccountsController : Controller
             query = query.Where(account => account.TrangThai == isActive.Value);
         }
 
-        var accounts = await query
-            .OrderByDescending(account => account.TrangThai)
-            .ThenBy(account => account.TenDangNhap)
-            .Select(account => new AccountListItemViewModel
-            {
-                AccountId = account.MaTaiKhoan,
-                EmployeeId = account.MaNhanVien,
-                Username = account.TenDangNhap,
-                EmployeeName = account.NhanVien == null
-                    ? "Chưa liên kết nhân viên"
-                    : (account.NhanVien.Ho + " " + account.NhanVien.Ten).Trim(),
-                Email = account.NhanVien == null ? string.Empty : account.NhanVien.Email,
-                Department = account.NhanVien == null || account.NhanVien.PhongBan == null
-                    ? "—"
-                    : account.NhanVien.PhongBan.TenPhongBan,
-                Position = account.NhanVien == null || account.NhanVien.ChucVu == null
-                    ? "—"
-                    : account.NhanVien.ChucVu.TenChucVu,
-                RoleName = account.VaiTro == null ? "Chưa cấp" : account.VaiTro.TenVaiTro,
-                IsActive = account.TrangThai
-            })
-            .ToListAsync();
-
-        var roleOptions = await GetRoleOptionsAsync(roleId);
-        var model = new AccountIndexViewModel
+        try
         {
-            Keyword = normalizedKeyword,
-            RoleId = roleId,
-            IsActive = isActive,
-            Accounts = accounts,
-            RoleOptions = roleOptions,
-            TotalAccounts = await _context.TaiKhoans.CountAsync(),
-            ActiveAccounts = await _context.TaiKhoans.CountAsync(account => account.TrangThai),
-            LockedAccounts = await _context.TaiKhoans.CountAsync(account => !account.TrangThai),
-            AdminAccounts = await _context.TaiKhoans.CountAsync(account => account.VaiTro != null && account.VaiTro.TenVaiTro == "Admin")
-        };
+            var accounts = await query
+                .OrderByDescending(account => account.TrangThai)
+                .ThenBy(account => account.TenDangNhap)
+                .Select(account => new AccountListItemViewModel
+                {
+                    AccountId = account.MaTaiKhoan,
+                    EmployeeId = account.MaNhanVien,
+                    Username = account.TenDangNhap,
+                    EmployeeName = account.NhanVien == null
+                        ? "Chưa liên kết nhân viên"
+                        : (account.NhanVien.Ho + " " + account.NhanVien.Ten).Trim(),
+                    Email = account.NhanVien == null ? string.Empty : account.NhanVien.Email,
+                    Department = account.NhanVien == null || account.NhanVien.PhongBan == null
+                        ? "—"
+                        : account.NhanVien.PhongBan.TenPhongBan,
+                    Position = account.NhanVien == null || account.NhanVien.ChucVu == null
+                        ? "—"
+                        : account.NhanVien.ChucVu.TenChucVu,
+                    RoleName = account.VaiTro == null ? "Chưa cấp" : account.VaiTro.TenVaiTro,
+                    IsActive = account.TrangThai
+                })
+                .ToListAsync();
 
-        return View(model);
+            var roleOptions = await GetRoleOptionsAsync(roleId);
+            var model = new AccountIndexViewModel
+            {
+                Keyword = normalizedKeyword,
+                RoleId = roleId,
+                IsActive = isActive,
+                Accounts = accounts,
+                RoleOptions = roleOptions,
+                TotalAccounts = await _context.TaiKhoans.CountAsync(),
+                ActiveAccounts = await _context.TaiKhoans.CountAsync(account => account.TrangThai),
+                LockedAccounts = await _context.TaiKhoans.CountAsync(account => !account.TrangThai),
+                AdminAccounts = await _context.TaiKhoans.CountAsync(account => account.VaiTro != null && account.VaiTro.TenVaiTro == "Admin")
+            };
+
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Không thể kết nối CSDL khi tải danh sách tài khoản.");
+            ViewBag.ErrorMessage = "Không thể kết nối CSDL Supabase. Vui lòng kiểm tra chuỗi kết nối và mật khẩu trong file appsettings.json.";
+            return View(new AccountIndexViewModel
+            {
+                Keyword = normalizedKeyword,
+                RoleId = roleId,
+                IsActive = isActive,
+                Accounts = [],
+                RoleOptions = []
+            });
+        }
     }
 
     [HttpGet]
@@ -240,6 +256,12 @@ public class UserAccountsController : Controller
             await CountOtherActiveAdminsAsync(account.MaTaiKhoan) == 0)
         {
             ModelState.AddModelError(nameof(model.RoleId), "Phải duy trì ít nhất một tài khoản Admin đang hoạt động.");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.NewPassword))
+        {
+            ModelState.Remove(nameof(model.NewPassword));
+            ModelState.Remove(nameof(model.ConfirmNewPassword));
         }
 
         if (!ModelState.IsValid)

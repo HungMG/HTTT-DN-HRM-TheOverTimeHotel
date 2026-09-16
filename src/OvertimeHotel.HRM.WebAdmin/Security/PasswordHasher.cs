@@ -7,7 +7,10 @@ public static class PasswordHasher
 {
     public static string Hash(string password)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(password);
+        if (string.IsNullOrEmpty(password))
+        {
+            return string.Empty;
+        }
 
         return Convert.ToHexString(
                 SHA256.HashData(Encoding.UTF8.GetBytes(password)))
