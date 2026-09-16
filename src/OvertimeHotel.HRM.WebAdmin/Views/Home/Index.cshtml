@@ -6,196 +6,475 @@
 }
 
 <div class="container-fluid py-3">
-    <!-- BANNER CHÀO MỪNG CHUẨN KHÁCH SẠN 5 SAO -->
-    <div class="card border-0 rounded-4 shadow-sm mb-4 text-white overflow-hidden" 
-         style="background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #0B1325 100%);">
+    <!-- HERO EXECUTIVE BANNER -->
+    <div class="card border-0 rounded-4 shadow-sm mb-4 text-white hero-luxury-banner">
         <div class="card-body p-4 p-lg-5 position-relative">
-            <div class="row align-items-center">
+            <div class="row align-items-center g-4">
                 <div class="col-lg-8">
-                    <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle small fw-bold mb-3">
-                        <i class="bi bi-stars"></i> THE OVERTIME HOTEL & RESORT · CỔNG QUẢN TRỊ ADMIN
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="badge bg-warning text-dark fw-bold px-3 py-2 rounded-pill shadow-sm">
+                            <i class="bi bi-stars me-1"></i> THE OVERTIME HOTEL &amp; RESORT 5★
+                        </span>
+                        <span class="live-clock-pill text-white d-inline-flex align-items-center gap-2">
+                            <span class="shift-indicator-dot shift-dot-active"></span>
+                            <span id="liveClockText">Đang tải đồng hồ...</span>
+                        </span>
                     </div>
-                    <h2 class="display-6 fw-bold mb-2">
-                        Xin chào, <span style="color: #FDE047;">@fullName</span>!
-                    </h2>
-                    <p class="text-white-50 mb-4" style="max-width: 600px;">
-                        Chào mừng bạn trở lại với hệ thống Quản lý Nhân sự & Tiền lương tự động 24/7. Bạn đang đăng nhập với vai trò 
-                        <span class="badge @(role == "Admin" ? "bg-danger" : "bg-primary") px-2 py-1">@role</span>.
-                    </p>
-                    <div class="d-flex flex-wrap gap-2">
-                        @if (role == "Admin")
+
+                    <h1 class="display-6 fw-bold mb-2 font-serif">
+                        Xin chào, <span style="color: var(--hotel-gold-light);">@fullName</span>!
+                    </h1>
+
+                    <p class="text-white-50 fs-6 mb-4" style="max-width: 620px; line-height: 1.6;">
+                        Chào mừng bạn đến với Cổng điều hành Quản lý Nhân sự &amp; Tiền lương tự động 24/7.
+                        @if (isAuthenticated)
                         {
-                            <a asp-controller="Backup" asp-action="Index" class="btn btn-warning fw-semibold px-3 py-2 text-dark shadow-sm">
-                                <i class="bi bi-shield-check me-1"></i> Sao Lưu & Phục Hồi CSDL
-                            </a>
+                            <span>
+                                Bạn đang đăng nhập với vai trò 
+                                <span class="badge @(role == "Admin" ? "bg-danger" : "bg-primary") px-3 py-1 rounded-pill">
+                                    <i class="bi @(role == "Admin" ? "bi-shield-shaded" : "bi-person-badge") me-1"></i>@role
+                                </span>.
+                            </span>
                         }
-                        <a href="https://supabase.com/dashboard/project/soethtbttktnwtxyxjrj" target="_blank" class="btn btn-outline-light px-3 py-2">
-                            <i class="bi bi-cloud-check me-1"></i> Supabase Cloud Studio
-                        </a>
-                    </div>
-                </div>
-                <div class="col-lg-4 d-none d-lg-block text-end">
-                    <div class="p-3 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-25 d-inline-block text-start" style="min-width: 250px;">
-                        <div class="small text-white-50 mb-1"><i class="bi bi-server me-1"></i> Máy chủ Cơ sở dữ liệu:</div>
-                        <div class="fw-bold text-white mb-2">Supabase PostgreSQL 17</div>
-                        <div class="small text-white-50 mb-1"><i class="bi bi-geo-alt me-1"></i> Khu vực máy chủ:</div>
-                        <div class="fw-bold text-white mb-2">Singapore (ap-southeast-1)</div>
-                        <div class="small text-white-50 mb-1"><i class="bi bi-shield-lock me-1"></i> Mã hóa đường truyền:</div>
-                        <div class="badge bg-success">SSL Mode Required</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                        else
+                        {
+                            <span>Hiện tại bạn đang ở chế độ xem Khách (Guest). Hãy đăng nhập để truy cập đầy đủ các phân hệ quản trị.</span>
+                        }
+                    </p>
 
-    <!-- 4 WIDGETS THỐNG KÊ TỔNG QUAN -->
-    <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-3 bg-primary-subtle text-primary p-3 fs-3 me-3">
-                        <i class="bi bi-people-fill"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small fw-semibold">Tổng Số Nhân Lực</div>
-                        <h3 class="fw-bold mb-0 text-dark">20</h3>
-                        <div class="text-success small"><i class="bi bi-check-circle me-1"></i>100% Đang làm việc</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-3 bg-info-subtle text-info p-3 fs-3 me-3">
-                        <i class="bi bi-building"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small fw-semibold">Phòng Ban Khách Sạn</div>
-                        <h3 class="fw-bold mb-0 text-dark">8</h3>
-                        <div class="text-muted small">Vận hành 24/7 liên tục</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-3 bg-warning-subtle text-warning-emphasis p-3 fs-3 me-3">
-                        <i class="bi bi-file-earmark-text-fill"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small fw-semibold">Hợp Đồng Lao Động</div>
-                        <h3 class="fw-bold mb-0 text-dark">20</h3>
-                        <div class="text-success small"><i class="bi bi-patch-check me-1"></i>Đã ký kết hợp pháp</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-3 bg-success-subtle text-success p-3 fs-3 me-3">
-                        <i class="bi bi-clock-history"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small fw-semibold">Khung Ca Làm Việc</div>
-                        <h3 class="fw-bold mb-0 text-dark">3</h3>
-                        <div class="text-primary small">Sáng · Chiều · Đêm (30%)</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- CÁC LỐI TẮT CHỨC NĂNG THEO LỘ TRÌNH ĐỒ ÁN -->
-    <div class="card border-0 shadow-sm rounded-4 bg-white">
-        <div class="card-header bg-white py-3 border-0">
-            <h5 class="fw-bold text-dark mb-0">
-                <i class="bi bi-grid me-2 text-primary"></i>Phân Hệ Quản Trị Hệ Thống (Lộ Trình Đồ Án)
-            </h5>
-        </div>
-        <div class="card-body pt-0">
-            <div class="row g-3">
-                <div class="col-md-6 col-lg-3">
-                    <div class="border rounded-3 p-3 h-100 d-flex flex-column justify-content-between">
-                        <div>
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="badge bg-success-subtle text-success border">TSK-10 · Hoàn thành</span>
-                                <i class="bi bi-shield-check text-primary fs-4"></i>
-                            </div>
-                            <h6 class="fw-bold mb-1">Sao Lưu & Phục Hồi CSDL</h6>
-                            <p class="text-muted small mb-3">Xuất snapshot JSON và khôi phục 17 bảng dữ liệu Supabase an toàn.</p>
-                        </div>
-                        <a asp-controller="Backup" asp-action="Index" class="btn btn-outline-primary btn-sm w-100">
-                            Truy cập chức năng
-                        </a>
-                    </div>
-                </div>
-
-                <div class="col-md-6 col-lg-3">
-                    <div class="border rounded-3 p-3 h-100 d-flex flex-column justify-content-between">
-                        <div>
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="badge bg-success-subtle text-success border">TSK-12 · Hoàn thành</span>
-                                <i class="bi bi-key text-warning fs-4"></i>
-                            </div>
-                            <h6 class="fw-bold mb-1">Xác Thực & Phân Quyền RBAC</h6>
-                            <p class="text-muted small mb-3">Trang đăng nhập sang trọng, băm SHA-256, phân định 4 vai trò rõ ràng.</p>
-                        </div>
-                        <a asp-controller="Account" asp-action="Login" class="btn btn-outline-secondary btn-sm w-100">
-                            Xem trang Đăng nhập
-                        </a>
-                    </div>
-                </div>
-
-                <div class="col-md-6 col-lg-3">
-                    <div class="border rounded-3 p-3 h-100 d-flex flex-column justify-content-between">
-                        <div>
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="badge bg-success-subtle text-success border">TSK-13 · Hoàn thành</span>
-                                <i class="bi bi-person-gear text-info fs-4"></i>
-                            </div>
-                            <h6 class="fw-bold mb-1">Quản Trị Tài Khoản</h6>
-                            <p class="text-muted small mb-3">Thêm, sửa, khóa tài khoản và cấp phát vai trò RBAC cho nhân sự.</p>
-                        </div>
+                    <div class="d-flex flex-wrap align-items-center gap-3">
                         @if (role == "Admin")
                         {
-                            <a asp-controller="UserAccounts" asp-action="Index" class="btn btn-outline-primary btn-sm w-100">
-                                <i class="bi bi-arrow-right-circle me-1"></i> Truy cập chức năng
+                            <a asp-controller="UserAccounts" asp-action="Index" class="btn btn-light fw-bold px-4 py-2 text-dark shadow-sm rounded-pill hover-lift">
+                                <i class="bi bi-person-gear me-2 text-primary"></i>Quản trị tài khoản
+                            </a>
+                            <a asp-controller="Backup" asp-action="Index" class="btn btn-warning fw-semibold px-4 py-2 text-dark shadow-sm rounded-pill hover-lift">
+                                <i class="bi bi-shield-check me-2"></i>Sao lưu &amp; Phục hồi
                             </a>
                         }
                         else if (!isAuthenticated)
                         {
-                            <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="/UserAccounts" class="btn btn-warning btn-sm w-100 text-dark fw-semibold">
-                                <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập Admin
+                            <a asp-controller="Account" asp-action="Login" class="btn btn-warning fw-bold px-4 py-2 text-dark shadow-sm rounded-pill hover-lift">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập quản trị
                             </a>
                         }
-                        else
-                        {
-                            <button class="btn btn-light btn-sm w-100 text-muted" disabled>
-                                <i class="bi bi-lock-fill me-1"></i> Chỉ dành cho Admin
-                            </button>
-                        }
+                        <a href="https://supabase.com/dashboard/project/soethtbttktnwtxyxjrj" target="_blank" rel="noopener noreferrer" 
+                           class="btn btn-outline-light px-4 py-2 rounded-pill hover-lift">
+                            <i class="bi bi-cloud-arrow-up-fill me-2 text-info"></i>Supabase Cloud
+                        </a>
                     </div>
                 </div>
 
-                <div class="col-md-6 col-lg-3">
-                    <div class="border rounded-3 p-3 h-100 d-flex flex-column justify-content-between">
-                        <div>
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="badge bg-secondary-subtle text-secondary border">TSK-14 · Tuần 6</span>
-                                <i class="bi bi-sliders text-success fs-4"></i>
-                            </div>
-                            <h6 class="fw-bold mb-1">Quản Trị Danh Mục</h6>
-                            <p class="text-muted small mb-3">Quản lý phòng ban, chức vụ, ca làm việc 24/7 và định mức thu chi.</p>
+                <div class="col-lg-4 d-none d-lg-block text-end">
+                    <div class="p-3 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-20 text-start shadow-sm" style="backdrop-filter: blur(10px);">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small text-white-50 fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Hạ Tầng Cloud</span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Online 24/7</span>
                         </div>
-                        <button class="btn btn-light btn-sm w-100 text-muted" disabled>
-                            Sẵn sàng triển khai
-                        </button>
+                        <div class="fw-bold text-white fs-6 mb-2">
+                            <i class="bi bi-database-fill-check me-1 text-warning"></i> Supabase PostgreSQL 17
+                        </div>
+                        <div class="small text-white-50 mb-1">
+                            <i class="bi bi-geo-alt-fill me-1 text-danger"></i> Khu vực: Singapore (ap-southeast-1)
+                        </div>
+                        <div class="small text-white-50 mb-2">
+                            <i class="bi bi-lock-fill me-1 text-success"></i> Mã hóa SSL &amp; EF Core 10
+                        </div>
+                        <div class="pt-2 border-top border-white border-opacity-10 d-flex justify-content-between align-items-center">
+                            <span class="small text-white-50">Ca hiện tại:</span>
+                            <span class="badge bg-primary text-white" id="currentShiftBadge">Đang tính toán...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 BENTO KPI CARDS -->
+    <div class="row g-3 mb-4">
+        <!-- KPI 1 -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card shadow-sm hover-lift h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Tổng Nhân Lực</div>
+                        <h2 class="fw-bold mb-0 text-dark mt-1 font-serif">20</h2>
+                    </div>
+                    <div class="kpi-icon-wrapper bg-primary-subtle text-primary">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="progress mb-2" style="height: 6px;">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>8 Phòng ban</span>
+                        <span class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>100% Hoạt động</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 2 -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card shadow-sm hover-lift h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Vận Hành Ca 24/7</div>
+                        <h2 class="fw-bold mb-0 text-dark mt-1 font-serif">3 <span class="fs-6 fw-normal text-muted">Khung ca</span></h2>
+                    </div>
+                    <div class="kpi-icon-wrapper bg-success-subtle text-success">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="progress mb-2" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>Sáng · Chiều · Đêm</span>
+                        <span class="text-primary fw-semibold"><i class="bi bi-moon-stars-fill me-1"></i>+30% Ca đêm</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 3 -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card shadow-sm hover-lift h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Hợp Đồng Lao Động</div>
+                        <h2 class="fw-bold mb-0 text-dark mt-1 font-serif">20</h2>
+                    </div>
+                    <div class="kpi-icon-wrapper bg-warning-subtle text-warning-emphasis">
+                        <i class="bi bi-file-earmark-check-fill"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="progress mb-2" style="height: 6px;">
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>BHXH, BHYT, BHTN 10.5%</span>
+                        <span class="text-success fw-semibold"><i class="bi bi-shield-fill-check me-1"></i>Đã ký kết</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 4 -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card shadow-sm hover-lift h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Tính Lương 2 Tầng</div>
+                        <h2 class="fw-bold mb-0 text-dark mt-1 font-serif">T09<span class="fs-6 fw-normal text-muted">/2026</span></h2>
+                    </div>
+                    <div class="kpi-icon-wrapper bg-info-subtle text-info-emphasis">
+                        <i class="bi bi-calculator-fill"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="progress mb-2" style="height: 6px;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>Gross &rarr; Net</span>
+                        <span class="text-info-emphasis fw-semibold"><i class="bi bi-file-earmark-pdf-fill me-1"></i>QuestPDF</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN TWO-COLUMN DASHBOARD BODY -->
+    <div class="row g-4">
+        <!-- CỘT TRÁI: LỘ TRÌNH ĐỒ ÁN & CÁC MODULE CHỨC NĂNG (8/12) -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+                <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-primary fw-bold small text-uppercase" style="letter-spacing: 0.5px;">Tiến độ phát triển</div>
+                        <h5 class="fw-bold text-dark mb-0 font-serif">Phân Hệ Quản Trị Hệ Thống (Lộ Trình Đồ Án)</h5>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+                        <i class="bi bi-check2-all me-1"></i> 13 / 30 Nhiệm vụ
+                    </span>
+                </div>
+                <div class="card-body px-4 pt-1 pb-4">
+                    <div class="row g-3">
+                        <!-- TSK-10 -->
+                        <div class="col-md-6">
+                            <div class="module-card">
+                                <div>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">TSK-10 · Hoàn thành</span>
+                                        <i class="bi bi-shield-check text-primary fs-4"></i>
+                                    </div>
+                                    <h6 class="fw-bold mb-1">Sao Lưu &amp; Phục Hồi CSDL</h6>
+                                    <p class="text-muted small mb-3">Xuất snapshot JSON và khôi phục 17 bảng dữ liệu Supabase an toàn.</p>
+                                </div>
+                                <a asp-controller="Backup" asp-action="Index" class="btn btn-outline-primary btn-sm w-100 rounded-pill fw-semibold">
+                                    <i class="bi bi-arrow-right-circle me-1"></i> Truy cập chức năng
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- TSK-12 -->
+                        <div class="col-md-6">
+                            <div class="module-card">
+                                <div>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">TSK-12 · Hoàn thành</span>
+                                        <i class="bi bi-key-fill text-warning fs-4"></i>
+                                    </div>
+                                    <h6 class="fw-bold mb-1">Xác Thực &amp; Phân Quyền RBAC</h6>
+                                    <p class="text-muted small mb-3">Trang đăng nhập sang trọng, băm SHA-256, phân định 4 vai trò rõ ràng.</p>
+                                </div>
+                                <a asp-controller="Account" asp-action="Login" class="btn btn-outline-secondary btn-sm w-100 rounded-pill fw-semibold">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i> Xem trang Đăng nhập
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- TSK-13 (TÂM ĐIỂM) -->
+                        <div class="col-md-6">
+                            <div class="module-card border-primary" style="background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);">
+                                <div>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="badge bg-success text-white rounded-pill">TSK-13 · Hoàn thành</span>
+                                        <i class="bi bi-person-gear text-primary fs-4"></i>
+                                    </div>
+                                    <h6 class="fw-bold mb-1 text-primary">Quản Trị Tài Khoản &amp; Phân Quyền</h6>
+                                    <p class="text-muted small mb-3">Thêm mới, sửa thông tin, khóa tài khoản và cấp vai trò RBAC cho nhân sự.</p>
+                                </div>
+                                @if (role == "Admin")
+                                {
+                                    <a asp-controller="UserAccounts" asp-action="Index" class="btn btn-primary btn-sm w-100 rounded-pill fw-bold shadow-sm">
+                                        <i class="bi bi-shield-fill-check me-1"></i> Vào Quản trị tài khoản
+                                    </a>
+                                }
+                                else if (!isAuthenticated)
+                                {
+                                    <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="/UserAccounts" class="btn btn-warning btn-sm w-100 text-dark fw-bold rounded-pill shadow-sm">
+                                        <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập Admin để mở
+                                    </a>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-light btn-sm w-100 text-muted rounded-pill" disabled>
+                                        <i class="bi bi-lock-fill me-1"></i> Chỉ dành cho Admin
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- TSK-14 -->
+                        <div class="col-md-6">
+                            <div class="module-card">
+                                <div>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="badge bg-secondary-subtle text-secondary border rounded-pill">TSK-14 · Tuần 6</span>
+                                        <i class="bi bi-sliders text-success fs-4"></i>
+                                    </div>
+                                    <h6 class="fw-bold mb-1">Quản Trị Danh Mục Hệ Thống</h6>
+                                    <p class="text-muted small mb-3">Quản lý 8 phòng ban, 10 chức vụ, 3 khung ca 24/7 và 7 khoản lương.</p>
+                                </div>
+                                <button class="btn btn-light btn-sm w-100 text-muted rounded-pill" disabled>
+                                    <i class="bi bi-hourglass-split me-1"></i> Sẵn sàng triển khai
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TSK-15 -->
+                        <div class="col-md-6">
+                            <div class="module-card">
+                                <div>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="badge bg-secondary-subtle text-secondary border rounded-pill">TSK-15 · Tuần 6</span>
+                                        <i class="bi bi-person-lines-fill text-info fs-4"></i>
+                                    </div>
+                                    <h6 class="fw-bold mb-1">Quản Lý Nhân Viên &amp; HĐLĐ</h6>
+                                    <p class="text-muted small mb-3">Hồ sơ 20 nhân viên, tìm kiếm, lọc theo phòng ban; lập và theo dõi HĐLĐ.</p>
+                                </div>
+                                <button class="btn btn-light btn-sm w-100 text-muted rounded-pill" disabled>
+                                    <i class="bi bi-hourglass-split me-1"></i> Sẵn sàng triển khai
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TSK-16 -->
+                        <div class="col-md-6">
+                            <div class="module-card">
+                                <div>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="badge bg-secondary-subtle text-secondary border rounded-pill">TSK-16 · Tuần 7</span>
+                                        <i class="bi bi-calendar2-range-fill text-danger fs-4"></i>
+                                    </div>
+                                    <h6 class="fw-bold mb-1">Phân Ca &amp; Chấm Công 24/7</h6>
+                                    <p class="text-muted small mb-3">Lập lịch ca sáng/chiều/đêm, quẹt thẻ Check-in / Out tự động trên App.</p>
+                                </div>
+                                <button class="btn btn-light btn-sm w-100 text-muted rounded-pill" disabled>
+                                    <i class="bi bi-hourglass-split me-1"></i> Sẵn sàng triển khai
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CỘT PHẢI: BẢNG GIÁM SÁT CA 24/7 & THÔNG TIN HẠ TẦNG (4/12) -->
+        <div class="col-lg-4">
+            <!-- GIÁM SÁT 3 CA KHÁCH SẠN 24/7 -->
+            <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+                <div class="card-header bg-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-dark font-serif">
+                        <i class="bi bi-clock me-2 text-primary"></i>Lịch 3 Ca Làm Việc 24/7
+                    </h6>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill small">Hôm nay</span>
+                </div>
+                <div class="card-body px-4 pt-0 pb-4">
+                    <div class="shift-timeline-item" id="shiftMorning">
+                        <div class="shift-timeline-dot"></div>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-bold small text-dark">Ca Sáng (06:00 – 14:00)</div>
+                                <div class="text-muted small">Phục vụ ăn sáng, buồng phòng sáng</div>
+                            </div>
+                            <span class="badge bg-light text-secondary border small" id="badgeMorning">Ca 1</span>
+                        </div>
+                    </div>
+
+                    <div class="shift-timeline-item" id="shiftAfternoon">
+                        <div class="shift-timeline-dot"></div>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-bold small text-dark">Ca Chiều (14:00 – 22:00)</div>
+                                <div class="text-muted small">Cao điểm Check-in/out, nhà hàng, tiệc</div>
+                            </div>
+                            <span class="badge bg-light text-secondary border small" id="badgeAfternoon">Ca 2</span>
+                        </div>
+                    </div>
+
+                    <div class="shift-timeline-item" id="shiftNight">
+                        <div class="shift-timeline-dot"></div>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-bold small text-dark">Ca Đêm (22:00 – 06:00)</div>
+                                <div class="text-muted small">Lễ tân đêm, an ninh tuần tra, kỹ thuật</div>
+                            </div>
+                            <span class="badge bg-light text-secondary border small" id="badgeNight">Ca 3 (+30%)</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 p-3 bg-light rounded-3 small">
+                        <i class="bi bi-info-circle-fill text-primary me-1"></i>
+                        Nhân viên ca đêm được hưởng <strong>thêm 30% lương</strong> tính theo giờ làm việc theo quy định Bộ luật Lao động.
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUY TẮC PHÂN QUYỀN 4 VAI TRÒ -->
+            <div class="card border-0 shadow-sm rounded-4 bg-white">
+                <div class="card-header bg-white py-3 px-4 border-0">
+                    <h6 class="fw-bold mb-0 text-dark font-serif">
+                        <i class="bi bi-shield-lock me-2 text-warning"></i>Phân Định 4 Vai Trò RBAC
+                    </h6>
+                </div>
+                <div class="card-body px-4 pt-0 pb-4">
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded-3 mb-2 bg-light">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-danger rounded-pill">Admin</span>
+                            <span class="small fw-semibold">Quản trị viên</span>
+                        </div>
+                        <span class="small text-muted">Toàn quyền hệ thống</span>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded-3 mb-2 bg-light">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary rounded-pill">HR</span>
+                            <span class="small fw-semibold">Chuyên viên Nhân sự</span>
+                        </div>
+                        <span class="small text-muted">Hồ sơ, HĐLĐ, Tính lương</span>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded-3 mb-2 bg-light">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-warning text-dark rounded-pill">Manager</span>
+                            <span class="small fw-semibold">Quản lý bộ phận</span>
+                        </div>
+                        <span class="small text-muted">Xếp ca, Duyệt đơn trên App</span>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded-3 bg-light">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary rounded-pill">Employee</span>
+                            <span class="small fw-semibold">Nhân viên</span>
+                        </div>
+                        <span class="small text-muted">Quẹt thẻ chấm công App</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    // Cập nhật đồng hồ thời gian thực và tự động xác định ca trực hiện tại
+    function updateLiveStatus() {
+        const now = new Date();
+        
+        // Định dạng ngày giờ chuẩn Việt Nam
+        const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
+        const dateStr = now.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+        
+        const clockElem = document.getElementById('liveClockText');
+        if (clockElem) {
+            clockElem.textContent = `${dateStr} · ${timeStr}`;
+        }
+
+        const hour = now.getHours();
+        let currentShiftName = "";
+        
+        // Reset classes
+        const sMorn = document.getElementById('shiftMorning');
+        const sAft = document.getElementById('shiftAfternoon');
+        const sNight = document.getElementById('shiftNight');
+        const bMorn = document.getElementById('badgeMorning');
+        const bAft = document.getElementById('badgeAfternoon');
+        const bNight = document.getElementById('badgeNight');
+        const badgeElem = document.getElementById('currentShiftBadge');
+
+        [sMorn, sAft, sNight].forEach(el => el?.classList.remove('active'));
+        if (bMorn) bMorn.className = "badge bg-light text-secondary border small";
+        if (bAft) bAft.className = "badge bg-light text-secondary border small";
+        if (bNight) bNight.className = "badge bg-light text-secondary border small";
+
+        // Xác định ca
+        if (hour >= 6 && hour < 14) {
+            currentShiftName = "Ca Sáng (06:00 – 14:00)";
+            sMorn?.classList.add('active');
+            if (bMorn) bMorn.className = "badge bg-success text-white small";
+        } else if (hour >= 14 && hour < 22) {
+            currentShiftName = "Ca Chiều (14:00 – 22:00)";
+            sAft?.classList.add('active');
+            if (bAft) bAft.className = "badge bg-success text-white small";
+        } else {
+            currentShiftName = "Ca Đêm (22:00 – 06:00)";
+            sNight?.classList.add('active');
+            if (bNight) bNight.className = "badge bg-success text-white small";
+        }
+
+        if (badgeElem) {
+            badgeElem.textContent = currentShiftName;
+        }
+    }
+
+    updateLiveStatus();
+    setInterval(updateLiveStatus, 1000);
+</script>
+}

@@ -20,6 +20,165 @@ html {
 body {
   margin-bottom: 60px;
   background-color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1e293b;
+}
+
+:root {
+  --hotel-navy: #0f172a;
+  --hotel-navy-deep: #0b1325;
+  --hotel-royal: #1e3a8a;
+  --hotel-gold: #d4af37;
+  --hotel-gold-light: #fde047;
+  --hotel-gold-dark: #b8860b;
+  --hotel-slate-bg: #f8fafc;
+  --hotel-card-border: rgba(226, 232, 240, 0.8);
+}
+
+.font-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* Card hover elevation */
+.hover-lift {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.12), 0 4px 10px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Luxury Hero Banner Gradient */
+.hero-luxury-banner {
+  background: linear-gradient(135deg, #090e1a 0%, #0f172a 40%, #1e3a8a 85%, #172554 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-luxury-banner::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0) 70%);
+  pointer-events: none;
+}
+
+/* Digital live clock */
+.live-clock-pill {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Active 24/7 Shift Indicator Pulse */
+.shift-indicator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.shift-dot-active {
+  background-color: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseGreen 2s infinite;
+}
+
+@keyframes pulseGreen {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* KPI Bento Widget */
+.kpi-card {
+  border-radius: 1.25rem;
+  border: 1px solid var(--hotel-card-border);
+  background: #ffffff;
+  padding: 1.35rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-icon-wrapper {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  flex-shrink: 0;
+}
+
+/* Shift list item */
+.shift-timeline-item {
+  border-left: 3px solid #e2e8f0;
+  padding-left: 1rem;
+  position: relative;
+  padding-bottom: 1.2rem;
+}
+
+.shift-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.shift-timeline-item.active {
+  border-left-color: #10b981;
+}
+
+.shift-timeline-dot {
+  position: absolute;
+  left: -7px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  border: 2px solid #ffffff;
+}
+
+.shift-timeline-item.active .shift-timeline-dot {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+/* Module Cards in Roadmap */
+.module-card {
+  border-radius: 1.15rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  transition: all 0.25s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.25rem;
+}
+
+.module-card:hover {
+  border-color: #93c5fd;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.08);
 }
 
 .account-stat-icon {
