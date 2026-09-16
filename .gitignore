@@ -6,6 +6,9 @@
 [Ll]og/
 [Ll]ogs/
 .vs/
+.nuget-packages/
+local-packages/
+nuget.config
 *.user
 *.userosscache
 *.suo
