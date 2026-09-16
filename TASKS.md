@@ -9,13 +9,13 @@
 ## 📊 TIẾN ĐỘ TỔNG QUAN HỆ THỐNG
 
 - **Tổng số nhiệm vụ:** 30 Tasks
-- **Đã hoàn thành:** 12 / 30 Tasks (40.0%)
+- **Đã hoàn thành:** 13 / 30 Tasks (43.3%)
 - **Đang thực hiện:** 0 Task
 - **Chưa bắt đầu:** 18 Tasks
 - **Mốc chấm đồ án chính thức:** **Tuần 10 (10/11/2026)**
 
 ```text
-[████████████░░░░░░░░░░░░░░░░░░] 40.0% Hoàn thành (12/30)
+[█████████████░░░░░░░░░░░░░░░░░] 43.3% Hoàn thành (13/30)
 ```
 
 ---
@@ -104,11 +104,11 @@
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 06/10/2026
   - **Trạng thái:** `Hoàn thành`
 
-- [ ] **TSK-13:** Xây dựng Web Admin: Quản trị tài khoản & phân quyền
+- [x] **TSK-13:** Xây dựng Web Admin: Quản trị tài khoản & phân quyền
   - **Phân hệ:** Web Admin (MVC)
   - **Mô tả & Output:** Giao diện Web Admin: Thêm, sửa, khóa tài khoản, cấp vai trò (Admin, HR, Manager, Employee)
-  - **Người phụ trách:** *Chưa phân công* | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 13/10/2026
-  - **Trạng thái:** `Chưa bắt đầu`
+  - **Người phụ trách:** Nhóm phát triển | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 13/10/2026
+  - **Trạng thái:** `Hoàn thành`
 
 - [ ] **TSK-14:** Xây dựng Web Admin: Quản trị Danh mục hệ thống
   - **Phân hệ:** Web Admin (MVC)
