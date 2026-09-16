@@ -1,0 +1,26 @@
+@if (ViewBag.IsDemoData == true)
+{
+    <div class="alert alert-warning border-0 shadow-sm" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-database-exclamation fs-5"></i>
+            <div>
+                <strong>Đang hiển thị dữ liệu minh họa.</strong>
+                <div class="small">Chưa kết nối được Supabase vì chưa cấu hình mật khẩu CSDL. Khi bổ sung mật khẩu trong <code>appsettings.json</code>, trang sẽ tự động dùng dữ liệu thật.</div>
+            </div>
+        </div>
+    </div>
+}
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@success
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@error
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}

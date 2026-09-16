@@ -1,0 +1,31 @@
+@model IReadOnlyList<OvertimeHotel.HRM.Core.Models.CauHinhKhoanLuong>
+@{ ViewData["Title"] = "Cấu hình khoản lương"; }
+@section Scripts { <script>function confirmDelete(name){return confirm(`Xóa khoản “${name}”? Thao tác này không thể hoàn tác.`);}</script> }
+<div class="catalog-page">
+    <section class="catalog-hero mb-4 d-flex justify-content-between align-items-center gap-3">
+        <div><div class="catalog-eyebrow"><i class="bi bi-stars me-1"></i> Danh mục hệ thống</div><h1 class="catalog-title h2 mb-1">Cấu hình khoản lương</h1><p class="text-white-50 mb-0">Quản lý phụ cấp, thưởng và các khoản khấu trừ.</p></div>
+        <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative"><i class="bi bi-plus-lg me-1 text-primary"></i> Thêm khoản lương</a>
+    </section>
+    <partial name="_CatalogAlerts" />
+    <section class="catalog-card">
+        <div class="catalog-toolbar">
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-lg-6"><input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên hoặc mô tả..." /></div>
+                <div class="col-lg-3"><select name="type" class="form-select catalog-search"><option value="">Tất cả loại khoản</option><option value="PHU_CAP" selected="@(ViewBag.Type == "PHU_CAP")">Phụ cấp</option><option value="THUONG" selected="@(ViewBag.Type == "THUONG")">Thưởng</option><option value="KHAU_TRU" selected="@(ViewBag.Type == "KHAU_TRU")">Khấu trừ / Phạt</option></select></div>
+                <div class="col-lg-3 d-flex gap-2"><button class="btn btn-outline-primary"><i class="bi bi-funnel me-1"></i>Lọc</button><a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i></a><span class="catalog-badge ms-auto text-nowrap">@ViewBag.Total khoản</span></div>
+            </form>
+        </div>
+        <div class="table-responsive"><table class="table catalog-table">
+            <thead><tr><th>Mã</th><th>Tên khoản</th><th>Loại khoản</th><th>Giá trị mặc định</th><th>Mô tả</th><th class="text-end">Thao tác</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0) { <tr><td colspan="6" class="catalog-empty"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Không tìm thấy cấu hình phù hợp.</td></tr> }
+            else { @foreach (var item in Model) {
+                var badge = item.LoaiKhoan == "THUONG" ? "bg-success" : item.LoaiKhoan == "KHAU_TRU" ? "bg-danger" : "bg-primary";
+                var label = item.LoaiKhoan == "THUONG" ? "Thưởng" : item.LoaiKhoan == "KHAU_TRU" ? "Khấu trừ / Phạt" : "Phụ cấp";
+                <tr><td class="text-muted fw-semibold">#@item.MaKhoan</td><td><strong>@item.TenKhoan</strong></td><td><span class="badge @badge">@label</span></td><td class="fw-bold text-primary">@item.GiaTriMacDinh.ToString("N0") ₫</td><td class="text-muted">@(item.MoTa ?? "—")</td>
+                <td class="text-end"><a asp-action="Edit" asp-route-id="@item.MaKhoan" class="btn btn-sm btn-outline-primary rounded-3"><i class="bi bi-pencil"></i></a> <form asp-action="Delete" asp-route-id="@item.MaKhoan" method="post" class="d-inline" onsubmit="return confirmDelete('@item.TenKhoan.Replace("'", "\\'")')"><button class="btn btn-sm btn-outline-danger rounded-3"><i class="bi bi-trash"></i></button></form></td></tr>
+            }}
+            </tbody>
+        </table></div>
+    </section>
+</div>

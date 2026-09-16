@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/catalog.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/OvertimeHotel.HRM.WebAdmin.styles.css" asp-append-version="true" />
 </head>
 <body>
@@ -27,6 +28,14 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang Chủ</a>
                         </li>
+                        @if (User.IsInRole("Admin") || User.IsInRole("HR"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="SystemCatalog" asp-action="Index">
+                                    <i class="bi bi-grid me-1"></i> Danh mục hệ thống
+                                </a>
+                            </li>
+                        }
                         @if (User.IsInRole("Admin"))
                         {
                             <li class="nav-item">

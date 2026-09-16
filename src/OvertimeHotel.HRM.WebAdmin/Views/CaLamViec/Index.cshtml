@@ -1,0 +1,26 @@
+@model IReadOnlyList<OvertimeHotel.HRM.Core.Models.CaLamViec>
+@{ ViewData["Title"] = "Quản lý ca làm việc"; }
+@section Scripts { <script>function confirmDelete(name){return confirm(`Xóa ca “${name}”? Thao tác này không thể hoàn tác.`);}</script> }
+<div class="catalog-page">
+    <section class="catalog-hero mb-4 d-flex justify-content-between align-items-center gap-3">
+        <div><div class="catalog-eyebrow"><i class="bi bi-stars me-1"></i> Danh mục hệ thống</div><h1 class="catalog-title h2 mb-1">Quản lý ca làm việc</h1><p class="text-white-50 mb-0">Thiết lập khung giờ vận hành khách sạn 24/7.</p></div>
+        <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative"><i class="bi bi-plus-lg me-1 text-primary"></i> Thêm ca làm việc</a>
+    </section>
+    <partial name="_CatalogAlerts" />
+    <section class="catalog-card">
+        <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <form method="get" class="d-flex gap-2 flex-grow-1" style="max-width:520px"><input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên ca..." /><button class="btn btn-outline-primary"><i class="bi bi-search"></i></button>@if (!string.IsNullOrWhiteSpace(ViewBag.Keyword as string)) { <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a> }</form>
+            <span class="catalog-badge"><i class="bi bi-clock me-1"></i> @ViewBag.Total ca làm việc</span>
+        </div>
+        <div class="table-responsive"><table class="table catalog-table">
+            <thead><tr><th>Mã</th><th>Tên ca</th><th>Giờ bắt đầu</th><th>Giờ kết thúc</th><th>Đặc điểm</th><th class="text-end">Thao tác</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0) { <tr><td colspan="6" class="catalog-empty"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Không tìm thấy ca làm việc phù hợp.</td></tr> }
+            else { @foreach (var item in Model) {
+                <tr><td class="text-muted fw-semibold">#@item.MaCa</td><td><div class="d-flex align-items-center gap-2"><span class="catalog-icon"><i class="bi bi-clock-history"></i></span><strong>@item.TenCa</strong></div></td><td class="fw-semibold">@item.GioBatDau.ToString("HH:mm")</td><td class="fw-semibold">@item.GioKetThuc.ToString("HH:mm")</td><td>@if (item.QuaDem) { <span class="badge bg-dark"><i class="bi bi-moon-stars me-1"></i>Qua đêm</span> } else { <span class="badge bg-light text-dark border">Trong ngày</span> }</td>
+                <td class="text-end"><a asp-action="Edit" asp-route-id="@item.MaCa" class="btn btn-sm btn-outline-primary rounded-3"><i class="bi bi-pencil"></i></a> <form asp-action="Delete" asp-route-id="@item.MaCa" method="post" class="d-inline" onsubmit="return confirmDelete('@item.TenCa.Replace("'", "\\'")')"><button class="btn btn-sm btn-outline-danger rounded-3"><i class="bi bi-trash"></i></button></form></td></tr>
+            }}
+            </tbody>
+        </table></div>
+    </section>
+</div>
