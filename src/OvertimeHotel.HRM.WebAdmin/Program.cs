@@ -67,6 +67,11 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// Phục vụ trực tiếp các file trong wwwroot. Cần đặt trước endpoint routing để
+// tránh phản hồi rỗng khi trình duyệt yêu cầu CSS/JS với Accept-Encoding: gzip.
+app.UseStaticFiles();
+
 app.UseRouting();
 
 // Thứ tự Middleware quan trọng: UseAuthentication phải trước UseAuthorization
