@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS NHAN_VIEN (
     ma_nhan_vien SERIAL PRIMARY KEY,
     ma_phong_ban INT NOT NULL REFERENCES PHONG_BAN(ma_phong_ban) ON DELETE RESTRICT,
     ma_chuc_vu INT NOT NULL REFERENCES CHUC_VU(ma_chuc_vu) ON DELETE RESTRICT,
-    ho_ten VARCHAR(150) NOT NULL,
+    ho VARCHAR(100) NOT NULL,
+    ten VARCHAR(50) NOT NULL,
     ngay_sinh DATE NOT NULL,
     gioi_tinh VARCHAR(10) NOT NULL CHECK (gioi_tinh IN ('NAM', 'NU', 'KHAC')),
     dien_thoai VARCHAR(20) NOT NULL,
@@ -184,6 +185,7 @@ CREATE TABLE IF NOT EXISTS CHI_TIET_PHIEU_LUONG (
 -- TẠO CHỈ MỤC (INDEXES) TỐI ƯU HIỆU NĂNG TRUY VẤN
 CREATE INDEX IF NOT EXISTS idx_nhan_vien_phong_ban ON NHAN_VIEN(ma_phong_ban);
 CREATE INDEX IF NOT EXISTS idx_nhan_vien_chuc_vu ON NHAN_VIEN(ma_chuc_vu);
+CREATE INDEX IF NOT EXISTS idx_nhan_vien_ten ON NHAN_VIEN(ten, ho);
 CREATE INDEX IF NOT EXISTS idx_phan_ca_ngay ON PHAN_CA(ngay_lam_viec, ma_nhan_vien);
 CREATE INDEX IF NOT EXISTS idx_cham_cong_phan_ca ON CHAM_CONG(ma_phan_ca);
 CREATE INDEX IF NOT EXISTS idx_don_tu_nhan_vien ON DON_TU(ma_nhan_vien, trang_thai);

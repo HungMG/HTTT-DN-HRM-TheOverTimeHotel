@@ -42,7 +42,8 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ma_nhan_vien` (SERIAL, PK): Mã nhân viên duy nhất.
 - `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NOT NULL): Phòng ban trực thuộc.
 - `ma_chuc_vu` (INT, FK -> chuc_vu.ma_chuc_vu, NOT NULL): Chức danh đảm nhiệm.
-- `ho_ten` (VARCHAR(100), NOT NULL): Họ và tên đầy đủ.
+- `ho` (VARCHAR(100), NOT NULL): Họ và tên đệm của nhân viên.
+- `ten` (VARCHAR(50), NOT NULL): Tên chính của nhân viên.
 - `ngay_sinh` (DATE, NOT NULL): Ngày tháng năm sinh.
 - `gioi_tinh` (VARCHAR(10), CHECK in ('Nam', 'Nữ', 'Khác')): Giới tính.
 - `dien_thoai` (VARCHAR(15), NOT NULL, UNIQUE): Số điện thoại liên hệ.
