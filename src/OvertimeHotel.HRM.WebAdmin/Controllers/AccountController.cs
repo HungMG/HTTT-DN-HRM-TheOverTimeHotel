@@ -50,10 +50,20 @@ public class AccountController : Controller
         var inputHash = PasswordHasher.Hash(model.Password);
 
         // Kiểm tra thông tin tài khoản trên Supabase
-        var account = await _context.TaiKhoans
-            .Include(t => t.NhanVien)
-            .Include(t => t.VaiTro)
-            .FirstOrDefaultAsync(t => t.TenDangNhap.ToLower() == model.Username.Trim().ToLower() && t.MatKhauBam == inputHash);
+        OvertimeHotel.HRM.Core.Models.TaiKhoan? account = null;
+        try
+        {
+            account = await _context.TaiKhoans
+                .Include(t => t.NhanVien)
+                .Include(t => t.VaiTro)
+                .FirstOrDefaultAsync(t => t.TenDangNhap.ToLower() == model.Username.Trim().ToLower() && t.MatKhauBam == inputHash);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi kết nối CSDL Supabase khi người dùng {Username} đăng nhập.", model.Username);
+            ModelState.AddModelError(string.Empty, "Không thể kết nối CSDL Supabase. Vui lòng kiểm tra lại chuỗi kết nối và mật khẩu Database trong file appsettings.json.");
+            return View(model);
+        }
 
         if (account == null)
         {

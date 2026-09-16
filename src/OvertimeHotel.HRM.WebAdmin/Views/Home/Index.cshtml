@@ -162,12 +162,20 @@
                         @if (role == "Admin")
                         {
                             <a asp-controller="UserAccounts" asp-action="Index" class="btn btn-outline-primary btn-sm w-100">
-                                Truy cập chức năng
+                                <i class="bi bi-arrow-right-circle me-1"></i> Truy cập chức năng
+                            </a>
+                        }
+                        else if (!isAuthenticated)
+                        {
+                            <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="/UserAccounts" class="btn btn-warning btn-sm w-100 text-dark fw-semibold">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập Admin
                             </a>
                         }
                         else
                         {
-                            <button class="btn btn-light btn-sm w-100 text-muted" disabled>Chỉ dành cho Admin</button>
+                            <button class="btn btn-light btn-sm w-100 text-muted" disabled>
+                                <i class="bi bi-lock-fill me-1"></i> Chỉ dành cho Admin
+                            </button>
                         }
                     </div>
                 </div>
