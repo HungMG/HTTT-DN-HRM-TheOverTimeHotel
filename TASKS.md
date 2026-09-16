@@ -9,13 +9,13 @@
 ## 📊 TIẾN ĐỘ TỔNG QUAN HỆ THỐNG
 
 - **Tổng số nhiệm vụ:** 30 Tasks
-- **Đã hoàn thành:** 11 / 30 Tasks (36.7%)
+- **Đã hoàn thành:** 12 / 30 Tasks (40.0%)
 - **Đang thực hiện:** 0 Task
-- **Chưa bắt đầu:** 19 Tasks
+- **Chưa bắt đầu:** 18 Tasks
 - **Mốc chấm đồ án chính thức:** **Tuần 10 (10/11/2026)**
 
 ```text
-[███████████░░░░░░░░░░░░░░░░░░░] 36.7% Hoàn thành (11/30)
+[████████████░░░░░░░░░░░░░░░░░░] 40.0% Hoàn thành (12/30)
 ```
 
 ---
@@ -98,11 +98,11 @@
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 06/10/2026
   - **Trạng thái:** `Hoàn thành`
 
-- [ ] **TSK-12:** Lập trình Xác thực đăng nhập & Phân quyền RBAC
+- [x] **TSK-12:** Lập trình Xác thực đăng nhập & Phân quyền RBAC
   - **Phân hệ:** Web Admin (MVC)
-  - **Mô tả & Output:** Trang đăng nhập Web Admin, mã hóa mật khẩu, kiểm tra quyền hạn 4 vai trò (Admin, HR, Manager, Employee)
-  - **Người phụ trách:** *Chưa phân công* | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 06/10/2026
-  - **Trạng thái:** `Chưa bắt đầu`
+  - **Mô tả & Output:** Trang đăng nhập Web Admin sang trọng, mã hóa SHA-256, kiểm tra quyền hạn 4 vai trò (Admin, HR, Manager, Employee), Cookie Authentication
+  - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 06/10/2026
+  - **Trạng thái:** `Hoàn thành`
 
 - [ ] **TSK-13:** Xây dựng Web Admin: Quản trị tài khoản & phân quyền
   - **Phân hệ:** Web Admin (MVC)

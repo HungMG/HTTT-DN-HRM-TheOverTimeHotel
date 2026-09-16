@@ -33,6 +33,43 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Chính Sách</a>
                         </li>
                     </ul>
+
+                    <!-- KHU VỰC THÔNG TIN TÀI KHOẢN ĐĂNG NHẬP -->
+                    <ul class="navbar-nav ms-auto align-items-center">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "User";
+                            var fullName = User.FindFirst("FullName")?.Value ?? User.Identity.Name;
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.85rem;">
+                                        @(fullName != null && fullName.Length > 0 ? fullName.Substring(0, 1).ToUpper() : "U")
+                                    </div>
+                                    <div class="text-start d-none d-md-block" style="line-height: 1.2;">
+                                        <div class="fw-semibold small text-dark">@fullName</div>
+                                        <span class="badge @(role == "Admin" ? "bg-danger" : "bg-primary")" style="font-size: 0.65rem;">@role</span>
+                                    </div>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                    <li><h6 class="dropdown-header">Tài khoản: @User.Identity.Name</h6></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger d-flex align-items-center gap-2" asp-controller="Account" asp-action="Logout">
+                                            <i class="bi bi-box-arrow-right"></i> Đăng Xuất
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="btn btn-outline-primary btn-sm px-3 rounded-pill fw-semibold" asp-controller="Account" asp-action="Login">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập
+                                </a>
+                            </li>
+                        }
+                    </ul>
                 </div>
             </div>
         </nav>

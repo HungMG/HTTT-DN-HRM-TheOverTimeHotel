@@ -1,9 +1,11 @@
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OvertimeHotel.HRM.Data.Services;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
+[Authorize(Roles = "Admin")]
 public class BackupController : Controller
 {
     private readonly IBackupService _backupService;
