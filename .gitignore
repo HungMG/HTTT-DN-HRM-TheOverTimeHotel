@@ -8,6 +8,9 @@
 .vs/
 .nuget-packages/
 local-packages/
+.npm-cache/
+.home/
+/graft/
 nuget.config
 *.user
 *.userosscache
