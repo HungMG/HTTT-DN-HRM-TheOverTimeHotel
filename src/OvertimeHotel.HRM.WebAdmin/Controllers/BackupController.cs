@@ -22,7 +22,7 @@ public class BackupController : Controller
     public async Task<IActionResult> Index()
     {
         ViewBag.SupabaseProjectUrl = _configuration["Supabase:Url"] ?? "https://supabase.com";
-        ViewBag.DbHost = "db.soethtbttktnwtxyxjrj.supabase.co";
+        ViewBag.DbHost = "aws-0-ap-southeast-1.pooler.supabase.com (Port 6543)";
 
         Dictionary<string, int> stats = new();
         try
