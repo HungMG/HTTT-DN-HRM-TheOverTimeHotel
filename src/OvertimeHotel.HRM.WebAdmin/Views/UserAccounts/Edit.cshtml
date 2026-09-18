@@ -10,14 +10,14 @@
     <header class="account-command-bar account-reveal">
         <a asp-action="Index" class="account-icon-action" aria-label="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
         <div class="account-command-copy">
-            <div class="account-eyebrow"><span class="account-live-dot"></span> Identity / @Model.AccountId.ToString("D3")</div>
+            <div class="account-eyebrow"><span class="account-live-dot"></span> Tài khoản / @Model.AccountId.ToString("D3")</div>
             <h1>Chỉnh sửa <span>tài khoản</span></h1>
             <p>Điều chỉnh thông tin đăng nhập, kênh vai trò và khóa bảo mật.</p>
         </div>
         <div class="account-environment-pill">
             <i class="bi @(Model.IsActive ? "bi-play-fill" : "bi-pause-fill")"></i>
-            <span>State</span>
-            <strong>@(Model.IsActive ? "Running" : "Paused")</strong>
+            <span>Trạng thái</span>
+            <strong>@(Model.IsActive ? "Hoạt động" : "Đã khóa")</strong>
         </div>
     </header>
 
@@ -46,15 +46,15 @@
                     <div class="identity-summary">
                         <div class="account-avatar account-avatar-lg">@(Model.EmployeeName.Length > 0 ? Model.EmployeeName[..1].ToUpperInvariant() : "N")</div>
                         <div class="identity-summary-copy">
-                            <small>Linked employee</small>
+                            <small>Nhân viên liên kết</small>
                             <h2>@Model.EmployeeName</h2>
                             <span>@Model.EmployeeEmail</span>
                         </div>
                         <div class="identity-summary-meta">
-                            <span class="state-chip @(Model.IsActive ? "state-chip--active" : "state-chip--locked")"><i></i>@(Model.IsActive ? "Running" : "Paused")</span>
+                            <span class="state-chip @(Model.IsActive ? "state-chip--active" : "state-chip--locked")"><i></i>@(Model.IsActive ? "Hoạt động" : "Đã khóa")</span>
                             @if (isCurrentAccount)
                             {
-                                <span class="account-you-chip">Current identity</span>
+                                <span class="account-you-chip">Tài khoản hiện tại</span>
                             }
                         </div>
                     </div>
@@ -64,18 +64,18 @@
             <section class="inspector-card">
                 <div class="inspector-card-heading">
                     <span class="inspector-index">01</span>
-                    <div><small>Identity properties</small><h2>Thông tin tài khoản</h2></div>
+                    <div><small>Thông tin tài khoản</small><h2>Thông tin tài khoản</h2></div>
                     <i class="bi bi-sliders"></i>
                 </div>
                 <div class="inspector-card-body">
                     <div class="account-form-grid">
                         <div class="account-field">
-                            <label asp-for="Username"><span>Tên đăng nhập</span><small>Unique</small></label>
+                            <label asp-for="Username"><span>Tên đăng nhập</span><small>Duy nhất</small></label>
                             <div class="account-input-wrap"><i class="bi bi-at"></i><input asp-for="Username" autocomplete="off" /></div>
                             <span asp-validation-for="Username" class="account-field-error"></span>
                         </div>
                         <div class="account-field">
-                            <label asp-for="RoleId"><span>Role channel</span><small>RBAC</small></label>
+                            <label asp-for="RoleId"><span>Vai trò</span><small>RBAC</small></label>
                             <div class="account-select-wrap @(isCurrentAccount ? "is-disabled" : null)">
                                 @if (isCurrentAccount)
                                 {
@@ -101,14 +101,14 @@
             <section class="inspector-card">
                 <div class="inspector-card-heading">
                     <span class="inspector-index">02</span>
-                    <div><small>Security keyframe</small><h2>Đặt lại mật khẩu</h2></div>
+                    <div><small>Bảo mật</small><h2>Đặt lại mật khẩu</h2></div>
                     <i class="bi bi-shield-lock"></i>
                 </div>
                 <div class="inspector-card-body">
                     <div class="account-inline-note"><i class="bi bi-info-circle"></i>Để trống cả hai trường nếu muốn giữ nguyên mật khẩu hiện tại.</div>
                     <div class="account-form-grid">
                         <div class="account-field">
-                            <label asp-for="NewPassword"><span>Mật khẩu mới</span><small>Optional</small></label>
+                            <label asp-for="NewPassword"><span>Mật khẩu mới</span><small>Không bắt buộc</small></label>
                             <div class="account-input-wrap account-password-wrap">
                                 <i class="bi bi-lock"></i><input asp-for="NewPassword" autocomplete="new-password" />
                                 <button type="button" class="password-visibility" aria-label="Hiện hoặc ẩn mật khẩu"><i class="bi bi-eye"></i></button>
@@ -116,13 +116,32 @@
                             <span asp-validation-for="NewPassword" class="account-field-error"></span>
                         </div>
                         <div class="account-field">
-                            <label asp-for="ConfirmNewPassword"><span>Xác nhận mật khẩu</span><small>Match</small></label>
+                            <label asp-for="ConfirmNewPassword"><span>Xác nhận mật khẩu</span><small>Trùng khớp</small></label>
                             <div class="account-input-wrap account-password-wrap">
                                 <i class="bi bi-shield-check"></i><input asp-for="ConfirmNewPassword" autocomplete="new-password" />
                                 <button type="button" class="password-visibility" aria-label="Hiện hoặc ẩn mật khẩu"><i class="bi bi-eye"></i></button>
                             </div>
                             <span asp-validation-for="ConfirmNewPassword" class="account-field-error"></span>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="inspector-card">
+                <div class="inspector-card-heading">
+                    <span class="inspector-index">03</span>
+                    <div><small>Thông tin nhật ký</small><h2>Lý do thay đổi</h2></div>
+                    <i class="bi bi-journal-check"></i>
+                </div>
+                <div class="inspector-card-body">
+                    <div class="account-inline-note"><i class="bi bi-info-circle"></i>Lý do là bắt buộc khi đổi tên đăng nhập, vai trò hoặc đặt lại mật khẩu.</div>
+                    <div class="account-field">
+                        <label asp-for="ChangeReason"><span>Lý do thực hiện</span><small>Nhật ký quản trị</small></label>
+                        <div class="account-textarea-wrap">
+                            <i class="bi bi-chat-left-text"></i>
+                            <textarea asp-for="ChangeReason" rows="3" placeholder="Ví dụ: Điều chuyển nhân sự sang bộ phận quản trị..."></textarea>
+                        </div>
+                        <span asp-validation-for="ChangeReason" class="account-field-error"></span>
                     </div>
                 </div>
             </section>
@@ -135,19 +154,19 @@
 
         <aside class="account-preview-panel">
             <div class="account-panel-heading">
-                <div><span>Inspector</span><strong>Identity preview</strong></div>
+                <div><span>Xem trước</span><strong>Xem trước tài khoản</strong></div>
                 <i class="bi bi-stars"></i>
             </div>
             <div class="identity-preview">
                 <div class="identity-preview-orbit"><span>@(Model.EmployeeName.Length > 0 ? Model.EmployeeName[..1].ToUpperInvariant() : "N")</span></div>
-                <small>Account #@Model.AccountId.ToString("D3")</small>
+                <small>Tài khoản #@Model.AccountId.ToString("D3")</small>
                 <strong>@Model.EmployeeName</strong>
-                <span id="rolePreview" class="role-chip role-chip--employee"><i></i>Role</span>
+                <span id="rolePreview" class="role-chip role-chip--employee"><i></i>Vai trò</span>
             </div>
             <div class="permission-stack">
                 <div><i class="bi bi-person-check"></i><span>Liên kết nhân viên</span><small>#@Model.EmployeeId</small></div>
-                <div><i class="bi bi-at"></i><span>Username</span><small id="usernamePreview">@Model.Username</small></div>
-                <div><i class="bi bi-shield-check"></i><span>Cookie phiên</span><small>8 hours</small></div>
+                <div><i class="bi bi-at"></i><span>Tên đăng nhập</span><small id="usernamePreview">@Model.Username</small></div>
+                <div><i class="bi bi-shield-check"></i><span>Cookie phiên</span><small>8 giờ</small></div>
             </div>
             <div class="preview-note"><i class="bi bi-lightning-charge-fill"></i><span>Thay đổi vai trò có hiệu lực ở lần đăng nhập tiếp theo.</span></div>
         </aside>
@@ -164,8 +183,9 @@
             const usernamePreview = document.getElementById('usernamePreview');
 
             const syncPreview = () => {
-                const roleName = role?.selectedOptions[0]?.text || 'Role';
-                rolePreview.className = `role-chip role-chip--${roleName.toLowerCase() === 'admin' ? 'admin' : roleName.toLowerCase() === 'hr' ? 'hr' : roleName.toLowerCase() === 'manager' ? 'manager' : 'employee'}`;
+                const roleName = role?.selectedOptions[0]?.text || 'Vai trò';
+                const normalizedRoleName = roleName.toLocaleLowerCase('vi-VN');
+                rolePreview.className = `role-chip role-chip--${normalizedRoleName === 'quản trị viên' ? 'admin' : normalizedRoleName === 'nhân sự' ? 'hr' : normalizedRoleName === 'quản lý' ? 'manager' : 'employee'}`;
                 rolePreview.innerHTML = `<i></i>${roleName}`;
                 usernamePreview.textContent = username?.value || '—';
             };

@@ -8,12 +8,17 @@ public class AccountIndexViewModel
     public string? Keyword { get; set; }
     public int? RoleId { get; set; }
     public bool? IsActive { get; set; }
+    public DateOnly? AuditFrom { get; set; }
+    public DateOnly? AuditTo { get; set; }
+    public string? AuditDateValidationMessage { get; set; }
     public int TotalAccounts { get; set; }
     public int ActiveAccounts { get; set; }
     public int LockedAccounts { get; set; }
     public int AdminAccounts { get; set; }
     public IReadOnlyList<AccountListItemViewModel> Accounts { get; set; } = [];
     public IReadOnlyList<SelectListItem> RoleOptions { get; set; } = [];
+    public IReadOnlyList<AdminAuditLogViewModel> AuditLogs { get; set; } = [];
+    public bool AuditLogAvailable { get; set; } = true;
 }
 
 public class AccountListItemViewModel
@@ -92,5 +97,24 @@ public class EditAccountViewModel
     [Compare(nameof(NewPassword), ErrorMessage = "Mật khẩu xác nhận không khớp.")]
     public string? ConfirmNewPassword { get; set; }
 
+    [Display(Name = "Lý do thay đổi")]
+    [StringLength(500, ErrorMessage = "Lý do thay đổi không được vượt quá 500 ký tự.")]
+    public string? ChangeReason { get; set; }
+
     public IReadOnlyList<SelectListItem> RoleOptions { get; set; } = [];
+}
+
+public class AdminAuditLogViewModel
+{
+    public long AuditLogId { get; set; }
+    public string ActorName { get; set; } = string.Empty;
+    public string TargetUsername { get; set; } = string.Empty;
+    public string ActionCode { get; set; } = string.Empty;
+    public string ActionName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string? OldValue { get; set; }
+    public string? NewValue { get; set; }
+    public string? Reason { get; set; }
+    public string? IpAddress { get; set; }
+    public DateTimeOffset OccurredAt { get; set; }
 }

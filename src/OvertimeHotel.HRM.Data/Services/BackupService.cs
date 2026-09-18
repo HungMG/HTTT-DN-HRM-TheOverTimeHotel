@@ -28,6 +28,7 @@ public class BackupSnapshot
     public List<DonTu> DonTus { get; set; } = new();
     public List<PhieuLuong> PhieuLuongs { get; set; } = new();
     public List<ChiTietPhieuLuong> ChiTietPhieuLuongs { get; set; } = new();
+    public List<NhatKyQuanTri> NhatKyQuanTris { get; set; } = new();
 }
 
 public class BackupService : IBackupService
@@ -68,7 +69,8 @@ public class BackupService : IBackupService
             ChamCongs = await _context.ChamCongs.AsNoTracking().ToListAsync(),
             DonTus = await _context.DonTus.AsNoTracking().ToListAsync(),
             PhieuLuongs = await _context.PhieuLuongs.AsNoTracking().ToListAsync(),
-            ChiTietPhieuLuongs = await _context.ChiTietPhieuLuongs.AsNoTracking().ToListAsync()
+            ChiTietPhieuLuongs = await _context.ChiTietPhieuLuongs.AsNoTracking().ToListAsync(),
+            NhatKyQuanTris = await _context.NhatKyQuanTris.AsNoTracking().ToListAsync()
         };
 
         return JsonSerializer.Serialize(snapshot, _jsonOptions);
@@ -282,6 +284,19 @@ public class BackupService : IBackupService
             }
 
             await _context.SaveChangesAsync();
+
+            // 6. Phục hồi nhật ký quản trị sau khi các tài khoản đã tồn tại.
+            if (snapshot.NhatKyQuanTris.Count > 0)
+            {
+                foreach (var item in snapshot.NhatKyQuanTris)
+                {
+                    if (!await _context.NhatKyQuanTris.AnyAsync(x => x.MaNhatKy == item.MaNhatKy))
+                        _context.NhatKyQuanTris.Add(item);
+                }
+                totalCount += snapshot.NhatKyQuanTris.Count;
+                await _context.SaveChangesAsync();
+            }
+
             await transaction.CommitAsync();
 
             return (true, $"Khôi phục thành công bản sao lưu vào CSDL!", totalCount);
@@ -313,7 +328,8 @@ public class BackupService : IBackupService
             ["ky_luong (Kỳ tính lương)"] = await _context.KyLuongs.CountAsync(),
             ["cau_hinh_khoan_luong (Cấu hình thu chi)"] = await _context.CauHinhKhoanLuongs.CountAsync(),
             ["phieu_luong (Phiếu lương tháng)"] = await _context.PhieuLuongs.CountAsync(),
-            ["chi_tiet_phieu_luong (Chi tiết phiếu lương)"] = await _context.ChiTietPhieuLuongs.CountAsync()
+            ["chi_tiet_phieu_luong (Chi tiết phiếu lương)"] = await _context.ChiTietPhieuLuongs.CountAsync(),
+            ["nhat_ky_quan_tri (Nhật ký quản trị)"] = await _context.NhatKyQuanTris.CountAsync()
         };
 
         return stats;
