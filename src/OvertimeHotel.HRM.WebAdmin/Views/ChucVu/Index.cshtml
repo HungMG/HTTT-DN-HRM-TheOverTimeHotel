@@ -1,33 +1,201 @@
 @model IReadOnlyList<OvertimeHotel.HRM.Core.Models.ChucVu>
-@{ ViewData["Title"] = "Quản lý chức vụ"; }
-@section Scripts {
-<script>function confirmDelete(name){return confirm(`Xóa chức vụ “${name}”? Thao tác này không thể hoàn tác.`);}</script>
+@{
+    ViewData["Title"] = "Quản lý chức vụ · The OverTime Hotel";
 }
+
 <div class="catalog-page">
-    <section class="catalog-hero mb-4 d-flex justify-content-between align-items-center gap-3">
-        <div><div class="catalog-eyebrow"><i class="bi bi-stars me-1"></i> Danh mục hệ thống</div><h1 class="catalog-title h2 mb-1">Quản lý chức vụ</h1><p class="text-white-50 mb-0">Chuẩn hóa vị trí công việc tại The OverTime Hotel.</p></div>
-        <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative"><i class="bi bi-plus-lg me-1 text-primary"></i> Thêm chức vụ</a>
-    </section>
-    <partial name="_CatalogAlerts" />
-    <section class="catalog-card">
-        <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <form method="get" class="d-flex gap-2 flex-grow-1" style="max-width:520px">
-                <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên hoặc mô tả..." />
-                <button class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
-                @if (!string.IsNullOrWhiteSpace(ViewBag.Keyword as string)) { <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a> }
-            </form>
-            <span class="catalog-badge"><i class="bi bi-person-badge me-1"></i> @ViewBag.Total chức vụ</span>
+    <!-- HERO COMMAND BANNER -->
+    <section class="catalog-hero catalog-command-bar mb-4 position-relative">
+        <div class="catalog-art-deco-pattern" aria-hidden="true"></div>
+        <div class="position-relative" style="z-index: 2;">
+            <nav aria-label="Điều hướng">
+                <ol class="catalog-breadcrumb catalog-breadcrumb--dark">
+                    <li><a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a></li>
+                    <li><a asp-controller="SystemCatalog" asp-action="Index">Danh mục hệ thống</a></li>
+                    <li aria-current="page">Chức vụ</li>
+                </ol>
+            </nav>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill" style="font-size: 0.65rem;">
+                    <i class="bi bi-stars"></i> THE OVERTIME HOTEL
+                </span>
+                <span class="catalog-eyebrow mb-0"><i class="bi bi-person-vcard-fill me-1"></i> Vị trí công tác</span>
+            </div>
+            <h1 class="catalog-title h2 mb-1 text-white">Quản lý Chức Vụ & Cấp Bậc</h1>
+            <p class="text-white-50 mb-0">Quy chuẩn hệ thống chức danh, bảng trách nhiệm và cấp bậc nhân sự khách sạn.</p>
         </div>
-        <div class="table-responsive"><table class="table catalog-table">
-            <thead><tr><th style="width:90px">Mã</th><th>Tên chức vụ</th><th>Mô tả</th><th class="text-end" style="width:160px">Thao tác</th></tr></thead>
-            <tbody>
-            @if (Model.Count == 0) { <tr><td colspan="4" class="catalog-empty"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Không tìm thấy chức vụ phù hợp.</td></tr> }
-            else { @foreach (var item in Model) {
-                <tr><td class="text-muted fw-semibold">#@item.MaChucVu</td><td><div class="d-flex align-items-center gap-2"><span class="catalog-icon"><i class="bi bi-person-badge"></i></span><strong>@item.TenChucVu</strong></div></td><td class="text-muted">@(item.MoTa ?? "—")</td>
-                <td class="text-end"><a asp-action="Edit" asp-route-id="@item.MaChucVu" class="btn btn-sm btn-outline-primary rounded-3"><i class="bi bi-pencil"></i></a>
-                <form asp-action="Delete" asp-route-id="@item.MaChucVu" method="post" class="d-inline" onsubmit="return confirmDelete('@item.TenChucVu.Replace("'", "\\'")')"><button class="btn btn-sm btn-outline-danger rounded-3"><i class="bi bi-trash"></i></button></form></td></tr>
-            }}
-            </tbody>
-        </table></div>
+        <div class="catalog-command-actions position-relative" style="z-index: 2;">
+            <a asp-controller="SystemCatalog" asp-action="Index" class="catalog-back-action">
+                <i class="bi bi-grid"></i><span>Trung tâm danh mục</span>
+            </a>
+            <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-catalog-modal data-catalog-modal-title="Thêm chức vụ mới">
+                <i class="bi bi-plus-lg me-1 text-primary"></i> Thêm chức vụ
+            </a>
+        </div>
+    </section>
+
+    <!-- 4 TABS LIÊN THÔNG DANH MỤC -->
+    <partial name="_CatalogNavTabs" />
+
+    <partial name="_CatalogAlerts" />
+
+    <!-- TABLE WORKSPACE CARD -->
+    <section class="catalog-card shadow-sm">
+        <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <form method="get" class="catalog-filter-form d-flex gap-2 flex-grow-1">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search border-start-0 ps-0" placeholder="Tìm theo tên chức danh hoặc trách nhiệm..." />
+                </div>
+                <button class="btn btn-hotel-primary text-nowrap"><i class="bi bi-search me-1"></i>Tìm kiếm</button>
+                @if (!string.IsNullOrWhiteSpace(ViewBag.Keyword as string))
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary" data-catalog-reset title="Đặt lại bộ lọc"><i class="bi bi-x-lg"></i></a>
+                }
+            </form>
+
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="ChucVu" title="Xuất danh sách chức vụ ra file CSV">
+                    <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất CSV
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-print title="In danh sách chức vụ chuẩn A4">
+                    <i class="bi bi-printer text-primary me-1"></i> In danh mục
+                </button>
+                <span class="catalog-badge" data-catalog-count>
+                    <i class="bi bi-person-badge me-1"></i> @ViewBag.Total chức vụ
+                </span>
+            </div>
+        </div>
+
+        <div class="catalog-loading" data-catalog-loading>
+            <span class="spinner-border spinner-border-sm text-primary"></span>
+            <strong>Đang cập nhật danh mục chức vụ...</strong>
+        </div>
+
+        <div class="table-responsive" data-catalog-results>
+            <table class="table catalog-table" data-export-table="Danh_Sach_Chuc_Vu">
+                <thead>
+                    <tr>
+                        <th style="width: 80px" class="text-center">Mã</th>
+                        <th>Chức danh vị trí</th>
+                        <th style="width: 200px">Nhân sự đảm nhiệm</th>
+                        <th>Mô tả trách nhiệm & Tiêu chuẩn</th>
+                        <th class="text-end" style="width: 140px">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="catalog-empty">
+                            <div class="catalog-empty-state">
+                                <div class="catalog-empty-icon"><i class="bi bi-person-slash"></i></div>
+                                <h4>Không tìm thấy chức vụ phù hợp</h4>
+                                <p class="text-muted">Không có vị trí chức danh nào khớp với tiêu chí tìm kiếm.</p>
+                                <a asp-action="Create" class="btn btn-hotel-primary btn-sm px-3 mt-2" data-catalog-modal data-catalog-modal-title="Thêm chức vụ mới">
+                                    <i class="bi bi-plus-lg me-1"></i> Thêm chức vụ mới
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model)
+                    {
+                        var nameLower = item.TenChucVu.ToLowerInvariant();
+                        var iconClass = "bi-person-vcard-fill";
+                        var levelBadge = "bg-light text-dark border";
+                        var levelLabel = "Nhân viên";
+
+                        if (nameLower.Contains("giám đốc") || nameLower.Contains("tổng giám đốc"))
+                        {
+                            iconClass = "bi-shield-shaded";
+                            levelBadge = "bg-danger text-white";
+                            levelLabel = "Cấp Điều Hành";
+                        }
+                        else if (nameLower.Contains("trưởng") || nameLower.Contains("quản lý") || nameLower.Contains("giám sát"))
+                        {
+                            iconClass = "bi-person-badge-fill";
+                            levelBadge = "bg-primary text-white";
+                            levelLabel = "Cấp Quản Lý";
+                        }
+                        else if (nameLower.Contains("chuyên viên") || nameLower.Contains("tổ trưởng"))
+                        {
+                            iconClass = "bi-person-gear";
+                            levelBadge = "bg-info-subtle text-info-emphasis border border-info-subtle";
+                            levelLabel = "Tổ Trưởng";
+                        }
+
+                        var empCount = item.NhanViens?.Count ?? 0;
+
+                        <tr>
+                            <td class="text-center text-muted fw-semibold">#@item.MaChucVu</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="catalog-icon catalog-icon--position shadow-sm">
+                                        <i class="bi @iconClass"></i>
+                                    </span>
+                                    <div>
+                                        <strong class="d-block text-dark fs-6 font-serif">@item.TenChucVu</strong>
+                                        <span class="badge @levelBadge mt-1" style="font-size: 0.65rem;">
+                                            @levelLabel
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (empCount > 0)
+                                    {
+                                        <div class="catalog-avatar-stack" title="@empCount nhân sự giữ chức vụ này">
+                                            @for (int i = 0; i < Math.Min(empCount, 3); i++)
+                                            {
+                                                <span class="catalog-mini-avatar catalog-mini-avatar--@((i + 1) % 3)">
+                                                    @(i == 0 ? "P" : i == 1 ? "Q" : "R")
+                                                </span>
+                                            }
+                                        </div>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold">
+                                            @empCount nhân sự
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-muted border">
+                                            <i class="bi bi-person-x me-1"></i>0 nhân sự
+                                        </span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="text-muted" style="max-width: 320px;">
+                                <span class="d-inline-block text-truncate" style="max-width: 300px;" title="@item.MoTa">
+                                    @(item.MoTa ?? "Chưa có mô tả tiêu chuẩn công việc.")
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Edit" asp-route-id="@item.MaChucVu" class="btn btn-sm btn-outline-primary rounded-3 me-1" title="Chỉnh sửa chức vụ" data-catalog-modal data-catalog-modal-title="Chỉnh sửa chức vụ">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+
+                                @if (empCount > 0)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 opacity-50" disabled title="Không thể xóa: đang có @empCount nhân viên giữ chức vụ này.">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <form asp-action="Delete" asp-route-id="@item.MaChucVu" method="post" class="d-inline catalog-delete-form" data-catalog-name="@item.TenChucVu">
+                                        <button class="btn btn-sm btn-outline-danger rounded-3" title="Xóa chức vụ"><i class="bi bi-trash3"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
     </section>
 </div>

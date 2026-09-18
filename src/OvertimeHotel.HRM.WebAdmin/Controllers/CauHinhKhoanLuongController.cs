@@ -24,7 +24,7 @@ public class CauHinhKhoanLuongController : Controller
     {
         keyword = keyword?.Trim();
         type = type?.Trim().ToUpperInvariant();
-        var query = _context.CauHinhKhoanLuongs.AsNoTracking().AsQueryable();
+        var query = _context.CauHinhKhoanLuongs.AsNoTracking().Include(x => x.ChiTietPhieuLuongs).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -41,6 +41,9 @@ public class CauHinhKhoanLuongController : Controller
         try
         {
             ViewBag.Total = await _context.CauHinhKhoanLuongs.CountAsync();
+            ViewBag.PhuCapCount = await _context.CauHinhKhoanLuongs.CountAsync(x => x.LoaiKhoan == "PHU_CAP");
+            ViewBag.ThuongCount = await _context.CauHinhKhoanLuongs.CountAsync(x => x.LoaiKhoan == "THUONG");
+            ViewBag.KhauTruCount = await _context.CauHinhKhoanLuongs.CountAsync(x => x.LoaiKhoan == "KHAU_TRU");
             return View(await query.OrderBy(x => x.LoaiKhoan).ThenBy(x => x.TenKhoan).ToListAsync());
         }
         catch (Exception ex)
@@ -55,6 +58,9 @@ public class CauHinhKhoanLuongController : Controller
                 fallbackItems = fallbackItems.Where(x => x.LoaiKhoan == type).ToList();
 
             ViewBag.Total = GetFallbackItems().Count;
+            ViewBag.PhuCapCount = GetFallbackItems().Count(x => x.LoaiKhoan == "PHU_CAP");
+            ViewBag.ThuongCount = GetFallbackItems().Count(x => x.LoaiKhoan == "THUONG");
+            ViewBag.KhauTruCount = GetFallbackItems().Count(x => x.LoaiKhoan == "KHAU_TRU");
             ViewBag.IsDemoData = true;
             return View(fallbackItems);
         }

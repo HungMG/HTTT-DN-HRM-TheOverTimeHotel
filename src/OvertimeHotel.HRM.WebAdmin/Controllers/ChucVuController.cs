@@ -22,7 +22,7 @@ public class ChucVuController : Controller
     public async Task<IActionResult> Index(string? keyword)
     {
         keyword = keyword?.Trim();
-        var query = _context.ChucVus.AsNoTracking().AsQueryable();
+        var query = _context.ChucVus.AsNoTracking().Include(x => x.NhanViens).AsQueryable();
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var value = keyword.ToLower();
@@ -139,11 +139,11 @@ public class ChucVuController : Controller
 
     private static List<ChucVu> GetFallbackItems() =>
     [
-        new() { MaChucVu = 1, TenChucVu = "Tổng Giám Đốc", MoTa = "Điều hành toàn bộ hoạt động khách sạn." },
-        new() { MaChucVu = 2, TenChucVu = "Trưởng Phòng Nhân Sự", MoTa = "Quản lý nhân sự và chính sách lao động." },
-        new() { MaChucVu = 3, TenChucVu = "Trưởng Bộ Phận Tiền Sảnh", MoTa = "Điều phối hoạt động tiền sảnh." },
-        new() { MaChucVu = 4, TenChucVu = "Nhân Viên Lễ Tân", MoTa = "Đón tiếp và hỗ trợ khách hàng." },
-        new() { MaChucVu = 5, TenChucVu = "Nhân Viên Buồng Phòng", MoTa = "Đảm bảo chất lượng phòng lưu trú." }
+        new() { MaChucVu = 1, TenChucVu = "Tổng Giám Đốc", MoTa = "Điều hành toàn bộ hoạt động khách sạn.", NhanViens = new List<NhanVien> { new() { Ho = "Võ", Ten = "Sang" } } },
+        new() { MaChucVu = 2, TenChucVu = "Trưởng Phòng Nhân Sự", MoTa = "Quản lý nhân sự và chính sách lao động.", NhanViens = new List<NhanVien> { new() { Ho = "Nguyễn", Ten = "Cường" } } },
+        new() { MaChucVu = 3, TenChucVu = "Trưởng Bộ Phận Tiền Sảnh", MoTa = "Điều phối hoạt động tiền sảnh.", NhanViens = new List<NhanVien> { new() { Ho = "Phạm", Ten = "Hương" } } },
+        new() { MaChucVu = 4, TenChucVu = "Nhân Viên Lễ Tân", MoTa = "Đón tiếp và hỗ trợ khách hàng.", NhanViens = new List<NhanVien> { new() { Ho = "Hoàng", Ten = "Long" }, new() { Ho = "Ngô", Ten = "Bảo" }, new() { Ho = "Vũ", Ten = "Tú" } } },
+        new() { MaChucVu = 5, TenChucVu = "Nhân Viên Buồng Phòng", MoTa = "Đảm bảo chất lượng phòng lưu trú.", NhanViens = new List<NhanVien> { new() { Ho = "Bùi", Ten = "Minh" }, new() { Ho = "Đinh", Ten = "Loan" } } }
     ];
 
     private async Task ValidateAsync(ChucVu model, int? currentId = null)

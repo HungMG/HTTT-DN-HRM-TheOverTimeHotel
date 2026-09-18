@@ -1,31 +1,213 @@
 @model IReadOnlyList<OvertimeHotel.HRM.Core.Models.CauHinhKhoanLuong>
-@{ ViewData["Title"] = "Cấu hình khoản lương"; }
-@section Scripts { <script>function confirmDelete(name){return confirm(`Xóa khoản “${name}”? Thao tác này không thể hoàn tác.`);}</script> }
+@{
+    ViewData["Title"] = "Cấu hình khoản lương · The OverTime Hotel";
+}
+
 <div class="catalog-page">
-    <section class="catalog-hero mb-4 d-flex justify-content-between align-items-center gap-3">
-        <div><div class="catalog-eyebrow"><i class="bi bi-stars me-1"></i> Danh mục hệ thống</div><h1 class="catalog-title h2 mb-1">Cấu hình khoản lương</h1><p class="text-white-50 mb-0">Quản lý phụ cấp, thưởng và các khoản khấu trừ.</p></div>
-        <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative"><i class="bi bi-plus-lg me-1 text-primary"></i> Thêm khoản lương</a>
+    <!-- HERO COMMAND BANNER -->
+    <section class="catalog-hero catalog-command-bar mb-4 position-relative">
+        <div class="catalog-art-deco-pattern" aria-hidden="true"></div>
+        <div class="position-relative" style="z-index: 2;">
+            <nav aria-label="Điều hướng">
+                <ol class="catalog-breadcrumb catalog-breadcrumb--dark">
+                    <li><a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a></li>
+                    <li><a asp-controller="SystemCatalog" asp-action="Index">Danh mục hệ thống</a></li>
+                    <li aria-current="page">Khoản lương</li>
+                </ol>
+            </nav>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill" style="font-size: 0.65rem;">
+                    <i class="bi bi-stars"></i> THE OVERTIME HOTEL
+                </span>
+                <span class="catalog-eyebrow mb-0"><i class="bi bi-wallet2 me-1"></i> Chính sách tiền lương</span>
+            </div>
+            <h1 class="catalog-title h2 mb-1 text-white">Cấu Hình Khoản Lương & Đãi Ngộ</h1>
+            <p class="text-white-50 mb-0">Quản lý định mức phụ cấp chuyên cần, xăng xe, thưởng doanh thu và các khoản giảm trừ.</p>
+        </div>
+        <div class="catalog-command-actions position-relative" style="z-index: 2;">
+            <a asp-controller="SystemCatalog" asp-action="Index" class="catalog-back-action">
+                <i class="bi bi-grid"></i><span>Trung tâm danh mục</span>
+            </a>
+            <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-catalog-modal data-catalog-modal-title="Thêm khoản lương mới">
+                <i class="bi bi-plus-lg me-1 text-primary"></i> Thêm khoản lương
+            </a>
+        </div>
     </section>
+
+    <!-- 4 TABS LIÊN THÔNG DANH MỤC -->
+    <partial name="_CatalogNavTabs" />
+
     <partial name="_CatalogAlerts" />
-    <section class="catalog-card">
+
+    <!-- 3 BENTO MINI KPI SUMMARY STATS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
+                <div class="catalog-kpi-icon"><i class="bi bi-wallet2"></i></div>
+                <div>
+                    <span class="catalog-kpi-label">Phụ cấp định kỳ</span>
+                    <h3 class="catalog-kpi-value">@(ViewBag.PhuCapCount ?? 0) <small>khoản</small></h3>
+                    <p class="catalog-kpi-desc">Trách nhiệm, xăng xe, độc hại, ca đêm</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
+                <div class="catalog-kpi-icon"><i class="bi bi-gift-fill"></i></div>
+                <div>
+                    <span class="catalog-kpi-label">Khoản thưởng khuyến khích</span>
+                    <h3 class="catalog-kpi-value">@(ViewBag.ThuongCount ?? 0) <small>khoản</small></h3>
+                    <p class="catalog-kpi-desc">Thưởng KPI, dịch vụ khách hàng 5 sao</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="catalog-kpi-card catalog-kpi-card--deduction shadow-sm">
+                <div class="catalog-kpi-icon"><i class="bi bi-dash-circle-fill"></i></div>
+                <div>
+                    <span class="catalog-kpi-label">Khấu trừ & Phạt kỷ luật</span>
+                    <h3 class="catalog-kpi-value">@(ViewBag.KhauTruCount ?? 0) <small>khoản</small></h3>
+                    <p class="catalog-kpi-desc">Đi trễ, vi phạm đồng phục, kỷ luật</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLE WORKSPACE CARD -->
+    <section class="catalog-card shadow-sm">
         <div class="catalog-toolbar">
-            <form method="get" class="row g-2 align-items-center">
-                <div class="col-lg-6"><input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên hoặc mô tả..." /></div>
-                <div class="col-lg-3"><select name="type" class="form-select catalog-search"><option value="">Tất cả loại khoản</option><option value="PHU_CAP" selected="@(ViewBag.Type == "PHU_CAP")">Phụ cấp</option><option value="THUONG" selected="@(ViewBag.Type == "THUONG")">Thưởng</option><option value="KHAU_TRU" selected="@(ViewBag.Type == "KHAU_TRU")">Khấu trừ / Phạt</option></select></div>
-                <div class="col-lg-3 d-flex gap-2"><button class="btn btn-outline-primary"><i class="bi bi-funnel me-1"></i>Lọc</button><a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i></a><span class="catalog-badge ms-auto text-nowrap">@ViewBag.Total khoản</span></div>
+            <form method="get" class="row g-2 align-items-center w-100">
+                <div class="col-lg-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search border-start-0 ps-0" placeholder="Tìm theo tên khoản hoặc mô tả..." />
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <select name="type" class="form-select catalog-search">
+                        <option value="">-- Tất cả loại khoản --</option>
+                        <option value="PHU_CAP" selected="@(ViewBag.Type == "PHU_CAP")">Phụ cấp (+)</option>
+                        <option value="THUONG" selected="@(ViewBag.Type == "THUONG")">Thưởng (+)</option>
+                        <option value="KHAU_TRU" selected="@(ViewBag.Type == "KHAU_TRU")">Khấu trừ / Phạt (-)</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 d-flex align-items-center gap-2">
+                    <button class="btn btn-hotel-primary text-nowrap"><i class="bi bi-funnel me-1"></i>Lọc dữ liệu</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary" data-catalog-reset title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
+                    
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2 ms-auto" data-catalog-export="KhoanLuong" title="Xuất CSV">
+                        <i class="bi bi-file-earmark-excel text-success"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2" data-catalog-print title="In bảng biểu">
+                        <i class="bi bi-printer text-primary"></i>
+                    </button>
+                    <span class="catalog-badge text-nowrap" data-catalog-count>@ViewBag.Total khoản</span>
+                </div>
             </form>
         </div>
-        <div class="table-responsive"><table class="table catalog-table">
-            <thead><tr><th>Mã</th><th>Tên khoản</th><th>Loại khoản</th><th>Giá trị mặc định</th><th>Mô tả</th><th class="text-end">Thao tác</th></tr></thead>
-            <tbody>
-            @if (Model.Count == 0) { <tr><td colspan="6" class="catalog-empty"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Không tìm thấy cấu hình phù hợp.</td></tr> }
-            else { @foreach (var item in Model) {
-                var badge = item.LoaiKhoan == "THUONG" ? "bg-success" : item.LoaiKhoan == "KHAU_TRU" ? "bg-danger" : "bg-primary";
-                var label = item.LoaiKhoan == "THUONG" ? "Thưởng" : item.LoaiKhoan == "KHAU_TRU" ? "Khấu trừ / Phạt" : "Phụ cấp";
-                <tr><td class="text-muted fw-semibold">#@item.MaKhoan</td><td><strong>@item.TenKhoan</strong></td><td><span class="badge @badge">@label</span></td><td class="fw-bold text-primary">@item.GiaTriMacDinh.ToString("N0") ₫</td><td class="text-muted">@(item.MoTa ?? "—")</td>
-                <td class="text-end"><a asp-action="Edit" asp-route-id="@item.MaKhoan" class="btn btn-sm btn-outline-primary rounded-3"><i class="bi bi-pencil"></i></a> <form asp-action="Delete" asp-route-id="@item.MaKhoan" method="post" class="d-inline" onsubmit="return confirmDelete('@item.TenKhoan.Replace("'", "\\'")')"><button class="btn btn-sm btn-outline-danger rounded-3"><i class="bi bi-trash"></i></button></form></td></tr>
-            }}
-            </tbody>
-        </table></div>
+
+        <div class="catalog-loading" data-catalog-loading>
+            <span class="spinner-border spinner-border-sm text-primary"></span>
+            <strong>Đang cập nhật danh mục khoản lương...</strong>
+        </div>
+
+        <div class="table-responsive" data-catalog-results>
+            <table class="table catalog-table" data-export-table="Danh_Sach_Khoan_Luong">
+                <thead>
+                    <tr>
+                        <th style="width: 80px" class="text-center">Mã</th>
+                        <th>Tên khoản lương</th>
+                        <th style="width: 160px">Phân loại</th>
+                        <th style="width: 190px">Định mức mặc định</th>
+                        <th>Điều kiện áp dụng & Ghi chú</th>
+                        <th class="text-end" style="width: 140px">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="catalog-empty">
+                            <div class="catalog-empty-state">
+                                <div class="catalog-empty-icon"><i class="bi bi-wallet-fill"></i></div>
+                                <h4>Không tìm thấy khoản lương</h4>
+                                <p class="text-muted">Không có cấu hình khoản phụ cấp/thưởng/phạt nào khớp với bộ lọc.</p>
+                                <a asp-action="Create" class="btn btn-hotel-primary btn-sm px-3 mt-2" data-catalog-modal data-catalog-modal-title="Thêm khoản lương mới">
+                                    <i class="bi bi-plus-lg me-1"></i> Thêm khoản lương mới
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model)
+                    {
+                        var isBonus = item.LoaiKhoan == "THUONG";
+                        var isDeduction = item.LoaiKhoan == "KHAU_TRU";
+
+                        var badgeClass = isBonus ? "bg-success-subtle text-success border border-success-subtle" : isDeduction ? "bg-danger-subtle text-danger border border-danger-subtle" : "bg-primary-subtle text-primary border border-primary-subtle";
+                        var typeLabel = isBonus ? "Thưởng khích lệ" : isDeduction ? "Khấu trừ / Kỷ luật" : "Phụ cấp công việc";
+                        var payIcon = isBonus ? "bi-gift-fill" : isDeduction ? "bi-dash-circle-fill" : "bi-wallet2";
+                        var payIconClass = isBonus ? "catalog-icon--bonus" : isDeduction ? "catalog-icon--deduction" : "catalog-icon--allowance";
+                        var sign = isDeduction ? "-" : "+";
+                        var amountColor = isBonus ? "text-success" : isDeduction ? "text-danger" : "text-primary";
+
+                        var usageCount = item.ChiTietPhieuLuongs?.Count ?? 0;
+
+                        <tr>
+                            <td class="text-center text-muted fw-semibold">#@item.MaKhoan</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="catalog-icon @payIconClass shadow-sm">
+                                        <i class="bi @payIcon"></i>
+                                    </span>
+                                    <div>
+                                        <strong class="d-block text-dark fs-6 font-serif">@item.TenKhoan</strong>
+                                        <small class="text-muted">Mã chính sách lương OverTime</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge @badgeClass fw-bold px-2 py-1">
+                                    <i class="bi @payIcon me-1"></i>@typeLabel
+                                </span>
+                            </td>
+                            <td>
+                                <div class="catalog-amount-box @amountColor">
+                                    <span class="catalog-amount-sign">@sign</span>
+                                    <strong class="catalog-amount-number">@item.GiaTriMacDinh.ToString("N0")</strong>
+                                    <small class="catalog-amount-currency">₫</small>
+                                </div>
+                            </td>
+                            <td class="text-muted" style="max-width: 320px;">
+                                <span class="d-inline-block text-truncate" style="max-width: 300px;" title="@item.MoTa">
+                                    @(item.MoTa ?? "Áp dụng định kỳ theo quy chế khách sạn.")
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Edit" asp-route-id="@item.MaKhoan" class="btn btn-sm btn-outline-primary rounded-3 me-1" title="Chỉnh sửa khoản lương" data-catalog-modal data-catalog-modal-title="Chỉnh sửa khoản lương">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+
+                                @if (usageCount > 0)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 opacity-50" disabled title="Không thể xóa: khoản này đã được áp dụng trong @usageCount phiếu lương.">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <form asp-action="Delete" asp-route-id="@item.MaKhoan" method="post" class="d-inline catalog-delete-form" data-catalog-name="@item.TenKhoan">
+                                        <button class="btn btn-sm btn-outline-danger rounded-3" title="Xóa khoản lương"><i class="bi bi-trash3"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
     </section>
 </div>

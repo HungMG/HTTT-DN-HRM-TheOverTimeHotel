@@ -1,21 +1,80 @@
 @model OvertimeHotel.HRM.Core.Models.CaLamViec
+
 <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+<!-- LIVE PREVIEW CARD CHO CA LÀM VIỆC -->
+<div class="catalog-live-preview-box mb-4 p-3 bg-light border rounded-3" data-shift-preview>
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <small class="text-uppercase fw-bold text-muted" style="letter-spacing: 0.5px;">
+            <i class="bi bi-eye me-1"></i>Xem trước hiển thị ca
+        </small>
+        <span class="badge bg-secondary-subtle text-secondary-emphasis" data-preview-duration>
+            <i class="bi bi-hourglass-split me-1"></i>8.0 giờ
+        </span>
+    </div>
+    <div class="p-3 bg-white border rounded-3 shadow-xs d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+            <span class="catalog-icon catalog-icon--morning" data-preview-icon>
+                <i class="bi bi-sunrise-fill"></i>
+            </span>
+            <div>
+                <strong class="d-block text-dark font-serif" data-preview-title>@(string.IsNullOrWhiteSpace(Model.TenCa) ? "Ca làm việc mới" : Model.TenCa)</strong>
+                <small class="text-muted" data-preview-time>
+                    @Model.GioBatDau.ToString("HH:mm") — @Model.GioKetThuc.ToString("HH:mm")
+                </small>
+            </div>
+        </div>
+        <div data-preview-badge>
+            @if (Model.QuaDem)
+            {
+                <span class="badge bg-dark text-warning border border-warning">
+                    <i class="bi bi-moon-stars-fill me-1"></i>Ca đêm · +30%
+                </span>
+            }
+            else
+            {
+                <span class="badge bg-light text-dark border">
+                    <i class="bi bi-sun-fill me-1 text-warning"></i>Trong ngày
+                </span>
+            }
+        </div>
+    </div>
+</div>
+
 <div class="form-floating mb-3">
-    <input asp-for="TenCa" class="form-control" placeholder="Tên ca" maxlength="50" />
-    <label asp-for="TenCa">Tên ca <span class="text-danger">*</span></label>
+    <input asp-for="TenCa" class="form-control" placeholder="Tên ca" maxlength="50" data-shift-name-input />
+    <label asp-for="TenCa">Tên ca làm việc <span class="text-danger">*</span></label>
     <span asp-validation-for="TenCa" class="text-danger small"></span>
 </div>
+
 <div class="row g-3 mb-3">
-    <div class="col-md-6"><div class="form-floating"><input asp-for="GioBatDau" type="time" class="form-control" /><label asp-for="GioBatDau">Giờ bắt đầu</label></div><span asp-validation-for="GioBatDau" class="text-danger small"></span></div>
-    <div class="col-md-6"><div class="form-floating"><input asp-for="GioKetThuc" type="time" class="form-control" /><label asp-for="GioKetThuc">Giờ kết thúc</label></div><span asp-validation-for="GioKetThuc" class="text-danger small"></span></div>
+    <div class="col-md-6">
+        <div class="form-floating">
+            <input asp-for="GioBatDau" type="time" class="form-control" data-shift-start-input />
+            <label asp-for="GioBatDau">Giờ bắt đầu</label>
+        </div>
+        <span asp-validation-for="GioBatDau" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <div class="form-floating">
+            <input asp-for="GioKetThuc" type="time" class="form-control" data-shift-end-input />
+            <label asp-for="GioKetThuc">Giờ kết thúc</label>
+        </div>
+        <span asp-validation-for="GioKetThuc" class="text-danger small"></span>
+    </div>
 </div>
-<div class="form-check form-switch bg-light border rounded-3 p-3 ps-5 mb-4">
-    <input asp-for="QuaDem" class="form-check-input" />
-    <label asp-for="QuaDem" class="form-check-label fw-semibold">Ca làm việc qua đêm</label>
-    <div class="small text-muted">Bật nếu giờ kết thúc thuộc ngày kế tiếp (ví dụ: 22:00–06:00).</div>
+
+<div class="form-check form-switch bg-light border rounded-3 p-3 ps-5 mb-4 position-relative">
+    <input asp-for="QuaDem" class="form-check-input" data-shift-night-switch />
+    <label asp-for="QuaDem" class="form-check-label fw-semibold">Ca làm việc qua đêm (Crosses Midnight)</label>
+    <div class="small text-muted">Bật nếu giờ kết thúc thuộc ngày kế tiếp (ví dụ: 22:00 – 06:00). Tự động kích hoạt phụ cấp ca đêm 30%.</div>
+    <div id="shiftAutoNightHint" class="small text-warning fw-bold mt-1 d-none">
+        <i class="bi bi-magic me-1"></i>Phát hiện giờ kết thúc nhỏ hơn giờ bắt đầu: Hệ thống đã tự động bật chế độ Ca qua đêm!
+    </div>
     <span asp-validation-for="QuaDem" class="text-danger small"></span>
 </div>
+
 <div class="d-flex justify-content-end gap-2">
     <a asp-action="Index" class="btn btn-light border rounded-3 px-4"><i class="bi bi-arrow-left me-1"></i> Quay lại</a>
-    <button class="btn btn-hotel-primary px-4"><i class="bi bi-check2-circle me-1"></i> Lưu thông tin</button>
+    <button type="submit" class="btn btn-hotel-primary px-4"><i class="bi bi-check2-circle me-1"></i> Lưu thông tin</button>
 </div>

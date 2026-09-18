@@ -1,85 +1,190 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.SystemCatalogDashboardViewModel
 @{
-    ViewData["Title"] = "Quản trị danh mục hệ thống";
+    ViewData["Title"] = "Trung tâm Quản trị Danh mục · The OverTime Hotel";
 }
 
-<div class="catalog-page">
-    <section class="catalog-hero mb-4">
-        <div class="catalog-eyebrow"><i class="bi bi-stars me-1"></i> TSK-14 · Quản trị hệ thống</div>
-        <h1 class="catalog-title display-6 mb-2">Danh mục hệ thống</h1>
-        <p class="text-white-50 mb-0" style="max-width: 720px;">
-            Trung tâm quản lý các danh mục nền tảng phục vụ tổ chức nhân sự, vận hành ca 24/7
-            và cấu hình các khoản tính lương của The OverTime Hotel.
-        </p>
-    </section>
+<div class="catalog-page catalog-hub">
+    <!-- HERO EXECUTIVE BANNER WITH ART DECO PATTERN -->
+    <section class="catalog-hero catalog-hub-hero mb-4 position-relative">
+        <div class="catalog-art-deco-pattern" aria-hidden="true"></div>
+        <div class="catalog-hub-hero-copy position-relative" style="z-index: 2;">
+            <nav aria-label="Điều hướng">
+                <ol class="catalog-breadcrumb catalog-breadcrumb--dark">
+                    <li><a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a></li>
+                    <li aria-current="page">Danh mục hệ thống</li>
+                </ol>
+            </nav>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <span class="badge bg-warning text-dark fw-bold px-3 py-1 rounded-pill">
+                    <i class="bi bi-stars me-1"></i> THE OVERTIME HOTEL 5★
+                </span>
+                <span class="catalog-eyebrow mb-0">
+                    <i class="bi bi-grid-1x2-fill me-1"></i> Trung tâm Thiết lập Vận hành
+                </span>
+            </div>
+            <h1 class="catalog-title display-6 mb-2 text-white">Quản Trị Danh Mục Hệ Thống</h1>
+            <p class="text-white-50 mb-0" style="max-width: 680px; line-height: 1.6;">
+                Nền tảng dữ liệu cốt lõi chuẩn hóa toàn bộ cơ cấu tổ chức, chuẩn mực vị trí công tác, 
+                chu trình vận hành ca trực 24/7 và chính sách đãi ngộ tiền lương của khách sạn.
+            </p>
+        </div>
 
-    <div class="alert alert-info border-0 shadow-sm mb-4">
-        <div class="d-flex align-items-start gap-2">
-            <i class="bi bi-info-circle-fill fs-5"></i>
-            <div>
-                <strong>Chế độ xem trước giao diện</strong>
-                <div class="small">
-                    Khi Supabase chưa được cấu hình mật khẩu, các trang danh sách sẽ hiển thị dữ liệu minh họa.
-                    Sau khi bổ sung mật khẩu CSDL, hệ thống tự động chuyển sang dữ liệu thật.
+        <div class="catalog-hub-status-group position-relative" style="z-index: 2;">
+            <div class="catalog-hub-status" aria-label="Trạng thái hệ thống">
+                <span class="catalog-status-beacon"><i class="bi bi-shield-check"></i></span>
+                <div>
+                    <strong>4 Phân hệ Danh mục</strong>
+                    <small class="text-success"><i class="bi bi-circle-fill text-success" style="font-size: 0.55rem;"></i> Đang vận hành chuẩn hóa</small>
                 </div>
             </div>
+            @if (Model.IsDemoData)
+            {
+                <div class="catalog-hub-demo-pill mt-2">
+                    <i class="bi bi-info-circle me-1"></i> Dữ liệu mẫu minh họa
+                </div>
+            }
         </div>
-    </div>
+    </section>
 
-    <div class="row g-4">
-        <div class="col-md-6">
-            <a asp-controller="PhongBan" asp-action="Index" class="text-decoration-none">
-                <article class="catalog-card catalog-hub-card h-100 p-4">
-                    <div class="d-flex align-items-start justify-content-between mb-4">
-                        <span class="catalog-icon catalog-hub-icon"><i class="bi bi-building"></i></span>
-                        <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">Cơ cấu tổ chức</span>
-                    </div>
-                    <h2 class="h4 catalog-title text-dark mb-2">Quản lý phòng ban</h2>
-                    <p class="text-muted mb-4">Quản lý các đơn vị vận hành, mô tả chức năng và cơ cấu phòng ban trong khách sạn.</p>
-                    <span class="btn btn-hotel-primary px-4"><i class="bi bi-arrow-right-circle me-1"></i> Vào quản lý phòng ban</span>
-                </article>
-            </a>
+    <!-- 4 LUXURY BENTO MODULE CARDS -->
+    <section class="catalog-module-grid" aria-label="Các phân hệ danh mục">
+        <!-- 01: PHÒNG BAN -->
+        <div class="catalog-module-card catalog-module-card--department hover-lift">
+            <span class="catalog-module-index">01</span>
+            <div class="catalog-module-card-top">
+                <span class="catalog-module-mark catalog-module-mark--department" aria-hidden="true">
+                    <i class="bi bi-building-fill"></i>
+                    <small>PB</small>
+                </span>
+                <span class="catalog-module-type">Cơ cấu tổ chức</span>
+            </div>
+            <div class="catalog-module-copy">
+                <small><i class="bi bi-diagram-3 me-1"></i>Đơn vị vận hành & Tiền sảnh</small>
+                <h2>Quản lý phòng ban</h2>
+                <p>Thiết lập cơ cấu phòng ban chức năng: Ban Giám đốc, Lễ tân Tiền sảnh, Buồng phòng, Ẩm thực F&B...</p>
+                
+                <div class="catalog-metric-pills mt-3 mb-2">
+                    <span class="catalog-metric-pill catalog-metric-pill--primary">
+                        <i class="bi bi-building me-1"></i><strong>@Model.TongPhongBan</strong> phòng ban
+                    </span>
+                    <span class="catalog-metric-pill catalog-metric-pill--secondary">
+                        <i class="bi bi-people me-1"></i><strong>@Model.TongNhanVienPhongBan</strong> nhân sự
+                    </span>
+                </div>
+            </div>
+            <div class="catalog-module-card-footer mt-auto pt-3 d-flex align-items-center justify-content-between border-top">
+                <a asp-controller="PhongBan" asp-action="Index" class="catalog-module-link">
+                    Mở danh sách <i class="bi bi-arrow-up-right"></i>
+                </a>
+                <a asp-controller="PhongBan" asp-action="Create" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold catalog-quick-btn" data-catalog-modal data-catalog-modal-title="Thêm mới phòng ban">
+                    <i class="bi bi-plus-lg me-1"></i>Thêm nhanh
+                </a>
+            </div>
         </div>
 
-        <div class="col-md-6">
-            <a asp-controller="ChucVu" asp-action="Index" class="text-decoration-none">
-                <article class="catalog-card catalog-hub-card h-100 p-4">
-                    <div class="d-flex align-items-start justify-content-between mb-4">
-                        <span class="catalog-icon catalog-hub-icon"><i class="bi bi-person-badge"></i></span>
-                        <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2">Vị trí công việc</span>
-                    </div>
-                    <h2 class="h4 catalog-title text-dark mb-2">Quản lý chức vụ</h2>
-                    <p class="text-muted mb-4">Chuẩn hóa chức danh, trách nhiệm và vị trí công việc của đội ngũ nhân sự.</p>
-                    <span class="btn btn-hotel-primary px-4"><i class="bi bi-arrow-right-circle me-1"></i> Vào quản lý chức vụ</span>
-                </article>
-            </a>
+        <!-- 02: CHỨC VỤ -->
+        <div class="catalog-module-card catalog-module-card--position hover-lift">
+            <span class="catalog-module-index">02</span>
+            <div class="catalog-module-card-top">
+                <span class="catalog-module-mark catalog-module-mark--position" aria-hidden="true">
+                    <i class="bi bi-person-vcard-fill"></i>
+                    <small>CV</small>
+                </span>
+                <span class="catalog-module-type">Vị trí công việc</span>
+            </div>
+            <div class="catalog-module-copy">
+                <small><i class="bi bi-award me-1"></i>Chức danh & Cấp bậc</small>
+                <h2>Quản lý chức vụ</h2>
+                <p>Chuẩn hóa chức danh công việc, định biên trách nhiệm và phân cấp chức vụ trong toàn hệ thống khách sạn.</p>
+
+                <div class="catalog-metric-pills mt-3 mb-2">
+                    <span class="catalog-metric-pill catalog-metric-pill--success">
+                        <i class="bi bi-person-badge me-1"></i><strong>@Model.TongChucVu</strong> vị trí chuẩn hóa
+                    </span>
+                    <span class="catalog-metric-pill catalog-metric-pill--secondary">
+                        <i class="bi bi-diagram-2 me-1"></i>Toàn khách sạn
+                    </span>
+                </div>
+            </div>
+            <div class="catalog-module-card-footer mt-auto pt-3 d-flex align-items-center justify-content-between border-top">
+                <a asp-controller="ChucVu" asp-action="Index" class="catalog-module-link">
+                    Mở danh sách <i class="bi bi-arrow-up-right"></i>
+                </a>
+                <a asp-controller="ChucVu" asp-action="Create" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold catalog-quick-btn" data-catalog-modal data-catalog-modal-title="Thêm mới chức vụ">
+                    <i class="bi bi-plus-lg me-1"></i>Thêm nhanh
+                </a>
+            </div>
         </div>
 
-        <div class="col-md-6">
-            <a asp-controller="CaLamViec" asp-action="Index" class="text-decoration-none">
-                <article class="catalog-card catalog-hub-card h-100 p-4">
-                    <div class="d-flex align-items-start justify-content-between mb-4">
-                        <span class="catalog-icon catalog-hub-icon"><i class="bi bi-clock-history"></i></span>
-                        <span class="badge bg-dark rounded-pill px-3 py-2">Vận hành 24/7</span>
-                    </div>
-                    <h2 class="h4 catalog-title text-dark mb-2">Quản lý ca làm việc</h2>
-                    <p class="text-muted mb-4">Thiết lập ca sáng, chiều, đêm và quy tắc nhận diện ca làm việc qua ngày mới.</p>
-                    <span class="btn btn-hotel-primary px-4"><i class="bi bi-arrow-right-circle me-1"></i> Vào quản lý ca</span>
-                </article>
-            </a>
+        <!-- 03: CA LÀM VIỆC -->
+        <div class="catalog-module-card catalog-module-card--shift hover-lift">
+            <span class="catalog-module-index">03</span>
+            <div class="catalog-module-card-top">
+                <span class="catalog-module-mark catalog-module-mark--shift" aria-hidden="true">
+                    <i class="bi bi-clock-fill"></i>
+                    <small>24H</small>
+                </span>
+                <span class="catalog-module-type">Vận hành 24/7</span>
+            </div>
+            <div class="catalog-module-copy">
+                <small><i class="bi bi-moon-stars me-1"></i>Khung giờ Sáng · Chiều · Đêm</small>
+                <h2>Quản lý ca làm việc</h2>
+                <p>Quy chuẩn các ca trực liên tục 24/7, xác định ca qua đêm và tự động tính phụ cấp ca đêm 30%.</p>
+
+                <div class="catalog-metric-pills mt-3 mb-2">
+                    <span class="catalog-metric-pill catalog-metric-pill--dark">
+                        <i class="bi bi-clock-history me-1"></i><strong>@Model.TongCaLamViec</strong> ca vận hành
+                    </span>
+                    <span class="catalog-metric-pill catalog-metric-pill--warning">
+                        <i class="bi bi-moon-stars-fill me-1"></i><strong>@Model.SoCaQuaDem</strong> ca đêm (+30%)
+                    </span>
+                </div>
+            </div>
+            <div class="catalog-module-card-footer mt-auto pt-3 d-flex align-items-center justify-content-between border-top">
+                <a asp-controller="CaLamViec" asp-action="Index" class="catalog-module-link">
+                    Mở danh sách <i class="bi bi-arrow-up-right"></i>
+                </a>
+                <a asp-controller="CaLamViec" asp-action="Create" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold catalog-quick-btn" data-catalog-modal data-catalog-modal-title="Thêm mới ca làm việc">
+                    <i class="bi bi-plus-lg me-1"></i>Thêm nhanh
+                </a>
+            </div>
         </div>
 
-        <div class="col-md-6">
-            <a asp-controller="CauHinhKhoanLuong" asp-action="Index" class="text-decoration-none">
-                <article class="catalog-card catalog-hub-card h-100 p-4">
-                    <div class="d-flex align-items-start justify-content-between mb-4">
-                        <span class="catalog-icon catalog-hub-icon"><i class="bi bi-cash-coin"></i></span>
-                        <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-2">Tiền lương</span>
-                    </div>
-                    <h2 class="h4 catalog-title text-dark mb-2">Cấu hình khoản lương</h2>
-                    <p class="text-muted mb-4">Quản lý phụ cấp, thưởng, phạt và giá trị mặc định phục vụ tính lương tự động.</p>
-                    <span class="btn btn-hotel-primary px-4"><i class="bi bi-arrow-right-circle me-1"></i> Vào cấu hình khoản lương</span>
-                </article>
-            </a>
+        <!-- 04: CẤU HÌNH KHOẢN LƯƠNG -->
+        <div class="catalog-module-card catalog-module-card--payroll hover-lift">
+            <span class="catalog-module-index">04</span>
+            <div class="catalog-module-card-top">
+                <span class="catalog-module-mark catalog-module-mark--payroll" aria-hidden="true">
+                    <i class="bi bi-wallet2"></i>
+                    <small>VNĐ</small>
+                </span>
+                <span class="catalog-module-type">Chính sách tiền lương</span>
+            </div>
+            <div class="catalog-module-copy">
+                <small><i class="bi bi-cash-coin me-1"></i>Phụ cấp · Thưởng · Khấu trừ</small>
+                <h2>Cấu hình khoản lương</h2>
+                <p>Quản lý định mức phụ cấp chuyên cần, xăng xe, thưởng doanh thu và các khoản khấu trừ phục vụ tính lương 2 tầng.</p>
+
+                <div class="catalog-metric-pills mt-3 mb-2">
+                    <span class="catalog-metric-pill catalog-metric-pill--primary">
+                        <i class="bi bi-plus-circle me-1"></i><strong>@Model.SoKhoanPhuCap</strong> phụ cấp
+                    </span>
+                    <span class="catalog-metric-pill catalog-metric-pill--success">
+                        <i class="bi bi-gift me-1"></i><strong>@Model.SoKhoanThuong</strong> thưởng
+                    </span>
+                    <span class="catalog-metric-pill catalog-metric-pill--danger">
+                        <i class="bi bi-dash-circle me-1"></i><strong>@Model.SoKhoanKhauTru</strong> phạt
+                    </span>
+                </div>
+            </div>
+            <div class="catalog-module-card-footer mt-auto pt-3 d-flex align-items-center justify-content-between border-top">
+                <a asp-controller="CauHinhKhoanLuong" asp-action="Index" class="catalog-module-link">
+                    Mở danh sách <i class="bi bi-arrow-up-right"></i>
+                </a>
+                <a asp-controller="CauHinhKhoanLuong" asp-action="Create" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold text-dark catalog-quick-btn" data-catalog-modal data-catalog-modal-title="Thêm mới khoản lương">
+                    <i class="bi bi-plus-lg me-1"></i>Thêm nhanh
+                </a>
+            </div>
         </div>
-    </div>
+    </section>
 </div>

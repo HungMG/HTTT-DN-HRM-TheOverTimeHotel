@@ -22,7 +22,7 @@ public class CaLamViecController : Controller
     public async Task<IActionResult> Index(string? keyword)
     {
         keyword = keyword?.Trim();
-        var query = _context.CaLamViecs.AsNoTracking().AsQueryable();
+        var query = _context.CaLamViecs.AsNoTracking().Include(x => x.PhanCas).AsQueryable();
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var value = keyword.ToLower();
@@ -143,9 +143,9 @@ public class CaLamViecController : Controller
 
     private static List<CaLamViec> GetFallbackItems() =>
     [
-        new() { MaCa = 1, TenCa = "Ca Sáng", GioBatDau = new TimeOnly(6, 0), GioKetThuc = new TimeOnly(14, 0), QuaDem = false },
-        new() { MaCa = 2, TenCa = "Ca Chiều", GioBatDau = new TimeOnly(14, 0), GioKetThuc = new TimeOnly(22, 0), QuaDem = false },
-        new() { MaCa = 3, TenCa = "Ca Đêm", GioBatDau = new TimeOnly(22, 0), GioKetThuc = new TimeOnly(6, 0), QuaDem = true }
+        new() { MaCa = 1, TenCa = "Ca Sáng", GioBatDau = new TimeOnly(6, 0), GioKetThuc = new TimeOnly(14, 0), QuaDem = false, PhanCas = new List<PhanCa> { new(), new() } },
+        new() { MaCa = 2, TenCa = "Ca Chiều", GioBatDau = new TimeOnly(14, 0), GioKetThuc = new TimeOnly(22, 0), QuaDem = false, PhanCas = new List<PhanCa> { new() } },
+        new() { MaCa = 3, TenCa = "Ca Đêm", GioBatDau = new TimeOnly(22, 0), GioKetThuc = new TimeOnly(6, 0), QuaDem = true, PhanCas = new List<PhanCa> { new() } }
     ];
 
     private async Task ValidateAsync(CaLamViec model, int? currentId = null)
