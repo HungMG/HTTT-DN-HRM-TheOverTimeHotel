@@ -13,7 +13,7 @@
     <!-- Google Fonts: Plus Jakarta Sans & Playfair Display -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 & Bootstrap Icons -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -42,10 +42,14 @@
             display: flex;
         }
 
-        /* KHUNG HÌNH SHOWCASE KHÁCH SẠN BÊN TRÁI */
+        /* =====================================================================
+           🎬 HIỆU ỨNG VÀO TRANG LOGIN ĐẲNG CẤP & SỐNG ĐỘNG (CINEMATIC STAGE ENTRANCE)
+           ===================================================================== */
+
+        /* CỘT TRÁI: SHOWCASE KHÁCH SẠN LƯỚT TỪ TRÁI VÀO */
         .hotel-showcase {
             position: relative;
-            flex: 1.1;
+            flex: 1.15;
             background-image: url('https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=85');
             background-size: cover;
             background-position: center;
@@ -55,13 +59,48 @@
             padding: 3.5rem;
             color: #FFFFFF;
             overflow: hidden;
+            animation: showcaseCinematicEnter 0.95s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @@keyframes showcaseCinematicEnter {
+            0% {
+                opacity: 0;
+                transform: translateX(-60px) scale(0.94);
+                filter: blur(12px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+                filter: blur(0);
+            }
+        }
+
+        /* Quả cầu hào quang vàng kim thở nhẹ nhàng */
+        .hotel-showcase::after {
+            content: '';
+            position: absolute;
+            bottom: 5%;
+            left: 15%;
+            width: 380px;
+            height: 380px;
+            background: radial-gradient(circle, rgba(253, 224, 71, 0.22) 0%, rgba(212, 175, 55, 0.12) 45%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(45px);
+            animation: ambientAuraFloat 12s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @@keyframes ambientAuraFloat {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(35px, -30px) scale(1.25); }
         }
 
         .hotel-showcase::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 58, 138, 0.75) 50%, rgba(11, 19, 37, 0.95) 100%);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.93) 0%, rgba(30, 58, 138, 0.78) 50%, rgba(11, 19, 37, 0.95) 100%);
             backdrop-filter: blur(2px);
             z-index: 1;
         }
@@ -75,26 +114,29 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 18px;
+            padding: 8px 20px;
             background: rgba(212, 175, 55, 0.15);
-            border: 1px solid rgba(212, 175, 55, 0.4);
+            border: 1px solid rgba(212, 175, 55, 0.45);
             border-radius: 50px;
             font-size: 0.85rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--brand-gold-light);
             letter-spacing: 1.5px;
             text-transform: uppercase;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            animation: elemCinematicIn 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
         }
 
         .brand-title {
             font-family: 'Playfair Display', serif;
-            font-size: 3.2rem;
+            font-size: 3.3rem;
             font-weight: 700;
             line-height: 1.15;
             color: #FFFFFF;
             margin-top: 1.5rem;
-            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            text-shadow: 0 4px 25px rgba(0, 0, 0, 0.6);
+            animation: elemCinematicIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
         }
 
         .brand-title span {
@@ -104,18 +146,26 @@
 
         .showcase-glass-card {
             background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(16px);
+            border: 1px solid rgba(253, 224, 71, 0.35);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             border-radius: 20px;
             padding: 1.8rem;
             max-width: 520px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 25px 50px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(212, 175, 55, 0.18);
             margin-top: 2rem;
+            animation: elemCinematicIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
         }
 
-        /* KHUNG FORM ĐĂNG NHẬP BÊN PHẢI */
+        .showcase-glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55);
+        }
+
+        /* CỘT PHẢI: FORM ĐĂNG NHẬP TRƯỢT TỪ PHẢI VÀO */
         .login-panel {
-            flex: 0.9;
+            flex: 0.85;
             background: #FFFFFF;
             display: flex;
             align-items: center;
@@ -123,26 +173,120 @@
             padding: 3rem 4rem;
             position: relative;
             box-shadow: -15px 0 35px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            animation: panelCinematicEnter 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+        }
+
+        @@keyframes panelCinematicEnter {
+            0% {
+                opacity: 0;
+                transform: translateX(60px);
+                filter: blur(12px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+                filter: blur(0);
+            }
+        }
+
+        /* Quả cầu hào quang xanh navy & vàng thở nhẹ góc form */
+        .login-panel::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            right: -60px;
+            width: 280px;
+            height: 280px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.18) 0%, rgba(30, 58, 138, 0.12) 50%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(35px);
+            animation: ambientAuraFloat 10s ease-in-out infinite alternate-reverse;
+            pointer-events: none;
+            z-index: 0;
         }
 
         .login-box {
             width: 100%;
             max-width: 440px;
+            position: relative;
+            z-index: 1;
         }
 
         .hotel-emblem {
-            width: 60px;
-            height: 60px;
+            width: 64px;
+            height: 64px;
             background: linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%);
             border: 2px solid var(--brand-gold);
-            border-radius: 16px;
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: var(--brand-gold);
-            font-size: 1.75rem;
-            box-shadow: 0 8px 16px rgba(30, 58, 138, 0.25);
+            font-size: 1.85rem;
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.45), 0 12px 26px rgba(30, 58, 138, 0.35);
             margin-bottom: 1.25rem;
+            animation: emblemPopEntrance 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+        }
+
+        @@keyframes emblemPopEntrance {
+            0% {
+                opacity: 0;
+                transform: scale(0.35) translateY(-35px) rotate(-15deg);
+                filter: blur(8px);
+            }
+            68% {
+                opacity: 1;
+                transform: scale(1.1) translateY(2px) rotate(2deg);
+                filter: blur(0);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0) rotate(0);
+            }
+        }
+
+        /* STAGGERED POP-UP TỪNG PHẦN TỬ TRONG FORM */
+        .login-box h3 {
+            animation: elemCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both;
+        }
+
+        .login-box p.text-muted {
+            animation: elemCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+        }
+
+        .login-box form > div:nth-of-type(1) {
+            animation: elemCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
+        }
+
+        .login-box form > div:nth-of-type(2) {
+            animation: elemCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;
+        }
+
+        .login-box form > div:nth-of-type(3) {
+            animation: elemCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.50s both;
+        }
+
+        .login-box form > div:nth-of-type(4),
+        .login-box .btn-hotel-primary {
+            animation: elemCinematicIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.56s both;
+        }
+
+        .login-box .border-top {
+            animation: elemCinematicIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.62s both;
+        }
+
+        @@keyframes elemCinematicIn {
+            0% {
+                opacity: 0;
+                transform: translateY(24px) scale(0.96);
+                filter: blur(5px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                filter: blur(0);
+            }
         }
 
         .form-floating > .form-control {
@@ -156,6 +300,7 @@
         .form-floating > .form-control:focus {
             border-color: var(--brand-navy);
             box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.12);
+            transform: translateY(-1px);
         }
 
         .input-icon {
@@ -166,6 +311,12 @@
             color: #94A3B8;
             font-size: 1.15rem;
             z-index: 5;
+            transition: color 0.25s ease;
+        }
+
+        .form-control:focus ~ .input-icon,
+        .position-relative:focus-within .input-icon {
+            color: var(--brand-navy);
         }
 
         .password-toggle {
@@ -177,63 +328,167 @@
             cursor: pointer;
             z-index: 5;
             padding: 4px;
+            transition: transform 0.2s ease, color 0.2s ease;
         }
 
         .password-toggle:hover {
             color: var(--brand-navy);
+            transform: translateY(-50%) scale(1.15);
         }
 
+        /* =====================================================================
+           ✨ HIỆU ỨNG NÚT NỔI BỒNG BỀNH KHI ĐỊNH NHẤN & KHI NHẤN (3D FLOATING BUTTON)
+           ===================================================================== */
         .btn-hotel-primary {
+            position: relative;
+            overflow: hidden;
             background: linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%);
-            border: 1px solid rgba(212, 175, 55, 0.4);
+            border: 1.5px solid rgba(212, 175, 55, 0.5);
             color: #FFFFFF;
-            padding: 0.85rem 1.5rem;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1rem;
-            letter-spacing: 0.5px;
-            transition: all 0.3s ease;
-            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.35);
+            padding: 0.95rem 1.8rem;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 1.02rem;
+            letter-spacing: 0.6px;
+            cursor: pointer;
+            will-change: transform, box-shadow;
+            box-shadow: 0 6px 18px -2px rgba(15, 23, 42, 0.35),
+                        0 2px 8px -1px rgba(212, 175, 55, 0.2);
+            /* Đường cong đàn hồi vật lý lò xo (Spring Physics) */
+            transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        box-shadow 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                        background 0.3s ease,
+                        border-color 0.3s ease;
         }
 
-        .btn-hotel-primary:hover {
-            background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%);
-            color: var(--brand-gold-light);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(30, 58, 138, 0.45);
+        /* Dải sáng ánh kim lướt qua mặt nút từ react-bits/SpecularButton */
+        .btn-hotel-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -130%;
+            width: 80%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), rgba(253, 224, 71, 0.4), transparent);
+            transform: skewX(-25deg);
+            transition: left 0.75s ease;
+            pointer-events: none;
         }
 
+        /* KHI ĐỊNH NHẤN (HOVER): Nút nổi bồng bềnh lên cao với bóng đổ sâu */
+        .btn-hotel-primary:hover,
+        .btn-hotel-primary:focus-visible {
+            color: #FFFFFF;
+            transform: translateY(-6px) scale(1.028);
+            background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 55%, #0F172A 100%);
+            border-color: var(--brand-gold-light);
+            box-shadow: 0 18px 36px -4px rgba(30, 58, 138, 0.6),
+                        0 10px 20px -2px rgba(212, 175, 55, 0.4),
+                        0 0 25px rgba(253, 224, 71, 0.3);
+        }
+
+        .btn-hotel-primary:hover::before {
+            left: 150%;
+        }
+
+        /* KHI NHẤN CHUỘT (PRESS/ACTIVE): Nút tiếp tục nổi phồng lên cao đàn hồi (Floating Lift) */
         .btn-hotel-primary:active {
-            transform: translateY(0);
+            transform: translateY(-8px) scale(1.05) !important;
+            border-color: #FFFFFF !important;
+            box-shadow: 0 24px 44px -4px rgba(30, 58, 138, 0.75),
+                        0 14px 28px -2px rgba(212, 175, 55, 0.55),
+                        0 0 35px rgba(253, 224, 71, 0.5) !important;
+            transition: transform 0.16s cubic-bezier(0.2, 0.9, 0.3, 1),
+                        box-shadow 0.16s ease !important;
         }
 
-        /* CHIPS DEMO TÀI KHOẢN TEST NHANH */
+        /* CHIPS DEMO TÀI KHOẢN: CŨNG NỔI LÊN KHI ĐỊNH NHẤN VÀ NHẤN */
         .demo-chip {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 12px;
-            font-size: 0.78rem;
+            padding: 8px 14px;
+            font-size: 0.8rem;
             font-weight: 600;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid #E2E8F0;
+            border: 1.5px solid #E2E8F0;
             background: #F8FAFC;
             color: #475569;
+            will-change: transform, box-shadow;
+            transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        box-shadow 0.28s ease,
+                        border-color 0.25s ease,
+                        background 0.25s ease;
         }
 
         .demo-chip:hover {
-            background: #EFF6FF;
-            border-color: #93C5FD;
-            color: #1D4ED8;
-            transform: translateY(-1px);
+            transform: translateY(-4px) scale(1.03);
+            background: #FFFFFF;
+            box-shadow: 0 10px 20px -2px rgba(15, 23, 42, 0.12);
         }
 
-        .demo-chip.admin-chip { border-left: 3px solid #DC2626; }
-        .demo-chip.hr-chip { border-left: 3px solid #2563EB; }
-        .demo-chip.mgr-chip { border-left: 3px solid #D97706; }
-        .demo-chip.emp-chip { border-left: 3px solid #16A34A; }
+        .demo-chip:active {
+            transform: translateY(-6px) scale(1.06) !important;
+            box-shadow: 0 14px 26px -2px rgba(30, 58, 138, 0.25) !important;
+        }
+
+        .demo-chip.admin-chip { border-left: 3.5px solid #DC2626; }
+        .demo-chip.hr-chip { border-left: 3.5px solid #2563EB; }
+        .demo-chip.mgr-chip { border-left: 3.5px solid #D97706; }
+        .demo-chip.emp-chip { border-left: 3.5px solid #16A34A; }
+
+        .demo-chip.admin-chip:hover { border-color: #F87171; color: #DC2626; }
+        .demo-chip.hr-chip:hover { border-color: #60A5FA; color: #2563EB; }
+        .demo-chip.mgr-chip:hover { border-color: #FBBF24; color: #D97706; }
+        .demo-chip.emp-chip:hover { border-color: #4ADE80; color: #16A34A; }
+
+        /* GỢN SÓNG ÁNH SÁNG SLOW-MO KHI NHẤN NÚT (SLOW-MO RIPPLE) */
+        .hotel-login-ripple {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: scale(0);
+            opacity: 0.85;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(253, 224, 71, 0.5) 45%, rgba(212, 175, 55, 0) 75%);
+            animation: loginRippleExpand 0.65s cubic-bezier(0.2, 1, 0.3, 1) forwards;
+            z-index: 10;
+        }
+
+        @@keyframes loginRippleExpand {
+            0% { transform: scale(0); opacity: 0.85; }
+            100% { transform: scale(3.8); opacity: 0; }
+        }
+
+        /* HIỆU ỨNG BLURTEXT: CHỮ TRƯỢT TỪ MỜ MỜ HIỆN RÕ SẮC NÉT */
+        @@keyframes blurTextFloatUp {
+            0% {
+                opacity: 0;
+                filter: blur(10px);
+                transform: translateY(14px);
+            }
+            60% {
+                opacity: 0.75;
+                filter: blur(2px);
+            }
+            100% {
+                opacity: 1;
+                filter: blur(0px);
+                transform: translateY(0);
+            }
+        }
+
+        .blur-word {
+            display: inline-block;
+            animation: blurTextFloatUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+            will-change: transform, filter, opacity;
+            white-space: pre;
+        }
+
+        .blur-line {
+            animation: blurTextFloatUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+            will-change: transform, filter, opacity;
+        }
 
         @@media (max-width: 991px) {
             .login-wrapper {
@@ -265,10 +520,10 @@
             <div class="hotel-badge">
                 <i class="bi bi-stars"></i> Khách Sạn Nghỉ Dưỡng Quốc Tế 5★
             </div>
-            <h1 class="brand-title">
-                The OverTime<br /><span>Hotel & Resort</span>
+            <h1 class="brand-title" id="showcaseBrandTitle">
+                The OverTime<br /><span>Hotel &amp; Resort</span>
             </h1>
-            <p class="text-white-50 mt-2 fs-5" style="max-width: 480px;">
+            <p class="text-white-50 mt-2 fs-5 blur-line" style="max-width: 480px; animation-delay: 0.25s;">
                 Cổng quản trị thông tin nhân sự và điều hành tiền lương tự động 24/7
             </p>
         </div>
@@ -291,7 +546,7 @@
                 </p>
             </div>
             <div class="mt-4 text-white-50 small">
-                &copy; 2026 The OverTime Hotel HRM · Phiên bản .NET 10 & Supabase Cloud
+                &copy; 2026 The OverTime Hotel HRM · Phiên bản .NET 10 &amp; Supabase Cloud
             </div>
         </div>
     </div>
@@ -304,8 +559,12 @@
                 <div class="hotel-emblem mx-auto">
                     <i class="bi bi-buildings"></i>
                 </div>
-                <h3 class="fw-bold text-dark mb-1" style="font-family: 'Playfair Display', serif;">Đăng Nhập Quản Trị</h3>
-                <p class="text-muted small">Nhập thông tin tài khoản được cấp để truy cập hệ thống</p>
+                <h3 class="fw-bold text-dark mb-1" id="loginHeaderTitle" style="font-family: 'Playfair Display', serif;">
+                    Đăng Nhập Quản Trị
+                </h3>
+                <p class="text-muted small blur-line" style="animation-delay: 0.15s;">
+                    Nhập thông tin tài khoản được cấp để truy cập hệ thống
+                </p>
             </div>
 
             <!-- THÔNG BÁO LỖI NẾU CÓ -->
@@ -320,7 +579,7 @@
                 </div>
             }
 
-            <!-- THÔNG BÁO CHẶN PHÂN QUYỀN (NẾU MANAGER/EMPLOYEE ĐĂNG NHẬP WEB) -->
+            <!-- THÔNG BÁO CHẶN PHÂN QUYỀN -->
             @if (ViewBag.RoleNotice != null)
             {
                 <div class="alert alert-warning alert-dismissible fade show p-3 mb-4 border-0 shadow-sm" role="alert">
@@ -373,8 +632,9 @@
                     </a>
                 </div>
 
+                <!-- NÚT NỔI 3D BỒNG BỀNH ĐĂNG NHẬP HỆ THỐNG -->
                 <div class="d-grid mb-4">
-                    <button type="submit" class="btn btn-hotel-primary">
+                    <button type="submit" class="btn btn-hotel-primary" id="loginSubmitBtn">
                         <i class="bi bi-box-arrow-in-right me-2"></i>Đăng Nhập Hệ Thống
                     </button>
                 </div>
@@ -389,11 +649,11 @@
                     <span class="badge bg-light text-secondary border font-monospace">Click để điền</span>
                 </div>
                 <div class="alert alert-info py-2 px-3 small border-0 mb-3" style="font-size: 0.8rem; background-color: #f0f9ff; color: #0369a1;">
-                    <i class="bi bi-info-circle-fill me-1 text-info"></i> <strong>Lưu ý Task 13:</strong> Để truy cập trang <strong>Quản trị tài khoản &amp; phân quyền</strong>, vui lòng chọn tài khoản <strong class="text-danger">Admin (Cường)</strong>. Tài khoản Employee/Manager chỉ dùng cho Mobile App.
+                    <i class="bi bi-info-circle-fill me-1 text-info"></i> <strong>Lưu ý:</strong> Chọn tài khoản <strong class="text-danger">Admin (Cường)</strong> để truy cập tất cả chức năng quản trị.
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <button type="button" class="demo-chip admin-chip" onclick="fillAccount('admin', 'Admin@123')">
-                        <i class="bi bi-shield-shaded text-danger"></i> Admin (Cường) <span class="badge bg-danger text-white ms-1" style="font-size: 0.65rem;">Task 13</span>
+                        <i class="bi bi-shield-shaded text-danger"></i> Admin (Cường) <span class="badge bg-danger text-white ms-1" style="font-size: 0.65rem;">Full</span>
                     </button>
                     <button type="button" class="demo-chip hr-chip" onclick="fillAccount('hr_sang', 'Hr@123')">
                         <i class="bi bi-person-badge text-primary"></i> HR (Sang)
@@ -412,23 +672,90 @@
 
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Hàm bật/tắt hiển thị mật khẩu
+    // 1. Tách từng từ làm hiệu ứng BlurText (từ mờ lướt lên rõ)
+    function triggerBlurText(elId) {
+        const el = document.getElementById(elId);
+        if (!el) return;
+
+        const nodes = Array.from(el.childNodes);
+        el.innerHTML = '';
+        let wordIndex = 0;
+
+        nodes.forEach(function (node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const words = node.textContent.split(/(\s+)/);
+                words.forEach(function (w) {
+                    if (w.trim().length > 0) {
+                        const span = document.createElement('span');
+                        span.className = 'blur-word';
+                        span.style.animationDelay = (0.05 + wordIndex * 0.05).toFixed(2) + 's';
+                        span.textContent = w;
+                        el.appendChild(span);
+                        wordIndex++;
+                    } else if (w.length > 0) {
+                        el.appendChild(document.createTextNode(w));
+                    }
+                });
+            } else if (node.nodeName === 'BR') {
+                el.appendChild(document.createElement('br'));
+            } else {
+                const wrapper = document.createElement('span');
+                wrapper.className = 'blur-word';
+                wrapper.style.animationDelay = (0.05 + wordIndex * 0.05).toFixed(2) + 's';
+                wrapper.appendChild(node.cloneNode(true));
+                el.appendChild(wrapper);
+                wordIndex++;
+            }
+        });
+    }
+
+    // Chạy BlurText cho cả tiêu đề Showcase lẫn tiêu đề Đăng Nhập
+    document.addEventListener('DOMContentLoaded', function () {
+        triggerBlurText('showcaseBrandTitle');
+        triggerBlurText('loginHeaderTitle');
+    });
+
+    // 2. Hiệu ứng gợn sóng ánh sáng hoàng gia khi nhấn chuột vào nút nổi
+    document.addEventListener('pointerdown', function (e) {
+        const btn = e.target.closest('.btn-hotel-primary, .demo-chip');
+        if (!btn) return;
+
+        const rect = btn.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height) * 1.4;
+        const x = e.clientX - rect.left - size / 2;
+        const y = e.clientY - rect.top - size / 2;
+
+        const ripple = document.createElement('span');
+        ripple.className = 'hotel-login-ripple';
+        ripple.style.width = size + 'px';
+        ripple.style.height = size + 'px';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+
+        btn.appendChild(ripple);
+        setTimeout(function () {
+            if (ripple.parentNode) ripple.parentNode.removeChild(ripple);
+        }, 650);
+    }, { passive: true });
+
+    // 3. Hàm bật/tắt hiển thị mật khẩu
     const toggleBtn = document.getElementById('togglePasswordBtn');
     const passwordInput = document.getElementById('passwordInput');
     const toggleIcon = document.getElementById('togglePasswordIcon');
 
-    toggleBtn.addEventListener('click', function () {
-        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-        passwordInput.setAttribute('type', type);
-        toggleIcon.classList.toggle('bi-eye');
-        toggleIcon.classList.toggle('bi-eye-slash');
-    });
+    if (toggleBtn && passwordInput && toggleIcon) {
+        toggleBtn.addEventListener('click', function () {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            toggleIcon.classList.toggle('bi-eye');
+            toggleIcon.classList.toggle('bi-eye-slash');
+        });
+    }
 
-    // Hàm tự động điền tài khoản test nhanh
+    // 5. Hàm tự động điền tài khoản test nhanh
     function fillAccount(username, password) {
         document.getElementById('usernameInput').value = username;
         document.getElementById('passwordInput').value = password;
-        // Hiệu ứng focus nhẹ
         document.getElementById('usernameInput').focus();
     }
 </script>
