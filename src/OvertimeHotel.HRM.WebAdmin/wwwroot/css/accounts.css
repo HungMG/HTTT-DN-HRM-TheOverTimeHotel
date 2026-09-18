@@ -564,3 +564,60 @@
   .account-audit-change > div { grid-template-columns: 1fr; }
   .account-audit-change > div > i { transform: rotate(90deg); }
 }
+
+/* ==========================================================================
+   ✨ IN-PLACE ZERO-RELOAD STATE & INTERACTIVE LEGEND
+   ========================================================================== */
+.role-legend-item[role="button"] {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.role-legend-item[role="button"]:hover {
+  background: rgba(49, 85, 166, 0.08);
+  border-color: rgba(49, 85, 166, 0.3);
+  transform: translateX(4px);
+}
+.role-legend-item.is-selected {
+  background: rgba(49, 85, 166, 0.12);
+  border-color: #3155a6;
+  font-weight: 750;
+}
+
+/* Hiệu ứng hào quang vàng kim khi KPI cập nhật số mới */
+.kpi-pulse-active {
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.65), 0 0 4px rgba(253, 224, 71, 0.8) !important;
+  transform: scale(1.025);
+  border-color: rgba(212, 175, 55, 0.7) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Loading overlay cục bộ đồng bộ chuẩn từ trang Phân Ca (TSK-16) */
+.in-place-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  animation: inPlaceOverlayFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes inPlaceOverlayFadeIn {
+  from { opacity: 0; transform: scale(0.99); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.account-sequence-panel {
+  position: relative;
+  min-height: 320px;
+}
+
+.account-audit-panel {
+  position: relative;
+}

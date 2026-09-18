@@ -1,0 +1,119 @@
+@model AccountIndexViewModel
+@using System.Security.Claims
+@{
+    var currentAccountId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedId)
+        ? parsedId
+        : 0;
+    string VietnameseRoleName(string roleName) => roleName switch
+    {
+        "Admin" => "Quản trị viên",
+        "HR" => "Nhân sự",
+        "Manager" => "Quản lý",
+        "Employee" => "Nhân viên",
+        _ => roleName
+    };
+}
+
+<div class="account-sequence-toolbar">
+    <div class="sequence-title">
+        <span class="sequence-play"><i class="bi bi-play-fill"></i></span>
+        <div><small>Luồng quản lý truy cập</small><strong>Danh sách tài khoản</strong></div>
+    </div>
+    <div class="sequence-meta">
+        <span><i class="bi bi-record-circle"></i> <b data-account-result-count>@Model.Accounts.Count</b> kết quả</span>
+        <span class="sequence-time">00:@Model.TotalAccounts.ToString("00")</span>
+    </div>
+</div>
+
+<div class="account-ruler" aria-hidden="true">
+    <span>00</span><span>05</span><span>10</span><span>15</span><span>20</span><span>25</span>
+</div>
+
+<div class="account-table-wrap">
+    <table class="account-table">
+        <thead>
+            <tr>
+                <th>Tài khoản</th>
+                <th>Tên đăng nhập</th>
+                <th>Đơn vị công tác</th>
+                <th>Vai trò</th>
+                <th>Trạng thái</th>
+                <th><span class="visually-hidden">Thao tác</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Accounts.Count == 0)
+            {
+                <tr data-account-empty-row>
+                    <td colspan="6">
+                        <div class="account-empty-state">
+                            <div><i class="bi bi-person-x"></i></div>
+                            <strong>Không có tài khoản phù hợp</strong>
+                            <span>Thử thay đổi bộ lọc hoặc tạo một tài khoản mới.</span>
+                        </div>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                var rowIndex = 0;
+                @foreach (var account in Model.Accounts)
+                {
+                    rowIndex++;
+                    var roleClass = account.RoleName switch
+                    {
+                        "Admin" => "role-chip--admin",
+                        "HR" => "role-chip--hr",
+                        "Manager" => "role-chip--manager",
+                        _ => "role-chip--employee"
+                    };
+                    var roleDisplayName = VietnameseRoleName(account.RoleName);
+                    var isCurrentAccount = account.AccountId == currentAccountId;
+                    <tr class="@(!account.IsActive ? "is-locked" : null)" style="--row-delay: @(rowIndex * 35)ms" data-account-row="@account.AccountId">
+                        <td>
+                            <div class="account-identity">
+                                <div class="account-avatar">@(account.EmployeeName.Length > 0 ? account.EmployeeName[..1].ToUpperInvariant() : "N")</div>
+                                <div>
+                                    <strong>@account.EmployeeName</strong>
+                                    <span>@account.Email</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="account-username"><i class="bi bi-code-slash"></i>@account.Username</div>
+                            @if (isCurrentAccount)
+                            {
+                                <span class="account-you-chip">Hiện tại</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="account-work-unit"><strong>@account.Position</strong><span>@account.Department</span></div>
+                        </td>
+                        <td><span class="role-chip @roleClass"><i></i>@roleDisplayName</span></td>
+                        <td>
+                            <span class="state-chip @(account.IsActive ? "state-chip--active" : "state-chip--locked")" data-account-state>
+                                <i></i>@(account.IsActive ? "Hoạt động" : "Đã khóa")
+                            </span>
+                        </td>
+                        <td>
+                            <div class="account-row-actions">
+                                <a asp-action="Edit" asp-route-id="@account.AccountId" title="Chỉnh sửa"><i class="bi bi-sliders"></i></a>
+                                <form asp-action="ToggleStatus" asp-route-id="@account.AccountId" method="post"
+                                      class="account-toggle-form"
+                                      data-account-id="@account.AccountId"
+                                      data-account-name="@account.EmployeeName"
+                                      data-account-mode="@(account.IsActive ? "lock" : "unlock")">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="reason" value="" data-account-reason-value />
+                                    <button type="submit" title="@(account.IsActive ? "Khóa tài khoản" : "Mở khóa tài khoản")" disabled="@isCurrentAccount">
+                                        <i class="bi @(account.IsActive ? "bi-pause-fill" : "bi-play-fill")"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
