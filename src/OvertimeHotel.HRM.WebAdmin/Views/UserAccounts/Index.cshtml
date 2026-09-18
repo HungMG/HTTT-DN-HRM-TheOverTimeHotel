@@ -2,17 +2,6 @@
 @using System.Security.Claims
 @{
     ViewData["Title"] = "Quản trị tài khoản";
-    var currentAccountId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedId)
-        ? parsedId
-        : 0;
-    string VietnameseRoleName(string roleName) => roleName switch
-    {
-        "Admin" => "Quản trị viên",
-        "HR" => "Nhân sự",
-        "Manager" => "Quản lý",
-        "Employee" => "Nhân viên",
-        _ => roleName
-    };
 }
 
 <div class="account-workspace account-workspace--bleed" data-account-workspace data-status-filter="@(Model.IsActive.HasValue ? Model.IsActive.Value.ToString().ToLowerInvariant() : string.Empty)" data-audit-from="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" data-audit-to="@(Model.AuditTo?.ToString("yyyy-MM-dd"))">
@@ -100,20 +89,20 @@
                 <div><span>Bộ lọc</span><strong>Bộ lọc truy cập</strong></div>
                 <i class="bi bi-sliders2"></i>
             </div>
-            <form method="get" asp-action="Index" class="account-filter-form">
+            <form method="get" asp-action="Index" class="account-filter-form" data-account-filter-form>
                 <input type="hidden" name="auditFrom" value="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" />
                 <input type="hidden" name="auditTo" value="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" />
                 <div class="account-field">
                     <label asp-for="Keyword"><span>Tìm kiếm</span><small>⌘ K</small></label>
                     <div class="account-input-wrap">
                         <i class="bi bi-search"></i>
-                        <input asp-for="Keyword" placeholder="Tên, email, tài khoản..." />
+                        <input asp-for="Keyword" placeholder="Tên, email, tài khoản..." autocomplete="off" data-account-search-input />
                     </div>
                 </div>
                 <div class="account-field">
                     <label asp-for="RoleId"><span>Vai trò</span><small>RBAC</small></label>
                     <div class="account-select-wrap">
-                        <select asp-for="RoleId" asp-items="Model.RoleOptions">
+                        <select asp-for="RoleId" asp-items="Model.RoleOptions" data-account-role-select>
                             <option value="">Tất cả vai trò</option>
                         </select>
                         <i class="bi bi-chevron-expand"></i>
@@ -122,7 +111,7 @@
                 <div class="account-field">
                     <label asp-for="IsActive"><span>Trạng thái</span><small>Trạng thái</small></label>
                     <div class="account-select-wrap">
-                        <select asp-for="IsActive">
+                        <select asp-for="IsActive" data-account-status-select>
                             <option value="">Tất cả trạng thái</option>
                             <option value="true">Đang hoạt động</option>
                             <option value="false">Đã khóa</option>
@@ -132,7 +121,7 @@
                 </div>
                 <div class="account-filter-actions">
                     <button type="submit"><i class="bi bi-funnel-fill"></i> Áp dụng</button>
-                    <a asp-action="Index" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
+                    <a asp-action="Index" title="Đặt lại bộ lọc" data-account-filter-reset><i class="bi bi-arrow-counterclockwise"></i></a>
                 </div>
             </form>
 
@@ -140,121 +129,39 @@
                 <div class="account-panel-heading account-panel-heading--compact">
                     <div><span>Vai trò</span><strong>Chú thích vai trò</strong></div>
                 </div>
-                <div class="role-legend-item"><span class="role-swatch role-swatch--admin"></span><span>Quản trị viên</span><small>Toàn quyền</small></div>
-                <div class="role-legend-item"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Nhân sự</small></div>
-                <div class="role-legend-item"><span class="role-swatch role-swatch--manager"></span><span>Quản lý</span><small>Điều phối</small></div>
-                <div class="role-legend-item"><span class="role-swatch role-swatch--employee"></span><span>Nhân viên</span><small>Cá nhân</small></div>
+                <div class="role-legend-item" role="button" tabindex="0" data-role-filter="1" title="Lọc nhanh: Quản trị viên"><span class="role-swatch role-swatch--admin"></span><span>Quản trị viên</span><small>Toàn quyền</small></div>
+                <div class="role-legend-item" role="button" tabindex="0" data-role-filter="2" title="Lọc nhanh: Nhân sự"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Nhân sự</small></div>
+                <div class="role-legend-item" role="button" tabindex="0" data-role-filter="3" title="Lọc nhanh: Quản lý"><span class="role-swatch role-swatch--manager"></span><span>Quản lý</span><small>Điều phối</small></div>
+                <div class="role-legend-item" role="button" tabindex="0" data-role-filter="4" title="Lọc nhanh: Nhân viên"><span class="role-swatch role-swatch--employee"></span><span>Nhân viên</span><small>Cá nhân</small></div>
             </div>
         </aside>
 
-        <div class="account-sequence-panel">
-            <div class="account-sequence-toolbar">
-                <div class="sequence-title">
-                    <span class="sequence-play"><i class="bi bi-play-fill"></i></span>
-                    <div><small>Luồng quản lý truy cập</small><strong>Danh sách tài khoản</strong></div>
+        <div class="account-sequence-panel position-relative" id="accountSequenceWrapper">
+            <!-- Loading overlay cục bộ đồng bộ chuẩn từ trang Phân Ca (TSK-16) -->
+            <div id="accountLoadingOverlay" class="in-place-loading-overlay d-none">
+                <div class="spinner-border text-primary mb-2" role="status" style="width: 2.3rem; height: 2.3rem;">
+                    <span class="visually-hidden">Đang tải...</span>
                 </div>
-                <div class="sequence-meta">
-                    <span><i class="bi bi-record-circle"></i> <b data-account-result-count>@Model.Accounts.Count</b> kết quả</span>
-                    <span class="sequence-time">00:@Model.TotalAccounts.ToString("00")</span>
-                </div>
+                <div class="fw-bold text-dark small font-serif">Đang cập nhật danh sách tài khoản...</div>
+                <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
             </div>
 
-            <div class="account-ruler" aria-hidden="true">
-                <span>00</span><span>05</span><span>10</span><span>15</span><span>20</span><span>25</span>
-            </div>
-
-            <div class="account-table-wrap">
-                <table class="account-table">
-                    <thead>
-                        <tr>
-                            <th>Tài khoản</th>
-                            <th>Tên đăng nhập</th>
-                            <th>Đơn vị công tác</th>
-                            <th>Vai trò</th>
-                            <th>Trạng thái</th>
-                            <th><span class="visually-hidden">Thao tác</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.Accounts.Count == 0)
-                        {
-                            <tr data-account-empty-row>
-                                <td colspan="6">
-                                    <div class="account-empty-state">
-                                        <div><i class="bi bi-person-x"></i></div>
-                                        <strong>Không có tài khoản phù hợp</strong>
-                                        <span>Thử thay đổi bộ lọc hoặc tạo một tài khoản mới.</span>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                        else
-                        {
-                            var rowIndex = 0;
-                            @foreach (var account in Model.Accounts)
-                            {
-                                rowIndex++;
-                                var roleClass = account.RoleName switch
-                                {
-                                    "Admin" => "role-chip--admin",
-                                    "HR" => "role-chip--hr",
-                                    "Manager" => "role-chip--manager",
-                                    _ => "role-chip--employee"
-                                };
-                                var roleDisplayName = VietnameseRoleName(account.RoleName);
-                                var isCurrentAccount = account.AccountId == currentAccountId;
-                                <tr class="@(!account.IsActive ? "is-locked" : null)" style="--row-delay: @(rowIndex * 35)ms" data-account-row="@account.AccountId">
-                                    <td>
-                                        <div class="account-identity">
-                                            <div class="account-avatar">@(account.EmployeeName.Length > 0 ? account.EmployeeName[..1].ToUpperInvariant() : "N")</div>
-                                            <div>
-                                                <strong>@account.EmployeeName</strong>
-                                                <span>@account.Email</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="account-username"><i class="bi bi-code-slash"></i>@account.Username</div>
-                                        @if (isCurrentAccount)
-                                        {
-                                            <span class="account-you-chip">Hiện tại</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <div class="account-work-unit"><strong>@account.Position</strong><span>@account.Department</span></div>
-                                    </td>
-                                    <td><span class="role-chip @roleClass"><i></i>@roleDisplayName</span></td>
-                                    <td>
-                                        <span class="state-chip @(account.IsActive ? "state-chip--active" : "state-chip--locked")" data-account-state>
-                                            <i></i>@(account.IsActive ? "Hoạt động" : "Đã khóa")
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="account-row-actions">
-                                            <a asp-action="Edit" asp-route-id="@account.AccountId" title="Chỉnh sửa"><i class="bi bi-sliders"></i></a>
-                                            <form asp-action="ToggleStatus" asp-route-id="@account.AccountId" method="post"
-                                                  class="account-toggle-form"
-                                                  data-account-id="@account.AccountId"
-                                                  data-account-name="@account.EmployeeName"
-                                                  data-account-mode="@(account.IsActive ? "lock" : "unlock")">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="reason" value="" data-account-reason-value />
-                                                <button type="submit" title="@(account.IsActive ? "Khóa tài khoản" : "Mở khóa tài khoản")" disabled="@isCurrentAccount">
-                                                    <i class="bi @(account.IsActive ? "bi-pause-fill" : "bi-play-fill")"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
+            <div id="accountTableContainer" class="in-place-enter in-place-container">
+                <partial name="_AccountTable" model="Model" />
             </div>
         </div>
     </section>
 
-    <section class="account-audit-panel account-reveal" aria-labelledby="auditLogTitle">
+    <section class="account-audit-panel account-reveal position-relative" aria-labelledby="auditLogTitle">
+        <!-- Loading overlay cho khung nhật ký quản trị -->
+        <div id="auditLoadingOverlay" class="in-place-loading-overlay d-none">
+            <div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem;">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+            <div class="fw-bold text-dark small font-serif">Đang lọc nhật ký quản trị...</div>
+            <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
+        </div>
+
         <div class="account-audit-heading">
             <div class="account-audit-title">
                 <span class="account-audit-mark"><i class="bi bi-journal-check"></i></span>
@@ -280,7 +187,7 @@
             </div>
         </div>
 
-        <div data-account-audit-content>
+        <div data-account-audit-content class="in-place-enter in-place-container">
             <partial name="_AuditLogList" model="Model" />
         </div>
     </section>

@@ -118,6 +118,16 @@ public class UserAccountsController : Controller
                 AuditLogAvailable = auditLogAvailable
             };
 
+            if (IsAjaxRequest())
+            {
+                Response.Headers["X-Total-Accounts"] = model.TotalAccounts.ToString();
+                Response.Headers["X-Active-Accounts"] = model.ActiveAccounts.ToString();
+                Response.Headers["X-Locked-Accounts"] = model.LockedAccounts.ToString();
+                Response.Headers["X-Admin-Accounts"] = model.AdminAccounts.ToString();
+                Response.Headers["X-Result-Count"] = model.Accounts.Count.ToString();
+                return PartialView("_AccountTable", model);
+            }
+
             return View(model);
         }
         catch (Exception ex)
@@ -145,7 +155,7 @@ public class UserAccountsController : Controller
                 fallbackAccounts = fallbackAccounts.Where(a => a.IsActive == isActive.Value).ToList();
             }
 
-            return View(new AccountIndexViewModel
+            var fallbackModel = new AccountIndexViewModel
             {
                 Keyword = normalizedKeyword,
                 RoleId = roleId,
@@ -160,7 +170,19 @@ public class UserAccountsController : Controller
                 LockedAccounts = 0,
                 AdminAccounts = 1,
                 AuditLogAvailable = false
-            });
+            };
+
+            if (IsAjaxRequest())
+            {
+                Response.Headers["X-Total-Accounts"] = fallbackModel.TotalAccounts.ToString();
+                Response.Headers["X-Active-Accounts"] = fallbackModel.ActiveAccounts.ToString();
+                Response.Headers["X-Locked-Accounts"] = fallbackModel.LockedAccounts.ToString();
+                Response.Headers["X-Admin-Accounts"] = fallbackModel.AdminAccounts.ToString();
+                Response.Headers["X-Result-Count"] = fallbackModel.Accounts.Count.ToString();
+                return PartialView("_AccountTable", fallbackModel);
+            }
+
+            return View(fallbackModel);
         }
     }
 
