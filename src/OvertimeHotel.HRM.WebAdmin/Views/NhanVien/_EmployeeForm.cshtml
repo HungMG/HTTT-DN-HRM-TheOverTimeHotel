@@ -1,0 +1,18 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.NhanVienFormViewModel
+@Html.AntiForgeryToken()
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<div class="row g-3">
+    <div class="col-md-6"><label asp-for="Employee.Ho" class="form-label">Họ *</label><input asp-for="Employee.Ho" class="form-control" /><span asp-validation-for="Employee.Ho" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.Ten" class="form-label">Tên *</label><input asp-for="Employee.Ten" class="form-control" /><span asp-validation-for="Employee.Ten" class="text-danger small"></span></div>
+    <div class="col-md-4"><label asp-for="Employee.NgaySinh" class="form-label">Ngày sinh *</label><input asp-for="Employee.NgaySinh" type="date" class="form-control" /><span asp-validation-for="Employee.NgaySinh" class="text-danger small"></span></div>
+    <div class="col-md-4"><label asp-for="Employee.GioiTinh" class="form-label">Giới tính</label><select asp-for="Employee.GioiTinh" class="form-select"><option value="NAM">Nam</option><option value="NU">Nữ</option><option value="KHAC">Khác</option></select></div>
+    <div class="col-md-4"><label asp-for="Employee.TrinhDo" class="form-label">Trình độ</label><input asp-for="Employee.TrinhDo" class="form-control" placeholder="Đại học, Cao đẳng..." /></div>
+    <div class="col-md-6"><label asp-for="Employee.MaPhongBan" class="form-label">Phòng ban *</label><select asp-for="Employee.MaPhongBan" asp-items="Model.DepartmentOptions" class="form-select"><option value="">Chọn phòng ban</option></select><span asp-validation-for="Employee.MaPhongBan" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.MaChucVu" class="form-label">Chức vụ *</label><select asp-for="Employee.MaChucVu" asp-items="Model.PositionOptions" class="form-select"><option value="">Chọn chức vụ</option></select><span asp-validation-for="Employee.MaChucVu" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.Email" class="form-label">Email *</label><input asp-for="Employee.Email" type="email" class="form-control" /><span asp-validation-for="Employee.Email" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.DienThoai" class="form-label">Điện thoại *</label><input asp-for="Employee.DienThoai" class="form-control" /><span asp-validation-for="Employee.DienThoai" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.NgayVaoLam" class="form-label">Ngày vào làm *</label><input asp-for="Employee.NgayVaoLam" type="date" class="form-control" /></div>
+    <div class="col-md-6"><label asp-for="Employee.NgayThoiViec" class="form-label">Ngày thôi việc</label><input asp-for="Employee.NgayThoiViec" type="date" class="form-control" /></div>
+    <div class="col-md-6"><label asp-for="Employee.TrangThai" class="form-label">Trạng thái</label><select asp-for="Employee.TrangThai" class="form-select"><option value="DANG_LAM">Đang làm</option><option value="NGHI_VIEC">Nghỉ việc</option><option value="TAM_NGHI">Tạm nghỉ</option></select></div>
+    <div class="col-12"><label asp-for="Employee.DiaChi" class="form-label">Địa chỉ</label><textarea asp-for="Employee.DiaChi" rows="2" class="form-control"></textarea></div>
+</div>
