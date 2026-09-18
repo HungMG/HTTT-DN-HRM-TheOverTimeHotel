@@ -6,99 +6,181 @@
         && currentAccountId == Model.AccountId;
 }
 
-<div class="container-fluid py-3">
-    <div class="mb-4">
-        <a asp-action="Index" class="text-decoration-none small"><i class="bi bi-arrow-left me-1"></i>Quay lại danh sách</a>
-        <h2 class="fw-bold mt-2 mb-1">Chỉnh sửa tài khoản</h2>
-        <p class="text-muted mb-0">Cập nhật tên đăng nhập, vai trò hoặc đặt lại mật khẩu.</p>
-    </div>
+<div class="account-workspace account-workspace--bleed account-form-workspace">
+    <header class="account-command-bar account-reveal">
+        <a asp-action="Index" class="account-icon-action" aria-label="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
+        <div class="account-command-copy">
+            <div class="account-eyebrow"><span class="account-live-dot"></span> Identity / @Model.AccountId.ToString("D3")</div>
+            <h1>Chỉnh sửa <span>tài khoản</span></h1>
+            <p>Điều chỉnh thông tin đăng nhập, kênh vai trò và khóa bảo mật.</p>
+        </div>
+        <div class="account-environment-pill">
+            <i class="bi @(Model.IsActive ? "bi-play-fill" : "bi-pause-fill")"></i>
+            <span>State</span>
+            <strong>@(Model.IsActive ? "Running" : "Paused")</strong>
+        </div>
+    </header>
 
-    <div class="row justify-content-center">
-        <div class="col-xl-9">
-            <form asp-action="Edit" asp-route-id="@Model.AccountId" method="post">
-                @Html.AntiForgeryToken()
-                <input asp-for="AccountId" type="hidden" />
-                <input asp-for="EmployeeId" type="hidden" />
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="account-popup-stack" aria-live="assertive">
+            <div class="account-popup account-popup--danger" data-account-toast role="alert">
+                <div class="account-popup-icon"><i class="bi bi-exclamation-lg"></i></div>
+                <div class="account-popup-copy"><small>Chưa thể lưu thay đổi</small><strong>Vui lòng kiểm tra và sửa các trường được đánh dấu bên dưới.</strong></div>
+                <button type="button" data-account-toast-close aria-label="Đóng thông báo"><i class="bi bi-x-lg"></i></button>
+                <span class="account-popup-progress"></span>
+            </div>
+        </div>
+    }
 
-                <div class="card border-0 shadow-sm rounded-4 mb-4">
-                    <div class="card-body p-4">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="account-avatar account-avatar-lg">@(Model.EmployeeName.Length > 0 ? Model.EmployeeName[..1].ToUpperInvariant() : "N")</div>
-                            <div>
-                                <h5 class="fw-bold mb-1">@Model.EmployeeName</h5>
-                                <div class="text-muted">@Model.EmployeeEmail</div>
-                                <span class="badge @(Model.IsActive ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger") mt-2">
-                                    @(Model.IsActive ? "Đang hoạt động" : "Đã bị khóa")
-                                </span>
-                                @if (isCurrentAccount)
-                                {
-                                    <span class="badge bg-info-subtle text-info-emphasis mt-2">Tài khoản của bạn</span>
-                                }
-                            </div>
+    <form asp-action="Edit" asp-route-id="@Model.AccountId" method="post" class="account-inspector-layout account-reveal">
+        @Html.AntiForgeryToken()
+        <input asp-for="AccountId" type="hidden" />
+        <input asp-for="EmployeeId" type="hidden" />
+
+        <div class="account-form-main">
+            <div asp-validation-summary="ModelOnly" class="account-validation" role="alert"></div>
+
+            <section class="inspector-card identity-summary-card">
+                <div class="inspector-card-body">
+                    <div class="identity-summary">
+                        <div class="account-avatar account-avatar-lg">@(Model.EmployeeName.Length > 0 ? Model.EmployeeName[..1].ToUpperInvariant() : "N")</div>
+                        <div class="identity-summary-copy">
+                            <small>Linked employee</small>
+                            <h2>@Model.EmployeeName</h2>
+                            <span>@Model.EmployeeEmail</span>
+                        </div>
+                        <div class="identity-summary-meta">
+                            <span class="state-chip @(Model.IsActive ? "state-chip--active" : "state-chip--locked")"><i></i>@(Model.IsActive ? "Running" : "Paused")</span>
+                            @if (isCurrentAccount)
+                            {
+                                <span class="account-you-chip">Current identity</span>
+                            }
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="card border-0 shadow-sm rounded-4 mb-4">
-                    <div class="card-header bg-white border-0 px-4 pt-4 pb-2">
-                        <h5 class="fw-bold mb-0"><i class="bi bi-sliders me-2 text-primary"></i>Thông tin tài khoản</h5>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <label asp-for="Username" class="form-label fw-semibold"></label>
-                                <input asp-for="Username" class="form-control" autocomplete="off" />
-                                <span asp-validation-for="Username" class="text-danger small"></span>
-                            </div>
-                            <div class="col-md-6">
-                                <label asp-for="RoleId" class="form-label fw-semibold"></label>
+            <section class="inspector-card">
+                <div class="inspector-card-heading">
+                    <span class="inspector-index">01</span>
+                    <div><small>Identity properties</small><h2>Thông tin tài khoản</h2></div>
+                    <i class="bi bi-sliders"></i>
+                </div>
+                <div class="inspector-card-body">
+                    <div class="account-form-grid">
+                        <div class="account-field">
+                            <label asp-for="Username"><span>Tên đăng nhập</span><small>Unique</small></label>
+                            <div class="account-input-wrap"><i class="bi bi-at"></i><input asp-for="Username" autocomplete="off" /></div>
+                            <span asp-validation-for="Username" class="account-field-error"></span>
+                        </div>
+                        <div class="account-field">
+                            <label asp-for="RoleId"><span>Role channel</span><small>RBAC</small></label>
+                            <div class="account-select-wrap @(isCurrentAccount ? "is-disabled" : null)">
                                 @if (isCurrentAccount)
                                 {
-                                    <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select" disabled></select>
+                                    <select asp-for="RoleId" asp-items="Model.RoleOptions" disabled></select>
                                     <input asp-for="RoleId" type="hidden" />
-                                    <div class="form-text">Không thể tự thay đổi vai trò đang đăng nhập.</div>
                                 }
                                 else
                                 {
-                                    <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select"></select>
+                                    <select asp-for="RoleId" asp-items="Model.RoleOptions"></select>
                                 }
-                                <span asp-validation-for="RoleId" class="text-danger small"></span>
+                                <i class="bi bi-chevron-expand"></i>
                             </div>
+                            @if (isCurrentAccount)
+                            {
+                                <div class="account-field-hint"><i class="bi bi-lock"></i>Không thể tự đổi vai trò đang đăng nhập.</div>
+                            }
+                            <span asp-validation-for="RoleId" class="account-field-error"></span>
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="card border-0 shadow-sm rounded-4 mb-4">
-                    <div class="card-header bg-white border-0 px-4 pt-4 pb-2">
-                        <h5 class="fw-bold mb-0"><i class="bi bi-shield-lock me-2 text-warning"></i>Đặt lại mật khẩu</h5>
-                    </div>
-                    <div class="card-body p-4">
-                        <p class="text-muted small">Để trống cả hai ô nếu muốn giữ nguyên mật khẩu hiện tại.</p>
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <label asp-for="NewPassword" class="form-label fw-semibold"></label>
-                                <input asp-for="NewPassword" class="form-control" autocomplete="new-password" />
-                                <span asp-validation-for="NewPassword" class="text-danger small"></span>
+            <section class="inspector-card">
+                <div class="inspector-card-heading">
+                    <span class="inspector-index">02</span>
+                    <div><small>Security keyframe</small><h2>Đặt lại mật khẩu</h2></div>
+                    <i class="bi bi-shield-lock"></i>
+                </div>
+                <div class="inspector-card-body">
+                    <div class="account-inline-note"><i class="bi bi-info-circle"></i>Để trống cả hai trường nếu muốn giữ nguyên mật khẩu hiện tại.</div>
+                    <div class="account-form-grid">
+                        <div class="account-field">
+                            <label asp-for="NewPassword"><span>Mật khẩu mới</span><small>Optional</small></label>
+                            <div class="account-input-wrap account-password-wrap">
+                                <i class="bi bi-lock"></i><input asp-for="NewPassword" autocomplete="new-password" />
+                                <button type="button" class="password-visibility" aria-label="Hiện hoặc ẩn mật khẩu"><i class="bi bi-eye"></i></button>
                             </div>
-                            <div class="col-md-6">
-                                <label asp-for="ConfirmNewPassword" class="form-label fw-semibold"></label>
-                                <input asp-for="ConfirmNewPassword" class="form-control" autocomplete="new-password" />
-                                <span asp-validation-for="ConfirmNewPassword" class="text-danger small"></span>
+                            <span asp-validation-for="NewPassword" class="account-field-error"></span>
+                        </div>
+                        <div class="account-field">
+                            <label asp-for="ConfirmNewPassword"><span>Xác nhận mật khẩu</span><small>Match</small></label>
+                            <div class="account-input-wrap account-password-wrap">
+                                <i class="bi bi-shield-check"></i><input asp-for="ConfirmNewPassword" autocomplete="new-password" />
+                                <button type="button" class="password-visibility" aria-label="Hiện hoặc ẩn mật khẩu"><i class="bi bi-eye"></i></button>
                             </div>
+                            <span asp-validation-for="ConfirmNewPassword" class="account-field-error"></span>
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="d-flex justify-content-end gap-2">
-                    <a asp-action="Index" class="btn btn-light border px-4">Hủy</a>
-                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i>Lưu thay đổi</button>
-                </div>
-            </form>
+            <div class="account-form-actions">
+                <a asp-action="Index">Hủy</a>
+                <button type="submit"><i class="bi bi-check2"></i>Lưu thay đổi</button>
+            </div>
         </div>
-    </div>
+
+        <aside class="account-preview-panel">
+            <div class="account-panel-heading">
+                <div><span>Inspector</span><strong>Identity preview</strong></div>
+                <i class="bi bi-stars"></i>
+            </div>
+            <div class="identity-preview">
+                <div class="identity-preview-orbit"><span>@(Model.EmployeeName.Length > 0 ? Model.EmployeeName[..1].ToUpperInvariant() : "N")</span></div>
+                <small>Account #@Model.AccountId.ToString("D3")</small>
+                <strong>@Model.EmployeeName</strong>
+                <span id="rolePreview" class="role-chip role-chip--employee"><i></i>Role</span>
+            </div>
+            <div class="permission-stack">
+                <div><i class="bi bi-person-check"></i><span>Liên kết nhân viên</span><small>#@Model.EmployeeId</small></div>
+                <div><i class="bi bi-at"></i><span>Username</span><small id="usernamePreview">@Model.Username</small></div>
+                <div><i class="bi bi-shield-check"></i><span>Cookie phiên</span><small>8 hours</small></div>
+            </div>
+            <div class="preview-note"><i class="bi bi-lightning-charge-fill"></i><span>Thay đổi vai trò có hiệu lực ở lần đăng nhập tiếp theo.</span></div>
+        </aside>
+    </form>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const role = document.getElementById('RoleId');
+            const rolePreview = document.getElementById('rolePreview');
+            const username = document.getElementById('Username');
+            const usernamePreview = document.getElementById('usernamePreview');
+
+            const syncPreview = () => {
+                const roleName = role?.selectedOptions[0]?.text || 'Role';
+                rolePreview.className = `role-chip role-chip--${roleName.toLowerCase() === 'admin' ? 'admin' : roleName.toLowerCase() === 'hr' ? 'hr' : roleName.toLowerCase() === 'manager' ? 'manager' : 'employee'}`;
+                rolePreview.innerHTML = `<i></i>${roleName}`;
+                usernamePreview.textContent = username?.value || '—';
+            };
+
+            role?.addEventListener('change', syncPreview);
+            username?.addEventListener('input', syncPreview);
+            syncPreview();
+
+            document.querySelectorAll('.password-visibility').forEach(button => {
+                button.addEventListener('click', () => {
+                    const input = button.parentElement.querySelector('input');
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                    button.querySelector('i').className = input.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+                });
+            });
+        })();
+    </script>
 }
