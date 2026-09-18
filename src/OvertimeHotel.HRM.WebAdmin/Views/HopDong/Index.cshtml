@@ -1,31 +1,258 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.HopDongIndexViewModel
 @{
-    ViewData["Title"] = "Quản lý hợp đồng lao động";
+    ViewData["Title"] = "Hợp đồng lao động · The OverTime Hotel";
 }
-<div class="container-fluid py-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4"><div><div class="text-uppercase small text-primary fw-bold">TSK-15 · Hợp đồng</div><h1 class="h2 fw-bold mb-1">Hợp đồng lao động</h1><p class="text-muted mb-0">Lập, cập nhật và theo dõi thời hạn hợp đồng theo từng nhân viên.</p></div><button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createContractModal"><i class="bi bi-file-earmark-plus me-1"></i>Lập hợp đồng</button></div>
-    @if (TempData["Success"] is string success) { <div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle me-2"></i>@success<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div> }
-    @if (TempData["Error"] is string error) { <div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-exclamation-triangle me-2"></i>@error<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div> }
-    <div class="row g-3 mb-4"><div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Tổng hợp đồng</div><div class="fs-3 fw-bold">@Model.TotalContracts</div></div></div></div><div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Đang hiệu lực</div><div class="fs-3 fw-bold text-success">@Model.ActiveContracts</div></div></div></div><div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Sắp hết hạn</div><div class="fs-3 fw-bold text-warning">@Model.ExpiringContracts</div></div></div></div><div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Đã hết hạn</div><div class="fs-3 fw-bold text-danger">@Model.ExpiredContracts</div></div></div></div></div>
-    <div class="card border-0 shadow-sm mb-4"><div class="card-body"><form method="get" class="row g-2 align-items-end"><div class="col-lg-5"><label class="form-label small fw-semibold">Tìm kiếm</label><input name="keyword" value="@Model.Keyword" class="form-control" placeholder="Số hợp đồng, loại hoặc tên nhân viên" /></div><div class="col-md-4 col-lg-2"><label class="form-label small fw-semibold">Trạng thái lưu</label><select name="status" class="form-select"><option value="">Tất cả</option><option value="HIEU_LUC" selected="@(Model.Status == "HIEU_LUC")">Hiệu lực</option><option value="HET_HAN" selected="@(Model.Status == "HET_HAN")">Hết hạn</option><option value="THANH_LY" selected="@(Model.Status == "THANH_LY")">Thanh lý</option></select></div><div class="col-md-4 col-lg-3"><label class="form-label small fw-semibold">Theo dõi thời hạn</label><select name="contractFilter" class="form-select"><option value="">Tất cả</option><option value="HIEU_LUC" selected="@(Model.ContractFilter == "HIEU_LUC")">Còn hiệu lực</option><option value="SAP_HET_HAN" selected="@(Model.ContractFilter == "SAP_HET_HAN")">Sắp hết hạn</option><option value="DA_HET_HAN" selected="@(Model.ContractFilter == "DA_HET_HAN")">Đã hết hạn</option></select></div><div class="col-md-2 col-lg-1"><button class="btn btn-primary w-100" title="Lọc"><i class="bi bi-funnel"></i></button></div><div class="col-md-2 col-lg-1"><a asp-action="Index" class="btn btn-outline-secondary w-100" title="Đặt lại"><i class="bi bi-arrow-counterclockwise"></i></a></div></form></div></div>
-    <div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Số hợp đồng</th><th>Nhân viên</th><th>Loại</th><th>Thời hạn</th><th>Lương cơ bản</th><th>Trạng thái</th><th class="text-end">Thao tác</th></tr></thead><tbody>
-    @foreach (var item in Model.Contracts)
-    {
-        var badge = item.State == "DA_HET_HAN" ? "danger" : item.State == "SAP_HET_HAN" ? "warning" : item.State == "HIEU_LUC" ? "success" : "secondary";
-        <tr><td class="fw-semibold">@item.Contract.SoHopDong</td><td>@item.EmployeeName</td><td>@item.Contract.LoaiHopDong</td><td><div>@item.Contract.NgayBatDau.ToString("dd/MM/yyyy") - @(item.Contract.NgayKetThuc?.ToString("dd/MM/yyyy") ?? "Không thời hạn")</div>@if (item.DaysRemaining.HasValue) { <span class="badge text-bg-@badge">@(item.DaysRemaining < 0 ? $"Quá hạn {-item.DaysRemaining} ngày" : item.DaysRemaining == 0 ? "Hết hạn hôm nay" : $"Còn {item.DaysRemaining} ngày")</span> }</td><td>@item.Contract.LuongCoBan.ToString("N0") đ</td><td><span class="badge text-bg-@badge">@item.Contract.TrangThai</span></td><td class="text-end text-nowrap"><a asp-action="Edit" asp-route-id="@item.Contract.MaHopDong" class="btn btn-sm btn-outline-primary" title="Sửa"><i class="bi bi-pencil"></i></a><form asp-action="Delete" asp-route-id="@item.Contract.MaHopDong" method="post" class="d-inline" onsubmit="return confirm('Xóa hợp đồng này?');"><button class="btn btn-sm btn-outline-danger" title="Xóa"><i class="bi bi-trash"></i></button></form></td></tr>
-    }
-    @if (Model.Contracts.Count == 0) { <tr><td colspan="7" class="text-center text-muted py-5">Không tìm thấy hợp đồng phù hợp.</td></tr> }
-    </tbody></table></div></div>
+
+<div class="catalog-page">
+    <!-- HERO COMMAND BANNER -->
+    <section class="catalog-hero catalog-command-bar mb-4 position-relative">
+        <div class="catalog-art-deco-pattern" aria-hidden="true"></div>
+        <div class="position-relative" style="z-index: 2;">
+            <nav aria-label="Điều hướng">
+                <ol class="catalog-breadcrumb catalog-breadcrumb--dark">
+                    <li><a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a></li>
+                    <li aria-current="page">Hợp đồng lao động</li>
+                </ol>
+            </nav>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill" style="font-size: 0.65rem;">
+                    <i class="bi bi-stars"></i> THE OVERTIME HOTEL
+                </span>
+                <span class="catalog-eyebrow mb-0"><i class="bi bi-file-earmark-text-fill me-1"></i> Quản trị hợp đồng</span>
+            </div>
+            <h1 class="catalog-title h2 mb-1 text-white">Quản Lý Hợp Đồng Lao Động</h1>
+            <p class="text-white-50 mb-0">Lập, gia hạn và theo dõi thời hạn hiệu lực hợp đồng lao động theo từng nhân viên khách sạn 5 sao.</p>
+        </div>
+        <div class="catalog-command-actions position-relative" style="z-index: 2;">
+            <a asp-controller="Home" asp-action="Index" class="catalog-back-action">
+                <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+            </a>
+            <button type="button" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-bs-toggle="modal" data-bs-target="#createContractModal">
+                <i class="bi bi-plus-lg me-1 text-success"></i> Lập hợp đồng mới
+            </button>
+        </div>
+    </section>
+
+    <!-- 6 TABS LIÊN THÔNG ĐIỀU HÀNH -->
+    <partial name="_CatalogNavTabs" />
+
+    <partial name="_CatalogAlerts" />
+
+    <!-- 4 METRIC STATS CARDS -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Tổng Hợp Đồng</div>
+                        <div class="fs-3 fw-bold text-dark font-serif mt-1">@Model.TotalContracts</div>
+                    </div>
+                    <div class="rounded-3 bg-primary-subtle text-primary p-3 fs-4">
+                        <i class="bi bi-file-earmark-text-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Đang Hiệu Lực</div>
+                        <div class="fs-3 fw-bold text-success font-serif mt-1">@Model.ActiveContracts</div>
+                    </div>
+                    <div class="rounded-3 bg-success-subtle text-success p-3 fs-4">
+                        <i class="bi bi-file-earmark-check-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Sắp Hết Hạn (&le; 30 ngày)</div>
+                        <div class="fs-3 fw-bold text-warning font-serif mt-1">@Model.ExpiringContracts</div>
+                    </div>
+                    <div class="rounded-3 bg-warning-subtle text-warning-emphasis p-3 fs-4">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Đã Hết Hạn</div>
+                        <div class="fs-3 fw-bold text-danger font-serif mt-1">@Model.ExpiredContracts</div>
+                    </div>
+                    <div class="rounded-3 bg-danger-subtle text-danger p-3 fs-4">
+                        <i class="bi bi-calendar-x-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLE WORKSPACE CARD -->
+    <section class="catalog-card shadow-sm">
+        <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <form method="get" class="catalog-filter-form d-flex flex-wrap gap-2 flex-grow-1 align-items-center">
+                <div class="input-group" style="min-width: 240px; flex: 2;">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input name="keyword" value="@Model.Keyword" class="form-control catalog-search border-start-0 ps-0" placeholder="Số hợp đồng, loại hoặc tên nhân viên..." />
+                </div>
+
+                <div style="min-width: 150px; flex: 1;">
+                    <select name="status" class="form-select">
+                        <option value="">-- Trạng thái lưu --</option>
+                        <option value="HIEU_LUC" selected="@(Model.Status == "HIEU_LUC")">Hiệu lực</option>
+                        <option value="HET_HAN" selected="@(Model.Status == "HET_HAN")">Hết hạn</option>
+                        <option value="THANH_LY" selected="@(Model.Status == "THANH_LY")">Thanh lý</option>
+                    </select>
+                </div>
+
+                <div style="min-width: 170px; flex: 1;">
+                    <select name="contractFilter" class="form-select">
+                        <option value="">-- Theo dõi thời hạn --</option>
+                        <option value="HIEU_LUC" selected="@(Model.ContractFilter == "HIEU_LUC")">Còn hiệu lực</option>
+                        <option value="SAP_HET_HAN" selected="@(Model.ContractFilter == "SAP_HET_HAN")">Sắp hết hạn (&le; 30 ngày)</option>
+                        <option value="DA_HET_HAN" selected="@(Model.ContractFilter == "DA_HET_HAN")">Đã hết hạn</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-hotel-primary text-nowrap"><i class="bi bi-search me-1"></i>Lọc HĐ</button>
+                @if (!string.IsNullOrWhiteSpace(Model.Keyword) || !string.IsNullOrWhiteSpace(Model.Status) || !string.IsNullOrWhiteSpace(Model.ContractFilter))
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
+                }
+            </form>
+
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="HopDong" title="Xuất danh sách ra file CSV mở bằng Excel">
+                    <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất CSV
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-print title="In danh sách hợp đồng chuẩn A4">
+                    <i class="bi bi-printer text-primary me-1"></i> In danh sách
+                </button>
+                <span class="catalog-badge" data-catalog-count>
+                    <i class="bi bi-file-earmark-text-fill me-1"></i> @Model.Contracts.Count hợp đồng
+                </span>
+            </div>
+        </div>
+
+        <div class="table-responsive" data-catalog-results>
+            <table class="table catalog-table" data-export-table="Danh_Sach_Hop_Dong">
+                <thead>
+                    <tr>
+                        <th style="width: 180px">Số hợp đồng</th>
+                        <th>Nhân sự đại diện</th>
+                        <th>Loại hợp đồng</th>
+                        <th>Thời hạn thực hiện</th>
+                        <th>Lương cơ bản</th>
+                        <th style="width: 130px">Trạng thái</th>
+                        <th class="text-end" style="width: 120px">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Contracts.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="catalog-empty">
+                            <div class="catalog-empty-state">
+                                <div class="catalog-empty-icon"><i class="bi bi-file-earmark-slash"></i></div>
+                                <h4>Không tìm thấy hợp đồng lao động phù hợp</h4>
+                                <p class="text-muted">Không có hợp đồng nào khớp với từ khóa tìm kiếm hoặc bộ lọc thời hạn.</p>
+                                <button type="button" class="btn btn-hotel-primary btn-sm px-3 mt-2" data-bs-toggle="modal" data-bs-target="#createContractModal">
+                                    <i class="bi bi-plus-lg me-1"></i> Lập hợp đồng mới
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model.Contracts)
+                    {
+                        var contract = item.Contract;
+                        var badgeClass = item.State == "DA_HET_HAN" ? "bg-danger" : item.State == "SAP_HET_HAN" ? "bg-warning text-dark" : item.State == "HIEU_LUC" ? "bg-success" : "bg-secondary";
+                        <tr>
+                            <td>
+                                <strong class="text-dark font-monospace">@contract.SoHopDong</strong>
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark font-serif">@item.EmployeeName</div>
+                                <small class="text-muted">Mã: NV-@contract.MaNhanVien</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">@contract.LoaiHopDong</span>
+                            </td>
+                            <td>
+                                <div>@contract.NgayBatDau.ToString("dd/MM/yyyy") &rarr; @(contract.NgayKetThuc?.ToString("dd/MM/yyyy") ?? "Không thời hạn")</div>
+                                @if (item.DaysRemaining.HasValue)
+                                {
+                                    <span class="badge @badgeClass rounded-pill" style="font-size: 0.72rem;">
+                                        @(item.DaysRemaining < 0 ? $"Quá hạn {-item.DaysRemaining} ngày" : item.DaysRemaining == 0 ? "Hết hạn hôm nay" : $"Còn {item.DaysRemaining} ngày")
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                <strong class="text-primary font-monospace">@contract.LuongCoBan.ToString("N0") đ</strong>
+                            </td>
+                            <td>
+                                <span class="badge @badgeClass rounded-pill px-3 py-1">@contract.TrangThai</span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Edit" asp-route-id="@contract.MaHopDong" class="btn btn-sm btn-outline-primary rounded-3" title="Sửa hợp đồng">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@contract.MaHopDong" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hợp đồng @contract.SoHopDong?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-3" title="Xóa hợp đồng">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
+<!-- MODAL LẬP HỢP ĐỒNG MỚI -->
 <div class="modal fade" id="createContractModal" tabindex="-1" aria-labelledby="createContractModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header"><div><div class="text-uppercase small text-success fw-bold">Hồ sơ lao động</div><h2 class="modal-title h5 mb-0" id="createContractModalLabel">Lập hợp đồng lao động</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-white border-bottom py-3 px-4">
+                <div>
+                    <div class="text-uppercase small text-success fw-bold">Hồ sơ pháp lý lao động</div>
+                    <h2 class="modal-title h5 mb-0 font-serif" id="createContractModalLabel">Lập Hợp Đồng Lao Động Mới</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
             <form asp-action="Create" method="post" class="d-flex flex-column overflow-hidden">
-                <div class="modal-body overflow-auto"><partial name="_Form" model="Model.CreateContractForm" /></div>
-                <div class="modal-footer flex-shrink-0 bg-white"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Hủy</button><button type="submit" class="btn btn-success"><i class="bi bi-check2 me-1"></i>Lưu hợp đồng</button></div>
+                @Html.AntiForgeryToken()
+                <div class="modal-body overflow-auto p-4">
+                    <partial name="_Form" model="Model.CreateContractForm" />
+                </div>
+                <div class="modal-footer flex-shrink-0 bg-light border-top py-3 px-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Hủy
+                    </button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold">
+                        <i class="bi bi-check2 me-1"></i>Lưu hợp đồng
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/catalog.js" asp-append-version="true"></script>
+}

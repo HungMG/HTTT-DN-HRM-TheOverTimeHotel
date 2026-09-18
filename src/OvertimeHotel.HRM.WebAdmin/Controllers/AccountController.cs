@@ -140,6 +140,132 @@ public class AccountController : Controller
         return View();
     }
 
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> Profile()
+    {
+        var username = User.Identity?.Name ?? "";
+        var account = await _context.TaiKhoans
+            .Include(t => t.VaiTro)
+            .Include(t => t.NhanVien)
+                .ThenInclude(n => n!.PhongBan)
+            .Include(t => t.NhanVien)
+                .ThenInclude(n => n!.ChucVu)
+            .FirstOrDefaultAsync(t => t.TenDangNhap.ToLower() == username.ToLower());
+
+        if (account == null)
+        {
+            return NotFound();
+        }
+
+        var model = new UserProfileViewModel
+        {
+            AccountId = account.MaTaiKhoan,
+            EmployeeId = account.MaNhanVien,
+            Username = account.TenDangNhap,
+            FullName = account.NhanVien != null ? $"{account.NhanVien.Ho} {account.NhanVien.Ten}".Trim() : account.TenDangNhap,
+            Email = account.NhanVien?.Email ?? "",
+            Phone = account.NhanVien?.DienThoai ?? "",
+            Address = account.NhanVien?.DiaChi ?? "Chưa cập nhật",
+            Department = account.NhanVien?.PhongBan?.TenPhongBan ?? "Khách sạn",
+            Position = account.NhanVien?.ChucVu?.TenChucVu ?? "Nhân viên",
+            RoleName = account.VaiTro?.TenVaiTro ?? "User",
+            StartDate = account.NhanVien?.NgayVaoLam ?? DateOnly.FromDateTime(DateTime.Today),
+            IsActive = account.TrangThai
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(UserProfileViewModel input)
+    {
+        var username = User.Identity?.Name ?? "";
+        var account = await _context.TaiKhoans
+            .Include(t => t.VaiTro)
+            .Include(t => t.NhanVien)
+                .ThenInclude(n => n!.PhongBan)
+            .Include(t => t.NhanVien)
+                .ThenInclude(n => n!.ChucVu)
+            .FirstOrDefaultAsync(t => t.TenDangNhap.ToLower() == username.ToLower());
+
+        if (account == null) return NotFound();
+
+        // Validate
+        if (string.IsNullOrWhiteSpace(input.ChangePassword.CurrentPassword))
+        {
+            ModelState.AddModelError("ChangePassword.CurrentPassword", "Vui lòng nhập mật khẩu hiện tại.");
+        }
+        else
+        {
+            var currentHash = PasswordHasher.Hash(input.ChangePassword.CurrentPassword);
+            if (account.MatKhauBam != currentHash)
+            {
+                ModelState.AddModelError("ChangePassword.CurrentPassword", "Mật khẩu hiện tại không chính xác.");
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(input.ChangePassword.NewPassword) || input.ChangePassword.NewPassword.Length < 6)
+        {
+            ModelState.AddModelError("ChangePassword.NewPassword", "Mật khẩu mới phải có ít nhất 6 ký tự.");
+        }
+
+        if (input.ChangePassword.NewPassword != input.ChangePassword.ConfirmPassword)
+        {
+            ModelState.AddModelError("ChangePassword.ConfirmPassword", "Xác nhận mật khẩu mới không khớp.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            input.AccountId = account.MaTaiKhoan;
+            input.EmployeeId = account.MaNhanVien;
+            input.Username = account.TenDangNhap;
+            input.FullName = account.NhanVien != null ? $"{account.NhanVien.Ho} {account.NhanVien.Ten}".Trim() : account.TenDangNhap;
+            input.Email = account.NhanVien?.Email ?? "";
+            input.Phone = account.NhanVien?.DienThoai ?? "";
+            input.Address = account.NhanVien?.DiaChi ?? "Chưa cập nhật";
+            input.Department = account.NhanVien?.PhongBan?.TenPhongBan ?? "Khách sạn";
+            input.Position = account.NhanVien?.ChucVu?.TenChucVu ?? "Nhân viên";
+            input.RoleName = account.VaiTro?.TenVaiTro ?? "User";
+            input.StartDate = account.NhanVien?.NgayVaoLam ?? DateOnly.FromDateTime(DateTime.Today);
+            input.IsActive = account.TrangThai;
+            return View("Profile", input);
+        }
+
+        // Cập nhật mật khẩu mới trên Supabase
+        account.MatKhauBam = PasswordHasher.Hash(input.ChangePassword.NewPassword);
+
+        // Ghi nhật ký quản trị
+        try
+        {
+            _context.NhatKyQuanTris.Add(new NhatKyQuanTri
+            {
+                MaTaiKhoanThucHien = account.MaTaiKhoan,
+                MaTaiKhoanBiTacDong = account.MaTaiKhoan,
+                TenNguoiThucHien = account.TenDangNhap,
+                TenTaiKhoanBiTacDong = account.TenDangNhap,
+                HanhDong = "DOI_MAT_KHAU",
+                NoiDung = $"Người dùng '{account.TenDangNhap}' tự đổi mật khẩu cá nhân.",
+                GiaTriCu = "***",
+                GiaTriMoi = "***",
+                LyDo = "Người dùng đổi mật khẩu định kỳ",
+                DiaChiIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
+                ThoiGian = DateTimeOffset.UtcNow
+            });
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể ghi nhật ký đổi mật khẩu.");
+            await _context.SaveChangesAsync();
+        }
+
+        TempData["Success"] = "Đổi mật khẩu thành công! Mật khẩu mới đã có hiệu lực.";
+        return RedirectToAction(nameof(Profile));
+    }
+
     private static List<TaiKhoan> GetDevSeedAccounts()
     {
         return
