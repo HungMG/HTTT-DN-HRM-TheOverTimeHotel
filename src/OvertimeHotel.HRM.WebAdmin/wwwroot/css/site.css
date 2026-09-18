@@ -220,3 +220,289 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+/* ==========================================================================
+   ✨ THE OVERTIME HOTEL - LUXURY MOTION & SLOW-MO INTERACTIONS
+   ========================================================================== */
+
+/* 1. Thanh tiến trình chuyển trang màu Vàng Hoàng Gia (Top Luxury Bar) */
+#hotel-page-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, #d4af37 0%, #fde047 50%, #b8860b 100%);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.8), 0 0 4px rgba(253, 224, 71, 0.9);
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+
+#hotel-page-progress.active {
+  opacity: 1;
+}
+
+/* 2. Hiệu ứng chuyển động xuất hiện trang thanh lịch, nhẹ nhàng (Gentle Luxury Slide & Float In) */
+@keyframes ppBannerDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.985);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Các khung, ô thẻ KPI, khối nội dung nhảy lướt vào nhẹ nhàng, đầm tay */
+@keyframes ppBoxJumpIn {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.97);
+    filter: blur(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Các bảng biểu và danh sách trượt lướt êm ái vào vị trí */
+@keyframes ppTableFlyIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Lớp hiệu ứng tự động gán cho từng phần tử với gia tốc đầm mượt chuẩn Luxury Hotel */
+.pp-banner-anim {
+  animation: ppBannerDrop 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+.pp-box-anim {
+  animation: ppBoxJumpIn 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+.pp-table-anim {
+  animation: ppTableFlyIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+/* 3. Hiệu ứng BlurText: Chữ từ mờ mờ trượt lên hiện rõ sắc nét (từ react-bits TextAnimations) */
+@keyframes blurTextFloatUp {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(12px);
+  }
+  50% {
+    opacity: 0.65;
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0);
+  }
+}
+
+.hotel-blur-text {
+  display: inline-block;
+  animation: blurTextFloatUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, filter, opacity;
+}
+
+.hotel-blur-word {
+  display: inline-block;
+  animation: blurTextFloatUp 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, filter, opacity;
+  white-space: pre;
+}
+
+/* Hiệu ứng rời trang nhẹ nhàng khi click chuyển link */
+.hotel-page-leaving .hero-luxury-banner,
+.hotel-page-leaving .kpi-card,
+.hotel-page-leaving .module-card,
+.hotel-page-leaving .card,
+.hotel-page-leaving .table-responsive,
+.hotel-page-leaving main > * {
+  opacity: 0 !important;
+  transform: translateY(-12px) scale(0.985) !important;
+  filter: blur(3px) !important;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 3. Hiệu ứng nhấn Slow-Mo đầm tay & Đàn hồi (Slow-Mo Spring Press) */
+.btn,
+.btn-slowmo,
+.nav-pills .nav-link,
+.kpi-card,
+.module-card,
+.dropdown-item,
+.account-primary-action,
+.account-icon-action,
+.account-row-actions a,
+.account-row-actions button,
+.account-filter-actions button,
+.account-filter-actions a,
+.account-form-actions button,
+.account-form-actions a,
+.account-confirm-actions button,
+.role-legend-item,
+.motion-stat,
+.account-audit-tools button,
+.account-audit-clear {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.25s ease,
+              border-color 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Trạng thái khi chuột đè xuống: lún đầm tay chậm rãi (slow-mo press-in) */
+.btn:active,
+.btn-slowmo:active,
+.nav-pills .nav-link:active,
+.module-card:active,
+.account-primary-action:active,
+.account-icon-action:active,
+.account-row-actions a:active,
+.account-row-actions button:active,
+.account-filter-actions button:active,
+.account-filter-actions a:active,
+.account-form-actions button:active,
+.account-form-actions a:active,
+.account-confirm-actions button:active,
+.role-legend-item:active,
+.account-audit-tools button:active,
+.account-audit-clear:active {
+  transform: scale(0.955) translateY(2px) !important;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.25, 1) !important;
+}
+
+/* 4. Hiệu ứng gợn sóng ánh sáng chậm mượt (Slow-Mo Luxury Water/Light Ripple) */
+.hotel-slowmo-ripple {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: scale(0);
+  opacity: 0.75;
+  animation: slowmoRippleExpand 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 99;
+}
+
+/* Tone màu Ripple vàng hoàng gia cho nút tối / nút primary */
+.btn-primary .hotel-slowmo-ripple,
+.btn-dark .hotel-slowmo-ripple,
+.btn-danger .hotel-slowmo-ripple,
+.btn-success .hotel-slowmo-ripple,
+.hero-luxury-banner .hotel-slowmo-ripple,
+.account-primary-action .hotel-slowmo-ripple,
+.account-confirm-actions button:last-child .hotel-slowmo-ripple,
+.account-form-actions button .hotel-slowmo-ripple,
+.account-audit-tools button .hotel-slowmo-ripple {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, rgba(253, 224, 71, 0.45) 45%, rgba(212, 175, 55, 0) 75%);
+}
+
+/* Tone màu Ripple xanh navy / vàng nhẹ cho nút viền sáng hoặc nền trắng */
+.btn-outline-primary .hotel-slowmo-ripple,
+.btn-outline-secondary .hotel-slowmo-ripple,
+.btn-light .hotel-slowmo-ripple,
+.nav-link .hotel-slowmo-ripple,
+.dropdown-item .hotel-slowmo-ripple,
+.module-card .hotel-slowmo-ripple,
+.kpi-card .hotel-slowmo-ripple,
+.motion-stat .hotel-slowmo-ripple,
+.role-legend-item .hotel-slowmo-ripple,
+.account-icon-action .hotel-slowmo-ripple,
+.account-row-actions button .hotel-slowmo-ripple,
+.account-row-actions a .hotel-slowmo-ripple,
+.account-filter-actions a .hotel-slowmo-ripple,
+.account-filter-actions button .hotel-slowmo-ripple,
+.account-form-actions a .hotel-slowmo-ripple,
+.account-confirm-actions button:first-child .hotel-slowmo-ripple,
+.account-audit-item .hotel-slowmo-ripple,
+.account-audit-clear .hotel-slowmo-ripple {
+  background: radial-gradient(circle, rgba(30, 58, 138, 0.25) 0%, rgba(212, 175, 55, 0.3) 45%, rgba(30, 58, 138, 0) 75%);
+}
+
+@keyframes slowmoRippleExpand {
+  0% {
+    transform: scale(0);
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(3.5);
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   ✨ IN-PLACE UI STATE TRANSITIONS (ZERO FULL-PAGE RELOAD)
+   ========================================================================== */
+.in-place-container {
+  will-change: opacity, transform;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.in-place-enter {
+  animation: inPlaceFadeScale 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes inPlaceFadeScale {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.992);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.in-place-leave {
+  opacity: 0 !important;
+  transform: translateY(-6px) scale(0.992) !important;
+  transition: opacity 0.14s ease, transform 0.14s ease !important;
+}
+
+.matrix-row-transition {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.matrix-row-hidden {
+  display: none !important;
+}
+
+/* Hỗ trợ chuẩn người dùng tắt hiệu ứng chuyển động */
+@media (prefers-reduced-motion: reduce) {
+  main[role="main"],
+  .page-transition-content,
+  #hotel-page-progress,
+  .hotel-page-leaving,
+  .btn,
+  .hotel-slowmo-ripple {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

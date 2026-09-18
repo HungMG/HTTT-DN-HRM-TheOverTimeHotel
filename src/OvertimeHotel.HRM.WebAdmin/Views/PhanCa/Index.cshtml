@@ -1,0 +1,1755 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.PhanCaIndexViewModel
+@{
+    ViewData["Title"] = "Lập Lịch Phân Ca 24/7 & Timeline · Task 16";
+    var currentWeek = ViewBag.CurrentWeek as string ?? Model.WeekStart.ToString("yyyy-MM-dd");
+    var prevWeek = ViewBag.PrevWeek as string;
+    var nextWeek = ViewBag.NextWeek as string;
+    var todayWeek = ViewBag.TodayWeek as string;
+
+    var todayDate = DateOnly.FromDateTime(DateTime.Today);
+    var todayShifts = Model.CaTrucHomNay;
+
+    var groupedRows = Model.Rows
+        .GroupBy(r => new { r.MaPhongBan, r.TenPhongBan })
+        .OrderBy(g => g.Key.TenPhongBan)
+        .ToList();
+}
+
+<style>
+    /* ==========================================================================
+       ENTERPRISE SHIFT SCHEDULER & 24H TIMELINE STYLES (THE OVERTIME HOTEL)
+       ========================================================================== */
+    .shift-workspace-card {
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        background: #ffffff;
+        border-radius: 1.25rem;
+    }
+
+    /* Tối ưu khung cuộn bảng Ma trận */
+    .matrix-scroll-viewport {
+        max-height: 620px;
+        overflow: auto;
+        position: relative;
+        border-radius: 0 0 1.25rem 1.25rem;
+    }
+
+    .matrix-scroll-viewport::-webkit-scrollbar,
+    .timeline-scroll-viewport::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    .matrix-scroll-viewport::-webkit-scrollbar-track,
+    .timeline-scroll-viewport::-webkit-scrollbar-track {
+        background: #f8fafc;
+    }
+    .matrix-scroll-viewport::-webkit-scrollbar-thumb,
+    .timeline-scroll-viewport::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    .matrix-scroll-viewport::-webkit-scrollbar-thumb:hover,
+    .timeline-scroll-viewport::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Cố định tiêu đề hàng & cột thông tin nhân viên */
+    .table-sticky-matrix thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #f8fafc !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+    .table-sticky-matrix th.sticky-emp-col,
+    .table-sticky-matrix td.sticky-emp-col {
+        position: sticky;
+        left: 0;
+        z-index: 12;
+        background: #ffffff !important;
+        box-shadow: 4px 0 8px -2px rgba(0,0,0,0.08);
+    }
+    .table-sticky-matrix thead th.sticky-emp-col {
+        z-index: 20;
+        background: #f1f5f9 !important;
+    }
+
+    /* Thẻ ca làm việc trong ô Ma trận */
+    .shift-pill {
+        border-radius: 0.65rem;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.72rem;
+        line-height: 1.25;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .shift-pill:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .shift-pill-morning {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+    }
+    .shift-pill-afternoon {
+        background-color: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+    .shift-pill-night {
+        background-color: #0f172a;
+        color: #fef08a;
+        border: 1px solid #eab308;
+    }
+
+    /* Tiêu đề nhóm phòng ban */
+    .dept-group-header {
+        background: #f8fafc;
+        border-top: 2px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+        cursor: pointer;
+        user-select: none;
+    }
+    .dept-group-header:hover {
+        background: #f1f5f9;
+    }
+
+    /* Ô trống bấm xếp ca nhanh */
+    .btn-quick-slot {
+        border: 1.5px dashed #cbd5e1;
+        background: transparent;
+        color: #94a3b8;
+        border-radius: 0.5rem;
+        width: 100%;
+        height: 100%;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    .btn-quick-slot:hover {
+        border-color: #b45309;
+        background: #fffbeb;
+        color: #b45309;
+        transform: scale(1.02);
+    }
+
+    /* ==========================================================================
+       24-HOUR DAILY TIMELINE STYLES
+       ========================================================================== */
+    .timeline-scroll-viewport {
+        max-height: 600px;
+        overflow-x: auto;
+        overflow-y: auto;
+    }
+    .timeline-container-inner {
+        min-width: 1450px; /* Rộng rãi thoải mái cho 24 giờ */
+    }
+    .timeline-ruler {
+        display: flex;
+        position: relative;
+        height: 42px;
+        background: #f8fafc;
+        border-bottom: 2px solid #cbd5e1;
+    }
+    .timeline-ruler-tick {
+        flex: 1;
+        border-right: 1px dashed #cbd5e1;
+        font-size: 0.7rem;
+        color: #475569;
+        font-weight: 700;
+        padding-left: 6px;
+        padding-top: 6px;
+    }
+    .timeline-row {
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #f1f5f9;
+        min-height: 58px;
+    }
+    .timeline-emp-col {
+        width: 260px;
+        min-width: 260px;
+        padding: 0.5rem 0.75rem;
+        background: #ffffff !important;
+        border-right: 2px solid #cbd5e1;
+        position: sticky;
+        left: 0;
+        z-index: 12;
+        box-shadow: 4px 0 8px -2px rgba(0,0,0,0.08);
+    }
+    .timeline-track-col {
+        flex-grow: 1;
+        position: relative;
+        height: 48px;
+        background: #ffffff;
+    }
+    .timeline-track-grid {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        pointer-events: none;
+    }
+    .timeline-grid-cell {
+        flex: 1;
+        border-right: 1px dashed #f1f5f9;
+    }
+    .zone-morning {
+        position: absolute;
+        left: 25%;
+        width: 33.333%;
+        top: 0;
+        bottom: 0;
+        background: rgba(59, 130, 246, 0.04);
+        border-left: 1px solid rgba(59, 130, 246, 0.15);
+        border-right: 1px solid rgba(59, 130, 246, 0.15);
+        pointer-events: none;
+    }
+    .zone-afternoon {
+        position: absolute;
+        left: 58.333%;
+        width: 33.333%;
+        top: 0;
+        bottom: 0;
+        background: rgba(245, 158, 11, 0.04);
+        border-right: 1px solid rgba(245, 158, 11, 0.15);
+        pointer-events: none;
+    }
+    .zone-night {
+        position: absolute;
+        left: 91.666%;
+        width: 8.333%;
+        top: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.05);
+        pointer-events: none;
+    }
+    .zone-night-morning {
+        position: absolute;
+        left: 0;
+        width: 25%;
+        top: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.05);
+        pointer-events: none;
+    }
+    .timeline-shift-bar {
+        position: absolute;
+        top: 6px;
+        bottom: 6px;
+        border-radius: 0.65rem;
+        display: flex;
+        align-items: center;
+        padding: 0 0.75rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        z-index: 3;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .timeline-shift-bar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 4;
+    }
+    .timeline-shift-morning {
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: #ffffff;
+        border: 1px solid #1d4ed8;
+    }
+    .timeline-shift-afternoon {
+        background: linear-gradient(135deg, #d97706, #f59e0b);
+        color: #ffffff;
+        border: 1px solid #b45309;
+    }
+    .timeline-shift-night {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+        color: #fef08a;
+        border: 1px solid #eab308;
+    }
+    .timeline-shift-off {
+        position: absolute;
+        top: 10px;
+        bottom: 10px;
+        left: 5%;
+        right: 5%;
+        border-radius: 0.5rem;
+        border: 1px dashed #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        color: #94a3b8;
+        font-style: italic;
+    }
+
+    /* Đảm bảo chữ tiêu đề không bị chèn khi thu nhỏ trình duyệt */
+    .header-title-responsive {
+        font-size: clamp(1.05rem, 2vw, 1.35rem);
+        line-height: 1.3;
+    }
+
+    /* Nút chọn chế độ xem trong thanh header bảng */
+    .view-switcher-btn {
+        transition: all 0.2s ease;
+    }
+    .view-switcher-btn.active {
+        background: #1e3a8a !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 6px rgba(30, 58, 138, 0.3) !important;
+    }
+
+    /* Loading overlay cục bộ chỉ phủ trên khung lịch đang nạp */
+    .in-place-loading-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.78);
+        backdrop-filter: blur(3px);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 1.25rem;
+    }
+
+    /* Hiệu ứng chuyển động mượt mà in-place-enter */
+    .in-place-enter {
+        animation: inPlaceFadeScale 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    @@keyframes inPlaceFadeScale {
+        0% {
+            opacity: 0;
+            transform: translateY(8px) scale(0.995);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    /* Hiệu ứng hào quang vàng kim khi KPI cập nhật số mới */
+    .kpi-pulse-active {
+        box-shadow: 0 0 14px rgba(245, 158, 11, 0.45) !important;
+        transform: scale(1.025);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+</style>
+
+<div class="container-fluid px-2 px-md-3 py-3">
+    <!-- =========================================================================
+         1. HEADER CỐ ĐỊNH, CHỐNG TRÀN CHỮ (TUYỆT ĐỐI KHÔNG RELOAD KHI ĐỔI TUẦN/NGÀY)
+         ========================================================================= -->
+    <div class="card border-0 rounded-4 shadow-sm p-3 mb-3 bg-white" style="border: 1px solid rgba(226, 232, 240, 0.9);">
+        <div class="row align-items-center g-2">
+            <!-- Khu vực tiêu đề và Breadcrumb -->
+            <div class="col-12 col-lg-7">
+                <!-- BREADCRUMB QUAY VỀ DASHBOARD -->
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-1 small">
+                        <li class="breadcrumb-item">
+                            <a asp-controller="Home" asp-action="Index" class="text-decoration-none fw-bold text-primary d-inline-flex align-items-center gap-1">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item text-muted">Vận Hành</li>
+                        <li class="breadcrumb-item active fw-bold text-dark">Phân Ca 24/7 (Task 16)</li>
+                    </ol>
+                </nav>
+
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <h1 class="header-title-responsive fw-bold text-dark mb-0 font-serif">
+                        <i class="bi bi-calendar2-week-fill text-warning me-1"></i> Quản Lý &amp; Lập Lịch Phân Ca 24/7
+                    </h1>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.7rem;">
+                        <i class="bi bi-check-circle-fill me-1"></i>Vận hành 24/7
+                    </span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill" style="font-size: 0.7rem;">
+                        <i class="bi bi-moon-stars-fill me-1"></i>+30% Ca Đêm
+                    </span>
+                </div>
+            </div>
+
+            <!-- Khu vực nút bấm điều hướng -->
+            <div class="col-12 col-lg-5 text-lg-end mt-2 mt-lg-0">
+                <div class="d-flex flex-wrap align-items-center justify-content-lg-end gap-2">
+                    <!-- NÚT VỀ DASHBOARD NỔI BẬT THEO YÊU CẦU -->
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-2 fw-semibold shadow-sm hover-lift" title="Quay lại Bàn làm việc Dashboard">
+                        <i class="bi bi-house-door-fill me-1"></i> Dashboard
+                    </a>
+
+                    <button type="button" class="btn btn-warning fw-bold btn-sm px-3 py-2 text-dark shadow-sm rounded-pill hover-lift" 
+                            data-bs-toggle="modal" data-bs-target="#modalCreatePhanCa">
+                        <i class="bi bi-plus-circle-fill me-1"></i> + Xếp Ca Mới
+                    </button>
+
+                    <!-- Nút Tuần Này nạp tại chỗ In-Place không reload toàn trang -->
+                    <button type="button" onclick="loadWeekInPlace('@todayWeek')" class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill hover-lift" title="Quay về tuần hiện tại (In-Place)">
+                        <i class="bi bi-calendar-event me-1"></i> Tuần Này
+                    </button>
+
+                    <a asp-controller="CaLamViec" asp-action="Index" class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill hover-lift" title="Quản lý cấu hình 3 mẫu ca chuẩn">
+                        <i class="bi bi-clock-history me-1"></i> Mẫu Ca
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BỐ CỤC CHÍNH 2 CỘT: KHỐI LỊCH BÊN TRÁI RỘNG RÃI + KHỐI CHỈ SỐ DỌC SÁT BÊN PHẢI -->
+    <div class="row g-3">
+        <!-- =========================================================================
+             CỘT TRÁI / TRUNG TÂM: KHỐI ĐIỀU HƯỚNG & KHUNG LỊCH CHÍNH (RỘNG RÃI TỐI ĐA)
+             ========================================================================= -->
+        <div class="col-12 col-lg-9 col-xl-10">
+            <!-- 2. KHỐI CHỈNH NGÀY/TUẦN & BỘ LỌC ĐẨY LÊN TRÊN (TIẾT KIỆM KHÔNG GIAN) -->
+            <div class="shift-workspace-card shadow-sm p-3 mb-3">
+                <div class="row align-items-center g-2">
+                    <!-- Điều hướng tuần (Nạp tại chỗ In-Place, không reload trang) -->
+                    <div class="col-12 col-md-4 col-xl-4" id="weekNavigationWrapper">
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" onclick="loadWeekInPlace('@prevWeek')" 
+                                    class="btn btn-outline-secondary btn-sm rounded-pill px-2 hover-lift" title="Tuần trước (In-Place)">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+
+                            <div class="text-center flex-grow-1 px-1">
+                                <div class="fw-bold text-dark small" style="white-space: nowrap;">
+                                    <i class="bi bi-calendar-week text-primary me-1"></i>
+                                    @Model.WeekStart.ToString("dd/MM") &mdash; @Model.WeekEnd.ToString("dd/MM/yyyy")
+                                </div>
+                                <span class="badge bg-light text-secondary border" style="font-size: 0.65rem;">
+                                    Tuần @(System.Globalization.ISOWeek.GetWeekOfYear(Model.WeekStart.ToDateTime(TimeOnly.MinValue))) năm @Model.WeekStart.Year
+                                </span>
+                            </div>
+
+                            <button type="button" onclick="loadWeekInPlace('@nextWeek')" 
+                                    class="btn btn-outline-secondary btn-sm rounded-pill px-2 hover-lift" title="Tuần sau (In-Place)">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tìm kiếm nhân sự -->
+                    <div class="col-12 col-sm-6 col-md-4 col-xl-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="filterKeyword" class="form-control border-start-0" 
+                                   placeholder="Tìm tên hoặc mã nhân viên..." oninput="applyFiltersInPlace()" />
+                        </div>
+                    </div>
+
+                    <!-- Lọc phòng ban & ca -->
+                    <div class="col-6 col-sm-3 col-md-2 col-xl-2">
+                        <select id="filterPhongBan" class="form-select form-select-sm rounded-3" onchange="applyFiltersInPlace()">
+                            <option value="">-- Bộ phận (@Model.DanhSachPhongBan.Count) --</option>
+                            @foreach (var pb in Model.DanhSachPhongBan)
+                            {
+                                <option value="@pb.MaPhongBan" selected="@(Model.SelectedPhongBanId == pb.MaPhongBan)">
+                                    @pb.TenPhongBan
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-6 col-sm-3 col-md-2 col-xl-2">
+                        <select id="filterCa" class="form-select form-select-sm rounded-3" onchange="applyFiltersInPlace()">
+                            <option value="">-- Ca trực --</option>
+                            @foreach (var ca in Model.DanhSachCa)
+                            {
+                                <option value="@ca.MaCa" selected="@(Model.SelectedCaId == ca.MaCa)">
+                                    @ca.TenCa
+                                </option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. DẢI TAB CHUYỂN ĐỔI 4 CHẾ ĐỘ XEM ĐẶT RIÊNG BIỆT, NỔI BẬT & KHÔNG BAO GIỜ BỊ ẨN HAY CHÈN CHỮ -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 bg-white p-2 rounded-4 shadow-sm border" style="border: 1px solid rgba(226, 232, 240, 0.9);">
+                <div class="d-flex align-items-center gap-2 ps-2">
+                    <i class="bi bi-display text-primary fs-5"></i>
+                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Chế Độ Xem Lịch:</span>
+                </div>
+
+                <div class="btn-group btn-group-sm rounded-pill shadow-sm overflow-hidden p-1 bg-light border" role="group">
+                    <button type="button" id="btnViewMatrix" onclick="switchViewMode('matrix')" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 py-1 view-switcher-btn">
+                        <i class="bi bi-grid-3x3 me-1"></i> 1. Ma Trận Tuần
+                    </button>
+                    <button type="button" id="btnViewTimeline" onclick="switchViewMode('timeline')" class="btn btn-light btn-sm rounded-pill fw-bold px-3 py-1 text-primary view-switcher-btn">
+                        <i class="bi bi-bar-chart-steps me-1"></i> 2. Timeline 24H (Theo Giờ)
+                    </button>
+                    <button type="button" id="btnViewToday" onclick="switchViewMode('today')" class="btn btn-light btn-sm rounded-pill fw-bold px-3 py-1 text-dark view-switcher-btn">
+                        <i class="bi bi-sun-fill me-1 text-warning"></i> 3. Ca Trực Hôm Nay
+                    </button>
+                    <button type="button" id="btnViewList" onclick="switchViewMode('list')" class="btn btn-light btn-sm rounded-pill fw-bold px-3 py-1 text-secondary view-switcher-btn">
+                        <i class="bi bi-list-check me-1"></i> 4. Danh Sách Chi Tiết
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. KHUNG CHỨA DỮ LIỆU LỊCH VỚI VÙNG NẠP CỤC BỘ (TARGETED LOADING ISOLATION) -->
+            <div id="scheduleContentWrapper" class="position-relative">
+                <!-- Overlay làm mờ chỉ hiển thị trên khung này khi đổi tuần/ngày -->
+                <div id="workspaceLoadingOverlay" class="in-place-loading-overlay d-none">
+                    <div class="spinner-border text-primary mb-2" role="status" style="width: 2.5rem; height: 2.5rem;">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                    <div class="fw-bold text-dark small font-serif">Đang cập nhật lịch ca trực...</div>
+                    <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
+                </div>
+
+                <!-- CHẾ ĐỘ 1: MA TRẬN PHÂN CA TUẦN -->
+                <div id="viewMatrixContainer" class="shift-workspace-card shadow-sm overflow-hidden mb-4 in-place-enter">
+                    <div class="p-3 bg-white border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-calendar3-range text-primary fs-5"></i>
+                            <h5 class="mb-0 fw-bold text-dark fs-6 font-serif">Ma Trận Phân Ca Tuần 24/7</h5>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill" id="badgeMatrixCount">@Model.Rows.Count nhân sự</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 small">
+                            <span class="d-inline-flex align-items-center gap-1"><span class="badge bg-primary" style="width:8px;height:8px;padding:0;border-radius:50%;">&nbsp;</span> Sáng (06h-14h)</span>
+                            <span class="d-inline-flex align-items-center gap-1 ms-2"><span class="badge bg-warning text-dark" style="width:8px;height:8px;padding:0;border-radius:50%;">&nbsp;</span> Chiều (14h-22h)</span>
+                            <span class="d-inline-flex align-items-center gap-1 ms-2"><span class="badge bg-dark text-warning border border-warning" style="width:8px;height:8px;padding:0;border-radius:50%;">&nbsp;</span> Đêm (22h-06h · +30%)</span>
+                        </div>
+                    </div>
+
+                    <div class="matrix-scroll-viewport">
+                        <table class="table table-bordered align-middle mb-0 table-sticky-matrix" style="min-width: 1150px;">
+                            <thead>
+                                <tr class="text-center">
+                                    <th class="sticky-emp-col text-start ps-3" style="width: 260px; min-width: 260px;">
+                                        <div class="fw-bold text-dark">Nhân Viên &amp; Bộ Phận</div>
+                                        <div class="small text-muted fw-normal" style="font-size: 0.7rem;">Chức vụ · Phòng ban (Cố định khi cuộn)</div>
+                                    </th>
+                                    @for (int i = 0; i < 7; i++)
+                                    {
+                                        var dayDate = Model.WeekStart.AddDays(i);
+                                        var isToday = dayDate == todayDate;
+                                        <th style="width: 13%; min-width: 130px;" class="@(isToday ? "bg-warning bg-opacity-25 border-warning fw-bold text-dark" : "")">
+                                            <div class="small text-uppercase fw-semibold @(isToday ? "text-danger" : "text-secondary")" style="font-size: 0.7rem;">
+                                                @dayDate.ToString("dddd", new System.Globalization.CultureInfo("vi-VN"))
+                                            </div>
+                                            <div class="fs-6 @(isToday ? "text-danger fw-bolder" : "text-dark")">@dayDate.ToString("dd/MM")</div>
+                                            @if (isToday)
+                                            {
+                                                <span class="badge bg-danger text-white rounded-pill" style="font-size: 0.6rem;">Hôm nay</span>
+                                            }
+                                        </th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (groupedRows.Any())
+                                {
+                                    @foreach (var deptGroup in groupedRows)
+                                    {
+                                        <!-- TIÊU ĐỀ GOM NHÓM PHÒNG BAN -->
+                                        <tr class="dept-group-header" data-phongban-id="@deptGroup.Key.MaPhongBan" onclick="toggleDeptCollapse(@deptGroup.Key.MaPhongBan)">
+                                            <td colspan="8" class="py-2 ps-3">
+                                                <div class="d-flex align-items-center justify-content-between pe-3">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <i class="bi bi-chevron-down text-primary" id="chevron-dept-@deptGroup.Key.MaPhongBan"></i>
+                                                        <span class="fw-bold text-dark">
+                                                            <i class="bi bi-building me-1 text-secondary"></i>@deptGroup.Key.TenPhongBan
+                                                        </span>
+                                                        <span class="badge bg-primary-subtle text-primary rounded-pill small">@deptGroup.Count() nhân sự</span>
+                                                    </div>
+                                                    <span class="small text-muted" style="font-size: 0.7rem;">Nhấn để thu gọn / mở rộng</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        <!-- CÁC HÀNG NHÂN VIÊN THUỘC BỘ PHẬN -->
+                                        @foreach (var row in deptGroup)
+                                        {
+                                            <tr class="matrix-emp-row dept-child-@deptGroup.Key.MaPhongBan" 
+                                                data-phongban-id="@row.MaPhongBan"
+                                                data-emp-name="@row.HoTen.ToLowerInvariant()"
+                                                data-emp-id="@row.MaNhanVien">
+                                                <td class="sticky-emp-col ps-3">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm"
+                                                             style="width: 34px; height: 34px; background-color: @row.AvatarColor; font-size: 0.8rem; flex-shrink: 0;">
+                                                            @(row.HoTen.Length > 0 ? row.HoTen.Substring(0, 1) : "N")
+                                                        </div>
+                                                        <div style="line-height: 1.25; overflow: hidden;">
+                                                            <div class="fw-bold text-dark text-truncate" style="max-width: 175px;" title="@row.HoTen">@row.HoTen</div>
+                                                            <div class="small text-muted text-truncate" style="font-size: 0.7rem;">@row.TenChucVu</div>
+                                                            <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                                                                <span class="badge bg-primary-subtle text-primary border text-truncate" style="font-size: 0.62rem; max-width: 120px;" title="@row.TenPhongBan">
+                                                                    <i class="bi bi-building me-1"></i>@row.TenPhongBan
+                                                                </span>
+                                                                <span class="badge bg-light text-secondary border" style="font-size: 0.6rem;">NV-@row.MaNhanVien</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                @foreach (var cell in row.Days)
+                                                {
+                                                    <td class="p-1 text-center align-top @(cell.IsToday ? "bg-warning bg-opacity-10" : "")" style="min-height: 75px;">
+                                                        @if (cell.Shifts.Any())
+                                                        {
+                                                            @foreach (var shift in cell.Shifts)
+                                                            {
+                                                                var isNight = shift.QuaDem || shift.TenCa.Contains("Đêm");
+                                                                var isAfternoon = shift.TenCa.Contains("Chiều");
+                                                                var pillClass = isNight ? "shift-pill-night" : (isAfternoon ? "shift-pill-afternoon" : "shift-pill-morning");
+
+                                                                <div class="shift-pill @pillClass mb-1 position-relative text-start shadow-sm"
+                                                                     data-ca-id="@shift.MaCa">
+                                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                                        <strong class="d-inline-flex align-items-center gap-1">
+                                                                            @if (isNight)
+                                                                            {
+                                                                                <i class="bi bi-moon-stars-fill text-warning"></i>
+                                                                            }
+                                                                            else if (isAfternoon)
+                                                                            {
+                                                                                <i class="bi bi-cloud-sun-fill text-warning"></i>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <i class="bi bi-brightness-high-fill text-primary"></i>
+                                                                            }
+                                                                            @shift.TenCa
+                                                                        </strong>
+
+                                                                        <form method="post" asp-action="Delete" onsubmit="return confirm('Bạn có chắc muốn hủy ca trực này?');" class="d-inline">
+                                                                            @Html.AntiForgeryToken()
+                                                                            <input type="hidden" name="id" value="@shift.MaPhanCa" />
+                                                                            <input type="hidden" name="returnWeek" value="@currentWeek" />
+                                                                            <button type="submit" class="btn btn-link text-muted p-0 border-0" style="font-size: 0.65rem;" title="Hủy ca này">
+                                                                                <i class="bi bi-x-circle-fill text-danger text-opacity-75"></i>
+                                                                            </button>
+                                                                        </form>
+                                                                    </div>
+
+                                                                    <div class="small opacity-85 font-monospace" style="font-size: 0.65rem;">
+                                                                        @shift.GioBatDau.ToString("HH:mm") - @shift.GioKetThuc.ToString("HH:mm")
+                                                                    </div>
+
+                                                                    @if (isNight)
+                                                                    {
+                                                                        <span class="badge bg-warning text-dark px-1 mt-1" style="font-size: 0.55rem;">+30% đêm</span>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <button type="button" class="btn-quick-slot"
+                                                                    onclick="openQuickAssignModal(@row.MaNhanVien, '@cell.Date.ToString("yyyy-MM-dd")')"
+                                                                    title="Bấm để xếp ca cho @row.HoTen ngày @cell.Date.ToString("dd/MM")">
+                                                                <i class="bi bi-plus-lg"></i>
+                                                            </button>
+                                                        }
+                                                    </td>
+                                                }
+                                            </tr>
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="8" class="text-center py-5 text-muted">
+                                            <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                                            Chưa có dữ liệu nhân sự để xếp ca trong tuần này.
+                                        </td>
+                                    </tr>
+                                }
+                                <tr id="matrixEmptyFilterRow" class="d-none">
+                                    <td colspan="8" class="text-center py-5 text-muted bg-white">
+                                        <i class="bi bi-funnel fs-2 d-block mb-2 text-warning"></i>
+                                        <div class="fw-bold text-dark fs-6">Không tìm thấy nhân viên nào phù hợp với bộ lọc</div>
+                                        <span class="small text-muted">Không có nhân viên nào của bộ phận này trong ca này hoặc từ khóa tìm kiếm. Vui lòng chọn lại bộ lọc.</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CHẾ ĐỘ 2: TIMELINE NGÀY 24H (CHI TIẾT THEO GIỜ) -->
+                <div id="viewTimelineContainer" class="shift-workspace-card shadow-sm p-3 mb-4 d-none">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 border-bottom pb-3">
+                        <div>
+                            <h5 class="fw-bold text-dark mb-1 font-serif">
+                                <i class="bi bi-bar-chart-steps text-primary me-1"></i> Timeline Trực Ca 24 Giờ Chi Tiết (Theo Từng Ngày)
+                            </h5>
+                            <span class="small text-muted" id="timelineSelectedDateLabel">Xem trực quan trong 24 giờ của ngày đã chọn: ai làm khung giờ nào</span>
+                        </div>
+                        
+                        <div class="d-flex align-items-center gap-2 small">
+                            <span class="badge bg-primary text-white px-2 py-1"><i class="bi bi-brightness-high-fill me-1"></i>Sáng: 06h - 14h</span>
+                            <span class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-cloud-sun-fill me-1"></i>Chiều: 14h - 22h</span>
+                            <span class="badge bg-dark text-warning border border-warning px-2 py-1"><i class="bi bi-moon-stars-fill me-1"></i>Đêm: 22h - 06h (+30%)</span>
+                        </div>
+                    </div>
+
+                    <!-- BỘ CHỌN 7 NGÀY DẠNG NÚT PILL -->
+                    <div class="d-flex flex-wrap align-items-center gap-1 mb-3">
+                        <span class="small fw-bold text-muted text-uppercase me-2"><i class="bi bi-calendar3 me-1"></i> Chọn Ngày:</span>
+                        @for (int i = 0; i < 7; i++)
+                        {
+                            var d = Model.WeekStart.AddDays(i);
+                            var isT = d == todayDate;
+                            <button type="button" 
+                                    class="btn btn-sm rounded-pill px-3 timeline-day-btn @(isT ? "btn-primary fw-bold text-white shadow-sm" : "btn-outline-secondary")"
+                                    id="btnTimelineDay-@i"
+                                    onclick="selectTimelineDay(@i, '@d.ToString("dd/MM/yyyy")', '@d.ToString("dddd", new System.Globalization.CultureInfo("vi-VN"))')">
+                                @d.ToString("ddd", new System.Globalization.CultureInfo("vi-VN")) @d.ToString("dd/MM")
+                                @if (isT)
+                                {
+                                    <span class="badge bg-danger text-white rounded-pill ms-1" style="font-size: 0.6rem;">Hôm nay</span>
+                                }
+                            </button>
+                        }
+                    </div>
+
+                    <!-- THƯỚC ĐO VÀ DẢI THỜI GIAN 24H -->
+                    <div class="timeline-scroll-viewport border rounded-3 bg-white">
+                        <div class="timeline-container-inner position-relative">
+                            <div class="timeline-ruler">
+                                <div style="width: 260px; min-width: 260px; padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.72rem; color: #1e293b; background: #f1f5f9; border-right: 2px solid #cbd5e1; position: sticky; left: 0; z-index: 20; box-shadow: 4px 0 8px -2px rgba(0,0,0,0.08);">
+                                    Nhân Viên &amp; Bộ Phận
+                                </div>
+                                <div style="display: flex; flex-grow: 1; position: relative;">
+                                    @for (int h = 0; h < 24; h += 2)
+                                    {
+                                        <div class="timeline-ruler-tick">@h.ToString("00"):00</div>
+                                    }
+                                    <div class="timeline-ruler-tick" style="flex: 0 0 55px; border-right: none; color: #dc2626; font-weight: 800;">
+                                        24:00
+                                    </div>
+                                </div>
+                            </div>
+
+                            @for (int dayIdx = 0; dayIdx < 7; dayIdx++)
+                            {
+                                var dayDate = Model.WeekStart.AddDays(dayIdx);
+                                var isTodayDay = dayDate == todayDate;
+
+                                <div class="timeline-day-panel @(isTodayDay ? "" : "d-none")" id="timelineDayPanel-@dayIdx">
+                                    @if (groupedRows.Any())
+                                    {
+                                        @foreach (var deptGroup in groupedRows)
+                                        {
+                                            <!-- TIÊU ĐỀ PHÒNG BAN THU GỌN / MỞ RỘNG TRONG TIMELINE -->
+                                            <div class="timeline-dept-header d-flex align-items-center justify-content-between px-3 py-2 bg-light border-top border-bottom"
+                                                 data-phongban-id="@deptGroup.Key.MaPhongBan"
+                                                 data-day-idx="@dayIdx"
+                                                 onclick="toggleTimelineDeptCollapse(@dayIdx, @deptGroup.Key.MaPhongBan)"
+                                                 style="cursor: pointer; user-select: none;">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="bi bi-chevron-down text-primary" id="chevron-tl-@dayIdx-@deptGroup.Key.MaPhongBan"></i>
+                                                    <span class="fw-bold text-dark small">
+                                                        <i class="bi bi-building me-1 text-secondary"></i>@deptGroup.Key.TenPhongBan
+                                                    </span>
+                                                    <span class="badge bg-primary-subtle text-primary rounded-pill" style="font-size: 0.65rem;">@deptGroup.Count() nhân sự</span>
+                                                </div>
+                                                <span class="text-muted small" style="font-size: 0.68rem;">Thu gọn / Mở rộng</span>
+                                            </div>
+
+                                            @foreach (var empRow in deptGroup)
+                                            {
+                                                var cell = empRow.Days[dayIdx];
+                                                var prevDay = dayDate.AddDays(-1);
+                                                var hasPrevNightShift = Model.DanhSachPhanCa.Any(p => p.MaNhanVien == empRow.MaNhanVien && p.NgayLamViec == prevDay && (p.CaLamViec?.QuaDem == true || p.CaLamViec?.TenCa.Contains("Đêm") == true));
+
+                                                <div class="timeline-row tl-child-@dayIdx-@deptGroup.Key.MaPhongBan"
+                                                     data-phongban-id="@deptGroup.Key.MaPhongBan"
+                                                     data-emp-name="@empRow.HoTen.ToLowerInvariant()"
+                                                     data-emp-id="@empRow.MaNhanVien">
+                                                    <div class="timeline-emp-col">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm"
+                                                                 style="width: 32px; height: 32px; background-color: @empRow.AvatarColor; font-size: 0.8rem; flex-shrink: 0;">
+                                                                @(empRow.HoTen.Length > 0 ? empRow.HoTen.Substring(0, 1) : "N")
+                                                            </div>
+                                                            <div class="text-truncate" style="line-height: 1.25;">
+                                                                <div class="fw-bold text-dark small text-truncate" style="max-width: 185px;" title="@empRow.HoTen">@empRow.HoTen</div>
+                                                                <div class="text-muted text-truncate" style="font-size: 0.7rem;">@empRow.TenChucVu</div>
+                                                                <span class="badge bg-primary-subtle text-primary border text-truncate mt-1" style="font-size: 0.62rem; max-width: 180px; display: inline-block;" title="@empRow.TenPhongBan">
+                                                                    <i class="bi bi-building me-1"></i>@empRow.TenPhongBan
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="timeline-track-col" style="overflow: hidden;">
+                                                        <div class="zone-night-morning"></div>
+                                                        <div class="zone-morning"></div>
+                                                        <div class="zone-afternoon"></div>
+                                                        <div class="zone-night"></div>
+
+                                                        <div class="timeline-track-grid">
+                                                            @for (int h = 0; h < 24; h += 2)
+                                                            {
+                                                                <div class="timeline-grid-cell"></div>
+                                                            }
+                                                        </div>
+
+                                                        @if (hasPrevNightShift)
+                                                        {
+                                                            <!-- Ca đêm tiếp nối từ 22h tối hôm trước sang rạng sáng hôm nay: 00:00 - 06:00 -->
+                                                            <div class="timeline-shift-bar timeline-shift-night"
+                                                                 style="left: 0%; width: 25%; border-radius: 0 0.5rem 0.5rem 0; border-left: none;"
+                                                                 title="Ca Đêm tiếp nối: 00:00 - 06:00 (Bắt đầu từ 22h tối qua)">
+                                                                <span style="font-size: 0.65rem;">
+                                                                    <i class="bi bi-moon-stars-fill me-1 text-warning"></i>➔ 06:00 (Từ tối qua)
+                                                                </span>
+                                                            </div>
+                                                        }
+
+                                                        @if (cell.Shifts.Any())
+                                                        {
+                                                            @foreach (var s in cell.Shifts)
+                                                            {
+                                                                var isNight = s.QuaDem || s.TenCa.Contains("Đêm");
+                                                                var isAfternoon = s.TenCa.Contains("Chiều");
+
+                                                                if (isNight)
+                                                                {
+                                                                    <!-- Ca đêm bắt đầu 22:00 hôm nay: kết thúc gọn gàng tại 24:00 (không tràn ra ngoài) -->
+                                                                    <div class="timeline-shift-bar timeline-shift-night"
+                                                                         style="left: 91.666%; right: 0; border-radius: 0.5rem 0 0 0.5rem; border-right: none;"
+                                                                         title="@s.TenCa: 22:00 - 06:00 (Sáng hôm sau) · +30% Lương đêm">
+                                                                        <span style="font-size: 0.65rem;">
+                                                                            <i class="bi bi-moon-stars-fill text-warning me-1"></i>22h ➔ (+30%)
+                                                                        </span>
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    double startHour = s.GioBatDau.Hour + (s.GioBatDau.Minute / 60.0);
+                                                                    double leftPct = (startHour / 24.0) * 100.0;
+                                                                    double widthPct = (8.0 / 24.0) * 100.0;
+                                                                    var barClass = isAfternoon ? "timeline-shift-afternoon" : "timeline-shift-morning";
+
+                                                                    <div class="timeline-shift-bar @barClass"
+                                                                         style="left: @leftPct.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%; width: @widthPct.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%;"
+                                                                         title="@s.TenCa: @s.GioBatDau.ToString("HH:mm") - @s.GioKetThuc.ToString("HH:mm")">
+                                                                        <span>
+                                                                            @if (isAfternoon)
+                                                                            {
+                                                                                <i class="bi bi-cloud-sun-fill me-1"></i>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <i class="bi bi-brightness-high-fill me-1"></i>
+                                                                            }
+                                                                            @s.TenCa (@s.GioBatDau.ToString("HH:mm") - @s.GioKetThuc.ToString("HH:mm"))
+                                                                        </span>
+                                                                    </div>
+                                                                }
+                                                            }
+                                                        }
+                                                        else if (!hasPrevNightShift)
+                                                        {
+                                                            <div class="timeline-shift-off">
+                                                                Nghỉ ca (OFF)
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                    }
+
+                                    <!-- Thông báo rỗng khi lọc không có nhân viên nào trong ngày này của Timeline -->
+                                    <div class="timeline-empty-filter text-center py-5 text-muted bg-white rounded-3 d-none border m-3">
+                                        <i class="bi bi-funnel fs-2 d-block mb-2 text-warning"></i>
+                                        <div class="fw-bold text-dark fs-6">Không tìm thấy nhân viên nào phù hợp trong ngày này</div>
+                                        <span class="small text-muted">Không có nhân viên nào của bộ phận này trong ca này vào ngày đã chọn.</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHẾ ĐỘ 3: CA TRỰC HÔM NAY -->
+                <div id="viewTodayContainer" class="d-none mb-4">
+                    <div class="shift-workspace-card shadow-sm p-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                            <div>
+                                <h5 class="fw-bold text-dark mb-1 font-serif">
+                                    <i class="bi bi-clock-fill text-warning me-1"></i> Nhân Lực Đang Trực Ca Hôm Nay (@todayDate.ToString("dd/MM/yyyy"))
+                                </h5>
+                                <span class="small text-muted">Theo dõi trực quan 3 ca trực trong ngày phục vụ khách sạn</span>
+                            </div>
+                            <button type="button" class="btn btn-warning fw-bold btn-sm rounded-pill px-3 text-dark shadow-sm"
+                                    data-bs-toggle="modal" data-bs-target="#modalCreatePhanCa">
+                                <i class="bi bi-plus-circle-fill me-1"></i> Thêm Ca Hôm Nay
+                            </button>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-4 today-col-ca" data-ca-id="1">
+                                <div class="card border-0 rounded-4 shadow-sm bg-primary bg-opacity-10 h-100">
+                                    <div class="card-header bg-primary text-white py-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold"><i class="bi bi-brightness-high-fill me-1"></i> Ca Sáng (06:00 - 14:00)</span>
+                                        @{
+                                            var morningShifts = todayShifts.Where(p => p.CaLamViec?.TenCa.Contains("Sáng") == true).ToList();
+                                        }
+                                        <span class="badge bg-white text-primary fw-bold">@morningShifts.Count người</span>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        @if (morningShifts.Any())
+                                        {
+                                            @foreach (var s in morningShifts)
+                                            {
+                                                <div class="today-shift-item p-2 mb-2 bg-white rounded-3 shadow-sm border d-flex align-items-center justify-content-between"
+                                                     data-phongban-id="@s.NhanVien?.MaPhongBan" 
+                                                     data-ca-id="@s.MaCa" 
+                                                     data-emp-name="@(s.NhanVien != null ? (s.NhanVien.Ho + " " + s.NhanVien.Ten).ToLowerInvariant() : "")">
+                                                    <div>
+                                                        <div class="fw-bold text-dark small">@s.NhanVien?.Ho @s.NhanVien?.Ten</div>
+                                                        <div class="small text-muted" style="font-size: 0.7rem;">@s.NhanVien?.PhongBan?.TenPhongBan &bull; @s.NhanVien?.ChucVu?.TenChucVu</div>
+                                                    </div>
+                                                    <span class="badge bg-success-subtle text-success border">Đang trực</span>
+                                                </div>
+                                            }
+                                        }
+                                        <div class="today-empty-db text-center py-4 text-muted small @(morningShifts.Any() ? "d-none" : "")">
+                                            <i class="bi bi-person-x fs-4 d-block mb-1 text-secondary"></i>
+                                            Chưa có nhân viên nào được xếp ca sáng hôm nay.
+                                        </div>
+                                        <div class="today-empty-filter text-center py-4 text-muted small d-none">
+                                            <i class="bi bi-funnel text-warning fs-4 d-block mb-1"></i>
+                                            Không có nhân viên nào của bộ phận này trong ca sáng hôm nay.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 today-col-ca" data-ca-id="2">
+                                <div class="card border-0 rounded-4 shadow-sm bg-warning bg-opacity-10 h-100">
+                                    <div class="card-header bg-warning text-dark py-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold"><i class="bi bi-cloud-sun-fill me-1"></i> Ca Chiều (14:00 - 22:00)</span>
+                                        @{
+                                            var afternoonShifts = todayShifts.Where(p => p.CaLamViec?.TenCa.Contains("Chiều") == true).ToList();
+                                        }
+                                        <span class="badge bg-dark text-warning fw-bold">@afternoonShifts.Count người</span>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        @if (afternoonShifts.Any())
+                                        {
+                                            @foreach (var s in afternoonShifts)
+                                            {
+                                                <div class="today-shift-item p-2 mb-2 bg-white rounded-3 shadow-sm border d-flex align-items-center justify-content-between"
+                                                     data-phongban-id="@s.NhanVien?.MaPhongBan" 
+                                                     data-ca-id="@s.MaCa" 
+                                                     data-emp-name="@(s.NhanVien != null ? (s.NhanVien.Ho + " " + s.NhanVien.Ten).ToLowerInvariant() : "")">
+                                                    <div>
+                                                        <div class="fw-bold text-dark small">@s.NhanVien?.Ho @s.NhanVien?.Ten</div>
+                                                        <div class="small text-muted" style="font-size: 0.7rem;">@s.NhanVien?.PhongBan?.TenPhongBan &bull; @s.NhanVien?.ChucVu?.TenChucVu</div>
+                                                    </div>
+                                                    <span class="badge bg-warning-subtle text-warning border">Cao điểm</span>
+                                                </div>
+                                            }
+                                        }
+                                        <div class="today-empty-db text-center py-4 text-muted small @(afternoonShifts.Any() ? "d-none" : "")">
+                                            <i class="bi bi-person-x fs-4 d-block mb-1 text-secondary"></i>
+                                            Chưa có nhân viên nào được xếp ca chiều hôm nay.
+                                        </div>
+                                        <div class="today-empty-filter text-center py-4 text-muted small d-none">
+                                            <i class="bi bi-funnel text-warning fs-4 d-block mb-1"></i>
+                                            Không có nhân viên nào của bộ phận này trong ca chiều hôm nay.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 today-col-ca" data-ca-id="3">
+                                <div class="card border-0 rounded-4 shadow-sm bg-dark bg-opacity-10 h-100">
+                                    <div class="card-header bg-dark text-warning py-3 rounded-top-4 d-flex justify-content-between align-items-center border-warning">
+                                        <span class="fw-bold"><i class="bi bi-moon-stars-fill me-1 text-warning"></i> Ca Đêm (22:00 - 06:00)</span>
+                                        @{
+                                            var nightShifts = todayShifts.Where(p => p.CaLamViec?.QuaDem == true || p.CaLamViec?.TenCa.Contains("Đêm") == true).ToList();
+                                        }
+                                        <span class="badge bg-warning text-dark fw-bold">+30% · @nightShifts.Count người</span>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        @if (nightShifts.Any())
+                                        {
+                                            @foreach (var s in nightShifts)
+                                            {
+                                                <div class="today-shift-item p-2 mb-2 bg-white rounded-3 shadow-sm border d-flex align-items-center justify-content-between"
+                                                     data-phongban-id="@s.NhanVien?.MaPhongBan" 
+                                                     data-ca-id="@s.MaCa" 
+                                                     data-emp-name="@(s.NhanVien != null ? (s.NhanVien.Ho + " " + s.NhanVien.Ten).ToLowerInvariant() : "")">
+                                                    <div>
+                                                        <div class="fw-bold text-dark small">@s.NhanVien?.Ho @s.NhanVien?.Ten</div>
+                                                        <div class="small text-muted" style="font-size: 0.7rem;">@s.NhanVien?.PhongBan?.TenPhongBan &bull; @s.NhanVien?.ChucVu?.TenChucVu</div>
+                                                    </div>
+                                                    <span class="badge bg-danger-subtle text-danger border">+30% Lương</span>
+                                                </div>
+                                            }
+                                        }
+                                        <div class="today-empty-db text-center py-4 text-muted small @(nightShifts.Any() ? "d-none" : "")">
+                                            <i class="bi bi-person-x fs-4 d-block mb-1 text-secondary"></i>
+                                            Chưa có nhân viên nào được xếp ca đêm hôm nay.
+                                        </div>
+                                        <div class="today-empty-filter text-center py-4 text-muted small d-none">
+                                            <i class="bi bi-funnel text-warning fs-4 d-block mb-1"></i>
+                                            Không có nhân viên nào của bộ phận này trong ca đêm hôm nay.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHẾ ĐỘ 4: DANH SÁCH CHI TIẾT -->
+                <div id="viewListContainer" class="d-none mb-4">
+                    <div class="shift-workspace-card shadow-sm overflow-hidden">
+                        <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-list-check text-primary fs-5"></i>
+                                <h5 class="mb-0 fw-bold text-dark fs-6 font-serif">Danh Sách Lượt Phân Ca Chi Tiết Trong Tuần</h5>
+                                <span class="badge bg-primary-subtle text-primary rounded-pill" id="badgeListCount">@Model.DanhSachPhanCa.Count lượt</span>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive" style="max-height: 600px; overflow: auto;">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th class="ps-3">#</th>
+                                        <th>Nhân Viên</th>
+                                        <th>Phòng Ban / Chức Vụ</th>
+                                        <th>Ngày Làm Việc</th>
+                                        <th>Ca Phân Công</th>
+                                        <th>Thời Gian Dự Kiến</th>
+                                        <th>Trạng Thái</th>
+                                        <th class="text-center pe-3">Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.DanhSachPhanCa.Any())
+                                    {
+                                        int stt = 1;
+                                        @foreach (var p in Model.DanhSachPhanCa)
+                                        {
+                                            var ca = p.CaLamViec;
+                                            var nv = p.NhanVien;
+                                            var isNight = ca?.QuaDem == true || ca?.TenCa.Contains("Đêm") == true;
+
+                                            <tr class="list-phanca-row" 
+                                                data-phongban-id="@nv?.MaPhongBan" 
+                                                data-ca-id="@p.MaCa"
+                                                data-emp-name="@(nv != null ? (nv.Ho + " " + nv.Ten).ToLowerInvariant() : "")">
+                                                <td class="ps-3 text-muted fw-semibold">@(stt++)</td>
+                                                <td>
+                                                    <div class="fw-bold text-dark">@nv?.Ho @nv?.Ten</div>
+                                                    <span class="small text-muted">Mã: NV-@p.MaNhanVien</span>
+                                                </td>
+                                                <td>
+                                                    <div class="fw-semibold">@nv?.PhongBan?.TenPhongBan</div>
+                                                    <span class="small text-muted">@nv?.ChucVu?.TenChucVu</span>
+                                                </td>
+                                                <td>
+                                                    <div class="fw-semibold">@p.NgayLamViec.ToString("dd/MM/yyyy")</div>
+                                                    <span class="small text-muted">@p.NgayLamViec.ToString("dddd", new System.Globalization.CultureInfo("vi-VN"))</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @(isNight ? "bg-dark text-warning border border-warning" : (ca?.TenCa.Contains("Chiều") == true ? "bg-warning text-dark" : "bg-primary")) px-2 py-1 rounded-pill">
+                                                        @ca?.TenCa
+                                                    </span>
+                                                    @if (isNight)
+                                                    {
+                                                        <span class="badge bg-danger-subtle text-danger border ms-1" style="font-size: 0.65rem;">+30% Đêm</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <div class="small font-monospace">
+                                                        @p.BatDauDuKien.ToString("HH:mm") &rarr; @p.KetThucDuKien.ToString("HH:mm (dd/MM)")
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    @if (p.TrangThai == "DANG_TRUC")
+                                                    {
+                                                        <span class="badge bg-success text-white rounded-pill px-2">Đang trực</span>
+                                                    }
+                                                    else if (p.TrangThai == "HOAN_THANH")
+                                                    {
+                                                        <span class="badge bg-secondary text-white rounded-pill px-2">Hoàn thành</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-info text-dark rounded-pill px-2">Đã phân</span>
+                                                    }
+                                                </td>
+                                                <td class="text-center pe-3">
+                                                    <form method="post" asp-action="Delete" onsubmit="return confirm('Bạn có chắc muốn hủy ca phân này?');" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@p.MaPhanCa" />
+                                                        <input type="hidden" name="returnWeek" value="@currentWeek" />
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 hover-lift">
+                                                            <i class="bi bi-trash3 me-1"></i> Hủy Ca
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="8" class="text-center py-5 text-muted">
+                                                Không có lượt phân ca nào trong tuần này.
+                                            </td>
+                                        </tr>
+                                    }
+                                    <tr id="listEmptyFilterRow" class="d-none">
+                                        <td colspan="8" class="text-center py-5 text-muted bg-white">
+                                            <i class="bi bi-funnel fs-2 d-block mb-2 text-warning"></i>
+                                            <div class="fw-bold text-dark fs-6">Không có lượt phân ca nào phù hợp với bộ lọc được chọn</div>
+                                            <span class="small text-muted">Vui lòng thử chọn lại phòng ban, ca trực khác hoặc xóa từ khóa tìm kiếm.</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================================================================
+             CỘT PHẢI: KHỐI CHỈ SỐ DỌC (TỔNG CA, SÁNG, CHIỀU, ĐÊM ĐẶT DỌC SÁT BÊN PHẢI)
+             ========================================================================= -->
+        <div class="col-12 col-lg-3 col-xl-2">
+            <div id="kpiSidebarContainer" class="card border-0 rounded-4 shadow-sm p-3 bg-white" style="border: 1px solid rgba(226, 232, 240, 0.9); position: sticky; top: 1rem;">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <span class="small fw-bold text-uppercase text-muted" style="letter-spacing: 0.5px; font-size: 0.72rem;">
+                        <i class="bi bi-graph-up text-primary me-1"></i> Chỉ Số Tuần
+                    </span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.65rem;">Hoạt động</span>
+                </div>
+
+                <!-- 1. TỔNG CA TUẦN -->
+                <div class="p-2 mb-2 rounded-3 bg-light border kpi-card-item">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                <i class="bi bi-calendar-check" style="font-size: 0.85rem;"></i>
+                            </div>
+                            <span class="text-muted small fw-semibold" style="font-size: 0.68rem;">TỔNG CA TUẦN</span>
+                        </div>
+                        <span class="badge bg-primary text-white rounded-pill" style="font-size: 0.62rem;">@Model.SoNhanVienDuocPhan/@Model.TongNhanVien NV</span>
+                    </div>
+                    <div class="fw-bold text-dark fs-5 ps-1">
+                        <span id="valTongCa">@Model.TongSoCa</span>
+                        <span class="small fw-normal text-muted" style="font-size: 0.75rem;">lượt trực</span>
+                    </div>
+                </div>
+
+                <!-- 2. CA SÁNG (06H-14H) -->
+                <div class="p-2 mb-2 rounded-3 bg-primary bg-opacity-10 border border-primary-subtle kpi-card-item">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                <i class="bi bi-brightness-high-fill" style="font-size: 0.85rem;"></i>
+                            </div>
+                            <span class="text-primary small fw-semibold" style="font-size: 0.68rem;">CA SÁNG</span>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary border" style="font-size: 0.62rem;">06h - 14h</span>
+                    </div>
+                    <div class="fw-bold text-primary fs-5 ps-1">
+                        <span id="valCaSang">@Model.SoCaSang</span>
+                        <span class="small fw-normal text-muted" style="font-size: 0.75rem;">ca (1.0x)</span>
+                    </div>
+                </div>
+
+                <!-- 3. CA CHIỀU (ICON RÕ RÀNG bi-cloud-sun-fill) -->
+                <div class="p-2 mb-2 rounded-3 bg-warning bg-opacity-15 border border-warning-subtle kpi-card-item">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                <i class="bi bi-cloud-sun-fill" style="font-size: 0.85rem;"></i>
+                            </div>
+                            <span class="text-warning-emphasis small fw-semibold" style="font-size: 0.68rem;">CA CHIỀU</span>
+                        </div>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border" style="font-size: 0.62rem;">14h - 22h</span>
+                    </div>
+                    <div class="fw-bold text-warning-emphasis fs-5 ps-1">
+                        <span id="valCaChieu">@Model.SoCaChieu</span>
+                        <span class="small fw-normal text-muted" style="font-size: 0.75rem;">ca (Cao điểm)</span>
+                    </div>
+                </div>
+
+                <!-- 4. CA ĐÊM (22H-06H +30%) -->
+                <div class="p-2 mb-3 rounded-3 bg-dark border border-warning border-opacity-75 kpi-card-item">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                <i class="bi bi-moon-stars-fill" style="font-size: 0.85rem;"></i>
+                            </div>
+                            <span class="text-warning small fw-semibold" style="font-size: 0.68rem;">CA ĐÊM</span>
+                        </div>
+                        <span class="badge bg-danger text-white" style="font-size: 0.62rem;">+30% Đêm</span>
+                    </div>
+                    <div class="fw-bold text-warning fs-5 ps-1">
+                        <span id="valCaDem">@Model.SoCaDem</span>
+                        <span class="small fw-normal text-white-50" style="font-size: 0.75rem;">ca (22h - 06h)</span>
+                    </div>
+                </div>
+
+                <!-- 5. CHÚ THÍCH & QUY ĐỊNH CA KHÁCH SẠN -->
+                <div class="p-2 rounded-3 bg-light border small">
+                    <div class="fw-bold text-dark mb-1" style="font-size: 0.7rem;"><i class="bi bi-info-circle text-primary me-1"></i> Quy định ca khách sạn:</div>
+                    <div class="d-flex align-items-center gap-1 mb-1 text-muted" style="font-size: 0.65rem;">
+                        <span class="badge bg-primary" style="width:7px;height:7px;padding:0;border-radius:50%;">&nbsp;</span>
+                        <span><strong>Sáng:</strong> Check-in sớm &amp; Ăn sáng</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1 mb-1 text-muted" style="font-size: 0.65rem;">
+                        <span class="badge bg-warning text-dark" style="width:7px;height:7px;padding:0;border-radius:50%;">&nbsp;</span>
+                        <span><strong>Chiều:</strong> Giờ cao điểm khách sạn</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1 text-muted" style="font-size: 0.65rem;">
+                        <span class="badge bg-dark text-warning border border-warning" style="width:7px;height:7px;padding:0;border-radius:50%;">&nbsp;</span>
+                        <span><strong>Đêm:</strong> Trực an ninh (+30% lương)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: XẾP CA MỚI CHO NHÂN VIÊN -->
+<div class="modal fade" id="modalCreatePhanCa" tabindex="-1" aria-labelledby="modalCreatePhanCaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+            <div class="modal-header bg-primary text-white p-4">
+                <div>
+                    <h5 class="modal-title fw-bold" id="modalCreatePhanCaLabel">
+                        <i class="bi bi-calendar-plus me-2"></i>Xếp Ca Làm Việc 24/7
+                    </h5>
+                    <span class="small text-white-50">Lập lịch trực chuẩn xác và tự động tính toán phụ cấp ca</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-action="Create">
+                @Html.AntiForgeryToken()
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Nhân viên trực:</label>
+                        <select name="MaNhanVien" id="selectNhanVienModal" class="form-select rounded-3" required>
+                            <option value="">-- Chọn nhân viên --</option>
+                            @foreach (var emp in Model.DanhSachNhanVien)
+                            {
+                                <option value="@emp.MaNhanVien">@emp.Ho @emp.Ten (@emp.PhongBan?.TenPhongBan - @emp.ChucVu?.TenChucVu)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Ca làm việc 24/7:</label>
+                        <select name="MaCa" id="selectCaModal" class="form-select rounded-3" required>
+                            <option value="">-- Chọn ca trực --</option>
+                            @foreach (var ca in Model.DanhSachCa)
+                            {
+                                <option value="@ca.MaCa">
+                                    @ca.TenCa (@ca.GioBatDau.ToString("HH:mm") - @ca.GioKetThuc.ToString("HH:mm")) @(ca.QuaDem ? "★ Ca đêm +30%" : "")
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Ngày làm việc:</label>
+                        <input type="date" name="NgayLamViec" id="inputNgayLamViecModal" class="form-control rounded-3" value="@Model.WeekStart.ToString("yyyy-MM-dd")" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Trạng thái:</label>
+                        <select name="TrangThai" class="form-select rounded-3">
+                            <option value="DA_PHAN" selected>Đã phân (Kế hoạch)</option>
+                            <option value="DANG_TRUC">Đang trực</option>
+                            <option value="HOAN_THANH">Đã hoàn thành</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold hover-lift">
+                        <i class="bi bi-check-circle-fill me-1"></i> Lưu Phân Ca
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // =========================================================================
+    // ✨ REACT-BITS MOTION & IN-PLACE STATE TRANSITIONS CHO PHÂN CA 24/7
+    // =========================================================================
+
+    // 1. Hiệu ứng đếm số CountUp (từ react-bits) khi số liệu KPI cập nhật (hỗ trợ cả tăng và giảm)
+    function animateCountUp(element, startValue, targetValue, duration = 450) {
+        if (!element) return;
+        if (startValue === targetValue) {
+            element.textContent = targetValue;
+            return;
+        }
+
+        const startTime = performance.now();
+        element.setAttribute('data-count', targetValue);
+
+        function updateCount(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // Easing: easeOutCubic
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            const currentCount = Math.round(startValue + (targetValue - startValue) * easeProgress);
+
+            element.textContent = currentCount;
+
+            if (progress < 1) {
+                requestAnimationFrame(updateCount);
+            } else {
+                element.textContent = targetValue;
+            }
+        }
+
+        requestAnimationFrame(updateCount);
+    }
+
+    // 2. Hiệu ứng phát quang vàng kim (Pulse) lướt nhẹ qua thẻ KPI
+    function pulseKpiCards() {
+        const items = document.querySelectorAll('.kpi-card-item');
+        items.forEach((item, idx) => {
+            setTimeout(() => {
+                item.classList.add('kpi-pulse-active');
+                setTimeout(() => {
+                    item.classList.remove('kpi-pulse-active');
+                }, 380);
+            }, idx * 60);
+        });
+    }
+
+    // 3. Chuyển đổi giữa 4 chế độ xem với hiệu ứng In-Place Cross-Fade
+    function switchViewMode(mode) {
+        const matrixContainer = document.getElementById('viewMatrixContainer');
+        const timelineContainer = document.getElementById('viewTimelineContainer');
+        const todayContainer = document.getElementById('viewTodayContainer');
+        const listContainer = document.getElementById('viewListContainer');
+
+        const containers = {
+            matrix: matrixContainer,
+            timeline: timelineContainer,
+            today: todayContainer,
+            list: listContainer
+        };
+
+        const buttons = {
+            matrix: document.getElementById('btnViewMatrix'),
+            timeline: document.getElementById('btnViewTimeline'),
+            today: document.getElementById('btnViewToday'),
+            list: document.getElementById('btnViewList')
+        };
+
+        // Cập nhật trạng thái nút bấm
+        Object.keys(buttons).forEach(key => {
+            const btn = buttons[key];
+            if (!btn) return;
+            if (key === mode) {
+                if (key === 'today') {
+                    btn.className = 'btn btn-warning btn-sm rounded-pill fw-bold text-dark px-3 py-1 view-switcher-btn shadow-sm';
+                } else {
+                    btn.className = 'btn btn-primary btn-sm rounded-pill fw-bold px-3 py-1 view-switcher-btn shadow-sm';
+                }
+            } else {
+                btn.className = 'btn btn-light btn-sm rounded-pill fw-bold px-3 py-1 view-switcher-btn';
+            }
+        });
+
+        // Kích hoạt hiệu ứng in-place-enter cho khung mục tiêu
+        Object.keys(containers).forEach(key => {
+            const c = containers[key];
+            if (!c) return;
+            if (key === mode) {
+                c.classList.remove('d-none');
+                c.classList.remove('in-place-enter');
+                void c.offsetWidth; // Force reflow
+                c.classList.add('in-place-enter');
+            } else {
+                c.classList.add('d-none');
+            }
+        });
+
+        localStorage.setItem('overtime_phanca_view_mode', mode);
+    }
+
+    // 4. Nạp tuần tại chỗ qua AJAX - TUYỆT ĐỐI KHÔNG RELOAD TOÀN TRANG
+    function loadWeekInPlace(targetWeekDate) {
+        const workspace = document.getElementById('scheduleContentWrapper');
+        const kpiSidebar = document.getElementById('kpiSidebarContainer');
+        const overlay = document.getElementById('workspaceLoadingOverlay');
+
+        if (overlay) overlay.classList.remove('d-none');
+
+        fetch('/PhanCa?week=' + targetWeekDate, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Không thể nạp dữ liệu');
+            return response.text();
+        })
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            // 1. Cập nhật khung lịch với hiệu ứng in-place-enter
+            const newWorkspace = doc.getElementById('scheduleContentWrapper');
+            if (newWorkspace && workspace) {
+                workspace.innerHTML = newWorkspace.innerHTML;
+                workspace.classList.remove('in-place-enter');
+                void workspace.offsetWidth; // Force reflow
+                workspace.classList.add('in-place-enter');
+            }
+
+            // 2. Cập nhật thanh điều hướng tuần
+            const newWeekNav = doc.getElementById('weekNavigationWrapper');
+            const currWeekNav = document.getElementById('weekNavigationWrapper');
+            if (newWeekNav && currWeekNav) {
+                currWeekNav.innerHTML = newWeekNav.innerHTML;
+            }
+
+            // 3. Cập nhật các con số trong KPI kèm hiệu ứng CountUp & Pulse
+            const elTotal = document.getElementById('valTongCa');
+            const elSang = document.getElementById('valCaSang');
+            const elChieu = document.getElementById('valCaChieu');
+            const elDem = document.getElementById('valCaDem');
+
+            const prevTotal = parseInt(elTotal?.textContent) || 0;
+            const prevSang = parseInt(elSang?.textContent) || 0;
+            const prevChieu = parseInt(elChieu?.textContent) || 0;
+            const prevDem = parseInt(elDem?.textContent) || 0;
+
+            const newTotal = parseInt(doc.getElementById('valTongCa')?.textContent) || 0;
+            const newSang = parseInt(doc.getElementById('valCaSang')?.textContent) || 0;
+            const newChieu = parseInt(doc.getElementById('valCaChieu')?.textContent) || 0;
+            const newDem = parseInt(doc.getElementById('valCaDem')?.textContent) || 0;
+
+            if (elTotal) animateCountUp(elTotal, prevTotal, newTotal);
+            if (elSang) animateCountUp(elSang, prevSang, newSang);
+            if (elChieu) animateCountUp(elChieu, prevChieu, newChieu);
+            if (elDem) animateCountUp(elDem, prevDem, newDem);
+            pulseKpiCards();
+
+            // 4. Cập nhật URL trình duyệt
+            window.history.pushState(null, '', '/PhanCa?week=' + targetWeekDate);
+
+            // 5. Khôi phục chế độ xem và áp dụng bộ lọc
+            const currentMode = localStorage.getItem('overtime_phanca_view_mode') || 'matrix';
+            switchViewMode(currentMode);
+            applyFiltersInPlace();
+        })
+        .catch(err => {
+            console.error('Lỗi nạp tuần tại chỗ:', err);
+            window.location.href = '/PhanCa?week=' + targetWeekDate;
+        })
+        .finally(() => {
+            const currentOverlay = document.getElementById('workspaceLoadingOverlay');
+            if (currentOverlay) currentOverlay.classList.add('d-none');
+        });
+    }
+
+    // 5. Chọn ngày trong chế độ xem Timeline 24H với hiệu ứng trượt êm
+    function selectTimelineDay(dayIdx, dateStr, dayOfWeekName) {
+        document.querySelectorAll('.timeline-day-btn').forEach(btn => {
+            btn.className = 'btn btn-sm rounded-pill px-3 timeline-day-btn btn-outline-secondary';
+        });
+
+        const activeBtn = document.getElementById('btnTimelineDay-' + dayIdx);
+        if (activeBtn) {
+            activeBtn.className = 'btn btn-sm rounded-pill px-3 timeline-day-btn btn-primary fw-bold text-white shadow-sm';
+        }
+
+        document.querySelectorAll('.timeline-day-panel').forEach(panel => {
+            panel.classList.add('d-none');
+        });
+
+        const targetPanel = document.getElementById('timelineDayPanel-' + dayIdx);
+        if (targetPanel) {
+            targetPanel.classList.remove('d-none');
+            targetPanel.classList.remove('in-place-enter');
+            void targetPanel.offsetWidth; // Force reflow
+            targetPanel.classList.add('in-place-enter');
+        }
+
+        const label = document.getElementById('timelineSelectedDateLabel');
+        if (label) {
+            label.textContent = 'Đang xem ngày: ' + dayOfWeekName + ', ' + dateStr + ' (Trục 24 giờ chi tiết)';
+        }
+    }
+
+    // 6. Thu gọn / Mở rộng nhóm Phòng Ban trong Ma Trận
+    function toggleDeptCollapse(deptId) {
+        const rows = document.querySelectorAll('.dept-child-' + deptId);
+        const icon = document.getElementById('chevron-dept-' + deptId);
+
+        let isCollapsed = false;
+        rows.forEach(r => {
+            if (r.classList.contains('d-none')) {
+                r.classList.remove('d-none');
+            } else {
+                r.classList.add('d-none');
+                isCollapsed = true;
+            }
+        });
+
+        if (icon) {
+            if (isCollapsed) {
+                icon.className = 'bi bi-chevron-right text-muted';
+            } else {
+                icon.className = 'bi bi-chevron-down text-primary';
+            }
+        }
+    }
+
+    // 6b. Thu gọn / Mở rộng nhóm Phòng Ban trong Timeline 24H
+    function toggleTimelineDeptCollapse(dayIdx, deptId) {
+        const rows = document.querySelectorAll(`.tl-child-${dayIdx}-${deptId}`);
+        const icon = document.getElementById(`chevron-tl-${dayIdx}-${deptId}`);
+
+        let isCollapsed = false;
+        rows.forEach(r => {
+            if (r.classList.contains('d-none')) {
+                r.classList.remove('d-none');
+            } else {
+                r.classList.add('d-none');
+                isCollapsed = true;
+            }
+        });
+
+        if (icon) {
+            if (isCollapsed) {
+                icon.className = 'bi bi-chevron-right text-muted';
+            } else {
+                icon.className = 'bi bi-chevron-down text-primary';
+            }
+        }
+    }
+
+    // 7. Lọc tức thì trên CẢ 4 CỤM (Ma Trận, Timeline 24H, Ca Trực Hôm Nay, Danh Sách Chi Tiết)
+    function applyFiltersInPlace() {
+        const keyword = (document.getElementById('filterKeyword')?.value || '').trim().toLowerCase();
+        const pbVal = document.getElementById('filterPhongBan')?.value || '';
+        const caVal = document.getElementById('filterCa')?.value || '';
+
+        // ==========================================
+        // CỤM 1: MA TRẬN PHÂN CA TUẦN
+        // ==========================================
+        const matrixRows = document.querySelectorAll('.matrix-emp-row');
+        let visibleMatrixEmpCount = 0;
+        matrixRows.forEach(row => {
+            const rowPb = row.getAttribute('data-phongban-id') || '';
+            const rowName = row.getAttribute('data-emp-name') || '';
+            const rowId = row.getAttribute('data-emp-id') || '';
+
+            const matchPb = !pbVal || rowPb === pbVal;
+            const matchKw = !keyword || rowName.includes(keyword) || rowId.includes(keyword);
+
+            if (matchPb && matchKw) {
+                row.classList.remove('d-none');
+                visibleMatrixEmpCount++;
+            } else {
+                row.classList.add('d-none');
+            }
+        });
+
+        // Ẩn/hiện tiêu đề phòng ban trong Ma Trận nếu tất cả nhân viên bị ẩn
+        document.querySelectorAll('.dept-group-header').forEach(header => {
+            const deptId = header.getAttribute('data-phongban-id') || '';
+            if (deptId) {
+                const childRows = document.querySelectorAll('.matrix-emp-row.dept-child-' + deptId);
+                const hasVisible = Array.from(childRows).some(r => !r.classList.contains('d-none'));
+                header.style.display = hasVisible ? '' : 'none';
+            }
+        });
+
+        // Lọc thẻ ca trong Ma trận
+        const shiftPills = document.querySelectorAll('.shift-pill');
+        shiftPills.forEach(pill => {
+            const cardCa = pill.getAttribute('data-ca-id');
+            const matchCa = !caVal || cardCa === caVal;
+            pill.style.display = matchCa ? 'block' : 'none';
+        });
+
+        // Hiển thị thông báo rỗng cho Ma Trận nếu không tìm thấy nhân viên
+        const matrixEmpty = document.getElementById('matrixEmptyFilterRow');
+        if (matrixEmpty) {
+            matrixEmpty.classList.toggle('d-none', visibleMatrixEmpCount > 0);
+        }
+
+        // ==========================================
+        // CỤM 2: TIMELINE 24H
+        // ==========================================
+        const timelineRows = document.querySelectorAll('.timeline-row');
+        timelineRows.forEach(row => {
+            const rowPb = row.getAttribute('data-phongban-id') || '';
+            const rowName = row.getAttribute('data-emp-name') || '';
+            const rowId = row.getAttribute('data-emp-id') || '';
+
+            const matchPb = !pbVal || rowPb === pbVal;
+            const matchKw = !keyword || rowName.includes(keyword) || rowId.includes(keyword);
+
+            if (matchPb && matchKw) {
+                row.classList.remove('d-none');
+            } else {
+                row.classList.add('d-none');
+            }
+        });
+
+        // Ẩn/hiện tiêu đề phòng ban trong Timeline nếu toàn bộ nhân viên bị ẩn
+        document.querySelectorAll('.timeline-dept-header').forEach(header => {
+            const deptId = header.getAttribute('data-phongban-id') || '';
+            if (deptId) {
+                const parentPanel = header.closest('.timeline-day-panel');
+                if (parentPanel) {
+                    const childRows = parentPanel.querySelectorAll(`.timeline-row[data-phongban-id="${deptId}"]`);
+                    const hasVisible = Array.from(childRows).some(r => !r.classList.contains('d-none'));
+                    header.style.display = hasVisible ? '' : 'none';
+                }
+            }
+        });
+
+        // Lọc thanh ca trực trong Timeline
+        const tlShiftBars = document.querySelectorAll('.timeline-shift-bar');
+        tlShiftBars.forEach(bar => {
+            const barCa = bar.getAttribute('data-ca-id');
+            const matchCa = !caVal || !barCa || barCa === caVal;
+            bar.style.display = matchCa ? 'flex' : 'none';
+        });
+
+        // Hiển thị thông báo rỗng trong Timeline cho từng ngày nếu không có ai
+        document.querySelectorAll('.timeline-day-panel').forEach(panel => {
+            const visibleRows = panel.querySelectorAll('.timeline-row:not(.d-none)');
+            const emptyAlert = panel.querySelector('.timeline-empty-filter');
+            if (emptyAlert) {
+                emptyAlert.classList.toggle('d-none', visibleRows.length > 0);
+            }
+        });
+
+        // ==========================================
+        // CỤM 3: CA TRỰC HÔM NAY (3 CỘT SÁNG, CHIỀU, ĐÊM)
+        // ==========================================
+        ['1', '2', '3'].forEach(colCaId => {
+            const col = document.querySelector(`.today-col-ca[data-ca-id="${colCaId}"]`);
+            if (!col) return;
+
+            // Nếu người dùng chọn lọc 1 ca cụ thể thì làm mờ các ca khác
+            const matchColCa = !caVal || caVal === colCaId;
+            if (!matchColCa) {
+                col.classList.add('opacity-25');
+            } else {
+                col.classList.remove('opacity-25');
+            }
+
+            const items = col.querySelectorAll('.today-shift-item');
+            let visibleItemCount = 0;
+            items.forEach(item => {
+                const itemPb = item.getAttribute('data-phongban-id') || '';
+                const itemName = item.getAttribute('data-emp-name') || '';
+
+                const matchPb = !pbVal || itemPb === pbVal;
+                const matchKw = !keyword || itemName.includes(keyword);
+
+                if (matchPb && matchKw) {
+                    item.classList.remove('d-none');
+                    visibleItemCount++;
+                } else {
+                    item.classList.add('d-none');
+                }
+            });
+
+            // Hiển thị thông báo rỗng cho từng ca
+            const emptyDb = col.querySelector('.today-empty-db');
+            const emptyFilter = col.querySelector('.today-empty-filter');
+
+            if (items.length > 0) {
+                if (emptyFilter) emptyFilter.classList.toggle('d-none', visibleItemCount > 0);
+            } else {
+                if (emptyDb) emptyDb.classList.remove('d-none');
+                if (emptyFilter) emptyFilter.classList.add('d-none');
+            }
+        });
+
+        // ==========================================
+        // CỤM 4: DANH SÁCH CHI TIẾT
+        // ==========================================
+        const listRows = document.querySelectorAll('.list-phanca-row');
+        let visibleListCount = 0;
+        listRows.forEach(row => {
+            const rowPb = row.getAttribute('data-phongban-id') || '';
+            const rowCa = row.getAttribute('data-ca-id') || '';
+            const rowName = row.getAttribute('data-emp-name') || '';
+
+            const matchPb = !pbVal || rowPb === pbVal;
+            const matchCa = !caVal || rowCa === caVal;
+            const matchKw = !keyword || rowName.includes(keyword);
+
+            if (matchPb && matchCa && matchKw) {
+                row.classList.remove('d-none');
+                visibleListCount++;
+            } else {
+                row.classList.add('d-none');
+            }
+        });
+
+        const listEmpty = document.getElementById('listEmptyFilterRow');
+        if (listEmpty) {
+            listEmpty.classList.toggle('d-none', visibleListCount > 0 || listRows.length === 0);
+        }
+
+        // Cập nhật số đếm badge tức thì
+        const badgeMatrix = document.getElementById('badgeMatrixCount');
+        if (badgeMatrix) badgeMatrix.textContent = visibleMatrixEmpCount + ' nhân sự';
+
+        const badgeList = document.getElementById('badgeListCount');
+        if (badgeList) badgeList.textContent = visibleListCount + ' lượt';
+    }
+
+    // 8. Mở modal xếp ca nhanh khi click vào ô trống trong Ma trận
+    function openQuickAssignModal(maNhanVien, dateStr) {
+        document.getElementById('selectNhanVienModal').value = maNhanVien;
+        document.getElementById('inputNgayLamViecModal').value = dateStr;
+        const modal = new bootstrap.Modal(document.getElementById('modalCreatePhanCa'));
+        modal.show();
+    }
+
+    // Khởi tạo & Kích hoạt CountUp lần đầu tải trang
+    document.addEventListener('DOMContentLoaded', function () {
+        const savedMode = localStorage.getItem('overtime_phanca_view_mode') || 'matrix';
+        switchViewMode(savedMode);
+
+        // Kích hoạt CountUp lần đầu cho các chỉ số
+        const elTotal = document.getElementById('valTongCa');
+        const elSang = document.getElementById('valCaSang');
+        const elChieu = document.getElementById('valCaChieu');
+        const elDem = document.getElementById('valCaDem');
+
+        if (elTotal) animateCountUp(elTotal, 0, parseInt(elTotal.textContent) || 0);
+        if (elSang) animateCountUp(elSang, 0, parseInt(elSang.textContent) || 0);
+        if (elChieu) animateCountUp(elChieu, 0, parseInt(elChieu.textContent) || 0);
+        if (elDem) animateCountUp(elDem, 0, parseInt(elDem.textContent) || 0);
+        pulseKpiCards();
+    });
+</script>
+}

@@ -11,13 +11,13 @@
 ## 📊 TIẾN ĐỘ TỔNG QUAN HỆ THỐNG
 
 - **Tổng số nhiệm vụ:** 30 Tasks
-- **Đã hoàn thành:** 14 / 30 Tasks (46.7%)
+- **Đã hoàn thành:** 15 / 30 Tasks (50.0%)
 - **Đang thực hiện:** 0 Task
-- **Chưa bắt đầu:** 16 Tasks
+- **Chưa bắt đầu:** 15 Tasks
 - **Mốc chấm đồ án chính thức:** **Tuần 10 (10/11/2026)**
 
 ```text
-[██████████████░░░░░░░░░░░░░░░░] 46.7% Hoàn thành (14/30)
+[████████████████░░░░░░░░░░░░░░] 50.0% Hoàn thành (15/30)
 ```
 
 ---
@@ -140,12 +140,12 @@
 
 ### GIAI ĐOẠN 4: LẬP TRÌNH MOBILE APP CHẤM CÔNG & DUYỆT ĐƠN (TUẦN 7 - 8)
 
-- [ ] **TSK-16:** Lập trình App: Module Lập lịch phân ca làm việc 24/7
+- [x] **TSK-16:** Lập trình Module Lập lịch phân ca làm việc 24/7
 
-  - **Phân hệ:** App .NET MAUI
-  - **Mô tả & Output:** Giao diện Mobile: Xem và xếp lịch ca sáng/chiều/đêm theo tuần/tháng cho nhân sự
-  - **Người phụ trách:** _Chưa phân công_ | **Độ ưu tiên:** Cao | **Hạn chót:** 20/10/2026
-  - **Trạng thái:** `Chưa bắt đầu`
+  - **Phân hệ:** Web Admin (MVC) & .NET MAUI
+  - **Mô tả & Output:** Giao diện Ma trận Lịch Tuần 24/7 và Danh sách phân ca: Xem và xếp lịch ca sáng/chiều/đêm theo tuần/tháng cho nhân sự, tự động tính ca đêm 30%, kết nối Supabase Cloud
+  - **Người phụ trách:** Nhóm phát triển | **Độ ưu tiên:** Cao | **Hạn chót:** 20/10/2026
+  - **Trạng thái:** `Hoàn thành (Chờ duyệt)`
 
 - [ ] **TSK-17:** Lập trình App: Module Chấm công Check-in/Check-out
 

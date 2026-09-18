@@ -27,13 +27,23 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Trang Chủ</a>
+                            <a class="nav-link text-dark fw-semibold" asp-area="" asp-controller="Home" asp-action="Index">
+                                <i class="bi bi-speedometer2 me-1 text-primary"></i> Dashboard
+                            </a>
                         </li>
                         @if (User.IsInRole("Admin") || User.IsInRole("HR"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="SystemCatalog" asp-action="Index">
                                     <i class="bi bi-grid me-1"></i> Danh mục hệ thống
+                                </a>
+                            </li>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("HR") || User.IsInRole("Manager"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="PhanCa" asp-action="Index">
+                                    <i class="bi bi-calendar-week me-1 text-primary"></i> Phân Ca 24/7
                                 </a>
                             </li>
                         }
@@ -73,6 +83,16 @@
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
                                     <li><h6 class="dropdown-header">Tài khoản: @User.Identity.Name</h6></li>
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center gap-2 fw-semibold" asp-controller="Home" asp-action="Index">
+                                            <i class="bi bi-speedometer2 text-primary"></i> Dashboard Hệ Thống
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="PhanCa" asp-action="Index">
+                                            <i class="bi bi-calendar-week text-primary"></i> Quản Lý Phân Ca 24/7
+                                        </a>
+                                    </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <a class="dropdown-item text-danger d-flex align-items-center gap-2" asp-controller="Account" asp-action="Logout">
