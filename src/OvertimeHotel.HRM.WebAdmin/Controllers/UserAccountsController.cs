@@ -14,6 +14,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 public class UserAccountsController : Controller
 {
     private static readonly string[] SupportedRoles = ["Admin", "HR", "Manager", "Employee"];
+    private const int RecentAuditLogLimit = 12;
 
     private readonly AppDbContext _context;
     private readonly ILogger<UserAccountsController> _logger;
@@ -25,9 +26,10 @@ public class UserAccountsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, int? roleId, bool? isActive)
+    public async Task<IActionResult> Index(string? keyword, int? roleId, bool? isActive, DateOnly? auditFrom, DateOnly? auditTo)
     {
         var normalizedKeyword = keyword?.Trim();
+        var auditDateValidationMessage = GetAuditDateValidationMessage(auditFrom, auditTo);
         var query = _context.TaiKhoans
             .AsNoTracking()
             .Include(account => account.NhanVien)!
@@ -84,17 +86,36 @@ public class UserAccountsController : Controller
                 .ToListAsync();
 
             var roleOptions = await GetRoleOptionsAsync(roleId);
+            IReadOnlyList<AdminAuditLogViewModel> auditLogs = [];
+            var auditLogAvailable = true;
+            try
+            {
+                auditLogs = auditDateValidationMessage == null
+                    ? await GetRecentAuditLogsAsync(auditFrom, auditTo)
+                    : [];
+            }
+            catch (Exception ex)
+            {
+                auditLogAvailable = false;
+                _logger.LogWarning(ex, "Không thể tải nhật ký quản trị tài khoản.");
+            }
+
             var model = new AccountIndexViewModel
             {
                 Keyword = normalizedKeyword,
                 RoleId = roleId,
                 IsActive = isActive,
+                AuditFrom = auditFrom,
+                AuditTo = auditTo,
+                AuditDateValidationMessage = auditDateValidationMessage,
                 Accounts = accounts,
                 RoleOptions = roleOptions,
                 TotalAccounts = await _context.TaiKhoans.CountAsync(),
                 ActiveAccounts = await _context.TaiKhoans.CountAsync(account => account.TrangThai),
                 LockedAccounts = await _context.TaiKhoans.CountAsync(account => !account.TrangThai),
-                AdminAccounts = await _context.TaiKhoans.CountAsync(account => account.VaiTro != null && account.VaiTro.TenVaiTro == "Admin")
+                AdminAccounts = await _context.TaiKhoans.CountAsync(account => account.VaiTro != null && account.VaiTro.TenVaiTro == "Admin"),
+                AuditLogs = auditLogs,
+                AuditLogAvailable = auditLogAvailable
             };
 
             return View(model);
@@ -129,12 +150,16 @@ public class UserAccountsController : Controller
                 Keyword = normalizedKeyword,
                 RoleId = roleId,
                 IsActive = isActive,
+                AuditFrom = auditFrom,
+                AuditTo = auditTo,
+                AuditDateValidationMessage = auditDateValidationMessage,
                 Accounts = fallbackAccounts,
                 RoleOptions = GetDefaultRoleOptions(roleId),
                 TotalAccounts = 4,
                 ActiveAccounts = 4,
                 LockedAccounts = 0,
-                AdminAccounts = 1
+                AdminAccounts = 1,
+                AuditLogAvailable = false
             });
         }
     }
@@ -189,8 +214,27 @@ public class UserAccountsController : Controller
 
         try
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             _context.TaiKhoans.Add(account);
             await _context.SaveChangesAsync();
+
+            var roleName = await _context.VaiTros
+                .AsNoTracking()
+                .Where(role => role.MaVaiTro == account.MaVaiTro)
+                .Select(role => role.TenVaiTro)
+                .SingleAsync();
+
+            _context.NhatKyQuanTris.Add(CreateAuditLog(
+                account.MaTaiKhoan,
+                account.TenDangNhap,
+                "CREATE_ACCOUNT",
+                "Tạo tài khoản mới và liên kết với nhân viên.",
+                null,
+                $"Username: {account.TenDangNhap}; Vai trò: {roleName}; Trạng thái: {(account.TrangThai ? "Hoạt động" : "Đã khóa")}",
+                "Cấp tài khoản đăng nhập mới."));
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
             TempData["Success"] = $"Đã tạo tài khoản '{account.TenDangNhap}' thành công.";
             return RedirectToAction(nameof(Index));
         }
@@ -260,6 +304,10 @@ public class UserAccountsController : Controller
         model.EmployeeEmail = account.NhanVien?.Email ?? string.Empty;
         model.IsActive = account.TrangThai;
 
+        var oldUsername = account.TenDangNhap;
+        var oldRoleId = account.MaVaiTro;
+        var oldRoleName = account.VaiTro?.TenVaiTro ?? "Chưa cấp";
+
         if (await _context.TaiKhoans.AnyAsync(item =>
                 item.MaTaiKhoan != id && item.TenDangNhap.ToLower() == model.Username.ToLower()))
         {
@@ -289,10 +337,58 @@ public class UserAccountsController : Controller
             ModelState.Remove(nameof(model.ConfirmNewPassword));
         }
 
+        var usernameChanged = !string.Equals(oldUsername, model.Username, StringComparison.Ordinal);
+        var roleChanged = oldRoleId != model.RoleId;
+        var passwordChanged = !string.IsNullOrWhiteSpace(model.NewPassword);
+        var hasChanges = usernameChanged || roleChanged || passwordChanged;
+
+        if (hasChanges && string.IsNullOrWhiteSpace(model.ChangeReason))
+        {
+            ModelState.AddModelError(nameof(model.ChangeReason), "Vui lòng nhập lý do thay đổi để lưu nhật ký quản trị.");
+        }
+
         if (!ModelState.IsValid)
         {
             model.RoleOptions = await GetRoleOptionsAsync(model.RoleId);
             return View(model);
+        }
+
+        if (!hasChanges)
+        {
+            TempData["Success"] = "Không có thông tin nào thay đổi.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var newRoleName = roleChanged
+            ? await _context.VaiTros.AsNoTracking()
+                .Where(role => role.MaVaiTro == model.RoleId)
+                .Select(role => role.TenVaiTro)
+                .SingleAsync()
+            : oldRoleName;
+
+        var oldValues = new List<string>();
+        var newValues = new List<string>();
+        var changedFields = new List<string>();
+
+        if (usernameChanged)
+        {
+            oldValues.Add($"Username: {oldUsername}");
+            newValues.Add($"Username: {model.Username}");
+            changedFields.Add("tên đăng nhập");
+        }
+
+        if (roleChanged)
+        {
+            oldValues.Add($"Vai trò: {oldRoleName}");
+            newValues.Add($"Vai trò: {newRoleName}");
+            changedFields.Add("vai trò");
+        }
+
+        if (passwordChanged)
+        {
+            oldValues.Add("Mật khẩu: giá trị cũ được bảo mật");
+            newValues.Add("Mật khẩu: đã được đặt lại");
+            changedFields.Add("mật khẩu");
         }
 
         account.TenDangNhap = model.Username;
@@ -304,6 +400,15 @@ public class UserAccountsController : Controller
 
         try
         {
+            _context.NhatKyQuanTris.Add(CreateAuditLog(
+                account.MaTaiKhoan,
+                account.TenDangNhap,
+                passwordChanged && !usernameChanged && !roleChanged ? "RESET_PASSWORD" : "UPDATE_ACCOUNT",
+                $"Cập nhật {string.Join(", ", changedFields)} của tài khoản.",
+                string.Join("; ", oldValues),
+                string.Join("; ", newValues),
+                model.ChangeReason));
+
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã cập nhật tài khoản '{account.TenDangNhap}'.";
             return RedirectToAction(nameof(Index));
@@ -319,38 +424,136 @@ public class UserAccountsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ToggleStatus(int id)
+    public async Task<IActionResult> ToggleStatus(int id, string? reason)
     {
+        reason = reason?.Trim();
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return ToggleStatusFailure("Vui lòng nhập lý do khóa hoặc mở khóa tài khoản.");
+        }
+
+        if (reason.Length > 500)
+        {
+            return ToggleStatusFailure("Lý do khóa hoặc mở khóa không được vượt quá 500 ký tự.");
+        }
+
         var account = await _context.TaiKhoans
             .Include(item => item.VaiTro)
             .FirstOrDefaultAsync(item => item.MaTaiKhoan == id);
 
         if (account == null)
         {
-            return NotFound();
+            return IsAjaxRequest()
+                ? NotFound(new { success = false, message = "Không tìm thấy tài khoản cần cập nhật." })
+                : NotFound();
         }
 
         if (GetCurrentAccountId() == account.MaTaiKhoan)
         {
-            TempData["Error"] = "Bạn không thể tự khóa tài khoản đang đăng nhập.";
-            return RedirectToAction(nameof(Index));
+            return ToggleStatusFailure("Bạn không thể tự khóa tài khoản đang đăng nhập.");
         }
 
         if (account.TrangThai && account.VaiTro?.TenVaiTro == "Admin" &&
             await CountOtherActiveAdminsAsync(account.MaTaiKhoan) == 0)
         {
-            TempData["Error"] = "Không thể khóa Admin cuối cùng đang hoạt động.";
-            return RedirectToAction(nameof(Index));
+            return ToggleStatusFailure("Không thể khóa Admin cuối cùng đang hoạt động.");
         }
 
+        var wasActive = account.TrangThai;
         account.TrangThai = !account.TrangThai;
-        await _context.SaveChangesAsync();
 
-        TempData["Success"] = account.TrangThai
+        var auditLog = CreateAuditLog(
+            account.MaTaiKhoan,
+            account.TenDangNhap,
+            account.TrangThai ? "UNLOCK_ACCOUNT" : "LOCK_ACCOUNT",
+            account.TrangThai ? "Mở khóa tài khoản." : "Khóa tài khoản.",
+            $"Trạng thái: {(wasActive ? "Hoạt động" : "Đã khóa")}",
+            $"Trạng thái: {(account.TrangThai ? "Hoạt động" : "Đã khóa")}",
+            reason);
+        _context.NhatKyQuanTris.Add(auditLog);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Không thể thay đổi trạng thái tài khoản {AccountId}.", account.MaTaiKhoan);
+            return ToggleStatusFailure(
+                "Không thể thay đổi trạng thái tài khoản. Vui lòng kiểm tra kết nối CSDL và thử lại.",
+                StatusCodes.Status500InternalServerError);
+        }
+
+        var successMessage = account.TrangThai
             ? $"Đã mở khóa tài khoản '{account.TenDangNhap}'."
             : $"Đã khóa tài khoản '{account.TenDangNhap}'.";
 
+        if (IsAjaxRequest())
+        {
+            var activeAccounts = await _context.TaiKhoans.CountAsync(item => item.TrangThai);
+            var lockedAccounts = await _context.TaiKhoans.CountAsync(item => !item.TrangThai);
+            var vietnamTime = auditLog.ThoiGian.ToOffset(TimeSpan.FromHours(7));
+
+            return Json(new
+            {
+                success = true,
+                message = successMessage,
+                accountId = account.MaTaiKhoan,
+                isActive = account.TrangThai,
+                activeAccounts,
+                lockedAccounts,
+                auditLog = new
+                {
+                    actionCode = auditLog.HanhDong,
+                    actionName = GetAuditActionName(auditLog.HanhDong),
+                    description = auditLog.NoiDung,
+                    actorName = auditLog.TenNguoiThucHien,
+                    targetUsername = auditLog.TenTaiKhoanBiTacDong,
+                    oldValue = auditLog.GiaTriCu,
+                    newValue = auditLog.GiaTriMoi,
+                    reason = auditLog.LyDo,
+                    ipAddress = auditLog.DiaChiIp,
+                    occurredAt = auditLog.ThoiGian,
+                    displayTime = vietnamTime.ToString("dd/MM/yyyy · HH:mm")
+                }
+            });
+        }
+
+        TempData["Success"] = successMessage;
+
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> AuditLogs(DateOnly? auditFrom, DateOnly? auditTo)
+    {
+        var validationMessage = GetAuditDateValidationMessage(auditFrom, auditTo);
+        if (validationMessage != null)
+        {
+            return BadRequest(new { message = validationMessage });
+        }
+
+        try
+        {
+            var auditLogs = await GetRecentAuditLogsAsync(auditFrom, auditTo);
+            Response.Headers["X-Audit-Count"] = auditLogs.Count.ToString();
+
+            return PartialView("_AuditLogList", new AccountIndexViewModel
+            {
+                AuditFrom = auditFrom,
+                AuditTo = auditTo,
+                AuditLogs = auditLogs,
+                AuditLogAvailable = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể lọc nhật ký quản trị tài khoản.");
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "Không thể tải nhật ký quản trị. Vui lòng kiểm tra kết nối CSDL và thử lại."
+            });
+        }
     }
 
     private async Task LoadCreateOptionsAsync(CreateAccountViewModel model)
@@ -373,7 +576,7 @@ public class UserAccountsController : Controller
 
     private async Task<IReadOnlyList<SelectListItem>> GetRoleOptionsAsync(int? selectedRoleId)
     {
-        return await _context.VaiTros
+        var roles = await _context.VaiTros
             .AsNoTracking()
             .Where(role => SupportedRoles.Contains(role.TenVaiTro))
             .OrderBy(role => role.MaVaiTro)
@@ -384,6 +587,13 @@ public class UserAccountsController : Controller
                 Selected = selectedRoleId.HasValue && role.MaVaiTro == selectedRoleId.Value
             })
             .ToListAsync();
+
+        foreach (var role in roles)
+        {
+            role.Text = GetVietnameseRoleName(role.Text);
+        }
+
+        return roles;
     }
 
     private Task<bool> IsSupportedRoleAsync(int roleId)
@@ -399,6 +609,119 @@ public class UserAccountsController : Controller
             account.TrangThai &&
             account.VaiTro != null &&
             account.VaiTro.TenVaiTro == "Admin");
+    }
+
+    private async Task<IReadOnlyList<AdminAuditLogViewModel>> GetRecentAuditLogsAsync(DateOnly? auditFrom, DateOnly? auditTo)
+    {
+        var query = _context.NhatKyQuanTris.AsNoTracking().AsQueryable();
+        var vietnamOffset = TimeSpan.FromHours(7);
+
+        if (auditFrom.HasValue)
+        {
+            var startOfDay = new DateTimeOffset(auditFrom.Value.ToDateTime(TimeOnly.MinValue), vietnamOffset).ToUniversalTime();
+            query = query.Where(log => log.ThoiGian >= startOfDay);
+        }
+
+        if (auditTo.HasValue)
+        {
+            var startOfNextDay = new DateTimeOffset(auditTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), vietnamOffset).ToUniversalTime();
+            query = query.Where(log => log.ThoiGian < startOfNextDay);
+        }
+
+        var logs = await query
+            .OrderByDescending(log => log.ThoiGian)
+            .Take(RecentAuditLogLimit)
+            .ToListAsync();
+
+        return logs.Select(log => new AdminAuditLogViewModel
+        {
+            AuditLogId = log.MaNhatKy,
+            ActorName = log.TenNguoiThucHien,
+            TargetUsername = log.TenTaiKhoanBiTacDong,
+            ActionCode = log.HanhDong,
+            ActionName = GetAuditActionName(log.HanhDong),
+            Description = log.NoiDung,
+            OldValue = log.GiaTriCu,
+            NewValue = log.GiaTriMoi,
+            Reason = log.LyDo,
+            IpAddress = log.DiaChiIp,
+            OccurredAt = log.ThoiGian
+        }).ToList();
+    }
+
+    private static string? GetAuditDateValidationMessage(DateOnly? auditFrom, DateOnly? auditTo)
+    {
+        return auditFrom.HasValue && auditTo.HasValue && auditFrom > auditTo
+            ? "Ngày bắt đầu không được sau ngày kết thúc."
+            : null;
+    }
+
+    private NhatKyQuanTri CreateAuditLog(
+        int targetAccountId,
+        string targetUsername,
+        string action,
+        string description,
+        string? oldValue,
+        string? newValue,
+        string? reason)
+    {
+        return new NhatKyQuanTri
+        {
+            MaTaiKhoanThucHien = GetCurrentAccountId(),
+            MaTaiKhoanBiTacDong = targetAccountId,
+            TenNguoiThucHien = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "Không xác định",
+            TenTaiKhoanBiTacDong = targetUsername,
+            HanhDong = action,
+            NoiDung = description,
+            GiaTriCu = string.IsNullOrWhiteSpace(oldValue) ? null : oldValue,
+            GiaTriMoi = string.IsNullOrWhiteSpace(newValue) ? null : newValue,
+            LyDo = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
+            DiaChiIp = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            ThoiGian = DateTimeOffset.UtcNow
+        };
+    }
+
+    private static string GetAuditActionName(string action)
+    {
+        return action switch
+        {
+            "CREATE_ACCOUNT" => "Tạo tài khoản",
+            "UPDATE_ACCOUNT" => "Cập nhật tài khoản",
+            "RESET_PASSWORD" => "Đặt lại mật khẩu",
+            "LOCK_ACCOUNT" => "Khóa tài khoản",
+            "UNLOCK_ACCOUNT" => "Mở khóa tài khoản",
+            _ => "Thao tác quản trị"
+        };
+    }
+
+    private static string GetVietnameseRoleName(string? roleName)
+    {
+        return roleName switch
+        {
+            "Admin" => "Quản trị viên",
+            "HR" => "Nhân sự",
+            "Manager" => "Quản lý",
+            "Employee" => "Nhân viên",
+            _ => roleName ?? "Chưa cấp"
+        };
+    }
+
+    private bool IsAjaxRequest()
+    {
+        return string.Equals(Request.Headers.XRequestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase) ||
+               Request.GetTypedHeaders().Accept?.Any(value =>
+                   string.Equals(value.MediaType.Value, "application/json", StringComparison.OrdinalIgnoreCase)) == true;
+    }
+
+    private IActionResult ToggleStatusFailure(string message, int statusCode = StatusCodes.Status400BadRequest)
+    {
+        if (IsAjaxRequest())
+        {
+            return StatusCode(statusCode, new { success = false, message });
+        }
+
+        TempData["Error"] = message;
+        return RedirectToAction(nameof(Index));
     }
 
     private int? GetCurrentAccountId()
@@ -471,10 +794,10 @@ public class UserAccountsController : Controller
     {
         return
         [
-            new SelectListItem { Value = "1", Text = "Admin", Selected = selectedRoleId == 1 },
-            new SelectListItem { Value = "2", Text = "HR", Selected = selectedRoleId == 2 },
-            new SelectListItem { Value = "3", Text = "Manager", Selected = selectedRoleId == 3 },
-            new SelectListItem { Value = "4", Text = "Employee", Selected = selectedRoleId == 4 }
+            new SelectListItem { Value = "1", Text = "Quản trị viên", Selected = selectedRoleId == 1 },
+            new SelectListItem { Value = "2", Text = "Nhân sự", Selected = selectedRoleId == 2 },
+            new SelectListItem { Value = "3", Text = "Quản lý", Selected = selectedRoleId == 3 },
+            new SelectListItem { Value = "4", Text = "Nhân viên", Selected = selectedRoleId == 4 }
         ];
     }
 }

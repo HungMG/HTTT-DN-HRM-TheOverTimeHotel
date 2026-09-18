@@ -1,0 +1,84 @@
+@model AccountIndexViewModel
+@{
+    string? VietnameseAuditValue(string? value) => value?
+        .Replace("Vai trò: Admin", "Vai trò: Quản trị viên")
+        .Replace("Vai trò: HR", "Vai trò: Nhân sự")
+        .Replace("Vai trò: Manager", "Vai trò: Quản lý")
+        .Replace("Vai trò: Employee", "Vai trò: Nhân viên");
+}
+
+@if (!Model.AuditLogAvailable)
+{
+    <div class="account-audit-unavailable">
+        <i class="bi bi-database-exclamation"></i>
+        <div><strong>Chưa tải được nhật ký quản trị</strong><span>Kiểm tra kết nối CSDL hoặc chạy migration tạo bảng nhật ký.</span></div>
+    </div>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(Model.AuditDateValidationMessage))
+    {
+        <div class="account-audit-filter-message" role="alert"><i class="bi bi-exclamation-circle"></i>@Model.AuditDateValidationMessage</div>
+    }
+    @if (Model.AuditLogs.Count == 0)
+    {
+        <div class="account-audit-empty" data-account-audit-empty><i class="bi bi-journal"></i><span>@(Model.AuditFrom.HasValue || Model.AuditTo.HasValue ? "Không có nhật ký trong khoảng ngày đã chọn." : "Chưa có thao tác quản trị nào được ghi nhận.")</span></div>
+    }
+    <div class="account-audit-list" data-account-audit-list>
+        @foreach (var log in Model.AuditLogs)
+        {
+            var actionClass = log.ActionCode switch
+            {
+                "CREATE_ACCOUNT" => "is-create",
+                "LOCK_ACCOUNT" => "is-lock",
+                "UNLOCK_ACCOUNT" => "is-unlock",
+                "RESET_PASSWORD" => "is-password",
+                _ => "is-update"
+            };
+            var actionIcon = log.ActionCode switch
+            {
+                "CREATE_ACCOUNT" => "bi-person-plus",
+                "LOCK_ACCOUNT" => "bi-person-lock",
+                "UNLOCK_ACCOUNT" => "bi-person-check",
+                "RESET_PASSWORD" => "bi-key",
+                _ => "bi-sliders"
+            };
+            var vietnamTime = log.OccurredAt.ToOffset(TimeSpan.FromHours(7));
+
+            <article class="account-audit-item @actionClass">
+                <div class="account-audit-icon"><i class="bi @actionIcon"></i></div>
+                <div class="account-audit-content">
+                    <div class="account-audit-meta">
+                        <strong>@log.ActionName</strong>
+                        <time datetime="@log.OccurredAt.ToString("O")">@vietnamTime.ToString("dd/MM/yyyy · HH:mm")</time>
+                    </div>
+                    <p>@log.Description</p>
+                    <div class="account-audit-subject">
+                        <span><i class="bi bi-person-gear"></i>@log.ActorName</span>
+                        <i class="bi bi-arrow-right"></i>
+                        <span><i class="bi bi-at"></i>@log.TargetUsername</span>
+                        @if (!string.IsNullOrWhiteSpace(log.IpAddress))
+                        {
+                            <small>IP @log.IpAddress</small>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(log.Reason))
+                    {
+                        <div class="account-audit-reason"><i class="bi bi-chat-quote"></i><span><b>Lý do:</b> @log.Reason</span></div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(log.OldValue) || !string.IsNullOrWhiteSpace(log.NewValue))
+                    {
+                        <details class="account-audit-change">
+                            <summary>Xem dữ liệu thay đổi</summary>
+                            <div>
+                                <span><small>Trước</small>@(VietnameseAuditValue(log.OldValue) ?? "—")</span>
+                                <i class="bi bi-arrow-right"></i>
+                                <span><small>Sau</small>@(VietnameseAuditValue(log.NewValue) ?? "—")</span>
+                            </div>
+                        </details>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+}

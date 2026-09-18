@@ -182,6 +182,22 @@ CREATE TABLE IF NOT EXISTS CHI_TIET_PHIEU_LUONG (
     ghi_chu VARCHAR(255)
 );
 
+-- 18. BẢNG NHAT_KY_QUAN_TRI (Audit trail thao tác quản trị tài khoản)
+CREATE TABLE IF NOT EXISTS NHAT_KY_QUAN_TRI (
+    ma_nhat_ky BIGSERIAL PRIMARY KEY,
+    ma_tai_khoan_thuc_hien INT NULL REFERENCES TAI_KHOAN(ma_tai_khoan) ON DELETE SET NULL,
+    ma_tai_khoan_bi_tac_dong INT NULL REFERENCES TAI_KHOAN(ma_tai_khoan) ON DELETE SET NULL,
+    ten_nguoi_thuc_hien VARCHAR(100) NOT NULL,
+    ten_tai_khoan_bi_tac_dong VARCHAR(100) NOT NULL,
+    hanh_dong VARCHAR(40) NOT NULL,
+    noi_dung VARCHAR(500) NOT NULL,
+    gia_tri_cu VARCHAR(1000),
+    gia_tri_moi VARCHAR(1000),
+    ly_do VARCHAR(500),
+    dia_chi_ip VARCHAR(64),
+    thoi_gian TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- TẠO CHỈ MỤC (INDEXES) TỐI ƯU HIỆU NĂNG TRUY VẤN
 CREATE INDEX IF NOT EXISTS idx_nhan_vien_phong_ban ON NHAN_VIEN(ma_phong_ban);
 CREATE INDEX IF NOT EXISTS idx_nhan_vien_chuc_vu ON NHAN_VIEN(ma_chuc_vu);
@@ -191,3 +207,5 @@ CREATE INDEX IF NOT EXISTS idx_cham_cong_phan_ca ON CHAM_CONG(ma_phan_ca);
 CREATE INDEX IF NOT EXISTS idx_don_tu_nhan_vien ON DON_TU(ma_nhan_vien, trang_thai);
 CREATE INDEX IF NOT EXISTS idx_phieu_luong_ky ON PHIEU_LUONG(ma_ky_luong);
 CREATE INDEX IF NOT EXISTS idx_chi_tiet_phieu ON CHI_TIET_PHIEU_LUONG(ma_phieu_luong);
+CREATE INDEX IF NOT EXISTS idx_nhat_ky_quan_tri_thoi_gian ON NHAT_KY_QUAN_TRI(thoi_gian DESC);
+CREATE INDEX IF NOT EXISTS idx_nhat_ky_quan_tri_tai_khoan ON NHAT_KY_QUAN_TRI(ma_tai_khoan_bi_tac_dong);

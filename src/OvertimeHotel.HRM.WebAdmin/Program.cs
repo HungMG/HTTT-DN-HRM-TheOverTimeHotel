@@ -55,6 +55,22 @@ if (!string.IsNullOrWhiteSpace(supabaseUrl) && !string.IsNullOrWhiteSpace(supaba
 
 var app = builder.Build();
 
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    await using var schemaScope = app.Services.CreateAsyncScope();
+    var schemaContext = schemaScope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var schemaLogger = schemaScope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseSchema");
+
+    try
+    {
+        await DatabaseSchemaInitializer.EnsureAdminAuditLogTableAsync(schemaContext);
+    }
+    catch (Exception ex)
+    {
+        schemaLogger.LogWarning(ex, "Không thể tự tạo bảng nhật ký quản trị. Hãy chạy migration 20260918_add_admin_audit_log.sql trên Supabase.");
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

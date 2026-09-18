@@ -5,15 +5,23 @@
     var currentAccountId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedId)
         ? parsedId
         : 0;
+    string VietnameseRoleName(string roleName) => roleName switch
+    {
+        "Admin" => "Quản trị viên",
+        "HR" => "Nhân sự",
+        "Manager" => "Quản lý",
+        "Employee" => "Nhân viên",
+        _ => roleName
+    };
 }
 
-<div class="account-workspace account-workspace--bleed">
+<div class="account-workspace account-workspace--bleed" data-account-workspace data-status-filter="@(Model.IsActive.HasValue ? Model.IsActive.Value.ToString().ToLowerInvariant() : string.Empty)" data-audit-from="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" data-audit-to="@(Model.AuditTo?.ToString("yyyy-MM-dd"))">
     <header class="account-command-bar account-reveal">
         <div class="account-product-mark" aria-hidden="true">
             <span></span><span></span><span></span>
         </div>
         <div class="account-command-copy">
-            <div class="account-eyebrow"><span class="account-live-dot"></span> TSK-13 · Access workspace</div>
+            <div class="account-eyebrow"><span class="account-live-dot"></span> TSK-13 · Không gian quản trị</div>
             <h1>Tài khoản <span>&amp; phân quyền</span></h1>
             <p>Điều phối danh tính, trạng thái và vai trò truy cập của toàn bộ nhân sự.</p>
         </div>
@@ -21,7 +29,7 @@
             <div class="account-environment-pill" title="Môi trường quản trị">
                 <i class="bi bi-shield-check"></i>
                 <span>RBAC</span>
-                <strong>Live</strong>
+                <strong>Trực tuyến</strong>
             </div>
             <a asp-action="Create" class="account-primary-action">
                 <i class="bi bi-plus-lg"></i><span>Tạo tài khoản</span>
@@ -61,25 +69,25 @@
 
     <section class="account-stat-grid account-reveal" aria-label="Tổng quan tài khoản">
         <article class="motion-stat motion-stat--violet">
-            <div class="motion-stat-top"><span>01 / Total identities</span><i class="bi bi-people"></i></div>
-            <div class="motion-stat-value">@Model.TotalAccounts</div>
+            <div class="motion-stat-top"><span>01 / Tổng tài khoản</span><i class="bi bi-people"></i></div>
+            <div class="motion-stat-value" data-account-total>@Model.TotalAccounts</div>
             <div class="motion-stat-label">Tổng tài khoản</div>
             <div class="motion-stat-track"><span style="width: 100%"></span></div>
         </article>
         <article class="motion-stat motion-stat--green">
-            <div class="motion-stat-top"><span>02 / Active layer</span><i class="bi bi-play-fill"></i></div>
-            <div class="motion-stat-value">@Model.ActiveAccounts</div>
+            <div class="motion-stat-top"><span>02 / Đang hoạt động</span><i class="bi bi-play-fill"></i></div>
+            <div class="motion-stat-value" data-account-active>@Model.ActiveAccounts</div>
             <div class="motion-stat-label">Đang hoạt động</div>
-            <div class="motion-stat-track"><span style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.ActiveAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
+            <div class="motion-stat-track"><span data-account-active-track style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.ActiveAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
         </article>
         <article class="motion-stat motion-stat--red">
-            <div class="motion-stat-top"><span>03 / Locked layer</span><i class="bi bi-pause-fill"></i></div>
-            <div class="motion-stat-value">@Model.LockedAccounts</div>
+            <div class="motion-stat-top"><span>03 / Đang bị khóa</span><i class="bi bi-pause-fill"></i></div>
+            <div class="motion-stat-value" data-account-locked>@Model.LockedAccounts</div>
             <div class="motion-stat-label">Đang bị khóa</div>
-            <div class="motion-stat-track"><span style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.LockedAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
+            <div class="motion-stat-track"><span data-account-locked-track style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.LockedAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
         </article>
         <article class="motion-stat motion-stat--amber">
-            <div class="motion-stat-top"><span>04 / Privileged</span><i class="bi bi-key"></i></div>
+            <div class="motion-stat-top"><span>04 / Quyền quản trị</span><i class="bi bi-key"></i></div>
             <div class="motion-stat-value">@Model.AdminAccounts</div>
             <div class="motion-stat-label">Quản trị viên</div>
             <div class="motion-stat-track"><span style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.AdminAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
@@ -89,19 +97,21 @@
     <section class="account-editor-grid account-reveal">
         <aside class="account-outline-panel">
             <div class="account-panel-heading">
-                <div><span>Outline</span><strong>Bộ lọc truy cập</strong></div>
+                <div><span>Bộ lọc</span><strong>Bộ lọc truy cập</strong></div>
                 <i class="bi bi-sliders2"></i>
             </div>
             <form method="get" asp-action="Index" class="account-filter-form">
+                <input type="hidden" name="auditFrom" value="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" />
+                <input type="hidden" name="auditTo" value="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" />
                 <div class="account-field">
-                    <label asp-for="Keyword"><span>Search</span><small>⌘ K</small></label>
+                    <label asp-for="Keyword"><span>Tìm kiếm</span><small>⌘ K</small></label>
                     <div class="account-input-wrap">
                         <i class="bi bi-search"></i>
                         <input asp-for="Keyword" placeholder="Tên, email, tài khoản..." />
                     </div>
                 </div>
                 <div class="account-field">
-                    <label asp-for="RoleId"><span>Role channel</span><small>RBAC</small></label>
+                    <label asp-for="RoleId"><span>Vai trò</span><small>RBAC</small></label>
                     <div class="account-select-wrap">
                         <select asp-for="RoleId" asp-items="Model.RoleOptions">
                             <option value="">Tất cả vai trò</option>
@@ -110,7 +120,7 @@
                     </div>
                 </div>
                 <div class="account-field">
-                    <label asp-for="IsActive"><span>Playback state</span><small>Status</small></label>
+                    <label asp-for="IsActive"><span>Trạng thái</span><small>Trạng thái</small></label>
                     <div class="account-select-wrap">
                         <select asp-for="IsActive">
                             <option value="">Tất cả trạng thái</option>
@@ -128,12 +138,12 @@
 
             <div class="account-role-legend">
                 <div class="account-panel-heading account-panel-heading--compact">
-                    <div><span>Channels</span><strong>Chú thích vai trò</strong></div>
+                    <div><span>Vai trò</span><strong>Chú thích vai trò</strong></div>
                 </div>
-                <div class="role-legend-item"><span class="role-swatch role-swatch--admin"></span><span>Admin</span><small>Toàn quyền</small></div>
-                <div class="role-legend-item"><span class="role-swatch role-swatch--hr"></span><span>HR</span><small>Nhân sự</small></div>
-                <div class="role-legend-item"><span class="role-swatch role-swatch--manager"></span><span>Manager</span><small>Điều phối</small></div>
-                <div class="role-legend-item"><span class="role-swatch role-swatch--employee"></span><span>Employee</span><small>Cá nhân</small></div>
+                <div class="role-legend-item"><span class="role-swatch role-swatch--admin"></span><span>Quản trị viên</span><small>Toàn quyền</small></div>
+                <div class="role-legend-item"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Nhân sự</small></div>
+                <div class="role-legend-item"><span class="role-swatch role-swatch--manager"></span><span>Quản lý</span><small>Điều phối</small></div>
+                <div class="role-legend-item"><span class="role-swatch role-swatch--employee"></span><span>Nhân viên</span><small>Cá nhân</small></div>
             </div>
         </aside>
 
@@ -141,10 +151,10 @@
             <div class="account-sequence-toolbar">
                 <div class="sequence-title">
                     <span class="sequence-play"><i class="bi bi-play-fill"></i></span>
-                    <div><small>Sequence / Staff access</small><strong>Danh sách tài khoản</strong></div>
+                    <div><small>Luồng quản lý truy cập</small><strong>Danh sách tài khoản</strong></div>
                 </div>
                 <div class="sequence-meta">
-                    <span><i class="bi bi-record-circle"></i> @Model.Accounts.Count kết quả</span>
+                    <span><i class="bi bi-record-circle"></i> <b data-account-result-count>@Model.Accounts.Count</b> kết quả</span>
                     <span class="sequence-time">00:@Model.TotalAccounts.ToString("00")</span>
                 </div>
             </div>
@@ -157,22 +167,22 @@
                 <table class="account-table">
                     <thead>
                         <tr>
-                            <th>Identity</th>
-                            <th>Username</th>
-                            <th>Workspace</th>
-                            <th>Role</th>
-                            <th>State</th>
+                            <th>Tài khoản</th>
+                            <th>Tên đăng nhập</th>
+                            <th>Đơn vị công tác</th>
+                            <th>Vai trò</th>
+                            <th>Trạng thái</th>
                             <th><span class="visually-hidden">Thao tác</span></th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (Model.Accounts.Count == 0)
                         {
-                            <tr>
+                            <tr data-account-empty-row>
                                 <td colspan="6">
                                     <div class="account-empty-state">
                                         <div><i class="bi bi-person-x"></i></div>
-                                        <strong>Không có identity phù hợp</strong>
+                                        <strong>Không có tài khoản phù hợp</strong>
                                         <span>Thử thay đổi bộ lọc hoặc tạo một tài khoản mới.</span>
                                     </div>
                                 </td>
@@ -191,8 +201,9 @@
                                     "Manager" => "role-chip--manager",
                                     _ => "role-chip--employee"
                                 };
+                                var roleDisplayName = VietnameseRoleName(account.RoleName);
                                 var isCurrentAccount = account.AccountId == currentAccountId;
-                                <tr class="@(!account.IsActive ? "is-locked" : null)" style="--row-delay: @(rowIndex * 35)ms">
+                                <tr class="@(!account.IsActive ? "is-locked" : null)" style="--row-delay: @(rowIndex * 35)ms" data-account-row="@account.AccountId">
                                     <td>
                                         <div class="account-identity">
                                             <div class="account-avatar">@(account.EmployeeName.Length > 0 ? account.EmployeeName[..1].ToUpperInvariant() : "N")</div>
@@ -206,16 +217,16 @@
                                         <div class="account-username"><i class="bi bi-code-slash"></i>@account.Username</div>
                                         @if (isCurrentAccount)
                                         {
-                                            <span class="account-you-chip">Current</span>
+                                            <span class="account-you-chip">Hiện tại</span>
                                         }
                                     </td>
                                     <td>
                                         <div class="account-work-unit"><strong>@account.Position</strong><span>@account.Department</span></div>
                                     </td>
-                                    <td><span class="role-chip @roleClass"><i></i>@account.RoleName</span></td>
+                                    <td><span class="role-chip @roleClass"><i></i>@roleDisplayName</span></td>
                                     <td>
-                                        <span class="state-chip @(account.IsActive ? "state-chip--active" : "state-chip--locked")">
-                                            <i></i>@(account.IsActive ? "Running" : "Paused")
+                                        <span class="state-chip @(account.IsActive ? "state-chip--active" : "state-chip--locked")" data-account-state>
+                                            <i></i>@(account.IsActive ? "Hoạt động" : "Đã khóa")
                                         </span>
                                     </td>
                                     <td>
@@ -223,9 +234,11 @@
                                             <a asp-action="Edit" asp-route-id="@account.AccountId" title="Chỉnh sửa"><i class="bi bi-sliders"></i></a>
                                             <form asp-action="ToggleStatus" asp-route-id="@account.AccountId" method="post"
                                                   class="account-toggle-form"
+                                                  data-account-id="@account.AccountId"
                                                   data-account-name="@account.EmployeeName"
                                                   data-account-mode="@(account.IsActive ? "lock" : "unlock")">
                                                 @Html.AntiForgeryToken()
+                                                <input type="hidden" name="reason" value="" data-account-reason-value />
                                                 <button type="submit" title="@(account.IsActive ? "Khóa tài khoản" : "Mở khóa tài khoản")" disabled="@isCurrentAccount">
                                                     <i class="bi @(account.IsActive ? "bi-pause-fill" : "bi-play-fill")"></i>
                                                 </button>
@@ -240,6 +253,37 @@
             </div>
         </div>
     </section>
+
+    <section class="account-audit-panel account-reveal" aria-labelledby="auditLogTitle">
+        <div class="account-audit-heading">
+            <div class="account-audit-title">
+                <span class="account-audit-mark"><i class="bi bi-journal-check"></i></span>
+                <div><small>TSK-13 · Nhật ký thao tác</small><h2 id="auditLogTitle">Nhật ký quản trị gần đây</h2></div>
+            </div>
+            <div class="account-audit-tools">
+                <form method="get" asp-action="Index" class="account-audit-filter" data-account-audit-filter data-audit-endpoint="@Url.Action("AuditLogs")" aria-label="Lọc nhật ký theo ngày">
+                    <input type="hidden" name="keyword" value="@Model.Keyword" />
+                    <input type="hidden" name="roleId" value="@Model.RoleId" />
+                    <input type="hidden" name="isActive" value="@Model.IsActive" />
+                    <label>
+                        <span>Từ ngày</span>
+                        <input type="date" name="auditFrom" value="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" max="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" />
+                    </label>
+                    <label>
+                        <span>Đến ngày</span>
+                        <input type="date" name="auditTo" value="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" min="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" />
+                    </label>
+                    <button type="submit" title="Lọc nhật ký"><i class="bi bi-funnel-fill"></i><span>Lọc</span></button>
+                    <a asp-action="Index" asp-route-keyword="@Model.Keyword" asp-route-roleId="@Model.RoleId" asp-route-isActive="@Model.IsActive" data-account-audit-clear class="@(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "is-disabled" : null)" aria-disabled="@(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "true" : "false")" title="Xóa lọc ngày"><i class="bi bi-x-lg"></i><span>Xóa ngày</span></a>
+                </form>
+                <span class="account-audit-count"><i class="bi bi-clock-history"></i> <b data-account-audit-count>@Model.AuditLogs.Count</b> hoạt động</span>
+            </div>
+        </div>
+
+        <div data-account-audit-content>
+            <partial name="_AuditLogList" model="Model" />
+        </div>
+    </section>
 </div>
 
 <dialog class="account-confirm-dialog" data-account-confirm>
@@ -250,6 +294,11 @@
         <h2 data-account-confirm-title>Khóa tài khoản?</h2>
         <p data-account-confirm-message>Người dùng sẽ không thể đăng nhập cho đến khi tài khoản được mở khóa.</p>
         <div class="account-confirm-target"><i class="bi bi-person"></i><span data-account-confirm-name>Tài khoản</span></div>
+        <label class="account-confirm-reason">
+            <span>Lý do thực hiện <b>*</b></span>
+            <textarea rows="3" maxlength="500" data-account-confirm-reason placeholder="Nhập lý do để lưu vào nhật ký quản trị"></textarea>
+            <small data-account-confirm-reason-error>Vui lòng nhập lý do trước khi xác nhận.</small>
+        </label>
         <div class="account-confirm-actions">
             <button type="button" data-account-confirm-cancel>Hủy bỏ</button>
             <button type="button" data-account-confirm-submit><i class="bi bi-check2"></i><span>Xác nhận</span></button>

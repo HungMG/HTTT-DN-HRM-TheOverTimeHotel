@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
     public DbSet<CauHinhKhoanLuong> CauHinhKhoanLuongs => Set<CauHinhKhoanLuong>();
     public DbSet<PhieuLuong> PhieuLuongs => Set<PhieuLuong>();
     public DbSet<ChiTietPhieuLuong> ChiTietPhieuLuongs => Set<ChiTietPhieuLuong>();
+    public DbSet<NhatKyQuanTri> NhatKyQuanTris => Set<NhatKyQuanTri>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -365,6 +366,38 @@ public class AppDbContext : DbContext
                 .WithMany(c => c.ChiTietPhieuLuongs)
                 .HasForeignKey(e => e.MaKhoan)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // 18. NHAT_KY_QUAN_TRI
+        modelBuilder.Entity<NhatKyQuanTri>(entity =>
+        {
+            entity.ToTable("nhat_ky_quan_tri");
+            entity.HasKey(e => e.MaNhatKy);
+            entity.Property(e => e.MaNhatKy).HasColumnName("ma_nhat_ky");
+            entity.Property(e => e.MaTaiKhoanThucHien).HasColumnName("ma_tai_khoan_thuc_hien");
+            entity.Property(e => e.MaTaiKhoanBiTacDong).HasColumnName("ma_tai_khoan_bi_tac_dong");
+            entity.Property(e => e.TenNguoiThucHien).HasColumnName("ten_nguoi_thuc_hien").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.TenTaiKhoanBiTacDong).HasColumnName("ten_tai_khoan_bi_tac_dong").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.HanhDong).HasColumnName("hanh_dong").HasMaxLength(40).IsRequired();
+            entity.Property(e => e.NoiDung).HasColumnName("noi_dung").HasMaxLength(500).IsRequired();
+            entity.Property(e => e.GiaTriCu).HasColumnName("gia_tri_cu").HasMaxLength(1000);
+            entity.Property(e => e.GiaTriMoi).HasColumnName("gia_tri_moi").HasMaxLength(1000);
+            entity.Property(e => e.LyDo).HasColumnName("ly_do").HasMaxLength(500);
+            entity.Property(e => e.DiaChiIp).HasColumnName("dia_chi_ip").HasMaxLength(64);
+            entity.Property(e => e.ThoiGian).HasColumnName("thoi_gian").HasDefaultValueSql("CURRENT_TIMESTAMP").IsRequired();
+
+            entity.HasIndex(e => e.ThoiGian).HasDatabaseName("idx_nhat_ky_quan_tri_thoi_gian");
+            entity.HasIndex(e => e.MaTaiKhoanBiTacDong).HasDatabaseName("idx_nhat_ky_quan_tri_tai_khoan");
+
+            entity.HasOne<TaiKhoan>()
+                .WithMany()
+                .HasForeignKey(e => e.MaTaiKhoanThucHien)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<TaiKhoan>()
+                .WithMany()
+                .HasForeignKey(e => e.MaTaiKhoanBiTacDong)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

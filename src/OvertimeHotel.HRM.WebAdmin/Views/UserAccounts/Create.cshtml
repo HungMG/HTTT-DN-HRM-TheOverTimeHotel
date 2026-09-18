@@ -7,9 +7,9 @@
     <header class="account-command-bar account-reveal">
         <a asp-action="Index" class="account-icon-action" aria-label="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
         <div class="account-command-copy">
-            <div class="account-eyebrow"><span class="account-live-dot"></span> New identity / TSK-13</div>
+            <div class="account-eyebrow"><span class="account-live-dot"></span> Tài khoản mới / TSK-13</div>
             <h1>Tạo <span>tài khoản mới</span></h1>
-            <p>Liên kết nhân viên với một identity và thiết lập kênh quyền truy cập.</p>
+            <p>Liên kết nhân viên với một tài khoản và thiết lập quyền truy cập.</p>
         </div>
         <div class="account-step-indicator" aria-label="Tiến trình cấu hình">
             <span class="is-active">1</span><i></i><span class="is-active">2</span><i></i><span>3</span>
@@ -36,13 +36,13 @@
             <section class="inspector-card">
                 <div class="inspector-card-heading">
                     <span class="inspector-index">01</span>
-                    <div><small>Source object</small><h2>Nhân viên &amp; vai trò</h2></div>
+                    <div><small>Thông tin nguồn</small><h2>Nhân viên &amp; vai trò</h2></div>
                     <i class="bi bi-person-badge"></i>
                 </div>
                 <div class="inspector-card-body">
                     <div class="account-form-grid account-form-grid--7-5">
                         <div class="account-field">
-                            <label asp-for="EmployeeId"><span>Nhân viên liên kết</span><small>Required</small></label>
+                            <label asp-for="EmployeeId"><span>Nhân viên liên kết</span><small>Bắt buộc</small></label>
                             <div class="account-select-wrap">
                                 <select asp-for="EmployeeId" asp-items="Model.EmployeeOptions">
                                     <option value="">Chọn nhân viên chưa có tài khoản</option>
@@ -56,7 +56,7 @@
                             }
                         </div>
                         <div class="account-field">
-                            <label asp-for="RoleId"><span>Role channel</span><small>RBAC</small></label>
+                            <label asp-for="RoleId"><span>Vai trò</span><small>RBAC</small></label>
                             <div class="account-select-wrap">
                                 <select asp-for="RoleId" asp-items="Model.RoleOptions">
                                     <option value="">Chọn vai trò</option>
@@ -72,13 +72,13 @@
             <section class="inspector-card">
                 <div class="inspector-card-heading">
                     <span class="inspector-index">02</span>
-                    <div><small>Authentication properties</small><h2>Thông tin đăng nhập</h2></div>
+                    <div><small>Thông tin xác thực</small><h2>Thông tin đăng nhập</h2></div>
                     <i class="bi bi-key"></i>
                 </div>
                 <div class="inspector-card-body">
                     <div class="account-form-grid">
                         <div class="account-field account-field--full">
-                            <label asp-for="Username"><span>Tên đăng nhập</span><small>Unique</small></label>
+                            <label asp-for="Username"><span>Tên đăng nhập</span><small>Duy nhất</small></label>
                             <div class="account-input-wrap">
                                 <i class="bi bi-at"></i>
                                 <input asp-for="Username" autocomplete="off" placeholder="Ví dụ: nv.nguyenvana" />
@@ -86,7 +86,7 @@
                             <span asp-validation-for="Username" class="account-field-error"></span>
                         </div>
                         <div class="account-field">
-                            <label asp-for="Password"><span>Mật khẩu</span><small>Min 8</small></label>
+                            <label asp-for="Password"><span>Mật khẩu</span><small>Tối thiểu 8 ký tự</small></label>
                             <div class="account-input-wrap account-password-wrap">
                                 <i class="bi bi-lock"></i>
                                 <input asp-for="Password" autocomplete="new-password" />
@@ -95,7 +95,7 @@
                             <span asp-validation-for="Password" class="account-field-error"></span>
                         </div>
                         <div class="account-field">
-                            <label asp-for="ConfirmPassword"><span>Xác nhận mật khẩu</span><small>Match</small></label>
+                            <label asp-for="ConfirmPassword"><span>Xác nhận mật khẩu</span><small>Trùng khớp</small></label>
                             <div class="account-input-wrap account-password-wrap">
                                 <i class="bi bi-shield-lock"></i>
                                 <input asp-for="ConfirmPassword" autocomplete="new-password" />
@@ -111,9 +111,9 @@
                 <div class="inspector-card-body">
                     <div class="account-switch-row">
                         <div>
-                            <span class="state-chip state-chip--active"><i></i> Playback state</span>
+                            <span class="state-chip state-chip--active"><i></i> Trạng thái hoạt động</span>
                             <strong>Kích hoạt ngay sau khi tạo</strong>
-                            <small>Identity có thể đăng nhập ngay khi được lưu.</small>
+                            <small>Tài khoản có thể đăng nhập ngay khi được lưu.</small>
                         </div>
                         <label class="account-switch">
                             <input asp-for="IsActive" />
@@ -125,27 +125,27 @@
 
             <div class="account-form-actions">
                 <a asp-action="Index">Hủy</a>
-                <button type="submit" disabled="@(Model.EmployeeOptions.Count == 0)"><i class="bi bi-plus-lg"></i>Tạo identity</button>
+                <button type="submit" disabled="@(Model.EmployeeOptions.Count == 0)"><i class="bi bi-plus-lg"></i>Tạo tài khoản</button>
             </div>
         </div>
 
         <aside class="account-preview-panel">
             <div class="account-panel-heading">
-                <div><span>Inspector</span><strong>Access preview</strong></div>
+                <div><span>Xem trước</span><strong>Xem trước quyền truy cập</strong></div>
                 <i class="bi bi-stars"></i>
             </div>
             <div class="identity-preview">
                 <div class="identity-preview-orbit"><span><i class="bi bi-person"></i></span></div>
-                <small>New identity</small>
+                <small>Tài khoản mới</small>
                 <strong id="identityNamePreview">Chưa chọn nhân viên</strong>
                 <span id="rolePreview" class="role-chip role-chip--employee"><i></i>Chưa cấp vai trò</span>
             </div>
             <div class="permission-stack">
-                <div><i class="bi bi-check2"></i><span>Đăng nhập hệ thống</span><small>Enabled</small></div>
-                <div><i class="bi bi-check2"></i><span>Cookie bảo mật</span><small>8 hours</small></div>
-                <div><i class="bi bi-diagram-3"></i><span>Phạm vi quyền</span><small>Theo role</small></div>
+                <div><i class="bi bi-check2"></i><span>Đăng nhập hệ thống</span><small>Đã bật</small></div>
+                <div><i class="bi bi-check2"></i><span>Cookie bảo mật</span><small>8 giờ</small></div>
+                <div><i class="bi bi-diagram-3"></i><span>Phạm vi quyền</span><small>Theo vai trò</small></div>
             </div>
-            <div class="preview-note"><i class="bi bi-lightning-charge-fill"></i><span>Quyền truy cập được áp dụng ngay khi identity được tạo.</span></div>
+            <div class="preview-note"><i class="bi bi-lightning-charge-fill"></i><span>Quyền truy cập được áp dụng ngay khi tài khoản được tạo.</span></div>
         </aside>
     </form>
 </div>
@@ -162,7 +162,8 @@
             const syncPreview = () => {
                 namePreview.textContent = employee?.selectedOptions[0]?.text || 'Chưa chọn nhân viên';
                 const roleName = role?.selectedOptions[0]?.text || 'Chưa cấp vai trò';
-                rolePreview.className = `role-chip role-chip--${roleName.toLowerCase() === 'admin' ? 'admin' : roleName.toLowerCase() === 'hr' ? 'hr' : roleName.toLowerCase() === 'manager' ? 'manager' : 'employee'}`;
+                const normalizedRoleName = roleName.toLocaleLowerCase('vi-VN');
+                rolePreview.className = `role-chip role-chip--${normalizedRoleName === 'quản trị viên' ? 'admin' : normalizedRoleName === 'nhân sự' ? 'hr' : normalizedRoleName === 'quản lý' ? 'manager' : 'employee'}`;
                 rolePreview.innerHTML = `<i></i>${roleName}`;
             };
 
