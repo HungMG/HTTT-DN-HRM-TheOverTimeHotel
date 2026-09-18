@@ -187,4 +187,30 @@
             </div>
         </div>
     </section>
+
+    <!-- LIÊN KẾT PHÂN HỆ NHÂN SỰ & HỢP ĐỒNG LAO ĐỘNG -->
+    <section class="card border-0 shadow-sm rounded-4 mt-4 p-4" style="background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%); color: white;">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-8">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-warning text-dark fw-bold rounded-pill">Quản Lý Nhân Sự</span>
+                    <span class="text-white-50 small text-uppercase fw-semibold" style="letter-spacing: 0.5px;">Phân hệ Quản lý Nhân sự</span>
+                </div>
+                <h3 class="h4 fw-bold mb-1 font-serif text-white">Hồ Sơ Nhân Viên &amp; Hợp Đồng Lao Động</h3>
+                <p class="text-white-50 mb-0 small">
+                    Quản lý toàn diện 20 nhân sự thuộc 8 phòng ban, 10 vị trí chức danh và theo dõi thời hạn hiệu lực các hợp đồng lao động.
+                </p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                    <a asp-controller="NhanVien" asp-action="Index" class="btn btn-light fw-bold rounded-pill px-3 shadow-sm">
+                        <i class="bi bi-people-fill me-1 text-primary"></i>Hồ sơ nhân viên
+                    </a>
+                    <a asp-controller="HopDong" asp-action="Index" class="btn btn-outline-light fw-semibold rounded-pill px-3">
+                        <i class="bi bi-file-earmark-text me-1 text-warning"></i>Hợp đồng lao động
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>

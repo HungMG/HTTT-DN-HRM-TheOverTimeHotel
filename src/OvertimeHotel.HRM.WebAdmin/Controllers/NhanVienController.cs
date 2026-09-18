@@ -51,69 +51,122 @@ public class NhanVienController : Controller
             query = query.Where(employee => employee.TrangThai == status);
 
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var employees = await query
-            .OrderBy(employee => employee.Ten)
-            .ThenBy(employee => employee.Ho)
-            .ToListAsync();
-
-        var items = employees.Select(employee =>
+        try
         {
-            var contract = employee.HopDongs
-                .OrderByDescending(item => item.NgayBatDau)
-                .FirstOrDefault();
-            var days = contract?.NgayKetThuc is DateOnly endDate
-                ? endDate.DayNumber - today.DayNumber
-                : (int?)null;
-            var state = GetContractState(contract, days);
-            return new EmployeeListItemViewModel
+            // Thực thi tuần tự trên cùng DbContext instance để đảm bảo an toàn đơn luồng (Thread-safe)
+            var depts = await _context.PhongBans.AsNoTracking().OrderBy(item => item.TenPhongBan).ToListAsync();
+            var poss = await _context.ChucVus.AsNoTracking().OrderBy(item => item.TenChucVu).ToListAsync();
+            var allEmployees = await _context.NhanViens.AsNoTracking()
+                .Include(employee => employee.PhongBan)
+                .Include(employee => employee.ChucVu)
+                .Include(employee => employee.HopDongs)
+                .ToListAsync();
+
+            // Lọc trên bộ nhớ máy chủ (0ms)
+            var filtered = allEmployees.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(keyword))
             {
-                Employee = employee,
-                LatestContract = contract,
-                ContractDaysRemaining = days,
-                ContractState = state
-            };
-        });
+                var value = keyword.ToLower();
+                filtered = filtered.Where(employee =>
+                    employee.Ho.ToLower().Contains(value) ||
+                    employee.Ten.ToLower().Contains(value) ||
+                    employee.Email.ToLower().Contains(value) ||
+                    employee.DienThoai.Contains(value));
+            }
 
-        if (contractFilter == "SAP_HET_HAN")
-            items = items.Where(item => item.ContractDaysRemaining is >= 0 and <= 30);
-        else if (contractFilter == "DA_HET_HAN")
-            items = items.Where(item => item.ContractDaysRemaining < 0);
-        else if (contractFilter == "HIEU_LUC")
-            items = items.Where(item => item.ContractState == "HIEU_LUC");
+            if (departmentId is > 0)
+                filtered = filtered.Where(employee => employee.MaPhongBan == departmentId.Value);
 
-        var result = items.ToList();
-        var allEmployees = await _context.NhanViens.AsNoTracking().Include(employee => employee.HopDongs).ToListAsync();
-        var allContractItems = allEmployees.Select(employee =>
-        {
-            var contract = employee.HopDongs.OrderByDescending(item => item.NgayBatDau).FirstOrDefault();
-            var days = contract?.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null;
-            return (contract, days);
-        }).ToList();
+            if (!string.IsNullOrWhiteSpace(status))
+                filtered = filtered.Where(employee => employee.TrangThai == status);
 
-        var model = new NhanVienIndexViewModel
-        {
-            CreateEmployeeForm = await BuildEmployeeFormAsync(new NhanVienFormViewModel
+            var items = filtered.Select(employee =>
             {
-                Employee = new NhanVien
+                var contract = employee.HopDongs
+                    .OrderByDescending(item => item.NgayBatDau)
+                    .FirstOrDefault();
+                var days = contract?.NgayKetThuc is DateOnly endDate
+                    ? endDate.DayNumber - today.DayNumber
+                    : (int?)null;
+                var state = GetContractState(contract, days);
+                return new EmployeeListItemViewModel
                 {
-                    NgaySinh = DateOnly.FromDateTime(DateTime.Today.AddYears(-25)),
-                    NgayVaoLam = DateOnly.FromDateTime(DateTime.Today),
-                    TrangThai = "DANG_LAM"
-                }
-            }),
-            Keyword = keyword,
-            DepartmentId = departmentId,
-            Status = status,
-            ContractFilter = contractFilter,
-            DepartmentOptions = await GetDepartmentOptionsAsync(departmentId),
-            Employees = result,
-            TotalEmployees = allEmployees.Count,
-            WorkingEmployees = allEmployees.Count(employee => employee.TrangThai == "DANG_LAM"),
-            ExpiringContracts = allContractItems.Count(item => item.days is >= 0 and <= 30),
-            ExpiredContracts = allContractItems.Count(item => item.days < 0)
-        };
+                    Employee = employee,
+                    LatestContract = contract,
+                    ContractDaysRemaining = days,
+                    ContractState = state
+                };
+            });
 
-        return View(model);
+            if (contractFilter == "SAP_HET_HAN")
+                items = items.Where(item => item.ContractDaysRemaining is >= 0 and <= 30);
+            else if (contractFilter == "DA_HET_HAN")
+                items = items.Where(item => item.ContractDaysRemaining < 0);
+            else if (contractFilter == "HIEU_LUC")
+                items = items.Where(item => item.ContractState == "HIEU_LUC");
+
+            var result = items.OrderBy(item => item.Employee.Ten).ThenBy(item => item.Employee.Ho).ToList();
+
+            var allContractItems = allEmployees.Select(employee =>
+            {
+                var contract = employee.HopDongs.OrderByDescending(item => item.NgayBatDau).FirstOrDefault();
+                var days = contract?.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null;
+                return (contract, days);
+            }).ToList();
+
+            var deptOptions = depts.Select(item => new SelectListItem(item.TenPhongBan, item.MaPhongBan.ToString(), item.MaPhongBan == departmentId)).ToList();
+            var posOptions = poss.Select(item => new SelectListItem(item.TenChucVu, item.MaChucVu.ToString())).ToList();
+
+            var model = new NhanVienIndexViewModel
+            {
+                CreateEmployeeForm = new NhanVienFormViewModel
+                {
+                    Employee = new NhanVien
+                    {
+                        NgaySinh = DateOnly.FromDateTime(DateTime.Today.AddYears(-25)),
+                        NgayVaoLam = DateOnly.FromDateTime(DateTime.Today),
+                        TrangThai = "DANG_LAM"
+                    },
+                    DepartmentOptions = deptOptions,
+                    PositionOptions = posOptions
+                },
+                Keyword = keyword,
+                DepartmentId = departmentId,
+                Status = status,
+                ContractFilter = contractFilter,
+                DepartmentOptions = deptOptions,
+                Employees = result,
+                TotalEmployees = allEmployees.Count,
+                WorkingEmployees = allEmployees.Count(employee => employee.TrangThai == "DANG_LAM"),
+                ExpiringContracts = allContractItems.Count(item => item.days is >= 0 and <= 30),
+                ExpiredContracts = allContractItems.Count(item => item.days < 0)
+            };
+
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi truy vấn danh sách nhân viên từ CSDL Supabase.");
+            TempData["Error"] = "Lỗi kết nối CSDL Supabase: " + ex.Message;
+            return View(new NhanVienIndexViewModel
+            {
+                Keyword = keyword,
+                DepartmentId = departmentId,
+                Status = status,
+                ContractFilter = contractFilter,
+                DepartmentOptions = new List<SelectListItem>(),
+                Employees = new List<EmployeeListItemViewModel>(),
+                CreateEmployeeForm = new NhanVienFormViewModel
+                {
+                    Employee = new NhanVien
+                    {
+                        NgaySinh = DateOnly.FromDateTime(DateTime.Today.AddYears(-25)),
+                        NgayVaoLam = DateOnly.FromDateTime(DateTime.Today),
+                        TrangThai = "DANG_LAM"
+                    }
+                }
+            });
+        }
     }
 
     [HttpPost]

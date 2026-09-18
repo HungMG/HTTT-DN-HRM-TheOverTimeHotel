@@ -1,81 +1,271 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.NhanVienIndexViewModel
 @{
-    ViewData["Title"] = "Quản lý nhân viên";
+    ViewData["Title"] = "Hồ sơ nhân viên · The OverTime Hotel";
 }
 
-<div class="container-fluid py-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <div class="text-uppercase small text-primary fw-bold">TSK-15 · Nhân sự</div>
-            <h1 class="h2 fw-bold mb-1">Hồ sơ nhân viên</h1>
-            <p class="text-muted mb-0">Quản lý thông tin cá nhân, liên hệ và phân công nhân sự.</p>
+<div class="catalog-page">
+    <!-- HERO COMMAND BANNER -->
+    <section class="catalog-hero catalog-command-bar mb-4 position-relative">
+        <div class="catalog-art-deco-pattern" aria-hidden="true"></div>
+        <div class="position-relative" style="z-index: 2;">
+            <nav aria-label="Điều hướng">
+                <ol class="catalog-breadcrumb catalog-breadcrumb--dark">
+                    <li><a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a></li>
+                    <li aria-current="page">Hồ sơ nhân sự</li>
+                </ol>
+            </nav>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill" style="font-size: 0.65rem;">
+                    <i class="bi bi-stars"></i> THE OVERTIME HOTEL
+                </span>
+                <span class="catalog-eyebrow mb-0"><i class="bi bi-people-fill me-1"></i> Quản trị nhân sự</span>
+            </div>
+            <h1 class="catalog-title h2 mb-1 text-white">Quản Lý Hồ Sơ Nhân Viên</h1>
+            <p class="text-white-50 mb-0">Hồ sơ thông tin nhân sự toàn diện, phân bổ theo 8 phòng ban và chức danh vị trí khách sạn 5 sao.</p>
         </div>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEmployeeModal"><i class="bi bi-person-plus me-1"></i>Thêm nhân viên</button>
-    </div>
+        <div class="catalog-command-actions position-relative" style="z-index: 2;">
+            <a asp-controller="Home" asp-action="Index" class="catalog-back-action">
+                <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+            </a>
+            <button type="button" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-bs-toggle="modal" data-bs-target="#createEmployeeModal">
+                <i class="bi bi-plus-lg me-1 text-primary"></i> Thêm nhân viên
+            </button>
+        </div>
+    </section>
 
-    @if (TempData["Success"] is string success)
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert"><i class="bi bi-check-circle me-2"></i>@success<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    }
-    @if (TempData["Error"] is string error)
-    {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert"><i class="bi bi-exclamation-triangle me-2"></i>@error<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-    }
+    <!-- 6 TABS LIÊN THÔNG ĐIỀU HÀNH -->
+    <partial name="_CatalogNavTabs" />
 
+    <partial name="_CatalogAlerts" />
+
+    <!-- 4 METRIC STATS CARDS -->
     <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Tổng nhân viên</div><div class="fs-3 fw-bold">@Model.TotalEmployees</div></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Đang làm việc</div><div class="fs-3 fw-bold text-success">@Model.WorkingEmployees</div></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Phòng ban đang dùng</div><div class="fs-3 fw-bold text-primary">@Model.DepartmentOptions.Count</div></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Quản lý HĐLĐ</div><div class="fs-3 fw-bold text-dark"><a asp-controller="HopDong" asp-action="Index" class="text-decoration-none">Mở trang <i class="bi bi-arrow-up-right fs-5"></i></a></div></div></div></div>
-    </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Tổng Nhân Sự</div>
+                        <div class="fs-3 fw-bold text-dark font-serif mt-1">@Model.TotalEmployees</div>
+                    </div>
+                    <div class="rounded-3 bg-primary-subtle text-primary p-3 fs-4">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-2 align-items-end">
-                <div class="col-lg-4"><label class="form-label small fw-semibold">Tìm kiếm</label><input name="keyword" value="@Model.Keyword" class="form-control" placeholder="Tên, email hoặc số điện thoại" /></div>
-                <div class="col-md-4 col-lg-2"><label class="form-label small fw-semibold">Phòng ban</label><select name="departmentId" asp-items="Model.DepartmentOptions" class="form-select"><option value="">Tất cả</option></select></div>
-                <div class="col-md-4 col-lg-2"><label class="form-label small fw-semibold">Trạng thái</label><select name="status" class="form-select"><option value="">Tất cả</option><option value="DANG_LAM" selected="@(Model.Status == "DANG_LAM")">Đang làm</option><option value="NGHI_VIEC" selected="@(Model.Status == "NGHI_VIEC")">Nghỉ việc</option></select></div>
-                <div class="col-md-6 col-lg-1"><button class="btn btn-primary w-100" title="Lọc"><i class="bi bi-funnel"></i></button></div>
-                <div class="col-md-6 col-lg-1"><a asp-action="Index" class="btn btn-outline-secondary w-100" title="Đặt lại"><i class="bi bi-arrow-counterclockwise"></i></a></div>
-            </form>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Đang Làm Việc</div>
+                        <div class="fs-3 fw-bold text-success font-serif mt-1">@Model.WorkingEmployees</div>
+                    </div>
+                    <div class="rounded-3 bg-success-subtle text-success p-3 fs-4">
+                        <i class="bi bi-person-check-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Phòng Ban Hoạt Động</div>
+                        <div class="fs-3 fw-bold text-info font-serif mt-1">@Model.DepartmentOptions.Count</div>
+                    </div>
+                    <div class="rounded-3 bg-info-subtle text-info p-3 fs-4">
+                        <i class="bi bi-building"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Hợp Đồng Lao Động</div>
+                        <div class="mt-1">
+                            <a asp-controller="HopDong" asp-action="Index" class="btn btn-outline-primary btn-sm rounded-pill fw-bold">
+                                Mở trang HĐLĐ <i class="bi bi-arrow-up-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="rounded-3 bg-warning-subtle text-warning-emphasis p-3 fs-4">
+                        <i class="bi bi-file-earmark-text-fill"></i>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light"><tr><th>Nhân viên</th><th>Phòng ban / Chức vụ</th><th>Liên hệ</th><th>Trạng thái</th><th class="text-end">Thao tác</th></tr></thead>
-                <tbody>
-                @foreach (var item in Model.Employees)
+    <!-- TABLE WORKSPACE CARD -->
+    <section class="catalog-card shadow-sm">
+        <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <form method="get" class="catalog-filter-form d-flex flex-wrap gap-2 flex-grow-1 align-items-center">
+                <div class="input-group" style="min-width: 240px; flex: 2;">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input name="keyword" value="@Model.Keyword" class="form-control catalog-search border-start-0 ps-0" placeholder="Tìm theo tên, email hoặc số điện thoại..." />
+                </div>
+                
+                <div style="min-width: 170px; flex: 1;">
+                    <select name="departmentId" asp-items="Model.DepartmentOptions" class="form-select">
+                        <option value="">-- Tất cả phòng ban --</option>
+                    </select>
+                </div>
+
+                <div style="min-width: 140px;">
+                    <select name="status" class="form-select">
+                        <option value="">-- Trạng thái --</option>
+                        <option value="DANG_LAM" selected="@(Model.Status == "DANG_LAM")">Đang làm</option>
+                        <option value="NGHI_VIEC" selected="@(Model.Status == "NGHI_VIEC")">Nghỉ việc</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-hotel-primary text-nowrap"><i class="bi bi-search me-1"></i>Lọc hồ sơ</button>
+                @if (!string.IsNullOrWhiteSpace(Model.Keyword) || Model.DepartmentId.HasValue || !string.IsNullOrWhiteSpace(Model.Status))
                 {
-                    var employee = item.Employee;
+                    <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
+                }
+            </form>
+
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="NhanVien" title="Xuất danh sách ra file CSV mở bằng Excel">
+                    <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất CSV
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-print title="In danh sách nhân sự chuẩn A4">
+                    <i class="bi bi-printer text-primary me-1"></i> In danh sách
+                </button>
+                <span class="catalog-badge" data-catalog-count>
+                    <i class="bi bi-people-fill me-1"></i> @Model.Employees.Count nhân sự
+                </span>
+            </div>
+        </div>
+
+        <div class="table-responsive" data-catalog-results>
+            <table class="table catalog-table" data-export-table="Danh_Sach_Nhan_Vien">
+                <thead>
                     <tr>
-                        <td><div class="fw-semibold">@employee.HoTen</div><small class="text-muted">NV-@employee.MaNhanVien · @employee.GioiTinh</small></td>
-                        <td><div>@employee.PhongBan?.TenPhongBan</div><small class="text-muted">@employee.ChucVu?.TenChucVu</small></td>
-                        <td><div>@employee.Email</div><small class="text-muted">@employee.DienThoai</small></td>
-                        <td><span class="badge text-bg-@(employee.TrangThai == "DANG_LAM" ? "success" : "secondary")">@(employee.TrangThai == "DANG_LAM" ? "Đang làm" : "Nghỉ việc")</span></td>
-                        <td class="text-end text-nowrap">
-                            <a asp-action="Edit" asp-route-id="@employee.MaNhanVien" class="btn btn-sm btn-outline-primary" title="Sửa hồ sơ"><i class="bi bi-pencil"></i></a>
-                            <form asp-action="Delete" asp-route-id="@employee.MaNhanVien" method="post" class="d-inline" onsubmit="return confirm('Xóa hồ sơ nhân viên này?');"><button class="btn btn-sm btn-outline-danger" title="Xóa hồ sơ"><i class="bi bi-trash"></i></button></form>
+                        <th style="width: 80px" class="text-center">Mã NV</th>
+                        <th>Nhân sự</th>
+                        <th>Phòng ban / Chức vụ</th>
+                        <th>Thông tin liên hệ</th>
+                        <th style="width: 160px">HĐLĐ mới nhất</th>
+                        <th style="width: 140px">Trạng thái</th>
+                        <th class="text-end" style="width: 130px">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Employees.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="catalog-empty">
+                            <div class="catalog-empty-state">
+                                <div class="catalog-empty-icon"><i class="bi bi-people"></i></div>
+                                <h4>Không tìm thấy hồ sơ nhân sự phù hợp</h4>
+                                <p class="text-muted">Không có nhân sự nào khớp với từ khóa tìm kiếm hoặc bộ lọc hiện tại.</p>
+                                <button type="button" class="btn btn-hotel-primary btn-sm px-3 mt-2" data-bs-toggle="modal" data-bs-target="#createEmployeeModal">
+                                    <i class="bi bi-plus-lg me-1"></i> Thêm nhân viên mới
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 }
-                @if (Model.Employees.Count == 0)
-                { <tr><td colspan="5" class="text-center text-muted py-5">Không tìm thấy hồ sơ phù hợp với bộ lọc.</td></tr> }
+                else
+                {
+                    @foreach (var item in Model.Employees)
+                    {
+                        var employee = item.Employee;
+                        var contract = item.LatestContract;
+                        <tr>
+                            <td class="text-center font-monospace small fw-bold text-muted">
+                                NV-@employee.MaNhanVien
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px; font-size: 0.85rem;">
+                                        @(employee.Ten.Length > 0 ? employee.Ten.Substring(0, 1).ToUpper() : "N")
+                                    </div>
+                                    <div>
+                                        <strong class="d-block text-dark fs-6 font-serif">@employee.HoTen</strong>
+                                        <small class="text-muted">@(employee.GioiTinh == "NAM" ? "Nam" : "Nữ") &bull; Sinh: @employee.NgaySinh.ToString("dd/MM/yyyy")</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark">@(employee.PhongBan?.TenPhongBan ?? "Chưa phân phòng")</div>
+                                <small class="text-muted">@(employee.ChucVu?.TenChucVu ?? "Chưa phân chức vụ")</small>
+                            </td>
+                            <td>
+                                <div><i class="bi bi-envelope me-1 text-muted small"></i>@employee.Email</div>
+                                <small class="text-muted"><i class="bi bi-telephone me-1 text-muted small"></i>@employee.DienThoai</small>
+                            </td>
+                            <td>
+                                @if (contract != null)
+                                {
+                                    <div class="small fw-semibold">@contract.SoHopDong</div>
+                                    <small class="text-muted">@contract.LuongCoBan.ToString("N0") đ</small>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light text-secondary border">Chưa có HĐLĐ</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @(employee.TrangThai == "DANG_LAM" ? "bg-success" : "bg-secondary") rounded-pill px-3 py-1">
+                                    @(employee.TrangThai == "DANG_LAM" ? "Đang làm việc" : "Đã nghỉ việc")
+                                </span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Edit" asp-route-id="@employee.MaNhanVien" class="btn btn-sm btn-outline-primary rounded-3" title="Sửa hồ sơ">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@employee.MaNhanVien" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hồ sơ @employee.HoTen?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-3" title="Xóa hồ sơ">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 
+<!-- MODAL THÊM NHÂN VIÊN MỚI -->
 <div class="modal fade" id="createEmployeeModal" tabindex="-1" aria-labelledby="createEmployeeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header"><div><div class="text-uppercase small text-primary fw-bold">Hồ sơ nhân sự</div><h2 class="modal-title h5 mb-0" id="createEmployeeModalLabel">Thêm nhân viên</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-white border-bottom py-3 px-4">
+                <div>
+                    <div class="text-uppercase small text-primary fw-bold">Hồ sơ nhân sự khách sạn</div>
+                    <h2 class="modal-title h5 mb-0 font-serif" id="createEmployeeModalLabel">Thêm Nhân Viên Mới</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
             <form asp-action="Create" method="post" class="d-flex flex-column overflow-hidden">
-                <div class="modal-body overflow-auto"><partial name="_EmployeeForm" model="Model.CreateEmployeeForm" /></div>
-                <div class="modal-footer flex-shrink-0 bg-white"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>Hủy</button><button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Lưu hồ sơ</button></div>
+                @Html.AntiForgeryToken()
+                <div class="modal-body overflow-auto p-4">
+                    <partial name="_EmployeeForm" model="Model.CreateEmployeeForm" />
+                </div>
+                <div class="modal-footer flex-shrink-0 bg-light border-top py-3 px-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Hủy
+                    </button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                        <i class="bi bi-check2 me-1"></i>Lưu hồ sơ nhân viên
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/catalog.js" asp-append-version="true"></script>
+}

@@ -41,50 +41,91 @@ public class HopDongController : Controller
             query = query.Where(contract => contract.TrangThai == status);
 
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var contracts = await query.OrderByDescending(contract => contract.NgayBatDau).ToListAsync();
-        var items = contracts.Select(contract =>
+        try
         {
-            var days = contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null;
-            return new HopDongListItemViewModel
-            {
-                Contract = contract,
-                EmployeeName = contract.NhanVien?.HoTen ?? "Nhân viên không tồn tại",
-                DaysRemaining = days,
-                State = GetState(contract, days)
-            };
-        });
+            // Thực thi tuần tự trên cùng DbContext instance để đảm bảo an toàn đơn luồng (Thread-safe)
+            var allContracts = await _context.HopDongs.AsNoTracking().Include(c => c.NhanVien).ToListAsync();
+            var allEmployees = await _context.NhanViens.AsNoTracking().OrderBy(item => item.Ten).ThenBy(item => item.Ho).ToListAsync();
 
-        if (contractFilter == "SAP_HET_HAN")
-            items = items.Where(item => item.DaysRemaining is >= 0 and <= 30);
-        else if (contractFilter == "DA_HET_HAN")
-            items = items.Where(item => item.DaysRemaining < 0);
-        else if (contractFilter == "HIEU_LUC")
-            items = items.Where(item => item.State == "HIEU_LUC");
-
-        var allContracts = await _context.HopDongs.AsNoTracking().ToListAsync();
-        var allDays = allContracts.Select(contract => contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null).ToList();
-        var employeeOptions = await GetEmployeeOptionsAsync();
-        ViewBag.EmployeeOptions = employeeOptions;
-        return View(new HopDongIndexViewModel
-        {
-            CreateContractForm = new HopDongFormViewModel
+            // Lọc trên bộ nhớ máy chủ (0ms)
+            var filtered = allContracts.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(keyword))
             {
-                Contract = new HopDong
+                var value = keyword.ToLower();
+                filtered = filtered.Where(contract =>
+                    contract.SoHopDong.ToLower().Contains(value) ||
+                    contract.LoaiHopDong.ToLower().Contains(value) ||
+                    (contract.NhanVien != null && (contract.NhanVien.Ho.ToLower().Contains(value) || contract.NhanVien.Ten.ToLower().Contains(value))));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+                filtered = filtered.Where(contract => contract.TrangThai == status);
+
+            var items = filtered.Select(contract =>
+            {
+                var days = contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null;
+                return new HopDongListItemViewModel
                 {
-                    NgayBatDau = today,
-                    TrangThai = "HIEU_LUC"
-                }
-            },
-            Keyword = keyword,
-            Status = status,
-            ContractFilter = contractFilter,
-            Contracts = items.ToList(),
-            EmployeeOptions = employeeOptions,
-            TotalContracts = allContracts.Count,
-            ActiveContracts = allContracts.Count(contract => contract.TrangThai == "HIEU_LUC"),
-            ExpiringContracts = allDays.Count(days => days is >= 0 and <= 30),
-            ExpiredContracts = allDays.Count(days => days < 0)
-        });
+                    Contract = contract,
+                    EmployeeName = contract.NhanVien?.HoTen ?? "Nhân viên không tồn tại",
+                    DaysRemaining = days,
+                    State = GetState(contract, days)
+                };
+            });
+
+            if (contractFilter == "SAP_HET_HAN")
+                items = items.Where(item => item.DaysRemaining is >= 0 and <= 30);
+            else if (contractFilter == "DA_HET_HAN")
+                items = items.Where(item => item.DaysRemaining < 0);
+            else if (contractFilter == "HIEU_LUC")
+                items = items.Where(item => item.State == "HIEU_LUC");
+
+            var allDays = allContracts.Select(contract => contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null).ToList();
+            var employeeOptions = allEmployees.Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien}", item.MaNhanVien.ToString())).ToList();
+            ViewBag.EmployeeOptions = employeeOptions;
+            return View(new HopDongIndexViewModel
+            {
+                CreateContractForm = new HopDongFormViewModel
+                {
+                    Contract = new HopDong
+                    {
+                        NgayBatDau = today,
+                        TrangThai = "HIEU_LUC"
+                    }
+                },
+                Keyword = keyword,
+                Status = status,
+                ContractFilter = contractFilter,
+                Contracts = items.OrderByDescending(i => i.Contract.NgayBatDau).ToList(),
+                EmployeeOptions = employeeOptions,
+                TotalContracts = allContracts.Count,
+                ActiveContracts = allContracts.Count(contract => contract.TrangThai == "HIEU_LUC"),
+                ExpiringContracts = allDays.Count(days => days is >= 0 and <= 30),
+                ExpiredContracts = allDays.Count(days => days < 0)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi truy vấn danh sách hợp đồng từ CSDL Supabase.");
+            TempData["Error"] = "Lỗi kết nối CSDL Supabase: " + ex.Message;
+            ViewBag.EmployeeOptions = new List<SelectListItem>();
+            return View(new HopDongIndexViewModel
+            {
+                CreateContractForm = new HopDongFormViewModel
+                {
+                    Contract = new HopDong
+                    {
+                        NgayBatDau = today,
+                        TrangThai = "HIEU_LUC"
+                    }
+                },
+                Keyword = keyword,
+                Status = status,
+                ContractFilter = contractFilter,
+                Contracts = new List<HopDongListItemViewModel>(),
+                EmployeeOptions = new List<SelectListItem>()
+            });
+        }
     }
 
     [HttpPost]
