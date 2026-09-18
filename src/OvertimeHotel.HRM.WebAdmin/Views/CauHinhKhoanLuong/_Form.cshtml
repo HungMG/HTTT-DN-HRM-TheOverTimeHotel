@@ -1,25 +1,82 @@
 @model OvertimeHotel.HRM.Core.Models.CauHinhKhoanLuong
+
 <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+<!-- LIVE PREVIEW CARD CHO KHOẢN LƯƠNG -->
+<div class="catalog-live-preview-box mb-4 p-3 bg-light border rounded-3" data-payroll-preview>
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <small class="text-uppercase fw-bold text-muted" style="letter-spacing: 0.5px;">
+            <i class="bi bi-eye me-1"></i>Xem trước định dạng khoản lương
+        </small>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle" data-preview-type-badge>
+            <i class="bi bi-wallet2 me-1"></i>Phụ cấp công việc
+        </span>
+    </div>
+    <div class="p-3 bg-white border rounded-3 shadow-xs d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+            <span class="catalog-icon catalog-icon--allowance" data-preview-pay-icon>
+                <i class="bi bi-wallet2"></i>
+            </span>
+            <div>
+                <strong class="d-block text-dark font-serif" data-preview-pay-title>@(string.IsNullOrWhiteSpace(Model.TenKhoan) ? "Khoản lương mới" : Model.TenKhoan)</strong>
+                <small class="text-muted">Áp dụng trực tiếp vào bảng lương hàng tháng</small>
+            </div>
+        </div>
+        <div class="catalog-amount-box text-primary" data-preview-amount-box>
+            <span class="catalog-amount-sign" data-preview-sign>+</span>
+            <strong class="catalog-amount-number" data-preview-value>@Model.GiaTriMacDinh.ToString("N0")</strong>
+            <small class="catalog-amount-currency">₫</small>
+        </div>
+    </div>
+</div>
+
 <div class="form-floating mb-3">
-    <input asp-for="TenKhoan" class="form-control" placeholder="Tên khoản" maxlength="150" />
+    <input asp-for="TenKhoan" class="form-control" placeholder="Tên khoản" maxlength="150" data-payroll-name-input />
     <label asp-for="TenKhoan">Tên khoản lương <span class="text-danger">*</span></label>
     <span asp-validation-for="TenKhoan" class="text-danger small"></span>
 </div>
-<div class="row g-3 mb-3">
+
+<div class="row g-3 mb-2">
     <div class="col-md-6">
-        <div class="form-floating"><select asp-for="LoaiKhoan" class="form-select"><option value="PHU_CAP">Phụ cấp</option><option value="THUONG">Thưởng</option><option value="KHAU_TRU">Khấu trừ / Phạt</option></select><label asp-for="LoaiKhoan">Loại khoản</label></div>
+        <div class="form-floating">
+            <select asp-for="LoaiKhoan" class="form-select" data-payroll-type-select>
+                <option value="PHU_CAP">Phụ cấp (+)</option>
+                <option value="THUONG">Thưởng khích lệ (+)</option>
+                <option value="KHAU_TRU">Khấu trừ / Phạt (-)</option>
+            </select>
+            <label asp-for="LoaiKhoan">Loại khoản</label>
+        </div>
         <span asp-validation-for="LoaiKhoan" class="text-danger small"></span>
     </div>
     <div class="col-md-6">
-        <div class="form-floating"><input asp-for="GiaTriMacDinh" type="number" min="0" step="1000" class="form-control" placeholder="Giá trị mặc định" /><label asp-for="GiaTriMacDinh">Giá trị mặc định (VNĐ)</label></div>
+        <div class="form-floating">
+            <input asp-for="GiaTriMacDinh" type="number" min="0" step="1000" class="form-control" placeholder="Giá trị mặc định" data-payroll-amount-input />
+            <label asp-for="GiaTriMacDinh">Giá trị mặc định (VNĐ)</label>
+        </div>
         <span asp-validation-for="GiaTriMacDinh" class="text-danger small"></span>
     </div>
 </div>
+
+<!-- QUICK AMOUNT CHIPS -->
+<div class="mb-3 ps-1">
+    <small class="text-muted d-block mb-1 fw-semibold"><i class="bi bi-lightning-charge-fill text-warning me-1"></i>Chọn nhanh định mức phổ biến:</small>
+    <div class="d-flex flex-wrap gap-1" data-payroll-chips>
+        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill py-1 px-2" style="font-size: 0.75rem;" data-chip-amount="100000">+100.000 ₫</button>
+        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill py-1 px-2" style="font-size: 0.75rem;" data-chip-amount="200000">+200.000 ₫</button>
+        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill py-1 px-2" style="font-size: 0.75rem;" data-chip-amount="500000">+500.000 ₫</button>
+        <button type="button" class="btn btn-xs btn-outline-primary rounded-pill py-1 px-2 fw-semibold" style="font-size: 0.75rem;" data-chip-amount="1000000">+1.000.000 ₫</button>
+        <button type="button" class="btn btn-xs btn-outline-primary rounded-pill py-1 px-2 fw-semibold" style="font-size: 0.75rem;" data-chip-amount="2000000">+2.000.000 ₫</button>
+        <button type="button" class="btn btn-xs btn-outline-success rounded-pill py-1 px-2 fw-bold" style="font-size: 0.75rem;" data-chip-amount="5000000">+5.000.000 ₫</button>
+    </div>
+</div>
+
 <div class="form-floating mb-4">
-    <textarea asp-for="MoTa" class="form-control" placeholder="Mô tả" maxlength="255" style="height:120px"></textarea><label asp-for="MoTa">Mô tả / Điều kiện áp dụng</label>
+    <textarea asp-for="MoTa" class="form-control" placeholder="Mô tả" maxlength="255" style="height:100px"></textarea>
+    <label asp-for="MoTa">Mô tả / Điều kiện áp dụng chính sách</label>
     <span asp-validation-for="MoTa" class="text-danger small"></span>
 </div>
+
 <div class="d-flex justify-content-end gap-2">
     <a asp-action="Index" class="btn btn-light border rounded-3 px-4"><i class="bi bi-arrow-left me-1"></i> Quay lại</a>
-    <button class="btn btn-hotel-primary px-4"><i class="bi bi-check2-circle me-1"></i> Lưu thông tin</button>
+    <button type="submit" class="btn btn-hotel-primary px-4"><i class="bi bi-check2-circle me-1"></i> Lưu thông tin</button>
 </div>

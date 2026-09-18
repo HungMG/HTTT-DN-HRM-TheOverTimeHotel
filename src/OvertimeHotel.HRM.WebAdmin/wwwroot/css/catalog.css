@@ -66,6 +66,9 @@
 .catalog-table thead th {
   background: #f1f5f9;
   border: 0;
+  position: sticky;
+  top: 0;
+  z-index: 3;
   color: #475569;
   font-size: 0.74rem;
   font-weight: 800;
@@ -127,10 +130,79 @@
   border-radius: 12px;
   color: var(--hotel-gold);
   display: inline-flex;
+  flex: 0 0 44px;
   font-size: 1.25rem;
   height: 44px;
   justify-content: center;
+  transition: transform 180ms ease, box-shadow 180ms ease;
   width: 44px;
+}
+
+.catalog-table tbody tr:hover .catalog-icon {
+  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.16);
+  transform: translateY(-2px);
+}
+
+.catalog-icon--department {
+  background: linear-gradient(135deg, #1d4ed8, #172554);
+  border-color: #93c5fd;
+  border-radius: 5px 5px 14px 5px;
+  box-shadow: 4px 4px 0 #dbeafe;
+  color: #dbeafe;
+}
+
+.catalog-icon--position {
+  background: linear-gradient(135deg, #22c55e, #14532d);
+  border: 3px double #bbf7d0;
+  border-radius: 50%;
+  color: #fff;
+}
+
+.catalog-icon--bonus {
+  background: linear-gradient(135deg, #15803d, #14532d);
+  border-color: #86efac;
+  border-radius: 50% 50% 8px 8px;
+  color: #dcfce7;
+}
+
+.catalog-icon--morning {
+  background: linear-gradient(145deg, #dbeafe, #93c5fd);
+  border-color: #2563eb;
+  border-radius: 50%;
+  color: #1d4ed8;
+}
+
+.catalog-icon--allowance {
+  background: linear-gradient(135deg, #eff6ff, #bfdbfe);
+  border: 2px solid #2563eb;
+  border-radius: 6px 14px 6px 14px;
+  color: #1d4ed8;
+}
+
+.catalog-icon--afternoon {
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+  border-color: #fde68a;
+  border-radius: 50% 8px 50% 8px;
+  color: #fff7ed;
+  transform: rotate(-3deg);
+}
+
+.catalog-icon--afternoon > i {
+  transform: rotate(3deg);
+}
+
+.catalog-icon--night {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border: 2px solid #eab308;
+  border-radius: 50% 50% 50% 8px;
+  color: #fef08a;
+}
+
+.catalog-icon--deduction {
+  background: #fff;
+  border: 2px solid #dc2626;
+  border-radius: 50%;
+  color: #dc2626;
 }
 
 .catalog-empty {
@@ -164,4 +236,1203 @@
   font-size: 1.65rem;
   height: 58px;
   width: 58px;
+}
+
+/* Nhận diện riêng cho từng module, tránh bốn biểu tượng đồng dạng */
+.catalog-module-mark {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 76px;
+  height: 72px;
+  justify-content: center;
+  position: relative;
+  transition: transform 220ms ease, box-shadow 220ms ease;
+  width: 76px;
+}
+
+.catalog-module-mark > i {
+  font-size: 1.85rem;
+  line-height: 1;
+}
+
+.catalog-module-mark > small {
+  bottom: 7px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  position: absolute;
+}
+
+/* Phòng ban: khối kiến trúc vuông, gợi hình tòa nhà */
+.catalog-module-mark--department {
+  background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.1) 1px,
+        transparent 1px
+      )
+      0 0 / 15px 15px,
+    linear-gradient(135deg, #1d4ed8, #172554);
+  border: 1px solid #93c5fd;
+  border-radius: 8px 8px 20px 8px;
+  box-shadow: 8px 8px 0 #dbeafe;
+  color: #fff;
+}
+
+/* Chức vụ: huy hiệu tròn, khác hoàn toàn khối phòng ban */
+.catalog-module-mark--position {
+  background: radial-gradient(circle at 32% 25%, #4ade80, #15803d 48%, #14532d);
+  border: 3px double #bbf7d0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 6px #dcfce7;
+  color: #fff;
+}
+
+.catalog-module-mark--position > small {
+  background: #fff;
+  border-radius: 999px;
+  bottom: -4px;
+  color: #166534;
+  padding: 0.15rem 0.45rem;
+}
+
+/* Ca làm việc: mặt đồng hồ tối với vòng vàng */
+.catalog-module-mark--shift {
+  background: radial-gradient(circle at center, #1e293b 0 46%, transparent 47%),
+    conic-gradient(from 0deg, #eab308, #fef08a, #eab308, #fef08a, #eab308);
+  border: 5px solid #0f172a;
+  border-radius: 50% 50% 50% 14px;
+  box-shadow: 6px 7px 0 rgba(15, 23, 42, 0.18);
+  color: #fef08a;
+}
+
+.catalog-module-mark--shift > small {
+  bottom: -1px;
+  color: #0f172a;
+  transform: translateY(100%);
+}
+
+/* Khoản lương: hình vé/thẻ tài chính nằm ngang */
+.catalog-module-mark--payroll {
+  background: linear-gradient(135deg, #fff7ed, #fde68a);
+  border: 2px solid #d97706;
+  border-radius: 6px 18px 6px 18px;
+  box-shadow: 7px 7px 0 #fef3c7;
+  color: #92400e;
+  width: 92px;
+}
+
+.catalog-module-mark--payroll::before,
+.catalog-module-mark--payroll::after {
+  background: #fff;
+  border: 1px solid #d97706;
+  border-radius: 50%;
+  content: "";
+  height: 14px;
+  position: absolute;
+  top: 29px;
+  width: 14px;
+}
+
+.catalog-module-mark--payroll::before {
+  left: -8px;
+}
+
+.catalog-module-mark--payroll::after {
+  right: -8px;
+}
+
+.catalog-hub-card:hover .catalog-module-mark {
+  transform: translateY(-4px) rotate(-2deg);
+}
+
+/* Trang trung tâm danh mục */
+.catalog-hub-hero {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  min-height: 176px;
+}
+
+.catalog-hub-hero::before {
+  background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.045) 1px,
+      transparent 1px
+    ),
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 26px 26px;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.catalog-hub-hero-copy {
+  max-width: 740px;
+  position: relative;
+  z-index: 1;
+}
+
+.catalog-hub-hero-copy > p {
+  color: rgba(255, 255, 255, 0.68);
+  max-width: 650px;
+}
+
+.catalog-hub-status {
+  align-items: center;
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(253, 224, 71, 0.38);
+  border-radius: 16px;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.catalog-hub-status > span {
+  align-items: center;
+  background: #fde047;
+  border-radius: 50%;
+  color: #172554;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.catalog-hub-status strong,
+.catalog-hub-status small {
+  display: block;
+  white-space: nowrap;
+}
+
+.catalog-hub-status small {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.68rem;
+  margin-top: 0.12rem;
+  text-transform: uppercase;
+}
+
+.catalog-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0 0 0.65rem;
+  padding: 0;
+}
+
+.catalog-breadcrumb li + li::before {
+  content: "/";
+  margin-right: 0.5rem;
+  opacity: 0.45;
+}
+
+.catalog-breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.catalog-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.catalog-breadcrumb--dark {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.catalog-breadcrumb--dark li[aria-current="page"] {
+  color: #fde047;
+}
+
+.catalog-module-grid {
+  display: grid;
+  gap: 1.15rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.catalog-module-card {
+  --module-color: #1d4ed8;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-top: 4px solid var(--module-color);
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+  color: #1e293b;
+  display: flex;
+  flex-direction: column;
+  min-height: 294px;
+  overflow: hidden;
+  padding: 1.5rem;
+  position: relative;
+  text-decoration: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease,
+    transform 200ms ease;
+}
+
+.catalog-module-card::after {
+  background: var(--module-color);
+  border-radius: 50%;
+  content: "";
+  height: 150px;
+  opacity: 0.045;
+  position: absolute;
+  right: -54px;
+  top: -58px;
+  width: 150px;
+}
+
+.catalog-module-card--position {
+  --module-color: #15803d;
+}
+
+.catalog-module-card--shift {
+  --module-color: #0f172a;
+}
+
+.catalog-module-card--payroll {
+  --module-color: #d97706;
+}
+
+.catalog-module-card:hover,
+.catalog-module-card:focus-visible {
+  border-color: var(--module-color);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+  color: #1e293b;
+  outline: none;
+  transform: translateY(-4px);
+}
+
+.catalog-module-card:focus-visible {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--module-color) 18%, transparent),
+    0 18px 42px rgba(15, 23, 42, 0.14);
+}
+
+.catalog-module-index {
+  color: #cbd5e1;
+  font-family: "Playfair Display", serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  position: absolute;
+  right: 1.25rem;
+  top: 1.05rem;
+}
+
+.catalog-module-card-top {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  min-height: 86px;
+}
+
+.catalog-module-type {
+  background: color-mix(in srgb, var(--module-color) 9%, white);
+  border-radius: 999px;
+  color: var(--module-color);
+  font-size: 0.66rem;
+  font-weight: 800;
+  margin-right: 3.5rem;
+  padding: 0.38rem 0.7rem;
+  text-transform: uppercase;
+}
+
+.catalog-module-copy {
+  margin-top: 1rem;
+}
+
+.catalog-module-copy > small {
+  color: var(--module-color);
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.catalog-module-copy h2 {
+  font-family: "Playfair Display", serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0.3rem 0 0.45rem;
+}
+
+.catalog-module-copy p {
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.65;
+  margin: 0;
+  max-width: 470px;
+}
+
+.catalog-module-link {
+  align-items: center;
+  color: var(--module-color);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 1.15rem;
+}
+
+.catalog-module-link i {
+  transition: transform 180ms ease;
+}
+
+.catalog-module-card:hover .catalog-module-link i {
+  transform: translate(3px, -3px);
+}
+
+/* Interaction system dùng chung */
+.catalog-command-bar {
+  min-height: 150px;
+}
+
+.catalog-command-bar .btn-light {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.22);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+  z-index: 1;
+}
+
+.catalog-command-bar .btn-light:hover {
+  box-shadow: 0 16px 32px rgba(2, 6, 23, 0.3);
+  transform: translateY(-2px);
+}
+
+.catalog-command-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  position: relative;
+  z-index: 1;
+}
+
+.catalog-back-action {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 11px;
+  color: #fff;
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.45rem;
+  padding: 0.55rem 0.8rem;
+  text-decoration: none;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.catalog-back-action:hover,
+.catalog-back-action:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #fde047;
+  color: #fde047;
+  outline: none;
+}
+
+.catalog-filter-form {
+  max-width: 520px;
+}
+
+.catalog-card {
+  position: relative;
+}
+
+.catalog-notice {
+  align-items: flex-start;
+  background: linear-gradient(135deg, #fffbeb, #fff);
+  border: 1px solid #fde68a;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(120, 53, 15, 0.08);
+  display: flex;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+}
+
+.catalog-notice-icon {
+  align-items: center;
+  background: #fef3c7;
+  border-radius: 12px;
+  color: #b45309;
+  display: inline-flex;
+  flex: 0 0 42px;
+  font-size: 1.15rem;
+  height: 42px;
+  justify-content: center;
+}
+
+.catalog-notice small,
+.catalog-notice strong {
+  display: block;
+}
+
+.catalog-notice small {
+  color: #92400e;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.catalog-notice p {
+  color: #78716c;
+  font-size: 0.82rem;
+  margin: 0.15rem 0 0;
+}
+
+.catalog-loading {
+  align-items: center;
+  backdrop-filter: blur(6px);
+  background: rgba(248, 250, 252, 0.88);
+  color: var(--hotel-blue);
+  display: flex;
+  gap: 0.65rem;
+  inset: 85px 0 0;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity 180ms ease;
+  z-index: 5;
+}
+
+.catalog-loading.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+[data-catalog-results] {
+  transition: filter 180ms ease, opacity 180ms ease;
+}
+
+[data-catalog-results].is-updating {
+  filter: blur(1px);
+  opacity: 0.55;
+}
+
+.catalog-results-enter {
+  animation: catalogResultsEnter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.catalog-toast-stack {
+  display: grid;
+  gap: 0.75rem;
+  max-width: min(420px, calc(100vw - 2rem));
+  position: fixed;
+  right: 1rem;
+  top: 5.5rem;
+  z-index: 1090;
+}
+
+.catalog-toast {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #16a34a;
+  border-radius: 14px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto 1fr auto;
+  opacity: 0;
+  padding: 0.9rem 1rem;
+  transform: translateX(24px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.catalog-toast--danger {
+  border-color: #fecaca;
+  border-left-color: #dc2626;
+}
+
+.catalog-toast > i {
+  color: #16a34a;
+  font-size: 1.25rem;
+}
+
+.catalog-toast--danger > i {
+  color: #dc2626;
+}
+
+.catalog-toast button,
+.catalog-confirm-close {
+  background: transparent;
+  border: 0;
+  color: #64748b;
+}
+
+.catalog-toast.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.catalog-toast.is-leaving {
+  opacity: 0;
+  transform: translateX(18px);
+}
+
+.catalog-count-pulse {
+  animation: catalogCountPulse 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.catalog-editor-dialog,
+.catalog-confirm-dialog {
+  background: transparent;
+  border: 0;
+  max-width: min(440px, calc(100vw - 2rem));
+  padding: 0;
+  width: 100%;
+}
+
+.catalog-editor-dialog {
+  border: 0;
+  max-width: min(760px, calc(100vw - 2rem));
+  padding: 0;
+  width: 100%;
+}
+
+.catalog-editor-dialog::backdrop,
+.catalog-confirm-dialog::backdrop {
+  backdrop-filter: blur(7px);
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.catalog-editor-card {
+  background: #f8fafc;
+  border-radius: 22px;
+  box-shadow: 0 28px 80px rgba(2, 6, 23, 0.32);
+  max-height: calc(100vh - 3rem);
+  overflow: auto;
+  position: relative;
+}
+
+.catalog-editor-header {
+  align-items: center;
+  background: linear-gradient(135deg, var(--hotel-navy), var(--hotel-blue));
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+.catalog-editor-header small {
+  color: #fde047;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.catalog-editor-header h2 {
+  font-family: "Playfair Display", serif;
+  font-size: 1.4rem;
+  margin: 0.2rem 0 0;
+}
+
+.catalog-editor-header button {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 10px;
+  color: #fff;
+  height: 40px;
+  width: 40px;
+}
+
+.catalog-editor-body {
+  padding: 1.25rem;
+  transition: filter 180ms ease, opacity 180ms ease;
+}
+
+.catalog-editor-body .catalog-form-card {
+  max-width: none;
+}
+
+.catalog-editor-body.is-loading {
+  filter: blur(1px);
+  opacity: 0.45;
+}
+
+.catalog-editor-loading {
+  align-items: center;
+  background: rgba(248, 250, 252, 0.86);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  inset: 76px 0 0;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 6;
+}
+
+.catalog-editor-loading.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.catalog-confirm-card {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 28px 80px rgba(2, 6, 23, 0.32);
+  padding: 2rem;
+  position: relative;
+  text-align: center;
+}
+
+.catalog-confirm-icon {
+  align-items: center;
+  background: #fee2e2;
+  border-radius: 18px;
+  color: #dc2626;
+  display: inline-flex;
+  font-size: 1.55rem;
+  height: 58px;
+  justify-content: center;
+  margin-bottom: 1rem;
+  width: 58px;
+}
+
+.catalog-confirm-card > small {
+  color: #b45309;
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.catalog-confirm-card h2 {
+  font-family: "Playfair Display", serif;
+  font-weight: 700;
+  margin: 0.35rem 0;
+}
+
+.catalog-confirm-card p {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.catalog-confirm-close {
+  position: absolute;
+  right: 0.85rem;
+  top: 0.85rem;
+}
+
+.catalog-confirm-target {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: flex;
+  gap: 0.65rem;
+  justify-content: center;
+  margin: 1rem 0;
+  padding: 0.8rem;
+}
+
+.catalog-confirm-actions {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.catalog-confirm-actions button {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 11px;
+  font-weight: 700;
+  padding: 0.75rem;
+}
+
+.catalog-confirm-actions .is-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+@keyframes catalogCountPulse {
+  50% {
+    box-shadow: 0 0 18px rgba(212, 175, 55, 0.5);
+    transform: scale(1.045);
+  }
+}
+
+@keyframes catalogResultsEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 767px) {
+  .catalog-hub-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .catalog-hub-status {
+    width: 100%;
+  }
+
+  .catalog-module-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog-module-type {
+    margin-right: 2.8rem;
+  }
+
+  .catalog-command-bar {
+    align-items: flex-start !important;
+    flex-direction: column;
+  }
+
+  .catalog-command-actions,
+  .catalog-command-bar .btn-light,
+  .catalog-filter-form {
+    width: 100%;
+  }
+
+  .catalog-command-actions > a {
+    justify-content: center;
+    flex: 1 1 auto;
+  }
+
+  .catalog-toast-stack {
+    left: 1rem;
+    right: 1rem;
+  }
+
+  .catalog-module-mark {
+    flex-basis: 64px;
+    height: 62px;
+    width: 64px;
+  }
+
+  .catalog-module-mark--payroll {
+    width: 78px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-page *,
+  .catalog-toast,
+  .catalog-results-enter {
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==========================================================================
+   LUXURY HOTEL VISUAL IDENTITY & SMART NAVIGATION (THE OVERTIME HOTEL)
+   ========================================================================== */
+
+/* Họa tiết Art Deco hình học mạ vàng trên nền banner */
+.catalog-art-deco-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(212, 175, 55, 0.18) 1px, transparent 0);
+  background-size: 24px 24px;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Status Pill và Beacon phát sáng trên Hub */
+.catalog-hub-status-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.catalog-status-beacon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+}
+
+.catalog-hub-demo-pill {
+  font-size: 0.72rem;
+  color: #fde047;
+  background: rgba(254, 240, 138, 0.12);
+  border: 1px solid rgba(254, 240, 138, 0.3);
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+/* Metric Pills trên thẻ Hub */
+.catalog-metric-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.catalog-metric-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+}
+
+.catalog-metric-pill--primary {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.catalog-metric-pill--secondary {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.catalog-metric-pill--success {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.catalog-metric-pill--warning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.catalog-metric-pill--dark {
+  background: #0f172a;
+  color: #fde047;
+  border: 1px solid #334155;
+}
+
+.catalog-quick-btn {
+  font-size: 0.78rem;
+  transition: all 180ms ease;
+}
+
+.catalog-quick-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Thanh Tabs điều hướng 4 phân hệ liên thông */
+.catalog-nav-tabs-wrapper {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 0.5rem;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.catalog-nav-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.catalog-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: 12px;
+  color: #475569;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.86rem;
+  transition: all 180ms ease;
+  border: 1px solid transparent;
+}
+
+.catalog-nav-tab:hover {
+  color: #1e293b;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.catalog-nav-tab.is-active {
+  background: linear-gradient(135deg, var(--hotel-navy), var(--hotel-blue));
+  color: #fff;
+  border-color: rgba(212, 175, 55, 0.6);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
+}
+
+.catalog-nav-tab.is-active .catalog-nav-tab-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fde047;
+}
+
+.catalog-nav-tab-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+/* Icon đặc thù khách sạn 5 sao */
+.catalog-icon--board {
+  background: linear-gradient(135deg, #b45309, #78350f);
+  border-color: #fde047;
+  color: #fde047;
+}
+
+.catalog-icon--frontdesk {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border-color: #bae6fd;
+  color: #fff;
+}
+
+.catalog-icon--housekeeping {
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  border-color: #99f6e4;
+  color: #fff;
+}
+
+.catalog-icon--fnb {
+  background: linear-gradient(135deg, #ea580c, #c2410c);
+  border-color: #fed7aa;
+  color: #fff;
+}
+
+.catalog-icon--hr {
+  background: linear-gradient(135deg, #4f46e5, #3730a3);
+  border-color: #c7d2fe;
+  color: #fff;
+}
+
+/* Avatar Stack */
+.catalog-avatar-stack {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 6px;
+}
+
+.catalog-mini-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fff;
+  margin-left: -8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.catalog-mini-avatar--0 {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.catalog-mini-avatar--1 {
+  background: linear-gradient(135deg, #10b981, #047857);
+}
+
+.catalog-mini-avatar--2 {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+/* 3 Mini KPI Cards cho Payroll */
+.catalog-kpi-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.catalog-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+
+.catalog-kpi-card--allowance {
+  border-left: 4px solid #2563eb;
+}
+
+.catalog-kpi-card--bonus {
+  border-left: 4px solid #16a34a;
+}
+
+.catalog-kpi-card--deduction {
+  border-left: 4px solid #dc2626;
+}
+
+.catalog-kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.catalog-kpi-card--allowance .catalog-kpi-icon {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.catalog-kpi-card--bonus .catalog-kpi-icon {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.catalog-kpi-card--deduction .catalog-kpi-icon {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.catalog-kpi-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  display: block;
+}
+
+.catalog-kpi-value {
+  font-family: "Playfair Display", serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  margin: 0.15rem 0 0;
+  color: #0f172a;
+}
+
+.catalog-kpi-value small {
+  font-size: 0.85rem;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.catalog-kpi-desc {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  margin: 0.15rem 0 0;
+}
+
+/* Định dạng số tiền */
+.catalog-amount-box {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+.catalog-amount-sign {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.catalog-amount-number {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.catalog-amount-currency {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-left: 0.1rem;
+}
+
+/* Empty State */
+.catalog-empty-state {
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.catalog-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.catalog-empty-state h4 {
+  font-family: "Playfair Display", serif;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.35rem;
+}
+
+/* In ấn chuẩn A4 */
+@media print {
+  header,
+  footer,
+  .catalog-command-bar,
+  .catalog-nav-tabs-wrapper,
+  .catalog-toolbar,
+  .catalog-action-btn,
+  .catalog-toast-stack,
+  .catalog-kpi-card,
+  th:last-child,
+  td:last-child {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt !important;
+  }
+
+  .catalog-card {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  .catalog-table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  .catalog-table th,
+  .catalog-table td {
+    border: 1px solid #ccc !important;
+    padding: 6pt !important;
+  }
 }

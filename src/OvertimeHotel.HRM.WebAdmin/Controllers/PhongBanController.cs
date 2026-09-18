@@ -21,7 +21,7 @@ public class PhongBanController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? keyword)
     {
-        var query = _context.PhongBans.AsNoTracking().AsQueryable();
+        var query = _context.PhongBans.AsNoTracking().Include(item => item.NhanViens).AsQueryable();
         keyword = keyword?.Trim();
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -171,11 +171,11 @@ public class PhongBanController : Controller
 
     private static List<PhongBan> GetFallbackItems() =>
     [
-        new() { MaPhongBan = 1, TenPhongBan = "Ban Giám Đốc", MoTa = "Điều hành chiến lược và hoạt động toàn khách sạn." },
-        new() { MaPhongBan = 2, TenPhongBan = "Phòng Nhân Sự", MoTa = "Quản trị nhân sự, hợp đồng và chính sách lao động." },
-        new() { MaPhongBan = 3, TenPhongBan = "Bộ Phận Tiền Sảnh", MoTa = "Lễ tân, đặt phòng và chăm sóc khách hàng." },
-        new() { MaPhongBan = 4, TenPhongBan = "Bộ Phận Buồng Phòng", MoTa = "Đảm bảo tiêu chuẩn vệ sinh và chất lượng phòng." },
-        new() { MaPhongBan = 5, TenPhongBan = "Bộ Phận Ẩm Thực", MoTa = "Vận hành nhà hàng, bếp và dịch vụ tiệc." }
+        new() { MaPhongBan = 1, TenPhongBan = "Ban Giám Đốc", MoTa = "Điều hành chiến lược và hoạt động toàn khách sạn.", NhanViens = new List<NhanVien> { new() { Ho = "Võ", Ten = "Sang" }, new() { Ho = "Nguyễn", Ten = "Cường" } } },
+        new() { MaPhongBan = 2, TenPhongBan = "Phòng Nhân Sự", MoTa = "Quản trị nhân sự, hợp đồng và chính sách lao động.", NhanViens = new List<NhanVien> { new() { Ho = "Trần", Ten = "Hoa" }, new() { Ho = "Lê", Ten = "Nam" }, new() { Ho = "Đỗ", Ten = "Mai" } } },
+        new() { MaPhongBan = 3, TenPhongBan = "Bộ Phận Tiền Sảnh", MoTa = "Lễ tân, đặt phòng và chăm sóc khách hàng.", NhanViens = new List<NhanVien> { new() { Ho = "Phạm", Ten = "Hương" }, new() { Ho = "Hoàng", Ten = "Long" }, new() { Ho = "Ngô", Ten = "Bảo" }, new() { Ho = "Vũ", Ten = "Tú" } } },
+        new() { MaPhongBan = 4, TenPhongBan = "Bộ Phận Buồng Phòng", MoTa = "Đảm bảo tiêu chuẩn vệ sinh và chất lượng phòng.", NhanViens = new List<NhanVien> { new() { Ho = "Bùi", Ten = "Minh" }, new() { Ho = "Đinh", Ten = "Loan" }, new() { Ho = "Lý", Ten = "Quân" } } },
+        new() { MaPhongBan = 5, TenPhongBan = "Bộ Phận Ẩm Thực", MoTa = "Vận hành nhà hàng, bếp và dịch vụ tiệc.", NhanViens = new List<NhanVien> { new() { Ho = "Dương", Ten = "Tuấn" }, new() { Ho = "Lâm", Ten = "Trí" }, new() { Ho = "Đoàn", Ten = "Hậu" }, new() { Ho = "Phan", Ten = "Việt" } } }
     ];
 
     private async Task ValidateAsync(PhongBan model, int? currentId = null)

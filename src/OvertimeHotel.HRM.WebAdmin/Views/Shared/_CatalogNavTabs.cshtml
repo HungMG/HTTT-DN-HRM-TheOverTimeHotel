@@ -1,0 +1,27 @@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+}
+
+<nav class="catalog-nav-tabs-wrapper mb-4" aria-label="Điều hướng danh mục hệ thống">
+    <div class="catalog-nav-tabs">
+        <a asp-controller="PhongBan" asp-action="Index" class="catalog-nav-tab @(currentController.Equals("PhongBan", StringComparison.OrdinalIgnoreCase) ? "is-active" : "")">
+            <span class="catalog-nav-tab-icon catalog-nav-tab-icon--dept"><i class="bi bi-building-fill"></i></span>
+            <span class="catalog-nav-tab-label">Phòng ban</span>
+        </a>
+
+        <a asp-controller="ChucVu" asp-action="Index" class="catalog-nav-tab @(currentController.Equals("ChucVu", StringComparison.OrdinalIgnoreCase) ? "is-active" : "")">
+            <span class="catalog-nav-tab-icon catalog-nav-tab-icon--pos"><i class="bi bi-person-vcard-fill"></i></span>
+            <span class="catalog-nav-tab-label">Chức vụ</span>
+        </a>
+
+        <a asp-controller="CaLamViec" asp-action="Index" class="catalog-nav-tab @(currentController.Equals("CaLamViec", StringComparison.OrdinalIgnoreCase) ? "is-active" : "")">
+            <span class="catalog-nav-tab-icon catalog-nav-tab-icon--shift"><i class="bi bi-clock-fill"></i></span>
+            <span class="catalog-nav-tab-label">Ca làm việc 24/7</span>
+        </a>
+
+        <a asp-controller="CauHinhKhoanLuong" asp-action="Index" class="catalog-nav-tab @(currentController.Equals("CauHinhKhoanLuong", StringComparison.OrdinalIgnoreCase) ? "is-active" : "")">
+            <span class="catalog-nav-tab-icon catalog-nav-tab-icon--pay"><i class="bi bi-wallet2"></i></span>
+            <span class="catalog-nav-tab-label">Khoản phụ cấp & Lương</span>
+        </a>
+    </div>
+</nav>

@@ -1,62 +1,199 @@
 @model IReadOnlyList<OvertimeHotel.HRM.Core.Models.PhongBan>
 @{
-    ViewData["Title"] = "Quản lý phòng ban";
-}
-@section Scripts {
-    <script>
-        function confirmDelete(name) {
-            return confirm(`Xóa phòng ban “${name}”? Thao tác này không thể hoàn tác.`);
-        }
-    </script>
+    ViewData["Title"] = "Quản lý phòng ban · The OverTime Hotel";
 }
 
 <div class="catalog-page">
-    <section class="catalog-hero mb-4 d-flex justify-content-between align-items-center gap-3">
-        <div>
-            <div class="catalog-eyebrow"><i class="bi bi-stars me-1"></i> Danh mục hệ thống</div>
-            <h1 class="catalog-title h2 mb-1">Quản lý phòng ban</h1>
-            <p class="text-white-50 mb-0">Tổ chức cơ cấu vận hành của The OverTime Hotel.</p>
+    <!-- HERO COMMAND BANNER -->
+    <section class="catalog-hero catalog-command-bar mb-4 position-relative">
+        <div class="catalog-art-deco-pattern" aria-hidden="true"></div>
+        <div class="position-relative" style="z-index: 2;">
+            <nav aria-label="Điều hướng">
+                <ol class="catalog-breadcrumb catalog-breadcrumb--dark">
+                    <li><a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a></li>
+                    <li><a asp-controller="SystemCatalog" asp-action="Index">Danh mục hệ thống</a></li>
+                    <li aria-current="page">Phòng ban</li>
+                </ol>
+            </nav>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill" style="font-size: 0.65rem;">
+                    <i class="bi bi-stars"></i> THE OVERTIME HOTEL
+                </span>
+                <span class="catalog-eyebrow mb-0"><i class="bi bi-diagram-3-fill me-1"></i> Cơ cấu tổ chức</span>
+            </div>
+            <h1 class="catalog-title h2 mb-1 text-white">Quản lý Phòng Ban Khách Sạn</h1>
+            <p class="text-white-50 mb-0">Thiết lập các bộ phận vận hành, khối dịch vụ khách lưu trú và phòng ban nghiệp vụ.</p>
         </div>
-        <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative">
-            <i class="bi bi-plus-lg me-1 text-primary"></i> Thêm phòng ban
-        </a>
+        <div class="catalog-command-actions position-relative" style="z-index: 2;">
+            <a asp-controller="SystemCatalog" asp-action="Index" class="catalog-back-action">
+                <i class="bi bi-grid"></i><span>Trung tâm danh mục</span>
+            </a>
+            <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-catalog-modal data-catalog-modal-title="Thêm phòng ban mới">
+                <i class="bi bi-plus-lg me-1 text-primary"></i> Thêm phòng ban
+            </a>
+        </div>
     </section>
+
+    <!-- 4 TABS LIÊN THÔNG DANH MỤC -->
+    <partial name="_CatalogNavTabs" />
 
     <partial name="_CatalogAlerts" />
 
-    <section class="catalog-card">
+    <!-- TABLE WORKSPACE CARD -->
+    <section class="catalog-card shadow-sm">
         <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <form method="get" class="d-flex gap-2 flex-grow-1" style="max-width:520px">
-                <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên hoặc mô tả..." />
-                <button class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+            <form method="get" class="catalog-filter-form d-flex gap-2 flex-grow-1">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search border-start-0 ps-0" placeholder="Tìm theo tên phòng ban hoặc mô tả..." />
+                </div>
+                <button class="btn btn-hotel-primary text-nowrap"><i class="bi bi-search me-1"></i>Tìm kiếm</button>
                 @if (!string.IsNullOrWhiteSpace(ViewBag.Keyword as string))
                 {
-                    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+                    <a asp-action="Index" class="btn btn-outline-secondary" data-catalog-reset title="Đặt lại bộ lọc"><i class="bi bi-x-lg"></i></a>
                 }
             </form>
-            <span class="catalog-badge"><i class="bi bi-building me-1"></i> @ViewBag.Total phòng ban</span>
+
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="PhongBan" title="Xuất danh sách ra file CSV mở bằng Excel">
+                    <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất CSV
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-print title="In danh sách phòng ban chuẩn A4">
+                    <i class="bi bi-printer text-primary me-1"></i> In danh mục
+                </button>
+                <span class="catalog-badge" data-catalog-count>
+                    <i class="bi bi-diagram-3-fill me-1"></i> @ViewBag.Total phòng ban
+                </span>
+            </div>
         </div>
-        <div class="table-responsive">
-            <table class="table catalog-table">
-                <thead><tr><th style="width:90px">Mã</th><th>Tên phòng ban</th><th>Mô tả</th><th class="text-end" style="width:160px">Thao tác</th></tr></thead>
+
+        <div class="catalog-loading" data-catalog-loading>
+            <span class="spinner-border spinner-border-sm text-primary"></span>
+            <strong>Đang cập nhật danh mục phòng ban...</strong>
+        </div>
+
+        <div class="table-responsive" data-catalog-results>
+            <table class="table catalog-table" data-export-table="Danh_Sach_Phong_Ban">
+                <thead>
+                    <tr>
+                        <th style="width: 80px" class="text-center">Mã</th>
+                        <th>Phòng ban</th>
+                        <th style="width: 200px">Quy mô nhân sự</th>
+                        <th>Chức năng & Nhiệm vụ</th>
+                        <th class="text-end" style="width: 140px">Thao tác</th>
+                    </tr>
+                </thead>
                 <tbody>
                 @if (Model.Count == 0)
                 {
-                    <tr><td colspan="4" class="catalog-empty"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Không tìm thấy phòng ban phù hợp.</td></tr>
+                    <tr>
+                        <td colspan="5" class="catalog-empty">
+                            <div class="catalog-empty-state">
+                                <div class="catalog-empty-icon"><i class="bi bi-bell-slash"></i></div>
+                                <h4>Không tìm thấy phòng ban phù hợp</h4>
+                                <p class="text-muted">Không có dữ liệu khớp với từ khóa tìm kiếm trong cơ sở dữ liệu The OverTime Hotel.</p>
+                                <a asp-action="Create" class="btn btn-hotel-primary btn-sm px-3 mt-2" data-catalog-modal data-catalog-modal-title="Thêm phòng ban mới">
+                                    <i class="bi bi-plus-lg me-1"></i> Thêm phòng ban mới
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
                 }
                 else
                 {
                     @foreach (var item in Model)
                     {
+                        var nameLower = item.TenPhongBan.ToLowerInvariant();
+                        var iconClass = "bi-building-fill";
+                        var badgeTheme = "catalog-icon--department";
+
+                        if (nameLower.Contains("giám đốc") || nameLower.Contains("quản lý"))
+                        {
+                            iconClass = "bi-award-fill";
+                            badgeTheme = "catalog-icon--board";
+                        }
+                        else if (nameLower.Contains("tiền sảnh") || nameLower.Contains("lễ tân"))
+                        {
+                            iconClass = "bi-bell-fill";
+                            badgeTheme = "catalog-icon--frontdesk";
+                        }
+                        else if (nameLower.Contains("buồng") || nameLower.Contains("phòng"))
+                        {
+                            iconClass = "bi-stars";
+                            badgeTheme = "catalog-icon--housekeeping";
+                        }
+                        else if (nameLower.Contains("ẩm thực") || nameLower.Contains("bếp") || nameLower.Contains("nhà hàng"))
+                        {
+                            iconClass = "bi-cup-hot-fill";
+                            badgeTheme = "catalog-icon--fnb";
+                        }
+                        else if (nameLower.Contains("nhân sự"))
+                        {
+                            iconClass = "bi-person-vcard-fill";
+                            badgeTheme = "catalog-icon--hr";
+                        }
+
+                        var empCount = item.NhanViens?.Count ?? 0;
+
                         <tr>
-                            <td class="text-muted fw-semibold">#@item.MaPhongBan</td>
-                            <td><div class="d-flex align-items-center gap-2"><span class="catalog-icon"><i class="bi bi-building"></i></span><strong>@item.TenPhongBan</strong></div></td>
-                            <td class="text-muted">@(item.MoTa ?? "—")</td>
+                            <td class="text-center text-muted fw-semibold">#@item.MaPhongBan</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="catalog-icon @badgeTheme shadow-sm">
+                                        <i class="bi @iconClass"></i>
+                                    </span>
+                                    <div>
+                                        <strong class="d-block text-dark fs-6 font-serif">@item.TenPhongBan</strong>
+                                        <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>Khu phức hợp The OverTime</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (empCount > 0)
+                                    {
+                                        <div class="catalog-avatar-stack" title="@empCount nhân sự đang công tác">
+                                            @for (int i = 0; i < Math.Min(empCount, 3); i++)
+                                            {
+                                                <span class="catalog-mini-avatar catalog-mini-avatar--@(i % 3)">
+                                                    @(i == 0 ? "A" : i == 1 ? "B" : "C")
+                                                </span>
+                                            }
+                                        </div>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold">
+                                            @empCount nhân sự
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-muted border">
+                                            <i class="bi bi-person-x me-1"></i>0 nhân sự
+                                        </span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="text-muted" style="max-width: 320px;">
+                                <span class="d-inline-block text-truncate" style="max-width: 300px;" title="@item.MoTa">
+                                    @(item.MoTa ?? "Chưa có mô tả cụ thể.")
+                                </span>
+                            </td>
                             <td class="text-end">
-                                <a asp-action="Edit" asp-route-id="@item.MaPhongBan" class="btn btn-sm btn-outline-primary rounded-3" title="Chỉnh sửa"><i class="bi bi-pencil"></i></a>
-                                <form asp-action="Delete" asp-route-id="@item.MaPhongBan" method="post" class="d-inline" onsubmit="return confirmDelete('@item.TenPhongBan.Replace("'", "\\'")')">
-                                    <button class="btn btn-sm btn-outline-danger rounded-3" title="Xóa"><i class="bi bi-trash"></i></button>
-                                </form>
+                                <a asp-action="Edit" asp-route-id="@item.MaPhongBan" class="btn btn-sm btn-outline-primary rounded-3 me-1" title="Chỉnh sửa thông tin" data-catalog-modal data-catalog-modal-title="Chỉnh sửa phòng ban">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+
+                                @if (empCount > 0)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 opacity-50" disabled title="Không thể xóa: đang có @empCount nhân viên đang thuộc phòng ban này. Hãy điều chuyển nhân sự trước.">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <form asp-action="Delete" asp-route-id="@item.MaPhongBan" method="post" class="d-inline catalog-delete-form" data-catalog-name="@item.TenPhongBan">
+                                        <button class="btn btn-sm btn-outline-danger rounded-3" title="Xóa phòng ban"><i class="bi bi-trash3"></i></button>
+                                    </form>
+                                }
                             </td>
                         </tr>
                     }
