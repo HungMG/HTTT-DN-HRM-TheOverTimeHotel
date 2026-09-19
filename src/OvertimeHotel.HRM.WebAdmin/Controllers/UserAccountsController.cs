@@ -263,27 +263,34 @@ public class UserAccountsController : Controller
 
         try
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            _context.TaiKhoans.Add(account);
-            await _context.SaveChangesAsync();
+            // EnableRetryOnFailure cần execution strategy bọc toàn bộ transaction.
+            // Nếu không, Npgsql sẽ từ chối transaction do người dùng tự khởi tạo.
+            var executionStrategy = _context.Database.CreateExecutionStrategy();
+            await executionStrategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                _context.TaiKhoans.Add(account);
+                await _context.SaveChangesAsync();
 
-            var roleName = await _context.VaiTros
-                .AsNoTracking()
-                .Where(role => role.MaVaiTro == account.MaVaiTro)
-                .Select(role => role.TenVaiTro)
-                .SingleAsync();
+                var roleName = await _context.VaiTros
+                    .AsNoTracking()
+                    .Where(role => role.MaVaiTro == account.MaVaiTro)
+                    .Select(role => role.TenVaiTro)
+                    .SingleAsync();
 
-            _context.NhatKyQuanTris.Add(CreateAuditLog(
-                account.MaTaiKhoan,
-                account.TenDangNhap,
-                "CREATE_ACCOUNT",
-                "Tạo tài khoản mới và liên kết với nhân viên.",
-                null,
-                $"Username: {account.TenDangNhap}; Vai trò: {roleName}; Trạng thái: {(account.TrangThai ? "Hoạt động" : "Đã khóa")}",
-                "Cấp tài khoản đăng nhập mới."));
+                _context.NhatKyQuanTris.Add(CreateAuditLog(
+                    account.MaTaiKhoan,
+                    account.TenDangNhap,
+                    "CREATE_ACCOUNT",
+                    "Tạo tài khoản mới và liên kết với nhân viên.",
+                    null,
+                    $"Username: {account.TenDangNhap}; Vai trò: {roleName}; Trạng thái: {(account.TrangThai ? "Hoạt động" : "Đã khóa")}",
+                    "Cấp tài khoản đăng nhập mới."));
 
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            });
+
             TempData["Success"] = $"Đã tạo tài khoản '{account.TenDangNhap}' thành công.";
             return RedirectToAction(nameof(Index));
         }
