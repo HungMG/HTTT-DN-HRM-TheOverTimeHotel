@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Data.Context;
@@ -5,6 +6,21 @@ using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.Data.Supabase;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Lưu khóa Data Protection trong workspace khi chạy Development.
+// Môi trường sandbox không cho phép ghi vào thư mục AppData mặc định của người dùng.
+if (builder.Environment.IsDevelopment())
+{
+    var dataProtectionKeysPath = Path.Combine(
+        builder.Environment.ContentRootPath,
+        "App_Data",
+        "DataProtection-Keys");
+
+    Directory.CreateDirectory(dataProtectionKeysPath);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+        .SetApplicationName("OvertimeHotel.HRM.WebAdmin");
+}
 
 // Xóa các logger hệ thống yêu cầu quyền Administrator (như Windows EventLog)
 builder.Logging.ClearProviders();

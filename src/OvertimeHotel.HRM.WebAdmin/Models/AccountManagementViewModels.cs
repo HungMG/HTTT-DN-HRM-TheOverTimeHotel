@@ -15,6 +15,14 @@ public class AccountIndexViewModel
     public int ActiveAccounts { get; set; }
     public int LockedAccounts { get; set; }
     public int AdminAccounts { get; set; }
+    public int TotalFilteredAccounts { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 15;
+    public int TotalPages { get; set; } = 1;
+    public int TotalAuditLogs { get; set; }
+    public int AuditPageNumber { get; set; } = 1;
+    public int AuditPageSize { get; set; } = 5;
+    public int TotalAuditPages { get; set; } = 1;
     public IReadOnlyList<AccountListItemViewModel> Accounts { get; set; } = [];
     public IReadOnlyList<SelectListItem> RoleOptions { get; set; } = [];
     public IReadOnlyList<AdminAuditLogViewModel> AuditLogs { get; set; } = [];
