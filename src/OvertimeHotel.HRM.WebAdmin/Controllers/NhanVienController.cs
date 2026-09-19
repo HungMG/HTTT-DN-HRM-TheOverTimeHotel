@@ -211,6 +211,7 @@ public class NhanVienController : Controller
             return BadRequest();
 
         Normalize(model.Employee);
+        NormalizeEmployeeStatus(model.Employee);
         await ValidateEmployeeAsync(model.Employee, id);
         if (!ModelState.IsValid)
             return View(await BuildEmployeeFormAsync(model));
@@ -298,6 +299,16 @@ public class NhanVienController : Controller
         if (model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today)) ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
         if (model.NgayThoiViec.HasValue && model.NgayThoiViec < model.NgayVaoLam) ModelState.AddModelError("Employee.NgayThoiViec", "Ngày thôi việc không được trước ngày vào làm.");
         if (await _context.NhanViens.AnyAsync(item => item.MaNhanVien != currentId && item.Email.ToLower() == model.Email.ToLower())) ModelState.AddModelError("Employee.Email", "Email nhân viên đã tồn tại.");
+    }
+
+    private static void NormalizeEmployeeStatus(NhanVien model)
+    {
+        model.TrangThai = model.TrangThai switch
+        {
+            "NGHI_VIEC" => "DA_THOI_VIEC",
+            "TAM_NGHI" => "NGHI_PHEP",
+            _ => model.TrangThai
+        };
     }
 
     private static void Normalize(NhanVien model)

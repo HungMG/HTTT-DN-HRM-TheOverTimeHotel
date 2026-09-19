@@ -1,5 +1,6 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.NhanVienFormViewModel
 @Html.AntiForgeryToken()
+<input asp-for="Employee.MaNhanVien" type="hidden" />
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 <div class="row g-3">
     <div class="col-md-6"><label asp-for="Employee.Ho" class="form-label">Họ *</label><input asp-for="Employee.Ho" class="form-control" /><span asp-validation-for="Employee.Ho" class="text-danger small"></span></div>
@@ -13,6 +14,6 @@
     <div class="col-md-6"><label asp-for="Employee.DienThoai" class="form-label">Điện thoại *</label><input asp-for="Employee.DienThoai" class="form-control" /><span asp-validation-for="Employee.DienThoai" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.NgayVaoLam" class="form-label">Ngày vào làm *</label><input asp-for="Employee.NgayVaoLam" type="date" class="form-control" /></div>
     <div class="col-md-6"><label asp-for="Employee.NgayThoiViec" class="form-label">Ngày thôi việc</label><input asp-for="Employee.NgayThoiViec" type="date" class="form-control" /></div>
-    <div class="col-md-6"><label asp-for="Employee.TrangThai" class="form-label">Trạng thái</label><select asp-for="Employee.TrangThai" class="form-select"><option value="DANG_LAM">Đang làm</option><option value="NGHI_VIEC">Nghỉ việc</option><option value="TAM_NGHI">Tạm nghỉ</option></select></div>
+    <div class="col-md-6"><label asp-for="Employee.TrangThai" class="form-label">Trạng thái</label><select asp-for="Employee.TrangThai" class="form-select"><option value="DANG_LAM">Đang làm</option><option value="DA_THOI_VIEC">Nghỉ việc</option><option value="NGHI_PHEP">Tạm nghỉ</option></select></div>
     <div class="col-12"><label asp-for="Employee.DiaChi" class="form-label">Địa chỉ</label><textarea asp-for="Employee.DiaChi" rows="2" class="form-control"></textarea></div>
 </div>
