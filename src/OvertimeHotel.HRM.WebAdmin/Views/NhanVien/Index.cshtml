@@ -232,8 +232,8 @@
                                 <a asp-action="Edit" asp-route-id="@employee.MaNhanVien" class="btn btn-sm btn-outline-primary rounded-3" title="Sửa hồ sơ">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form asp-action="Delete" asp-route-id="@employee.MaNhanVien" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hồ sơ @employee.HoTen?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-3" title="Xóa hồ sơ">
+                                <form asp-action="Delete" asp-route-id="@employee.MaNhanVien" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn ẩn hồ sơ @employee.HoTen khỏi danh sách?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-3" title="Ẩn hồ sơ">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
