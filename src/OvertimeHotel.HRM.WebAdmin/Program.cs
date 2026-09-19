@@ -57,8 +57,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         {
             // Tự động thử lại khi gặp sự cố mạng tạm thời (Transient Failure)
             npgsqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 3,
-                maxRetryDelay: TimeSpan.FromSeconds(2),
+                maxRetryCount: 1,
+                maxRetryDelay: TimeSpan.FromSeconds(1),
                 errorCodesToAdd: null);
         });
     }
