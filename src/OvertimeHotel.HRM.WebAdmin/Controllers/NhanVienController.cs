@@ -81,6 +81,8 @@ public class NhanVienController : Controller
 
             if (!string.IsNullOrWhiteSpace(status))
                 filtered = filtered.Where(employee => employee.TrangThai == status);
+            else
+                filtered = filtered.Where(employee => employee.TrangThai != "DA_THOI_VIEC");
 
             var items = filtered.Select(employee =>
             {
@@ -262,22 +264,17 @@ public class NhanVienController : Controller
         if (employee == null)
             return NotFound();
 
-        if (employee.TaiKhoan != null || employee.PhieuLuongs.Count != 0)
-        {
-            TempData["Error"] = $"Không thể xóa “{employee.HoTen}” vì hồ sơ đã phát sinh tài khoản hoặc phiếu lương. Hãy chuyển trạng thái sang ngừng làm việc.";
-            return RedirectToAction(nameof(Index));
-        }
-
         try
         {
-            _context.NhanViens.Remove(employee);
+            employee.TrangThai = "DA_THOI_VIEC";
+            employee.NgayThoiViec = DateOnly.FromDateTime(DateTime.Today);
             await _context.SaveChangesAsync();
-            TempData["Success"] = $"Đã xóa hồ sơ “{employee.HoTen}”.";
+            TempData["Success"] = $"Đã ẩn hồ sơ nhân viên “{employee.HoTen}”. Có thể xem lại trong bộ lọc “Đã nghỉ việc”.";
         }
         catch (DbUpdateException ex)
         {
-            _logger.LogError(ex, "Không thể xóa hồ sơ nhân viên {EmployeeId}.", id);
-            TempData["Error"] = "Không thể xóa hồ sơ vì dữ liệu đang được sử dụng.";
+            _logger.LogError(ex, "Không thể ẩn hồ sơ nhân viên {EmployeeId}.", id);
+            TempData["Error"] = "Không thể ẩn hồ sơ nhân viên. Vui lòng kiểm tra kết nối CSDL.";
         }
 
         return RedirectToAction(nameof(Index));
