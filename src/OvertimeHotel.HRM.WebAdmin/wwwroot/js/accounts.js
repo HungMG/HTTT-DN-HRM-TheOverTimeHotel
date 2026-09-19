@@ -158,6 +158,72 @@
         .replaceAll("Vai trò: Employee", "Vai trò: Nhân viên");
 
     const auditFilter = document.querySelector("[data-account-audit-filter]");
+    const auditRangePicker = auditFilter?.querySelector("[data-account-range-picker]");
+    const auditRangeTrigger = auditFilter?.querySelector("[data-account-range-trigger]");
+    const auditRangePopover = auditFilter?.querySelector("[data-account-range-popover]");
+    const auditRangeLabel = auditFilter?.querySelector("[data-account-range-label]");
+    let auditRequestVersion = 0;
+
+    const formatAuditDate = (value) => {
+        if (!value) return "";
+        const [year, month, day] = value.split("-");
+        return year && month && day ? `${day}/${month}/${year}` : value;
+    };
+
+    const getAuditRangeLabel = (from, to) => {
+        if (from && to) return from === to ? formatAuditDate(from) : `${formatAuditDate(from)} → ${formatAuditDate(to)}`;
+        if (from) return `Từ ${formatAuditDate(from)}`;
+        if (to) return `Đến ${formatAuditDate(to)}`;
+        return "Chọn khoảng ngày";
+    };
+
+    const setAuditRangePickerOpen = (isOpen) => {
+        if (!auditRangePicker || !auditRangeTrigger) return;
+        auditRangePicker.classList.toggle("is-open", isOpen);
+        auditRangeTrigger.setAttribute("aria-expanded", String(isOpen));
+    };
+
+    const dateInputValue = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    };
+
+    const getPresetRange = (preset) => {
+        const current = new Date();
+        current.setHours(0, 0, 0, 0);
+
+        if (preset === "today") {
+            const today = dateInputValue(current);
+            return { from: today, to: today };
+        }
+
+        if (preset === "yesterday") {
+            current.setDate(current.getDate() - 1);
+            const yesterday = dateInputValue(current);
+            return { from: yesterday, to: yesterday };
+        }
+
+        const dayOfWeek = current.getDay() || 7;
+        const lastWeekEnd = new Date(current);
+        lastWeekEnd.setDate(current.getDate() - dayOfWeek);
+        const lastWeekStart = new Date(lastWeekEnd);
+        lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+        return { from: dateInputValue(lastWeekStart), to: dateInputValue(lastWeekEnd) };
+    };
+
+    const syncAuditRangePicker = () => {
+        if (!auditFilter) return;
+        const from = auditFilter.querySelector("[name='auditFrom']")?.value || "";
+        const to = auditFilter.querySelector("[name='auditTo']")?.value || "";
+        if (auditRangeLabel) auditRangeLabel.textContent = getAuditRangeLabel(from, to);
+
+        auditFilter.querySelectorAll("[data-account-audit-preset]").forEach((button) => {
+            const preset = getPresetRange(button.dataset.accountAuditPreset);
+            button.classList.toggle("is-selected", from === preset.from && to === preset.to);
+        });
+    };
 
     const setAuditDateLimits = () => {
         if (!auditFilter) return;
@@ -169,9 +235,9 @@
 
     const updateAuditFilterUrl = (formData) => {
         const url = new URL(window.location.href);
-        ["auditFrom", "auditTo"].forEach((name) => {
+        ["auditFrom", "auditTo", "auditPage"].forEach((name) => {
             const value = String(formData.get(name) || "");
-            if (value) url.searchParams.set(name, value);
+            if (value && !(name === "auditPage" && value === "1")) url.searchParams.set(name, value);
             else url.searchParams.delete(name);
         });
         window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
@@ -190,6 +256,7 @@
         const clearButton = auditFilter?.querySelector("[data-account-audit-clear]");
         clearButton?.classList.toggle("is-disabled", !from && !to);
         clearButton?.setAttribute("aria-disabled", String(!from && !to));
+        syncAuditRangePicker();
     };
 
     const setAuditFilterLoading = (isLoading) => {
@@ -200,14 +267,16 @@
 
     const loadAuditLogs = async () => {
         if (!auditFilter) return;
+        const requestVersion = ++auditRequestVersion;
         const formData = new FormData(auditFilter);
         const endpoint = auditFilter.dataset.auditEndpoint;
         if (!endpoint) return;
 
         const requestUrl = new URL(endpoint, window.location.origin);
-        ["auditFrom", "auditTo"].forEach((name) => {
+        ["auditFrom", "auditTo", "auditPage"].forEach((name) => {
             const value = String(formData.get(name) || "");
             if (value) requestUrl.searchParams.set(name, value);
+            else requestUrl.searchParams.delete(name);
         });
 
         const auditOverlay = document.getElementById("auditLoadingOverlay");
@@ -215,12 +284,19 @@
         setAuditFilterLoading(true);
         try {
             const response = await fetch(requestUrl, {
+                cache: "no-store",
+                credentials: "same-origin",
                 headers: { "Accept": "text/html", "X-Requested-With": "XMLHttpRequest" }
             });
+            if (response.redirected) {
+                throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để lọc nhật ký.");
+            }
             if (!response.ok) {
                 const error = await response.json().catch(() => null);
                 throw new Error(error?.message || "Không thể lọc nhật ký quản trị.");
             }
+
+            if (requestVersion !== auditRequestVersion) return;
 
             const content = document.querySelector("[data-account-audit-content]");
             if (!content) return;
@@ -234,6 +310,7 @@
             if (count) count.textContent = response.headers.get("X-Audit-Count") || "0";
             updateAuditDateState(formData);
             updateAuditFilterUrl(formData);
+            setAuditRangePickerOpen(false);
         } catch (error) {
             showToast(error instanceof Error ? error.message : "Không thể lọc nhật ký quản trị.", "danger");
         } finally {
@@ -244,10 +321,45 @@
 
     auditFilter?.addEventListener("submit", (event) => {
         event.preventDefault();
+        const pageInput = auditFilter.querySelector("[data-account-audit-page-input]");
+        if (pageInput) pageInput.value = "1";
         void loadAuditLogs();
     });
 
-    auditFilter?.querySelectorAll("input[type='date']").forEach((input) => input.addEventListener("change", setAuditDateLimits));
+    auditRangeTrigger?.addEventListener("click", () => {
+        setAuditRangePickerOpen(!auditRangePicker?.classList.contains("is-open"));
+    });
+
+    document.addEventListener("click", (event) => {
+        if (auditRangePicker && !auditRangePicker.contains(event.target)) setAuditRangePickerOpen(false);
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") setAuditRangePickerOpen(false);
+    });
+
+    auditFilter?.querySelectorAll("input[type='date']").forEach((input) => {
+        const onAuditDateInput = () => {
+            setAuditDateLimits();
+            syncAuditRangePicker();
+        };
+
+        input.addEventListener("input", onAuditDateInput);
+        input.addEventListener("change", onAuditDateInput);
+    });
+
+    auditFilter?.querySelectorAll("[data-account-audit-preset]").forEach((button) => button.addEventListener("click", () => {
+        const range = getPresetRange(button.dataset.accountAuditPreset);
+        const fromInput = auditFilter.querySelector("[name='auditFrom']");
+        const toInput = auditFilter.querySelector("[name='auditTo']");
+        if (fromInput) fromInput.value = range.from;
+        if (toInput) toInput.value = range.to;
+        const pageInput = auditFilter.querySelector("[data-account-audit-page-input]");
+        if (pageInput) pageInput.value = "1";
+        setAuditDateLimits();
+        syncAuditRangePicker();
+        void loadAuditLogs();
+    }));
 
     auditFilter?.querySelector("[data-account-audit-clear]")?.addEventListener("click", (event) => {
         event.preventDefault();
@@ -256,7 +368,23 @@
         const toInput = auditFilter.querySelector("[name='auditTo']");
         if (fromInput) fromInput.value = "";
         if (toInput) toInput.value = "";
+        const pageInput = auditFilter.querySelector("[data-account-audit-page-input]");
+        if (pageInput) pageInput.value = "1";
         setAuditDateLimits();
+        syncAuditRangePicker();
+        void loadAuditLogs();
+    });
+
+    syncAuditRangePicker();
+
+    document.addEventListener("click", (event) => {
+        const pageButton = event.target.closest("[data-account-audit-page]");
+        if (!(pageButton instanceof HTMLButtonElement) || pageButton.disabled || !auditFilter) return;
+        const page = Number(pageButton.dataset.accountAuditPage);
+        if (!Number.isInteger(page) || page < 1) return;
+        const pageInput = auditFilter.querySelector("[data-account-audit-page-input]");
+        if (!pageInput) return;
+        pageInput.value = String(page);
         void loadAuditLogs();
     });
 
@@ -517,7 +645,6 @@
     // =========================================================================
     const filterForm = document.querySelector("[data-account-filter-form]");
     const tableContainer = document.getElementById("accountTableContainer");
-    let searchDebounceTimer = null;
 
     const loadAccountsTable = async (overrideUrl = null, replaceHistory = true) => {
         if (!tableContainer) return;
@@ -594,26 +721,21 @@
 
     filterForm?.addEventListener("submit", (e) => {
         e.preventDefault();
+        const pageInput = filterForm.querySelector("[data-account-page-input]");
+        if (pageInput) pageInput.value = "1";
         void loadAccountsTable();
     });
 
-    const searchInput = filterForm?.querySelector("[data-account-search-input]");
-    searchInput?.addEventListener("input", () => {
-        window.clearTimeout(searchDebounceTimer);
-        searchDebounceTimer = window.setTimeout(() => {
-            void loadAccountsTable();
-        }, 300);
-    });
+    document.addEventListener("click", (event) => {
+        const pageButton = event.target.closest("[data-account-page]");
+        if (!(pageButton instanceof HTMLButtonElement) || pageButton.disabled || !filterForm) return;
 
-    filterForm?.querySelector("[data-account-role-select]")?.addEventListener("change", () => {
-        const selectedVal = filterForm.querySelector("[data-account-role-select]").value;
-        document.querySelectorAll("[data-role-filter]").forEach((item) => {
-            item.classList.toggle("is-selected", item.dataset.roleFilter === selectedVal);
-        });
-        void loadAccountsTable();
-    });
+        const page = Number(pageButton.dataset.accountPage);
+        if (!Number.isInteger(page) || page < 1) return;
 
-    filterForm?.querySelector("[data-account-status-select]")?.addEventListener("change", () => {
+        const pageInput = filterForm.querySelector("[data-account-page-input]");
+        if (!pageInput) return;
+        pageInput.value = String(page);
         void loadAccountsTable();
     });
 
@@ -625,29 +747,10 @@
                     control.value = "";
                 }
             });
-            document.querySelectorAll("[data-role-filter]").forEach((item) => {
-                item.classList.remove("is-selected");
-            });
+            const pageInput = filterForm.querySelector("[data-account-page-input]");
+            if (pageInput) pageInput.value = "1";
         }
         void loadAccountsTable();
-    });
-
-    document.querySelectorAll("[data-role-filter]").forEach((item) => {
-        item.addEventListener("click", () => {
-            const roleVal = item.dataset.roleFilter;
-            const roleSelect = filterForm?.querySelector("[data-account-role-select]");
-            if (!roleSelect) return;
-
-            if (roleSelect.value === roleVal) {
-                roleSelect.value = "";
-                item.classList.remove("is-selected");
-            } else {
-                roleSelect.value = roleVal;
-                document.querySelectorAll("[data-role-filter]").forEach((r) => r.classList.remove("is-selected"));
-                item.classList.add("is-selected");
-            }
-            void loadAccountsTable();
-        });
     });
 
     // Khởi tạo ban đầu

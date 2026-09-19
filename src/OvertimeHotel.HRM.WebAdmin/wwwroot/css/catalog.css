@@ -1395,6 +1395,207 @@
   margin-bottom: 0.35rem;
 }
 
+/* ===========================================================================
+   TSK-15 · QUẢN LÝ NHÂN SỰ
+   Đồng bộ nhận diện với TSK-13: navy, royal blue, white và gold.
+   Phạm vi chỉ nằm trong .employee-workspace để không ảnh hưởng danh mục khác.
+   =========================================================================== */
+.employee-workspace {
+  color: #172554;
+}
+
+.employee-workspace .catalog-hero {
+  border-color: rgba(212, 175, 55, .55);
+  background: linear-gradient(135deg, #111c33 0%, #0f172a 62%, #090e1a 100%);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, .18), inset 0 1px rgba(255, 255, 255, .05);
+}
+
+.employee-workspace .catalog-hero .badge.bg-warning {
+  color: #090e1a !important;
+  background: #fde047 !important;
+}
+
+.employee-workspace .catalog-command-bar .btn-light {
+  color: #ffffff;
+  border-color: rgba(212, 175, 55, .58);
+  background: linear-gradient(135deg, #1d4ed8, #0f172a);
+  box-shadow: 0 8px 20px rgba(2, 6, 23, .24);
+}
+
+.employee-workspace .catalog-command-bar .btn-light i {
+  color: #fde047 !important;
+}
+
+.employee-workspace .catalog-command-bar .btn-light:hover {
+  color: #ffffff;
+  border-color: #d4af37;
+  background: linear-gradient(135deg, #1e3a8a, #090e1a);
+}
+
+.employee-workspace .catalog-nav-tabs-wrapper,
+.employee-workspace .catalog-card {
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+}
+
+.employee-workspace .catalog-nav-tab:hover {
+  color: #172554;
+  border-color: #1e3a8a;
+  background: #eff6ff;
+}
+
+.employee-workspace > .row.g-3 > [class*="col"] .card {
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .055) !important;
+}
+
+.employee-workspace > .row.g-3 > [class*="col"]:nth-child(1) .card { border-top: 3px solid #1d4ed8 !important; }
+.employee-workspace > .row.g-3 > [class*="col"]:nth-child(2) .card { border-top: 3px solid #10b981 !important; }
+.employee-workspace > .row.g-3 > [class*="col"]:nth-child(3) .card { border-top: 3px solid #0284c7 !important; }
+.employee-workspace > .row.g-3 > [class*="col"]:nth-child(4) .card { border-top: 3px solid #d4af37 !important; }
+
+.employee-workspace > .row.g-3 .bg-primary-subtle { color: #1d4ed8 !important; background: #eff6ff !important; }
+.employee-workspace > .row.g-3 .bg-success-subtle { color: #059669 !important; background: #ecfdf5 !important; }
+.employee-workspace > .row.g-3 .bg-info-subtle { color: #0284c7 !important; background: #f0f9ff !important; }
+.employee-workspace > .row.g-3 .bg-warning-subtle { color: #b7791f !important; background: #fffbeb !important; }
+
+.employee-workspace .catalog-toolbar {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.employee-workspace .catalog-filter-form .form-control,
+.employee-workspace .catalog-filter-form .form-select,
+.employee-workspace .catalog-filter-form .input-group-text {
+  color: #172554;
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+
+.employee-workspace .catalog-filter-form .form-control:focus,
+.employee-workspace .catalog-filter-form .form-select:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, .12);
+}
+
+.employee-workspace .btn-hotel-primary,
+#createEmployeeModal .btn-primary {
+  color: #ffffff;
+  border-color: rgba(212, 175, 55, .58);
+  background: linear-gradient(135deg, #1d4ed8, #0f172a);
+  box-shadow: 0 7px 17px rgba(29, 78, 216, .18);
+}
+
+.employee-workspace .btn-hotel-primary:hover,
+#createEmployeeModal .btn-primary:hover {
+  color: #fde047;
+  border-color: #d4af37;
+  background: linear-gradient(135deg, #1e3a8a, #090e1a);
+}
+
+.employee-workspace .catalog-action-btn,
+.employee-workspace .btn-outline-secondary,
+.employee-workspace .btn-outline-primary,
+.employee-workspace .btn-outline-danger {
+  color: #172554;
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+
+.employee-workspace .catalog-action-btn:hover,
+.employee-workspace .btn-outline-secondary:hover,
+.employee-workspace .btn-outline-primary:hover {
+  color: #172554;
+  border-color: #1e3a8a;
+  background: #eff6ff;
+}
+
+.employee-workspace .btn-outline-danger:hover {
+  color: #dc2626;
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.employee-workspace .catalog-badge {
+  color: #1e3a8a;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.employee-workspace .catalog-table thead th {
+  color: #172554;
+  border-bottom: 2px solid #1e3a8a;
+  background: #ffffff;
+}
+
+.employee-workspace .catalog-table tbody td {
+  color: #334155;
+  border-color: #e2e8f0;
+}
+
+.employee-workspace .catalog-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.employee-workspace .catalog-table tbody tr:hover {
+  background: #eff6ff;
+}
+
+.employee-workspace .catalog-table .bg-primary {
+  color: #ffffff !important;
+  border: 1px solid #d4af37;
+  background: linear-gradient(145deg, #1e3a8a, #0f172a) !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, .14);
+}
+
+.employee-workspace .catalog-table .badge.bg-success {
+  color: #059669 !important;
+  border: 1px solid rgba(16, 185, 129, .35);
+  background: #ecfdf5 !important;
+}
+
+.employee-workspace .catalog-table .badge.bg-secondary {
+  color: #dc2626 !important;
+  border: 1px solid rgba(239, 68, 68, .35);
+  background: #fef2f2 !important;
+}
+
+#createEmployeeModal .modal-content {
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, .22) !important;
+}
+
+#createEmployeeModal .modal-header {
+  color: #ffffff;
+  border-color: #334155 !important;
+  background: linear-gradient(135deg, #111c33, #0f172a) !important;
+}
+
+#createEmployeeModal .modal-title,
+#createEmployeeModal .modal-header .text-primary {
+  color: #ffffff !important;
+}
+
+#createEmployeeModal .modal-header .text-primary {
+  color: #fde047 !important;
+}
+
+#createEmployeeModal .btn-close {
+  filter: invert(1) grayscale(1) brightness(2);
+}
+
+#createEmployeeModal .modal-footer {
+  border-color: #e2e8f0 !important;
+  background: #f8fafc !important;
+}
+
+#createEmployeeModal .form-control:focus,
+#createEmployeeModal .form-select:focus,
+#createEmployeeModal textarea:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, .12);
+}
+
 /* In ấn chuẩn A4 */
 @media print {
   header,

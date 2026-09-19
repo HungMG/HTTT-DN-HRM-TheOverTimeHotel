@@ -92,6 +92,7 @@
             <form method="get" asp-action="Index" class="account-filter-form" data-account-filter-form>
                 <input type="hidden" name="auditFrom" value="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" />
                 <input type="hidden" name="auditTo" value="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" />
+                <input type="hidden" name="page" value="@Model.PageNumber" data-account-page-input />
                 <div class="account-field">
                     <label asp-for="Keyword"><span>Tìm kiếm</span><small>⌘ K</small></label>
                     <div class="account-input-wrap">
@@ -125,15 +126,15 @@
                 </div>
             </form>
 
-            <div class="account-role-legend">
+            <section class="account-role-legend" role="list" aria-labelledby="roleAccessTitle">
                 <div class="account-panel-heading account-panel-heading--compact">
-                    <div><span>Vai trò</span><strong>Chú thích vai trò</strong></div>
+                    <div><span>RBAC</span><strong id="roleAccessTitle">Phạm vi quyền truy cập</strong></div>
                 </div>
-                <div class="role-legend-item" role="button" tabindex="0" data-role-filter="1" title="Lọc nhanh: Quản trị viên"><span class="role-swatch role-swatch--admin"></span><span>Quản trị viên</span><small>Toàn quyền</small></div>
-                <div class="role-legend-item" role="button" tabindex="0" data-role-filter="2" title="Lọc nhanh: Nhân sự"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Nhân sự</small></div>
-                <div class="role-legend-item" role="button" tabindex="0" data-role-filter="3" title="Lọc nhanh: Quản lý"><span class="role-swatch role-swatch--manager"></span><span>Quản lý</span><small>Điều phối</small></div>
-                <div class="role-legend-item" role="button" tabindex="0" data-role-filter="4" title="Lọc nhanh: Nhân viên"><span class="role-swatch role-swatch--employee"></span><span>Nhân viên</span><small>Cá nhân</small></div>
-            </div>
+                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--admin"></span><span>Quản trị viên</span><small>Toàn quyền hệ thống</small></div>
+                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Hồ sơ &amp; chính sách</small></div>
+                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--manager"></span><span>Quản lý</span><small>Phê duyệt vận hành</small></div>
+                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--employee"></span><span>Nhân viên</span><small>Tự phục vụ cá nhân</small></div>
+            </section>
         </aside>
 
         <div class="account-sequence-panel position-relative" id="accountSequenceWrapper">
@@ -165,25 +166,46 @@
         <div class="account-audit-heading">
             <div class="account-audit-title">
                 <span class="account-audit-mark"><i class="bi bi-journal-check"></i></span>
-                <div><small>Nhật ký thao tác</small><h2 id="auditLogTitle">Nhật ký quản trị gần đây</h2></div>
+                <div>
+                    <small>Nhật ký thao tác</small>
+                    <div class="account-audit-title-line">
+                        <h2 id="auditLogTitle">Nhật ký quản trị gần đây</h2>
+                        <span class="account-audit-count account-audit-count--badge"><i class="bi bi-clock-history"></i><b data-account-audit-count>@Model.TotalAuditLogs</b> hoạt động</span>
+                    </div>
+                </div>
             </div>
             <div class="account-audit-tools">
                 <form method="get" asp-action="Index" class="account-audit-filter" data-account-audit-filter data-audit-endpoint="@Url.Action("AuditLogs")" aria-label="Lọc nhật ký theo ngày">
                     <input type="hidden" name="keyword" value="@Model.Keyword" />
                     <input type="hidden" name="roleId" value="@Model.RoleId" />
                     <input type="hidden" name="isActive" value="@Model.IsActive" />
-                    <label>
-                        <span>Từ ngày</span>
-                        <input type="date" name="auditFrom" value="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" max="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" />
-                    </label>
-                    <label>
-                        <span>Đến ngày</span>
-                        <input type="date" name="auditTo" value="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" min="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" />
-                    </label>
-                    <button type="submit" title="Lọc nhật ký"><i class="bi bi-funnel-fill"></i><span>Lọc</span></button>
-                    <a asp-action="Index" asp-route-keyword="@Model.Keyword" asp-route-roleId="@Model.RoleId" asp-route-isActive="@Model.IsActive" data-account-audit-clear class="@(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "is-disabled" : null)" aria-disabled="@(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "true" : "false")" title="Xóa lọc ngày"><i class="bi bi-x-lg"></i><span>Xóa ngày</span></a>
+                    <input type="hidden" name="auditPage" value="@Model.AuditPageNumber" data-account-audit-page-input />
+                    <div class="account-range-picker" data-account-range-picker>
+                        <button type="button" class="account-range-trigger" data-account-range-trigger aria-expanded="false" aria-controls="auditRangePopover">
+                            <i class="bi bi-calendar3"></i>
+                            <span data-account-range-label>Chọn khoảng ngày</span>
+                            <i class="bi bi-chevron-down account-range-chevron"></i>
+                        </button>
+                        <div id="auditRangePopover" class="account-range-popover" data-account-range-popover role="dialog" aria-label="Chọn khoảng ngày nhật ký">
+                            <div class="account-range-popover-heading">
+                                <span>Thời gian</span>
+                                <small>Chọn nhanh hoặc khoảng tùy chỉnh</small>
+                            </div>
+                            <div class="account-range-presets" aria-label="Khoảng ngày gợi ý">
+                                <button type="button" data-account-audit-preset="today">Hôm nay</button>
+                                <button type="button" data-account-audit-preset="yesterday">Hôm qua</button>
+                                <button type="button" data-account-audit-preset="last-week">Tuần trước</button>
+                            </div>
+                            <div class="account-range-fields">
+                                <label><span>Từ</span><input type="date" name="auditFrom" value="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" max="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" /></label>
+                                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                                <label><span>Đến</span><input type="date" name="auditTo" value="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" min="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" /></label>
+                            </div>
+                            <button type="submit" class="account-range-apply"><i class="bi bi-check2"></i><span>Áp dụng</span></button>
+                        </div>
+                    </div>
+                    <button type="button" data-account-audit-clear class="@(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "is-disabled" : null)" aria-disabled="@(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "true" : "false")" title="Xóa lọc ngày"><i class="bi bi-x-lg"></i><span>Xóa ngày</span></button>
                 </form>
-                <span class="account-audit-count"><i class="bi bi-clock-history"></i> <b data-account-audit-count>@Model.AuditLogs.Count</b> hoạt động</span>
             </div>
         </div>
 

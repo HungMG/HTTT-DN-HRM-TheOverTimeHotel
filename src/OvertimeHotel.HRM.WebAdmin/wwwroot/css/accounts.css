@@ -148,10 +148,15 @@
 .sequence-meta { display: flex; align-items: center; gap: 15px; color: var(--aw-muted); font-size: .64rem; }
 .sequence-meta i { color: var(--aw-red); }
 .sequence-time { padding: 5px 8px; color: var(--aw-text); border: 1px solid var(--aw-line); border-radius: 5px; background: #fff; font-family: "SFMono-Regular", Consolas, monospace; }
-.account-ruler { display: grid; grid-template-columns: repeat(6, 1fr); height: 25px; padding: 5px 12px 0; color: #64748b; border-bottom: 1px solid var(--aw-line); background: #f8fafc; font: 9px "SFMono-Regular", Consolas, monospace; }
-.account-ruler span { position: relative; }
-.account-ruler span::before { content: ""; position: absolute; top: -5px; left: 0; width: 1px; height: 5px; background: #3c3f4b; }
 .account-table-wrap { overflow: auto; }
+.account-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--aw-line); background: #fff; }
+.account-pagination-summary { color: var(--aw-muted); font-size: .72rem; font-weight: 650; }
+.account-pagination-actions { display: flex; align-items: center; gap: 5px; }
+.account-pagination-actions button { display: grid; place-items: center; min-width: 31px; height: 30px; padding: 0 8px; color: var(--aw-text); border: 1px solid var(--aw-line); border-radius: 7px; background: #fff; font-size: .72rem; font-weight: 750; transition: .16s ease; }
+.account-pagination-actions button:hover:not(:disabled) { color: #1e3a8a; border-color: #1e3a8a; background: #eff6ff; }
+.account-pagination-actions button.is-current { color: #fff; border-color: #1d4ed8; background: linear-gradient(135deg, #1d4ed8, #0f172a); }
+.account-pagination-actions button:disabled { opacity: .42; cursor: not-allowed; }
+.account-pagination-actions > span { width: 18px; color: var(--aw-muted); font-weight: 700; text-align: center; }
 .account-table { width: 100%; min-width: 980px; border-collapse: collapse; }
 .account-table th { height: 38px; padding: 0 13px; color: #64748b; border-bottom: 1px solid var(--aw-line); background: #f8fafc; font-size: .56rem; font-weight: 700; letter-spacing: .1em; text-align: left; text-transform: uppercase; }
 .account-table td { height: 67px; padding: 9px 13px; color: #334155; border-bottom: 1px solid #eef2f7; font-size: .72rem; vertical-align: middle; }
@@ -282,8 +287,6 @@
 .sequence-play { width: 36px; height: 36px; font-size: 1.05rem; }
 .sequence-meta { font-size: .76rem; }
 .sequence-time { padding: 6px 10px; font-size: .78rem; }
-.account-ruler { height: 29px; padding-top: 7px; font-size: 10px; }
-
 .account-field label { color: #334155; font-size: .82rem; }
 .account-field label small { font-size: .65rem; }
 .account-input-wrap,
@@ -620,4 +623,1078 @@
 
 .account-audit-panel {
   position: relative;
+}
+
+/* ===========================================================================
+   TSK-13 · NAVY / WHITE / GOLD THEME
+   Chỉ thay đổi màu sắc, đường viền, shadow và trạng thái tương tác.
+   =========================================================================== */
+.account-workspace {
+  --aw-bg: #f8fafc;
+  --aw-panel: #ffffff;
+  --aw-line: #e2e8f0;
+  --aw-line-strong: #cbd5e1;
+  --aw-text: #172554;
+  --aw-muted: #64748b;
+  --aw-faint: #94a3b8;
+  --aw-violet: #1e3a8a;
+  --aw-violet-bright: #1d4ed8;
+  --aw-green: #10b981;
+  --aw-red: #ef4444;
+  --aw-amber: #d4af37;
+  background:
+    radial-gradient(circle at 78% -18%, rgba(29, 78, 216, .08), transparent 34rem),
+    radial-gradient(circle at 5% 35%, rgba(15, 23, 42, .035), transparent 28rem),
+    #f8fafc;
+  border-color: #e2e8f0;
+  box-shadow: 0 18px 46px rgba(15, 23, 42, .1);
+}
+
+.account-workspace::before {
+  background-image:
+    linear-gradient(rgba(30, 58, 138, .03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 58, 138, .03) 1px, transparent 1px);
+}
+
+/* Header navy với nhấn vàng thương hiệu. */
+.account-command-bar {
+  color: #ffffff;
+  border-color: rgba(212, 175, 55, .42);
+  background: linear-gradient(135deg, #111c33 0%, #0f172a 60%, #090e1a 100%);
+  box-shadow: 0 12px 28px rgba(9, 14, 26, .18), inset 0 1px rgba(255, 255, 255, .06);
+}
+
+.account-product-mark {
+  border-color: #d4af37;
+  background: linear-gradient(145deg, #111c33, #090e1a);
+  box-shadow: 0 8px 18px rgba(9, 14, 26, .28), inset 0 0 18px rgba(255, 255, 255, .05);
+}
+
+.account-product-mark span {
+  background: #d4af37;
+  box-shadow: 0 0 6px rgba(212, 175, 55, .28);
+}
+
+.account-eyebrow,
+.account-command-copy h1 span { color: #fde047; }
+.account-command-copy h1,
+.account-environment-pill strong { color: #ffffff; }
+.account-command-copy p,
+.account-environment-pill { color: #cbd5e1; }
+
+.account-live-dot {
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, .12);
+}
+
+.account-environment-pill {
+  border-color: #334155;
+  background: #111c33;
+}
+
+.account-environment-pill i,
+.account-primary-action i,
+.account-form-actions button i { color: #fde047; }
+
+.account-primary-action,
+.account-form-actions button {
+  color: #ffffff;
+  border-color: rgba(212, 175, 55, .58);
+  background: linear-gradient(135deg, #1d4ed8, #0f172a);
+  box-shadow: 0 8px 20px rgba(29, 78, 216, .2);
+}
+
+.account-primary-action:hover,
+.account-form-actions button:hover {
+  color: #ffffff;
+  border-color: #d4af37;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .22);
+}
+
+.account-primary-action:focus-visible,
+.account-form-actions button:focus-visible,
+.account-row-actions a:focus-visible,
+.account-row-actions button:focus-visible {
+  outline-color: #1d4ed8;
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, .14);
+}
+
+/* Card, bộ lọc và bảng giữ nền trắng, đường viền nhẹ. */
+.motion-stat,
+.account-outline-panel,
+.account-sequence-panel,
+.account-preview-panel,
+.inspector-card,
+.account-audit-panel {
+  border-color: #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .055);
+}
+
+.motion-stat {
+  --stat-color: #1d4ed8;
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+}
+.motion-stat--green { --stat-color: #10b981; }
+.motion-stat--red { --stat-color: #ef4444; }
+.motion-stat--amber { --stat-color: #d4af37; }
+.motion-stat:hover {
+  border-color: color-mix(in srgb, var(--stat-color) 48%, #e2e8f0);
+  box-shadow: 0 9px 22px rgba(15, 23, 42, .08);
+}
+.motion-stat-track { background: #e2e8f0; }
+.motion-stat-track span { box-shadow: none; }
+
+.account-panel-heading,
+.account-sequence-toolbar,
+.inspector-card-heading,
+.account-audit-heading {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.account-panel-heading > i,
+.inspector-card-heading > i,
+.preview-note i { color: #d4af37; }
+
+.account-field label,
+.role-legend-item span:nth-child(2),
+.permission-stack span { color: #334155; }
+
+.account-input-wrap,
+.account-select-wrap,
+.account-filter-actions button,
+.account-filter-actions a,
+.account-icon-action,
+.account-form-actions > a,
+.account-row-actions a,
+.account-row-actions button {
+  color: #172554;
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+
+.account-input-wrap:focus-within,
+.account-select-wrap:focus-within,
+.account-audit-filter input:focus,
+.account-confirm-reason textarea:focus,
+.account-textarea-wrap textarea:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, .12);
+}
+
+.account-icon-action:hover,
+.account-filter-actions button:hover,
+.account-filter-actions a:hover,
+.account-form-actions > a:hover,
+.account-row-actions a:hover,
+.account-row-actions button:hover {
+  color: #172554;
+  border-color: #1e3a8a;
+  background: #eff6ff;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, .08);
+}
+
+.account-empty-state > div,
+.inspector-index,
+.account-step-indicator span.is-active,
+.preview-note {
+  color: #1e3a8a;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.identity-preview-orbit,
+.identity-preview-orbit::before,
+.identity-preview-orbit::after { border-color: rgba(212, 175, 55, .28); }
+
+.identity-preview-orbit > span,
+.account-avatar,
+.account-confirm-icon,
+.account-audit-mark {
+  color: #ffffff;
+  border-color: #d4af37;
+  background: linear-gradient(145deg, #1e3a8a, #0f172a);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .16);
+}
+
+.identity-summary-card { background: linear-gradient(120deg, #eff6ff, #ffffff 42%); }
+
+/* Vai trò và trạng thái nghiệp vụ. */
+.role-swatch { box-shadow: none; }
+.role-swatch--admin { background: #d4af37; }
+.role-swatch--hr { background: #7c3aed; }
+.role-swatch--manager { background: #0284c7; }
+.role-swatch--employee { background: #059669; }
+.role-chip i,
+.state-chip i { box-shadow: none; }
+
+.role-chip--admin {
+  color: #fde047;
+  border-color: #d4af37;
+  background: #0f172a;
+}
+.role-chip--hr {
+  color: #7c3aed;
+  border-color: rgba(124, 58, 237, .3);
+  background: rgba(124, 58, 237, .08);
+}
+.role-chip--manager {
+  color: #0284c7;
+  border-color: rgba(2, 132, 199, .3);
+  background: rgba(2, 132, 199, .08);
+}
+.role-chip--employee {
+  color: #059669;
+  border-color: rgba(5, 150, 105, .3);
+  background: rgba(5, 150, 105, .08);
+}
+.state-chip--active {
+  color: #059669;
+  border-color: rgba(16, 185, 129, .35);
+  background: rgba(16, 185, 129, .08);
+}
+.state-chip--locked {
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, .35);
+  background: rgba(239, 68, 68, .08);
+}
+
+.role-legend-item[role="button"]:hover,
+.account-table tbody tr:hover { background: #eff6ff; }
+.role-legend-item.is-selected {
+  color: #172554;
+  border-color: #1e3a8a;
+  background: #eff6ff;
+  box-shadow: inset 3px 0 #d4af37;
+}
+
+.account-table th {
+  color: #172554;
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+.account-table td { border-color: #e2e8f0; }
+.account-table tbody tr:nth-child(even) { background: #f8fafc; }
+
+/* Nhật ký, popup, modal và thao tác phụ. */
+.account-audit-title small,
+.account-audit-change summary,
+.account-confirm-card > small,
+.account-confirm-target,
+.account-audit-empty i,
+.account-audit-unavailable > i { color: #1e3a8a; }
+
+.account-audit-filter button {
+  color: #ffffff;
+  border-color: #1d4ed8;
+  background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+  box-shadow: 0 5px 14px rgba(29, 78, 216, .16);
+}
+.account-audit-filter button:hover {
+  border-color: #0f172a;
+  background: linear-gradient(135deg, #1e3a8a, #0f172a);
+}
+.account-audit-filter a {
+  color: #172554;
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+.account-audit-filter a:hover {
+  color: #172554;
+  border-color: #1e3a8a;
+  background: #eff6ff;
+}
+
+.account-audit-item { --audit-color: #1d4ed8; }
+.account-audit-item.is-create,
+.account-audit-item.is-unlock { --audit-color: #059669; }
+.account-audit-item.is-lock { --audit-color: #ef4444; }
+.account-audit-item.is-password { --audit-color: #b7791f; }
+
+.account-popup {
+  border-color: #e2e8f0;
+  background: rgba(255, 255, 255, .99);
+  box-shadow: 0 16px 38px rgba(15, 23, 42, .15), 0 3px 10px rgba(15, 23, 42, .06);
+}
+.account-popup--success { --popup-color: #10b981; }
+.account-popup--danger { --popup-color: #ef4444; }
+
+.account-confirm-card {
+  border-color: #e2e8f0;
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+}
+.account-confirm-actions button:first-child:hover,
+.account-confirm-close:hover,
+.account-popup > button:hover {
+  color: #172554;
+  border-color: #1e3a8a;
+  background: #eff6ff;
+}
+
+/* Shadow cập nhật KPI nhẹ, không tạo glow mạnh. */
+.kpi-pulse-active {
+  border-color: rgba(212, 175, 55, .7) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .1), 0 0 0 3px rgba(212, 175, 55, .13) !important;
+}
+
+.in-place-loading-overlay {
+  color: #172554;
+  border: 1px solid rgba(226, 232, 240, .9);
+  background: rgba(248, 250, 252, .9);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7);
+}
+
+/* Phần này là ma trận thông tin RBAC, không phải bộ lọc thứ hai. */
+.account-role-legend {
+  background: #f8fafc;
+}
+
+.role-legend-item {
+  cursor: default;
+  background: #ffffff;
+}
+
+.role-legend-item small {
+  color: #64748b;
+  font-weight: 650;
+}
+
+/* Điểm nhấn thương hiệu cho khối lọc và ma trận phạm vi quyền. */
+.account-outline-panel {
+  border-color: #cbd5e1;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+}
+
+.account-outline-panel > .account-panel-heading {
+  border-bottom-color: rgba(212, 175, 55, .42);
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+}
+
+.account-outline-panel > .account-panel-heading span {
+  color: #fde047;
+}
+
+.account-outline-panel > .account-panel-heading strong {
+  color: #ffffff;
+}
+
+.account-outline-panel > .account-panel-heading > i {
+  color: #fde047;
+}
+
+.account-outline-panel .account-filter-form {
+  background: linear-gradient(180deg, rgba(239, 246, 255, .56), #ffffff 42%);
+}
+
+.account-outline-panel .account-field label {
+  color: #172554;
+}
+
+.account-outline-panel .account-field label small {
+  color: #64748b;
+}
+
+.account-outline-panel .account-input-wrap,
+.account-outline-panel .account-select-wrap {
+  border-color: #cbd5e1;
+  background: #f8fbff;
+}
+
+.account-outline-panel .account-input-wrap > i:first-child,
+.account-outline-panel .account-select-wrap > i {
+  color: #1d4ed8;
+}
+
+.account-outline-panel .account-input-wrap:focus-within,
+.account-outline-panel .account-select-wrap:focus-within {
+  border-color: #d4af37;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, .15);
+}
+
+.account-outline-panel .account-filter-actions button {
+  color: #ffffff;
+  border-color: #0f172a;
+  background: linear-gradient(135deg, #1d4ed8, #0f172a);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, .16);
+}
+
+.account-outline-panel .account-filter-actions button i {
+  color: #fde047;
+}
+
+.account-outline-panel .account-filter-actions button:hover {
+  color: #ffffff;
+  border-color: #d4af37;
+  background: linear-gradient(135deg, #1e3a8a, #090e1a);
+}
+
+.account-outline-panel .account-filter-actions a {
+  color: #1e3a8a;
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
+.account-outline-panel .account-filter-actions a:hover {
+  color: #172554;
+  border-color: #d4af37;
+  background: #fffbeb;
+}
+
+.account-role-legend > .account-panel-heading {
+  border-top: 1px solid rgba(212, 175, 55, .45);
+  border-bottom-color: #cbd5e1;
+  background: linear-gradient(100deg, #eff6ff, #ffffff);
+}
+
+.account-role-legend > .account-panel-heading span {
+  color: #1d4ed8;
+}
+
+.account-role-legend > .account-panel-heading strong {
+  color: #172554;
+}
+
+.role-legend-item {
+  border-left: 3px solid transparent;
+  transition: background-color .18s ease, transform .18s ease;
+}
+
+.role-legend-item:has(.role-swatch--admin) {
+  border-left-color: #d4af37;
+  background: linear-gradient(90deg, rgba(212, 175, 55, .11), #ffffff 43%);
+}
+
+.role-legend-item:has(.role-swatch--hr) {
+  border-left-color: #7c3aed;
+  background: linear-gradient(90deg, rgba(124, 58, 237, .08), #ffffff 43%);
+}
+
+.role-legend-item:has(.role-swatch--manager) {
+  border-left-color: #0284c7;
+  background: linear-gradient(90deg, rgba(2, 132, 199, .08), #ffffff 43%);
+}
+
+.role-legend-item:has(.role-swatch--employee) {
+  border-left-color: #059669;
+  background: linear-gradient(90deg, rgba(5, 150, 105, .08), #ffffff 43%);
+}
+
+.role-legend-item:hover {
+  transform: translateX(2px);
+}
+
+/* Khung danh sách tài khoản: navy ở phần điều khiển, trắng ở dữ liệu. */
+.account-sequence-panel {
+  overflow: hidden;
+  border-color: #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .09);
+}
+
+.account-sequence-panel .account-sequence-toolbar {
+  color: #ffffff;
+  border-bottom-color: rgba(212, 175, 55, .42);
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+}
+
+.account-sequence-panel .sequence-title small {
+  color: #fde047;
+}
+
+.account-sequence-panel .sequence-title strong {
+  color: #ffffff;
+}
+
+.account-sequence-panel .sequence-play {
+  color: #0f172a;
+  background: #10b981;
+  box-shadow: 0 6px 14px rgba(16, 185, 129, .24);
+}
+
+.account-sequence-panel .sequence-meta {
+  color: #cbd5e1;
+}
+
+.account-sequence-panel .sequence-meta i {
+  color: #fde047;
+}
+
+.account-sequence-panel .sequence-time {
+  color: #fde047;
+  border-color: rgba(212, 175, 55, .48);
+  background: #111c33;
+}
+
+.account-sequence-panel .account-table th {
+  color: #172554;
+  border-bottom-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.account-sequence-panel .account-table tbody tr:hover {
+  background: #eff6ff;
+}
+
+/* Header danh sách tài khoản đồng bộ với header nhật ký quản trị. */
+.account-sequence-panel .account-sequence-toolbar {
+  min-height: 72px;
+  padding: 13px 18px;
+  border-bottom-color: #e2e8f0;
+  background: linear-gradient(100deg, #f8fbff, #ffffff);
+}
+
+.account-sequence-panel .sequence-title {
+  gap: 12px;
+}
+
+.account-sequence-panel .sequence-play {
+  width: 42px;
+  height: 42px;
+  color: #ffffff;
+  border: 1px solid #d4af37;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #1e3a8a, #0f172a);
+  box-shadow: 0 8px 18px rgba(30, 58, 138, .16);
+}
+
+.account-sequence-panel .sequence-title > div {
+  gap: 3px;
+}
+
+.account-sequence-panel .sequence-title small {
+  color: #1e3a8a;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+}
+
+.account-sequence-panel .sequence-title-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.account-sequence-panel .sequence-title strong {
+  color: #172554;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.account-sequence-panel .sequence-result-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 25px;
+  padding: 0 9px;
+  color: #1e3a8a;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #eff6ff;
+  font-size: .68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.account-sequence-panel .sequence-result-badge i {
+  color: #1d4ed8;
+}
+
+.account-sequence-panel .sequence-result-badge b {
+  color: #172554;
+}
+
+.account-sequence-panel .sequence-meta {
+  display: none;
+}
+
+/* Trang Tạo tài khoản: các card dùng cùng hệ navy, royal blue và gold. */
+.account-form-workspace .inspector-card,
+.account-form-workspace .account-preview-panel {
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .08);
+}
+
+.account-form-workspace .inspector-card:nth-of-type(1) {
+  border-left: 3px solid #d4af37;
+}
+
+.account-form-workspace .inspector-card:nth-of-type(2) {
+  border-left: 3px solid #1d4ed8;
+}
+
+.account-form-workspace .inspector-card:nth-of-type(3) {
+  border-left: 3px solid #10b981;
+}
+
+.account-form-workspace .inspector-card-heading {
+  border-bottom-color: #dbe4f0;
+  background: linear-gradient(100deg, #eff6ff, #ffffff);
+}
+
+.account-form-workspace .inspector-card-heading small {
+  color: #1e3a8a;
+}
+
+.account-form-workspace .inspector-card-heading h2 {
+  color: #172554;
+}
+
+.account-form-workspace .inspector-card-heading > i {
+  color: #d4af37;
+  opacity: 1;
+}
+
+.account-form-workspace .inspector-index {
+  color: #1d4ed8;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.account-form-workspace .account-field label {
+  color: #172554;
+}
+
+.account-form-workspace .account-field label small {
+  color: #64748b;
+}
+
+.account-form-workspace .account-input-wrap,
+.account-form-workspace .account-select-wrap,
+.account-form-workspace .account-textarea-wrap {
+  border-color: #cbd5e1;
+  background: #f8fbff;
+}
+
+.account-form-workspace .account-input-wrap:focus-within,
+.account-form-workspace .account-select-wrap:focus-within,
+.account-form-workspace .account-textarea-wrap:focus-within {
+  border-color: #d4af37;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, .15);
+}
+
+.account-form-workspace .account-input-wrap > i:first-child,
+.account-form-workspace .account-select-wrap > i,
+.account-form-workspace .account-textarea-wrap > i {
+  color: #1d4ed8;
+}
+
+.account-form-workspace .account-switch-row {
+  border-radius: 10px;
+  background: linear-gradient(100deg, #eff6ff, #ffffff 68%);
+}
+
+.account-form-workspace .account-switch-row > div > strong {
+  color: #172554;
+}
+
+.account-form-workspace .account-switch-row > div > small {
+  color: #64748b;
+}
+
+.account-form-workspace .account-preview-panel {
+  border-top: 3px solid #d4af37;
+}
+
+.account-form-workspace .account-preview-panel > .account-panel-heading {
+  border-bottom-color: rgba(212, 175, 55, .42);
+  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+}
+
+.account-form-workspace .account-preview-panel > .account-panel-heading span {
+  color: #fde047;
+}
+
+.account-form-workspace .account-preview-panel > .account-panel-heading strong {
+  color: #ffffff;
+}
+
+.account-form-workspace .account-preview-panel > .account-panel-heading > i {
+  color: #fde047;
+}
+
+.account-form-workspace .identity-preview {
+  background: linear-gradient(145deg, #eff6ff, #ffffff 68%);
+}
+
+.account-form-workspace .permission-stack > div {
+  border-bottom-color: #e2e8f0;
+}
+
+.account-form-workspace .permission-stack i {
+  color: #10b981;
+}
+
+.account-form-workspace .permission-stack span {
+  color: #334155;
+}
+
+.account-form-workspace .permission-stack small {
+  color: #64748b;
+}
+
+.account-form-workspace .account-form-actions > a {
+  color: #172554;
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
+.account-form-workspace .account-form-actions > a:hover {
+  color: #1e3a8a;
+  border-color: #1e3a8a;
+  background: #eff6ff;
+}
+
+/* Typography trang Tạo tài khoản đồng bộ với tiêu đề của nhật ký quản trị. */
+.account-form-workspace .inspector-card-heading small {
+  color: #5270b5;
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.account-form-workspace .inspector-card-heading h2 {
+  color: #172554;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.account-form-workspace .account-field label {
+  color: #334155;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.account-form-workspace .account-field label small {
+  color: #64748b;
+  font-size: .61rem;
+  font-weight: 800;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.account-form-workspace .account-input-wrap input,
+.account-form-workspace .account-select-wrap select,
+.account-form-workspace .account-textarea-wrap textarea {
+  color: #172554;
+  font-size: .88rem;
+}
+
+/* Bộ chọn khoảng ngày cho nhật ký: một điểm vào, preset nằm trong popover. */
+.account-audit-heading {
+  position: relative;
+  z-index: 60;
+  gap: 20px;
+}
+
+/* Nội dung nhật ký có hiệu ứng transform riêng, tạo stacking context.
+   Đặt thanh lọc lên lớp cao hơn để popover nhận được click. */
+[data-account-audit-content] {
+  position: relative;
+  z-index: 1;
+}
+
+.account-audit-title-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.account-audit-count--badge {
+  height: 25px;
+  padding: 0 9px;
+  color: #1e3a8a;
+  border-color: #cbd5e1;
+  border-radius: 999px;
+  background: #eff6ff;
+  font-size: .68rem;
+}
+
+.account-audit-count--badge i {
+  color: #1d4ed8;
+  font-size: .74rem;
+}
+
+.account-audit-count--badge b {
+  color: #172554;
+}
+
+.account-audit-tools {
+  flex: 0 0 auto;
+}
+
+.account-audit-filter {
+  align-items: center;
+  gap: 6px;
+}
+
+.account-range-picker {
+  position: relative;
+  z-index: 61;
+}
+
+.account-audit-filter .account-range-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  min-width: 258px;
+  height: 40px;
+  padding: 0 12px;
+  color: #172554;
+  border: 1px solid #d7e0ed;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: none;
+  font-size: .77rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.account-audit-filter .account-range-trigger:hover,
+.account-range-picker.is-open .account-range-trigger {
+  color: #172554;
+  border-color: #1e3a8a;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, .08);
+}
+
+.account-range-trigger > .bi-calendar3 {
+  color: #1d4ed8;
+  font-size: .95rem;
+}
+
+.account-range-trigger [data-account-range-label] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-range-trigger .account-range-chevron {
+  margin-left: auto;
+  color: #64748b;
+  font-size: .66rem;
+  transition: transform .18s ease;
+}
+
+.account-range-picker.is-open .account-range-chevron {
+  transform: rotate(180deg);
+}
+
+.account-range-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  display: none;
+  width: 372px;
+  padding: 14px;
+  border: 1px solid #dbe4f0;
+  border-radius: 13px;
+  background: #ffffff;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, .16);
+}
+
+.account-range-picker.is-open .account-range-popover {
+  display: block;
+  animation: accountRangePopoverIn .16s ease-out;
+}
+
+.account-range-popover-heading {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.account-range-popover-heading > span {
+  color: #172554;
+  font-size: .79rem;
+  font-weight: 800;
+}
+
+.account-range-popover-heading > small {
+  color: #64748b;
+  font-size: .68rem;
+  font-weight: 600;
+}
+
+.account-range-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.account-audit-filter .account-range-presets button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 6px;
+  color: #475569;
+  border: 1px solid #dbe4f0;
+  border-radius: 7px;
+  background: #ffffff;
+  box-shadow: none;
+  font-size: .67rem;
+  font-weight: 750;
+}
+
+.account-audit-filter .account-range-presets button:hover,
+.account-audit-filter .account-range-presets button.is-selected {
+  color: #1e3a8a;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.account-range-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr);
+  align-items: end;
+  gap: 7px;
+  padding-top: 12px;
+}
+
+.account-audit-filter .account-range-fields label {
+  display: grid;
+  gap: 4px;
+  color: #64748b;
+  font-size: .63rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.account-audit-filter .account-range-fields input {
+  width: 100%;
+  height: 36px;
+  padding: 3px 8px;
+  color: #172554;
+  border-color: #d7e0ed;
+  border-radius: 7px;
+  font-size: .7rem;
+}
+
+.account-range-fields > .bi-arrow-right {
+  padding-bottom: 11px;
+  color: #94a3b8;
+  font-size: .75rem;
+  text-align: center;
+}
+
+.account-audit-filter .account-range-apply {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  height: 34px;
+  margin-top: 12px;
+  padding: 0 10px;
+  color: #fff;
+  border: 1px solid #1d4ed8;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #1d4ed8, #0f172a);
+  box-shadow: none;
+  font-size: .7rem;
+  font-weight: 800;
+}
+
+.account-audit-filter .account-range-apply:hover {
+  color: #fff;
+  border-color: #0f172a;
+  background: linear-gradient(135deg, #1e3a8a, #090e1a);
+}
+
+.account-audit-filter > [data-account-audit-clear] {
+  height: auto;
+  padding: 0 4px;
+  color: #64748b;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  font-size: .71rem;
+  font-weight: 700;
+}
+
+.account-audit-filter > [data-account-audit-clear]:hover {
+  color: #1e3a8a;
+  border: 0;
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.account-audit-filter > [data-account-audit-clear].is-disabled {
+  color: #cbd5e1;
+  border: 0;
+  background: transparent;
+}
+
+.account-audit-filter > button[data-account-audit-clear] {
+  color: #64748b;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.account-audit-filter > button[data-account-audit-clear]:hover {
+  color: #1e3a8a;
+  border: 0;
+  background: transparent;
+}
+
+.account-audit-filter.is-loading > [data-account-audit-clear] {
+  pointer-events: none;
+}
+
+.account-audit-filter.is-loading .account-range-trigger,
+.account-audit-filter.is-loading .account-range-presets button {
+  color: #64748b;
+}
+
+.account-audit-filter.is-loading .account-range-trigger::after,
+.account-audit-filter.is-loading .account-range-presets button::after {
+  display: none;
+}
+
+@keyframes accountRangePopoverIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 700px) {
+  .account-audit-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .account-audit-tools,
+  .account-audit-filter,
+  .account-range-picker {
+    width: 100%;
+  }
+
+  .account-audit-count--badge {
+    display: inline-flex;
+  }
+
+  .account-audit-filter .account-range-trigger {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .account-range-popover {
+    right: auto;
+    left: 0;
+    width: min(372px, calc(100vw - 54px));
+  }
 }

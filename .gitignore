@@ -43,6 +43,7 @@ _pkginfo.txt
 .env.*
 *.local.json
 appsettings.Development.json
+**/App_Data/DataProtection-Keys/
 
 ## ==============================================================================
 ## OS & Office Temporary Files

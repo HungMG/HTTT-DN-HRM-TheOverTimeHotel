@@ -14,7 +14,8 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 public class UserAccountsController : Controller
 {
     private static readonly string[] SupportedRoles = ["Admin", "HR", "Manager", "Employee"];
-    private const int RecentAuditLogLimit = 12;
+    private const int AccountPageSize = 15;
+    private const int AuditPageSize = 5;
 
     private readonly AppDbContext _context;
     private readonly ILogger<UserAccountsController> _logger;
@@ -26,7 +27,7 @@ public class UserAccountsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, int? roleId, bool? isActive, DateOnly? auditFrom, DateOnly? auditTo)
+    public async Task<IActionResult> Index(string? keyword, int? roleId, bool? isActive, DateOnly? auditFrom, DateOnly? auditTo, int page = 1, int auditPage = 1)
     {
         var normalizedKeyword = keyword?.Trim();
         var auditDateValidationMessage = GetAuditDateValidationMessage(auditFrom, auditTo);
@@ -62,9 +63,14 @@ public class UserAccountsController : Controller
 
         try
         {
+            var totalFilteredAccounts = await query.CountAsync();
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalFilteredAccounts / (double)AccountPageSize));
+            var pageNumber = Math.Clamp(page, 1, totalPages);
             var accounts = await query
                 .OrderByDescending(account => account.TrangThai)
                 .ThenBy(account => account.TenDangNhap)
+                .Skip((pageNumber - 1) * AccountPageSize)
+                .Take(AccountPageSize)
                 .Select(account => new AccountListItemViewModel
                 {
                     AccountId = account.MaTaiKhoan,
@@ -86,13 +92,14 @@ public class UserAccountsController : Controller
                 .ToListAsync();
 
             var roleOptions = await GetRoleOptionsAsync(roleId);
-            IReadOnlyList<AdminAuditLogViewModel> auditLogs = [];
+            var auditLogPage = new AuditLogPageResult([], 0, 1, 1);
             var auditLogAvailable = true;
             try
             {
-                auditLogs = auditDateValidationMessage == null
-                    ? await GetRecentAuditLogsAsync(auditFrom, auditTo)
-                    : [];
+                if (auditDateValidationMessage == null)
+                {
+                    auditLogPage = await GetRecentAuditLogsAsync(auditFrom, auditTo, auditPage);
+                }
             }
             catch (Exception ex)
             {
@@ -114,7 +121,15 @@ public class UserAccountsController : Controller
                 ActiveAccounts = await _context.TaiKhoans.CountAsync(account => account.TrangThai),
                 LockedAccounts = await _context.TaiKhoans.CountAsync(account => !account.TrangThai),
                 AdminAccounts = await _context.TaiKhoans.CountAsync(account => account.VaiTro != null && account.VaiTro.TenVaiTro == "Admin"),
-                AuditLogs = auditLogs,
+                TotalFilteredAccounts = totalFilteredAccounts,
+                PageNumber = pageNumber,
+                PageSize = AccountPageSize,
+                TotalPages = totalPages,
+                AuditLogs = auditLogPage.Logs,
+                TotalAuditLogs = auditLogPage.TotalLogs,
+                AuditPageNumber = auditLogPage.PageNumber,
+                AuditPageSize = AuditPageSize,
+                TotalAuditPages = auditLogPage.TotalPages,
                 AuditLogAvailable = auditLogAvailable
             };
 
@@ -124,7 +139,7 @@ public class UserAccountsController : Controller
                 Response.Headers["X-Active-Accounts"] = model.ActiveAccounts.ToString();
                 Response.Headers["X-Locked-Accounts"] = model.LockedAccounts.ToString();
                 Response.Headers["X-Admin-Accounts"] = model.AdminAccounts.ToString();
-                Response.Headers["X-Result-Count"] = model.Accounts.Count.ToString();
+                Response.Headers["X-Result-Count"] = model.TotalFilteredAccounts.ToString();
                 return PartialView("_AccountTable", model);
             }
 
@@ -155,6 +170,14 @@ public class UserAccountsController : Controller
                 fallbackAccounts = fallbackAccounts.Where(a => a.IsActive == isActive.Value).ToList();
             }
 
+            var fallbackTotalAccounts = fallbackAccounts.Count;
+            var fallbackTotalPages = Math.Max(1, (int)Math.Ceiling(fallbackTotalAccounts / (double)AccountPageSize));
+            var fallbackPageNumber = Math.Clamp(page, 1, fallbackTotalPages);
+            var fallbackPageAccounts = fallbackAccounts
+                .Skip((fallbackPageNumber - 1) * AccountPageSize)
+                .Take(AccountPageSize)
+                .ToList();
+
             var fallbackModel = new AccountIndexViewModel
             {
                 Keyword = normalizedKeyword,
@@ -163,12 +186,16 @@ public class UserAccountsController : Controller
                 AuditFrom = auditFrom,
                 AuditTo = auditTo,
                 AuditDateValidationMessage = auditDateValidationMessage,
-                Accounts = fallbackAccounts,
+                Accounts = fallbackPageAccounts,
                 RoleOptions = GetDefaultRoleOptions(roleId),
                 TotalAccounts = 4,
                 ActiveAccounts = 4,
                 LockedAccounts = 0,
                 AdminAccounts = 1,
+                TotalFilteredAccounts = fallbackTotalAccounts,
+                PageNumber = fallbackPageNumber,
+                PageSize = AccountPageSize,
+                TotalPages = fallbackTotalPages,
                 AuditLogAvailable = false
             };
 
@@ -178,7 +205,7 @@ public class UserAccountsController : Controller
                 Response.Headers["X-Active-Accounts"] = fallbackModel.ActiveAccounts.ToString();
                 Response.Headers["X-Locked-Accounts"] = fallbackModel.LockedAccounts.ToString();
                 Response.Headers["X-Admin-Accounts"] = fallbackModel.AdminAccounts.ToString();
-                Response.Headers["X-Result-Count"] = fallbackModel.Accounts.Count.ToString();
+                Response.Headers["X-Result-Count"] = fallbackModel.TotalFilteredAccounts.ToString();
                 return PartialView("_AccountTable", fallbackModel);
             }
 
@@ -547,7 +574,7 @@ public class UserAccountsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> AuditLogs(DateOnly? auditFrom, DateOnly? auditTo)
+    public async Task<IActionResult> AuditLogs(DateOnly? auditFrom, DateOnly? auditTo, int auditPage = 1)
     {
         var validationMessage = GetAuditDateValidationMessage(auditFrom, auditTo);
         if (validationMessage != null)
@@ -557,14 +584,18 @@ public class UserAccountsController : Controller
 
         try
         {
-            var auditLogs = await GetRecentAuditLogsAsync(auditFrom, auditTo);
-            Response.Headers["X-Audit-Count"] = auditLogs.Count.ToString();
+            var auditLogPage = await GetRecentAuditLogsAsync(auditFrom, auditTo, auditPage);
+            Response.Headers["X-Audit-Count"] = auditLogPage.TotalLogs.ToString();
 
             return PartialView("_AuditLogList", new AccountIndexViewModel
             {
                 AuditFrom = auditFrom,
                 AuditTo = auditTo,
-                AuditLogs = auditLogs,
+                AuditLogs = auditLogPage.Logs,
+                TotalAuditLogs = auditLogPage.TotalLogs,
+                AuditPageNumber = auditLogPage.PageNumber,
+                AuditPageSize = AuditPageSize,
+                TotalAuditPages = auditLogPage.TotalPages,
                 AuditLogAvailable = true
             });
         }
@@ -633,7 +664,7 @@ public class UserAccountsController : Controller
             account.VaiTro.TenVaiTro == "Admin");
     }
 
-    private async Task<IReadOnlyList<AdminAuditLogViewModel>> GetRecentAuditLogsAsync(DateOnly? auditFrom, DateOnly? auditTo)
+    private async Task<AuditLogPageResult> GetRecentAuditLogsAsync(DateOnly? auditFrom, DateOnly? auditTo, int page)
     {
         var query = _context.NhatKyQuanTris.AsNoTracking().AsQueryable();
         var vietnamOffset = TimeSpan.FromHours(7);
@@ -650,12 +681,16 @@ public class UserAccountsController : Controller
             query = query.Where(log => log.ThoiGian < startOfNextDay);
         }
 
+        var totalLogs = await query.CountAsync();
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalLogs / (double)AuditPageSize));
+        var pageNumber = Math.Clamp(page, 1, totalPages);
         var logs = await query
             .OrderByDescending(log => log.ThoiGian)
-            .Take(RecentAuditLogLimit)
+            .Skip((pageNumber - 1) * AuditPageSize)
+            .Take(AuditPageSize)
             .ToListAsync();
 
-        return logs.Select(log => new AdminAuditLogViewModel
+        var items = logs.Select(log => new AdminAuditLogViewModel
         {
             AuditLogId = log.MaNhatKy,
             ActorName = log.TenNguoiThucHien,
@@ -669,7 +704,15 @@ public class UserAccountsController : Controller
             IpAddress = log.DiaChiIp,
             OccurredAt = log.ThoiGian
         }).ToList();
+
+        return new AuditLogPageResult(items, totalLogs, pageNumber, totalPages);
     }
+
+    private sealed record AuditLogPageResult(
+        IReadOnlyList<AdminAuditLogViewModel> Logs,
+        int TotalLogs,
+        int PageNumber,
+        int TotalPages);
 
     private static string? GetAuditDateValidationMessage(DateOnly? auditFrom, DateOnly? auditTo)
     {

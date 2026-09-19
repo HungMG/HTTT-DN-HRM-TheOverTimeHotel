@@ -12,21 +12,26 @@
         "Employee" => "Nhân viên",
         _ => roleName
     };
+    var firstAccount = Model.TotalFilteredAccounts == 0 ? 0 : ((Model.PageNumber - 1) * Model.PageSize) + 1;
+    var lastAccount = Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredAccounts);
+    var firstPage = Math.Max(1, Model.PageNumber - 2);
+    var lastPage = Math.Min(Model.TotalPages, Model.PageNumber + 2);
 }
 
 <div class="account-sequence-toolbar">
     <div class="sequence-title">
         <span class="sequence-play"><i class="bi bi-play-fill"></i></span>
-        <div><small>Luồng quản lý truy cập</small><strong>Danh sách tài khoản</strong></div>
+        <div>
+            <small>Luồng quản lý truy cập</small>
+            <div class="sequence-title-line">
+                <strong>Danh sách tài khoản</strong>
+                <span class="sequence-result-badge"><i class="bi bi-record-circle"></i> <b data-account-result-count>@Model.TotalFilteredAccounts</b> kết quả</span>
+            </div>
+        </div>
     </div>
     <div class="sequence-meta">
-        <span><i class="bi bi-record-circle"></i> <b data-account-result-count>@Model.Accounts.Count</b> kết quả</span>
         <span class="sequence-time">00:@Model.TotalAccounts.ToString("00")</span>
     </div>
-</div>
-
-<div class="account-ruler" aria-hidden="true">
-    <span>00</span><span>05</span><span>10</span><span>15</span><span>20</span><span>25</span>
 </div>
 
 <div class="account-table-wrap">
@@ -117,3 +122,34 @@
         </tbody>
     </table>
 </div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="account-pagination" aria-label="Phân trang danh sách tài khoản">
+        <span class="account-pagination-summary">Hiển thị @firstAccount–@lastAccount / @Model.TotalFilteredAccounts tài khoản</span>
+        <div class="account-pagination-actions">
+            <button type="button" data-account-page="@(Model.PageNumber - 1)" disabled="@(Model.PageNumber == 1)" aria-label="Trang trước"><i class="bi bi-chevron-left"></i></button>
+            @if (firstPage > 1)
+            {
+                <button type="button" data-account-page="1">1</button>
+                @if (firstPage > 2)
+                {
+                    <span aria-hidden="true">…</span>
+                }
+            }
+            @for (var pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
+            {
+                <button type="button" data-account-page="@pageIndex" class="@(pageIndex == Model.PageNumber ? "is-current" : null)" aria-current="@(pageIndex == Model.PageNumber ? "page" : null)">@pageIndex</button>
+            }
+            @if (lastPage < Model.TotalPages)
+            {
+                @if (lastPage < Model.TotalPages - 1)
+                {
+                    <span aria-hidden="true">…</span>
+                }
+                <button type="button" data-account-page="@Model.TotalPages">@Model.TotalPages</button>
+            }
+            <button type="button" data-account-page="@(Model.PageNumber + 1)" disabled="@(Model.PageNumber == Model.TotalPages)" aria-label="Trang sau"><i class="bi bi-chevron-right"></i></button>
+        </div>
+    </nav>
+}

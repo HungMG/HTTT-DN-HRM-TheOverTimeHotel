@@ -5,6 +5,10 @@
         .Replace("Vai trò: HR", "Vai trò: Nhân sự")
         .Replace("Vai trò: Manager", "Vai trò: Quản lý")
         .Replace("Vai trò: Employee", "Vai trò: Nhân viên");
+    var firstLog = Model.TotalAuditLogs == 0 ? 0 : ((Model.AuditPageNumber - 1) * Model.AuditPageSize) + 1;
+    var lastLog = Math.Min(Model.AuditPageNumber * Model.AuditPageSize, Model.TotalAuditLogs);
+    var firstPage = Math.Max(1, Model.AuditPageNumber - 2);
+    var lastPage = Math.Min(Model.TotalAuditPages, Model.AuditPageNumber + 2);
 }
 
 @if (!Model.AuditLogAvailable)
@@ -81,4 +85,17 @@ else
             </article>
         }
     </div>
+    @if (Model.TotalAuditPages > 1)
+    {
+        <nav class="account-pagination account-audit-pagination" aria-label="Phân trang nhật ký quản trị">
+            <div class="account-pagination-actions">
+                <button type="button" data-account-audit-page="@(Model.AuditPageNumber - 1)" disabled="@(Model.AuditPageNumber == 1)" aria-label="Trang trước"><i class="bi bi-chevron-left"></i></button>
+                @for (var auditPageIndex = firstPage; auditPageIndex <= lastPage; auditPageIndex++)
+                {
+                    <button type="button" data-account-audit-page="@auditPageIndex" class="@(auditPageIndex == Model.AuditPageNumber ? "is-current" : null)" aria-current="@(auditPageIndex == Model.AuditPageNumber ? "page" : null)">@auditPageIndex</button>
+                }
+                <button type="button" data-account-audit-page="@(Model.AuditPageNumber + 1)" disabled="@(Model.AuditPageNumber == Model.TotalAuditPages)" aria-label="Trang sau"><i class="bi bi-chevron-right"></i></button>
+            </div>
+        </nav>
+    }
 }
