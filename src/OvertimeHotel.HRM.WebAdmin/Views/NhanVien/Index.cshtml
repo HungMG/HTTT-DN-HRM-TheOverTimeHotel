@@ -120,7 +120,8 @@
                     <select name="status" class="form-select">
                         <option value="">-- Trạng thái --</option>
                         <option value="DANG_LAM" selected="@(Model.Status == "DANG_LAM")">Đang làm</option>
-                        <option value="NGHI_VIEC" selected="@(Model.Status == "NGHI_VIEC")">Nghỉ việc</option>
+                        <option value="NGHI_PHEP" selected="@(Model.Status == "NGHI_PHEP")">Tạm nghỉ</option>
+                        <option value="DA_THOI_VIEC" selected="@(Model.Status == "DA_THOI_VIEC")">Đã nghỉ việc</option>
                     </select>
                 </div>
 
@@ -214,9 +215,18 @@
                                 }
                             </td>
                             <td>
-                                <span class="badge @(employee.TrangThai == "DANG_LAM" ? "bg-success" : "bg-secondary") rounded-pill px-3 py-1">
-                                    @(employee.TrangThai == "DANG_LAM" ? "Đang làm việc" : "Đã nghỉ việc")
-                                </span>
+                                @switch (employee.TrangThai)
+                                {
+                                    case "DANG_LAM":
+                                        <span class="badge bg-success rounded-pill px-3 py-1">Đang làm việc</span>
+                                        break;
+                                    case "NGHI_PHEP":
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1">Tạm nghỉ</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-secondary rounded-pill px-3 py-1">Đã nghỉ việc</span>
+                                        break;
+                                }
                             </td>
                             <td class="text-end text-nowrap">
                                 <a asp-action="Edit" asp-route-id="@employee.MaNhanVien" class="btn btn-sm btn-outline-primary rounded-3" title="Sửa hồ sơ">
