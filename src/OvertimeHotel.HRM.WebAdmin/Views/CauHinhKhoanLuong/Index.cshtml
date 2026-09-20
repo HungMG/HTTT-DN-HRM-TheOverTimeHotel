@@ -73,37 +73,60 @@
         </div>
     </div>
 
+    <!-- PRINT ONLY HEADER (A4) -->
+    <div class="catalog-print-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 style="font-size: 16pt; font-weight: 800; margin: 0; color: #0f172a;">THE OVERTIME HOTEL</h2>
+                <small style="color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Hệ Thống Quản Trị Nhân Sự &amp; Tiền Lương 24/7</small>
+            </div>
+            <div style="text-align: right;">
+                <h3 style="font-size: 13pt; font-weight: 700; margin: 0; color: #1e3a8a;">BẢNG CẤU HÌNH KHOẢN LƯƠNG &amp; ĐÃI NGỘ</h3>
+                <small style="color: #64748b;">Thời điểm xuất: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</small>
+            </div>
+        </div>
+    </div>
+
     <!-- TABLE WORKSPACE CARD -->
     <section class="catalog-card shadow-sm">
-        <div class="catalog-toolbar">
-            <form method="get" class="row g-2 align-items-center w-100">
-                <div class="col-lg-5">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                        <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search border-start-0 ps-0" placeholder="Tìm theo tên khoản hoặc mô tả..." />
-                    </div>
+        <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <form method="get" class="catalog-filter-form d-flex flex-wrap gap-2 flex-grow-1 align-items-center">
+                <div class="catalog-search-wrapper flex-grow-1" style="min-width: 220px;">
+                    <i class="bi bi-search catalog-search-icon" aria-hidden="true"></i>
+                    <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên khoản hoặc mô tả..." aria-label="Tìm kiếm khoản lương" />
+                    <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
                 </div>
-                <div class="col-lg-3">
-                    <select name="type" class="form-select catalog-search">
+                <div style="min-width: 170px;">
+                    <select name="type" class="form-select catalog-search" aria-label="Lọc theo loại khoản">
                         <option value="">-- Tất cả loại khoản --</option>
                         <option value="PHU_CAP" selected="@(ViewBag.Type == "PHU_CAP")">Phụ cấp (+)</option>
                         <option value="THUONG" selected="@(ViewBag.Type == "THUONG")">Thưởng (+)</option>
                         <option value="KHAU_TRU" selected="@(ViewBag.Type == "KHAU_TRU")">Khấu trừ / Phạt (-)</option>
                     </select>
                 </div>
-                <div class="col-lg-4 d-flex align-items-center gap-2">
-                    <button class="btn btn-hotel-primary text-nowrap"><i class="bi bi-funnel me-1"></i>Lọc dữ liệu</button>
-                    <a asp-action="Index" class="btn btn-outline-secondary" data-catalog-reset title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
-                    
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2 ms-auto" data-catalog-export="KhoanLuong" title="Xuất CSV">
-                        <i class="bi bi-file-earmark-excel text-success"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2" data-catalog-print title="In bảng biểu">
-                        <i class="bi bi-printer text-primary"></i>
-                    </button>
-                    <span class="catalog-badge text-nowrap" data-catalog-count>@ViewBag.Total khoản</span>
-                </div>
+                <button class="btn btn-hotel-primary text-nowrap px-3"><i class="bi bi-funnel me-1"></i>Lọc</button>
+                <a asp-action="Index" class="btn btn-outline-secondary @(string.IsNullOrWhiteSpace(ViewBag.Keyword as string) && string.IsNullOrWhiteSpace(ViewBag.Type as string) ? "d-none" : "")" data-catalog-reset title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc"><i class="bi bi-x-lg"></i></a>
             </form>
+
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="KhoanLuong" title="Xuất danh sách khoản lương ra file CSV" aria-label="Xuất CSV">
+                    <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất CSV
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-print title="In danh sách khoản lương chuẩn A4" aria-label="In danh mục">
+                    <i class="bi bi-printer text-primary me-1"></i> In danh mục
+                </button>
+                <span class="catalog-badge text-nowrap" data-catalog-count title="Số lượng khoản lương">
+                    <i class="bi bi-wallet2 me-1"></i>
+                    @if (!string.IsNullOrWhiteSpace(ViewBag.Keyword as string) || !string.IsNullOrWhiteSpace(ViewBag.Type as string))
+                    {
+                        <span>@Model.Count / @ViewBag.Total</span> <span class="d-none d-sm-inline">khoản</span>
+                    }
+                    else
+                    {
+                        <span>@ViewBag.Total</span> <span class="d-none d-sm-inline">khoản</span>
+                    }
+                </span>
+            </div>
         </div>
 
         <div class="catalog-loading" data-catalog-loading>
@@ -129,12 +152,17 @@
                     <tr>
                         <td colspan="6" class="catalog-empty">
                             <div class="catalog-empty-state">
-                                <div class="catalog-empty-icon"><i class="bi bi-wallet-fill"></i></div>
+                                <div class="catalog-empty-icon"><i class="bi bi-wallet2"></i></div>
                                 <h4>Không tìm thấy khoản lương</h4>
                                 <p class="text-muted">Không có cấu hình khoản phụ cấp/thưởng/phạt nào khớp với bộ lọc.</p>
-                                <a asp-action="Create" class="btn btn-hotel-primary btn-sm px-3 mt-2" data-catalog-modal data-catalog-modal-title="Thêm khoản lương mới">
-                                    <i class="bi bi-plus-lg me-1"></i> Thêm khoản lương mới
-                                </a>
+                                <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm px-3" data-catalog-reset>
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại bộ lọc
+                                    </a>
+                                    <a asp-action="Create" class="btn btn-hotel-primary btn-sm px-3" data-catalog-modal data-catalog-modal-title="Thêm khoản lương mới">
+                                        <i class="bi bi-plus-lg me-1"></i> Thêm khoản lương mới
+                                    </a>
+                                </div>
                             </div>
                         </td>
                     </tr>
