@@ -39,30 +39,50 @@
 
     <partial name="_CatalogAlerts" />
 
+    <!-- PRINT ONLY HEADER (A4) -->
+    <div class="catalog-print-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 style="font-size: 16pt; font-weight: 800; margin: 0; color: #0f172a;">THE OVERTIME HOTEL</h2>
+                <small style="color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Hệ Thống Quản Trị Nhân Sự &amp; Tiền Lương 24/7</small>
+            </div>
+            <div style="text-align: right;">
+                <h3 style="font-size: 13pt; font-weight: 700; margin: 0; color: #1e3a8a;">BẢNG DANH MỤC CHỨC VỤ</h3>
+                <small style="color: #64748b;">Thời điểm xuất: @DateTime.Now.ToString("dd/MM/yyyy HH:mm")</small>
+            </div>
+        </div>
+    </div>
+
     <!-- TABLE WORKSPACE CARD -->
     <section class="catalog-card shadow-sm">
         <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
             <form method="get" class="catalog-filter-form d-flex gap-2 flex-grow-1">
-                <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                    <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search border-start-0 ps-0" placeholder="Tìm theo tên chức danh hoặc trách nhiệm..." />
+                <div class="catalog-search-wrapper flex-grow-1">
+                    <i class="bi bi-search catalog-search-icon" aria-hidden="true"></i>
+                    <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên chức danh hoặc trách nhiệm..." aria-label="Tìm kiếm chức vụ" />
+                    <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
                 </div>
-                <button class="btn btn-hotel-primary text-nowrap"><i class="bi bi-search me-1"></i>Tìm kiếm</button>
-                @if (!string.IsNullOrWhiteSpace(ViewBag.Keyword as string))
-                {
-                    <a asp-action="Index" class="btn btn-outline-secondary" data-catalog-reset title="Đặt lại bộ lọc"><i class="bi bi-x-lg"></i></a>
-                }
+                <button class="btn btn-hotel-primary text-nowrap px-3"><i class="bi bi-funnel me-1"></i>Lọc</button>
+                <a asp-action="Index" class="btn btn-outline-secondary @(string.IsNullOrWhiteSpace(ViewBag.Keyword as string) ? "d-none" : "")" data-catalog-reset title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc"><i class="bi bi-x-lg"></i></a>
             </form>
 
             <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="ChucVu" title="Xuất danh sách chức vụ ra file CSV">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="ChucVu" title="Xuất danh sách chức vụ ra file CSV" aria-label="Xuất CSV">
                     <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất CSV
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-print title="In danh sách chức vụ chuẩn A4">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-print title="In danh sách chức vụ chuẩn A4" aria-label="In danh mục">
                     <i class="bi bi-printer text-primary me-1"></i> In danh mục
                 </button>
-                <span class="catalog-badge" data-catalog-count>
-                    <i class="bi bi-person-badge me-1"></i> @ViewBag.Total chức vụ
+                <span class="catalog-badge" data-catalog-count title="Số lượng chức vụ">
+                    <i class="bi bi-person-badge me-1"></i>
+                    @if (!string.IsNullOrWhiteSpace(ViewBag.Keyword as string))
+                    {
+                        <span>@Model.Count / @ViewBag.Total</span> <span class="d-none d-sm-inline">chức vụ</span>
+                    }
+                    else
+                    {
+                        <span>@ViewBag.Total</span> <span class="d-none d-sm-inline">chức vụ</span>
+                    }
                 </span>
             </div>
         </div>
@@ -92,9 +112,14 @@
                                 <div class="catalog-empty-icon"><i class="bi bi-person-slash"></i></div>
                                 <h4>Không tìm thấy chức vụ phù hợp</h4>
                                 <p class="text-muted">Không có vị trí chức danh nào khớp với tiêu chí tìm kiếm.</p>
-                                <a asp-action="Create" class="btn btn-hotel-primary btn-sm px-3 mt-2" data-catalog-modal data-catalog-modal-title="Thêm chức vụ mới">
-                                    <i class="bi bi-plus-lg me-1"></i> Thêm chức vụ mới
-                                </a>
+                                <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm px-3" data-catalog-reset>
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại bộ lọc
+                                    </a>
+                                    <a asp-action="Create" class="btn btn-hotel-primary btn-sm px-3" data-catalog-modal data-catalog-modal-title="Thêm chức vụ mới">
+                                        <i class="bi bi-plus-lg me-1"></i> Thêm chức vụ mới
+                                    </a>
+                                </div>
                             </div>
                         </td>
                     </tr>

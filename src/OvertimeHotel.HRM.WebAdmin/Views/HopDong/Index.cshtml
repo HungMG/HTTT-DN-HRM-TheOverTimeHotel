@@ -101,9 +101,10 @@
     <section class="catalog-card shadow-sm">
         <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
             <form method="get" class="catalog-filter-form d-flex flex-wrap gap-2 flex-grow-1 align-items-center">
-                <div class="input-group" style="min-width: 240px; flex: 2;">
-                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                    <input name="keyword" value="@Model.Keyword" class="form-control catalog-search border-start-0 ps-0" placeholder="Số hợp đồng, loại hoặc tên nhân viên..." />
+                <div class="catalog-search-wrapper" style="min-width: 240px; flex: 2;">
+                    <i class="bi bi-search catalog-search-icon" aria-hidden="true"></i>
+                    <input name="keyword" value="@Model.Keyword" class="form-control catalog-search" placeholder="Số hợp đồng, loại hoặc tên nhân viên..." aria-label="Tìm kiếm hợp đồng" />
+                    <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
                 </div>
 
                 <div style="min-width: 150px; flex: 1;">
@@ -253,6 +254,4 @@
     </div>
 </div>
 
-@section Scripts {
-    <script src="~/js/catalog.js" asp-append-version="true"></script>
-}
+

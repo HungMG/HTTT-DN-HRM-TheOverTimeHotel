@@ -4,15 +4,21 @@
   const page = document.querySelector(".catalog-page");
   if (!page) return;
 
+  if (page.dataset.catalogInitialized === "true") return;
+  page.dataset.catalogInitialized = "true";
+
   const reduceMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;
   const filterForm = page.querySelector(".catalog-toolbar form[method='get']");
+  const searchInput = filterForm?.querySelector("input[name='keyword']");
   const tableContainer =
     page.querySelector("[data-catalog-results]") ||
     page.querySelector(".table-responsive");
   const loadingOverlay = page.querySelector("[data-catalog-loading]");
   let searchTimer;
+  let activeAbortController = null;
+  let isComposing = false;
 
   const animateCountUp = (element, startValue, targetValue, duration = 420) => {
     if (!element || reduceMotion || startValue === targetValue) {
@@ -64,6 +70,9 @@
     loadingOverlay?.classList.toggle("is-visible", isLoading);
     tableContainer?.classList.toggle("is-updating", isLoading);
     filterForm?.querySelectorAll("input, select, button").forEach((control) => {
+      if (control === searchInput || control.name === "keyword") {
+        return;
+      }
       control.disabled = isLoading;
     });
   };
@@ -120,10 +129,17 @@
       return;
     }
 
+    if (activeAbortController) {
+      activeAbortController.abort();
+    }
+    activeAbortController = new AbortController();
+    const currentSignal = activeAbortController.signal;
+
     setLoading(true);
     try {
       const response = await fetch(url, {
         headers: { "X-Requested-With": "XMLHttpRequest", Accept: "text/html" },
+        signal: currentSignal,
       });
       if (!response.ok) throw new Error("Không thể cập nhật danh mục.");
 
@@ -148,43 +164,103 @@
       tableContainer.classList.add("catalog-results-enter");
       window.HotelMotion?.applyEntrance?.(tableContainer);
     } catch (error) {
+      if (error?.name === "AbortError") {
+        return;
+      }
       showToast(
         error instanceof Error ? error.message : "Không thể cập nhật danh mục.",
         "danger"
       );
     } finally {
-      setLoading(false);
+      if (activeAbortController?.signal === currentSignal) {
+        setLoading(false);
+      }
     }
+  };
+
+  const toggleResetButtons = () => {
+    const hasValue =
+      Boolean(searchInput?.value?.trim()) ||
+      Boolean(filterForm?.querySelector("select")?.value);
+    page.querySelectorAll(".catalog-toolbar [data-catalog-reset]").forEach((btn) => {
+      btn.classList.toggle("d-none", !hasValue);
+    });
+  };
+
+  const triggerLiveSearch = (delay = 500) => {
+    toggleResetButtons();
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      void refreshResults();
+    }, delay);
   };
 
   filterForm?.addEventListener("submit", (event) => {
     event.preventDefault();
+    window.clearTimeout(searchTimer);
+    toggleResetButtons();
     void refreshResults();
   });
 
   filterForm?.querySelectorAll("select").forEach((select) => {
-    select.addEventListener("change", () => void refreshResults());
-  });
-
-  const searchInput = filterForm?.querySelector("input[name='keyword']");
-  searchInput?.addEventListener("input", () => {
-    window.clearTimeout(searchTimer);
-    searchTimer = window.setTimeout(() => void refreshResults(), 320);
-  });
-
-  page.querySelectorAll("[data-catalog-reset]").forEach((reset) => {
-    reset.addEventListener("click", (event) => {
-      if (!filterForm) return;
-      event.preventDefault();
-      filterForm.reset();
-      filterForm
-        .querySelectorAll("input:not([type='hidden']), select")
-        .forEach((control) => {
-          control.value = "";
-        });
-      void refreshResults(new URL(reset.href, window.location.origin));
+    select.addEventListener("change", () => {
+      window.clearTimeout(searchTimer);
+      toggleResetButtons();
+      void refreshResults();
     });
   });
+
+  if (searchInput) {
+    searchInput.addEventListener("compositionstart", () => {
+      isComposing = true;
+    });
+
+    searchInput.addEventListener("compositionend", () => {
+      isComposing = false;
+      triggerLiveSearch(500);
+    });
+
+    searchInput.addEventListener("input", (event) => {
+      toggleResetButtons();
+      if (isComposing || event.isComposing) return;
+      triggerLiveSearch(500);
+    });
+
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        window.clearTimeout(searchTimer);
+        void refreshResults();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        if (searchInput.value) {
+          searchInput.value = "";
+          toggleResetButtons();
+          window.clearTimeout(searchTimer);
+          void refreshResults();
+        }
+      }
+    });
+  }
+
+  // Event delegation cho mọi nút data-catalog-reset (cả trên thanh công cụ và trong empty state)
+  document.addEventListener("click", (event) => {
+    const reset = event.target.closest("[data-catalog-reset]");
+    if (!reset) return;
+    if (!filterForm) return;
+    event.preventDefault();
+    window.clearTimeout(searchTimer);
+    filterForm.reset();
+    filterForm
+      .querySelectorAll("input:not([type='hidden']), select")
+      .forEach((control) => {
+        control.value = "";
+      });
+    toggleResetButtons();
+    void refreshResults(new URL(reset.href, window.location.origin));
+  });
+
+  toggleResetButtons();
 
   page.querySelectorAll("[data-catalog-toast]").forEach((alert) => {
     const message = alert
@@ -594,6 +670,23 @@
     if (printBtn) {
       e.preventDefault();
       window.print();
+    }
+  });
+
+  // Phím tắt bàn phím Ctrl + K hoặc '/' để focus vào ô tìm kiếm danh mục
+  document.addEventListener("keydown", (e) => {
+    const isCtrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k";
+    const isSlash =
+      e.key === "/" &&
+      !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);
+
+    if (isCtrlK || isSlash) {
+      const searchInput = page.querySelector("input[name='keyword']");
+      if (searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
     }
   });
 })();
