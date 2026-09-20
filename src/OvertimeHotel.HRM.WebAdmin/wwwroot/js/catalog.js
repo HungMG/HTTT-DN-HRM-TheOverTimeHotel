@@ -217,13 +217,13 @@
 
     searchInput.addEventListener("compositionend", () => {
       isComposing = false;
-      triggerLiveSearch(500);
+      toggleResetButtons();
     });
 
     searchInput.addEventListener("input", (event) => {
       toggleResetButtons();
       if (isComposing || event.isComposing) return;
-      triggerLiveSearch(500);
+      // Chỉ tiến hành tìm kiếm khi người dùng submit form hoặc nhấn Enter.
     });
 
     searchInput.addEventListener("keydown", (event) => {

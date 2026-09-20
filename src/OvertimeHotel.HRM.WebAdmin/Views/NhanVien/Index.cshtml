@@ -82,23 +82,6 @@
             </div>
         </div>
 
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold text-uppercase">Hợp Đồng Lao Động</div>
-                        <div class="mt-1">
-                            <a asp-controller="HopDong" asp-action="Index" class="btn btn-outline-primary btn-sm rounded-pill fw-bold">
-                                Mở trang HĐLĐ <i class="bi bi-arrow-up-right ms-1"></i>
-                            </a>
-                        </div>
-                    </div>
-                    <div class="rounded-3 bg-warning-subtle text-warning-emphasis p-3 fs-4">
-                        <i class="bi bi-file-earmark-text-fill"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- TABLE WORKSPACE CARD -->
@@ -108,7 +91,9 @@
                 <div class="catalog-search-wrapper" style="min-width: 240px; flex: 2;">
                     <i class="bi bi-search catalog-search-icon" aria-hidden="true"></i>
                     <input name="keyword" value="@Model.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên, email hoặc số điện thoại..." aria-label="Tìm kiếm nhân viên" />
-                    <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
+                    <span class="catalog-search-shortcut" aria-label="Tìm kiếm" title="Tìm kiếm">
+                        <i class="bi bi-search"></i>
+                    </span>
                 </div>
                 
                 <div style="min-width: 170px; flex: 1;">
