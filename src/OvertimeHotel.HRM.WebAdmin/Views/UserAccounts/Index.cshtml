@@ -5,7 +5,12 @@
 }
 
 <div class="account-workspace account-workspace--bleed" data-account-workspace data-status-filter="@(Model.IsActive.HasValue ? Model.IsActive.Value.ToString().ToLowerInvariant() : string.Empty)" data-audit-from="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" data-audit-to="@(Model.AuditTo?.ToString("yyyy-MM-dd"))">
-    <header class="account-command-bar account-reveal">
+    <header class="account-command-bar account-command-bar--accounts-index account-reveal">
+        <nav class="account-dashboard-breadcrumb" aria-label="Điều hướng">
+            <a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a>
+            <span aria-hidden="true">/</span>
+            <strong>Tài khoản &amp; phân quyền</strong>
+        </nav>
         <div class="account-product-mark" aria-hidden="true">
             <span></span><span></span><span></span>
         </div>
