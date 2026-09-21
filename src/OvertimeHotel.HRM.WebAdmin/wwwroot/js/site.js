@@ -46,6 +46,7 @@
 
   // Bắt sự kiện click vào các liên kết nội bộ để tạo hiệu ứng chuyển slide êm
   document.addEventListener('click', function (e) {
+    if (e.defaultPrevented) return;
     const link = e.target.closest('a');
     if (!link) return;
 
@@ -60,6 +61,11 @@
       href.startsWith('tel:') ||
       link.target === '_blank' ||
       link.hasAttribute('download') ||
+      link.hasAttribute('data-catalog-reset') ||
+      link.hasAttribute('data-catalog-modal') ||
+      link.hasAttribute('data-bs-toggle') ||
+      link.hasAttribute('data-catalog-export') ||
+      link.hasAttribute('data-catalog-print') ||
       e.ctrlKey || e.metaKey || e.shiftKey || e.altKey
     ) {
       return;

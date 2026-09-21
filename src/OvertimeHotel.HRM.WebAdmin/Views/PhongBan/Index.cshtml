@@ -25,12 +25,9 @@
             <p class="text-white-50 mb-0">Thiết lập các bộ phận vận hành, khối dịch vụ khách lưu trú và phòng ban nghiệp vụ.</p>
         </div>
         <div class="catalog-command-actions position-relative" style="z-index: 2;">
-            <a asp-controller="SystemCatalog" asp-action="Index" class="catalog-back-action">
-                <i class="bi bi-grid"></i><span>Trung tâm danh mục</span>
-            </a>
-            <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-catalog-modal data-catalog-modal-title="Thêm phòng ban mới">
+            <button type="button" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-bs-toggle="modal" data-bs-target="#createPhongBanModal">
                 <i class="bi bi-plus-lg me-1 text-primary"></i> Thêm phòng ban
-            </a>
+            </button>
         </div>
     </section>
 
@@ -62,8 +59,9 @@
                     <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên phòng ban hoặc mô tả..." aria-label="Tìm kiếm phòng ban" />
                     <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
                 </div>
-                <button class="btn btn-hotel-primary text-nowrap px-3"><i class="bi bi-funnel me-1"></i>Lọc</button>
-                <a asp-action="Index" class="btn btn-outline-secondary @(string.IsNullOrWhiteSpace(ViewBag.Keyword as string) ? "d-none" : "")" data-catalog-reset title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc"><i class="bi bi-x-lg"></i></a>
+                <button type="button" class="btn btn-outline-danger rounded-3 px-3 text-nowrap @(string.IsNullOrWhiteSpace(ViewBag.Keyword as string) ? "d-none" : "")" data-catalog-reset title="Xóa nhanh từ khóa" aria-label="Xóa từ khóa">
+                    <i class="bi bi-x-lg me-1"></i>Xóa
+                </button>
             </form>
 
             <div class="d-flex align-items-center gap-2">
@@ -113,12 +111,12 @@
                                 <h4>Không tìm thấy phòng ban phù hợp</h4>
                                 <p class="text-muted">Không có dữ liệu khớp với từ khóa tìm kiếm trong cơ sở dữ liệu The OverTime Hotel.</p>
                                 <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
-                                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm px-3" data-catalog-reset>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-catalog-reset>
                                         <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại bộ lọc
-                                    </a>
-                                    <a asp-action="Create" class="btn btn-hotel-primary btn-sm px-3" data-catalog-modal data-catalog-modal-title="Thêm phòng ban mới">
+                                    </button>
+                                    <button type="button" class="btn btn-hotel-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#createPhongBanModal">
                                         <i class="bi bi-plus-lg me-1"></i> Thêm phòng ban mới
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </td>
@@ -227,4 +225,43 @@
             </table>
         </div>
     </section>
+</div>
+
+<!-- MODAL THÊM PHÒNG BAN MỚI -->
+<div class="modal fade" id="createPhongBanModal" tabindex="-1" aria-labelledby="createPhongBanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-white border-bottom py-3 px-4">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="catalog-icon shadow-sm"><i class="bi bi-building-add"></i></span>
+                    <div>
+                        <div class="text-uppercase small text-primary fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Cơ cấu tổ chức khách sạn</div>
+                        <h2 class="modal-title h5 mb-0 font-serif" id="createPhongBanModalLabel">Thêm Phòng Ban Mới</h2>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body p-4">
+                    <div class="form-floating mb-3">
+                        <input name="TenPhongBan" class="form-control" placeholder="Tên phòng ban" maxlength="150" required />
+                        <label>Tên phòng ban <span class="text-danger">*</span></label>
+                    </div>
+                    <div class="form-floating mb-2">
+                        <textarea name="MoTa" class="form-control" placeholder="Mô tả" maxlength="255" style="height:110px"></textarea>
+                        <label>Mô tả chức năng & nhiệm vụ</label>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top py-3 px-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Hủy
+                    </button>
+                    <button type="submit" class="btn btn-hotel-primary rounded-pill px-4 fw-bold">
+                        <i class="bi bi-check2 me-1"></i>Lưu thông tin
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>

@@ -25,12 +25,9 @@
             <p class="text-white-50 mb-0">Thiết lập các khung giờ trực ca Sáng, Chiều, Đêm đảm bảo dịch vụ khách sạn liên tục.</p>
         </div>
         <div class="catalog-command-actions position-relative" style="z-index: 2;">
-            <a asp-controller="SystemCatalog" asp-action="Index" class="catalog-back-action">
-                <i class="bi bi-grid"></i><span>Trung tâm danh mục</span>
-            </a>
-            <a asp-action="Create" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-catalog-modal data-catalog-modal-title="Thêm ca làm việc mới">
+            <button type="button" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-bs-toggle="modal" data-bs-target="#createCaLamViecModal">
                 <i class="bi bi-plus-lg me-1 text-primary"></i> Thêm ca làm việc
-            </a>
+            </button>
         </div>
     </section>
 
@@ -62,8 +59,9 @@
                     <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên ca làm việc..." aria-label="Tìm kiếm ca làm việc" />
                     <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
                 </div>
-                <button class="btn btn-hotel-primary text-nowrap px-3"><i class="bi bi-funnel me-1"></i>Lọc</button>
-                <a asp-action="Index" class="btn btn-outline-secondary @(string.IsNullOrWhiteSpace(ViewBag.Keyword as string) ? "d-none" : "")" data-catalog-reset title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc"><i class="bi bi-x-lg"></i></a>
+                <button type="button" class="btn btn-outline-danger rounded-3 px-3 text-nowrap @(string.IsNullOrWhiteSpace(ViewBag.Keyword as string) ? "d-none" : "")" data-catalog-reset title="Xóa nhanh từ khóa" aria-label="Xóa từ khóa">
+                    <i class="bi bi-x-lg me-1"></i>Xóa
+                </button>
             </form>
 
             <div class="d-flex align-items-center gap-2">
@@ -115,12 +113,12 @@
                                 <h4>Không tìm thấy ca làm việc</h4>
                                 <p class="text-muted">Không có khung giờ trực ca nào khớp với từ khóa tìm kiếm.</p>
                                 <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
-                                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm px-3" data-catalog-reset>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-catalog-reset>
                                         <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại bộ lọc
-                                    </a>
-                                    <a asp-action="Create" class="btn btn-hotel-primary btn-sm px-3" data-catalog-modal data-catalog-modal-title="Thêm ca làm việc mới">
+                                    </button>
+                                    <button type="button" class="btn btn-hotel-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#createCaLamViecModal">
                                         <i class="bi bi-plus-lg me-1"></i> Thêm ca làm việc mới
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </td>
@@ -219,4 +217,58 @@
             </table>
         </div>
     </section>
+</div>
+
+<!-- MODAL THÊM CA LÀM VIỆC MỚI -->
+<div class="modal fade" id="createCaLamViecModal" tabindex="-1" aria-labelledby="createCaLamViecModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-white border-bottom py-3 px-4">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="catalog-icon shadow-sm"><i class="bi bi-clock-history"></i></span>
+                    <div>
+                        <div class="text-uppercase small text-primary fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Vận hành trực ca 24/7</div>
+                        <h2 class="modal-title h5 mb-0 font-serif" id="createCaLamViecModalLabel">Thêm Ca Làm Việc Mới</h2>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body p-4">
+                    <div class="form-floating mb-3">
+                        <input name="TenCa" class="form-control" placeholder="Tên ca" maxlength="50" required />
+                        <label>Tên ca làm việc <span class="text-danger">*</span></label>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <div class="form-floating">
+                                <input name="GioBatDau" type="time" class="form-control" value="06:00" required />
+                                <label>Giờ bắt đầu <span class="text-danger">*</span></label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-floating">
+                                <input name="GioKetThuc" type="time" class="form-control" value="14:00" required />
+                                <label>Giờ kết thúc <span class="text-danger">*</span></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch bg-light border rounded-3 p-3 ps-5 mb-2">
+                        <input name="QuaDem" value="true" class="form-check-input" type="checkbox" id="modalQuaDemSwitch" />
+                        <label class="form-check-label fw-semibold" for="modalQuaDemSwitch">Ca làm việc qua đêm (Crosses Midnight)</label>
+                        <div class="small text-muted">Kích hoạt nếu ca làm kết thúc vào sáng hôm sau (tự động tính phụ cấp ca đêm 30%).</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top py-3 px-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i>Hủy
+                    </button>
+                    <button type="submit" class="btn btn-hotel-primary rounded-pill px-4 fw-bold">
+                        <i class="bi bi-check2 me-1"></i>Lưu thông tin
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>

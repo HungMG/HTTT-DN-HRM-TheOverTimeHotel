@@ -193,10 +193,10 @@
 
 .catalog-icon {
   align-items: center;
-  background: linear-gradient(135deg, var(--hotel-blue), var(--hotel-navy));
-  border: 1px solid var(--hotel-gold);
+  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+  border: 1px solid rgba(212, 175, 55, 0.45);
   border-radius: 12px;
-  color: var(--hotel-gold);
+  color: #fde047;
   display: inline-flex;
   flex: 0 0 44px;
   font-size: 1.25rem;
@@ -204,73 +204,64 @@
   justify-content: center;
   transition: transform 180ms ease, box-shadow 180ms ease;
   width: 44px;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
 }
 
 .catalog-table tbody tr:hover .catalog-icon {
-  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
   transform: translateY(-2px);
+  border-color: rgba(253, 224, 71, 0.8);
 }
 
-.catalog-icon--department {
-  background: linear-gradient(135deg, #1d4ed8, #172554);
-  border-color: #93c5fd;
-  border-radius: 5px 5px 14px 5px;
-  box-shadow: 4px 4px 0 #dbeafe;
-  color: #dbeafe;
-}
-
-.catalog-icon--position {
-  background: linear-gradient(135deg, #22c55e, #14532d);
-  border: 3px double #bbf7d0;
-  border-radius: 50%;
-  color: #fff;
-}
-
-.catalog-icon--bonus {
-  background: linear-gradient(135deg, #15803d, #14532d);
-  border-color: #86efac;
-  border-radius: 50% 50% 8px 8px;
-  color: #dcfce7;
-}
-
-.catalog-icon--morning {
-  background: linear-gradient(145deg, #dbeafe, #93c5fd);
-  border-color: #2563eb;
-  border-radius: 50%;
-  color: #1d4ed8;
-}
-
-.catalog-icon--allowance {
-  background: linear-gradient(135deg, #eff6ff, #bfdbfe);
-  border: 2px solid #2563eb;
-  border-radius: 6px 14px 6px 14px;
-  color: #1d4ed8;
-}
-
-.catalog-icon--afternoon {
-  background: linear-gradient(135deg, #f59e0b, #b45309);
-  border-color: #fde68a;
-  border-radius: 50% 8px 50% 8px;
-  color: #fff7ed;
-  transform: rotate(-3deg);
+/* ĐỒNG NHẤT NỀN TOÀN BỘ ICON VỀ MÀU XANH NAVY ĐẬM CỦA BANNER (THE OVERTIME HOTEL) */
+.catalog-icon--department,
+.catalog-icon--position,
+.catalog-icon--bonus,
+.catalog-icon--morning,
+.catalog-icon--allowance,
+.catalog-icon--afternoon,
+.catalog-icon--night,
+.catalog-icon--deduction,
+.catalog-icon--board,
+.catalog-icon--frontdesk,
+.catalog-icon--housekeeping,
+.catalog-icon--fnb,
+.catalog-icon--hr {
+  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%) !important;
+  border: 1px solid rgba(212, 175, 55, 0.45) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15) !important;
+  color: #fde047 !important;
+  transform: none !important;
 }
 
 .catalog-icon--afternoon > i {
-  transform: rotate(3deg);
+  transform: none !important;
 }
 
-.catalog-icon--night {
-  background: linear-gradient(135deg, #0f172a, #1e293b);
-  border: 2px solid #eab308;
-  border-radius: 50% 50% 50% 8px;
-  color: #fef08a;
+/* NÚT LỌC TRÊN THANH TOOLBAR: KÍCH THƯỚC VỪA VẶN, HOVER TINH TẾ KHÔNG PHÓNG TO */
+.catalog-filter-form .btn-hotel-primary,
+.catalog-toolbar .btn-hotel-primary {
+  padding: 0.45rem 1.15rem !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  transform: none !important;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-.catalog-icon--deduction {
-  background: #fff;
-  border: 2px solid #dc2626;
-  border-radius: 50%;
-  color: #dc2626;
+.catalog-filter-form .btn-hotel-primary:hover,
+.catalog-toolbar .btn-hotel-primary:hover,
+.catalog-filter-form .btn-hotel-primary:focus-visible,
+.catalog-toolbar .btn-hotel-primary:focus-visible {
+  transform: translateY(-1px) scale(1) !important;
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.3) !important;
+  color: #fde047 !important;
+  background: linear-gradient(135deg, #2563eb, #1e3a8a) !important;
+  border-color: rgba(212, 175, 55, 0.6) !important;
 }
 
 .catalog-empty {
@@ -1276,35 +1267,16 @@
   font-size: 0.95rem;
 }
 
-/* Icon đặc thù khách sạn 5 sao */
-.catalog-icon--board {
-  background: linear-gradient(135deg, #b45309, #78350f);
-  border-color: #fde047;
-  color: #fde047;
-}
-
-.catalog-icon--frontdesk {
-  background: linear-gradient(135deg, #0284c7, #0369a1);
-  border-color: #bae6fd;
-  color: #fff;
-}
-
-.catalog-icon--housekeeping {
-  background: linear-gradient(135deg, #0d9488, #0f766e);
-  border-color: #99f6e4;
-  color: #fff;
-}
-
-.catalog-icon--fnb {
-  background: linear-gradient(135deg, #ea580c, #c2410c);
-  border-color: #fed7aa;
-  color: #fff;
-}
-
+/* Icon đặc thù khách sạn 5 sao - Đồng nhất xanh navy đậm */
+.catalog-icon--board,
+.catalog-icon--frontdesk,
+.catalog-icon--housekeeping,
+.catalog-icon--fnb,
 .catalog-icon--hr {
-  background: linear-gradient(135deg, #4f46e5, #3730a3);
-  border-color: #c7d2fe;
-  color: #fff;
+  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%) !important;
+  border-color: rgba(212, 175, 55, 0.45) !important;
+  color: #fde047 !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15) !important;
 }
 
 /* Avatar Stack */
