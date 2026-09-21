@@ -1,36 +1,283 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="OvertimeHotel.HRM.MobileApp.MainPage">
+             x:Class="OvertimeHotel.HRM.MobileApp.MainPage"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
 
-    <ScrollView>
-        <VerticalStackLayout
-            Padding="30,0"
-            Spacing="25">
-            <Image
-                Source="dotnet_bot.png"
-                HeightRequest="185"
-                Aspect="AspectFit"
-                SemanticProperties.Description="dot net bot in a submarine number ten" />
+    <Grid>
+        <!-- 1. NỘI DUNG CHÍNH CỦA TRANG CHỦ -->
+        <ScrollView>
+            <VerticalStackLayout Spacing="16" Padding="20,24,20,30">
 
-            <Label
-                Text="Hello, World!"
-                Style="{StaticResource Headline}"
-                SemanticProperties.HeadingLevel="Level1" />
+                <!-- HEADER NGƯỜI DÙNG (KHỐI 1: BAY TỪ TRÊN XUỐNG) -->
+                <Grid x:Name="headerSection" ColumnDefinitions="*,Auto" Margin="0,8,0,8">
+                    <VerticalStackLayout Grid.Column="0" Spacing="3">
+                        <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                            <Label Text="★" TextColor="#D4AF37" FontSize="14" VerticalOptions="Center" />
+                            <Label Text="THE OVERTIME HOTEL 5★" TextColor="#1E3A8A" FontSize="11" FontFamily="SegoeUIBold" CharacterSpacing="1" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Label x:Name="lblGreeting" Text="Xin chào, Nhân viên!" TextColor="#0F172A" FontSize="20" FontFamily="SegoeUIBold" />
+                        <Label x:Name="lblRoleDepartment" Text="Bộ phận Buồng phòng · Nhân viên" TextColor="#64748B" FontSize="12" FontFamily="SegoeUI" />
+                    </VerticalStackLayout>
 
-            <Label
-                Text="Welcome to &#10;.NET Multi-platform App UI"
-                Style="{StaticResource SubHeadline}"
-                SemanticProperties.HeadingLevel="Level2"
-                SemanticProperties.Description="Welcome to dot net Multi platform App U I" />
+                    <!-- Nút Tài Khoản / Profile Cá Nhân (Bấm vào để xem thông tin & đổi mật khẩu) -->
+                    <Border x:Name="btnProfileHeader"
+                            Grid.Column="1"
+                            StrokeShape="RoundRectangle 24"
+                            Stroke="#D4AF37"
+                            StrokeThickness="2"
+                            BackgroundColor="#1E3A8A"
+                            WidthRequest="48"
+                            HeightRequest="48"
+                            VerticalOptions="Center">
+                        <Border.Shadow>
+                            <Shadow Brush="#1E3A8A" Offset="0,4" Radius="10" Opacity="0.25" />
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnProfileTapped" />
+                        </Border.GestureRecognizers>
+                        <Label x:Name="lblHeaderAvatar"
+                               Text="👤"
+                               TextColor="#FDE047"
+                               FontSize="22"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+                </Grid>
 
-            <Button
-                x:Name="CounterBtn"
-                Text="Click me" 
-                SemanticProperties.Hint="Counts the number of times you click"
-                Clicked="OnCounterClicked"
-                HorizontalOptions="Fill" />
-        </VerticalStackLayout>
-    </ScrollView>
+                <!-- THẺ CA LÀM VIỆC HÔM NAY (KHỐI 2: BAY TỪ DƯỚI LÊN KÈM ĐỘ NẢY LÒ XO 5★) -->
+                <Border x:Name="heroShiftCard"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#D4AF37"
+                        StrokeThickness="1.5"
+                        BackgroundColor="#1E3A8A"
+                        Padding="18">
+                    <Border.Shadow>
+                        <Shadow Brush="#1E3A8A" Offset="0,6" Radius="16" Opacity="0.25" />
+                    </Border.Shadow>
+
+                    <VerticalStackLayout Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label Grid.Column="0" Text="CA LÀM VIỆC HÔM NAY" TextColor="#FDE047" FontSize="11" FontFamily="SegoeUIBold" CharacterSpacing="1" />
+                            <Border Grid.Column="1" StrokeShape="RoundRectangle 8" BackgroundColor="#312E81" Padding="8,2">
+                                <Label Text="Ca Đêm (+30%)" TextColor="#FDE047" FontSize="10" FontFamily="SegoeUIBold" />
+                            </Border>
+                        </Grid>
+
+                        <Label Text="22:00 – 06:00 (Sáng hôm sau)" TextColor="#FFFFFF" FontSize="22" FontFamily="SegoeUIBold" />
+                        <Label Text="Nhiệm vụ: Trực sảnh &amp; An ninh · Đúng giờ ca quy định" TextColor="#E2E8F0" FontSize="12" FontFamily="SegoeUI" />
+
+                        <!-- NÚT QUẸT THẺ CHECK-IN -->
+                        <Button Text="QUẸT THẺ CHECK-IN CA"
+                                Clicked="OnCheckInClicked"
+                                BackgroundColor="#D4AF37"
+                                TextColor="#0B132B"
+                                FontFamily="SegoeUIBold"
+                                FontSize="14"
+                                CornerRadius="14"
+                                HeightRequest="48"
+                                Margin="0,6,0,0">
+                            <Button.Shadow>
+                                <Shadow Brush="#D4AF37" Offset="0,4" Radius="10" Opacity="0.3" />
+                            </Button.Shadow>
+                        </Button>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- THỐNG KÊ NHANH THÁNG NÀY (KHỐI 3: BAY VÀO NỐI TIẾP) -->
+                <Grid x:Name="statsGrid" ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                    <Border Grid.Column="0" StrokeShape="RoundRectangle 14" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="10">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="8" Opacity="0.06" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                            <Label Text="Ngày công" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" HorizontalOptions="Center" />
+                            <Label Text="22" TextColor="#1E3A8A" FontSize="20" FontFamily="SegoeUIBold" HorizontalOptions="Center" />
+                            <Label Text="công thực tế" TextColor="#94A3B8" FontSize="9" FontFamily="SegoeUI" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border Grid.Column="1" StrokeShape="RoundRectangle 14" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="10">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="8" Opacity="0.06" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                            <Label Text="Ca trực đêm" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" HorizontalOptions="Center" />
+                            <Label Text="8" TextColor="#D4AF37" FontSize="20" FontFamily="SegoeUIBold" HorizontalOptions="Center" />
+                            <Label Text="+30% phụ cấp" TextColor="#94A3B8" FontSize="9" FontFamily="SegoeUI" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Border Grid.Column="2" StrokeShape="RoundRectangle 14" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="10">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="8" Opacity="0.06" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                            <Label Text="Đơn chờ duyệt" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" HorizontalOptions="Center" />
+                            <Label Text="1" TextColor="#059669" FontSize="20" FontFamily="SegoeUIBold" HorizontalOptions="Center" />
+                            <Label Text="Nghỉ phép năm" TextColor="#94A3B8" FontSize="9" FontFamily="SegoeUI" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+
+                <!-- MENU 4 CHỨC NĂNG CỐT LÕI (KHỐI 4: BAY LÊN KẾT THÚC ĐỒNG BỘ) -->
+                <Label x:Name="featuresHeader" Text="CHỨC NĂNG NGHIỆP VỤ DI ĐỘNG" TextColor="#1E3A8A" FontSize="12" FontFamily="SegoeUIBold" Margin="0,10,0,0" />
+
+                <Grid x:Name="featuresGrid" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="12" ColumnSpacing="12">
+                    <!-- Chấm công -->
+                    <Border x:Name="cardChamCong" Grid.Row="0" Grid.Column="0" StrokeShape="RoundRectangle 16" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="14">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="10" Opacity="0.06" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="📱" FontSize="24" />
+                            <Label Text="Chấm Công" TextColor="#0F172A" FontSize="14" FontFamily="SegoeUIBold" />
+                            <Label Text="Quẹt thẻ &amp; giờ OT" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                            <Button Text="Chi Tiết" Clicked="OnFeatureClicked" BackgroundColor="#1E3A8A" TextColor="#FFFFFF" FontFamily="SegoeUIBold" FontSize="11" HeightRequest="32" CornerRadius="8" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Lịch ca -->
+                    <Border x:Name="cardLichCa" Grid.Row="0" Grid.Column="1" StrokeShape="RoundRectangle 16" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="14">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="10" Opacity="0.06" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="📅" FontSize="24" />
+                            <Label Text="Lịch Ca 24/7" TextColor="#0F172A" FontSize="14" FontFamily="SegoeUIBold" />
+                            <Label Text="Lịch trực tuần này" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                            <Button Text="Xem Lịch" Clicked="OnFeatureClicked" BackgroundColor="#1E3A8A" TextColor="#FFFFFF" FontFamily="SegoeUIBold" FontSize="11" HeightRequest="32" CornerRadius="8" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Đơn từ -->
+                    <Border x:Name="cardDonTu" Grid.Row="1" Grid.Column="0" StrokeShape="RoundRectangle 16" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="14">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="10" Opacity="0.06" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="📝" FontSize="24" />
+                            <Label Text="Đơn Điện Tử" TextColor="#0F172A" FontSize="14" FontFamily="SegoeUIBold" />
+                            <Label Text="Nghỉ phép, đổi ca" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                            <Button Text="Tạo Đơn" Clicked="OnFeatureClicked" BackgroundColor="#1E3A8A" TextColor="#FFFFFF" FontFamily="SegoeUIBold" FontSize="11" HeightRequest="32" CornerRadius="8" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Phiếu lương -->
+                    <Border x:Name="cardPhieuLuong" Grid.Row="1" Grid.Column="1" StrokeShape="RoundRectangle 16" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="14">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="10" Opacity="0.06" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="💰" FontSize="24" />
+                            <Label Text="Phiếu Lương" TextColor="#0F172A" FontSize="14" FontFamily="SegoeUIBold" />
+                            <Label Text="Tra cứu lương Net" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                            <Button Text="Xem Phiếu" Clicked="OnFeatureClicked" BackgroundColor="#1E3A8A" TextColor="#FFFFFF" FontFamily="SegoeUIBold" FontSize="11" HeightRequest="32" CornerRadius="8" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+
+                <!-- FOOTER -->
+                <Label x:Name="footerLabel"
+                       Text="The OverTime Hotel Mobile App v1.0 (.NET MAUI 10) · Supabase Cloud"
+                       TextColor="#94A3B8"
+                       FontSize="10"
+                       FontFamily="SegoeUI"
+                       HorizontalOptions="Center"
+                       Margin="0,16,0,0" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- 2. CUSTOM LUXURY MODAL POPUP CHO MAINPAGE -->
+        <Grid x:Name="mainModalOverlay"
+              IsVisible="False"
+              BackgroundColor="#990F172A"
+              ZIndex="999"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+
+            <Border x:Name="mainModalBorder"
+                    StrokeShape="RoundRectangle 24"
+                    Stroke="#D4AF37"
+                    StrokeThickness="2"
+                    BackgroundColor="#FFFFFF"
+                    WidthRequest="330"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Padding="24,28">
+                <Border.Shadow>
+                    <Shadow Brush="#0F172A" Offset="0,12" Radius="24" Opacity="0.3" />
+                </Border.Shadow>
+
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <Border x:Name="mainModalIconBox"
+                            StrokeShape="RoundRectangle 30"
+                            Stroke="#D4AF37"
+                            StrokeThickness="2"
+                            BackgroundColor="#FFFBEB"
+                            WidthRequest="60"
+                            HeightRequest="60"
+                            HorizontalOptions="Center">
+                        <Label x:Name="lblModalIcon"
+                               Text="★"
+                               TextColor="#B45309"
+                               FontSize="26"
+                               FontFamily="SegoeUIBold"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <Label x:Name="lblModalTitle"
+                           Text="Thông Báo"
+                           FontFamily="SegoeUIBold"
+                           FontSize="18"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+
+                    <Label x:Name="lblModalMessage"
+                           Text="Nội dung chi tiết thông báo..."
+                           FontFamily="SegoeUI"
+                           FontSize="13"
+                           TextColor="#475569"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center"
+                           LineBreakMode="WordWrap" />
+
+                    <!-- Khung nút bấm: Hỗ trợ 1 nút hoặc 2 nút (Xác nhận / Hủy) -->
+                    <Grid x:Name="modalButtonsGrid" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,8,0,0" WidthRequest="260">
+                        <Button x:Name="btnModalCancel"
+                                Grid.Column="0"
+                                Text="Hủy Bỏ"
+                                Clicked="OnModalCancelClicked"
+                                FontFamily="SegoeUIBold"
+                                FontSize="12"
+                                BackgroundColor="#F1F5F9"
+                                TextColor="#475569"
+                                BorderColor="#CBD5E1"
+                                BorderWidth="1"
+                                CornerRadius="12"
+                                HeightRequest="44" />
+
+                        <Button x:Name="btnModalConfirm"
+                                Grid.Column="1"
+                                Text="Xác Nhận"
+                                Clicked="OnModalConfirmClicked"
+                                FontFamily="SegoeUIBold"
+                                FontSize="12"
+                                BackgroundColor="#1E3A8A"
+                                TextColor="#FFFFFF"
+                                BorderColor="#D4AF37"
+                                BorderWidth="1.5"
+                                CornerRadius="12"
+                                HeightRequest="44" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+    </Grid>
 
 </ContentPage>

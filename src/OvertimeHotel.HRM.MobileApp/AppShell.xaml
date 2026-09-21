@@ -4,11 +4,27 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:OvertimeHotel.HRM.MobileApp"
-    Title="OvertimeHotel.HRM.MobileApp">
+    xmlns:views="clr-namespace:OvertimeHotel.HRM.MobileApp.Views"
+    Title="The OverTime Hotel HRM">
 
     <ShellContent
-        Title="Home"
+        Title="Khởi Động"
+        ContentTemplate="{DataTemplate views:IntroPage}"
+        Route="IntroPage" />
+
+    <ShellContent
+        Title="Đăng Nhập"
+        ContentTemplate="{DataTemplate views:LoginPage}"
+        Route="LoginPage" />
+
+    <ShellContent
+        Title="Trang Chủ"
         ContentTemplate="{DataTemplate local:MainPage}"
         Route="MainPage" />
+
+    <ShellContent
+        Title="Hồ Sơ"
+        ContentTemplate="{DataTemplate views:ProfilePage}"
+        Route="ProfilePage" />
 
 </Shell>

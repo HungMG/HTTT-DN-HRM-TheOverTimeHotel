@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.ProfilePage"
+             x:DataType="vm:ProfileViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+        <!-- 1. NỘI DUNG CHÍNH CỦA TRANG PROFILE -->
+        <ScrollView>
+            <VerticalStackLayout Spacing="16" Padding="20,24,20,32">
+
+                <!-- HEADER ĐIỀU HƯỚNG: NÚT QUAY LẠI & TIÊU ĐỀ -->
+                <Grid x:Name="profileHeader" Opacity="0" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" Margin="0,6,0,8">
+                    <Button Grid.Column="0"
+                            Text="← Quay Lại"
+                            Command="{Binding BackCommand}"
+                            Clicked="OnBackButtonClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="12"
+                            BackgroundColor="#EFF6FF"
+                            TextColor="#1E3A8A"
+                            BorderColor="#BFDBFE"
+                            BorderWidth="1"
+                            CornerRadius="10"
+                            HeightRequest="36"
+                            Padding="12,0" />
+
+                    <Label Grid.Column="1"
+                           Text="Hồ Sơ Nhân Sự"
+                           FontFamily="SegoeUIBold"
+                           FontSize="18"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+
+                    <Button Grid.Column="2"
+                            Text="Đăng Xuất"
+                            Command="{Binding LogoutCommand}"
+                            Clicked="OnLogoutButtonClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="11"
+                            BackgroundColor="#FEF2F2"
+                            TextColor="#DC2626"
+                            BorderColor="#FCA5A5"
+                            BorderWidth="1"
+                            CornerRadius="10"
+                            HeightRequest="36"
+                            Padding="10,0" />
+                </Grid>
+
+                <!-- THẺ 1: HỒ SƠ & THÔNG TIN CÁ NHÂN (IDENTITY CARD) -->
+                <Border x:Name="identityCard"
+                        Opacity="0"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="#FFFFFF"
+                        Padding="20,24">
+                    <Border.Shadow>
+                        <Shadow Brush="#64748B" Offset="0,6" Radius="16" Opacity="0.07" />
+                    </Border.Shadow>
+
+                    <VerticalStackLayout Spacing="16">
+                        <!-- AVATAR TRÒN + HỌ TÊN + VAI TRÒ -->
+                        <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                            <!-- Avatar chữ cái đầu -->
+                            <Border StrokeShape="RoundRectangle 36"
+                                    Stroke="#D4AF37"
+                                    StrokeThickness="2.5"
+                                    BackgroundColor="#1E3A8A"
+                                    WidthRequest="72"
+                                    HeightRequest="72"
+                                    HorizontalOptions="Center">
+                                <Border.Shadow>
+                                    <Shadow Brush="#1E3A8A" Offset="0,4" Radius="12" Opacity="0.25" />
+                                </Border.Shadow>
+                                <Label Text="{Binding AvatarLetter}"
+                                       TextColor="#FDE047"
+                                       FontSize="30"
+                                       FontFamily="SegoeUIBold"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+
+                            <Label Text="{Binding FullName}"
+                                   TextColor="#0F172A"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="20"
+                                   HorizontalOptions="Center" />
+
+                            <Border StrokeShape="RoundRectangle 10"
+                                    Stroke="#BFDBFE"
+                                    BackgroundColor="#EFF6FF"
+                                    Padding="12,3"
+                                    HorizontalOptions="Center">
+                                <Label Text="{Binding RoleName}"
+                                       TextColor="#1E3A8A"
+                                       FontFamily="SegoeUIBold"
+                                       FontSize="11"
+                                       CharacterSpacing="1" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- ĐƯỜNG KẺ PHÂN CÁCH MỜ -->
+                        <BoxView HeightRequest="1" Color="#E2E8F0" Margin="0,4" />
+
+                        <!-- DANH SÁCH CHI TIẾT THÔNG TIN -->
+                        <VerticalStackLayout Spacing="12">
+                            <!-- Phòng ban -->
+                            <Grid ColumnDefinitions="32,Auto,*">
+                                <Label Grid.Column="0" Text="🏢" FontSize="16" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Phòng Ban:" TextColor="#64748B" FontFamily="SegoeUI" FontSize="13" VerticalOptions="Center" />
+                                <Label Grid.Column="2" Text="{Binding DepartmentName}" TextColor="#0F172A" FontFamily="SegoeUIBold" FontSize="13" HorizontalOptions="End" VerticalOptions="Center" />
+                            </Grid>
+
+                            <!-- Chức vụ -->
+                            <Grid ColumnDefinitions="32,Auto,*">
+                                <Label Grid.Column="0" Text="🏷️" FontSize="16" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Chức Vụ:" TextColor="#64748B" FontFamily="SegoeUI" FontSize="13" VerticalOptions="Center" />
+                                <Label Grid.Column="2" Text="{Binding PositionName}" TextColor="#0F172A" FontFamily="SegoeUIBold" FontSize="13" HorizontalOptions="End" VerticalOptions="Center" />
+                            </Grid>
+
+                            <!-- Mã nhân viên -->
+                            <Grid ColumnDefinitions="32,Auto,*">
+                                <Label Grid.Column="0" Text="🆔" FontSize="16" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Mã Nhân Viên:" TextColor="#64748B" FontFamily="SegoeUI" FontSize="13" VerticalOptions="Center" />
+                                <Label Grid.Column="2" Text="{Binding EmployeeId, StringFormat='NV-{0:D3}'}" TextColor="#1E3A8A" FontFamily="SegoeUIBold" FontSize="13" HorizontalOptions="End" VerticalOptions="Center" />
+                            </Grid>
+
+                            <!-- Tên đăng nhập -->
+                            <Grid ColumnDefinitions="32,Auto,*">
+                                <Label Grid.Column="0" Text="👤" FontSize="16" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Tài Khoản:" TextColor="#64748B" FontFamily="SegoeUI" FontSize="13" VerticalOptions="Center" />
+                                <Label Grid.Column="2" Text="{Binding Username, StringFormat='@{0}'}" TextColor="#475569" FontFamily="SegoeUI" FontSize="13" HorizontalOptions="End" VerticalOptions="Center" />
+                            </Grid>
+
+                            <!-- Email -->
+                            <Grid ColumnDefinitions="32,Auto,*">
+                                <Label Grid.Column="0" Text="📧" FontSize="16" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Email:" TextColor="#64748B" FontFamily="SegoeUI" FontSize="13" VerticalOptions="Center" />
+                                <Label Grid.Column="2" Text="{Binding Email}" TextColor="#0F172A" FontFamily="SegoeUI" FontSize="12" HorizontalOptions="End" VerticalOptions="Center" />
+                            </Grid>
+
+                            <!-- Điện thoại -->
+                            <Grid ColumnDefinitions="32,Auto,*">
+                                <Label Grid.Column="0" Text="📞" FontSize="16" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Điện Thoại:" TextColor="#64748B" FontFamily="SegoeUI" FontSize="13" VerticalOptions="Center" />
+                                <Label Grid.Column="2" Text="{Binding Phone}" TextColor="#0F172A" FontFamily="SegoeUIBold" FontSize="13" HorizontalOptions="End" VerticalOptions="Center" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- THẺ 2: ĐỔI MẬT KHẨU (CHANGE PASSWORD CARD) -->
+                <Border x:Name="passwordCard"
+                        Opacity="0"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="#FFFFFF"
+                        Padding="20,24">
+                    <Border.Shadow>
+                        <Shadow Brush="#64748B" Offset="0,6" Radius="16" Opacity="0.07" />
+                    </Border.Shadow>
+
+                    <VerticalStackLayout Spacing="14">
+                        <HorizontalStackLayout Spacing="8">
+                            <Label Text="🔒" FontSize="18" VerticalOptions="Center" />
+                            <Label Text="Đổi Mật Khẩu Đăng Nhập"
+                                   TextColor="#1E3A8A"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="15"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <!-- Ô Mật khẩu hiện tại -->
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Mật khẩu hiện tại" TextColor="#475569" FontFamily="SegoeUIBold" FontSize="12" />
+                            <Border StrokeShape="RoundRectangle 12" Stroke="#CBD5E1" BackgroundColor="#F8FAFC" Padding="14,0">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Entry Grid.Column="0"
+                                           Text="{Binding CurrentPassword}"
+                                           IsPassword="{Binding IsPasswordHidden}"
+                                           Placeholder="Nhập mật khẩu hiện tại"
+                                           PlaceholderColor="#94A3B8"
+                                           TextColor="#0F172A"
+                                           FontFamily="SegoeUI"
+                                           FontSize="13"
+                                           HeightRequest="46" />
+                                    <Button Grid.Column="1"
+                                            Text="👁"
+                                            Command="{Binding TogglePasswordCommand}"
+                                            BackgroundColor="Transparent"
+                                            TextColor="#64748B"
+                                            FontSize="14"
+                                            WidthRequest="36"
+                                            HeightRequest="36"
+                                            Padding="0" />
+                                </Grid>
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- Ô Mật khẩu mới -->
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Mật khẩu mới (tối thiểu 6 ký tự)" TextColor="#475569" FontFamily="SegoeUIBold" FontSize="12" />
+                            <Border StrokeShape="RoundRectangle 12" Stroke="#CBD5E1" BackgroundColor="#F8FAFC" Padding="14,0">
+                                <Entry Text="{Binding NewPassword}"
+                                       IsPassword="{Binding IsPasswordHidden}"
+                                       Placeholder="Nhập mật khẩu mới"
+                                       PlaceholderColor="#94A3B8"
+                                       TextColor="#0F172A"
+                                       FontFamily="SegoeUI"
+                                       FontSize="13"
+                                       HeightRequest="46" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- Ô Xác nhận mật khẩu mới -->
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Xác nhận mật khẩu mới" TextColor="#475569" FontFamily="SegoeUIBold" FontSize="12" />
+                            <Border StrokeShape="RoundRectangle 12" Stroke="#CBD5E1" BackgroundColor="#F8FAFC" Padding="14,0">
+                                <Entry Text="{Binding ConfirmPassword}"
+                                       IsPassword="{Binding IsPasswordHidden}"
+                                       Placeholder="Nhập lại mật khẩu mới"
+                                       PlaceholderColor="#94A3B8"
+                                       TextColor="#0F172A"
+                                       FontFamily="SegoeUI"
+                                       FontSize="13"
+                                       HeightRequest="46" />
+                            </Border>
+                        </VerticalStackLayout>
+
+                        <!-- NÚT CẬP NHẬT MẬT KHẨU (XANH ĐẬM + VIỀN VÀNG KIM) -->
+                        <Button Text="CẬP NHẬT MẬT KHẨU"
+                                Command="{Binding ChangePasswordCommand}"
+                                Clicked="OnChangePasswordButtonClicked"
+                                BackgroundColor="#1E3A8A"
+                                TextColor="#FFFFFF"
+                                FontFamily="SegoeUIBold"
+                                FontSize="13"
+                                CornerRadius="12"
+                                HeightRequest="48"
+                                BorderColor="#D4AF37"
+                                BorderWidth="1.5"
+                                Margin="0,6,0,0">
+                            <Button.Shadow>
+                                <Shadow Brush="#1E3A8A" Offset="0,4" Radius="10" Opacity="0.3" />
+                            </Button.Shadow>
+                        </Button>
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- 2. CUSTOM LUXURY MODAL POPUP (THÔNG BÁO KẾT QUẢ ĐỔI MK) -->
+        <Grid x:Name="profileModalOverlay"
+              IsVisible="{Binding IsPopupVisible}"
+              BackgroundColor="#990F172A"
+              ZIndex="999"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+
+            <Border x:Name="profileModalCard"
+                    StrokeShape="RoundRectangle 24"
+                    Stroke="{Binding PopupBorderColor}"
+                    StrokeThickness="2"
+                    BackgroundColor="#FFFFFF"
+                    WidthRequest="330"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Padding="24,28">
+                <Border.Shadow>
+                    <Shadow Brush="#0F172A" Offset="0,12" Radius="24" Opacity="0.3" />
+                </Border.Shadow>
+
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <Border StrokeShape="RoundRectangle 30"
+                            Stroke="{Binding PopupBorderColor}"
+                            StrokeThickness="2"
+                            BackgroundColor="{Binding PopupIconBgColor}"
+                            WidthRequest="60"
+                            HeightRequest="60"
+                            HorizontalOptions="Center">
+                        <Label Text="{Binding PopupIconText}"
+                               TextColor="{Binding PopupIconTextColor}"
+                               FontSize="26"
+                               FontFamily="SegoeUIBold"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <Label Text="{Binding PopupTitle}"
+                           FontFamily="SegoeUIBold"
+                           FontSize="18"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+
+                    <Label Text="{Binding PopupMessage}"
+                           FontFamily="SegoeUI"
+                           FontSize="13"
+                           TextColor="#475569"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center"
+                           LineBreakMode="WordWrap" />
+
+                    <Button Text="{Binding PopupButtonText}"
+                            Command="{Binding ClosePopupCommand}"
+                            Clicked="OnPopupDismissClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="13"
+                            BackgroundColor="#1E3A8A"
+                            TextColor="#FFFFFF"
+                            BorderColor="#D4AF37"
+                            BorderWidth="1.5"
+                            CornerRadius="12"
+                            HeightRequest="46"
+                            WidthRequest="220"
+                            Margin="0,6,0,0">
+                        <Button.Shadow>
+                            <Shadow Brush="#1E3A8A" Offset="0,4" Radius="10" Opacity="0.25" />
+                        </Button.Shadow>
+                    </Button>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+    </Grid>
+
+</ContentPage>
