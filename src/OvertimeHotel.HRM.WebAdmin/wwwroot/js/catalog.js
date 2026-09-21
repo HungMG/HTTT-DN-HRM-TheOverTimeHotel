@@ -18,7 +18,6 @@
   const loadingOverlay = page.querySelector("[data-catalog-loading]");
   let searchTimer;
   let activeAbortController = null;
-  let isComposing = false;
 
   const animateCountUp = (element, startValue, targetValue, duration = 420) => {
     if (!element || reduceMotion || startValue === targetValue) {
@@ -110,15 +109,13 @@
   };
 
   const buildFilterUrl = () => {
-    const url = new URL(
-      filterForm?.action || window.location.href,
-      window.location.origin
-    );
+    const basePath =
+      filterForm?.getAttribute("action") || window.location.pathname;
+    const url = new URL(basePath, window.location.origin);
     if (!filterForm) return url;
     new FormData(filterForm).forEach((value, key) => {
       const normalized = String(value).trim();
       if (normalized) url.searchParams.set(key, normalized);
-      else url.searchParams.delete(key);
     });
     return url;
   };
@@ -187,7 +184,7 @@
     });
   };
 
-  const triggerLiveSearch = (delay = 500) => {
+  const triggerLiveSearch = (delay = 350) => {
     toggleResetButtons();
     window.clearTimeout(searchTimer);
     searchTimer = window.setTimeout(() => {
@@ -211,19 +208,16 @@
   });
 
   if (searchInput) {
-    searchInput.addEventListener("compositionstart", () => {
-      isComposing = true;
+    // Không chặn isComposing vì bộ gõ Tiếng Việt (Telex/VNI trên Windows) giữ trạng thái composition
+    // cho từ cuối cùng nếu chưa gõ phím cách hoặc Enter. Chặn isComposing khiến live search không bao giờ kích hoạt khi dừng gõ.
+    searchInput.addEventListener("input", () => {
+      toggleResetButtons();
+      triggerLiveSearch(350);
     });
 
     searchInput.addEventListener("compositionend", () => {
-      isComposing = false;
       toggleResetButtons();
-    });
-
-    searchInput.addEventListener("input", (event) => {
-      toggleResetButtons();
-      if (isComposing || event.isComposing) return;
-      // Chỉ tiến hành tìm kiếm khi người dùng submit form hoặc nhấn Enter.
+      triggerLiveSearch(250);
     });
 
     searchInput.addEventListener("keydown", (event) => {
@@ -249,6 +243,7 @@
     if (!reset) return;
     if (!filterForm) return;
     event.preventDefault();
+    event.stopPropagation();
     window.clearTimeout(searchTimer);
     filterForm.reset();
     filterForm
@@ -257,7 +252,8 @@
         control.value = "";
       });
     toggleResetButtons();
-    void refreshResults(new URL(reset.href, window.location.origin));
+    searchInput?.focus();
+    void refreshResults(buildFilterUrl());
   });
 
   toggleResetButtons();
