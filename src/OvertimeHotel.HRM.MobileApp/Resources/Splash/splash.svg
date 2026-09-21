@@ -1,8 +1,470 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="456" height="456" viewBox="0 0 456 456" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <path d="m 105.50037,281.60863 c -2.70293,0 -5.00091,-0.90042 -6.893127,-2.70209 -1.892214,-1.84778 -2.837901,-4.04181 -2.837901,-6.58209 0,-2.58722 0.945687,-4.80389 2.837901,-6.65167 1.892217,-1.84778 4.190197,-2.77167 6.893127,-2.77167 2.74819,0 5.06798,0.92389 6.96019,2.77167 1.93749,1.84778 2.90581,4.06445 2.90581,6.65167 0,2.54028 -0.96832,4.73431 -2.90581,6.58209 -1.89221,1.80167 -4.212,2.70209 -6.96019,2.70209 z" style="fill:#ffffff;fill-rule:nonzero;stroke-width:0.838376" />
-    <path d="M 213.56111,280.08446 H 195.99044 L 149.69953,207.0544 c -1.17121,-1.84778 -2.14037,-3.76515 -2.90581,-5.75126 h -0.40578 c 0.36051,2.12528 0.54076,6.67515 0.54076,13.6496 v 65.13172 h -15.54349 v -99.36009 h 18.71925 l 44.7374,71.29798 c 1.89222,2.95695 3.1087,4.98917 3.64945,6.09751 h 0.26996 c -0.45021,-2.6325 -0.67573,-7.09015 -0.67573,-13.37293 v -64.02256 h 15.47557 z" style="fill:#ffffff;fill-rule:nonzero;stroke-width:0.838376" />
-    <path d="m 289.25134,280.08446 h -54.40052 v -99.36009 h 52.23835 v 13.99669 h -36.15411 v 28.13085 h 33.31621 v 13.9271 h -33.31621 v 29.37835 h 38.31628 z" style="fill:#ffffff;fill-rule:nonzero;stroke-width:0.838376" />
-    <path d="M 366.56466,194.72106 H 338.7222 v 85.3634 h -16.08423 v -85.3634 h -27.77455 v -13.99669 h 71.70124 z" style="fill:#ffffff;fill-rule:nonzero;stroke-width:0.838376" />
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Multi-stop Luxury Champagne Gold Gradients -->
+    <linearGradient id="goldLinear" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB" />
+      <stop offset="15%" stop-color="#FDE047" />
+      <stop offset="45%" stop-color="#D4AF37" />
+      <stop offset="75%" stop-color="#B45309" />
+      <stop offset="100%" stop-color="#78350F" />
+    </linearGradient>
+
+    <linearGradient id="goldLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="25%" stop-color="#FEF9C3" />
+      <stop offset="60%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#D4AF37" />
+    </linearGradient>
+
+    <linearGradient id="goldDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4AF37" />
+      <stop offset="40%" stop-color="#B45309" />
+      <stop offset="80%" stop-color="#92400E" />
+      <stop offset="100%" stop-color="#78350F" />
+    </linearGradient>
+
+    <linearGradient id="goldHoriz" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#B45309" />
+      <stop offset="20%" stop-color="#D4AF37" />
+      <stop offset="50%" stop-color="#FFFDF0" />
+      <stop offset="80%" stop-color="#D4AF37" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+
+    <radialGradient id="shieldNavy" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="45%" stop-color="#142459" />
+      <stop offset="80%" stop-color="#0B132B" />
+      <stop offset="100%" stop-color="#060C1C" />
+    </radialGradient>
+
+    <radialGradient id="pearlGrad" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="45%" stop-color="#FEF08A" />
+      <stop offset="85%" stop-color="#D4AF37" />
+      <stop offset="100%" stop-color="#92400E" />
+    </radialGradient>
+
+    <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FDE047" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#D4AF37" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#D4AF37" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.25" />
+      <stop offset="60%" stop-color="#1E3A8A" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#0B132B" stop-opacity="0" />
+    </radialGradient>
+
+    <filter id="crestShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#050814" flood-opacity="0.75" />
+    </filter>
+
+    <pattern id="shieldGuilloche" width="12" height="12" patternUnits="userSpaceOnUse">
+      <path d="M 0,6 L 6,0 L 12,6 L 6,12 Z" fill="none" stroke="#D4AF37" stroke-width="0.5" opacity="0.08" />
+    </pattern>
+      <!-- Background Radial Gradient: Deep Royal Navy -->
+    <radialGradient id="splashBg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="35%" stop-color="#142459" />
+      <stop offset="70%" stop-color="#0B132B" />
+      <stop offset="100%" stop-color="#050814" />
+    </radialGradient>
+    <pattern id="splashGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="16" cy="16" r="0.75" fill="#D4AF37" opacity="0.12" />
+    </pattern>
+  </defs>
+
+  <!-- Background Rect (Full Bleed) -->
+  <rect width="512" height="512" fill="url(#splashBg)" />
+  <rect width="512" height="512" fill="url(#splashGrid)" />
+
+  <!-- Ambient Light Behind Emblem -->
+  <circle cx="256" cy="160" r="160" fill="url(#centerGlow)" />
+
+  <!-- ======================================================== -->
+  <!-- TOP EMBLEM: Scaled 0.78 and Centered at (256, 160)       -->
+  <!-- Original center: (228, 228), scale: 0.78                 -->
+  <!-- tx = 256 - 228 * 0.78 = 256 - 177.84 = 78.16             -->
+  <!-- ty = 160 - 228 * 0.78 = 160 - 177.84 = -17.84            -->
+  <!-- ======================================================== -->
+  <g transform="translate(78.16, -17.84) scale(0.78)" filter="url(#crestShadow)">
+
+    <!-- 1. LAUREL WREATH (Flanking Shield) -->
+    <g id="laurel-wreath">
+      <!-- Stems with dual-tone stroke -->
+      <path d="M 224,346 C 175,346 124,275 138,172" fill="none" stroke="url(#goldDark)" stroke-width="2.2" stroke-linecap="round" />
+      <path d="M 224,346 C 175,346 124,275 138,172" fill="none" stroke="url(#goldLight)" stroke-width="1.2" stroke-linecap="round" />
+      <path d="M 232,346 C 281,346 332,275 318,172" fill="none" stroke="url(#goldDark)" stroke-width="2.2" stroke-linecap="round" />
+      <path d="M 232,346 C 281,346 332,275 318,172" fill="none" stroke="url(#goldLight)" stroke-width="1.2" stroke-linecap="round" />
+
+      
+      <!-- Leaf pair 1 at t=0.12 -->
+      <path d="M 206.4,343.0 Q 200.2,342.9 194.4,347.4 L 206.4,343.0 Z" fill="url(#goldLight)" />
+      <path d="M 206.4,343.0 Q 201.7,347.0 194.4,347.4 L 206.4,343.0 Z" fill="url(#goldDark)" />
+      <path d="M 206.4,343.0 Q 204.0,338.3 198.2,335.8 L 206.4,343.0 Z" fill="url(#goldLight)" />
+      <path d="M 206.4,343.0 Q 201.4,341.3 198.2,335.8 L 206.4,343.0 Z" fill="url(#goldDark)" />
+      <circle cx="206.4" cy="343.0" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 2 at t=0.26 -->
+      <path d="M 186.6,332.3 Q 180.2,330.0 172.5,332.7 L 186.6,332.3 Z" fill="url(#goldLight)" />
+      <path d="M 186.6,332.3 Q 180.3,334.9 172.5,332.7 L 186.6,332.3 Z" fill="url(#goldDark)" />
+      <path d="M 186.6,332.3 Q 185.7,326.5 180.5,322.0 L 186.6,332.3 Z" fill="url(#goldLight)" />
+      <path d="M 186.6,332.3 Q 181.9,328.8 180.5,322.0 L 186.6,332.3 Z" fill="url(#goldDark)" />
+      <circle cx="186.6" cy="332.3" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 3 at t=0.40 -->
+      <path d="M 168.5,314.4 Q 162.6,310.4 154.1,311.1 L 168.5,314.4 Z" fill="url(#goldLight)" />
+      <path d="M 168.5,314.4 Q 161.4,315.4 154.1,311.1 L 168.5,314.4 Z" fill="url(#goldDark)" />
+      <path d="M 168.5,314.4 Q 169.2,308.3 165.1,302.3 L 168.5,314.4 Z" fill="url(#goldLight)" />
+      <path d="M 168.5,314.4 Q 164.8,309.6 165.1,302.3 L 168.5,314.4 Z" fill="url(#goldDark)" />
+      <circle cx="168.5" cy="314.4" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 4 at t=0.54 -->
+      <path d="M 153.4,290.0 Q 148.5,284.8 139.9,283.6 L 153.4,290.0 Z" fill="url(#goldLight)" />
+      <path d="M 153.4,290.0 Q 146.2,289.5 139.9,283.6 L 153.4,290.0 Z" fill="url(#goldDark)" />
+      <path d="M 153.4,290.0 Q 155.4,284.2 152.7,277.3 L 153.4,290.0 Z" fill="url(#goldLight)" />
+      <path d="M 153.4,290.0 Q 150.7,284.5 152.7,277.3 L 153.4,290.0 Z" fill="url(#goldDark)" />
+      <circle cx="153.4" cy="290.0" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 5 at t=0.68 -->
+      <path d="M 142.3,259.8 Q 138.6,253.9 130.7,251.2 L 142.3,259.8 Z" fill="url(#goldLight)" />
+      <path d="M 142.3,259.8 Q 135.6,257.9 130.7,251.2 L 142.3,259.8 Z" fill="url(#goldDark)" />
+      <path d="M 142.3,259.8 Q 145.3,254.6 144.0,247.6 L 142.3,259.8 Z" fill="url(#goldLight)" />
+      <path d="M 142.3,259.8 Q 140.8,254.0 144.0,247.6 L 142.3,259.8 Z" fill="url(#goldDark)" />
+      <circle cx="142.3" cy="259.8" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 6 at t=0.82 -->
+      <path d="M 136.4,224.3 Q 133.9,218.3 127.2,214.5 L 136.4,224.3 Z" fill="url(#goldLight)" />
+      <path d="M 136.4,224.3 Q 130.6,221.5 127.2,214.5 L 136.4,224.3 Z" fill="url(#goldDark)" />
+      <path d="M 136.4,224.3 Q 139.9,220.0 139.8,213.5 L 136.4,224.3 Z" fill="url(#goldLight)" />
+      <path d="M 136.4,224.3 Q 135.9,218.8 139.8,213.5 L 136.4,224.3 Z" fill="url(#goldDark)" />
+      <circle cx="136.4" cy="224.3" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 7 at t=0.95 -->
+      <path d="M 136.4,187.2 Q 135.1,181.5 129.6,177.2 L 136.4,187.2 Z" fill="url(#goldLight)" />
+      <path d="M 136.4,187.2 Q 131.6,183.9 129.6,177.2 L 136.4,187.2 Z" fill="url(#goldDark)" />
+      <path d="M 136.4,187.2 Q 140.1,183.9 141.0,178.1 L 136.4,187.2 Z" fill="url(#goldLight)" />
+      <path d="M 136.4,187.2 Q 136.8,182.2 141.0,178.1 L 136.4,187.2 Z" fill="url(#goldDark)" />
+      <circle cx="136.4" cy="187.2" r="1.8" fill="url(#pearlGrad)" />
+      
+      <!-- Leaf pair 1 at t=0.12 -->
+      <path d="M 249.6,343.0 Q 254.3,347.0 261.6,347.4 L 249.6,343.0 Z" fill="url(#goldLight)" />
+      <path d="M 249.6,343.0 Q 255.8,342.9 261.6,347.4 L 249.6,343.0 Z" fill="url(#goldDark)" />
+      <path d="M 249.6,343.0 Q 254.6,341.3 257.8,335.8 L 249.6,343.0 Z" fill="url(#goldLight)" />
+      <path d="M 249.6,343.0 Q 252.0,338.3 257.8,335.8 L 249.6,343.0 Z" fill="url(#goldDark)" />
+      <circle cx="249.6" cy="343.0" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 2 at t=0.26 -->
+      <path d="M 269.4,332.3 Q 275.7,334.9 283.5,332.7 L 269.4,332.3 Z" fill="url(#goldLight)" />
+      <path d="M 269.4,332.3 Q 275.8,330.0 283.5,332.7 L 269.4,332.3 Z" fill="url(#goldDark)" />
+      <path d="M 269.4,332.3 Q 274.1,328.8 275.5,322.0 L 269.4,332.3 Z" fill="url(#goldLight)" />
+      <path d="M 269.4,332.3 Q 270.3,326.5 275.5,322.0 L 269.4,332.3 Z" fill="url(#goldDark)" />
+      <circle cx="269.4" cy="332.3" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 3 at t=0.40 -->
+      <path d="M 287.5,314.4 Q 294.6,315.4 301.9,311.1 L 287.5,314.4 Z" fill="url(#goldLight)" />
+      <path d="M 287.5,314.4 Q 293.4,310.4 301.9,311.1 L 287.5,314.4 Z" fill="url(#goldDark)" />
+      <path d="M 287.5,314.4 Q 291.2,309.6 290.9,302.3 L 287.5,314.4 Z" fill="url(#goldLight)" />
+      <path d="M 287.5,314.4 Q 286.8,308.3 290.9,302.3 L 287.5,314.4 Z" fill="url(#goldDark)" />
+      <circle cx="287.5" cy="314.4" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 4 at t=0.54 -->
+      <path d="M 302.6,290.0 Q 309.8,289.5 316.1,283.6 L 302.6,290.0 Z" fill="url(#goldLight)" />
+      <path d="M 302.6,290.0 Q 307.5,284.8 316.1,283.6 L 302.6,290.0 Z" fill="url(#goldDark)" />
+      <path d="M 302.6,290.0 Q 305.3,284.5 303.3,277.3 L 302.6,290.0 Z" fill="url(#goldLight)" />
+      <path d="M 302.6,290.0 Q 300.6,284.2 303.3,277.3 L 302.6,290.0 Z" fill="url(#goldDark)" />
+      <circle cx="302.6" cy="290.0" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 5 at t=0.68 -->
+      <path d="M 313.7,259.8 Q 320.4,257.9 325.3,251.2 L 313.7,259.8 Z" fill="url(#goldLight)" />
+      <path d="M 313.7,259.8 Q 317.4,253.9 325.3,251.2 L 313.7,259.8 Z" fill="url(#goldDark)" />
+      <path d="M 313.7,259.8 Q 315.2,254.0 312.0,247.6 L 313.7,259.8 Z" fill="url(#goldLight)" />
+      <path d="M 313.7,259.8 Q 310.7,254.6 312.0,247.6 L 313.7,259.8 Z" fill="url(#goldDark)" />
+      <circle cx="313.7" cy="259.8" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 6 at t=0.82 -->
+      <path d="M 319.6,224.3 Q 325.4,221.5 328.8,214.5 L 319.6,224.3 Z" fill="url(#goldLight)" />
+      <path d="M 319.6,224.3 Q 322.1,218.3 328.8,214.5 L 319.6,224.3 Z" fill="url(#goldDark)" />
+      <path d="M 319.6,224.3 Q 320.1,218.8 316.2,213.5 L 319.6,224.3 Z" fill="url(#goldLight)" />
+      <path d="M 319.6,224.3 Q 316.1,220.0 316.2,213.5 L 319.6,224.3 Z" fill="url(#goldDark)" />
+      <circle cx="319.6" cy="224.3" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Leaf pair 7 at t=0.95 -->
+      <path d="M 319.6,187.2 Q 324.4,183.9 326.4,177.2 L 319.6,187.2 Z" fill="url(#goldLight)" />
+      <path d="M 319.6,187.2 Q 320.9,181.5 326.4,177.2 L 319.6,187.2 Z" fill="url(#goldDark)" />
+      <path d="M 319.6,187.2 Q 319.2,182.2 315.0,178.1 L 319.6,187.2 Z" fill="url(#goldLight)" />
+      <path d="M 319.6,187.2 Q 315.9,183.9 315.0,178.1 L 319.6,187.2 Z" fill="url(#goldDark)" />
+      <circle cx="319.6" cy="187.2" r="1.8" fill="url(#pearlGrad)" />
+
+      <!-- Bottom Ribbon Bow tying the wreath -->
+      <g id="ribbon-bow">
+        <!-- Ribbon Tails -->
+        <path d="M 224,348 Q 212,356 204,364 Q 216,360 226,352 Z" fill="url(#goldDark)" />
+        <path d="M 232,348 Q 244,356 252,364 Q 240,360 230,352 Z" fill="url(#goldDark)" />
+        <!-- Ribbon Loops -->
+        <path d="M 226,346 C 214,340 208,348 214,354 C 220,358 226,352 227,348 Z" fill="url(#goldLight)" />
+        <path d="M 230,346 C 242,340 248,348 242,354 C 236,358 230,352 229,348 Z" fill="url(#goldLight)" />
+        <!-- Center Knot -->
+        <circle cx="228" cy="347" r="3.5" fill="url(#pearlGrad)" />
+      </g>
+    </g>
+
+    <!-- 2. HERALDIC CREST SHIELD -->
+    <g id="shield-group">
+      <!-- Outer Beveled Shield Rim -->
+      <path d="M 228,176 C 205,176 174,170 154,170 C 148,190 145,216 147,236 C 151,276 180,314 228,338 C 276,314 305,276 309,236 C 311,216 308,190 302,170 C 282,170 251,176 228,176 Z"
+            fill="url(#goldLinear)" />
+
+      <!-- Inner Shield Body (Deep Royal Navy Face) -->
+      <path d="M 228,184 C 208,184 180,178 162,178 C 157,196 155,218 157,235 C 160,268 186,303 228,326 C 270,303 296,268 299,235 C 301,218 299,196 294,178 C 276,178 248,184 228,184 Z"
+            fill="url(#shieldNavy)" />
+
+      <!-- Inner Shield Guilloche Texture -->
+      <path d="M 228,184 C 208,184 180,178 162,178 C 157,196 155,218 157,235 C 160,268 186,303 228,326 C 270,303 296,268 299,235 C 301,218 299,196 294,178 C 276,178 248,184 228,184 Z"
+            fill="url(#shieldGuilloche)" />
+
+      <!-- Inner Gold Pinstripe Border -->
+      <path d="M 228,187 C 210,187 184,182 168,182 C 164,198 162,216 164,232 C 167,262 190,295 228,318 C 266,295 289,262 292,232 C 294,216 292,198 288,182 C 272,182 246,187 228,187 Z"
+            fill="none" stroke="url(#goldLight)" stroke-width="1.2" opacity="0.85" />
+    </g>
+
+    <!-- 3. ROYAL IMPERIAL CROWN (Resting directly atop shield) -->
+    <g id="crown-group">
+      <!-- Velvet Cap Interior -->
+      <path d="M 190,166 C 190,144 204,133 228,133 C 252,133 266,144 266,166 Z" fill="#070D1F" stroke="url(#goldDark)" stroke-width="1" />
+      <!-- Velvet Gold Ribs -->
+      <path d="M 228,133 L 228,165" stroke="url(#goldLight)" stroke-width="1" opacity="0.65" />
+      <path d="M 209,139 Q 211,153 209,165" stroke="url(#goldLight)" stroke-width="0.8" opacity="0.5" />
+      <path d="M 247,139 Q 245,153 247,165" stroke="url(#goldLight)" stroke-width="0.8" opacity="0.5" />
+
+      <!-- Crown Base Band -->
+      <path d="M 182,165 Q 228,161 274,165 L 274,175 Q 228,171 182,175 Z" fill="url(#goldLinear)" stroke="url(#goldLight)" stroke-width="0.5" />
+
+      <!-- Jewels on Crown Band (Alternating Royal Sapphires and Pearls) -->
+      <!-- Left Square Sapphire -->
+      <rect x="188.5" y="167" width="5" height="5" transform="rotate(45 191 169.5)" fill="#1E3A8A" stroke="url(#goldLight)" stroke-width="0.75" />
+      <!-- Left Pearl -->
+      <circle cx="210" cy="169" r="2.8" fill="url(#pearlGrad)" />
+      <!-- Center Grand Sapphire -->
+      <rect x="224.5" y="165.5" width="7" height="7" transform="rotate(45 228 169)" fill="#1E3A8A" stroke="url(#goldLight)" stroke-width="1" />
+      <circle cx="228" cy="169" r="1.4" fill="#FFFFFF" opacity="0.95" />
+      <!-- Right Pearl -->
+      <circle cx="246" cy="169" r="2.8" fill="url(#pearlGrad)" />
+      <!-- Right Square Sapphire -->
+      <rect x="262.5" y="167" width="5" height="5" transform="rotate(45 265 169.5)" fill="#1E3A8A" stroke="url(#goldLight)" stroke-width="0.75" />
+
+      <!-- 5 Golden Coronet Peaks -->
+      <!-- Peak 1 (Far Left) -->
+      <path d="M 182,165 L 186,146 L 193,165 Z" fill="url(#goldLight)" />
+      <circle cx="186" cy="144" r="2.5" fill="url(#pearlGrad)" />
+
+      <!-- Peak 2 (Mid-Left Fleur-de-lis) -->
+      <path d="M 197,165 Q 202,150 206,136 Q 210,150 215,165 Z" fill="url(#goldLight)" />
+      <circle cx="206" cy="134" r="3.0" fill="url(#pearlGrad)" />
+
+      <!-- Peak 4 (Mid-Right Fleur-de-lis) -->
+      <path d="M 241,165 Q 246,150 250,136 Q 254,150 259,165 Z" fill="url(#goldLight)" />
+      <circle cx="250" cy="134" r="3.0" fill="url(#pearlGrad)" />
+
+      <!-- Peak 5 (Far Right) -->
+      <path d="M 263,165 L 270,146 L 274,165 Z" fill="url(#goldLight)" />
+      <circle cx="270" cy="144" r="2.5" fill="url(#pearlGrad)" />
+
+      <!-- Center Grand Peak (Royal Fleur-de-lis with Diamond Cross) -->
+      <path d="M 223,164 Q 225,144 228,124 Q 231,144 233,164 Z" fill="url(#goldLight)" />
+      <!-- Center Side Petals -->
+      <path d="M 228,144 C 219,139 216,132 220,130 C 224,128 227,136 228,141 Z" fill="url(#goldLight)" />
+      <path d="M 228,144 C 237,139 240,132 236,130 C 232,128 229,136 228,141 Z" fill="url(#goldDark)" />
+      <!-- Center Finial Diamond -->
+      <polygon points="228,116 231.5,121 228,126 224.5,121" fill="url(#goldLight)" stroke="url(#goldDark)" stroke-width="0.5" />
+      <circle cx="228" cy="121" r="1.5" fill="#FFFFFF" />
+    </g>
+
+    <!-- 4. 5 STARS (Majestic Arc above crown) -->
+    <g id="stars-arc">
+      
+    <g class="star">
+      <circle cx="156.0" cy="122.0" r="12.6" fill="url(#starGlow)" opacity="0.35" />
+      <path d="M 156.00,122.00 L 153.34,113.40 L 157.23,118.40 Z M 156.00,122.00 L 163.36,116.81 L 159.80,122.05 Z M 156.00,122.00 L 163.21,127.39 L 157.12,125.63 Z M 156.00,122.00 L 153.10,130.52 L 152.89,124.19 Z M 156.00,122.00 L 147.00,121.87 L 152.96,119.72 Z" fill="url(#goldDark)" />
+      <path d="M 156.00,122.00 L 153.34,113.40 L 152.96,119.72 Z M 156.00,122.00 L 163.36,116.81 L 157.23,118.40 Z M 156.00,122.00 L 163.21,127.39 L 159.80,122.05 Z M 156.00,122.00 L 153.10,130.52 L 157.12,125.63 Z M 156.00,122.00 L 147.00,121.87 L 152.89,124.19 Z" fill="url(#goldLight)" />
+      <circle cx="156.0" cy="122.0" r="1.7" fill="#FFFFFF" opacity="0.95" />
+    </g>
+    <g class="star">
+      <circle cx="191.0" cy="107.0" r="16.1" fill="url(#starGlow)" opacity="0.35" />
+      <path d="M 191.00,107.00 L 189.28,95.63 L 193.21,102.74 Z M 191.00,107.00 L 201.28,101.85 L 195.74,107.78 Z M 191.00,107.00 L 199.07,115.19 L 191.72,111.75 Z M 191.00,107.00 L 185.71,117.21 L 186.71,109.15 Z M 191.00,107.00 L 179.65,105.12 L 187.63,103.58 Z" fill="url(#goldDark)" />
+      <path d="M 191.00,107.00 L 189.28,95.63 L 187.63,103.58 Z M 191.00,107.00 L 201.28,101.85 L 193.21,102.74 Z M 191.00,107.00 L 199.07,115.19 L 195.74,107.78 Z M 191.00,107.00 L 185.71,117.21 L 191.72,111.75 Z M 191.00,107.00 L 179.65,105.12 L 186.71,109.15 Z" fill="url(#goldLight)" />
+      <circle cx="191.0" cy="107.0" r="2.2" fill="#FFFFFF" opacity="0.95" />
+    </g>
+    <g class="star">
+      <circle cx="228.0" cy="98.0" r="21.0" fill="url(#starGlow)" opacity="0.35" />
+      <path d="M 228.00,98.00 L 228.00,83.00 L 231.64,92.98 Z M 228.00,98.00 L 242.27,93.36 L 233.90,99.92 Z M 228.00,98.00 L 236.82,110.14 L 228.00,104.20 Z M 228.00,98.00 L 219.18,110.14 L 222.10,99.92 Z M 228.00,98.00 L 213.73,93.36 L 224.36,92.98 Z" fill="url(#goldDark)" />
+      <path d="M 228.00,98.00 L 228.00,83.00 L 224.36,92.98 Z M 228.00,98.00 L 242.27,93.36 L 231.64,92.98 Z M 228.00,98.00 L 236.82,110.14 L 233.90,99.92 Z M 228.00,98.00 L 219.18,110.14 L 228.00,104.20 Z M 228.00,98.00 L 213.73,93.36 L 222.10,99.92 Z" fill="url(#goldLight)" />
+      <circle cx="228.0" cy="98.0" r="2.8" fill="#FFFFFF" opacity="0.95" />
+    </g>
+    <g class="star">
+      <circle cx="265.0" cy="107.0" r="16.1" fill="url(#starGlow)" opacity="0.35" />
+      <path d="M 265.00,107.00 L 266.72,95.63 L 268.37,103.58 Z M 265.00,107.00 L 276.35,105.12 L 269.29,109.15 Z M 265.00,107.00 L 270.29,117.21 L 264.28,111.75 Z M 265.00,107.00 L 256.93,115.19 L 260.26,107.78 Z M 265.00,107.00 L 254.72,101.85 L 262.79,102.74 Z" fill="url(#goldDark)" />
+      <path d="M 265.00,107.00 L 266.72,95.63 L 262.79,102.74 Z M 265.00,107.00 L 276.35,105.12 L 268.37,103.58 Z M 265.00,107.00 L 270.29,117.21 L 269.29,109.15 Z M 265.00,107.00 L 256.93,115.19 L 264.28,111.75 Z M 265.00,107.00 L 254.72,101.85 L 260.26,107.78 Z" fill="url(#goldLight)" />
+      <circle cx="265.0" cy="107.0" r="2.2" fill="#FFFFFF" opacity="0.95" />
+    </g>
+    <g class="star">
+      <circle cx="300.0" cy="122.0" r="12.6" fill="url(#starGlow)" opacity="0.35" />
+      <path d="M 300.00,122.00 L 302.66,113.40 L 303.04,119.72 Z M 300.00,122.00 L 309.00,121.87 L 303.11,124.19 Z M 300.00,122.00 L 302.90,130.52 L 298.88,125.63 Z M 300.00,122.00 L 292.79,127.39 L 296.20,122.05 Z M 300.00,122.00 L 292.64,116.81 L 298.77,118.40 Z" fill="url(#goldDark)" />
+      <path d="M 300.00,122.00 L 302.66,113.40 L 298.77,118.40 Z M 300.00,122.00 L 309.00,121.87 L 303.04,119.72 Z M 300.00,122.00 L 302.90,130.52 L 303.11,124.19 Z M 300.00,122.00 L 292.79,127.39 L 298.88,125.63 Z M 300.00,122.00 L 292.64,116.81 L 296.20,122.05 Z" fill="url(#goldLight)" />
+      <circle cx="300.0" cy="122.0" r="1.7" fill="#FFFFFF" opacity="0.95" />
+    </g>
+    </g>
+
+    <!-- 5. "OT" LUXURY MONOGRAM (Intertwined & Faceted 3D Gold) -->
+    <g id="monogram-ot">
+      <ellipse cx="228" cy="254" rx="36" ry="46" fill="url(#centerGlow)" opacity="0.4" />
+
+      <!-- LETTER "O" (Classical Roman / Didot Oval) -->
+      <!-- Left Flank of O (Light Facet) -->
+      <path d="M 228,206 
+               C 204,206 190,224 190,254 
+               C 190,284 204,302 228,302 
+               L 228,295 
+               C 210,295 204,280 204,254 
+               C 204,228 210,213 228,213 Z"
+            fill="url(#goldLight)" />
+
+      <!-- Right Flank of O (Dark/Shadow Facet) -->
+      <path d="M 228,206 
+               C 252,206 266,224 266,254 
+               C 266,284 252,302 228,302 
+               L 228,295 
+               C 246,295 252,280 252,254 
+               C 252,228 246,213 228,213 Z"
+            fill="url(#goldDark)" />
+
+      <!-- Outer and Inner Rim Highlights of "O" -->
+      <ellipse cx="228" cy="254" rx="38" ry="48" fill="none" stroke="url(#goldHoriz)" stroke-width="1" opacity="0.95" />
+      <ellipse cx="228" cy="254" rx="24" ry="41" fill="none" stroke="url(#goldHoriz)" stroke-width="0.75" opacity="0.85" />
+
+      <!-- LETTER "T" (Classical Chiseled Pillar with Serifs) -->
+      <!-- Drop shadow under T crossbar where it crosses O -->
+      <rect x="194" y="214" width="68" height="15" rx="3" fill="#060C1C" opacity="0.35" filter="url(#crestShadow)" />
+
+      <!-- Left Serif Flare -->
+      <path d="M 198,211 L 202,216 L 202,226 L 198,231 L 195,231 L 195,211 Z" fill="url(#goldLight)" />
+      <!-- Right Serif Flare -->
+      <path d="M 258,211 L 254,216 L 254,226 L 258,231 L 261,231 L 261,211 Z" fill="url(#goldDark)" />
+
+      <!-- Top Crossbar Upper Half (Light) -->
+      <polygon points="198,216 258,216 258,221 198,221" fill="url(#goldLight)" />
+      <!-- Top Crossbar Lower Half (Dark) -->
+      <polygon points="198,221 258,221 258,226 198,226" fill="url(#goldDark)" />
+      <line x1="198" y1="216" x2="258" y2="216" stroke="#FFFFFF" stroke-width="1" opacity="0.9" />
+
+      <!-- Vertical Stem of T (Chiseled Facets) -->
+      <polygon points="221.5,226 228,226 228,292 221.5,292" fill="url(#goldLight)" />
+      <polygon points="228,226 234.5,226 234.5,292 228,292" fill="url(#goldDark)" />
+      <!-- Center Ridge Line -->
+      <line x1="228" y1="226" x2="228" y2="292" stroke="#FFF7D6" stroke-width="0.8" opacity="0.9" />
+
+      <!-- Base Serif of T -->
+      <path d="M 221.5,292 C 220,295 215,296 212,296 L 212,301 L 228,301 L 228,292 Z" fill="url(#goldLight)" />
+      <path d="M 234.5,292 C 236,295 241,296 244,296 L 244,301 L 228,301 L 228,292 Z" fill="url(#goldDark)" />
+      <line x1="212" y1="301" x2="244" y2="301" stroke="url(#goldLinear)" stroke-width="1" />
+    </g>
+
+    <!-- 6. LOWER CREST DIAMOND STAR ACCENT (y=316) -->
+    <g id="lower-star">
+      <polygon points="228,310 231,316 237,316 232,320 234,326 228,322 222,326 224,320 219,316 225,316" fill="url(#goldLight)" />
+      <circle cx="228" cy="318" r="1.2" fill="#FFFFFF" />
+    </g>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- LUXURY FILIGREE DIVIDER (y = 286)                         -->
+  <!-- ======================================================== -->
+  <g id="divider">
+    <!-- Left tapering line -->
+    <path d="M 110,286 L 225,286" stroke="url(#goldLight)" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+    <!-- Right tapering line -->
+    <path d="M 287,286 L 402,286" stroke="url(#goldLight)" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+    <!-- Center diamond star & pearls -->
+    <polygon points="256,280 259,286 265,286 260,289 262,295 256,291 250,295 252,289 247,286 253,286" fill="url(#goldLight)" />
+    <circle cx="256" cy="287" r="1.2" fill="#FFFFFF" />
+    <circle cx="238" cy="286" r="2.2" fill="url(#pearlGrad)" />
+    <circle cx="274" cy="286" r="2.2" fill="url(#pearlGrad)" />
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- TYPOGRAPHY SECTION                                       -->
+  <!-- ======================================================== -->
+  <!-- Brand Name: THE OVERTIME -->
+  <text x="256" y="332"
+        text-anchor="middle"
+        font-family="'Cinzel', 'Playfair Display', 'Trajan Pro', 'Georgia', 'Times New Roman', serif"
+        font-size="28"
+        font-weight="700"
+        letter-spacing="6"
+        fill="url(#goldLinear)">
+    THE OVERTIME
+  </text>
+
+  <!-- Hotel Title: HOTEL -->
+  <text x="256" y="370"
+        text-anchor="middle"
+        font-family="'Cinzel', 'Playfair Display', 'Trajan Pro', 'Georgia', 'Times New Roman', serif"
+        font-size="21"
+        font-weight="600"
+        letter-spacing="14"
+        fill="#FFFFFF">
+    HOTEL
+  </text>
+
+  <!-- 5 Gold Stars Horizontal Row (Centered at y=408) -->
+  <g id="splash-stars">
+    
+      <g>
+        <circle cx="208" cy="408" r="7.8" fill="url(#starGlow)" opacity="0.4" />
+        <path d="M 208.00,408.00 L 208.00,402.00 L 209.47,405.98 Z M 208.00,408.00 L 213.71,406.15 L 210.38,408.77 Z M 208.00,408.00 L 211.53,412.85 L 208.00,410.50 Z M 208.00,408.00 L 204.47,412.85 L 205.62,408.77 Z M 208.00,408.00 L 202.29,406.15 L 206.53,405.98 Z" fill="url(#goldDark)" />
+        <path d="M 208.00,408.00 L 208.00,402.00 L 206.53,405.98 Z M 208.00,408.00 L 213.71,406.15 L 209.47,405.98 Z M 208.00,408.00 L 211.53,412.85 L 210.38,408.77 Z M 208.00,408.00 L 204.47,412.85 L 208.00,410.50 Z M 208.00,408.00 L 202.29,406.15 L 205.62,408.77 Z" fill="url(#goldLight)" />
+        <circle cx="208" cy="408" r="1.0" fill="#FFFFFF" />
+      </g>
+      <g>
+        <circle cx="232" cy="408" r="9.8" fill="url(#starGlow)" opacity="0.4" />
+        <path d="M 232.00,408.00 L 232.00,400.50 L 233.88,405.41 Z M 232.00,408.00 L 239.13,405.68 L 235.04,408.99 Z M 232.00,408.00 L 236.41,414.07 L 232.00,411.20 Z M 232.00,408.00 L 227.59,414.07 L 228.96,408.99 Z M 232.00,408.00 L 224.87,405.68 L 230.12,405.41 Z" fill="url(#goldDark)" />
+        <path d="M 232.00,408.00 L 232.00,400.50 L 230.12,405.41 Z M 232.00,408.00 L 239.13,405.68 L 233.88,405.41 Z M 232.00,408.00 L 236.41,414.07 L 235.04,408.99 Z M 232.00,408.00 L 227.59,414.07 L 232.00,411.20 Z M 232.00,408.00 L 224.87,405.68 L 228.96,408.99 Z" fill="url(#goldLight)" />
+        <circle cx="232" cy="408" r="1.3" fill="#FFFFFF" />
+      </g>
+      <g>
+        <circle cx="256" cy="408" r="12.3" fill="url(#starGlow)" opacity="0.4" />
+        <path d="M 256.00,408.00 L 256.00,398.50 L 258.35,404.76 Z M 256.00,408.00 L 265.04,405.06 L 259.80,409.24 Z M 256.00,408.00 L 261.58,415.69 L 256.00,412.00 Z M 256.00,408.00 L 250.42,415.69 L 252.20,409.24 Z M 256.00,408.00 L 246.96,405.06 L 253.65,404.76 Z" fill="url(#goldDark)" />
+        <path d="M 256.00,408.00 L 256.00,398.50 L 253.65,404.76 Z M 256.00,408.00 L 265.04,405.06 L 258.35,404.76 Z M 256.00,408.00 L 261.58,415.69 L 259.80,409.24 Z M 256.00,408.00 L 250.42,415.69 L 256.00,412.00 Z M 256.00,408.00 L 246.96,405.06 L 252.20,409.24 Z" fill="url(#goldLight)" />
+        <circle cx="256" cy="408" r="1.6" fill="#FFFFFF" />
+      </g>
+      <g>
+        <circle cx="280" cy="408" r="9.8" fill="url(#starGlow)" opacity="0.4" />
+        <path d="M 280.00,408.00 L 280.00,400.50 L 281.88,405.41 Z M 280.00,408.00 L 287.13,405.68 L 283.04,408.99 Z M 280.00,408.00 L 284.41,414.07 L 280.00,411.20 Z M 280.00,408.00 L 275.59,414.07 L 276.96,408.99 Z M 280.00,408.00 L 272.87,405.68 L 278.12,405.41 Z" fill="url(#goldDark)" />
+        <path d="M 280.00,408.00 L 280.00,400.50 L 278.12,405.41 Z M 280.00,408.00 L 287.13,405.68 L 281.88,405.41 Z M 280.00,408.00 L 284.41,414.07 L 283.04,408.99 Z M 280.00,408.00 L 275.59,414.07 L 280.00,411.20 Z M 280.00,408.00 L 272.87,405.68 L 276.96,408.99 Z" fill="url(#goldLight)" />
+        <circle cx="280" cy="408" r="1.3" fill="#FFFFFF" />
+      </g>
+      <g>
+        <circle cx="304" cy="408" r="7.8" fill="url(#starGlow)" opacity="0.4" />
+        <path d="M 304.00,408.00 L 304.00,402.00 L 305.47,405.98 Z M 304.00,408.00 L 309.71,406.15 L 306.38,408.77 Z M 304.00,408.00 L 307.53,412.85 L 304.00,410.50 Z M 304.00,408.00 L 300.47,412.85 L 301.62,408.77 Z M 304.00,408.00 L 298.29,406.15 L 302.53,405.98 Z" fill="url(#goldDark)" />
+        <path d="M 304.00,408.00 L 304.00,402.00 L 302.53,405.98 Z M 304.00,408.00 L 309.71,406.15 L 305.47,405.98 Z M 304.00,408.00 L 307.53,412.85 L 306.38,408.77 Z M 304.00,408.00 L 300.47,412.85 L 304.00,410.50 Z M 304.00,408.00 L 298.29,406.15 L 301.62,408.77 Z" fill="url(#goldLight)" />
+        <circle cx="304" cy="408" r="1.0" fill="#FFFFFF" />
+      </g>
+  </g>
+
+  <!-- Subtitle / HRM System Distinction -->
+  <text x="256" y="446"
+        text-anchor="middle"
+        font-family="'Montserrat', 'Century Gothic', 'Segoe UI', 'Helvetica Neue', sans-serif"
+        font-size="9.5"
+        font-weight="600"
+        letter-spacing="4"
+        fill="#CBD5E1">
+    5★ LUXURY HOTEL · HRM SYSTEM
+  </text>
+
+  <!-- Subtle bottom accent rule -->
+  <line x1="216" y1="462" x2="296" y2="462" stroke="url(#goldLight)" stroke-width="0.75" opacity="0.4" />
 </svg>

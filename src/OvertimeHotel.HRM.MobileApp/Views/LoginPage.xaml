@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+        <!-- ========================================================================= -->
+        <!-- 1. NỘI DUNG CHÍNH CỦA MÀN HÌNH ĐĂNG NHẬP (NỀN TRẮNG + NÚT XANH ĐẬM + VÀNG KIM) -->
+        <!-- ========================================================================= -->
+        <ScrollView>
+            <VerticalStackLayout Spacing="0" Padding="24,32,24,24">
+
+                <!-- BRANDING & LOGO (KHỐI 1: BAY TỪ TRÊN XUỐNG CHẬM RÃI) -->
+                <VerticalStackLayout x:Name="brandSection" Spacing="8" HorizontalOptions="Center" Margin="0,8,0,22">
+                    <Border StrokeShape="RoundRectangle 24"
+                            Stroke="#D4AF37"
+                            StrokeThickness="2"
+                            BackgroundColor="#1E3A8A"
+                            WidthRequest="76"
+                            HeightRequest="76"
+                            HorizontalOptions="Center">
+                        <Border.Shadow>
+                            <Shadow Brush="#1E3A8A" Offset="0,6" Radius="16" Opacity="0.3" />
+                        </Border.Shadow>
+                        <Label Text="★"
+                               TextColor="#FDE047"
+                               FontSize="36"
+                               FontFamily="SegoeUIBold"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <Label Text="The OverTime Hotel"
+                           TextColor="#0F172A"
+                           FontFamily="SegoeUIBold"
+                           FontSize="26"
+                           HorizontalOptions="Center"
+                           Margin="0,4,0,0" />
+
+                    <Border StrokeShape="RoundRectangle 12"
+                            Stroke="#D4AF37"
+                            StrokeThickness="1"
+                            BackgroundColor="#FFFBEB"
+                            Padding="14,4"
+                            HorizontalOptions="Center">
+                        <Label Text="CỔNG NHÂN SỰ DI ĐỘNG · 5★"
+                               TextColor="#B45309"
+                               FontSize="11"
+                               FontFamily="SegoeUIBold"
+                               CharacterSpacing="1.2" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- BẢNG CHỌN VAI TRÒ (KHỐI 2: BAY TỪ DƯỚI LÊN NỐI TIẾP) -->
+                <Border x:Name="roleSelectorBorder"
+                        StrokeShape="RoundRectangle 14"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="#F1F5F9"
+                        Padding="4"
+                        Margin="0,0,0,18">
+                    <Grid ColumnDefinitions="*,*">
+                        <Button x:Name="btnRoleEmployee"
+                                Grid.Column="0"
+                                Text="Nhân Viên"
+                                Command="{Binding SelectRoleCommand}"
+                                CommandParameter="Employee"
+                                Clicked="OnRoleButtonClicked"
+                                FontFamily="SegoeUIBold"
+                                FontSize="13"
+                                CornerRadius="10"
+                                HeightRequest="42">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsEmployeeSelected}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="#1E3A8A" />
+                                    <Setter Property="TextColor" Value="#FFFFFF" />
+                                </DataTrigger>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsEmployeeSelected}" Value="False">
+                                    <Setter Property="BackgroundColor" Value="Transparent" />
+                                    <Setter Property="TextColor" Value="#64748B" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+
+                        <Button x:Name="btnRoleManager"
+                                Grid.Column="1"
+                                Text="Quản Lý"
+                                Command="{Binding SelectRoleCommand}"
+                                CommandParameter="Manager"
+                                Clicked="OnRoleButtonClicked"
+                                FontFamily="SegoeUIBold"
+                                FontSize="13"
+                                CornerRadius="10"
+                                HeightRequest="42">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsManagerSelected}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="#1E3A8A" />
+                                    <Setter Property="TextColor" Value="#FFFFFF" />
+                                </DataTrigger>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsManagerSelected}" Value="False">
+                                    <Setter Property="BackgroundColor" Value="Transparent" />
+                                    <Setter Property="TextColor" Value="#64748B" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- KHUNG FORM NHẬP LIỆU CHÍNH (KHỐI 3: BAY LÊN KÈM ĐỘ NẢY LÒ XO) -->
+                <Border x:Name="formCardBorder"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="#FFFFFF"
+                        Padding="22,24">
+                    <Border.Shadow>
+                        <Shadow Brush="#64748B" Offset="0,8" Radius="20" Opacity="0.08" />
+                    </Border.Shadow>
+
+                    <Grid>
+                        <!-- GIAO DIỆN SKELETON SHIMMER CHUYỂN ĐỘNG NHỊP THỞ -->
+                        <VerticalStackLayout x:Name="skeletonLayout" Spacing="16" IsVisible="{Binding IsLoading}">
+                            <Border StrokeShape="RoundRectangle 8" BackgroundColor="#E2E8F0" HeightRequest="14" WidthRequest="160" HorizontalOptions="Start" />
+                            <Border StrokeShape="RoundRectangle 12" BackgroundColor="#F1F5F9" HeightRequest="48" />
+
+                            <Border StrokeShape="RoundRectangle 8" BackgroundColor="#E2E8F0" HeightRequest="14" WidthRequest="100" HorizontalOptions="Start" />
+                            <Border StrokeShape="RoundRectangle 12" BackgroundColor="#F1F5F9" HeightRequest="48" />
+
+                            <Border StrokeShape="RoundRectangle 8" BackgroundColor="#E2E8F0" HeightRequest="14" WidthRequest="140" HorizontalOptions="Start" Margin="0,4" />
+
+                            <Border StrokeShape="RoundRectangle 14" BackgroundColor="#CBD5E1" HeightRequest="52" />
+                            
+                            <Label Text="Đang xác thực bảo mật Supabase..."
+                                   TextColor="#64748B"
+                                   FontSize="12"
+                                   FontFamily="SegoeUI"
+                                   HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+
+                        <!-- FORM NHẬP THỰC TẾ KHI KHÔNG LOAD -->
+                        <VerticalStackLayout Spacing="16" IsVisible="{Binding IsNotLoading}">
+                            <!-- Ô NHẬP TÀI KHOẢN -->
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="Tài khoản / Mã nhân viên"
+                                       TextColor="#1E293B"
+                                       FontSize="13"
+                                       FontFamily="SegoeUIBold" />
+                                <Border StrokeShape="RoundRectangle 12"
+                                        Stroke="#CBD5E1"
+                                        StrokeThickness="1"
+                                        BackgroundColor="#F8FAFC"
+                                        Padding="14,0">
+                                    <Entry Text="{Binding Username}"
+                                           Placeholder="Nhập tên đăng nhập hoặc mã NV"
+                                           PlaceholderColor="#94A3B8"
+                                           TextColor="#0F172A"
+                                           FontFamily="SegoeUI"
+                                           FontSize="14"
+                                           HeightRequest="48"
+                                           ClearButtonVisibility="WhileEditing" />
+                                </Border>
+                            </VerticalStackLayout>
+
+                            <!-- Ô NHẬP MẬT KHẨU -->
+                            <VerticalStackLayout Spacing="6">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label Grid.Column="0"
+                                           Text="Mật khẩu"
+                                           TextColor="#1E293B"
+                                           FontSize="13"
+                                           FontFamily="SegoeUIBold" />
+                                    <Label x:Name="lblRoleSubtitle"
+                                           Grid.Column="1"
+                                           Text="{Binding RoleSubtitle}"
+                                           TextColor="#B45309"
+                                           FontFamily="SegoeUI"
+                                           FontSize="11" />
+                                </Grid>
+                                <Border StrokeShape="RoundRectangle 12"
+                                        Stroke="#CBD5E1"
+                                        StrokeThickness="1"
+                                        BackgroundColor="#F8FAFC"
+                                        Padding="14,0">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Entry Grid.Column="0"
+                                               Text="{Binding Password}"
+                                               IsPassword="{Binding IsPasswordHidden}"
+                                               Placeholder="Nhập mật khẩu"
+                                               PlaceholderColor="#94A3B8"
+                                               TextColor="#0F172A"
+                                               FontFamily="SegoeUI"
+                                               FontSize="14"
+                                               HeightRequest="48" />
+                                        <Button Grid.Column="1"
+                                                Text="👁"
+                                                Command="{Binding TogglePasswordCommand}"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                BackgroundColor="Transparent"
+                                                TextColor="#64748B"
+                                                FontSize="14"
+                                                Padding="0"
+                                                VerticalOptions="Center" />
+                                    </Grid>
+                                </Border>
+                            </VerticalStackLayout>
+
+                            <!-- GHI NHỚ & TRẠNG THÁI SUPABASE -->
+                            <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" Margin="0,2">
+                                <CheckBox Grid.Column="0"
+                                          IsChecked="{Binding RememberMe}"
+                                          Color="#1E3A8A"
+                                          VerticalOptions="Center" />
+                                <Label Grid.Column="1"
+                                       Text="Ghi nhớ đăng nhập"
+                                       TextColor="#475569"
+                                       FontFamily="SegoeUI"
+                                       FontSize="12"
+                                       VerticalOptions="Center" />
+                                <Label Grid.Column="2"
+                                       Text="● Supabase Online"
+                                       TextColor="#059669"
+                                       FontFamily="SegoeUIBold"
+                                       FontSize="11"
+                                       VerticalOptions="Center" />
+                            </Grid>
+
+                            <!-- NÚT ĐĂNG NHẬP CHÍNH (XANH ĐẬM + VIỀN VÀNG SANG TRỌNG) -->
+                            <Button x:Name="btnLoginMain"
+                                    Text="ĐĂNG NHẬP CA LÀM VIỆC"
+                                    Command="{Binding LoginCommand}"
+                                    Clicked="OnLoginButtonClicked"
+                                    BackgroundColor="#1E3A8A"
+                                    TextColor="#FFFFFF"
+                                    FontFamily="SegoeUIBold"
+                                    FontSize="14"
+                                    CornerRadius="14"
+                                    HeightRequest="52"
+                                    BorderColor="#D4AF37"
+                                    BorderWidth="1.5">
+                                <Button.Shadow>
+                                    <Shadow Brush="#1E3A8A" Offset="0,4" Radius="12" Opacity="0.3" />
+                                </Button.Shadow>
+                            </Button>
+
+                            <!-- NÚT XÁC THỰC SINH TRẮC HỌC (FACEID / VÂN TAY) -->
+                            <Button x:Name="btnBiometric"
+                                    Text="Đăng Nhập FaceID / Vân Tay"
+                                    Command="{Binding BiometricLoginCommand}"
+                                    Clicked="OnBiometricButtonClicked"
+                                    BackgroundColor="#FFFFFF"
+                                    TextColor="#1E3A8A"
+                                    FontFamily="SegoeUIBold"
+                                    FontSize="13"
+                                    CornerRadius="12"
+                                    HeightRequest="44"
+                                    BorderColor="#1E3A8A"
+                                    BorderWidth="1.5" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- TÀI KHOẢN MẪU TEST ĐỒ ÁN (KHỐI 4: BAY LÊN KẾT THÚC) -->
+                <VerticalStackLayout x:Name="quickChipsSection" Spacing="8" Margin="0,20,0,0">
+                    <Label Text="TÀI KHOẢN TEST NHANH ĐỒ ÁN (CHỌN 1-CLICK):"
+                           TextColor="#1E3A8A"
+                           FontFamily="SegoeUIBold"
+                           FontSize="11"
+                           HorizontalOptions="Center" />
+
+                    <FlexLayout Wrap="Wrap" JustifyContent="Center" AlignItems="Center">
+                        <Button Text="ngothibich (NV Buồng)"
+                                Command="{Binding QuickFillCommand}"
+                                CommandParameter="ngothibich"
+                                Clicked="OnChipButtonClicked"
+                                BackgroundColor="#FFFFFF"
+                                TextColor="#1E293B"
+                                BorderColor="#CBD5E1"
+                                BorderWidth="1"
+                                FontFamily="SegoeUIBold"
+                                FontSize="11"
+                                HeightRequest="36"
+                                CornerRadius="8"
+                                Margin="4"
+                                Padding="12,0">
+                            <Button.Shadow>
+                                <Shadow Brush="#64748B" Offset="0,2" Radius="4" Opacity="0.08" />
+                            </Button.Shadow>
+                        </Button>
+
+                        <Button Text="dothanhdat (Quản Lý FO)"
+                                Command="{Binding QuickFillCommand}"
+                                CommandParameter="dothanhdat"
+                                Clicked="OnChipButtonClicked"
+                                BackgroundColor="#FFFFFF"
+                                TextColor="#1E293B"
+                                BorderColor="#CBD5E1"
+                                BorderWidth="1"
+                                FontFamily="SegoeUIBold"
+                                FontSize="11"
+                                HeightRequest="36"
+                                CornerRadius="8"
+                                Margin="4"
+                                Padding="12,0">
+                            <Button.Shadow>
+                                <Shadow Brush="#64748B" Offset="0,2" Radius="4" Opacity="0.08" />
+                            </Button.Shadow>
+                        </Button>
+
+                        <Button Text="hr_sang (Phòng HR)"
+                                Command="{Binding QuickFillCommand}"
+                                CommandParameter="hr_sang"
+                                Clicked="OnChipButtonClicked"
+                                BackgroundColor="#FFFFFF"
+                                TextColor="#1E293B"
+                                BorderColor="#CBD5E1"
+                                BorderWidth="1"
+                                FontFamily="SegoeUIBold"
+                                FontSize="11"
+                                HeightRequest="36"
+                                CornerRadius="8"
+                                Margin="4"
+                                Padding="12,0">
+                            <Button.Shadow>
+                                <Shadow Brush="#64748B" Offset="0,2" Radius="4" Opacity="0.08" />
+                            </Button.Shadow>
+                        </Button>
+                    </FlexLayout>
+                </VerticalStackLayout>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- ========================================================================= -->
+        <!-- 2. CUSTOM LUXURY MODAL POPUP (KHI CÓ LỖI) -->
+        <!-- ========================================================================= -->
+        <Grid x:Name="popupOverlay"
+              IsVisible="{Binding IsPopupVisible}"
+              BackgroundColor="#990F172A"
+              ZIndex="999"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+
+            <Border x:Name="popupCard"
+                    StrokeShape="RoundRectangle 24"
+                    Stroke="{Binding PopupBorderColor}"
+                    StrokeThickness="2"
+                    BackgroundColor="#FFFFFF"
+                    WidthRequest="330"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Padding="24,28">
+                <Border.Shadow>
+                    <Shadow Brush="#0F172A" Offset="0,12" Radius="24" Opacity="0.3" />
+                </Border.Shadow>
+
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <!-- Icon tròn nổi bật -->
+                    <Border StrokeShape="RoundRectangle 30"
+                            Stroke="{Binding PopupBorderColor}"
+                            StrokeThickness="2"
+                            BackgroundColor="{Binding PopupIconBgColor}"
+                            WidthRequest="60"
+                            HeightRequest="60"
+                            HorizontalOptions="Center">
+                        <Label Text="{Binding PopupIconText}"
+                               TextColor="{Binding PopupIconTextColor}"
+                               FontSize="26"
+                               FontFamily="SegoeUIBold"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <!-- Tiêu đề thông báo -->
+                    <Label Text="{Binding PopupTitle}"
+                           FontFamily="SegoeUIBold"
+                           FontSize="18"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+
+                    <!-- Nội dung thông báo -->
+                    <Label Text="{Binding PopupMessage}"
+                           FontFamily="SegoeUI"
+                           FontSize="13"
+                           TextColor="#475569"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center"
+                           LineBreakMode="WordWrap" />
+
+                    <!-- Nút bấm xác nhận -->
+                    <Button Text="{Binding PopupButtonText}"
+                            Command="{Binding ClosePopupCommand}"
+                            Clicked="OnPopupConfirmClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="13"
+                            BackgroundColor="#1E3A8A"
+                            TextColor="#FFFFFF"
+                            BorderColor="#D4AF37"
+                            BorderWidth="1.5"
+                            CornerRadius="12"
+                            HeightRequest="46"
+                            WidthRequest="220"
+                            Margin="0,8,0,0">
+                        <Button.Shadow>
+                            <Shadow Brush="#1E3A8A" Offset="0,4" Radius="10" Opacity="0.25" />
+                        </Button.Shadow>
+                    </Button>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+    </Grid>
+
+</ContentPage>

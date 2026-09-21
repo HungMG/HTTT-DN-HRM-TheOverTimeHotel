@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.IntroPage"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid x:Name="introRoot" RowDefinitions="Auto,*,Auto" Padding="24,36">
+
+        <!-- 1. TIÊU ĐỀ ĐƠN GIẢN Ở TRÊN CÙNG -->
+        <HorizontalStackLayout Grid.Row="0"
+                               HorizontalOptions="Center"
+                               Spacing="6"
+                               Margin="0,16,0,0">
+            <Label Text="★"
+                   TextColor="#D4AF37"
+                   FontSize="16"
+                   VerticalOptions="Center" />
+            <Label Text="THE OVERTIME HOTEL"
+                   TextColor="#1E3A8A"
+                   FontFamily="SegoeUIBold"
+                   FontSize="16"
+                   CharacterSpacing="2"
+                   VerticalOptions="Center" />
+        </HorizontalStackLayout>
+
+        <!-- 2. KHU VỰC TRUNG TÂM: THANH LOADING PHÓNG TO + XE MÔ TÔ KÈM SỐ PHẦN TRĂM CHẠY THEO -->
+        <VerticalStackLayout Grid.Row="1"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center"
+                             Spacing="10"
+                             WidthRequest="320">
+
+            <!-- KHUNG XE MÔ TÔ KÈM SỐ PHẦN TRĂM CHẠY DỌC THEO TIẾN TRÌNH -->
+            <Grid WidthRequest="320" HeightRequest="68" HorizontalOptions="Center">
+                <!-- Cụm xe mô tô + nhãn phần trăm ở dưới di chuyển đồng bộ theo xe -->
+                <VerticalStackLayout x:Name="motoRiderGroup"
+                                     HorizontalOptions="Start"
+                                     VerticalOptions="Center"
+                                     Spacing="2"
+                                     WidthRequest="60"
+                                     TranslationX="0">
+                    <!-- Icon xe mô tô -->
+                    <Label x:Name="motoIcon"
+                           Text="🏍️"
+                           FontSize="32"
+                           HorizontalOptions="Center" />
+
+                    <!-- Số phần trăm gắn ngay ở dưới icon xe, số tăng dần khi xe chạy -->
+                    <Border StrokeShape="RoundRectangle 8"
+                            Stroke="#BFDBFE"
+                            StrokeThickness="1"
+                            BackgroundColor="#EFF6FF"
+                            Padding="8,2"
+                            HorizontalOptions="Center">
+                        <Label x:Name="lblPercent"
+                               Text="0%"
+                               TextColor="#1E3A8A"
+                               FontFamily="SegoeUIBold"
+                               FontSize="12"
+                               HorizontalOptions="Center" />
+                    </Border>
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- THANH TIẾN TRÌNH PHÓNG TO (NỀN SÁNG + VẠCH NẠP XANH ĐẬM + VIỀN VÀNG KIM) -->
+            <Border StrokeShape="RoundRectangle 8"
+                    Stroke="#D4AF37"
+                    StrokeThickness="1.5"
+                    BackgroundColor="#E2E8F0"
+                    HeightRequest="14"
+                    WidthRequest="320"
+                    Padding="0"
+                    HorizontalOptions="Center">
+                <!-- Vạch màu nạp xanh đậm hoàng gia dùng GPU Transform ScaleX -->
+                <BoxView x:Name="progressFill"
+                         Color="#1E3A8A"
+                         HorizontalOptions="Start"
+                         WidthRequest="320"
+                         HeightRequest="14"
+                         AnchorX="0"
+                         ScaleX="0" />
+            </Border>
+
+        </VerticalStackLayout>
+
+        <!-- 3. CHÂN TRANG ĐỂ TRỐNG ĐƠN GIẢN TINH TẾ -->
+        <BoxView Grid.Row="2" HeightRequest="1" Color="Transparent" />
+
+    </Grid>
+
+</ContentPage>

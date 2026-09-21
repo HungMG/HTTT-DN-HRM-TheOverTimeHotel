@@ -1,4 +1,69 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <svg width="456" height="456" viewBox="0 0 456 456" version="1.1" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="0" width="456" height="456" fill="#512BD4" />
+  <defs>
+    <!-- Radial White-Blue Gradient: Pure Brilliant White into Soft Ice Blue -->
+    <radialGradient id="bgWhiteBlue" cx="50%" cy="42%" r="72%" fx="50%" fy="38%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="45%" stop-color="#F4F8FF" />
+      <stop offset="75%" stop-color="#E2EEFE" />
+      <stop offset="100%" stop-color="#CCE0FC" />
+    </radialGradient>
+
+    <!-- Luxury Gold Accent Gradient -->
+    <linearGradient id="goldRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF5D1" />
+      <stop offset="25%" stop-color="#FDE047" />
+      <stop offset="50%" stop-color="#D4AF37" />
+      <stop offset="85%" stop-color="#B45309" />
+      <stop offset="100%" stop-color="#78350F" />
+    </linearGradient>
+
+    <!-- Royal Navy Gradient for Borders -->
+    <linearGradient id="navyRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="40%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <!-- Ambient Blue Shadow Glow -->
+    <radialGradient id="blueGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.15" />
+      <stop offset="70%" stop-color="#2563EB" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#1E3A8A" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Subtle luxury micro-dot pattern -->
+    <pattern id="luxDots" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="0.8" fill="#3B82F6" opacity="0.12" />
+    </pattern>
+  </defs>
+
+  <!-- 1. FULL BLEED NỀN TRẮNG PHA XANH SÁNG RỰC RỠ -->
+  <rect width="456" height="456" fill="url(#bgWhiteBlue)" />
+
+  <!-- 2. HOA VĂN CHẤM VI MÔ CHÌM TINH TẾ -->
+  <rect width="456" height="456" fill="url(#luxDots)" />
+
+  <!-- 3. QUẦNG SÁNG XANH NHẸ NHÀNG -->
+  <circle cx="228" cy="228" r="215" fill="url(#blueGlow)" />
+
+  <!-- 4. VÒNG CHỈ ĐỒNG TÂM: XANH ĐẬM + VÀNG KIM SANG TRỌNG -->
+  <!-- Vòng ngoài xanh đậm -->
+  <circle cx="228" cy="228" r="202" fill="none" stroke="url(#navyRing)" stroke-width="2.5" opacity="0.85" />
+  <!-- Vòng giữa chấm bi vàng kim -->
+  <circle cx="228" cy="228" r="195" fill="none" stroke="url(#goldRing)" stroke-width="1.2" stroke-dasharray="3,4" opacity="0.8" />
+  <!-- Vòng trong mỏng vàng kim -->
+  <circle cx="228" cy="228" r="188" fill="none" stroke="url(#goldRing)" stroke-width="1.5" opacity="0.9" />
+
+  <!-- 5. BỐN VIÊN KIM CƯƠNG VÀNG KIM TẠI 4 HƯỚNG ĐÔNG TÂY NAM BẮC -->
+  <polygon points="228,24 231.5,31 228,38 224.5,31" fill="url(#goldRing)" />
+  <polygon points="228,418 231.5,425 228,432 224.5,425" fill="url(#goldRing)" />
+  <polygon points="24,228 31,231.5 38,228 31,224.5" fill="url(#goldRing)" />
+  <polygon points="418,228 425,231.5 432,228 425,224.5" fill="url(#goldRing)" />
+
+  <!-- 6. HOA VĂN GÓC CỔ ĐIỂN MẠ VÀNG CHO MÀN HÌNH VUÔNG/SQUIRCLE -->
+  <path d="M 42,42 L 56,42 A 14,14 0 0,0 42,56 Z" fill="url(#goldRing)" opacity="0.4" />
+  <path d="M 414,42 L 400,42 A 14,14 0 0,1 414,56 Z" fill="url(#goldRing)" opacity="0.4" />
+  <path d="M 42,414 L 56,414 A 14,14 0 0,1 42,400 Z" fill="url(#goldRing)" opacity="0.4" />
+  <path d="M 414,414 L 400,414 A 14,14 0 0,0 414,400 Z" fill="url(#goldRing)" opacity="0.4" />
 </svg>
