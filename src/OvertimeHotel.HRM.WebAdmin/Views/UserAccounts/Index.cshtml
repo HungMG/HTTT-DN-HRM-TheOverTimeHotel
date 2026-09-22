@@ -139,6 +139,10 @@
                 <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Hồ sơ &amp; chính sách</small></div>
                 <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--manager"></span><span>Quản lý</span><small>Phê duyệt vận hành</small></div>
                 <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--employee"></span><span>Nhân viên</span><small>Tự phục vụ cá nhân</small></div>
+                @if (User.IsInRole("Admin") || User.HasClaim("Permission", "QL_PHAN_QUYEN"))
+                {
+                    <a asp-action="RolePermissions" class="account-role-legend-action"><i class="bi bi-shield-check"></i><span>Phân quyền vai trò</span><i class="bi bi-arrow-right"></i></a>
+                }
             </section>
         </aside>
 

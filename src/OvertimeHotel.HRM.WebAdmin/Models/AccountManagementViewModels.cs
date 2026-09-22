@@ -110,6 +110,39 @@ public class EditAccountViewModel
     public string? ChangeReason { get; set; }
 
     public IReadOnlyList<SelectListItem> RoleOptions { get; set; } = [];
+    public IReadOnlyList<RolePermissionOptionViewModel> PermissionOptions { get; set; } = [];
+}
+
+public class RolePermissionOptionViewModel
+{
+    public int PermissionId { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool Granted { get; set; }
+}
+
+public class AddRolePermissionsViewModel
+{
+    public int AccountId { get; set; }
+    public List<int> PermissionIds { get; set; } = [];
+
+    [Required(ErrorMessage = "Vui lòng nhập lý do cấp quyền.")]
+    [StringLength(500, ErrorMessage = "Lý do không được vượt quá 500 ký tự.")]
+    public string ChangeReason { get; set; } = string.Empty;
+}
+
+public class RolePermissionsViewModel
+{
+    public int RoleId { get; set; }
+    public int AffectedAccountCount { get; set; }
+    public string RoleName { get; set; } = string.Empty;
+    public List<int> PermissionIds { get; set; } = [];
+    [Required]
+    [StringLength(500)]
+    public string ChangeReason { get; set; } = string.Empty;
+    public IReadOnlyList<SelectListItem> RoleOptions { get; set; } = [];
+    public IReadOnlyList<RolePermissionOptionViewModel> PermissionOptions { get; set; } = [];
 }
 
 public class AdminAuditLogViewModel

@@ -1,0 +1,24 @@
+@model RolePermissionsViewModel
+@{
+    ViewData["Title"] = "Phân quyền vai trò";
+}
+<div class="account-workspace account-workspace--bleed account-form-workspace">
+    <header class="account-command-bar account-reveal">
+        <a asp-action="Index" class="account-icon-action"><i class="bi bi-arrow-left"></i></a>
+        <div class="account-command-copy"><div class="account-eyebrow"><span class="account-live-dot"></span> Phân quyền tập trung</div><h1>Quyền <span>theo vai trò</span></h1><p>Thay đổi sẽ áp dụng cho toàn bộ tài khoản thuộc vai trò được chọn.</p></div>
+    </header>
+    <form asp-action="SaveRolePermissions" method="post" class="account-reveal">
+        @Html.AntiForgeryToken()
+        <section class="inspector-card">
+            <div class="inspector-card-heading"><span class="inspector-index">RBAC</span><div><small>Phạm vi áp dụng</small><h2>Chọn vai trò để cấp hoặc thu hồi quyền</h2></div><i class="bi bi-shield-check"></i></div>
+            <div class="inspector-card-body">
+                <div class="account-field"><label asp-for="RoleId"><span>Vai trò</span><small>@Model.AffectedAccountCount tài khoản bị ảnh hưởng</small></label><select asp-for="RoleId" asp-items="Model.RoleOptions" onchange="this.form.method='get';this.form.action='@Url.Action("RolePermissions")';this.form.submit()"></select></div>
+                <div class="account-role-permission-grid">
+                    @foreach (var permission in Model.PermissionOptions) { <label><input type="checkbox" name="PermissionIds" value="@permission.PermissionId" checked="@permission.Granted" /><span><i class="bi bi-check-lg"></i></span><strong>@permission.Name</strong><small>@permission.Description</small></label> }
+                </div>
+                <label class="account-role-permission-reason">Lý do thay đổi quyền<textarea asp-for="ChangeReason" rows="2" required placeholder="Ví dụ: Bổ sung quyền sao lưu CSDL cho toàn bộ HR."></textarea></label>
+            </div>
+            <div class="account-permission-actions"><span><i class="bi bi-people"></i> Áp dụng cho @Model.AffectedAccountCount tài khoản @Model.RoleName.</span><button type="submit" class="account-primary-action"><i class="bi bi-check2"></i>Lưu quyền vai trò</button></div>
+        </section>
+    </form>
+</div>

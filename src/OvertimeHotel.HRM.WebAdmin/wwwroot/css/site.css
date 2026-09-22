@@ -39,6 +39,42 @@ body {
   font-family: 'Playfair Display', Georgia, serif;
 }
 
+.hotel-nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  color: #1e3a8a !important;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.42rem;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+
+.hotel-nav-logo {
+  position: relative;
+  display: block;
+  width: 86px;
+  height: 86px;
+  flex: 0 0 86px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, .8);
+  border-radius: 50%;
+  background: #f8fafc;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, .2);
+}
+
+.hotel-nav-logo img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: 112%;
+  height: 112%;
+  max-width: none;
+  object-fit: cover;
+  transform: translate(-50%, -50%);
+}
+
 /* Card hover elevation */
 .hover-lift {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);

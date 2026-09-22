@@ -214,19 +214,27 @@
         }
 
         .hotel-emblem {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #1E3A8A 0%, #0F172A 100%);
+            width: 106px;
+            height: 106px;
+            padding: 3px;
+            overflow: hidden;
+            background: #F8FAFC;
             border: 2px solid var(--brand-gold);
-            border-radius: 18px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--brand-gold);
-            font-size: 1.85rem;
             box-shadow: 0 0 25px rgba(212, 175, 55, 0.45), 0 12px 26px rgba(30, 58, 138, 0.35);
             margin-bottom: 1.25rem;
             animation: emblemPopEntrance 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+        }
+
+        .hotel-emblem img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
         }
 
         @@keyframes emblemPopEntrance {
@@ -557,7 +565,7 @@
             <!-- Logo & Insignia -->
             <div class="text-center mb-4">
                 <div class="hotel-emblem mx-auto">
-                    <i class="bi bi-buildings"></i>
+                    <img src="~/images/the-overtime-hotels-logo.png" asp-append-version="true" alt="The OverTime Hotels" />
                 </div>
                 <h3 class="fw-bold text-dark mb-1" id="loginHeaderTitle" style="font-family: 'Playfair Display', serif;">
                     Đăng Nhập Quản Trị
