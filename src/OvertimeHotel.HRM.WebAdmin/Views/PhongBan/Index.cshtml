@@ -179,17 +179,17 @@
                                             @for (int i = 0; i < Math.Min(empCount, 3); i++)
                                             {
                                                 <span class="catalog-mini-avatar catalog-mini-avatar--@(i % 3)">
-                                                    @(i == 0 ? "A" : i == 1 ? "B" : "C")
+                                                    <i class="bi bi-person-fill"></i>
                                                 </span>
                                             }
                                         </div>
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold">
-                                            @empCount nhân sự
+                                        <span class="catalog-personnel-badge">
+                                            <i class="bi bi-people-fill"></i> @empCount nhân sự
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-light text-muted border">
+                                        <span class="catalog-personnel-badge--zero">
                                             <i class="bi bi-person-x me-1"></i>0 nhân sự
                                         </span>
                                     }
