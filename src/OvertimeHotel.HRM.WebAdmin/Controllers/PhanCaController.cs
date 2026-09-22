@@ -98,6 +98,28 @@ public class PhanCaController : Controller
                 .ThenBy(p => p.BatDauDuKien)
                 .ToListAsync();
 
+            // 5b. MA TRẬN/TIMELINE: nhân viên đã nghỉ việc (DA_THOI_VIEC, NGHI_VIEC...)
+            // NHƯNG vẫn còn ca trực trong tuần đang xem phải được hiển thị,
+            // nếu không các ca của họ sẽ biến mất hoàn toàn khỏi giao diện.
+            var shiftEmpIds = model.DanhSachPhanCa.Select(p => p.MaNhanVien).Distinct().ToList();
+            var knownEmpIds = model.DanhSachNhanVien.Select(n => n.MaNhanVien).ToHashSet();
+            List<NhanVien> extraShiftEmps = new();
+            if (shiftEmpIds.Count > 0)
+            {
+                var candidates = await _context.NhanViens.AsNoTracking()
+                    .Include(n => n.PhongBan)
+                    .Include(n => n.ChucVu)
+                    .Where(n => shiftEmpIds.Contains(n.MaNhanVien))
+                    .ToListAsync();
+                extraShiftEmps = candidates.Where(e => !knownEmpIds.Contains(e.MaNhanVien)).ToList();
+            }
+
+            // Danh sách dựng rows ma trận = NV đang làm + NV đã nghỉ nhưng còn ca trong tuần
+            var matrixEmps = model.DanhSachNhanVien
+                .Concat(extraShiftEmps)
+                .OrderBy(n => n.Ten).ThenBy(n => n.Ho)
+                .ToList();
+
             var today = DateOnly.FromDateTime(DateTime.Today);
 
             // Tải danh sách ca trực hôm nay độc lập (không bị ảnh hưởng khi người dùng đổi tuần)
@@ -116,10 +138,10 @@ public class PhanCaController : Controller
             model.TongNhanVien = model.DanhSachNhanVien.Count;
             model.SoNhanVienDuocPhan = model.DanhSachPhanCa.Select(p => p.MaNhanVien).Distinct().Count();
 
-            // 7. Xây dựng ma trận tuần (Weekly Matrix Rows)
+            // 7. Xây dựng ma trận tuần (Weekly Matrix Rows) — gồm cả NV đã nghỉ nhưng còn ca trong tuần
             var avatarColors = new[] { "#1E3A8A", "#D97706", "#059669", "#7C3AED", "#DB2777", "#2563EB", "#0891B2" };
 
-            foreach (var emp in model.DanhSachNhanVien)
+            foreach (var emp in matrixEmps)
             {
                 var row = new PhanCaMatrixRow
                 {
@@ -209,6 +231,12 @@ public class PhanCaController : Controller
                 ? input.NgayLamViec.AddDays(1).ToDateTime(ca.GioKetThuc)
                 : input.NgayLamViec.ToDateTime(ca.GioKetThuc);
 
+            // Whitelist trạng thái theo CHECK constraint của CSDL (DA_PHAN / HOAN_THANH / VANG_MAT)
+            var allowedStatuses = new[] { "DA_PHAN", "HOAN_THANH", "VANG_MAT" };
+            var safeStatus = !string.IsNullOrWhiteSpace(input.TrangThai) && allowedStatuses.Contains(input.TrangThai)
+                ? input.TrangThai!
+                : "DA_PHAN";
+
             var phanCa = new PhanCa
             {
                 MaNhanVien = input.MaNhanVien,
@@ -216,7 +244,7 @@ public class PhanCaController : Controller
                 NgayLamViec = input.NgayLamViec,
                 BatDauDuKien = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)),
                 KetThucDuKien = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)),
-                TrangThai = string.IsNullOrWhiteSpace(input.TrangThai) ? "DA_PHAN" : input.TrangThai
+                TrangThai = safeStatus
             };
 
             _context.PhanCas.Add(phanCa);
@@ -364,7 +392,7 @@ public class PhanCaController : Controller
                     NgayLamViec = date,
                     BatDauDuKien = new DateTimeOffset(start, TimeSpan.FromHours(7)),
                     KetThucDuKien = new DateTimeOffset(end, TimeSpan.FromHours(7)),
-                    TrangThai = date < DateOnly.FromDateTime(DateTime.Today) ? "HOAN_THANH" : (date == DateOnly.FromDateTime(DateTime.Today) ? "DANG_TRUC" : "DA_PHAN")
+                    TrangThai = date < DateOnly.FromDateTime(DateTime.Today) ? "HOAN_THANH" : "DA_PHAN"
                 });
             }
         }
