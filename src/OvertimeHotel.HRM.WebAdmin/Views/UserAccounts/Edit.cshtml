@@ -1,9 +1,12 @@
 @model EditAccountViewModel
 @using System.Security.Claims
+@using OvertimeHotel.HRM.WebAdmin.Security
 @{
     ViewData["Title"] = "Chỉnh sửa tài khoản";
     var isCurrentAccount = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentAccountId)
         && currentAccountId == Model.AccountId;
+    var canManageRolePermissions = User.IsInRole("Admin") ||
+        User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ManagePermissions);
 }
 
 <div class="account-workspace account-workspace--bleed account-form-workspace">
@@ -65,6 +68,12 @@
                 <div class="inspector-card-heading">
                     <span class="inspector-index">01</span>
                     <div><small>Thông tin tài khoản</small><h2>Thông tin tài khoản</h2></div>
+                    @if (false && canManageRolePermissions)
+                    {
+                        <button type="button" class="account-role-permission-trigger" data-role-permission-open>
+                            <i class="bi bi-shield-check"></i>Quyền vai trò
+                        </button>
+                    }
                     <i class="bi bi-sliders"></i>
                 </div>
                 <div class="inspector-card-body">
@@ -171,6 +180,38 @@
             <div class="preview-note"><i class="bi bi-lightning-charge-fill"></i><span>Thay đổi vai trò có hiệu lực ở lần đăng nhập tiếp theo.</span></div>
         </aside>
     </form>
+
+    @if (false && canManageRolePermissions)
+    {
+        <dialog class="account-role-permission-dialog" data-role-permission-dialog>
+            <form asp-action="UpdateRolePermissions" method="post">
+                @Html.AntiForgeryToken()
+                <input name="AccountId" value="@Model.AccountId" type="hidden" />
+                <header>
+                    <div><small>Áp dụng cho toàn bộ vai trò</small><h2>Cấp hoặc thu hồi quyền @Model.RoleOptions.FirstOrDefault(item => item.Value == Model.RoleId.ToString())?.Text</h2></div>
+                    <button type="button" data-role-permission-close aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="account-role-permission-dialog-body">
+                    <p><i class="bi bi-info-circle"></i> Quyền được chọn sẽ áp dụng cho tất cả tài khoản cùng vai trò này. Bỏ chọn để thu hồi quyền của cả vai trò.</p>
+                    <div class="account-role-permission-grid">
+                        @foreach (var permission in Model.PermissionOptions)
+                        {
+                            <label>
+                                <input type="checkbox" name="PermissionIds" value="@permission.PermissionId" checked="@permission.Granted" />
+                                <span><i class="bi bi-check-lg"></i></span>
+                                <strong>@permission.Name</strong>
+                                <small>@(permission.Granted ? "Đang có theo vai trò · bỏ chọn để thu hồi" : permission.Description ?? permission.Code)</small>
+                            </label>
+                        }
+                    </div>
+                    <label class="account-role-permission-reason">Lý do thay đổi quyền
+                        <textarea name="ChangeReason" required maxlength="500" rows="2" placeholder="Ví dụ: Phân công toàn bộ HR quản lý tài khoản nhân sự."></textarea>
+                    </label>
+                </div>
+                <footer><span>Có hiệu lực sau khi các tài khoản đăng nhập lại.</span><button type="submit" class="account-primary-action"><i class="bi bi-shield-check"></i>Lưu quyền vai trò</button></footer>
+            </form>
+        </dialog>
+    }
 </div>
 
 @section Scripts {
@@ -200,6 +241,13 @@
                     input.type = input.type === 'password' ? 'text' : 'password';
                     button.querySelector('i').className = input.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
                 });
+            });
+
+            const rolePermissionDialog = document.querySelector('[data-role-permission-dialog]');
+            document.querySelector('[data-role-permission-open]')?.addEventListener('click', () => rolePermissionDialog?.showModal());
+            document.querySelector('[data-role-permission-close]')?.addEventListener('click', () => rolePermissionDialog?.close());
+            rolePermissionDialog?.addEventListener('click', event => {
+                if (event.target === rolePermissionDialog) rolePermissionDialog.close();
             });
         })();
     </script>

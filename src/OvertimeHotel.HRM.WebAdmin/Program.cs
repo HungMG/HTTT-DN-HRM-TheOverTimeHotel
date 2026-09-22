@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.Data.Supabase;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,7 +46,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.SameSite = SameSiteMode.Lax;
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(PermissionCodes.ManageAccounts, policy => policy.RequireAssertion(context =>
+        context.User.IsInRole("Admin") || context.User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ManageAccounts)));
+    options.AddPolicy(PermissionCodes.ManagePermissions, policy => policy.RequireAssertion(context =>
+        context.User.IsInRole("Admin") || context.User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ManagePermissions)));
+    options.AddPolicy(PermissionCodes.BackupDatabase, policy => policy.RequireAssertion(context =>
+        context.User.IsInRole("Admin") || context.User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.BackupDatabase)));
+});
 
 // Cấu hình kết nối Entity Framework Core với Supabase PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

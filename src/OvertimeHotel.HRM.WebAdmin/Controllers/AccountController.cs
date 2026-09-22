@@ -91,6 +91,20 @@ public class AccountController : Controller
             return View(model);
         }
 
+        var permissionCodes = Array.Empty<string>();
+        try
+        {
+            permissionCodes = await _context.VaiTroQuyens
+                .AsNoTracking()
+                .Where(item => item.MaVaiTro == account.MaVaiTro)
+                .Select(item => item.Quyen!.MaQuyenCode)
+                .ToArrayAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể nạp quyền của vai trò {RoleId} khi đăng nhập.", account.MaVaiTro);
+        }
+
         // Thiết lập Claims nhận diện người dùng
         var claims = new List<Claim>
         {
@@ -102,6 +116,7 @@ public class AccountController : Controller
             new Claim("Email", account.NhanVien?.Email ?? ""),
             new Claim("DepartmentId", account.NhanVien?.MaPhongBan.ToString() ?? "0")
         };
+        claims.AddRange(permissionCodes.Select(code => new Claim(PermissionCodes.ClaimType, code)));
 
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var authProperties = new AuthenticationProperties
