@@ -1,6 +1,19 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.NhanVienIndexViewModel
 @{
     ViewData["Title"] = "Hồ sơ nhân viên · The OverTime Hotel";
+    Func<int, string> pageUrl = page => Url.Action("Index", new
+    {
+        keyword = Model.Keyword,
+        departmentId = Model.DepartmentId,
+        status = Model.Status,
+        contractFilter = Model.ContractFilter,
+        page,
+        pageSize = Model.PageSize
+    }) ?? "#";
+    var firstEmployee = Model.TotalFilteredEmployees == 0 ? 0 : ((Model.PageNumber - 1) * Model.PageSize) + 1;
+    var lastEmployee = Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredEmployees);
+    var firstPage = Math.Max(1, Model.PageNumber - 2);
+    var lastPage = Math.Min(Model.TotalPages, Model.PageNumber + 2);
 }
 
 <div class="catalog-page employee-workspace">
@@ -38,50 +51,38 @@
 
     <partial name="_CatalogAlerts" />
 
-    <!-- 4 METRIC STATS CARDS -->
+    <!-- 3 MINI KPI SUMMARY STATS -->
     <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold text-uppercase">Tổng Nhân Sự</div>
-                        <div class="fs-3 fw-bold text-dark font-serif mt-1">@Model.TotalEmployees</div>
-                    </div>
-                    <div class="rounded-3 bg-primary-subtle text-primary p-3 fs-4">
-                        <i class="bi bi-people-fill"></i>
-                    </div>
+        <div class="col-md-4">
+            <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
+                <div class="catalog-kpi-icon"><i class="bi bi-people-fill"></i></div>
+                <div>
+                    <span class="catalog-kpi-label">Tổng nhân sự</span>
+                    <h3 class="catalog-kpi-value">@Model.TotalEmployees <small>nhân sự</small></h3>
+                    <p class="catalog-kpi-desc">Hồ sơ hiện có trong hệ thống khách sạn</p>
                 </div>
             </div>
         </div>
-
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold text-uppercase">Đang Làm Việc</div>
-                        <div class="fs-3 fw-bold text-success font-serif mt-1">@Model.WorkingEmployees</div>
-                    </div>
-                    <div class="rounded-3 bg-success-subtle text-success p-3 fs-4">
-                        <i class="bi bi-person-check-fill"></i>
-                    </div>
+        <div class="col-md-4">
+            <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
+                <div class="catalog-kpi-icon"><i class="bi bi-person-check-fill"></i></div>
+                <div>
+                    <span class="catalog-kpi-label">Đang làm việc</span>
+                    <h3 class="catalog-kpi-value">@Model.WorkingEmployees <small>người</small></h3>
+                    <p class="catalog-kpi-desc">Nhân sự đang hoạt động và đảm nhận công việc</p>
                 </div>
             </div>
         </div>
-
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold text-uppercase">Phòng Ban Hoạt Động</div>
-                        <div class="fs-3 fw-bold text-info font-serif mt-1">@Model.DepartmentOptions.Count</div>
-                    </div>
-                    <div class="rounded-3 bg-info-subtle text-info p-3 fs-4">
-                        <i class="bi bi-building"></i>
-                    </div>
+        <div class="col-md-4">
+            <div class="catalog-kpi-card catalog-kpi-card--deduction shadow-sm">
+                <div class="catalog-kpi-icon"><i class="bi bi-building"></i></div>
+                <div>
+                    <span class="catalog-kpi-label">Phòng ban hoạt động</span>
+                    <h3 class="catalog-kpi-value">@Model.DepartmentOptions.Count <small>phòng</small></h3>
+                    <p class="catalog-kpi-desc">Đơn vị đang hoạt động trong hotel</p>
                 </div>
             </div>
         </div>
-
     </div>
 
     <!-- TABLE WORKSPACE CARD -->
@@ -106,7 +107,8 @@
                     <select name="status" class="form-select">
                         <option value="">-- Trạng thái --</option>
                         <option value="DANG_LAM" selected="@(Model.Status == "DANG_LAM")">Đang làm</option>
-                        <option value="DA_THOI_VIEC" selected="@(Model.Status == "DA_THOI_VIEC")">Nghỉ việc</option>
+                        <option value="NGHI_PHEP" selected="@(Model.Status == "NGHI_PHEP")">Tạm nghỉ</option>
+                        <option value="DA_THOI_VIEC" selected="@(Model.Status == "DA_THOI_VIEC")">Đã nghỉ việc</option>
                     </select>
                 </div>
 
@@ -125,7 +127,7 @@
                     <i class="bi bi-printer text-primary me-1"></i> In danh sách
                 </button>
                 <span class="catalog-badge" data-catalog-count>
-                    <i class="bi bi-people-fill me-1"></i> @Model.Employees.Count nhân sự
+                    <i class="bi bi-people-fill me-1"></i> @Model.TotalFilteredEmployees nhân sự
                 </span>
             </div>
         </div>
@@ -200,9 +202,18 @@
                                 }
                             </td>
                             <td>
-                                <span class="badge @(employee.TrangThai == "DANG_LAM" ? "bg-success" : "bg-secondary") rounded-pill px-3 py-1">
-                                    @(employee.TrangThai == "DANG_LAM" ? "Đang làm việc" : "Đã nghỉ việc")
-                                </span>
+                                @switch (employee.TrangThai)
+                                {
+                                    case "DANG_LAM":
+                                        <span class="badge bg-success rounded-pill px-3 py-1">Đang làm việc</span>
+                                        break;
+                                    case "NGHI_PHEP":
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1">Tạm nghỉ</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-secondary rounded-pill px-3 py-1">Đã nghỉ việc</span>
+                                        break;
+                                }
                             </td>
                             <td class="text-end text-nowrap">
                                 <a asp-action="Edit" asp-route-id="@employee.MaNhanVien" class="btn btn-sm btn-outline-primary rounded-3" title="Sửa hồ sơ">
@@ -220,6 +231,46 @@
                 </tbody>
             </table>
         </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="d-flex justify-content-center align-items-center mt-3 gap-2 flex-wrap">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
+                        <a class="page-link" href="@pageUrl(Math.Max(1, Model.PageNumber - 1))" aria-label="Trang trước">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    @if (firstPage > 1)
+                    {
+                        <li class="page-item"><a class="page-link" href="@pageUrl(1)">1</a></li>
+                        @if (firstPage > 2)
+                        {
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        }
+                    }
+                    @for (var pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
+                    {
+                        <li class="page-item @(pageIndex == Model.PageNumber ? "active" : "")">
+                            <a class="page-link" href="@pageUrl(pageIndex)">@pageIndex</a>
+                        </li>
+                    }
+                    @if (lastPage < Model.TotalPages)
+                    {
+                        @if (lastPage < Model.TotalPages - 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        }
+                        <li class="page-item"><a class="page-link" href="@pageUrl(Model.TotalPages)">@Model.TotalPages</a></li>
+                    }
+                    <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" href="@pageUrl(Math.Min(Model.TotalPages, Model.PageNumber + 1))" aria-label="Trang sau">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        }
     </section>
 </div>
 

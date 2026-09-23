@@ -14,6 +14,10 @@ public class NhanVienIndexViewModel
     public IReadOnlyList<SelectListItem> DepartmentOptions { get; set; } = [];
     public IReadOnlyList<EmployeeListItemViewModel> Employees { get; set; } = [];
     public int TotalEmployees { get; set; }
+    public int TotalFilteredEmployees { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+    public int TotalPages { get; set; } = 1;
     public int WorkingEmployees { get; set; }
     public int ExpiringContracts { get; set; }
     public int ExpiredContracts { get; set; }
