@@ -21,11 +21,13 @@ public class HopDongController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, string? status, string? contractFilter)
+    public async Task<IActionResult> Index(string? keyword, string? status, string? contractFilter, int page = 1, int pageSize = 10)
     {
         keyword = keyword?.Trim();
         status = string.IsNullOrWhiteSpace(status) ? null : status;
         contractFilter = string.IsNullOrWhiteSpace(contractFilter) ? null : contractFilter;
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 5, 50);
 
         var query = _context.HopDongs.AsNoTracking().Include(contract => contract.NhanVien).AsQueryable();
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -82,6 +84,11 @@ public class HopDongController : Controller
 
             var allDays = allContracts.Select(contract => contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null).ToList();
             var employeeOptions = allEmployees.Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien}", item.MaNhanVien.ToString())).ToList();
+            var orderedContracts = items.OrderByDescending(i => i.Contract.NgayBatDau).ToList();
+            var totalFiltered = orderedContracts.Count;
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalFiltered / (double)pageSize));
+            var pageNumber = Math.Clamp(page, 1, totalPages);
+            var pagedContracts = orderedContracts.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
             ViewBag.EmployeeOptions = employeeOptions;
             return View(new HopDongIndexViewModel
             {
@@ -96,9 +103,13 @@ public class HopDongController : Controller
                 Keyword = keyword,
                 Status = status,
                 ContractFilter = contractFilter,
-                Contracts = items.OrderByDescending(i => i.Contract.NgayBatDau).ToList(),
+                Contracts = pagedContracts,
                 EmployeeOptions = employeeOptions,
                 TotalContracts = allContracts.Count,
+                TotalFilteredContracts = totalFiltered,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalPages = totalPages,
                 ActiveContracts = allContracts.Count(contract => contract.TrangThai == "HIEU_LUC"),
                 ExpiringContracts = allDays.Count(days => days is >= 0 and <= 30),
                 ExpiredContracts = allDays.Count(days => days < 0)

@@ -11,6 +11,8 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 [Authorize(Roles = "Admin,HR")]
 public class NhanVienController : Controller
 {
+    private static readonly string[] SupportedEmployeeStatuses = ["DANG_LAM", "DA_THOI_VIEC", "NGHI_PHEP"];
+
     private readonly AppDbContext _context;
     private readonly ILogger<NhanVienController> _logger;
 
@@ -21,11 +23,13 @@ public class NhanVienController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, int? departmentId, string? status, string? contractFilter)
+    public async Task<IActionResult> Index(string? keyword, int? departmentId, string? status, string? contractFilter, int page = 1, int pageSize = 10)
     {
         keyword = keyword?.Trim();
         status = string.IsNullOrWhiteSpace(status) ? null : status;
         contractFilter = string.IsNullOrWhiteSpace(contractFilter) ? null : contractFilter;
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 5, 50);
 
         var query = _context.NhanViens
             .AsNoTracking()
@@ -108,6 +112,10 @@ public class NhanVienController : Controller
                 items = items.Where(item => item.ContractState == "HIEU_LUC");
 
             var result = items.OrderBy(item => item.Employee.Ten).ThenBy(item => item.Employee.Ho).ToList();
+            var totalFiltered = result.Count;
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalFiltered / (double)pageSize));
+            var pageNumber = Math.Clamp(page, 1, totalPages);
+            var pagedEmployees = result.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
             var allContractItems = allEmployees.Select(employee =>
             {
@@ -137,8 +145,12 @@ public class NhanVienController : Controller
                 Status = status,
                 ContractFilter = contractFilter,
                 DepartmentOptions = deptOptions,
-                Employees = result,
+                Employees = pagedEmployees,
                 TotalEmployees = allEmployees.Count,
+                TotalFilteredEmployees = totalFiltered,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalPages = totalPages,
                 WorkingEmployees = allEmployees.Count(employee => employee.TrangThai == "DANG_LAM"),
                 ExpiringContracts = allContractItems.Count(item => item.days is >= 0 and <= 30),
                 ExpiredContracts = allContractItems.Count(item => item.days < 0)
@@ -176,6 +188,7 @@ public class NhanVienController : Controller
     public async Task<IActionResult> Create(NhanVienFormViewModel model)
     {
         Normalize(model.Employee);
+        NormalizeEmployeeStatus(model.Employee);
         await ValidateEmployeeAsync(model.Employee);
         if (!ModelState.IsValid)
         {
@@ -295,6 +308,7 @@ public class NhanVienController : Controller
         if (model.MaChucVu <= 0 || !await _context.ChucVus.AnyAsync(item => item.MaChucVu == model.MaChucVu)) ModelState.AddModelError("Employee.MaChucVu", "Vui lòng chọn chức vụ hợp lệ.");
         if (model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today)) ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
         if (model.NgayThoiViec.HasValue && model.NgayThoiViec < model.NgayVaoLam) ModelState.AddModelError("Employee.NgayThoiViec", "Ngày thôi việc không được trước ngày vào làm.");
+        if (!SupportedEmployeeStatuses.Contains(model.TrangThai)) ModelState.AddModelError("Employee.TrangThai", "Trạng thái nhân viên không hợp lệ.");
         if (await _context.NhanViens.AnyAsync(item => item.MaNhanVien != currentId && item.Email.ToLower() == model.Email.ToLower())) ModelState.AddModelError("Employee.Email", "Email nhân viên đã tồn tại.");
     }
 
