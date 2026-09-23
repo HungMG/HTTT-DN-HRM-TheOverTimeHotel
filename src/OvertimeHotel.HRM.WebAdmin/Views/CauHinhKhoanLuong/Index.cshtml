@@ -36,33 +36,42 @@
 
     <partial name="_CatalogAlerts" />
 
-    <!-- 3 BENTO MINI KPI SUMMARY STATS -->
-    <div class="row g-3 mb-4">
+    <!-- 3 BENTO MINI KPI SUMMARY STATS & QUICK FILTER -->
+    <div class="row g-3 mb-4" data-catalog-kpi-filters>
         <div class="col-md-4">
-            <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
+            <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm @(ViewBag.Type == "PHU_CAP" ? "is-active" : "")" role="button" tabindex="0" data-filter-type="PHU_CAP" title="Nhấp để lọc các khoản Phụ cấp định kỳ">
                 <div class="catalog-kpi-icon"><i class="bi bi-wallet2"></i></div>
-                <div>
-                    <span class="catalog-kpi-label">Phụ cấp định kỳ</span>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="catalog-kpi-label">Phụ cấp định kỳ</span>
+                        <span class="catalog-kpi-badge @(ViewBag.Type == "PHU_CAP" ? "" : "d-none")"><i class="bi bi-funnel-fill me-1"></i>Đang lọc</span>
+                    </div>
                     <h3 class="catalog-kpi-value">@(ViewBag.PhuCapCount ?? 0) <small>khoản</small></h3>
                     <p class="catalog-kpi-desc">Trách nhiệm, xăng xe, độc hại, ca đêm</p>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
+            <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm @(ViewBag.Type == "THUONG" ? "is-active" : "")" role="button" tabindex="0" data-filter-type="THUONG" title="Nhấp để lọc các khoản Thưởng khuyến khích">
                 <div class="catalog-kpi-icon"><i class="bi bi-gift-fill"></i></div>
-                <div>
-                    <span class="catalog-kpi-label">Khoản thưởng khuyến khích</span>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="catalog-kpi-label">Khoản thưởng khuyến khích</span>
+                        <span class="catalog-kpi-badge @(ViewBag.Type == "THUONG" ? "" : "d-none")"><i class="bi bi-funnel-fill me-1"></i>Đang lọc</span>
+                    </div>
                     <h3 class="catalog-kpi-value">@(ViewBag.ThuongCount ?? 0) <small>khoản</small></h3>
                     <p class="catalog-kpi-desc">Thưởng KPI, dịch vụ khách hàng 5 sao</p>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="catalog-kpi-card catalog-kpi-card--deduction shadow-sm">
+            <div class="catalog-kpi-card catalog-kpi-card--deduction shadow-sm @(ViewBag.Type == "KHAU_TRU" ? "is-active" : "")" role="button" tabindex="0" data-filter-type="KHAU_TRU" title="Nhấp để lọc các khoản Khấu trừ & Phạt kỷ luật">
                 <div class="catalog-kpi-icon"><i class="bi bi-dash-circle-fill"></i></div>
-                <div>
-                    <span class="catalog-kpi-label">Khấu trừ & Phạt kỷ luật</span>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="catalog-kpi-label">Khấu trừ & Phạt kỷ luật</span>
+                        <span class="catalog-kpi-badge @(ViewBag.Type == "KHAU_TRU" ? "" : "d-none")"><i class="bi bi-funnel-fill me-1"></i>Đang lọc</span>
+                    </div>
                     <h3 class="catalog-kpi-value">@(ViewBag.KhauTruCount ?? 0) <small>khoản</small></h3>
                     <p class="catalog-kpi-desc">Đi trễ, vi phạm đồng phục, kỷ luật</p>
                 </div>
@@ -87,19 +96,12 @@
     <!-- TABLE WORKSPACE CARD -->
     <section class="catalog-card shadow-sm">
         <div class="catalog-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <form method="get" class="catalog-filter-form d-flex flex-wrap gap-2 flex-grow-1 align-items-center">
-                <div class="catalog-search-wrapper flex-grow-1" style="min-width: 220px;">
+            <form method="get" class="catalog-filter-form d-flex gap-2 flex-grow-1">
+                <input type="hidden" name="type" value="@ViewBag.Type" data-catalog-type-input />
+                <div class="catalog-search-wrapper flex-grow-1">
                     <i class="bi bi-search catalog-search-icon" aria-hidden="true"></i>
                     <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên khoản hoặc mô tả..." aria-label="Tìm kiếm khoản lương" />
                     <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
-                </div>
-                <div style="min-width: 170px;">
-                    <select name="type" class="form-select catalog-search" aria-label="Lọc theo loại khoản">
-                        <option value="">-- Tất cả loại khoản --</option>
-                        <option value="PHU_CAP" selected="@(ViewBag.Type == "PHU_CAP")">Phụ cấp (+)</option>
-                        <option value="THUONG" selected="@(ViewBag.Type == "THUONG")">Thưởng (+)</option>
-                        <option value="KHAU_TRU" selected="@(ViewBag.Type == "KHAU_TRU")">Khấu trừ / Phạt (-)</option>
-                    </select>
                 </div>
                 <button type="button" class="btn btn-outline-danger rounded-3 px-3 text-nowrap @(string.IsNullOrWhiteSpace(ViewBag.Keyword as string) && string.IsNullOrWhiteSpace(ViewBag.Type as string) ? "d-none" : "")" data-catalog-reset title="Xóa nhanh từ khóa & đặt lại" aria-label="Xóa bộ lọc">
                     <i class="bi bi-x-lg me-1"></i>Xóa
