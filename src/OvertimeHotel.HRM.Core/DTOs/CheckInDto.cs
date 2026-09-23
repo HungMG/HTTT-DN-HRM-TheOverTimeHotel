@@ -2,7 +2,10 @@ namespace OvertimeHotel.HRM.Core.DTOs;
 
 public record CheckInRequest(
     int MaPhanCa,
-    DateTimeOffset Timestamp
+    DateTimeOffset Timestamp,
+    string? PhuongThuc = "GPS",
+    string? ToaDo = null,
+    string? ThietBi = null
 );
 
 public record CheckInResponse(

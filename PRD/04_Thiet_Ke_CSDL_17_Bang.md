@@ -103,15 +103,18 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 
 ### Bảng 11: `cham_cong` (Bản ghi quẹt thẻ in/out)
 - `ma_cham_cong` (SERIAL, PK): Mã bản ghi chấm công.
-- `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL): Nhân viên quẹt thẻ.
+- `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL): Nhân viên quẹt thẻ (hoặc `ma_phan_ca` FK -> phan_ca).
 - `ma_ca` (INT, FK -> ca_lam_viec.ma_ca, NOT NULL): Ca làm việc đối soát.
 - `ngay_cham_cong` (DATE, NOT NULL): Ngày giao dịch.
-- `thoi_gian_checkin` (TIMESTAMP, NULL): Thời điểm quẹt thẻ vào ca.
-- `thoi_gian_checkout` (TIMESTAMP, NULL): Thời điểm quẹt thẻ ra ca.
+- `thoi_gian_checkin` (TIMESTAMP, NULL): Thời điểm quẹt thẻ vào ca (`gio_check_in`).
+- `thoi_gian_checkout` (TIMESTAMP, NULL): Thời điểm quẹt thẻ ra ca (`gio_check_out`).
 - `so_phut_di_tre` (INT, DEFAULT 0): Số phút trễ so với giờ mở ca.
 - `so_phut_ve_som` (INT, DEFAULT 0): Số phút về sớm trước giờ đóng ca.
 - `so_gio_ot` (DECIMAL(4,2), DEFAULT 0.0): Số giờ làm thêm ngoài ca được duyệt.
 - `trang_thai` (VARCHAR(20), DEFAULT 'HopLe'): HopLe, DiTre, VeSom, VangMat.
+- `phuong_thuc_checkin` (VARCHAR(20), NULL): Phương thức xác thực vị trí: 'GPS', 'WIFI', hoặc 'THU_CONG'.
+- `toa_do_checkin` (VARCHAR(50), NULL): Kinh độ, vĩ độ GPS thực tế lúc bấm quẹt (VD: '10.776889, 106.700806').
+- `thiet_bi_checkin` (VARCHAR(100), NULL): Định danh thiết bị Mobile App gửi lên để chống mượn máy quẹt hộ.
 
 ### Bảng 12: `loai_don` (Danh mục loại đơn)
 - `ma_loai_don` (SERIAL, PK): Mã loại đơn.

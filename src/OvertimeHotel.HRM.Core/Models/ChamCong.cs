@@ -10,6 +10,9 @@ public class ChamCong
     public int PhutVeSom { get; set; } = 0;
     public decimal GioTangCaOt { get; set; } = 0.00m;
     public string TrangThai { get; set; } = "DUNG_GIO";
+    public string? PhuongThucCheckIn { get; set; }
+    public string? ToaDoCheckIn { get; set; }
+    public string? ThietBiCheckIn { get; set; }
 
     public virtual PhanCa? PhanCa { get; set; }
 }

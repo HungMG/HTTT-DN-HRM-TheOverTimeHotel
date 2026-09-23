@@ -108,7 +108,10 @@ CREATE TABLE IF NOT EXISTS CHAM_CONG (
     phut_di_tre INT NOT NULL DEFAULT 0,
     phut_ve_som INT NOT NULL DEFAULT 0,
     gio_tang_ca_ot DECIMAL(4,2) NOT NULL DEFAULT 0.00,
-    trang_thai VARCHAR(30) NOT NULL DEFAULT 'DUNG_GIO' CHECK (trang_thai IN ('DUNG_GIO', 'DI_TRE', 'VE_SOM', 'VANG_MAT'))
+    trang_thai VARCHAR(30) NOT NULL DEFAULT 'DUNG_GIO' CHECK (trang_thai IN ('DUNG_GIO', 'DI_TRE', 'VE_SOM', 'VANG_MAT')),
+    phuong_thuc_checkin VARCHAR(20) DEFAULT NULL,
+    toa_do_checkin VARCHAR(50) DEFAULT NULL,
+    thiet_bi_checkin VARCHAR(100) DEFAULT NULL
 );
 
 -- 12. BẢNG LOAI_DON (Danh mục loại đơn từ)
