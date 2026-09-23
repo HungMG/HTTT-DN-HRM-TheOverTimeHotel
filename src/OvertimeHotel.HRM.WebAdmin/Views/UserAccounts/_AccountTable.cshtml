@@ -29,8 +29,10 @@
             </div>
         </div>
     </div>
-    <div class="sequence-meta">
-        <span class="sequence-time">00:@Model.TotalAccounts.ToString("00")</span>
+    <div class="account-sequence-actions">
+        <button type="button" class="account-audit-open account-audit-open--table" data-account-audit-open aria-haspopup="dialog" aria-controls="accountAuditDialog" aria-label="Mở nhật ký quản trị">
+            <i class="bi bi-journal-text" aria-hidden="true"></i><span>Nhật ký</span><b data-account-audit-trigger-count>@Model.TotalAuditLogs</b>
+        </button>
     </div>
 </div>
 

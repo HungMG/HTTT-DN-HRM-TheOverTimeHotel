@@ -21,7 +21,7 @@
   padding: 20px;
   overflow: hidden;
   box-shadow: 0 26px 80px rgba(8, 9, 14, 0.24);
-  font-family: Inter, "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", sans-serif;
 }
 .account-workspace::before {
   content: "";
@@ -83,9 +83,12 @@
 .account-dashboard-breadcrumb a i { margin-right: 5px; }
 .account-dashboard-breadcrumb > span { color: #d4af37; font-size: 1rem; line-height: 1; }
 .account-dashboard-breadcrumb strong { color: #fde047; font-weight: 750; }
+.account-command-brandline { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-bottom: 4px; }
+.account-hotel-badge { font-size: .65rem; line-height: 1.15; }
+.account-command-brandline .account-eyebrow { margin-bottom: 0; }
 .account-eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; color: var(--aw-muted); font-size: .66rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 .account-live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--aw-green); box-shadow: 0 0 0 4px rgba(88, 214, 141, .1), 0 0 14px rgba(88, 214, 141, .7); }
-.account-command-copy h1 { margin: 0; font-size: clamp(1.35rem, 2vw, 2rem); font-weight: 650; letter-spacing: -.035em; }
+.account-command-copy h1 { margin: 0; font-family: "Playfair Display", Georgia, serif; font-size: clamp(1.35rem, 2vw, 2rem); font-weight: 700; letter-spacing: -.02em; }
 .account-command-copy h1 span { color: #acaebe; font-weight: 420; }
 .account-command-copy p { display: block; width: 100%; margin: 5px 0 0; color: var(--aw-muted); font-size: .82rem; }
 .account-command-actions { display: flex; align-items: center; gap: 10px; }
@@ -689,20 +692,12 @@
   box-shadow: 0 16px 36px rgba(15, 23, 42, .18);
 }
 
-/* Banner danh sách tài khoản: bầu trời navy galaxy, vẫn giữ độ tương phản cho chữ. */
+/* Banner danh sách tài khoản dùng cùng bảng màu với banner danh mục chức vụ. */
 .account-command-bar--accounts-index {
   overflow: hidden;
-  border-color: rgba(147, 197, 253, .38);
-  background:
-    radial-gradient(circle at 8% 22%, rgba(255, 255, 255, .62) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 28% 70%, rgba(191, 219, 254, .45) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 58% 15%, rgba(221, 214, 254, .45) 0 1px, transparent 1.7px),
-    radial-gradient(circle at 82% 65%, rgba(219, 234, 254, .5) 0 1px, transparent 1.6px),
-    radial-gradient(ellipse at 88% 130%, rgba(37, 99, 235, .62), transparent 54%),
-    radial-gradient(ellipse at 5% -20%, rgba(91, 33, 182, .43), transparent 46%),
-    radial-gradient(ellipse at 55% 50%, rgba(30, 64, 175, .24), transparent 57%),
-    linear-gradient(112deg, #050b1c 0%, #0c1b48 49%, #132f73 100%);
-  box-shadow: 0 18px 38px rgba(2, 6, 23, .31), inset 0 1px rgba(255, 255, 255, .1), inset 0 -1px rgba(147, 197, 253, .14);
+  border-color: rgba(212, 175, 55, .42);
+  background: linear-gradient(135deg, var(--hotel-navy), var(--hotel-blue));
+  box-shadow: 0 16px 36px rgba(15, 23, 42, .18);
 }
 
 .account-product-mark {
@@ -1208,6 +1203,22 @@
   border-color: #cbd5e1;
   background: #ffffff;
   box-shadow: 0 10px 26px rgba(15, 23, 42, .09);
+  display: flex;
+  flex-direction: column;
+}
+
+.account-editor-grid > .account-sequence-panel {
+  align-self: stretch;
+}
+
+#accountTableContainer {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+
+#accountTableContainer > .account-pagination {
+  margin-top: auto;
 }
 
 .account-sequence-panel .account-sequence-toolbar {
@@ -1800,6 +1811,99 @@
 .account-audit-filter.is-loading .account-range-trigger::after,
 .account-audit-filter.is-loading .account-range-presets button::after {
   display: none;
+}
+
+/* Nhật ký mở trong hộp thoại gọn từ nút trên banner tài khoản. */
+.account-sequence-panel .account-sequence-actions { display: flex; align-items: center; flex: 0 0 auto; }
+.account-audit-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  color: #fff;
+  border: 1px solid rgba(212, 175, 55, .65);
+  border-radius: 9px;
+  background: #0f172a;
+  box-shadow: 0 8px 20px rgba(9, 14, 26, .34);
+  font-size: .78rem;
+  font-weight: 700;
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.account-audit-open:hover {
+  color: #fff;
+  border-color: #fde047;
+  background: #111c33;
+  box-shadow: 0 11px 26px rgba(9, 14, 26, .45);
+  transform: translateY(-1px);
+}
+.account-audit-open > i { color: #fde047; font-size: .92rem; }
+.account-audit-open > b {
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+  color: #172554;
+  border-radius: 999px;
+  background: #fde047;
+  font-size: .65rem;
+}
+.account-audit-open--table { min-height: 36px; padding-inline: 10px; font-size: .72rem; }
+.account-audit-open--table > b { min-width: 19px; height: 19px; font-size: .62rem; }
+.account-audit-open:focus-visible,
+.account-audit-dialog-close:focus-visible {
+  outline: 2px solid #fde047;
+  outline-offset: 3px;
+}
+
+.account-audit-dialog {
+  width: min(820px, calc(100vw - 24px));
+  max-width: none;
+  max-height: min(82vh, 760px);
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: 0 28px 90px rgba(2, 6, 23, .32);
+}
+.account-audit-dialog::backdrop {
+  background: rgba(15, 23, 42, .56);
+  backdrop-filter: blur(4px);
+}
+.account-audit-dialog[open] { animation: accountAuditDialogIn .22s ease-out both; }
+.account-audit-dialog-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(82vh, 760px);
+  margin: 0;
+}
+.account-audit-dialog .account-audit-heading { flex: 0 0 auto; }
+.account-audit-dialog [data-account-audit-content] {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.account-audit-dialog-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: #64748b;
+  border: 1px solid #dbe4f0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: .72rem;
+}
+.account-audit-dialog-close:hover { color: #172554; border-color: #94a3b8; background: #f8fafc; }
+
+@keyframes accountAuditDialogIn {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes accountRangePopoverIn {

@@ -17,7 +17,7 @@ public class AccountIndexViewModel
     public int AdminAccounts { get; set; }
     public int TotalFilteredAccounts { get; set; }
     public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 15;
+    public int PageSize { get; set; } = 7;
     public int TotalPages { get; set; } = 1;
     public int TotalAuditLogs { get; set; }
     public int AuditPageNumber { get; set; } = 1;
