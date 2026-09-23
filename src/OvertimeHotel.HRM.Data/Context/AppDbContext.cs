@@ -230,6 +230,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.PhutVeSom).HasColumnName("phut_ve_som").HasDefaultValue(0);
             entity.Property(e => e.GioTangCaOt).HasColumnName("gio_tang_ca_ot").HasPrecision(4, 2).HasDefaultValue(0.00m);
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("DUNG_GIO").IsRequired();
+            entity.Property(e => e.PhuongThucCheckIn).HasColumnName("phuong_thuc_checkin").HasMaxLength(20);
+            entity.Property(e => e.ToaDoCheckIn).HasColumnName("toa_do_checkin").HasMaxLength(50);
+            entity.Property(e => e.ThietBiCheckIn).HasColumnName("thiet_bi_checkin").HasMaxLength(100);
 
             entity.HasIndex(e => e.MaPhanCa).IsUnique();
 
