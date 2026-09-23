@@ -14,7 +14,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 public class UserAccountsController : Controller
 {
     private static readonly string[] SupportedRoles = ["Admin", "HR", "Manager", "Employee"];
-    private const int AccountPageSize = 15;
+    private const int AccountPageSize = 7;
     private const int AuditPageSize = 5;
 
     private readonly AppDbContext _context;
@@ -307,16 +307,24 @@ public class UserAccountsController : Controller
     [Authorize(Policy = PermissionCodes.ManagePermissions)]
     public async Task<IActionResult> RolePermissions(int? roleId)
     {
-        var selectedRoleId = roleId ?? await _context.VaiTros.OrderBy(role => role.MaVaiTro).Select(role => role.MaVaiTro).FirstOrDefaultAsync();
+        if (roleId.HasValue && await _context.VaiTros.AnyAsync(role => role.MaVaiTro == roleId.Value && role.TenVaiTro == "Admin"))
+        {
+            TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không cấu hình quyền tại đây.";
+            return RedirectToAction(nameof(RolePermissions));
+        }
+
+        var roleOptions = await GetConfigurableRoleOptionsAsync(roleId);
+        if (roleOptions.Count == 0) return NotFound();
+        var selectedRoleId = roleId ?? int.Parse(roleOptions[0].Value!);
         var role = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(item => item.MaVaiTro == selectedRoleId);
-        if (role == null) return NotFound();
+        if (role == null || role.TenVaiTro == "Admin" || !SupportedRoles.Contains(role.TenVaiTro)) return NotFound();
 
         return View(new RolePermissionsViewModel
         {
             RoleId = role.MaVaiTro,
             RoleName = GetVietnameseRoleName(role.TenVaiTro),
             AffectedAccountCount = await _context.TaiKhoans.CountAsync(account => account.MaVaiTro == role.MaVaiTro),
-            RoleOptions = await GetRoleOptionsAsync(role.MaVaiTro),
+            RoleOptions = roleOptions,
             PermissionOptions = await GetRolePermissionOptionsAsync(role.MaVaiTro)
         });
     }
@@ -328,6 +336,11 @@ public class UserAccountsController : Controller
     {
         var role = await _context.VaiTros.FirstOrDefaultAsync(item => item.MaVaiTro == model.RoleId);
         if (role == null) return NotFound();
+        if (role.TenVaiTro == "Admin")
+        {
+            TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không thể chỉnh sửa quyền tại đây.";
+            return RedirectToAction(nameof(RolePermissions));
+        }
         var allowed = await _context.Quyens.AsNoTracking().Where(item => item.MaQuyenCode != PermissionCodes.SystemAdmin)
             .ToDictionaryAsync(item => item.MaQuyen, item => item.TenQuyen);
         var allowedIds = allowed.Keys.ToHashSet();
@@ -559,6 +572,11 @@ public class UserAccountsController : Controller
         {
             return NotFound();
         }
+        if (account.VaiTro?.TenVaiTro == "Admin")
+        {
+            TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không thể chỉnh sửa quyền tại đây.";
+            return RedirectToAction(nameof(Edit), new { id = account.MaTaiKhoan });
+        }
 
         var allowedPermissions = await _context.Quyens
             .AsNoTracking()
@@ -773,6 +791,28 @@ public class UserAccountsController : Controller
         var roles = await _context.VaiTros
             .AsNoTracking()
             .Where(role => SupportedRoles.Contains(role.TenVaiTro))
+            .OrderBy(role => role.MaVaiTro)
+            .Select(role => new SelectListItem
+            {
+                Value = role.MaVaiTro.ToString(),
+                Text = role.TenVaiTro,
+                Selected = selectedRoleId.HasValue && role.MaVaiTro == selectedRoleId.Value
+            })
+            .ToListAsync();
+
+        foreach (var role in roles)
+        {
+            role.Text = GetVietnameseRoleName(role.Text);
+        }
+
+        return roles;
+    }
+
+    private async Task<IReadOnlyList<SelectListItem>> GetConfigurableRoleOptionsAsync(int? selectedRoleId)
+    {
+        var roles = await _context.VaiTros
+            .AsNoTracking()
+            .Where(role => SupportedRoles.Contains(role.TenVaiTro) && role.TenVaiTro != "Admin")
             .OrderBy(role => role.MaVaiTro)
             .Select(role => new SelectListItem
             {

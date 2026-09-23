@@ -158,6 +158,7 @@
         .replaceAll("Vai trò: Employee", "Vai trò: Nhân viên");
 
     const auditFilter = document.querySelector("[data-account-audit-filter]");
+    const auditDialog = document.querySelector("[data-account-audit-dialog]");
     const auditRangePicker = auditFilter?.querySelector("[data-account-range-picker]");
     const auditRangeTrigger = auditFilter?.querySelector("[data-account-range-trigger]");
     const auditRangePopover = auditFilter?.querySelector("[data-account-range-popover]");
@@ -181,6 +182,23 @@
         if (!auditRangePicker || !auditRangeTrigger) return;
         auditRangePicker.classList.toggle("is-open", isOpen);
         auditRangeTrigger.setAttribute("aria-expanded", String(isOpen));
+    };
+
+    document.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-account-audit-open]");
+        if (!button) return;
+        if (auditDialog && !auditDialog.open) auditDialog.showModal();
+    });
+
+    auditDialog?.querySelectorAll("[data-account-audit-close]").forEach((button) => button.addEventListener("click", () => auditDialog.close()));
+    auditDialog?.addEventListener("click", (event) => {
+        if (event.target === auditDialog) auditDialog.close();
+    });
+    auditDialog?.addEventListener("close", () => setAuditRangePickerOpen(false));
+
+    const updateAuditCount = (value) => {
+        document.querySelectorAll("[data-account-audit-count], [data-account-audit-trigger-count]")
+            .forEach((count) => count.textContent = value);
     };
 
     const dateInputValue = (date) => {
@@ -306,8 +324,7 @@
             content.classList.add("in-place-enter");
 
             window.HotelMotion?.applyEntrance?.(content);
-            const count = document.querySelector("[data-account-audit-count]");
-            if (count) count.textContent = response.headers.get("X-Audit-Count") || "0";
+            updateAuditCount(response.headers.get("X-Audit-Count") || "0");
             updateAuditDateState(formData);
             updateAuditFilterUrl(formData);
             setAuditRangePickerOpen(false);
@@ -474,8 +491,7 @@
         window.setTimeout(() => item.classList.remove("is-new"), 600);
         while (list.children.length > 12) list.lastElementChild?.remove();
 
-        const count = document.querySelector("[data-account-audit-count]");
-        if (count) count.textContent = list.children.length;
+        updateAuditCount(list.children.length);
     };
 
     const ensureEmptyAccountRow = () => {

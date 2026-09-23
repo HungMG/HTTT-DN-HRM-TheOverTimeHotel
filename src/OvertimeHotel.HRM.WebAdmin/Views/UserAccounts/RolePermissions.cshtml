@@ -13,6 +13,7 @@
             <div class="inspector-card-heading"><span class="inspector-index">RBAC</span><div><small>Phạm vi áp dụng</small><h2>Chọn vai trò để cấp hoặc thu hồi quyền</h2></div><i class="bi bi-shield-check"></i></div>
             <div class="inspector-card-body">
                 <div class="account-field"><label asp-for="RoleId"><span>Vai trò</span><small>@Model.AffectedAccountCount tài khoản bị ảnh hưởng</small></label><select asp-for="RoleId" asp-items="Model.RoleOptions" onchange="this.form.method='get';this.form.action='@Url.Action("RolePermissions")';this.form.submit()"></select></div>
+                <p class="text-muted small mb-3"><i class="bi bi-info-circle"></i> Quản trị viên có toàn quyền hệ thống nên không cấu hình quyền tại đây.</p>
                 <div class="account-role-permission-grid">
                     @foreach (var permission in Model.PermissionOptions) { <label><input type="checkbox" name="PermissionIds" value="@permission.PermissionId" checked="@permission.Granted" /><span><i class="bi bi-check-lg"></i></span><strong>@permission.Name</strong><small>@permission.Description</small></label> }
                 </div>

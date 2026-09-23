@@ -15,7 +15,10 @@
             <span></span><span></span><span></span>
         </div>
         <div class="account-command-copy">
-            <div class="account-eyebrow"><span class="account-live-dot"></span> Không gian quản trị</div>
+            <div class="account-command-brandline">
+                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill account-hotel-badge"><i class="bi bi-stars" aria-hidden="true"></i> THE OVERTIME HOTEL</span>
+                <div class="account-eyebrow"><span class="account-live-dot"></span> Không gian quản trị</div>
+            </div>
             <h1>Tài khoản <span>&amp; phân quyền</span></h1>
             <p>Điều phối danh tính, trạng thái và vai trò truy cập của toàn bộ nhân sự.</p>
         </div>
@@ -162,7 +165,8 @@
         </div>
     </section>
 
-    <section class="account-audit-panel account-reveal position-relative" aria-labelledby="auditLogTitle">
+    <dialog id="accountAuditDialog" class="account-audit-dialog" data-account-audit-dialog aria-labelledby="auditLogTitle">
+    <section class="account-audit-panel account-audit-dialog-panel position-relative" aria-labelledby="auditLogTitle">
         <!-- Loading overlay cho khung nhật ký quản trị -->
         <div id="auditLoadingOverlay" class="in-place-loading-overlay d-none">
             <div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem;">
@@ -175,13 +179,14 @@
         <div class="account-audit-heading">
             <div class="account-audit-title">
                 <span class="account-audit-mark"><i class="bi bi-journal-check"></i></span>
-                <div>
-                    <small>Nhật ký thao tác</small>
-                    <div class="account-audit-title-line">
-                        <h2 id="auditLogTitle">Nhật ký quản trị gần đây</h2>
-                        <span class="account-audit-count account-audit-count--badge"><i class="bi bi-clock-history"></i><b data-account-audit-count>@Model.TotalAuditLogs</b> hoạt động</span>
+                    <div>
+                        <small>Nhật ký thao tác</small>
+                        <div class="account-audit-title-line">
+                            <h2 id="auditLogTitle">Nhật ký quản trị gần đây</h2>
+                            <span class="account-audit-count account-audit-count--badge"><i class="bi bi-clock-history"></i><b data-account-audit-count>@Model.TotalAuditLogs</b> hoạt động</span>
+                            <button type="button" class="account-audit-dialog-close" data-account-audit-close aria-label="Đóng nhật ký"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                        </div>
                     </div>
-                </div>
             </div>
             <div class="account-audit-tools">
                 <form method="get" asp-action="Index" class="account-audit-filter" data-account-audit-filter data-audit-endpoint="@Url.Action("AuditLogs")" aria-label="Lọc nhật ký theo ngày">
@@ -222,6 +227,7 @@
             <partial name="_AuditLogList" model="Model" />
         </div>
     </section>
+    </dialog>
 </div>
 
 <dialog class="account-confirm-dialog" data-account-confirm>
