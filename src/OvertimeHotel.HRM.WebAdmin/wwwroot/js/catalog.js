@@ -176,8 +176,10 @@
   };
 
   const toggleResetButtons = () => {
+    const typeInput = filterForm?.querySelector("[data-catalog-type-input]");
     const hasValue =
       Boolean(searchInput?.value?.trim()) ||
+      Boolean(typeInput?.value?.trim()) ||
       Boolean(filterForm?.querySelector("select")?.value);
     page.querySelectorAll(".catalog-toolbar [data-catalog-reset]").forEach((btn) => {
       btn.classList.toggle("d-none", !hasValue);
@@ -237,6 +239,47 @@
     });
   }
 
+  // Lọc nhanh bằng cách nhấp vào các thẻ KPI (Phụ cấp, Thưởng, Khấu trừ)
+  const kpiFilterContainer = page.querySelector("[data-catalog-kpi-filters]");
+  if (kpiFilterContainer) {
+    kpiFilterContainer.addEventListener("click", (event) => {
+      const card = event.target.closest("[data-filter-type]");
+      if (!card) return;
+      const type = card.dataset.filterType;
+      const typeInput = filterForm?.querySelector("[data-catalog-type-input]");
+      if (!typeInput) return;
+
+      const isCurrentlyActive = card.classList.contains("is-active");
+
+      kpiFilterContainer.querySelectorAll("[data-filter-type]").forEach((c) => {
+        c.classList.remove("is-active");
+        c.querySelector(".catalog-kpi-badge")?.classList.add("d-none");
+      });
+
+      if (isCurrentlyActive) {
+        typeInput.value = "";
+      } else {
+        card.classList.add("is-active");
+        card.querySelector(".catalog-kpi-badge")?.classList.remove("d-none");
+        typeInput.value = type;
+      }
+
+      window.clearTimeout(searchTimer);
+      toggleResetButtons();
+      void refreshResults();
+    });
+
+    kpiFilterContainer.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        const card = event.target.closest("[data-filter-type]");
+        if (card) {
+          event.preventDefault();
+          card.click();
+        }
+      }
+    });
+  }
+
   // Event delegation cho mọi nút data-catalog-reset (cả trên thanh công cụ và trong empty state)
   document.addEventListener("click", (event) => {
     const reset = event.target.closest("[data-catalog-reset]");
@@ -247,10 +290,14 @@
     window.clearTimeout(searchTimer);
     filterForm.reset();
     filterForm
-      .querySelectorAll("input:not([type='hidden']), select")
+      .querySelectorAll("input, select")
       .forEach((control) => {
         control.value = "";
       });
+    page.querySelectorAll("[data-catalog-kpi-filters] [data-filter-type]").forEach((c) => {
+      c.classList.remove("is-active");
+      c.querySelector(".catalog-kpi-badge")?.classList.add("d-none");
+    });
     toggleResetButtons();
     searchInput?.focus();
     void refreshResults(buildFilterUrl());
