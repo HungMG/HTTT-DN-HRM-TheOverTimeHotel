@@ -10,8 +10,6 @@
         page,
         pageSize = Model.PageSize
     }) ?? "#";
-    var firstEmployee = Model.TotalFilteredEmployees == 0 ? 0 : ((Model.PageNumber - 1) * Model.PageSize) + 1;
-    var lastEmployee = Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredEmployees);
     var firstPage = Math.Max(1, Model.PageNumber - 2);
     var lastPage = Math.Min(Model.TotalPages, Model.PageNumber + 2);
 }
@@ -234,7 +232,7 @@
 
         @if (Model.TotalPages > 1)
         {
-            <div class="d-flex justify-content-center align-items-center mt-3 gap-2 flex-wrap">
+            <div class="d-flex justify-content-start align-items-center mt-3 gap-2 flex-wrap">
                 <ul class="pagination pagination-sm mb-0">
                     <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
                         <a class="page-link" href="@pageUrl(Math.Max(1, Model.PageNumber - 1))" aria-label="Trang trước">

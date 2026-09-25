@@ -1562,20 +1562,20 @@
 }
 
 .employee-workspace .catalog-command-bar .btn-light {
-  color: #ffffff;
-  border-color: rgba(212, 175, 55, .58);
-  background: linear-gradient(135deg, #1d4ed8, #0f172a);
-  box-shadow: 0 8px 20px rgba(2, 6, 23, .24);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, .14);
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, .18);
 }
 
 .employee-workspace .catalog-command-bar .btn-light i {
-  color: #fde047 !important;
+  color: #0d6efd !important;
 }
 
 .employee-workspace .catalog-command-bar .btn-light:hover {
-  color: #ffffff;
-  border-color: #d4af37;
-  background: linear-gradient(135deg, #1e3a8a, #090e1a);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, .28);
+  background: #f8fafc;
 }
 
 .employee-workspace .catalog-nav-tabs-wrapper,
