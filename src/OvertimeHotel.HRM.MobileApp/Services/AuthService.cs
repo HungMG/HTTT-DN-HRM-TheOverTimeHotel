@@ -59,6 +59,7 @@ public class AuthService : IAuthService
                 TenVaiTro = seedAccount.Role,
                 TenPhongBan = seedAccount.Department,
                 TenChucVu = seedAccount.Position,
+                MaPhongBan = seedAccount.MaPhongBan,
                 IsLoggedIn = true,
                 ThoiGianDangNhap = DateTime.UtcNow
             };
@@ -80,7 +81,7 @@ public class AuthService : IAuthService
         var passwordHash = HashPassword(password);
         try
         {
-            var requestUri = $"/rest/v1/tai_khoan?ten_dang_nhap=eq.{Uri.EscapeDataString(trimmedUser)}&mat_khau_bam=eq.{passwordHash}&select=ma_tai_khoan,ma_nhan_vien,ten_dang_nhap,trang_thai,vai_tro(ten_vai_tro),nhan_vien(ho,ten,email,dien_thoai,phong_ban(ten_phong_ban),chuc_vu(ten_chuc_vu))";
+            var requestUri = $"/rest/v1/tai_khoan?ten_dang_nhap=eq.{Uri.EscapeDataString(trimmedUser)}&mat_khau_bam=eq.{passwordHash}&select=ma_tai_khoan,ma_nhan_vien,ten_dang_nhap,trang_thai,vai_tro(ten_vai_tro),nhan_vien(ho,ten,email,dien_thoai,ma_phong_ban,phong_ban(ten_phong_ban),chuc_vu(ten_chuc_vu))";
 
             var response = await _httpClient.GetAsync(requestUri).ConfigureAwait(false);
 
@@ -116,6 +117,7 @@ public class AuthService : IAuthService
                     string posName = "Nhân viên";
                     string email = "";
                     string phone = "";
+                    int? maPhongBan = null;
 
                     if (userElem.TryGetProperty("nhan_vien", out var nvElem) && nvElem.ValueKind == JsonValueKind.Object)
                     {
@@ -125,6 +127,11 @@ public class AuthService : IAuthService
 
                         email = nvElem.TryGetProperty("email", out var em) ? em.GetString() ?? "" : "";
                         phone = nvElem.TryGetProperty("dien_thoai", out var ph) ? ph.GetString() ?? "" : "";
+
+                        if (nvElem.TryGetProperty("ma_phong_ban", out var mpb) && mpb.ValueKind == JsonValueKind.Number)
+                        {
+                            maPhongBan = mpb.GetInt32();
+                        }
 
                         if (nvElem.TryGetProperty("phong_ban", out var pbElem) && pbElem.ValueKind == JsonValueKind.Object)
                         {
@@ -146,6 +153,7 @@ public class AuthService : IAuthService
                         TenVaiTro = roleName,
                         TenPhongBan = deptName,
                         TenChucVu = posName,
+                        MaPhongBan = maPhongBan,
                         Email = email,
                         DienThoai = phone,
                         IsLoggedIn = true,
@@ -253,10 +261,10 @@ public class AuthService : IAuthService
 
     private static readonly List<SeedAccount> _seedAccounts = new()
     {
-        new(6, 13, "ngothibich", "123456", "Ngô Thị Bích", "Employee", "Bộ phận Buồng phòng", "Nhân viên Buồng phòng"),
-        new(5, 10, "dothanhdat", "123456", "Đỗ Thành Đạt", "Manager", "Bộ phận Tiền sảnh (FO)", "Giám sát Tiền sảnh"),
-        new(2, 2, "hr_sang", "123456", "Võ Huỳnh Minh Sang", "HR", "Phòng Nhân sự", "Chuyên viên Nhân sự"),
-        new(1, 1, "admin", "123456", "Nguyễn Đình Cường", "Admin", "Ban Quản Trị Khách Sạn", "Quản Trị Viên Hệ Thống")
+        new(6, 13, "ngothibich", "123456", "Ngô Thị Bích", "Employee", "Bộ phận Buồng phòng", "Nhân viên Buồng phòng", 3),
+        new(5, 10, "dothanhdat", "123456", "Đỗ Thành Đạt", "Manager", "Bộ phận Tiền sảnh (FO)", "Giám sát Tiền sảnh", 2),
+        new(2, 2, "hr_sang", "123456", "Võ Huỳnh Minh Sang", "HR", "Phòng Nhân sự", "Chuyên viên Nhân sự", 8),
+        new(1, 1, "admin", "123456", "Nguyễn Đình Cường", "Admin", "Ban Quản Trị Khách Sạn", "Quản Trị Viên Hệ Thống", 1)
     };
 
     public async Task<(bool Success, string Message)> ChangePasswordAsync(string oldPassword, string newPassword)
@@ -351,8 +359,9 @@ public class AuthService : IAuthService
         public string Role { get; set; }
         public string Department { get; set; }
         public string Position { get; set; }
+        public int? MaPhongBan { get; set; }
 
-        public SeedAccount(int maTaiKhoan, int maNhanVien, string tenDangNhap, string password, string hoTen, string role, string department, string position)
+        public SeedAccount(int maTaiKhoan, int maNhanVien, string tenDangNhap, string password, string hoTen, string role, string department, string position, int? maPhongBan = null)
         {
             MaTaiKhoan = maTaiKhoan;
             MaNhanVien = maNhanVien;
@@ -362,6 +371,7 @@ public class AuthService : IAuthService
             Role = role;
             Department = department;
             Position = position;
+            MaPhongBan = maPhongBan;
         }
     }
 }
