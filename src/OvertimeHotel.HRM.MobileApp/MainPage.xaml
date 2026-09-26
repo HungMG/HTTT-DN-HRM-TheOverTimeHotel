@@ -110,14 +110,17 @@
                         </VerticalStackLayout>
                     </Border>
 
-                    <Border Grid.Column="2" StrokeShape="RoundRectangle 14" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="10">
+                    <Border x:Name="cardStatPendingLeave" Grid.Column="2" StrokeShape="RoundRectangle 14" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="10">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnPendingLeaveStatTapped" />
+                        </Border.GestureRecognizers>
                         <Border.Shadow>
                             <Shadow Brush="#64748B" Offset="0,4" Radius="8" Opacity="0.06" />
                         </Border.Shadow>
                         <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
                             <Label Text="Đơn chờ duyệt" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" HorizontalOptions="Center" />
-                            <Label Text="1" TextColor="#059669" FontSize="20" FontFamily="SegoeUIBold" HorizontalOptions="Center" />
-                            <Label Text="Nghỉ phép năm" TextColor="#94A3B8" FontSize="9" FontFamily="SegoeUI" HorizontalOptions="Center" />
+                            <Label x:Name="lblPendingLeaveCount" Text="0" TextColor="#059669" FontSize="20" FontFamily="SegoeUIBold" HorizontalOptions="Center" />
+                            <Label x:Name="lblPendingLeaveSub" Text="Đang nạp..." TextColor="#94A3B8" FontSize="9" FontFamily="SegoeUI" HorizontalOptions="Center" />
                         </VerticalStackLayout>
                     </Border>
                 </Grid>
@@ -160,8 +163,8 @@
                         <VerticalStackLayout Spacing="8">
                             <Label Text="📝" FontSize="24" />
                             <Label Text="Đơn Điện Tử" TextColor="#0F172A" FontSize="14" FontFamily="SegoeUIBold" />
-                            <Label Text="Nghỉ phép, đổi ca" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
-                            <Button Text="Tạo Đơn" Clicked="OnFeatureClicked" BackgroundColor="#1E3A8A" TextColor="#FFFFFF" FontFamily="SegoeUIBold" FontSize="11" HeightRequest="32" CornerRadius="8" />
+                            <Label x:Name="lblDonTuDesc" Text="Nghỉ phép, đổi ca" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                            <Button x:Name="btnDonTuAction" Text="Tạo Đơn" Clicked="OnDonTuClicked" BackgroundColor="#1E3A8A" TextColor="#FFFFFF" FontFamily="SegoeUIBold" FontSize="11" HeightRequest="32" CornerRadius="8" />
                         </VerticalStackLayout>
                     </Border>
 

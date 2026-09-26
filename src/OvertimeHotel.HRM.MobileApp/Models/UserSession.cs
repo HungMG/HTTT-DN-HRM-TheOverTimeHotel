@@ -14,11 +14,13 @@ public class UserSession
     public string TenChucVu { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string DienThoai { get; set; } = string.Empty;
+    public int? MaPhongBan { get; set; }
     public bool IsLoggedIn { get; set; }
     public DateTime ThoiGianDangNhap { get; set; } = DateTime.UtcNow;
 
-    public bool IsManager => TenVaiTro.Equals("Manager", StringComparison.OrdinalIgnoreCase) ||
-                             TenVaiTro.Equals("Admin", StringComparison.OrdinalIgnoreCase);
-
+    public bool IsManager => TenVaiTro.Equals("Manager", StringComparison.OrdinalIgnoreCase);
+    public bool IsHR => TenVaiTro.Equals("HR", StringComparison.OrdinalIgnoreCase);
+    public bool IsAdmin => TenVaiTro.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+    public bool CanApproveLeave => IsManager || IsHR || IsAdmin;
     public bool IsEmployee => TenVaiTro.Equals("Employee", StringComparison.OrdinalIgnoreCase);
 }

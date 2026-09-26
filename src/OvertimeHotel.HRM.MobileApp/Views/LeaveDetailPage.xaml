@@ -1,0 +1,480 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.LeaveDetailPage"
+             x:DataType="vm:LeaveDetailViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+        <!-- LỚP 1: NỘI DUNG CHÍNH CỦA TRANG CHI TIẾT -->
+        <Grid RowDefinitions="*,Auto">
+            <ScrollView Grid.Row="0">
+                <VerticalStackLayout Spacing="16" Padding="16,14,16,24">
+
+                    <!-- HEADER ĐIỀU HƯỚNG: NÚT QUAY LẠI & TRẠNG THÁI -->
+                    <Grid x:Name="detailHeader" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
+                        <Button Grid.Column="0"
+                                Text="← Quay Lại"
+                                Command="{Binding BackCommand}"
+                                Clicked="OnBackButtonClicked"
+                                SemanticProperties.Description="Quay lại danh sách đơn"
+                                FontFamily="SegoeUIBold"
+                                FontSize="12"
+                                BackgroundColor="#EFF6FF"
+                                TextColor="#1E3A8A"
+                                HeightRequest="40"
+                                Padding="12,0"
+                                CornerRadius="10" />
+
+                        <Label Grid.Column="1"
+                               Text="Chi Tiết Đơn"
+                               TextColor="#0F172A"
+                               FontFamily="SegoeUIBold"
+                               FontSize="16"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+
+                        <!-- Badge trạng thái đơn hiện tại -->
+                        <Border Grid.Column="2"
+                                StrokeShape="RoundRectangle 10"
+                                BackgroundColor="{Binding RequestItem.StatusBgColor}"
+                                Padding="10,4"
+                                VerticalOptions="Center">
+                            <Label Text="{Binding RequestItem.StatusText}"
+                                   TextColor="{Binding RequestItem.StatusColor}"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="11" />
+                        </Border>
+                    </Grid>
+
+                    <!-- THẺ 1: THÔNG TIN NHÂN SỰ GỬI ĐƠN -->
+                    <Border StrokeShape="RoundRectangle 16"
+                            Stroke="#E2E8F0"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="10" Opacity="0.06" />
+                        </Border.Shadow>
+
+                        <VerticalStackLayout Spacing="12">
+                            <Label Text="THÔNG TIN NHÂN VIÊN"
+                                   TextColor="#1E3A8A"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="11"
+                                   CharacterSpacing="0.5" />
+
+                            <Grid ColumnDefinitions="Auto,*" VerticalOptions="Center">
+                                <!-- Avatar tròn -->
+                                <Border Grid.Column="0"
+                                        StrokeShape="RoundRectangle 26"
+                                        Stroke="{Binding RequestItem.TypeColor}"
+                                        StrokeThickness="2"
+                                        BackgroundColor="{Binding RequestItem.TypeBgColor}"
+                                        WidthRequest="52"
+                                        HeightRequest="52"
+                                        VerticalOptions="Center">
+                                    <Label Text="{Binding RequestItem.Initials}"
+                                           TextColor="{Binding RequestItem.TypeColor}"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="20"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+
+                                <VerticalStackLayout Grid.Column="1" Margin="14,0,0,0" VerticalOptions="Center" Spacing="2">
+                                    <HorizontalStackLayout Spacing="8">
+                                        <Label Text="{Binding RequestItem.TenNhanVien}"
+                                               TextColor="#0F172A"
+                                               FontFamily="SegoeUIBold"
+                                               FontSize="16" />
+                                        <Border StrokeShape="RoundRectangle 6"
+                                                BackgroundColor="#F1F5F9"
+                                                Padding="6,1"
+                                                VerticalOptions="Center">
+                                            <Label Text="{Binding RequestItem.MaNhanVienDisplay}"
+                                                   TextColor="#475569"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="10" />
+                                        </Border>
+                                    </HorizontalStackLayout>
+
+                                    <Label Text="{Binding RequestItem.TenPhongBan, StringFormat='Phòng ban: {0}'}"
+                                           TextColor="#475569"
+                                           FontFamily="SegoeUI"
+                                           FontSize="12" />
+
+                                    <Label Text="{Binding RequestItem.TenChucVu, StringFormat='Chức vụ: {0}'}"
+                                           TextColor="#64748B"
+                                           FontFamily="SegoeUI"
+                                           FontSize="11" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- THẺ 2: CHI TIẾT NỘI DUNG ĐƠN TỪ -->
+                    <Border StrokeShape="RoundRectangle 16"
+                            Stroke="#E2E8F0"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="10" Opacity="0.06" />
+                        </Border.Shadow>
+
+                        <VerticalStackLayout Spacing="14">
+                            <Label Text="NỘI DUNG ĐƠN XIN NGHỈ"
+                                   TextColor="#1E3A8A"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="11"
+                                   CharacterSpacing="0.5" />
+
+                            <!-- Badges Loại đơn & Chế độ lương -->
+                            <HorizontalStackLayout Spacing="8">
+                                <Border StrokeShape="RoundRectangle 8"
+                                        BackgroundColor="{Binding RequestItem.TypeBgColor}"
+                                        Padding="10,4">
+                                    <Label Text="{Binding RequestItem.TenLoaiDon}"
+                                           TextColor="{Binding RequestItem.TypeColor}"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="12" />
+                                </Border>
+
+                                <Border StrokeShape="RoundRectangle 8"
+                                        BackgroundColor="{Binding RequestItem.SalaryBadgeBg}"
+                                        Padding="10,4">
+                                    <Label Text="{Binding RequestItem.SalaryBadgeText}"
+                                           TextColor="{Binding RequestItem.SalaryBadgeTextColor}"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="11" />
+                                </Border>
+                            </HorizontalStackLayout>
+
+                            <!-- Bảng thông số: Thời gian & Tổng ngày -->
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="12" BackgroundColor="#F8FAFC" Padding="12">
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
+                                    <Label Text="Khoảng thời gian nghỉ" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                                    <Label Text="{Binding RequestItem.PeriodDisplay}" TextColor="#0F172A" FontSize="13" FontFamily="SegoeUIBold" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="2">
+                                    <Label Text="Tổng thời gian" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                                    <Label Text="{Binding RequestItem.SoNgayNghiDisplay}" TextColor="#1E3A8A" FontSize="14" FontFamily="SegoeUIBold" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Grid.Row="1" Grid.ColumnSpan="2" Spacing="2">
+                                    <Label Text="Thời điểm gửi đơn" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                                    <Label Text="{Binding RequestItem.NgayGuiDisplay}" TextColor="#334155" FontSize="12" FontFamily="SegoeUI" />
+                                </VerticalStackLayout>
+                            </Grid>
+
+                            <!-- Khối Lý do xin nghỉ -->
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="Lý do xin nghỉ của nhân viên:"
+                                       TextColor="#475569"
+                                       FontFamily="SegoeUIBold"
+                                       FontSize="12" />
+                                <Border StrokeShape="RoundRectangle 12"
+                                        Stroke="#E2E8F0"
+                                        BackgroundColor="#F8FAFC"
+                                        Padding="14">
+                                    <Label Text="{Binding RequestItem.LyDo}"
+                                           TextColor="#0F172A"
+                                           FontFamily="SegoeUI"
+                                           FontSize="13"
+                                           LineHeight="1.4" />
+                                </Border>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- THẺ 3: KẾT QUẢ XỬ LÝ (CHỈ HIỂN THỊ KHI ĐƠN ĐÃ ĐƯỢC XỬ LÝ) -->
+                    <Border IsVisible="{Binding IsReviewed}"
+                            StrokeShape="RoundRectangle 16"
+                            Stroke="{Binding RequestItem.StatusColor}"
+                            StrokeThickness="1.5"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#64748B" Offset="0,4" Radius="10" Opacity="0.06" />
+                        </Border.Shadow>
+
+                        <VerticalStackLayout Spacing="10">
+                            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                                <Label Text="📋" FontSize="16" />
+                                <Label Text="KẾT QUẢ XÉT DUYỆT"
+                                       TextColor="{Binding RequestItem.StatusColor}"
+                                       FontFamily="SegoeUIBold"
+                                       FontSize="12"
+                                       CharacterSpacing="0.5" />
+                            </HorizontalStackLayout>
+
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="8" ColumnSpacing="10" BackgroundColor="#F8FAFC" Padding="12">
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="2">
+                                    <Label Text="Người ký duyệt" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                                    <Label Text="{Binding RequestItem.NguoiDuyetTen, TargetNullValue='--'}" TextColor="#0F172A" FontSize="12" FontFamily="SegoeUIBold" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="2">
+                                    <Label Text="Thời điểm duyệt" TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+                                    <Label Text="{Binding RequestItem.NgayDuyetDisplay}" TextColor="#0F172A" FontSize="12" FontFamily="SegoeUIBold" />
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Grid.Row="1" Grid.ColumnSpan="2" Spacing="4" Margin="0,4,0,0">
+                                    <Label Text="Phản hồi / Lý do từ chối:" TextColor="#64748B" FontSize="11" FontFamily="SegoeUIBold" />
+                                    <Label Text="{Binding RequestItem.PhanHoiDuyet, TargetNullValue='(Không có phản hồi)'}"
+                                           TextColor="#B91C1C"
+                                           FontFamily="SegoeUI"
+                                           FontSize="13"
+                                           LineHeight="1.3" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <!-- CỤM NÚT DUYỆT / TỪ CHỐI THUMB ZONE (CỐ ĐỊNH Ở MẮT DƯỚI, CHỈ HIỆN KHI ĐƠN CHỜ DUYỆT) -->
+            <Border Grid.Row="1"
+                    IsVisible="{Binding CanAct}"
+                    StrokeShape="RoundRectangle 0"
+                    Stroke="#E2E8F0"
+                    BackgroundColor="#FFFFFF"
+                    Padding="16,12">
+                <Border.Shadow>
+                    <Shadow Brush="#0F172A" Offset="0,-4" Radius="12" Opacity="0.08" />
+                </Border.Shadow>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <!-- Nút Từ chối (Nền Đỏ) -->
+                    <Button Grid.Column="0"
+                            Text="✕  TỪ CHỐI"
+                            Command="{Binding OpenRejectModalCommand}"
+                            Clicked="OnActionButtonClicked"
+                            BackgroundColor="#DC2626"
+                            TextColor="#FFFFFF"
+                            FontFamily="SegoeUIBold"
+                            FontSize="13"
+                            HeightRequest="48"
+                            CornerRadius="12">
+                        <Button.Shadow>
+                            <Shadow Brush="#DC2626" Offset="0,4" Radius="8" Opacity="0.25" />
+                        </Button.Shadow>
+                    </Button>
+
+                    <!-- Nút Phê duyệt (Nền Xanh Lá) -->
+                    <Button Grid.Column="1"
+                            Text="✓  PHÊ DUYỆT"
+                            Command="{Binding ApproveCommand}"
+                            Clicked="OnActionButtonClicked"
+                            BackgroundColor="#16A34A"
+                            TextColor="#FFFFFF"
+                            FontFamily="SegoeUIBold"
+                            FontSize="13"
+                            HeightRequest="48"
+                            CornerRadius="12">
+                        <Button.Shadow>
+                            <Shadow Brush="#16A34A" Offset="0,4" Radius="8" Opacity="0.25" />
+                        </Button.Shadow>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- LỚP 2: CUSTOM MODAL NHẬP LÝ DO TỪ CHỐI ĐƠN -->
+        <Grid x:Name="rejectModalOverlay"
+              IsVisible="{Binding IsRejectModalVisible}"
+              BackgroundColor="#990F172A"
+              ZIndex="998"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+
+            <Border x:Name="rejectModalBorder"
+                    StrokeShape="RoundRectangle 24"
+                    Stroke="#DC2626"
+                    StrokeThickness="2"
+                    BackgroundColor="#FFFFFF"
+                    WidthRequest="330"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Padding="22,24">
+                <Border.Shadow>
+                    <Shadow Brush="#0F172A" Offset="0,12" Radius="24" Opacity="0.3" />
+                </Border.Shadow>
+
+                <VerticalStackLayout Spacing="14">
+                    <!-- Icon cảnh báo -->
+                    <Border StrokeShape="RoundRectangle 26"
+                            Stroke="#DC2626"
+                            StrokeThickness="2"
+                            BackgroundColor="#FEE2E2"
+                            WidthRequest="52"
+                            HeightRequest="52"
+                            HorizontalOptions="Center">
+                        <Label Text="✕"
+                               TextColor="#DC2626"
+                               FontSize="22"
+                               FontFamily="SegoeUIBold"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <Label Text="Từ Chối Đơn Từ"
+                           FontFamily="SegoeUIBold"
+                           FontSize="18"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center" />
+
+                    <Label Text="Vui lòng nhập lý do từ chối để thông báo đến nhân viên:"
+                           FontFamily="SegoeUI"
+                           FontSize="12"
+                           TextColor="#475569"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+
+                    <!-- Khung nhập lý do -->
+                    <Border x:Name="rejectInputBorder"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="#CBD5E1"
+                            BackgroundColor="#F8FAFC"
+                            Padding="12,8">
+                        <Editor Text="{Binding RejectReason}"
+                                Placeholder="Nhập lý do từ chối (bắt buộc)..."
+                                PlaceholderColor="#94A3B8"
+                                TextColor="#0F172A"
+                                FontFamily="SegoeUI"
+                                FontSize="13"
+                                HeightRequest="90" />
+                    </Border>
+
+                    <!-- Nhãn lỗi Validation (Error next to input) -->
+                    <Label IsVisible="{Binding HasRejectError}"
+                           Text="{Binding RejectErrorMessage}"
+                           TextColor="#DC2626"
+                           FontFamily="SegoeUIBold"
+                           FontSize="11"
+                           Margin="2,-6,0,0" />
+
+                    <!-- Nút thao tác trong Modal -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,4,0,0">
+                        <Button Grid.Column="0"
+                                Text="HỦY"
+                                Command="{Binding CloseRejectModalCommand}"
+                                Clicked="OnActionButtonClicked"
+                                BackgroundColor="#F1F5F9"
+                                TextColor="#475569"
+                                FontFamily="SegoeUIBold"
+                                FontSize="12"
+                                HeightRequest="44"
+                                CornerRadius="10" />
+
+                        <Button Grid.Column="1"
+                                Text="XÁC NHẬN"
+                                Command="{Binding ConfirmRejectCommand}"
+                                Clicked="OnActionButtonClicked"
+                                BackgroundColor="#DC2626"
+                                TextColor="#FFFFFF"
+                                FontFamily="SegoeUIBold"
+                                FontSize="12"
+                                HeightRequest="44"
+                                CornerRadius="10" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- LỚP 3: CUSTOM LUXURY MODAL POPUP (XÁC NHẬN & FEEDBACK) -->
+        <Grid x:Name="customModalOverlay"
+              IsVisible="{Binding IsCustomModalVisible}"
+              BackgroundColor="#990F172A"
+              ZIndex="999"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill">
+
+            <Border x:Name="customModalBorder"
+                    StrokeShape="RoundRectangle 24"
+                    Stroke="{Binding ModalBorderColor}"
+                    StrokeThickness="2"
+                    BackgroundColor="#FFFFFF"
+                    WidthRequest="330"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Padding="22,26">
+                <Border.Shadow>
+                    <Shadow Brush="#0F172A" Offset="0,12" Radius="24" Opacity="0.3" />
+                </Border.Shadow>
+
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <!-- Icon tròn sang trọng -->
+                    <Border StrokeShape="RoundRectangle 30"
+                            Stroke="{Binding ModalBorderColor}"
+                            StrokeThickness="2"
+                            BackgroundColor="{Binding ModalIconBgColor}"
+                            WidthRequest="60"
+                            HeightRequest="60"
+                            HorizontalOptions="Center">
+                        <Label Text="{Binding ModalIconText}"
+                               TextColor="{Binding ModalIconTextColor}"
+                               FontSize="26"
+                               FontFamily="SegoeUIBold"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <Label Text="{Binding ModalTitle}"
+                           FontFamily="SegoeUIBold"
+                           FontSize="18"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+
+                    <Label Text="{Binding ModalMessage}"
+                           FontFamily="SegoeUI"
+                           FontSize="13"
+                           TextColor="#475569"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center"
+                           LineBreakMode="WordWrap" />
+
+                    <!-- Khung nút bấm: 1 nút hoặc 2 nút -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,6,0,0">
+                        <Button Grid.Column="0"
+                                IsVisible="{Binding ModalShowCancel}"
+                                Text="HỦY BỎ"
+                                Command="{Binding CustomModalCancelCommand}"
+                                Clicked="OnActionButtonClicked"
+                                BackgroundColor="#F1F5F9"
+                                TextColor="#475569"
+                                FontFamily="SegoeUIBold"
+                                FontSize="12"
+                                HeightRequest="44"
+                                CornerRadius="10" />
+
+                        <Button Grid.Column="1"
+                                Text="{Binding ModalConfirmButtonText}"
+                                Command="{Binding CustomModalConfirmCommand}"
+                                Clicked="OnActionButtonClicked"
+                                BackgroundColor="#1E3A8A"
+                                TextColor="#FFFFFF"
+                                FontFamily="SegoeUIBold"
+                                FontSize="12"
+                                HeightRequest="44"
+                                CornerRadius="10">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding ModalShowCancel}" Value="False">
+                                    <Setter Property="Grid.ColumnSpan" Value="2" />
+                                    <Setter Property="Grid.Column" Value="0" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+    </Grid>
+
+</ContentPage>

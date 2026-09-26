@@ -6,12 +6,14 @@ namespace OvertimeHotel.HRM.MobileApp;
 public partial class MainPage : ContentPage
 {
     private readonly IAuthService _authService;
+    private readonly ILeaveApprovalService _leaveApprovalService;
     private Action? _modalConfirmAction;
 
-    public MainPage(IAuthService authService)
+    public MainPage(IAuthService authService, ILeaveApprovalService leaveApprovalService)
     {
         InitializeComponent();
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _leaveApprovalService = leaveApprovalService ?? throw new ArgumentNullException(nameof(leaveApprovalService));
     }
 
     protected override async void OnAppearing()
@@ -30,12 +32,42 @@ public partial class MainPage : ContentPage
                 var parts = user.HoTen.Trim().Split(' ');
                 lblHeaderAvatar.Text = parts[^1][0].ToString().ToUpper();
             }
+
+            // Đồng bộ trạng thái duyệt đơn từ và số đếm động
+            if (user.CanApproveLeave)
+            {
+                btnDonTuAction.Text = "Duyệt Đơn";
+                btnDonTuAction.BackgroundColor = Color.FromArgb("#16A34A");
+                lblDonTuDesc.Text = "Phê duyệt đơn nghỉ, thôi việc";
+
+                try
+                {
+                    var pendingCount = await _leaveApprovalService.GetPendingCountAsync(user.TenVaiTro, user.MaPhongBan);
+                    lblPendingLeaveCount.Text = pendingCount.ToString();
+                    lblPendingLeaveSub.Text = user.IsManager ? "Bộ phận quản lý" : "Toàn khách sạn";
+                }
+                catch
+                {
+                    lblPendingLeaveCount.Text = "0";
+                    lblPendingLeaveSub.Text = "Không có đơn";
+                }
+            }
+            else
+            {
+                btnDonTuAction.Text = "Tạo Đơn";
+                btnDonTuAction.BackgroundColor = Color.FromArgb("#1E3A8A");
+                lblDonTuDesc.Text = "Nghỉ phép, đổi ca";
+                lblPendingLeaveCount.Text = "0";
+                lblPendingLeaveSub.Text = "Đơn của bạn";
+            }
         }
         else
         {
             lblGreeting.Text = "Xin chào, Nhân viên!";
             lblRoleDepartment.Text = "Bộ phận Buồng phòng · The OverTime Hotel";
             lblHeaderAvatar.Text = "👤";
+            lblPendingLeaveCount.Text = "0";
+            lblPendingLeaveSub.Text = "Chưa đăng nhập";
         }
 
         // 2. KHỞI TẠO VỊ TRÍ BAN ĐẦU CHO HIỆU ỨNG "BAY CÁC KHỐI VÀO" MƯỢT MÀ
@@ -179,6 +211,60 @@ public partial class MainPage : ContentPage
             showCancel: false,
             onConfirm: null
         );
+    }
+
+    private async void OnPendingLeaveStatTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is VisualElement el) await el.SpringTapAsync(0.92, 50, 140);
+        var user = _authService.CurrentUser;
+        if (user != null && user.CanApproveLeave)
+        {
+            if (Shell.Current != null)
+            {
+                await Shell.Current.GoToAsync("LeaveApprovalPage");
+            }
+        }
+        else
+        {
+            ShowCustomModal(
+                title: "Đơn Từ Trực Tuyến",
+                message: "Bạn hiện tại không có thẩm quyền phê duyệt đơn hoặc chưa có đơn nào cần xử lý.",
+                iconText: "📋",
+                iconTextColor: "#1E3A8A",
+                iconBgColor: "#EFF6FF",
+                borderColor: "#1E3A8A",
+                confirmText: "ĐỒNG Ý",
+                showCancel: false,
+                onConfirm: null
+            );
+        }
+    }
+
+    private async void OnDonTuClicked(object? sender, EventArgs e)
+    {
+        if (sender is VisualElement btn) await btn.SpringTapAsync();
+        var user = _authService.CurrentUser;
+        if (user != null && user.CanApproveLeave)
+        {
+            if (Shell.Current != null)
+            {
+                await Shell.Current.GoToAsync("LeaveApprovalPage");
+            }
+        }
+        else
+        {
+            ShowCustomModal(
+                title: "Tạo Đơn Trực Tuyến (TSK-18)",
+                message: "Chức năng nộp đơn nghỉ phép, thôi việc dành cho nhân viên đang được kết nối theo đúng lộ trình ở task tiếp theo.",
+                iconText: "📝",
+                iconTextColor: "#1E3A8A",
+                iconBgColor: "#EFF6FF",
+                borderColor: "#1E3A8A",
+                confirmText: "ĐÃ HIỂU",
+                showCancel: false,
+                onConfirm: null
+            );
+        }
     }
 
     private void ShowCustomModal(string title, string message, string iconText, string iconTextColor, 

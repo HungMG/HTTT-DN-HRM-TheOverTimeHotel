@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:m="clr-namespace:OvertimeHotel.HRM.MobileApp.Models"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.LeaveApprovalPage"
+             x:DataType="vm:LeaveApprovalViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="16,12,16,16">
+
+        <!-- 1. HEADER BAR CHUYÊN NGHIỆP CÓ BADGE SỐ ĐƠN CHỜ DUYỆT -->
+        <Grid x:Name="headerBar" Grid.Row="0" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" Margin="0,4,0,12">
+            <Button Grid.Column="0"
+                    Text="←"
+                    Clicked="OnBackClicked"
+                    SemanticProperties.Description="Quay lại trang chủ"
+                    FontFamily="SegoeUIBold"
+                    FontSize="18"
+                    BackgroundColor="#EFF6FF"
+                    TextColor="#1E3A8A"
+                    WidthRequest="44"
+                    HeightRequest="44"
+                    CornerRadius="22"
+                    Padding="0" />
+
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Margin="12,0,0,0">
+                <Label Text="{Binding RoleDisplayName}"
+                       TextColor="#0F172A"
+                       FontFamily="SegoeUIBold"
+                       FontSize="16"
+                       LineBreakMode="TailTruncation" />
+                <Label Text="{Binding DeptDisplayName}"
+                       TextColor="#64748B"
+                       FontFamily="SegoeUI"
+                       FontSize="11" />
+            </VerticalStackLayout>
+
+            <!-- Badge đếm số đơn chờ duyệt -->
+            <Border Grid.Column="2"
+                    StrokeShape="RoundRectangle 16"
+                    Stroke="#F59E0B"
+                    BackgroundColor="#FEF3C7"
+                    Padding="10,4"
+                    VerticalOptions="Center">
+                <HorizontalStackLayout Spacing="4" VerticalOptions="Center">
+                    <Label Text="⏳" FontSize="12" VerticalOptions="Center" />
+                    <Label Text="{Binding PendingCount, StringFormat='{0} Chờ'}"
+                           TextColor="#B45309"
+                           FontFamily="SegoeUIBold"
+                           FontSize="12"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- 2. SEGMENTED TAB CONTROL: CHỜ DUYỆT / ĐÃ XỬ LÝ -->
+        <Border Grid.Row="1"
+                StrokeShape="RoundRectangle 12"
+                Stroke="#E2E8F0"
+                BackgroundColor="#E2E8F0"
+                Padding="3"
+                Margin="0,0,0,10">
+            <Grid ColumnDefinitions="*,*">
+                <!-- Tab Chờ duyệt -->
+                <Button Grid.Column="0"
+                        Text="Chờ Duyệt"
+                        Command="{Binding SwitchTabCommand}"
+                        CommandParameter="CHO_DUYET"
+                        FontFamily="SegoeUIBold"
+                        FontSize="13"
+                        HeightRequest="38"
+                        CornerRadius="9">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsPendingTabSelected}" Value="True">
+                            <Setter Property="BackgroundColor" Value="#1E3A8A" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsPendingTabSelected}" Value="False">
+                            <Setter Property="BackgroundColor" Value="Transparent" />
+                            <Setter Property="TextColor" Value="#475569" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+                <!-- Tab Đã xử lý -->
+                <Button Grid.Column="1"
+                        Text="Đã Xử Lý"
+                        Command="{Binding SwitchTabCommand}"
+                        CommandParameter="DA_XU_LY"
+                        FontFamily="SegoeUIBold"
+                        FontSize="13"
+                        HeightRequest="38"
+                        CornerRadius="9">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsReviewedTabSelected}" Value="True">
+                            <Setter Property="BackgroundColor" Value="#1E3A8A" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsReviewedTabSelected}" Value="False">
+                            <Setter Property="BackgroundColor" Value="Transparent" />
+                            <Setter Property="TextColor" Value="#475569" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- 3. THANH CUỘN NGANG FILTER CHIPS THEO 5 LOẠI ĐƠN -->
+        <ScrollView Grid.Row="2" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,0,0,12">
+            <HorizontalStackLayout Spacing="8">
+                <!-- Chip: Tất cả -->
+                <!-- Chip: Tất cả -->
+                <Button Text="Tất Cả"
+                        Command="{Binding FilterTypeCommand}"
+                        CommandParameter="ALL"
+                        HeightRequest="36"
+                        Padding="14,0"
+                        CornerRadius="18"
+                        FontFamily="SegoeUIBold"
+                        FontSize="12"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="#475569"
+                        BorderColor="#CBD5E1"
+                        BorderWidth="1">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding SelectedTypeFilter}" Value="ALL">
+                            <Setter Property="BackgroundColor" Value="#1E3A8A" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                            <Setter Property="BorderWidth" Value="0" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+                <!-- Chip: Phép năm (1) -->
+                <Button Text="Phép Năm"
+                        Command="{Binding FilterTypeCommand}"
+                        CommandParameter="1"
+                        HeightRequest="36"
+                        Padding="14,0"
+                        CornerRadius="18"
+                        FontFamily="SegoeUIBold"
+                        FontSize="12"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="#475569"
+                        BorderColor="#CBD5E1"
+                        BorderWidth="1">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding SelectedTypeFilter}" Value="1">
+                            <Setter Property="BackgroundColor" Value="#047857" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                            <Setter Property="BorderWidth" Value="0" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+                <!-- Chip: Nghỉ ốm (2) -->
+                <Button Text="Nghỉ Ốm"
+                        Command="{Binding FilterTypeCommand}"
+                        CommandParameter="2"
+                        HeightRequest="36"
+                        Padding="14,0"
+                        CornerRadius="18"
+                        FontFamily="SegoeUIBold"
+                        FontSize="12"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="#475569"
+                        BorderColor="#CBD5E1"
+                        BorderWidth="1">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding SelectedTypeFilter}" Value="2">
+                            <Setter Property="BackgroundColor" Value="#C2410C" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                            <Setter Property="BorderWidth" Value="0" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+                <!-- Chip: Thai sản (3) -->
+                <Button Text="Thai Sản"
+                        Command="{Binding FilterTypeCommand}"
+                        CommandParameter="3"
+                        HeightRequest="36"
+                        Padding="14,0"
+                        CornerRadius="18"
+                        FontFamily="SegoeUIBold"
+                        FontSize="12"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="#475569"
+                        BorderColor="#CBD5E1"
+                        BorderWidth="1">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding SelectedTypeFilter}" Value="3">
+                            <Setter Property="BackgroundColor" Value="#4338CA" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                            <Setter Property="BorderWidth" Value="0" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+                <!-- Chip: Việc riêng (4) -->
+                <Button Text="Việc Riêng"
+                        Command="{Binding FilterTypeCommand}"
+                        CommandParameter="4"
+                        HeightRequest="36"
+                        Padding="14,0"
+                        CornerRadius="18"
+                        FontFamily="SegoeUIBold"
+                        FontSize="12"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="#475569"
+                        BorderColor="#CBD5E1"
+                        BorderWidth="1">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding SelectedTypeFilter}" Value="4">
+                            <Setter Property="BackgroundColor" Value="#475569" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                            <Setter Property="BorderWidth" Value="0" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+                <!-- Chip: Thôi việc (5) -->
+                <Button Text="Thôi Việc"
+                        Command="{Binding FilterTypeCommand}"
+                        CommandParameter="5"
+                        HeightRequest="36"
+                        Padding="14,0"
+                        CornerRadius="18"
+                        FontFamily="SegoeUIBold"
+                        FontSize="12"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="#475569"
+                        BorderColor="#CBD5E1"
+                        BorderWidth="1">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding SelectedTypeFilter}" Value="5">
+                            <Setter Property="BackgroundColor" Value="#BE123C" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                            <Setter Property="BorderWidth" Value="0" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <!-- 4. DANH SÁCH ĐƠN TỪ (COLLECTIONVIEW + PULL TO REFRESH) -->
+        <RefreshView Grid.Row="3"
+                     IsRefreshing="{Binding IsRefreshing}"
+                     Command="{Binding RefreshCommand}"
+                     RefreshColor="#1E3A8A">
+            <Grid>
+                <!-- DANH SÁCH CARD ĐƠN TỪ -->
+                <CollectionView ItemsSource="{Binding FilteredRequests}"
+                                SelectionMode="None"
+                                Margin="0,0,0,0">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="m:LeaveRequestItem">
+                            <Border StrokeShape="RoundRectangle 16"
+                                    Stroke="#E2E8F0"
+                                    BackgroundColor="#FFFFFF"
+                                    Padding="16"
+                                    Margin="0,0,0,12">
+                                <Border.Shadow>
+                                    <Shadow Brush="#64748B" Offset="0,4" Radius="10" Opacity="0.06" />
+                                </Border.Shadow>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer 
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:LeaveApprovalViewModel}}, Path=ViewDetailCommand}"
+                                        CommandParameter="{Binding .}" />
+                                </Border.GestureRecognizers>
+
+                                <VerticalStackLayout Spacing="10">
+                                    <!-- HÀNG 1: AVATAR + THÔNG TIN NV + TRẠNG THÁI -->
+                                    <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
+                                        <!-- Avatar Initials -->
+                                        <Border Grid.Column="0"
+                                                StrokeShape="RoundRectangle 22"
+                                                Stroke="{Binding TypeColor}"
+                                                StrokeThickness="1.5"
+                                                BackgroundColor="{Binding TypeBgColor}"
+                                                WidthRequest="44"
+                                                HeightRequest="44"
+                                                VerticalOptions="Center">
+                                            <Label Text="{Binding Initials}"
+                                                   TextColor="{Binding TypeColor}"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="16"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center" />
+                                        </Border>
+
+                                        <!-- Tên & Chức vụ -->
+                                        <VerticalStackLayout Grid.Column="1" Margin="10,0,0,0" VerticalOptions="Center">
+                                            <Label Text="{Binding TenNhanVien}"
+                                                   TextColor="#0F172A"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="15" />
+                                            <Label Text="{Binding TenPhongBan, StringFormat='{0}'}"
+                                                   TextColor="#64748B"
+                                                   FontFamily="SegoeUI"
+                                                   FontSize="11" />
+                                            <Label Text="{Binding TenChucVu, StringFormat='Chức vụ: {0}'}"
+                                                   TextColor="#94A3B8"
+                                                   FontFamily="SegoeUI"
+                                                   FontSize="10" />
+                                        </VerticalStackLayout>
+
+                                        <!-- Badge Trạng thái -->
+                                        <Border Grid.Column="2"
+                                                StrokeShape="RoundRectangle 10"
+                                                BackgroundColor="{Binding StatusBgColor}"
+                                                Padding="8,3"
+                                                VerticalOptions="Start">
+                                            <Label Text="{Binding StatusText}"
+                                                   TextColor="{Binding StatusColor}"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="11" />
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- HÀNG 2: BADGE LOẠI ĐƠN & CHẾ ĐỘ HƯỞNG LƯƠNG -->
+                                    <HorizontalStackLayout Spacing="6">
+                                        <Border StrokeShape="RoundRectangle 8"
+                                                BackgroundColor="{Binding TypeBgColor}"
+                                                Padding="8,3">
+                                            <Label Text="{Binding TenLoaiDon}"
+                                                   TextColor="{Binding TypeColor}"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="11" />
+                                        </Border>
+
+                                        <Border StrokeShape="RoundRectangle 8"
+                                                BackgroundColor="{Binding SalaryBadgeBg}"
+                                                Padding="8,3">
+                                            <Label Text="{Binding SalaryBadgeText}"
+                                                   TextColor="{Binding SalaryBadgeTextColor}"
+                                                   FontFamily="SegoeUI"
+                                                   FontSize="10" />
+                                        </Border>
+                                    </HorizontalStackLayout>
+
+                                    <!-- HÀNG 3: KHOẢNG THỜI GIAN & TỔNG SỐ NGÀY -->
+                                    <Grid ColumnDefinitions="*,Auto" BackgroundColor="#F8FAFC" Padding="10,6" Margin="0,2">
+                                        <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                                            <Label Text="📅" FontSize="12" VerticalOptions="Center" />
+                                            <Label Text="{Binding PeriodDisplay}"
+                                                   TextColor="#334155"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="12"
+                                                   VerticalOptions="Center" />
+                                        </HorizontalStackLayout>
+
+                                        <Border Grid.Column="1"
+                                                StrokeShape="RoundRectangle 8"
+                                                Stroke="#CBD5E1"
+                                                BackgroundColor="#FFFFFF"
+                                                Padding="8,2"
+                                                VerticalOptions="Center">
+                                            <Label Text="{Binding SoNgayNghiDisplay}"
+                                                   TextColor="#1E3A8A"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="11" />
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- HÀNG 4: LÝ DO TÓM TẮT -->
+                                    <Label Text="{Binding LyDo, StringFormat='💬 &quot;{0}&quot;'}"
+                                           TextColor="#475569"
+                                           FontFamily="SegoeUI"
+                                           FontSize="12"
+                                           LineBreakMode="TailTruncation"
+                                           MaxLines="2" />
+
+                                    <!-- HÀNG 5: NGÀY GỬI & LINK CHI TIẾT -->
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
+                                        <Label Grid.Column="0"
+                                               Text="{Binding NgayGuiDisplay, StringFormat='Gửi lúc: {0}'}"
+                                               TextColor="#94A3B8"
+                                               FontFamily="SegoeUI"
+                                               FontSize="11"
+                                               VerticalOptions="Center" />
+
+                                        <Label Grid.Column="1"
+                                               Text="Chi tiết ➔"
+                                               TextColor="#1E3A8A"
+                                               FontFamily="SegoeUIBold"
+                                               FontSize="12"
+                                               VerticalOptions="Center" />
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- EMPTY STATE (KHI KHÔNG CÓ ĐƠN NÀO) -->
+                <VerticalStackLayout IsVisible="{Binding HasNoData}"
+                                     HorizontalOptions="Center"
+                                     VerticalOptions="Center"
+                                     Spacing="12"
+                                     Padding="32">
+                    <Label Text="📋" FontSize="56" HorizontalOptions="Center" />
+                    <Label Text="Hiện Không Có Đơn Nào"
+                           TextColor="#0F172A"
+                           FontFamily="SegoeUIBold"
+                           FontSize="18"
+                           HorizontalOptions="Center" />
+                    <Label Text="Không tìm thấy đơn từ nào trong danh mục hoặc bộ lọc hiện tại."
+                           TextColor="#64748B"
+                           FontFamily="SegoeUI"
+                           FontSize="13"
+                           HorizontalTextAlignment="Center"
+                           HorizontalOptions="Center" />
+                    <Button Text="🔄 Làm Mới"
+                            Command="{Binding RefreshCommand}"
+                            BackgroundColor="#1E3A8A"
+                            TextColor="#FFFFFF"
+                            FontFamily="SegoeUIBold"
+                            FontSize="13"
+                            CornerRadius="10"
+                            HeightRequest="42"
+                            WidthRequest="140"
+                            Margin="0,8,0,0" />
+                </VerticalStackLayout>
+
+                <!-- LOADING SPINNER -->
+                <ActivityIndicator IsRunning="{Binding IsLoading}"
+                                   IsVisible="{Binding IsLoading}"
+                                   Color="#1E3A8A"
+                                   WidthRequest="40"
+                                   HeightRequest="40"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+            </Grid>
+        </RefreshView>
+    </Grid>
+
+</ContentPage>
