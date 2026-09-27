@@ -36,7 +36,13 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddMemoryCache();
 
 // Cấu hình Coexistence Authentication: Cookie Auth cho Web Admin & JWT Bearer cho Mobile API
-var jwtKey = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_KEY") ?? "OvertimeHotel_Super_Secret_JWT_Signing_Key_2026_Secure_Key_HMAC256";
+var jwtKey = !string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"])
+    ? builder.Configuration["Jwt:Key"]
+    : Environment.GetEnvironmentVariable("JWT_KEY");
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException("Bảo mật hệ thống (Fail-Closed): Khóa bí mật Jwt:Key chưa được cấu hình trong appsettings hoặc biến môi trường JWT_KEY.");
+}
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "OvertimeHotel.HRM";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "OvertimeHotel.MobileApp";
 

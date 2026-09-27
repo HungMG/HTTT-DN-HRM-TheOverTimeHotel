@@ -77,7 +77,13 @@ public class MobileAuthController : ControllerBase
 
     private string GenerateJwtToken(int accountId, int employeeId, string username, string role, int? departmentId, string fullName)
     {
-        var jwtKey = _configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_KEY") ?? "OvertimeHotel_Super_Secret_JWT_Signing_Key_2026_Secure_Key_HMAC256";
+        var jwtKey = !string.IsNullOrWhiteSpace(_configuration["Jwt:Key"])
+            ? _configuration["Jwt:Key"]
+            : Environment.GetEnvironmentVariable("JWT_KEY");
+        if (string.IsNullOrWhiteSpace(jwtKey))
+        {
+            throw new InvalidOperationException("Bảo mật hệ thống (Fail-Closed): Khóa bí mật Jwt:Key chưa được cấu hình.");
+        }
         var jwtIssuer = _configuration["Jwt:Issuer"] ?? "OvertimeHotel.HRM";
         var jwtAudience = _configuration["Jwt:Audience"] ?? "OvertimeHotel.MobileApp";
         var expireHours = int.TryParse(_configuration["Jwt:ExpireHours"], out var h) ? h : 8;
