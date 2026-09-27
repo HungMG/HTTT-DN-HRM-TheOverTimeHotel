@@ -9,7 +9,7 @@ namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 /// <summary>
 /// ViewModel quản lý dữ liệu chi tiết đơn từ và thao tác Phê duyệt / Từ chối (LeaveDetailPage).
 /// Nhận dữ liệu truyền sang qua QueryProperty [Item] của .NET MAUI Shell.
-/// Tích hợp Custom Luxury Modal Popup và cờ trạng thái CanAct / IsReviewed.
+/// Tuân thủ nguyên tắc Fail-Closed, async await an toàn và chỉ điều hướng khi server xác nhận thành công.
 /// </summary>
 [QueryProperty(nameof(RequestItem), "Item")]
 public class LeaveDetailViewModel : INotifyPropertyChanged
@@ -34,7 +34,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
     private string _modalBorderColor = "#D4AF37";
     private string _modalConfirmButtonText = "ĐỒNG Ý";
     private bool _modalShowCancel;
-    private Action? _modalConfirmAction;
+    private Func<Task>? _modalConfirmAction;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? OnRejectValidationError;
@@ -47,17 +47,19 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
     public ICommand CustomModalConfirmCommand { get; }
     public ICommand CustomModalCancelCommand { get; }
 
+    public bool IsDemoMode => _leaveApprovalService.IsDemoMode;
+
     public LeaveDetailViewModel(ILeaveApprovalService leaveApprovalService, IAuthService authService)
     {
         _leaveApprovalService = leaveApprovalService ?? throw new ArgumentNullException(nameof(leaveApprovalService));
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
 
-        ApproveCommand = new Command(ExecuteApprovePrompt, () => !IsSubmitting && CanAct);
-        OpenRejectModalCommand = new Command(ExecuteOpenRejectModal, () => !IsSubmitting && CanAct);
+        ApproveCommand = new Command(ExecuteApprovePrompt, () => CanAct);
+        OpenRejectModalCommand = new Command(ExecuteOpenRejectModal, () => CanAct);
         CloseRejectModalCommand = new Command(ExecuteCloseRejectModal);
         ConfirmRejectCommand = new Command(async () => await ExecuteConfirmRejectAsync(), () => !IsSubmitting);
         BackCommand = new Command(async () => await ExecuteBackAsync());
-        CustomModalConfirmCommand = new Command(ExecuteCustomModalConfirm);
+        CustomModalConfirmCommand = new Command(async () => await ExecuteCustomModalConfirmAsync());
         CustomModalCancelCommand = new Command(ExecuteCustomModalCancel);
     }
 
@@ -76,7 +78,12 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool CanAct => RequestItem?.TrangThai == "CHO_DUYET";
+    public bool CanAct =>
+        RequestItem?.TrangThai == "CHO_DUYET" &&
+        _authService.CurrentUser != null &&
+        _authService.CurrentUser.CanApproveLeave &&
+        !IsSubmitting;
+
     public bool IsReviewed => RequestItem != null && RequestItem.TrangThai != "CHO_DUYET";
 
     public string RejectReason
@@ -120,6 +127,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _isSubmitting, value))
             {
+                OnPropertyChanged(nameof(CanAct));
                 (ApproveCommand as Command)?.ChangeCanExecute();
                 (OpenRejectModalCommand as Command)?.ChangeCanExecute();
                 (ConfirmRejectCommand as Command)?.ChangeCanExecute();
@@ -209,29 +217,53 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
 
         try
         {
-            var approverId = _authService.CurrentUser?.MaNhanVien ?? 1;
-            var result = await _leaveApprovalService.ApproveAsync(RequestItem.MaDon, approverId).ConfigureAwait(false);
+            // Server tự giải quyết MaNguoiDuyet từ JWT, client không gửi
+            var result = await _leaveApprovalService.ApproveAsync(RequestItem.MaDon).ConfigureAwait(false);
 
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 IsSubmitting = false;
-                ShowCustomModal(
-                    title: result.Success ? "Duyệt Thành Công" : "Lỗi Phê Duyệt",
-                    message: result.Message,
-                    iconText: result.Success ? "✓" : "✕",
-                    iconTextColor: result.Success ? "#15803D" : "#DC2626",
-                    iconBgColor: result.Success ? "#DCFCE7" : "#FEE2E2",
-                    borderColor: result.Success ? "#16A34A" : "#DC2626",
-                    confirmText: "HOÀN TẤT",
-                    showCancel: false,
-                    onConfirm: async () =>
-                    {
-                        if (Shell.Current != null)
+
+                if (result.Success)
+                {
+                    RequestItem.TrangThai = "DA_DUYET";
+                    RequestItem.NgayDuyet = DateTimeOffset.UtcNow;
+                    OnPropertyChanged(nameof(CanAct));
+                    OnPropertyChanged(nameof(IsReviewed));
+
+                    ShowCustomModal(
+                        title: "Duyệt Thành Công",
+                        message: result.Message,
+                        iconText: "✓",
+                        iconTextColor: "#15803D",
+                        iconBgColor: "#DCFCE7",
+                        borderColor: "#16A34A",
+                        confirmText: "HOÀN TẤT",
+                        showCancel: false,
+                        onConfirm: async () =>
                         {
-                            await Shell.Current.GoToAsync("..");
+                            if (Shell.Current != null)
+                            {
+                                await Shell.Current.GoToAsync("..");
+                            }
                         }
-                    }
-                );
+                    );
+                }
+                else
+                {
+                    // Thất bại: Giữ nguyên màn hình cho phép thử lại
+                    ShowCustomModal(
+                        title: "Không Thể Phê Duyệt",
+                        message: result.Message,
+                        iconText: "✕",
+                        iconTextColor: "#DC2626",
+                        iconBgColor: "#FEE2E2",
+                        borderColor: "#DC2626",
+                        confirmText: "ĐÓNG",
+                        showCancel: false,
+                        onConfirm: () => Task.CompletedTask
+                    );
+                }
             });
         }
         catch (Exception ex)
@@ -240,7 +272,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
             {
                 IsSubmitting = false;
                 ShowCustomModal(
-                    title: "Lỗi Hệ Thống",
+                    title: "Lỗi Kết Nối",
                     message: ex.Message,
                     iconText: "✕",
                     iconTextColor: "#DC2626",
@@ -248,7 +280,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
                     borderColor: "#DC2626",
                     confirmText: "ĐÓNG",
                     showCancel: false,
-                    onConfirm: null
+                    onConfirm: () => Task.CompletedTask
                 );
             });
         }
@@ -282,37 +314,68 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
             return;
         }
 
+        if (RejectReason.Trim().Length > 255)
+        {
+            HasRejectError = true;
+            RejectErrorMessage = "Lý do từ chối không được vượt quá 255 ký tự!";
+            OnRejectValidationError?.Invoke();
+            return;
+        }
+
         if (RequestItem == null) return;
         IsSubmitting = true;
 
         try
         {
-            var approverId = _authService.CurrentUser?.MaNhanVien ?? 1;
             var reason = RejectReason.Trim();
-            var result = await _leaveApprovalService.RejectAsync(RequestItem.MaDon, approverId, reason).ConfigureAwait(false);
+            var result = await _leaveApprovalService.RejectAsync(RequestItem.MaDon, reason).ConfigureAwait(false);
 
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 IsSubmitting = false;
                 IsRejectModalVisible = false;
 
-                ShowCustomModal(
-                    title: result.Success ? "Đã Từ Chối Đơn" : "Lỗi Từ Chối",
-                    message: result.Message,
-                    iconText: result.Success ? "✕" : "!",
-                    iconTextColor: "#DC2626",
-                    iconBgColor: "#FEE2E2",
-                    borderColor: "#DC2626",
-                    confirmText: "HOÀN TẤT",
-                    showCancel: false,
-                    onConfirm: async () =>
-                    {
-                        if (Shell.Current != null)
+                if (result.Success)
+                {
+                    RequestItem.TrangThai = "TU_CHOI";
+                    RequestItem.NgayDuyet = DateTimeOffset.UtcNow;
+                    RequestItem.PhanHoiDuyet = reason;
+                    OnPropertyChanged(nameof(CanAct));
+                    OnPropertyChanged(nameof(IsReviewed));
+
+                    ShowCustomModal(
+                        title: "Đã Từ Chối Đơn",
+                        message: result.Message,
+                        iconText: "✕",
+                        iconTextColor: "#DC2626",
+                        iconBgColor: "#FEE2E2",
+                        borderColor: "#DC2626",
+                        confirmText: "HOÀN TẤT",
+                        showCancel: false,
+                        onConfirm: async () =>
                         {
-                            await Shell.Current.GoToAsync("..");
+                            if (Shell.Current != null)
+                            {
+                                await Shell.Current.GoToAsync("..");
+                            }
                         }
-                    }
-                );
+                    );
+                }
+                else
+                {
+                    // Thất bại: Giữ nguyên màn hình cho phép thử lại
+                    ShowCustomModal(
+                        title: "Không Thể Từ Chối",
+                        message: result.Message,
+                        iconText: "!",
+                        iconTextColor: "#DC2626",
+                        iconBgColor: "#FEE2E2",
+                        borderColor: "#DC2626",
+                        confirmText: "ĐÓNG",
+                        showCancel: false,
+                        onConfirm: () => Task.CompletedTask
+                    );
+                }
             });
         }
         catch (Exception ex)
@@ -321,7 +384,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
             {
                 IsSubmitting = false;
                 ShowCustomModal(
-                    title: "Lỗi Hệ Thống",
+                    title: "Lỗi Kết Nối",
                     message: ex.Message,
                     iconText: "!",
                     iconTextColor: "#DC2626",
@@ -329,7 +392,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
                     borderColor: "#DC2626",
                     confirmText: "ĐÓNG",
                     showCancel: false,
-                    onConfirm: null
+                    onConfirm: () => Task.CompletedTask
                 );
             });
         }
@@ -347,7 +410,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
 
     private void ShowCustomModal(string title, string message, string iconText, string iconTextColor,
                                   string iconBgColor, string borderColor, string confirmText,
-                                  bool showCancel, Action? onConfirm)
+                                  bool showCancel, Func<Task>? onConfirm)
     {
         ModalTitle = title;
         ModalMessage = message;
@@ -361,12 +424,15 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
         IsCustomModalVisible = true;
     }
 
-    private void ExecuteCustomModalConfirm()
+    private async Task ExecuteCustomModalConfirmAsync()
     {
         IsCustomModalVisible = false;
         var action = _modalConfirmAction;
         _modalConfirmAction = null;
-        action?.Invoke();
+        if (action != null)
+        {
+            await action.Invoke();
+        }
     }
 
     private void ExecuteCustomModalCancel()

@@ -1,5 +1,3 @@
-using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -9,16 +7,16 @@ using OvertimeHotel.HRM.MobileApp.Models;
 namespace OvertimeHotel.HRM.MobileApp.Services;
 
 /// <summary>
-/// Triển khai dịch vụ xác thực tài khoản kết nối Supabase Cloud REST API và hỗ trợ bộ nhớ tạm ngoại tuyến.
+/// Dịch vụ xác thực tài khoản Production kết nối WebAdmin Mobile API qua JWT Token.
+/// Tuân thủ nguyên tắc Zero Trust: Không lưu trữ key nhạy cảm phía client, lưu token an toàn trong SecureStorage.
 /// </summary>
 public class AuthService : IAuthService
 {
-    private const string SupabaseUrl = "https://soethtbttktnwtxyxjrj.supabase.co";
-    private const string SupabaseAnonKey = "";
-
+    private const string JwtStorageKey = "hrm_mobile_jwt_token";
     private readonly HttpClient _httpClient;
     private readonly ILogger<AuthService> _logger;
 
+    public bool IsDemoMode => false;
     public UserSession? CurrentUser { get; private set; }
     public bool IsAuthenticated => CurrentUser != null && CurrentUser.IsLoggedIn;
 
@@ -27,11 +25,27 @@ public class AuthService : IAuthService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _httpClient = new HttpClient
         {
-            BaseAddress = new Uri(SupabaseUrl),
-            Timeout = TimeSpan.FromSeconds(3)
+            BaseAddress = new Uri(ApiConfig.BaseUrl),
+            Timeout = TimeSpan.FromSeconds(10)
         };
-        _httpClient.DefaultRequestHeaders.Add("apikey", SupabaseAnonKey);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", SupabaseAnonKey);
+    }
+
+    public async Task<string?> GetTokenAsync()
+    {
+        if (!string.IsNullOrEmpty(CurrentUser?.Token))
+        {
+            return CurrentUser.Token;
+        }
+
+        try
+        {
+            return await SecureStorage.GetAsync(JwtStorageKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể đọc JWT từ SecureStorage.");
+            return null;
+        }
     }
 
     public async Task<LoginResponse> LoginAsync(string username, string password, bool rememberMe = true)
@@ -41,337 +55,201 @@ public class AuthService : IAuthService
             return new LoginResponse(false, "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.");
         }
 
-        var trimmedUser = username.Trim();
-
-        // 1. Kiểm tra tài khoản mẫu trước để phản hồi tức thì (0ms) khi demo chấm đồ án
-        var seedAccount = GetSeedAccounts().FirstOrDefault(a => 
-            a.TenDangNhap.Equals(trimmedUser, StringComparison.OrdinalIgnoreCase) && 
-            a.Password.Equals(password));
-
-        if (seedAccount != null)
-        {
-            CurrentUser = new UserSession
-            {
-                MaTaiKhoan = seedAccount.MaTaiKhoan,
-                MaNhanVien = seedAccount.MaNhanVien,
-                TenDangNhap = seedAccount.TenDangNhap,
-                HoTen = seedAccount.HoTen,
-                TenVaiTro = seedAccount.Role,
-                TenPhongBan = seedAccount.Department,
-                TenChucVu = seedAccount.Position,
-                MaPhongBan = seedAccount.MaPhongBan,
-                IsLoggedIn = true,
-                ThoiGianDangNhap = DateTime.UtcNow
-            };
-
-            SaveSessionPreferences(rememberMe, trimmedUser);
-
-            return new LoginResponse(
-                Success: true,
-                Message: $"Đăng nhập thành công với vai trò {seedAccount.Role}!",
-                MaTaiKhoan: seedAccount.MaTaiKhoan,
-                MaNhanVien: seedAccount.MaNhanVien,
-                HoTen: seedAccount.HoTen,
-                TenDangNhap: seedAccount.TenDangNhap,
-                TenVaiTro: seedAccount.Role
-            );
-        }
-
-        // 2. Nếu không phải tài khoản mẫu, truy vấn trực tiếp Supabase Cloud REST API
-        var passwordHash = HashPassword(password);
         try
         {
-            var requestUri = $"/rest/v1/tai_khoan?ten_dang_nhap=eq.{Uri.EscapeDataString(trimmedUser)}&mat_khau_bam=eq.{passwordHash}&select=ma_tai_khoan,ma_nhan_vien,ten_dang_nhap,trang_thai,vai_tro(ten_vai_tro),nhan_vien(ho,ten,email,dien_thoai,ma_phong_ban,phong_ban(ten_phong_ban),chuc_vu(ten_chuc_vu))";
+            var requestPayload = new LoginRequest(username.Trim(), password);
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestPayload),
+                Encoding.UTF8,
+                "application/json"
+            );
 
-            var response = await _httpClient.GetAsync(requestUri).ConfigureAwait(false);
+            var response = await _httpClient.PostAsync("/api/mobile/auth/login", content);
+            var responseJson = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var loginResult = JsonSerializer.Deserialize<LoginResponse>(responseJson, options);
+
+            if (response.IsSuccessStatusCode && loginResult != null && loginResult.Success)
             {
-                var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-
-                if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
+                if (!string.IsNullOrEmpty(loginResult.Token))
                 {
-                    var userElem = root[0];
-                    var isActive = userElem.GetProperty("trang_thai").GetBoolean();
-                    if (!isActive)
+                    try
                     {
-                        return new LoginResponse(false, "Tài khoản của bạn hiện đang bị khóa. Vui lòng liên hệ bộ phận Nhân sự.");
+                        await SecureStorage.SetAsync(JwtStorageKey, loginResult.Token);
                     }
-
-                    var maTaiKhoan = userElem.GetProperty("ma_tai_khoan").GetInt32();
-                    var maNhanVien = userElem.GetProperty("ma_nhan_vien").GetInt32();
-                    var tenDangNhap = userElem.GetProperty("ten_dang_nhap").GetString() ?? trimmedUser;
-
-                    string roleName = "Employee";
-                    if (userElem.TryGetProperty("vai_tro", out var vaiTroElem) && 
-                        vaiTroElem.ValueKind == JsonValueKind.Object &&
-                        vaiTroElem.TryGetProperty("ten_vai_tro", out var roleElem))
+                    catch (Exception ex)
                     {
-                        roleName = roleElem.GetString() ?? "Employee";
+                        _logger.LogWarning(ex, "Lỗi khi lưu JWT vào SecureStorage.");
                     }
-
-                    string hoTen = tenDangNhap;
-                    string deptName = "The OverTime Hotel";
-                    string posName = "Nhân viên";
-                    string email = "";
-                    string phone = "";
-                    int? maPhongBan = null;
-
-                    if (userElem.TryGetProperty("nhan_vien", out var nvElem) && nvElem.ValueKind == JsonValueKind.Object)
-                    {
-                        var ho = nvElem.TryGetProperty("ho", out var h) ? h.GetString() : "";
-                        var ten = nvElem.TryGetProperty("ten", out var t) ? t.GetString() : "";
-                        hoTen = $"{ho} {ten}".Trim();
-
-                        email = nvElem.TryGetProperty("email", out var em) ? em.GetString() ?? "" : "";
-                        phone = nvElem.TryGetProperty("dien_thoai", out var ph) ? ph.GetString() ?? "" : "";
-
-                        if (nvElem.TryGetProperty("ma_phong_ban", out var mpb) && mpb.ValueKind == JsonValueKind.Number)
-                        {
-                            maPhongBan = mpb.GetInt32();
-                        }
-
-                        if (nvElem.TryGetProperty("phong_ban", out var pbElem) && pbElem.ValueKind == JsonValueKind.Object)
-                        {
-                            deptName = pbElem.TryGetProperty("ten_phong_ban", out var pbName) ? pbName.GetString() ?? deptName : deptName;
-                        }
-
-                        if (nvElem.TryGetProperty("chuc_vu", out var cvElem) && cvElem.ValueKind == JsonValueKind.Object)
-                        {
-                            posName = cvElem.TryGetProperty("ten_chuc_vu", out var cvName) ? cvName.GetString() ?? posName : posName;
-                        }
-                    }
-
-                    CurrentUser = new UserSession
-                    {
-                        MaTaiKhoan = maTaiKhoan,
-                        MaNhanVien = maNhanVien,
-                        TenDangNhap = tenDangNhap,
-                        HoTen = hoTen,
-                        TenVaiTro = roleName,
-                        TenPhongBan = deptName,
-                        TenChucVu = posName,
-                        MaPhongBan = maPhongBan,
-                        Email = email,
-                        DienThoai = phone,
-                        IsLoggedIn = true,
-                        ThoiGianDangNhap = DateTime.UtcNow
-                    };
-
-                    SaveSessionPreferences(rememberMe, trimmedUser);
-
-                    return new LoginResponse(
-                        Success: true,
-                        Message: "Đăng nhập thành công!",
-                        MaTaiKhoan: maTaiKhoan,
-                        MaNhanVien: maNhanVien,
-                        HoTen: hoTen,
-                        TenDangNhap: tenDangNhap,
-                        TenVaiTro: roleName
-                    );
                 }
+
+                // Thiết lập phiên đăng nhập
+                CurrentUser = ParseUserSessionFromJwt(loginResult.Token, loginResult);
+                _logger.LogInformation("Đăng nhập thành công cho người dùng '{Username}' (Vai trò: {Role}).", username, CurrentUser.TenVaiTro);
+
+                return loginResult;
             }
+
+            var errMsg = loginResult?.Message ?? "Tên đăng nhập hoặc mật khẩu không chính xác.";
+            _logger.LogWarning("Đăng nhập thất bại: {Message}", errMsg);
+            return new LoginResponse(false, errMsg);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Không thể kết nối máy chủ API tại {BaseUrl}", ApiConfig.BaseUrl);
+            return new LoginResponse(false, "Không thể kết nối tới máy chủ API. Vui lòng kiểm tra mạng hoặc thử lại.");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Lỗi kết nối Supabase Cloud REST API khi đăng nhập: {User}", trimmedUser);
+            _logger.LogError(ex, "Lỗi không xác định khi đăng nhập.");
+            return new LoginResponse(false, "Đã xảy ra lỗi trong quá trình đăng nhập. Vui lòng thử lại.");
         }
-
-        return new LoginResponse(false, "Tên đăng nhập hoặc mật khẩu không chính xác.");
     }
 
-    public Task LogoutAsync()
+    public async Task LogoutAsync()
     {
-        CurrentUser = null;
         try
         {
-            Preferences.Default.Set("IsLoggedIn", false);
-            Preferences.Default.Remove("SavedUserJson");
-            Preferences.Default.Remove("SavedUsername");
-            Preferences.Default.Set("RememberMe", false);
+            SecureStorage.Remove(JwtStorageKey);
         }
-        catch
+        catch (Exception ex)
         {
-            // Bỏ qua lỗi Preferences trên môi trường test
+            _logger.LogWarning(ex, "Lỗi khi xóa JWT khỏi SecureStorage.");
         }
-        return Task.CompletedTask;
+
+        CurrentUser = null;
+        await Task.CompletedTask;
     }
 
     public async Task<bool> TryAutoLoginAsync()
     {
         try
         {
-            var rememberMe = Preferences.Default.Get("RememberMe", false);
-            var isLoggedIn = Preferences.Default.Get("IsLoggedIn", false);
-            var savedJson = Preferences.Default.Get("SavedUserJson", string.Empty);
+            var token = await SecureStorage.GetAsync(JwtStorageKey);
+            if (string.IsNullOrWhiteSpace(token))
+                return false;
 
-            if (rememberMe && isLoggedIn && !string.IsNullOrWhiteSpace(savedJson))
+            var payload = DecodeJwtPayload(token);
+            if (payload == null)
             {
-                var session = JsonSerializer.Deserialize<UserSession>(savedJson);
-                if (session != null && session.IsLoggedIn)
+                SecureStorage.Remove(JwtStorageKey);
+                return false;
+            }
+
+            // Kiểm tra hạn token
+            if (payload.Value.TryGetProperty("exp", out var expProp) && expProp.TryGetInt64(out var expSec))
+            {
+                var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expSec).UtcDateTime;
+                if (expiresAt < DateTime.UtcNow)
                 {
-                    CurrentUser = session;
-                    _logger.LogInformation("Khôi phục phiên đăng nhập thành công cho người dùng: {User}", session.TenDangNhap);
-                    return await Task.FromResult(true).ConfigureAwait(false);
+                    SecureStorage.Remove(JwtStorageKey);
+                    return false;
                 }
             }
+
+            CurrentUser = ParseUserSessionFromJwt(token, null);
+            return CurrentUser.IsLoggedIn;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Không thể khôi phục phiên đăng nhập từ Preferences.");
+            _logger.LogWarning(ex, "Lỗi khi thử tự động đăng nhập từ JWT lưu trữ.");
+            return false;
         }
-
-        return false;
     }
 
-    private void SaveSessionPreferences(bool rememberMe, string username)
+    public Task<(bool Success, string Message)> ChangePasswordAsync(string oldPassword, string newPassword)
+    {
+        return Task.FromResult((false, "Vui lòng thực hiện đổi mật khẩu trên cổng Web Admin."));
+    }
+
+    private static JsonElement? DecodeJwtPayload(string token)
     {
         try
         {
-            Preferences.Default.Set("RememberMe", rememberMe);
-            if (rememberMe && CurrentUser != null)
+            var parts = token.Split('.');
+            if (parts.Length < 2) return null;
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4)
             {
-                Preferences.Default.Set("SavedUsername", username);
-                Preferences.Default.Set("IsLoggedIn", true);
-                var json = JsonSerializer.Serialize(CurrentUser);
-                Preferences.Default.Set("SavedUserJson", json);
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
             }
-            else
-            {
-                Preferences.Default.Remove("SavedUsername");
-                Preferences.Default.Set("IsLoggedIn", false);
-                Preferences.Default.Remove("SavedUserJson");
-            }
+            var jsonBytes = Convert.FromBase64String(payload);
+            using var doc = JsonDocument.Parse(jsonBytes);
+            return doc.RootElement.Clone();
         }
         catch
         {
-            // Bỏ qua nếu Preferences không khả dụng
+            return null;
         }
     }
 
-    private static string HashPassword(string password)
+    private static UserSession ParseUserSessionFromJwt(string? token, LoginResponse? response)
     {
-        if (string.IsNullOrEmpty(password)) return string.Empty;
-        var bytes = Encoding.UTF8.GetBytes(password);
-        var hash = SHA256.HashData(bytes);
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
-
-    private static readonly List<SeedAccount> _seedAccounts = new()
-    {
-        new(6, 13, "ngothibich", "123456", "Ngô Thị Bích", "Employee", "Bộ phận Buồng phòng", "Nhân viên Buồng phòng", 3),
-        new(5, 10, "dothanhdat", "123456", "Đỗ Thành Đạt", "Manager", "Bộ phận Tiền sảnh (FO)", "Giám sát Tiền sảnh", 2),
-        new(2, 2, "hr_sang", "123456", "Võ Huỳnh Minh Sang", "HR", "Phòng Nhân sự", "Chuyên viên Nhân sự", 8),
-        new(1, 1, "admin", "123456", "Nguyễn Đình Cường", "Admin", "Ban Quản Trị Khách Sạn", "Quản Trị Viên Hệ Thống", 1)
-    };
-
-    public async Task<(bool Success, string Message)> ChangePasswordAsync(string oldPassword, string newPassword)
-    {
-        if (CurrentUser == null || !CurrentUser.IsLoggedIn)
+        var session = new UserSession
         {
-            return (false, "Bạn chưa đăng nhập vào hệ thống.");
+            Token = token,
+            IsLoggedIn = true,
+            ThoiGianDangNhap = DateTime.UtcNow
+        };
+
+        if (response != null)
+        {
+            session.MaTaiKhoan = response.MaTaiKhoan ?? 0;
+            session.MaNhanVien = response.MaNhanVien ?? 0;
+            session.TenDangNhap = response.TenDangNhap ?? "";
+            session.HoTen = response.HoTen ?? "";
+            session.TenVaiTro = response.TenVaiTro ?? "Employee";
         }
 
-        if (string.IsNullOrWhiteSpace(oldPassword) || string.IsNullOrWhiteSpace(newPassword))
+        if (!string.IsNullOrEmpty(token))
         {
-            return (false, "Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới.");
-        }
-
-        if (newPassword.Length < 6)
-        {
-            return (false, "Mật khẩu mới phải chứa ít nhất 6 ký tự.");
-        }
-
-        if (oldPassword == newPassword)
-        {
-            return (false, "Mật khẩu mới không được trùng với mật khẩu cũ.");
-        }
-
-        var username = CurrentUser.TenDangNhap;
-
-        // 1. Kiểm tra nếu là tài khoản demo
-        var seed = _seedAccounts.FirstOrDefault(a => a.TenDangNhap.Equals(username, StringComparison.OrdinalIgnoreCase));
-        if (seed != null)
-        {
-            if (seed.Password != oldPassword)
+            var payload = DecodeJwtPayload(token);
+            if (payload.HasValue)
             {
-                return (false, "Mật khẩu hiện tại không chính xác.");
-            }
+                var root = payload.Value;
+                // nameid / sub
+                if (session.MaTaiKhoan == 0)
+                {
+                    if (root.TryGetProperty("nameid", out var p1) && int.TryParse(p1.GetString(), out var id)) session.MaTaiKhoan = id;
+                    else if (root.TryGetProperty("sub", out var p2) && int.TryParse(p2.GetString(), out var id2)) session.MaTaiKhoan = id2;
+                }
 
-            // Cập nhật mật khẩu mới trong bộ nhớ demo
-            seed.Password = newPassword;
-            return (true, "Đổi mật khẩu thành công! Mật khẩu mới đã được kích hoạt.");
-        }
+                // EmployeeId
+                if (session.MaNhanVien == 0 && root.TryGetProperty("EmployeeId", out var empProp) && int.TryParse(empProp.GetString(), out var empId))
+                {
+                    session.MaNhanVien = empId;
+                }
 
-        // 2. Cập nhật lên CSDL Supabase Cloud qua REST API
-        try
-        {
-            var oldHash = HashPassword(oldPassword);
-            var newHash = HashPassword(newPassword);
+                // DepartmentId
+                if (!session.MaPhongBan.HasValue && root.TryGetProperty("DepartmentId", out var deptProp) && int.TryParse(deptProp.GetString(), out var deptId))
+                {
+                    session.MaPhongBan = deptId;
+                }
 
-            // Kiểm tra mật khẩu cũ trên Supabase
-            var checkUri = $"/rest/v1/tai_khoan?ma_tai_khoan=eq.{CurrentUser.MaTaiKhoan}&mat_khau_bam=eq.{oldHash}&select=ma_tai_khoan";
-            var checkRes = await _httpClient.GetAsync(checkUri).ConfigureAwait(false);
-            if (!checkRes.IsSuccessStatusCode)
-            {
-                return (false, "Mật khẩu hiện tại không chính xác hoặc lỗi mạng.");
-            }
+                // FullName
+                if (string.IsNullOrEmpty(session.HoTen) && root.TryGetProperty("FullName", out var fnProp))
+                {
+                    session.HoTen = fnProp.GetString() ?? "";
+                }
 
-            var checkJson = await checkRes.Content.ReadAsStringAsync().ConfigureAwait(false);
-            using var doc = JsonDocument.Parse(checkJson);
-            if (doc.RootElement.GetArrayLength() == 0)
-            {
-                return (false, "Mật khẩu hiện tại không chính xác.");
-            }
+                // role
+                if (string.IsNullOrEmpty(session.TenVaiTro) || session.TenVaiTro == "Employee")
+                {
+                    if (root.TryGetProperty("role", out var rProp))
+                        session.TenVaiTro = rProp.GetString() ?? "Employee";
+                }
 
-            // Gửi lệnh cập nhật mật khẩu mới
-            var patchUri = $"/rest/v1/tai_khoan?ma_tai_khoan=eq.{CurrentUser.MaTaiKhoan}";
-            var payload = new StringContent(
-                JsonSerializer.Serialize(new { mat_khau_bam = newHash }),
-                Encoding.UTF8,
-                "application/json");
-
-            var patchRes = await _httpClient.PatchAsync(patchUri, payload).ConfigureAwait(false);
-            if (patchRes.IsSuccessStatusCode)
-            {
-                return (true, "Đổi mật khẩu trên CSDL Supabase thành công!");
+                // unique_name / name
+                if (string.IsNullOrEmpty(session.TenDangNhap))
+                {
+                    if (root.TryGetProperty("unique_name", out var unProp)) session.TenDangNhap = unProp.GetString() ?? "";
+                    else if (root.TryGetProperty("name", out var nProp)) session.TenDangNhap = nProp.GetString() ?? "";
+                }
             }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Lỗi khi đổi mật khẩu tài khoản {User}", username);
-        }
 
-        return (false, "Không thể cập nhật mật khẩu lúc này. Vui lòng thử lại sau.");
-    }
-
-    private static List<SeedAccount> GetSeedAccounts() => _seedAccounts;
-
-    private class SeedAccount
-    {
-        public int MaTaiKhoan { get; set; }
-        public int MaNhanVien { get; set; }
-        public string TenDangNhap { get; set; }
-        public string Password { get; set; }
-        public string HoTen { get; set; }
-        public string Role { get; set; }
-        public string Department { get; set; }
-        public string Position { get; set; }
-        public int? MaPhongBan { get; set; }
-
-        public SeedAccount(int maTaiKhoan, int maNhanVien, string tenDangNhap, string password, string hoTen, string role, string department, string position, int? maPhongBan = null)
-        {
-            MaTaiKhoan = maTaiKhoan;
-            MaNhanVien = maNhanVien;
-            TenDangNhap = tenDangNhap;
-            Password = password;
-            HoTen = hoTen;
-            Role = role;
-            Department = department;
-            Position = position;
-            MaPhongBan = maPhongBan;
-        }
+        return session;
     }
 }

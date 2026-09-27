@@ -20,9 +20,18 @@ public static class MauiProgram
 				fonts.AddFont("SegoeUI-Bold.ttf", "SegoeUIBold");
 			});
 
-		// Đăng ký dịch vụ ứng dụng
-		builder.Services.AddSingleton<IAuthService, AuthService>();
-		builder.Services.AddSingleton<ILeaveApprovalService, LeaveApprovalService>();
+		// Đăng ký dịch vụ ứng dụng: Hỗ trợ cấu hình chạy Production (JWT API) hoặc Demo (In-Memory)
+		bool useDemoMode = Preferences.Get("use_demo_mode", false);
+		if (useDemoMode)
+		{
+			builder.Services.AddSingleton<IAuthService, DemoAuthService>();
+			builder.Services.AddSingleton<ILeaveApprovalService, DemoLeaveApprovalService>();
+		}
+		else
+		{
+			builder.Services.AddSingleton<IAuthService, AuthService>();
+			builder.Services.AddSingleton<ILeaveApprovalService, LeaveApprovalService>();
+		}
 
 		// Đăng ký ViewModels
 		builder.Services.AddTransient<LoginViewModel>();

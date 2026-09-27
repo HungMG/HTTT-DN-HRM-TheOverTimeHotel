@@ -146,7 +146,7 @@ public class PhanCaController : Controller
                 var row = new PhanCaMatrixRow
                 {
                     MaNhanVien = emp.MaNhanVien,
-                    MaPhongBan = emp.MaPhongBan,
+                    MaPhongBan = emp.MaPhongBan ?? 0,
                     HoTen = $"{emp.Ho} {emp.Ten}".Trim(),
                     TenPhongBan = emp.PhongBan?.TenPhongBan ?? "Khách sạn",
                     TenChucVu = emp.ChucVu?.TenChucVu ?? "Nhân viên",
@@ -535,7 +535,7 @@ public class PhanCaController : Controller
             var row = new PhanCaMatrixRow
             {
                 MaNhanVien = emp.MaNhanVien,
-                MaPhongBan = emp.MaPhongBan,
+                MaPhongBan = emp.MaPhongBan ?? 0,
                 HoTen = $"{emp.Ho} {emp.Ten}".Trim(),
                 TenPhongBan = emp.PhongBan?.TenPhongBan ?? "Khách sạn",
                 TenChucVu = emp.ChucVu?.TenChucVu ?? "Nhân viên",

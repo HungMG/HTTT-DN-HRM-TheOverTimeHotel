@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using OvertimeHotel.HRM.Core.DTOs;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.MobileApp.Models;
 using OvertimeHotel.HRM.MobileApp.Services;
 
@@ -9,7 +11,7 @@ namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 
 /// <summary>
 /// ViewModel quản lý dữ liệu và tương tác màn hình danh sách duyệt đơn (LeaveApprovalPage).
-/// Hỗ trợ 2 Tab (Chờ duyệt / Đã xử lý), thanh lọc 5 loại đơn, pull-to-refresh và đếm badge.
+/// Tích hợp cấu trúc phản hồi gộp (items + pendingCount), cơ chế Fail-Closed và nhận diện Demo Mode.
 /// </summary>
 public class LeaveApprovalViewModel : INotifyPropertyChanged
 {
@@ -19,6 +21,8 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     private List<LeaveRequestItem> _allLoadedRequests = new();
     private bool _isLoading;
     private bool _isRefreshing;
+    private bool _hasError;
+    private string _errorMessage = string.Empty;
     private string _selectedTab = "CHO_DUYET"; // "CHO_DUYET" hoặc "DA_XU_LY"
     private string _selectedTypeFilter = "ALL"; // "ALL", "1", "2", "3", "4", "5"
     private int _pendingCount;
@@ -32,6 +36,9 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     public ICommand SwitchTabCommand { get; }
     public ICommand FilterTypeCommand { get; }
     public ICommand ViewDetailCommand { get; }
+    public ICommand RetryCommand { get; }
+
+    public bool IsDemoMode => _leaveApprovalService.IsDemoMode;
 
     public LeaveApprovalViewModel(ILeaveApprovalService leaveApprovalService, IAuthService authService)
     {
@@ -43,6 +50,7 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
         SwitchTabCommand = new Command<string>(async (tab) => await SwitchTabAsync(tab));
         FilterTypeCommand = new Command<string>(ApplyTypeFilter);
         ViewDetailCommand = new Command<LeaveRequestItem>(async (item) => await ViewDetailAsync(item));
+        RetryCommand = new Command(async () => await LoadDataAsync());
     }
 
     public bool IsLoading
@@ -61,6 +69,24 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     {
         get => _isRefreshing;
         set => SetProperty(ref _isRefreshing, value);
+    }
+
+    public bool HasError
+    {
+        get => _hasError;
+        set
+        {
+            if (SetProperty(ref _hasError, value))
+            {
+                OnPropertyChanged(nameof(HasNoData));
+            }
+        }
+    }
+
+    public string ErrorMessage
+    {
+        get => _errorMessage;
+        set => SetProperty(ref _errorMessage, value);
     }
 
     public string SelectedTab
@@ -91,18 +117,19 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
         set => SetProperty(ref _pendingCount, value);
     }
 
-    public bool HasNoData => !IsLoading && FilteredRequests.Count == 0;
+    public bool HasNoData => !IsLoading && !HasError && FilteredRequests.Count == 0;
 
     public string RoleDisplayName
     {
         get
         {
-            var role = _authService.CurrentUser?.TenVaiTro ?? "Manager";
-            if (role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
-                return "Quản Trị Đơn Từ — Ban Quản Trị";
-            if (role.Equals("HR", StringComparison.OrdinalIgnoreCase))
-                return "Phê Duyệt Đơn — Phòng Nhân Sự";
-            return "Phê Duyệt Đơn — Quản Lý Bộ Phận";
+            var user = _authService.CurrentUser;
+            if (user == null) return "Chưa đăng nhập";
+
+            if (user.IsAdmin) return "Quản Trị Đơn Từ — Ban Quản Trị";
+            if (user.IsHR) return "Phê Duyệt Đơn — Phòng Nhân Sự";
+            if (user.IsManager) return "Phê Duyệt Đơn — Quản Lý Bộ Phận";
+            return "Duyệt Đơn Từ";
         }
     }
 
@@ -112,42 +139,52 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     {
         if (IsLoading) return;
         IsLoading = true;
+        HasError = false;
+        ErrorMessage = string.Empty;
 
         try
         {
             var user = _authService.CurrentUser;
-            var role = user?.TenVaiTro ?? "Manager";
-            var deptId = user?.MaPhongBan;
-
-            // 1. Cập nhật số lượng đơn chờ duyệt cho badge
-            PendingCount = await _leaveApprovalService.GetPendingCountAsync(role, deptId).ConfigureAwait(false);
-
-            // 2. Nạp dữ liệu theo Tab hiện tại
-            List<LeaveRequestItem> items;
-            if (SelectedTab == "CHO_DUYET")
+            // Fail-closed: Kiểm tra quyền đăng nhập và vai trò
+            if (user == null || !user.CanApproveLeave)
             {
-                items = await _leaveApprovalService.GetPendingRequestsAsync(role, deptId).ConfigureAwait(false);
-            }
-            else
-            {
-                items = await _leaveApprovalService.GetReviewedRequestsAsync(role, deptId).ConfigureAwait(false);
+                HasError = true;
+                ErrorMessage = "Tài khoản của bạn không có thẩm quyền truy cập màn hình duyệt đơn.";
+                IsLoading = false;
+                return;
             }
 
-            _allLoadedRequests = items;
+            var viewParam = SelectedTab == "CHO_DUYET" ? "pending" : "reviewed";
+            var typeParam = SelectedTypeFilter == "ALL" ? "all" : SelectedTypeFilter;
 
-            // 3. Lọc theo Chip loại đơn hiện tại và cập nhật danh sách hiển thị
+            // Gọi API duy nhất trả về cả danh sách và số lượng pending
+            var response = await _leaveApprovalService.GetLeaveRequestsAsync(viewParam, typeParam).ConfigureAwait(false);
+
+            PendingCount = response.PendingCount;
+            _allLoadedRequests = MapDtoListToItems(response.Items);
+
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 ApplyCurrentFilter();
                 IsLoading = false;
             });
         }
-        catch
+        catch (UnauthorizedAccessException ex)
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 IsLoading = false;
-                OnPropertyChanged(nameof(HasNoData));
+                HasError = true;
+                ErrorMessage = ex.Message;
+            });
+        }
+        catch (Exception ex)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                IsLoading = false;
+                HasError = true;
+                ErrorMessage = ex.Message;
             });
         }
     }
@@ -164,7 +201,6 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
         if (string.IsNullOrWhiteSpace(tab) || SelectedTab == tab) return;
 
         SelectedTab = tab;
-        // Reset bộ lọc loại đơn về "Tất cả" khi đổi Tab
         SelectedTypeFilter = "ALL";
         await LoadDataAsync().ConfigureAwait(false);
     }
@@ -208,6 +244,30 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
         {
             await Shell.Current.GoToAsync("LeaveDetailPage", parameters);
         }
+    }
+
+    private static List<LeaveRequestItem> MapDtoListToItems(List<LeaveRequestListItemDto> dtos)
+    {
+        return dtos.Select(d => new LeaveRequestItem
+        {
+            MaDon = d.MaDon,
+            MaNhanVien = d.MaNhanVien,
+            TenNhanVien = d.HoTenNhanVien,
+            TenChucVu = d.ChucVu ?? "",
+            MaPhongBan = d.MaPhongBan,
+            TenPhongBan = d.TenPhongBan ?? "",
+            MaLoaiDon = d.MaLoaiDon,
+            TenLoaiDon = d.TenLoaiDon,
+            CoHuongLuong = d.CoHuongLuong,
+            TuNgay = d.TuNgay,
+            DenNgay = d.DenNgay,
+            LyDo = d.LyDo,
+            NgayGui = d.NgayGui,
+            TrangThai = d.TrangThai,
+            PhanHoiDuyet = d.PhanHoiDuyet,
+            NgayDuyet = d.NgayDuyet,
+            NguoiDuyetTen = d.HoTenNguoiDuyet
+        }).ToList();
     }
 
     protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

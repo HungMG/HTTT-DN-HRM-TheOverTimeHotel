@@ -15,6 +15,7 @@ public class UserSession
     public string Email { get; set; } = string.Empty;
     public string DienThoai { get; set; } = string.Empty;
     public int? MaPhongBan { get; set; }
+    public string? Token { get; set; }
     public bool IsLoggedIn { get; set; }
     public DateTime ThoiGianDangNhap { get; set; } = DateTime.UtcNow;
 

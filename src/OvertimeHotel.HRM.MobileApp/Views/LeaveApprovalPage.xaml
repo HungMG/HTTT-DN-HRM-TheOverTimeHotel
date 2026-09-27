@@ -9,10 +9,28 @@
              NavigationPage.HasNavigationBar="False"
              Shell.NavBarIsVisible="False">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="16,12,16,16">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Padding="16,12,16,16">
+
+        <!-- 0. DEMO MODE BANNER -->
+        <Border Grid.Row="0"
+                IsVisible="{Binding IsDemoMode}"
+                StrokeShape="RoundRectangle 8"
+                Stroke="#F59E0B"
+                BackgroundColor="#FEF3C7"
+                Padding="12,6"
+                Margin="0,0,0,8">
+            <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                <Label Text="⚠️" FontSize="14" VerticalOptions="Center" />
+                <Label Text="CHẾ ĐỘ DEMO — Sử dụng dữ liệu mẫu độc lập trong bộ nhớ"
+                       TextColor="#B45309"
+                       FontFamily="SegoeUIBold"
+                       FontSize="12"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+        </Border>
 
         <!-- 1. HEADER BAR CHUYÊN NGHIỆP CÓ BADGE SỐ ĐƠN CHỜ DUYỆT -->
-        <Grid x:Name="headerBar" Grid.Row="0" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" Margin="0,4,0,12">
+        <Grid x:Name="headerBar" Grid.Row="1" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" Margin="0,4,0,12">
             <Button Grid.Column="0"
                     Text="←"
                     Clicked="OnBackClicked"
@@ -57,7 +75,7 @@
         </Grid>
 
         <!-- 2. SEGMENTED TAB CONTROL: CHỜ DUYỆT / ĐÃ XỬ LÝ -->
-        <Border Grid.Row="1"
+        <Border Grid.Row="2"
                 StrokeShape="RoundRectangle 12"
                 Stroke="#E2E8F0"
                 BackgroundColor="#E2E8F0"
@@ -109,7 +127,7 @@
         </Border>
 
         <!-- 3. THANH CUỘN NGANG FILTER CHIPS THEO 5 LOẠI ĐƠN -->
-        <ScrollView Grid.Row="2" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,0,0,12">
+        <ScrollView Grid.Row="3" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,0,0,12">
             <HorizontalStackLayout Spacing="8">
                 <!-- Chip: Tất cả -->
                 <!-- Chip: Tất cả -->
@@ -247,7 +265,7 @@
         </ScrollView>
 
         <!-- 4. DANH SÁCH ĐƠN TỪ (COLLECTIONVIEW + PULL TO REFRESH) -->
-        <RefreshView Grid.Row="3"
+        <RefreshView Grid.Row="4"
                      IsRefreshing="{Binding IsRefreshing}"
                      Command="{Binding RefreshCommand}"
                      RefreshColor="#1E3A8A">
@@ -416,6 +434,36 @@
                            HorizontalOptions="Center" />
                     <Button Text="🔄 Làm Mới"
                             Command="{Binding RefreshCommand}"
+                            BackgroundColor="#1E3A8A"
+                            TextColor="#FFFFFF"
+                            FontFamily="SegoeUIBold"
+                            FontSize="13"
+                            CornerRadius="10"
+                            HeightRequest="42"
+                            WidthRequest="140"
+                            Margin="0,8,0,0" />
+                </VerticalStackLayout>
+
+                <!-- ERROR STATE (KHI CÓ LỖI KẾT NỐI HOẶC THẨM QUYỀN) -->
+                <VerticalStackLayout IsVisible="{Binding HasError}"
+                                     HorizontalOptions="Center"
+                                     VerticalOptions="Center"
+                                     Spacing="12"
+                                     Padding="32">
+                    <Label Text="⚠️" FontSize="56" HorizontalOptions="Center" />
+                    <Label Text="Không Thể Tải Dữ Liệu"
+                           TextColor="#DC2626"
+                           FontFamily="SegoeUIBold"
+                           FontSize="18"
+                           HorizontalOptions="Center" />
+                    <Label Text="{Binding ErrorMessage}"
+                           TextColor="#64748B"
+                           FontFamily="SegoeUI"
+                           FontSize="13"
+                           HorizontalTextAlignment="Center"
+                           HorizontalOptions="Center" />
+                    <Button Text="🔄 Thử Lại"
+                            Command="{Binding RetryCommand}"
                             BackgroundColor="#1E3A8A"
                             TextColor="#FFFFFF"
                             FontFamily="SegoeUIBold"

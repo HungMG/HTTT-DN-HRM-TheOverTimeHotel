@@ -14,6 +14,23 @@
             <ScrollView Grid.Row="0">
                 <VerticalStackLayout Spacing="16" Padding="16,14,16,24">
 
+                    <!-- DEMO MODE BANNER -->
+                    <Border IsVisible="{Binding IsDemoMode}"
+                            StrokeShape="RoundRectangle 8"
+                            Stroke="#F59E0B"
+                            BackgroundColor="#FEF3C7"
+                            Padding="12,6"
+                            Margin="0,0,0,4">
+                        <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                            <Label Text="⚠️" FontSize="14" VerticalOptions="Center" />
+                            <Label Text="CHẾ ĐỘ DEMO — Thao tác duyệt chỉ mô phỏng trong bộ nhớ"
+                                   TextColor="#B45309"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="12"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
                     <!-- HEADER ĐIỀU HƯỚNG: NÚT QUAY LẠI & TRẠNG THÁI -->
                     <Grid x:Name="detailHeader" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
                         <Button Grid.Column="0"

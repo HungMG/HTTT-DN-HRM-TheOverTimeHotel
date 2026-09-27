@@ -3,8 +3,8 @@ namespace OvertimeHotel.HRM.Core.Models;
 public class NhanVien
 {
     public int MaNhanVien { get; set; }
-    public int MaPhongBan { get; set; }
-    public int MaChucVu { get; set; }
+    public int? MaPhongBan { get; set; }
+    public int? MaChucVu { get; set; }
     public string Ho { get; set; } = string.Empty;
     public string Ten { get; set; } = string.Empty;
     public DateOnly NgaySinh { get; set; }

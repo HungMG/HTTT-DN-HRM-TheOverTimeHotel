@@ -1,5 +1,8 @@
+using System.Text;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.Data.Services;
@@ -32,9 +35,17 @@ builder.Logging.AddDebug();
 builder.Services.AddControllersWithViews();
 builder.Services.AddMemoryCache();
 
-// Cấu hình Cookie Authentication bảo mật cho Web Admin
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
+// Cấu hình Coexistence Authentication: Cookie Auth cho Web Admin & JWT Bearer cho Mobile API
+var jwtKey = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_KEY") ?? "OvertimeHotel_Super_Secret_JWT_Signing_Key_2026_Secure_Key_HMAC256";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "OvertimeHotel.HRM";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "OvertimeHotel.MobileApp";
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    })
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
     {
         options.LoginPath = "/Account/Login";
         options.LogoutPath = "/Account/Logout";
@@ -44,6 +55,22 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.Name = "OverTimeHotel_HRM_Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
+    })
+    .AddJwtBearer("MobileBearer", options =>
+    {
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -127,6 +154,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapControllers();
 app.MapStaticAssets();
 
 app.MapControllerRoute(
