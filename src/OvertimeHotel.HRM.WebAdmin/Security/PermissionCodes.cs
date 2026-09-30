@@ -1,10 +1,37 @@
 namespace OvertimeHotel.HRM.WebAdmin.Security;
 
+/// <summary>
+/// Danh mục mã quyền (RBAC) dùng thống nhất cho toàn bộ Web Admin.
+/// Mỗi hằng ở đây ánh xạ 1-1 với <c>QUYEN.ma_quyen_code</c> trong CSDL Supabase.
+/// </summary>
 public static class PermissionCodes
 {
+    /// <summary>Kiểu claim mang mã quyền trong token đăng nhập.</summary>
     public const string ClaimType = "Permission";
+
+    // ── Nhóm: Quản trị hệ thống ────────────────────────────────────────────
+    public const string SystemAdmin = "SYS_ADMIN";
     public const string ManageAccounts = "QL_TAI_KHOAN";
     public const string ManagePermissions = "QL_PHAN_QUYEN";
+    public const string ManageCatalog = "QL_DANH_MUC";
     public const string BackupDatabase = "SAO_LUU_CSDL";
-    public const string SystemAdmin = "SYS_ADMIN";
+
+    // ── Nhóm: Quản trị nhân sự ─────────────────────────────────────────────
+    public const string ManageEmployees = "QL_NHAN_SU";
+    public const string ManageContracts = "QL_HOP_DONG";
+
+    // ── Nhóm: Vận hành ca & chấm công ──────────────────────────────────────
+    public const string AssignShifts = "XEP_CA_LAM";
+    public const string ViewDepartmentAttendance = "XEM_CHAM_CONG_BO_PHAN";
+    public const string MobileCheckIn = "CHAM_CONG_DI_DONG";
+
+    // ── Nhóm: Lương ────────────────────────────────────────────────────────
+    public const string CalculatePayroll = "TINH_LUONG";
+    public const string ExportPayslipPdf = "XUAT_PHIEU_LUONG_PDF";
+
+    // ── Nhóm: Phê duyệt ────────────────────────────────────────────────────
+    public const string ApproveResignation = "DUYET_THOI_VIEC";
+    public const string ApproveLeave = "DUYET_DON_NGHI";
+    public const string ApproveOvertime = "DUYET_TANG_CA_OT";
+    public const string SubmitRequest = "NOP_DON_TU";
 }
