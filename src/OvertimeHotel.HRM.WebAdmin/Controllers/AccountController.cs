@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Enums;
 using OvertimeHotel.HRM.Core.Models;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
@@ -84,10 +86,12 @@ public class AccountController : Controller
 
         var roleName = account.VaiTro?.TenVaiTro ?? "Employee";
 
-        // Kiểm tra phân quyền cổng: Web Admin chỉ cho phép Admin và HR truy cập
-        if (roleName != "Admin" && roleName != "HR")
+        // Kiểm tra phân quyền cổng Web: Admin, HR và Manager đều được truy cập.
+        // Employee tự phục vụ trên Ứng dụng Di động nên bị chặn ngay tại cổng Web.
+        var normalizedRole = LeaveApprovalPolicy.NormalizeRole(roleName);
+        if (normalizedRole is null or RoleType.Employee)
         {
-            ViewBag.RoleNotice = $"Tài khoản của bạn được phân quyền là '{roleName}'. Cổng Web Admin này chỉ dành cho cấp Quản trị (Admin) và Nhân sự (HR). Vui lòng đăng nhập trên Ứng dụng Di động (.NET MAUI App) để thực hiện quẹt thẻ chấm công và quản lý ca làm!";
+            ViewBag.RoleNotice = $"Tài khoản của bạn được phân quyền là '{roleName}'. Cổng Web Admin này dành cho cấp Quản trị (Admin), Nhân sự (HR) và Quản lý (Manager). Vui lòng đăng nhập trên Ứng dụng Di động (.NET MAUI App) để quẹt thẻ chấm công và nộp đơn từ trực tuyến!";
             return View(model);
         }
 

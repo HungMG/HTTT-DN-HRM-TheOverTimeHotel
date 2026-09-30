@@ -3,10 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
-[Authorize(Roles = "Admin,HR")]
+[Authorize(Policy = PermissionCodes.ManageCatalog)]
 public class ChucVuController : Controller
 {
     private readonly AppDbContext _context;

@@ -6,10 +6,11 @@ using Npgsql;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
-[Authorize(Roles = "Admin,HR")]
+[Authorize(Policy = PermissionCodes.CalculatePayroll)]
 public class CauHinhLuongController(AppDbContext context, IMemoryCache cache,
     ILogger<CauHinhLuongController> logger) : Controller
 {
