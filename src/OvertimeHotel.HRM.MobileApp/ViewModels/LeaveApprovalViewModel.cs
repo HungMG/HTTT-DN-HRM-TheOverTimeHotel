@@ -155,10 +155,10 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
             }
 
             var viewParam = SelectedTab == "CHO_DUYET" ? "pending" : "reviewed";
-            var typeParam = SelectedTypeFilter == "ALL" ? "all" : SelectedTypeFilter;
+            // Keep all authorized types loaded; filter chips operate on this complete list.
 
             // Gọi API duy nhất trả về cả danh sách và số lượng pending
-            var response = await _leaveApprovalService.GetLeaveRequestsAsync(viewParam, typeParam).ConfigureAwait(false);
+            var response = await _leaveApprovalService.GetLeaveRequestsAsync(viewParam, "all");
 
             PendingCount = response.PendingCount;
             _allLoadedRequests = MapDtoListToItems(response.Items);
@@ -192,17 +192,17 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     private async Task RefreshAsync()
     {
         IsRefreshing = true;
-        await LoadDataAsync().ConfigureAwait(false);
+        await LoadDataAsync();
         IsRefreshing = false;
     }
 
     private async Task SwitchTabAsync(string? tab)
     {
-        if (string.IsNullOrWhiteSpace(tab) || SelectedTab == tab) return;
+        if (IsLoading || string.IsNullOrWhiteSpace(tab) || SelectedTab == tab) return;
 
         SelectedTab = tab;
         SelectedTypeFilter = "ALL";
-        await LoadDataAsync().ConfigureAwait(false);
+        await LoadDataAsync();
     }
 
     private void ApplyTypeFilter(string? typeId)

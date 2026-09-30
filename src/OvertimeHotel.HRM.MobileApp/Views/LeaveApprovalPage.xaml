@@ -89,7 +89,7 @@
                         CommandParameter="CHO_DUYET"
                         FontFamily="SegoeUIBold"
                         FontSize="13"
-                        HeightRequest="38"
+                        HeightRequest="44"
                         CornerRadius="9">
                     <Button.Triggers>
                         <DataTrigger TargetType="Button" Binding="{Binding IsPendingTabSelected}" Value="True">
@@ -110,7 +110,7 @@
                         CommandParameter="DA_XU_LY"
                         FontFamily="SegoeUIBold"
                         FontSize="13"
-                        HeightRequest="38"
+                        HeightRequest="44"
                         CornerRadius="9">
                     <Button.Triggers>
                         <DataTrigger TargetType="Button" Binding="{Binding IsReviewedTabSelected}" Value="True">
@@ -134,7 +134,7 @@
                 <Button Text="Tất Cả"
                         Command="{Binding FilterTypeCommand}"
                         CommandParameter="ALL"
-                        HeightRequest="36"
+                        HeightRequest="44"
                         Padding="14,0"
                         CornerRadius="18"
                         FontFamily="SegoeUIBold"
@@ -156,7 +156,7 @@
                 <Button Text="Phép Năm"
                         Command="{Binding FilterTypeCommand}"
                         CommandParameter="1"
-                        HeightRequest="36"
+                        HeightRequest="44"
                         Padding="14,0"
                         CornerRadius="18"
                         FontFamily="SegoeUIBold"
@@ -178,7 +178,7 @@
                 <Button Text="Nghỉ Ốm"
                         Command="{Binding FilterTypeCommand}"
                         CommandParameter="2"
-                        HeightRequest="36"
+                        HeightRequest="44"
                         Padding="14,0"
                         CornerRadius="18"
                         FontFamily="SegoeUIBold"
@@ -200,7 +200,7 @@
                 <Button Text="Thai Sản"
                         Command="{Binding FilterTypeCommand}"
                         CommandParameter="3"
-                        HeightRequest="36"
+                        HeightRequest="44"
                         Padding="14,0"
                         CornerRadius="18"
                         FontFamily="SegoeUIBold"
@@ -222,7 +222,7 @@
                 <Button Text="Việc Riêng"
                         Command="{Binding FilterTypeCommand}"
                         CommandParameter="4"
-                        HeightRequest="36"
+                        HeightRequest="44"
                         Padding="14,0"
                         CornerRadius="18"
                         FontFamily="SegoeUIBold"
@@ -244,7 +244,7 @@
                 <Button Text="Thôi Việc"
                         Command="{Binding FilterTypeCommand}"
                         CommandParameter="5"
-                        HeightRequest="36"
+                        HeightRequest="44"
                         Padding="14,0"
                         CornerRadius="18"
                         FontFamily="SegoeUIBold"
@@ -439,7 +439,7 @@
                             FontFamily="SegoeUIBold"
                             FontSize="13"
                             CornerRadius="10"
-                            HeightRequest="42"
+                            HeightRequest="44"
                             WidthRequest="140"
                             Margin="0,8,0,0" />
                 </VerticalStackLayout>
@@ -469,7 +469,7 @@
                             FontFamily="SegoeUIBold"
                             FontSize="13"
                             CornerRadius="10"
-                            HeightRequest="42"
+                            HeightRequest="44"
                             WidthRequest="140"
                             Margin="0,8,0,0" />
                 </VerticalStackLayout>

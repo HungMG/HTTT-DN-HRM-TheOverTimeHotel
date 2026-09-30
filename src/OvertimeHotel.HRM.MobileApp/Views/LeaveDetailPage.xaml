@@ -42,7 +42,7 @@
                                 FontSize="12"
                                 BackgroundColor="#EFF6FF"
                                 TextColor="#1E3A8A"
-                                HeightRequest="40"
+                                HeightRequest="44"
                                 Padding="12,0"
                                 CornerRadius="10" />
 

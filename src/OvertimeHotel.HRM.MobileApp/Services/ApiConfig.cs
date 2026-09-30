@@ -45,7 +45,7 @@ public static class ApiConfig
 
 #if DEBUG
         // Môi trường Debug cục bộ: hỗ trợ tiện ích Android Emulator và Localhost
-        return DeviceInfo.Platform == DevicePlatform.Android
+        return DeviceInfo.Platform == DevicePlatform.Android && DeviceInfo.DeviceType == DeviceType.Virtual
             ? AndroidEmulatorDebugUrl
             : LocalhostDebugUrl;
 #else

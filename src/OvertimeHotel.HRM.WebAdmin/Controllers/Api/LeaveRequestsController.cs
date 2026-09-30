@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,6 +33,28 @@ public class LeaveRequestsController : ControllerBase
     public async Task<IActionResult> GetLeaveRequests(
         [FromQuery] string view = "pending",
         [FromQuery] string type = "all")
+    {
+        if ((!string.Equals(view, "pending", StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(view, "reviewed", StringComparison.OrdinalIgnoreCase)) ||
+            (!string.Equals(type, "all", StringComparison.OrdinalIgnoreCase) &&
+             type is not ("1" or "2" or "3" or "4" or "5")))
+        {
+            return BadRequest(new LeaveReviewResult(false, "VALIDATION_ERROR",
+                "Bộ lọc không hợp lệ. view phải là pending/reviewed; type phải là all hoặc 1–5."));
+        }
+
+        try
+        {
+            return await GetLeaveRequestsCoreAsync(view, type);
+        }
+        catch (Exception ex) when (IsDatabaseUnavailable(ex))
+        {
+            _logger.LogError(ex, "Database unavailable while listing leave requests.");
+            return DatabaseUnavailableResult();
+        }
+    }
+
+    private async Task<IActionResult> GetLeaveRequestsCoreAsync(string view, string type)
     {
         // 1. Trích xuất tài khoản từ JWT Claims và tải lại từ DB để xác thực tức thời
         var (account, errorResult) = await GetCurrentAccountAsync();
@@ -144,6 +167,19 @@ public class LeaveRequestsController : ControllerBase
         [FromRoute] int maDon,
         [FromBody] LeaveReviewRequest request)
     {
+        try
+        {
+            return await ReviewLeaveRequestCoreAsync(maDon, request);
+        }
+        catch (Exception ex) when (IsDatabaseUnavailable(ex))
+        {
+            _logger.LogError(ex, "Database unavailable while reviewing leave request {RequestId}.", maDon);
+            return DatabaseUnavailableResult();
+        }
+    }
+
+    private async Task<IActionResult> ReviewLeaveRequestCoreAsync(int maDon, LeaveReviewRequest request)
+    {
         if (request == null)
         {
             return BadRequest(new LeaveReviewResult(false, "VALIDATION_ERROR", "Dữ liệu yêu cầu không hợp lệ."));
@@ -218,6 +254,14 @@ public class LeaveRequestsController : ControllerBase
         ));
     }
 
+    private static bool IsDatabaseUnavailable(Exception exception) =>
+        exception is DbException or TimeoutException ||
+        exception.InnerException is DbException or TimeoutException;
+
+    private ObjectResult DatabaseUnavailableResult() =>
+        StatusCode(StatusCodes.Status503ServiceUnavailable,
+            new LeaveReviewResult(false, "SERVICE_UNAVAILABLE",
+                "Không thể truy cập dữ liệu lúc này. Vui lòng thử lại sau."));
     private async Task<(Core.Models.TaiKhoan? Account, IActionResult? Error)> GetCurrentAccountAsync()
     {
         var accountIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);

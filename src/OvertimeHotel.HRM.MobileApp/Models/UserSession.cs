@@ -1,3 +1,6 @@
+using OvertimeHotel.HRM.Core.Enums;
+using OvertimeHotel.HRM.Core.Policies;
+
 namespace OvertimeHotel.HRM.MobileApp.Models;
 
 /// <summary>
@@ -19,9 +22,9 @@ public class UserSession
     public bool IsLoggedIn { get; set; }
     public DateTime ThoiGianDangNhap { get; set; } = DateTime.UtcNow;
 
-    public bool IsManager => TenVaiTro.Equals("Manager", StringComparison.OrdinalIgnoreCase);
-    public bool IsHR => TenVaiTro.Equals("HR", StringComparison.OrdinalIgnoreCase);
-    public bool IsAdmin => TenVaiTro.Equals("Admin", StringComparison.OrdinalIgnoreCase);
-    public bool CanApproveLeave => IsManager || IsHR || IsAdmin;
-    public bool IsEmployee => TenVaiTro.Equals("Employee", StringComparison.OrdinalIgnoreCase);
+    public bool IsManager => LeaveApprovalPolicy.IsManager(TenVaiTro);
+    public bool IsHR => LeaveApprovalPolicy.IsHR(TenVaiTro);
+    public bool IsAdmin => LeaveApprovalPolicy.IsAdmin(TenVaiTro);
+    public bool CanApproveLeave => IsLoggedIn && (IsManager || IsHR || IsAdmin) && (!IsManager || MaPhongBan.HasValue);
+    public bool IsEmployee => LeaveApprovalPolicy.NormalizeRole(TenVaiTro) == RoleType.Employee;
 }

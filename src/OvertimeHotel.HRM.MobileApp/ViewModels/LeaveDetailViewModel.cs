@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.Core.Policies;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -79,9 +80,9 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
     }
 
     public bool CanAct =>
-        RequestItem?.TrangThai == "CHO_DUYET" &&
-        _authService.CurrentUser != null &&
-        _authService.CurrentUser.CanApproveLeave &&
+        RequestItem is { TrangThai: "CHO_DUYET" } item &&
+        _authService.CurrentUser is { IsLoggedIn: true } user &&
+        LeaveApprovalPolicy.CanReview(user.TenVaiTro, user.MaPhongBan, item.MaPhongBan, item.MaLoaiDon) &&
         !IsSubmitting;
 
     public bool IsReviewed => RequestItem != null && RequestItem.TrangThai != "CHO_DUYET";
@@ -212,7 +213,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
 
     private async Task PerformApproveAsync()
     {
-        if (RequestItem == null) return;
+        if (RequestItem == null || !CanAct) return;
         IsSubmitting = true;
 
         try
@@ -290,6 +291,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
 
     private void ExecuteOpenRejectModal()
     {
+        if (!CanAct) return;
         RejectReason = string.Empty;
         HasRejectError = false;
         RejectErrorMessage = string.Empty;
@@ -306,6 +308,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
 
     private async Task ExecuteConfirmRejectAsync()
     {
+        if (!CanAct) return;
         if (string.IsNullOrWhiteSpace(RejectReason))
         {
             HasRejectError = true;
@@ -322,7 +325,7 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (RequestItem == null) return;
+        if (RequestItem == null || !CanAct) return;
         IsSubmitting = true;
 
         try
