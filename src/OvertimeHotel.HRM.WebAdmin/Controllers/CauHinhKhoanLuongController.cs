@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OvertimeHotel.HRM.WebAdmin.Models;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
 // Giữ các liên kết cũ; CRUD mới dùng danh mục riêng, bảng cũ chỉ quản lý thưởng.
-[Authorize(Roles = "Admin,HR")]
+[Authorize(Policy = PermissionCodes.CalculatePayroll)]
 public class CauHinhKhoanLuongController : Controller
 {
     [HttpGet]

@@ -4,10 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
-[Authorize(Roles = "Admin,HR,Manager")]
+[Authorize(Policy = PermissionCodes.AssignShifts)]
 public class PhanCaController : Controller
 {
     private readonly AppDbContext _context;

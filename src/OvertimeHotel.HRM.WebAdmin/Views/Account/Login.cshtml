@@ -10,10 +10,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
-    <!-- Google Fonts: Plus Jakarta Sans & Playfair Display -->
+    <!-- Google Fonts: Be Vietnam Pro & Fraunces (đồng bộ với hệ chữ của Web Admin) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,600&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 & Bootstrap Icons -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -29,7 +29,7 @@
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: var(--font-sans, 'Be Vietnam Pro', sans-serif);
             background-color: #0B1325;
             color: #1E293B;
             min-height: 100vh;
@@ -129,7 +129,7 @@
         }
 
         .brand-title {
-            font-family: 'Playfair Display', serif;
+            font-family: var(--font-display, 'Fraunces', serif);
             font-size: 3.3rem;
             font-weight: 700;
             line-height: 1.15;
@@ -567,7 +567,7 @@
                 <div class="hotel-emblem mx-auto">
                     <img src="~/images/the-overtime-hotels-logo.png" asp-append-version="true" alt="The OverTime Hotels" />
                 </div>
-                <h3 class="fw-bold text-dark mb-1" id="loginHeaderTitle" style="font-family: 'Playfair Display', serif;">
+                <h3 class="fw-bold text-dark mb-1" id="loginHeaderTitle" style="font-family: var(--font-display, 'Fraunces', serif);">
                     Đăng Nhập Quản Trị
                 </h3>
                 <p class="text-muted small blur-line" style="animation-delay: 0.15s;">

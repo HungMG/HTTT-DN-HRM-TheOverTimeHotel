@@ -45,7 +45,7 @@
     </section>
 
     <!-- 6 TABS LIÊN THÔNG ĐIỀU HÀNH -->
-    <partial name="_CatalogNavTabs" />
+    <partial name="_PageTabs" model="@("people")" />
 
     <partial name="_CatalogAlerts" />
 
@@ -56,7 +56,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-people-fill"></i></div>
                 <div>
                     <span class="catalog-kpi-label">Tổng nhân sự</span>
-                    <h3 class="catalog-kpi-value">@Model.TotalEmployees <small>nhân sự</small></h3>
+                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.TotalEmployees">@Model.TotalEmployees</span> <small>nhân sự</small></h3>
                     <p class="catalog-kpi-desc">Hồ sơ hiện có trong hệ thống khách sạn</p>
                 </div>
             </div>
@@ -66,7 +66,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-person-check-fill"></i></div>
                 <div>
                     <span class="catalog-kpi-label">Đang làm việc</span>
-                    <h3 class="catalog-kpi-value">@Model.WorkingEmployees <small>người</small></h3>
+                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.WorkingEmployees">@Model.WorkingEmployees</span> <small>người</small></h3>
                     <p class="catalog-kpi-desc">Nhân sự đang hoạt động và đảm nhận công việc</p>
                 </div>
             </div>
@@ -76,7 +76,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-building"></i></div>
                 <div>
                     <span class="catalog-kpi-label">Phòng ban hoạt động</span>
-                    <h3 class="catalog-kpi-value">@Model.DepartmentOptions.Count <small>phòng</small></h3>
+                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.DepartmentOptions.Count">@Model.DepartmentOptions.Count</span> <small>phòng</small></h3>
                     <p class="catalog-kpi-desc">Đơn vị đang hoạt động trong hotel</p>
                 </div>
             </div>

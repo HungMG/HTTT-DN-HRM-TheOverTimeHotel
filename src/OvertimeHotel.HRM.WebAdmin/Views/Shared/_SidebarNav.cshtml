@@ -1,0 +1,116 @@
+@using OvertimeHotel.HRM.Core.Enums
+@using OvertimeHotel.HRM.WebAdmin.Security
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+
+    bool IsCurrent(string controller) =>
+        currentController.Equals(controller, StringComparison.OrdinalIgnoreCase);
+
+    bool IsCurrentAction(string controller, string action) =>
+        IsCurrent(controller) && currentAction.Equals(action, StringComparison.OrdinalIgnoreCase);
+
+    // Mỗi nhóm sidebar chỉ hiện khi người dùng có ít nhất một quyền trong nhóm đó.
+    var canViewPeople = User.HasPermission(PermissionCodes.ManageEmployees)
+                        || User.HasPermission(PermissionCodes.ManageContracts)
+                        || User.HasPermission(PermissionCodes.ManageCatalog);
+    var canViewShift = User.HasPermission(PermissionCodes.AssignShifts)
+                       || User.HasPermission(PermissionCodes.ManageCatalog)
+                       || User.HasPermission(PermissionCodes.ViewDepartmentAttendance);
+    var canViewPayroll = User.HasPermission(PermissionCodes.CalculatePayroll)
+                         || User.HasPermission(PermissionCodes.ExportPayslipPdf);
+    var canViewApproval = User.HasPermission(PermissionCodes.ApproveLeave)
+                          || User.HasPermission(PermissionCodes.ApproveResignation)
+                          || User.HasPermission(PermissionCodes.ApproveOvertime);
+    var canViewAccounts = User.HasPermission(PermissionCodes.ManageAccounts)
+                          || User.HasPermission(PermissionCodes.ManagePermissions);
+    var canViewSystem = User.HasPermission(PermissionCodes.BackupDatabase)
+                        || User.HasPermission(PermissionCodes.ManageCatalog);
+
+    var hasAnyGroup = canViewPeople || canViewShift || canViewPayroll || canViewApproval
+                      || canViewAccounts || canViewSystem;
+}
+
+<aside class="app-sidebar">
+    <a class="app-sidebar-brand" asp-controller="Home" asp-action="Index">
+        <span class="app-sidebar-logo">
+            <img src="~/images/the-overtime-hotels-logo.png" asp-append-version="true" alt="The OverTime Hotels" />
+        </span>
+        <span class="app-sidebar-brand-text">
+            <span class="app-sidebar-brand-name">The OverTime</span>
+            <span class="app-sidebar-brand-sub">Hotels Management</span>
+        </span>
+    </a>
+
+    <nav class="app-sidebar-nav" aria-label="Điều hướng chính">
+        <a class="app-nav-item@(IsCurrent("Home") && !IsCurrentAction("Home", "Privacy") ? " is-active" : "")"
+           asp-controller="Home" asp-action="Index">
+            <i class="bi bi-speedometer2"></i><span>Tổng quan</span>
+        </a>
+
+        @if (hasAnyGroup)
+        {
+            @if (canViewPeople)
+            {
+                <a class="app-nav-item@(IsCurrent("NhanVien") || IsCurrent("HopDong") || IsCurrent("PhongBan") || IsCurrent("ChucVu") ? " is-active" : "")"
+                   asp-controller="NhanVien" asp-action="Index">
+                    <i class="bi bi-people-fill"></i><span>Nhân sự</span>
+                </a>
+            }
+
+            @if (canViewShift)
+            {
+                <a class="app-nav-item@(IsCurrent("PhanCa") || IsCurrent("CaLamViec") ? " is-active" : "")"
+                   asp-controller="PhanCa" asp-action="Index">
+                    <i class="bi bi-clock-history"></i><span>Ca &amp; Chấm công</span>
+                </a>
+            }
+
+            @if (canViewPayroll)
+            {
+                <a class="app-nav-item@(IsCurrent("CauHinhLuong") || IsCurrent("CauHinhKhoanLuong") ? " is-active" : "")"
+                   asp-controller="CauHinhLuong" asp-action="Index">
+                    <i class="bi bi-wallet2"></i><span>Lương</span>
+                </a>
+            }
+
+            @if (canViewApproval)
+            {
+                <span class="app-nav-item is-disabled" aria-disabled="true" title="Đang phát triển">
+                    <i class="bi bi-check2-square"></i><span>Duyệt</span>
+                    <em class="app-nav-soon">Sắp có</em>
+                </span>
+            }
+
+            @if (canViewAccounts)
+            {
+                <a class="app-nav-item@(IsCurrent("UserAccounts") ? " is-active" : "")"
+                   asp-controller="UserAccounts" asp-action="Index">
+                    <i class="bi bi-person-gear"></i><span>Tài khoản</span>
+                </a>
+            }
+
+            @if (canViewSystem)
+            {
+                <a class="app-nav-item@(IsCurrent("Backup") || IsCurrent("SystemCatalog") ? " is-active" : "")"
+                   asp-controller="Backup" asp-action="Index">
+                    <i class="bi bi-shield-check"></i><span>Hệ thống</span>
+                </a>
+            }
+        }
+    </nav>
+
+    <div class="app-sidebar-footer">
+        <a class="app-nav-item@(IsCurrentAction("Home", "Privacy") ? " is-active" : "")"
+           asp-controller="Home" asp-action="Privacy">
+            <i class="bi bi-file-earmark-text"></i><span>Chính sách</span>
+        </a>
+
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <a class="app-nav-item" asp-controller="Account" asp-action="Logout">
+                <i class="bi bi-box-arrow-right"></i><span>Đăng xuất</span>
+            </a>
+        }
+    </div>
+</aside>

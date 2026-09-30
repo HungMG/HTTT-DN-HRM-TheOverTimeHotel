@@ -41,6 +41,26 @@ public static class LeaveApprovalPolicy
     public static bool IsManager(string? role) => NormalizeRole(role) == RoleType.Manager;
 
     /// <summary>
+    /// Liệt kê các mã loại đơn mà vai trò được phép tiếp nhận và duyệt.
+    /// Dùng để lọc danh sách đơn ngay ở tầng truy vấn (ví dụ khối "Cần bạn xử lý"
+    /// trên bảng điều khiển) thay vì tải toàn bộ đơn rồi mới lọc trong bộ nhớ.
+    /// </summary>
+    public static IReadOnlyCollection<int> GetReviewableRequestTypes(string? role)
+    {
+        return NormalizeRole(role) switch
+        {
+            // Admin xem tất cả các loại đơn trên toàn khách sạn
+            RoleType.Admin => ManagerAllowedTypes.Union(HrAllowedTypes).ToArray(),
+            // HR duyệt loại 3, 5 toàn khách sạn
+            RoleType.HR => HrAllowedTypes.ToArray(),
+            // Manager duyệt loại 1, 2, 4 nhưng còn bị giới hạn cùng phòng ban
+            RoleType.Manager => ManagerAllowedTypes.ToArray(),
+            // Employee hoặc vai trò không xác định không được tiếp nhận đơn
+            _ => []
+        };
+    }
+
+    /// <summary>
     /// Kiểm tra người dùng có quyền xem đơn từ này hay không theo nguyên tắc Fail-Closed.
     /// </summary>
     public static bool CanView(string? role, int? reviewerDeptId, int? requestDeptId, int maLoaiDon)

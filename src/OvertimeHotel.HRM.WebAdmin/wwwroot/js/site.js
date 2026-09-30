@@ -104,6 +104,92 @@
   // -------------------------------------------------------------
   // 2. HIỆU ỨNG BLURTEXT: CHỮ TRƯỢT TỪ MỜ LÊN HIỆN RÕ SẮC NÉT (TỪ REACT-BITS)
   // -------------------------------------------------------------
+
+  /**
+   * Đếm số tăng/giảm mềm mại cho các con số thống kê.
+   * Bắt buộc theo rule 5.1: easeOutCubic, tuyệt đối không đổi số đột ngột.
+   * Dùng requestAnimationFrame thuần tuý để không phụ thuộc thư viện ngoài.
+   */
+  function animateCountUp(element, startValue, targetValue, duration) {
+    if (!element) return;
+
+    // Tôn trọng thiết lập giảm chuyển động: hiện thẳng giá trị cuối cùng.
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      element.textContent = targetValue;
+      return;
+    }
+
+    const start = Number(startValue) || 0;
+    const target = Number(targetValue);
+    if (!isFinite(target)) return;
+
+    const easeOutCubic = function (t) {
+      return 1 - Math.pow(1 - t, 3);
+    };
+
+    // Giữ nguyên phần đuôi của thẻ (ví dụ " nhân sự", " đ") nếu có.
+    const original = element.textContent;
+    const suffixMatch = original.match(/[^0-9.,\-\s]*\s*$/);
+    const suffix = suffixMatch ? suffixMatch[0] : '';
+    const decimals = (String(targetValue).split('.')[1] || '').replace(/\D/g, '').length;
+    const hasThousands = String(targetValue).indexOf(',') > -1;
+
+    let startedAt = null;
+    const span = Number(duration) > 0 ? Number(duration) : 900;
+
+    function step(timestamp) {
+      if (startedAt === null) startedAt = timestamp;
+      const progress = Math.min((timestamp - startedAt) / span, 1);
+      const current = start + (target - start) * easeOutCubic(progress);
+
+      let text = decimals > 0
+        ? current.toFixed(decimals)
+        : String(Math.round(current));
+      if (hasThousands) {
+        text = text.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      }
+      element.textContent = text + suffix;
+
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      } else {
+        element.textContent = targetValue;
+      }
+    }
+
+    window.requestAnimationFrame(step);
+  }
+
+  /**
+   * Quét các phần tử đánh dấu bằng data-count-to rồi chạy đếm số và
+   * kích hoạt hào quang vàng kim (kpi-pulse-active) như rule 5.2.
+   */
+  function applyCountUp(container) {
+    const main = container || document.querySelector('main[role="main"]') || document.body;
+    if (!main) return;
+
+    const targets = main.querySelectorAll('[data-count-to]:not([data-count-done])');
+    targets.forEach(function (el, idx) {
+      el.setAttribute('data-count-done', 'true');
+      const target = el.getAttribute('data-count-to');
+      // Trễ so le để các con số nhảy cùng lúc theo nhịp tăng dần.
+      const delay = Math.min(idx * 0.05, 0.35) * 1000;
+      window.setTimeout(function () {
+        animateCountUp(el, 0, target, 900);
+        el.setAttribute('data-count-from', '0');
+
+        // Hào quang vàng kim đồng bộ với lúc số chốt dừng
+        el.closest('.catalog-kpi-card, .kpi-card, .stat-card')?.classList.add('kpi-pulse-active');
+        window.setTimeout(function () {
+          el.closest('.catalog-kpi-card, .kpi-card, .stat-card')?.classList.remove('kpi-pulse-active');
+        }, 900);
+      }, delay);
+    });
+  }
+
+  // Công khai hàm đếm số cho các trang khác tái sử dụng (rule 5.1).
+  window.animateCountUp = animateCountUp;
+
   function applyBlurTextEffect(container) {
     const main = container || document.querySelector('main[role="main"]') || document.body;
     if (!main) return;
@@ -148,7 +234,7 @@
 
     // 2. Các đoạn mô tả, phụ đề: Lướt từ mờ lên rõ
     const subtitles = main.querySelectorAll(
-      '.hero-luxury-banner p, .lead, .kpi-card .small, .account-command-copy p, .account-eyebrow, .account-audit-title small, .inspector-card-heading small, .account-panel-heading span, .identity-summary-copy small'
+      '.hero-luxury-banner p, .lead, .kpi-card .small, .account-command-copy p, .account-eyebrow, .account-audit-title small, .inspector-card-heading small, .account-panel-heading span, .identity-summary-copy small, .catalog-kpi-desc, .catalog-hero p, .catalog-breadcrumb'
     );
     subtitles.forEach(function (el, idx) {
       if (el.getAttribute('data-blur-text-ready')) return;
@@ -157,9 +243,11 @@
       el.style.animationDelay = (0.12 + Math.min(idx * 0.03, 0.35)).toFixed(2) + 's';
     });
 
-    // 3. Các con số thống kê Dashboard & Quản trị: Số lướt từ mờ lên rõ sắc nét
+    // 3. Các con số thống kê Dashboard, Quản trị và Danh mục: Số lướt từ mờ lên rõ sắc nét
+    // Chỉ bắt phần tử dạng dòng (span/small). Không bắt thẻ khối như h3 vì
+    // .hotel-blur-text đặt display:inline-block sẽ làm vỡ chiều cao khối.
     const statsValues = main.querySelectorAll(
-      '.kpi-card h2, .kpi-card .fs-3, .kpi-card .display-6, .motion-stat-value, .account-audit-count, .account-environment-pill strong'
+      '.kpi-card h2, .kpi-card .fs-3, .kpi-card .display-6, .motion-stat-value, .account-audit-count, .account-environment-pill strong, [data-count-to], .stat-figure-unit, .stat-label'
     );
     statsValues.forEach(function (val, idx) {
       if (val.getAttribute('data-blur-text-ready')) return;
@@ -185,7 +273,7 @@
 
     // 2. Các ô KPI cards, module cards, khung quản trị: Lướt nhẹ từ dưới lên theo nhịp so le
     const boxes = main.querySelectorAll(
-      '.kpi-card, .module-card, .card:not(.hero-luxury-banner), .shift-timeline-item, .motion-stat, .inspector-card, .account-outline-panel, .account-preview-panel, .account-audit-panel'
+      '.kpi-card, .module-card, .card:not(.hero-luxury-banner), .shift-timeline-item, .motion-stat, .inspector-card, .account-outline-panel, .account-preview-panel, .account-audit-panel, .catalog-kpi-card, .catalog-card, .stat-card'
     );
     boxes.forEach(function (box, idx) {
       box.classList.add('pp-box-anim');
@@ -211,8 +299,9 @@
       item.style.animationDelay = delay.toFixed(2) + 's';
     });
 
-    // 5. Kích hoạt hiệu ứng BlurText cho chữ
+    // 5. Kích hoạt hiệu ứng BlurText cho chữ và đếm số cho các thẻ chỉ số
     applyBlurTextEffect(main);
+    applyCountUp(main);
   }
 
   if (document.readyState === 'loading') {

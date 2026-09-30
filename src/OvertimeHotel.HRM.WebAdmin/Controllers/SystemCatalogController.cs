@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
-[Authorize(Roles = "Admin,HR")]
+[Authorize(Policy = PermissionCodes.ManageCatalog)]
 public class SystemCatalogController : Controller
 {
     [HttpGet]

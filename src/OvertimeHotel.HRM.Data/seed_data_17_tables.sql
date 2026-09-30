@@ -74,8 +74,8 @@ SELECT setval('quyen_ma_quyen_seq', (SELECT MAX(ma_quyen) FROM QUYEN));
 INSERT INTO VAI_TRO_QUYEN (ma_vai_tro, ma_quyen) VALUES
 -- Admin có toàn quyền hệ thống + danh mục + backup
 (1, 1), (1, 2), (1, 3), (1, 4), (1, 5),
--- HR có quyền quản lý nhân sự, HĐLĐ, tính lương, xuất PDF, duyệt thôi việc
-(2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 14), (2, 15), (2, 16),
+-- HR có quyền quản lý nhân sự, HĐLĐ, tính lương, xuất PDF, duyệt thôi việc và quản trị danh mục
+(2, 4), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 14), (2, 15), (2, 16),
 -- Manager có quyền xếp ca, duyệt đơn nghỉ, duyệt OT, xem chấm công bộ phận
 (3, 11), (3, 12), (3, 13), (3, 14), (3, 15), (3, 16),
 -- Employee có quyền chấm công, nộp đơn từ

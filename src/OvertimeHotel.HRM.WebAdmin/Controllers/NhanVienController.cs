@@ -5,10 +5,11 @@ using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
-[Authorize(Roles = "Admin,HR")]
+[Authorize(Policy = PermissionCodes.ManageEmployees)]
 public class NhanVienController : Controller
 {
     private static readonly string[] SupportedEmployeeStatuses = ["DANG_LAM", "DA_THOI_VIEC", "NGHI_PHEP"];

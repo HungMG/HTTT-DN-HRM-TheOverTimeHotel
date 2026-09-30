@@ -81,12 +81,28 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy(PermissionCodes.ManageAccounts, policy => policy.RequireAssertion(context =>
-        context.User.IsInRole("Admin") || context.User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ManageAccounts)));
-    options.AddPolicy(PermissionCodes.ManagePermissions, policy => policy.RequireAssertion(context =>
-        context.User.IsInRole("Admin") || context.User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ManagePermissions)));
-    options.AddPolicy(PermissionCodes.BackupDatabase, policy => policy.RequireAssertion(context =>
-        context.User.IsInRole("Admin") || context.User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.BackupDatabase)));
+    // Đăng ký policy RBAC cho từng mã quyền trong bảng QUYEN.
+    // Admin luôn đạt mọi policy vì chỉ nắm quyền gốc SYS_ADMIN, các quyền chi tiết
+    // được cấp cho HR và Manager mới đi qua claim "Permission".
+    void AddPermissionPolicy(string permissionCode)
+    {
+        options.AddPolicy(permissionCode, policy => policy.RequireAssertion(context =>
+            context.User.IsInRole("Admin") || context.User.HasClaim(PermissionCodes.ClaimType, permissionCode)));
+    }
+
+    AddPermissionPolicy(PermissionCodes.ManageAccounts);
+    AddPermissionPolicy(PermissionCodes.ManagePermissions);
+    AddPermissionPolicy(PermissionCodes.BackupDatabase);
+    AddPermissionPolicy(PermissionCodes.ManageCatalog);
+    AddPermissionPolicy(PermissionCodes.ManageEmployees);
+    AddPermissionPolicy(PermissionCodes.ManageContracts);
+    AddPermissionPolicy(PermissionCodes.AssignShifts);
+    AddPermissionPolicy(PermissionCodes.ViewDepartmentAttendance);
+    AddPermissionPolicy(PermissionCodes.CalculatePayroll);
+    AddPermissionPolicy(PermissionCodes.ExportPayslipPdf);
+    AddPermissionPolicy(PermissionCodes.ApproveResignation);
+    AddPermissionPolicy(PermissionCodes.ApproveLeave);
+    AddPermissionPolicy(PermissionCodes.ApproveOvertime);
 });
 
 // Cấu hình kết nối Entity Framework Core với Supabase PostgreSQL
