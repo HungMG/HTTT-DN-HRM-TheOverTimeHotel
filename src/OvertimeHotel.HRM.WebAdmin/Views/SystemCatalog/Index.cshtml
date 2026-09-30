@@ -64,6 +64,7 @@
                 <p>Thiết lập cơ cấu phòng ban chức năng: Ban Giám đốc, Lễ tân Tiền sảnh, Buồng phòng, Ẩm thực F&B...</p>
                 
                 <div class="catalog-metric-pills mt-3 mb-2">
+                    <span class="catalog-metric-pill"><strong>@Model.SoLoaiTangCa</strong> tăng ca</span>
                     <span class="catalog-metric-pill catalog-metric-pill--primary">
                         <i class="bi bi-building me-1"></i><strong>@Model.TongPhongBan</strong> phòng ban
                     </span>
@@ -98,6 +99,7 @@
                 <p>Chuẩn hóa chức danh công việc, định biên trách nhiệm và phân cấp chức vụ trong toàn hệ thống khách sạn.</p>
 
                 <div class="catalog-metric-pills mt-3 mb-2">
+                    <span class="catalog-metric-pill"><strong>@Model.SoLoaiTangCa</strong> tăng ca</span>
                     <span class="catalog-metric-pill catalog-metric-pill--success">
                         <i class="bi bi-person-badge me-1"></i><strong>@Model.TongChucVu</strong> vị trí chuẩn hóa
                     </span>
@@ -132,6 +134,7 @@
                 <p>Quy chuẩn các ca trực liên tục 24/7, xác định ca qua đêm và tự động tính phụ cấp ca đêm 30%.</p>
 
                 <div class="catalog-metric-pills mt-3 mb-2">
+                    <span class="catalog-metric-pill"><strong>@Model.SoLoaiTangCa</strong> tăng ca</span>
                     <span class="catalog-metric-pill catalog-metric-pill--dark">
                         <i class="bi bi-clock-history me-1"></i><strong>@Model.TongCaLamViec</strong> ca vận hành
                     </span>
@@ -166,6 +169,7 @@
                 <p>Thiết lập định mức các khoản phụ cấp ăn ca, chuyên cần, phí phục vụ và tỷ lệ trích nộp bảo hiểm bắt buộc.</p>
 
                 <div class="catalog-metric-pills mt-3 mb-2">
+                    <span class="catalog-metric-pill"><strong>@Model.SoLoaiTangCa</strong> tăng ca</span>
                     <span class="catalog-metric-pill catalog-metric-pill--primary">
                         <i class="bi bi-plus-circle me-1"></i><strong>@Model.SoKhoanPhuCap</strong> phụ cấp
                     </span>
@@ -173,15 +177,15 @@
                         <i class="bi bi-gift me-1"></i><strong>@Model.SoKhoanThuong</strong> thưởng
                     </span>
                     <span class="catalog-metric-pill catalog-metric-pill--danger">
-                        <i class="bi bi-dash-circle me-1"></i><strong>@Model.SoKhoanKhauTru</strong> phạt
+                        <i class="bi bi-dash-circle me-1"></i><strong>@Model.SoKhoanKhauTru</strong> khấu trừ
                     </span>
                 </div>
             </div>
             <div class="catalog-module-card-footer mt-auto pt-3 d-flex align-items-center justify-content-between border-top">
-                <a asp-controller="CauHinhKhoanLuong" asp-action="Index" class="catalog-module-link">
+                <a asp-controller="CauHinhLuong" asp-action="Index" class="catalog-module-link">
                     Mở danh sách <i class="bi bi-arrow-up-right"></i>
                 </a>
-                <a asp-controller="CauHinhKhoanLuong" asp-action="Create" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold text-dark catalog-quick-btn">
+                <a asp-controller="CauHinhLuong" asp-action="Create" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold text-dark catalog-quick-btn">
                     <i class="bi bi-plus-lg me-1"></i>Thêm nhanh
                 </a>
             </div>

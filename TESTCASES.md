@@ -69,7 +69,12 @@
 | **TC-WEB-CAT-01** | Thêm mới Phòng ban | Quyền Admin/HR | 1. Vào "Danh mục phòng ban"<br>2. Bấm "Thêm mới"<br>3. Nhập tên và mô tả | Tên: `Bộ phận Trị liệu Spa`<br>Mô tả: `Chăm sóc sức khỏe, xông hơi` | Bản ghi mới xuất hiện trong bảng `phong_ban`, hiển thị đúng trong danh sách phòng ban khi tạo nhân viên. | 🟢 Pass |
 | **TC-WEB-CAT-02** | Chặn xóa phòng ban đang có nhân viên | Phòng ban có nhân viên | 1. Chọn phòng ban Tiền sảnh (FO)<br>2. Bấm "Xóa" | Thao tác click | Hệ thống cảnh báo lỗi toàn vẹn khóa ngoại (FK): Không được phép xóa phòng ban đang có nhân viên trực thuộc. | 🟢 Pass |
 | **TC-WEB-CAT-03** | Quản lý danh mục 3 Ca 24/7 | Đăng nhập Admin | 1. Vào danh mục ca làm việc<br>2. Kiểm tra cờ ca đêm | Ca 3: 22h - 6h sáng | Cờ `qua_dem = TRUE`, ca đêm được gắn nhãn hưởng phụ cấp pháp lý thêm 30% lương. | 🟢 Pass |
-| **TC-WEB-CAT-04** | Lọc và cập nhật Cấu hình khoản lương | Vào trang `CauHinhKhoanLuong` | 1. Sử dụng bộ lọc loại khoản: `Phụ cấp`, `Thưởng`, `Khấu trừ`<br>2. Đổi giá trị định mức | Đổi Ăn ca: `30.000` ➔ `35.000đ`<br>Lọc theo loại `KHAU_TRU` | Bộ lọc AJAX hoạt động mượt mà, giá trị mới được lưu tức thì vào bảng `cau_hinh_khoan_luong`. | 🟢 Pass |
+| **TC-WEB-CAT-04** | CRUD ba danh mục mới | Admin/HR, Supabase có 24 bảng | Thêm/sửa/lọc/xóa bản ghi thử ở Tăng ca, Phụ cấp, Khấu trừ | OT 1.50; phụ cấp 35000.50 theo tháng, chịu thuế; bảo hiểm 1.50% | Ghi đúng ba bảng mới; giữ số thập phân, cách tính và checkbox thuế. | 🟢 Pass (HTTP 30/09/2026) |
+| **TC-WEB-CAT-05** | Thưởng và tương thích cũ | Có bảng cau_hinh_khoan_luong | CRUD tab Thưởng; mở liên kết cũ | Thưởng 200000.50 | Chỉ quản lý dòng THUONG; liên kết cũ chuyển hướng; giữ các dòng phụ cấp/khấu trừ cũ. | 🟢 Pass (HTTP 30/09/2026) |
+| **TC-WEB-CAT-06** | Validation và antiforgery | Admin/HR | Nhập âm, tên trùng, loại sai, quá hai số thập phân, thiếu định mức; gửi POST thiếu token | -1, OT 0, BH 101, tên trùng khác hoa/thường | Dữ liệu sai không được ghi; thiếu token bị từ chối. | 🟢 Pass (HTTP 30/09/2026) |
+| **TC-WEB-CAT-07** | Chặn xóa cấu hình đã dùng | Phiếu lương tham chiếu cấu hình | Yêu cầu xóa | ID đang dùng | Chặn xóa, giữ nguyên cấu hình và phiếu lương. | 🟢 Pass (HTTP 30/09/2026) |
+| **TC-WEB-CAT-08** | Dashboard cấu hình lương | Supabase hoạt động | Mở Home trước/sau CRUD | Bốn danh mục | Tổng = số loại OT + phụ cấp + khấu trừ mới + thưởng cũ; làm mới cache sau ghi. | 🟢 Pass (HTTP 30/09/2026) |
+| **TC-WEB-CAT-09** | Phân quyền | Chưa đăng nhập | Mở /CauHinhLuong | Truy cập trực tiếp | Chuyển đến đăng nhập; CRUD chỉ dành cho Admin/HR. | 🟢 Pass (HTTP 30/09/2026) |
 
 ---
 
@@ -175,3 +180,9 @@ Kịch bản chạy xuyên suốt 8 bước chuẩn hóa theo PRD 01 & 05:
 1. Mở song song trình duyệt Web (`http://localhost:5065`) và ứng dụng Mobile App / Máy ảo.
 2. Dùng đúng danh sách 4 tài khoản ở **Mục 1.2** để thực hiện từng Test Case theo thứ tự từ `TC-WEB-AUTH-01` đến `TC-WEB-BAK-02`.
 3. Khi phát hiện lỗi hoặc sai lệch so với "Kết quả mong đợi", ghi lại Mã TC và mô tả hành vi thực tế để xử lý ngay.
+
+### Xác nhận task 14 — 30/09/2026
+
+Web Admin build: 0 lỗi, 0 cảnh báo. `tests/payroll-smoke.mjs`: 39 kiểm tra HTTP/CRUD qua tài khoản Admin mẫu trên Supabase; gồm số thập phân, checkbox thuế, bộ lọc, validation, antiforgery, chặn xóa FK và tổng dashboard/cache. Các cấu hình SMOKE đã được xóa sau kiểm tra. Kiểm tra HTTP không thay thế kiểm tra trực quan trên desktop/mobile.
+
+Kiểm tra UI task 14 bằng Playwright: 21 kiểm tra đạt trên desktop 1440px và mobile 390px; bốn tab dùng navy, nút sửa/xóa đồng nhất, live search/lọc chỉ cập nhật kết quả, giữ loại khi hủy truy vấn cũ, trạng thái trống/reset và hộp thoại xóa. Phòng ban/Chức vụ vẫn live search; không có lỗi JavaScript và không thay đổi bản ghi nghiệp vụ.

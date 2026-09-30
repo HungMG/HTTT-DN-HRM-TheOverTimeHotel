@@ -1,0 +1,82 @@
+@using OvertimeHotel.HRM.WebAdmin.Models
+@model CauHinhLuongFormViewModel
+@{
+    var title = CauHinhLuongLabels.Title(Model.Category);
+    var action = Model.Id == 0 ? "Create" : "Edit";
+    var types = CauHinhLuongLabels.Types(Model.Category);
+    ViewData["Title"] = (Model.Id == 0 ? "Thêm " : "Sửa ") + title.ToLower();
+}
+<link rel="stylesheet" href="~/css/payroll.css" asp-append-version="true" />
+<div class="catalog-page payroll-workspace">
+    <partial name="_CatalogNavTabs" />
+    <section class="catalog-hero mb-4">
+        <h1 class="catalog-title h2 mb-2">@ViewData["Title"]</h1>
+        <p class="mb-0">Định mức áp dụng cho các kỳ lương mới; dữ liệu phiếu lương đã chốt được giữ nguyên.</p>
+    </section>
+    <form asp-action="@action" asp-route-id="@(Model.Id == 0 ? (int?)null : Model.Id)" method="post" class="catalog-card catalog-form-card">
+        <input asp-for="Id" type="hidden" />
+        <input asp-for="Category" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label">Tên @title.ToLower()</label>
+            <input asp-for="Name" class="form-control" maxlength="@(Model.Category == CauHinhLuongCategory.TangCa ? 100 : 150)" required />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+        @if (types.Count > 0)
+        {
+            <div class="mb-3">
+                <label asp-for="Type" class="form-label">@(Model.Category == CauHinhLuongCategory.PhuCap ? "Cách tính" : "Loại khấu trừ")</label>
+                <select asp-for="Type" class="form-select">
+                    @foreach (var type in types) { <option value="@type.Key">@type.Value</option> }
+                </select>
+                <span asp-validation-for="Type" class="text-danger"></span>
+            </div>
+        }
+        <div class="mb-3">
+            <label asp-for="Value" class="form-label">@(Model.Category == CauHinhLuongCategory.TangCa ? "Hệ số" : "Tỷ lệ hoặc định mức") (<span id="value-unit">@CauHinhLuongLabels.Unit(Model.Category, Model.Type)</span>)</label>
+            <input asp-for="Value" type="number" min="@(Model.Category == CauHinhLuongCategory.TangCa ? "0.01" : "0")"
+                   max="@(Model.Category == CauHinhLuongCategory.TangCa ? "99.99" : "9999999999999.99")" step="0.01" class="form-control" required aria-describedby="value-help" />
+            <span asp-validation-for="Value" class="text-danger"></span>
+            <div id="value-help" class="form-text">
+                @if (Model.Category == CauHinhLuongCategory.TangCa) { <span>Ví dụ: 1.50 là hệ số 150%; 0.30 là phần cộng thêm 30% cho ca đêm.</span> }
+                else if (Model.Category == CauHinhLuongCategory.KhauTru) { <span>Bảo hiểm nhập %, vi phạm nhập VNĐ/phút. Thuế TNCN được tính lũy tiến; định mức thuế và tạm ứng tại đây là giá trị tham chiếu.</span> }
+                else { <span>Nhập tối đa hai chữ số thập phân.</span> }
+            </div>
+        </div>
+        @if (Model.Category == CauHinhLuongCategory.PhuCap)
+        {
+            <div class="form-check mb-3">
+                <input asp-for="Taxable" class="form-check-input" />
+                <label asp-for="Taxable" class="form-check-label">Phụ cấp chịu thuế TNCN</label>
+            </div>
+        }
+        <div class="mb-4">
+            <label asp-for="Description" class="form-label">Mô tả</label>
+            <textarea asp-for="Description" class="form-control" rows="3" maxlength="255"></textarea>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-hotel-primary">Lưu cấu hình</button>
+            <a asp-action="Index" asp-route-category="@Model.Category" class="btn btn-outline-secondary">Hủy</a>
+        </div>
+    </form>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const typeSelect = document.getElementById("Type");
+        if (typeSelect) {
+            const category = document.getElementById("Category").value;
+            const unit = document.getElementById("value-unit");
+            const value = document.getElementById("Value");
+            const updateUnit = () => {
+                unit.textContent = category === "PhuCap"
+                    ? (typeSelect.value === "THEO_NGAY_CONG" ? "VNĐ/ngày công" : "VNĐ/tháng")
+                    : (typeSelect.value === "BAO_HIEM" ? "%" : typeSelect.value === "VI_PHAM" ? "VNĐ/phút" : "VNĐ");
+                value.max = category === "KhauTru" && typeSelect.value === "BAO_HIEM" ? "100" : "9999999999999.99";
+            };
+            typeSelect.addEventListener("change", updateUnit);
+            updateUnit();
+        }
+    </script>
+}

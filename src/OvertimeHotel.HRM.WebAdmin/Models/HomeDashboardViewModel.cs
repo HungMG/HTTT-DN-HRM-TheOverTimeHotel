@@ -15,10 +15,11 @@ public class HomeDashboardViewModel
     public int TongChucVu { get; set; } = 10;
     public int TongCaLamViec { get; set; } = 3;
     public int SoCaQuaDem { get; set; } = 1;
-    public int TongKhoanLuong { get; set; } = 7;
-    public int SoKhoanPhuCap { get; set; } = 3;
-    public int SoKhoanThuong { get; set; } = 2;
-    public int SoKhoanKhauTru { get; set; } = 2;
+    public int TongKhoanLuong { get; set; }
+    public int SoLoaiTangCa { get; set; }
+    public int SoKhoanPhuCap { get; set; }
+    public int SoKhoanThuong { get; set; }
+    public int SoKhoanKhauTru { get; set; }
 
     // Task 13: Quản trị tài khoản
     public int TongTaiKhoan { get; set; } = 6;

@@ -67,11 +67,10 @@
 
   const setLoading = (isLoading) => {
     loadingOverlay?.classList.toggle("is-visible", isLoading);
+    loadingOverlay?.setAttribute("aria-hidden", String(!isLoading));
+    tableContainer?.setAttribute("aria-busy", String(isLoading));
     tableContainer?.classList.toggle("is-updating", isLoading);
-    filterForm?.querySelectorAll("input, select, button").forEach((control) => {
-      if (control === searchInput || control.name === "keyword") {
-        return;
-      }
+    filterForm?.querySelectorAll("button").forEach((control) => {
       control.disabled = isLoading;
     });
   };
@@ -292,6 +291,7 @@
     filterForm
       .querySelectorAll("input, select")
       .forEach((control) => {
+        if (control.hasAttribute("data-catalog-preserve")) return;
         control.value = "";
       });
     page.querySelectorAll("[data-catalog-kpi-filters] [data-filter-type]").forEach((c) => {
@@ -606,7 +606,7 @@
                 <span class="catalog-confirm-icon"><i class="bi bi-trash3"></i></span>
                 <small>Xác nhận bảo mật danh mục</small>
                 <h2>Xóa mục danh mục?</h2>
-                <p>Thao tác này sẽ xóa vĩnh viễn và bị từ chối nếu dữ liệu đang liên kết với nhân sự hoặc lịch trực.</p>
+                <p>Thao tác này sẽ xóa vĩnh viễn và bị từ chối nếu mục đang được dữ liệu khác tham chiếu.</p>
                 <div class="catalog-confirm-target"><i class="bi bi-database"></i><strong data-confirm-name>Mục danh mục</strong></div>
                 <div class="catalog-confirm-actions">
                     <button type="button" data-confirm-cancel>Giữ lại</button>

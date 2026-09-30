@@ -8,6 +8,7 @@ public class SystemCatalogDashboardViewModel
     public int TongCaLamViec { get; set; }
     public int SoCaQuaDem { get; set; }
     public int TongKhoanLuong { get; set; }
+    public int SoLoaiTangCa { get; set; }
     public int SoKhoanPhuCap { get; set; }
     public int SoKhoanThuong { get; set; }
     public int SoKhoanKhauTru { get; set; }

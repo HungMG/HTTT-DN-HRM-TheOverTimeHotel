@@ -1,0 +1,34 @@
+/* Cấu hình lương dùng màu và nhịp bố cục của danh mục khách sạn. */
+.payroll-category-tabs { display: flex; flex-wrap: wrap; gap: .5rem; }
+.payroll-category-tab {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 42px; padding: .6rem 1.25rem; border: 1px solid #cbd5e1;
+  border-radius: 12px; background: #fff; color: var(--hotel-blue);
+  font-weight: 600; text-decoration: none;
+}
+.payroll-category-tab:hover { background: #f1f5f9; color: var(--hotel-blue); border-color: var(--hotel-blue); }
+.payroll-category-tab.is-active { background: var(--hotel-blue); color: #fff; border-color: var(--hotel-blue); }
+.payroll-category-tab:focus-visible,
+.payroll-workspace .btn:focus-visible { outline: 2px solid var(--hotel-blue); outline-offset: 3px; }
+.payroll-workspace .catalog-toolbar .btn { min-height: 42px; }
+.payroll-workspace .catalog-filter-form { max-width: none; flex: 1 1 600px; min-width: 0; }
+.payroll-search { flex: 1 1 240px; min-width: 0; }
+.payroll-type-filter { flex: 0 1 190px; }
+.payroll-type-filter .form-select { min-height: 42px; border-radius: 12px; }
+.payroll-workspace .form-select:focus,
+.payroll-workspace .form-control:focus { border-color: var(--hotel-blue); box-shadow: 0 0 0 3px rgba(30, 58, 138, .14); }
+.payroll-result-count { padding: 1rem 1.25rem; color: #475569; font-size: .85rem; }
+.payroll-table { min-width: 620px; }
+.payroll-name { min-width: 180px; max-width: 360px; overflow-wrap: anywhere; }
+.payroll-amount { font-variant-numeric: tabular-nums; }
+.payroll-action-button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; }
+@media (max-width: 575.98px) {
+  .payroll-category-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .payroll-category-tab { min-height: 44px; }
+  .payroll-workspace .catalog-toolbar .btn,
+  .payroll-workspace .catalog-form-card .btn { min-height: 44px; }
+  .payroll-type-filter { flex: 1 1 160px; }
+  .payroll-action-button { min-width: 44px; min-height: 44px; }
+  .payroll-workspace .catalog-toolbar > a { width: 100%; }
+  .payroll-workspace .catalog-hero { padding: 1.25rem; }
+}

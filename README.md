@@ -96,3 +96,14 @@ Vui lòng tham khảo thư mục [`PRD/`](PRD/) để tra cứu chi tiết:
 - [Thiết kế CSDL 17 bảng chuẩn 3NF](PRD/04_Thiet_Ke_CSDL_17_Bang.md)
 - [Quy trình tính lương 2 tầng & Phiếu lương PDF](PRD/05_Quy_Trinh_Va_Cong_Thuc_Tinh_Luong.md)
 - [Kiến trúc hệ thống & Cấu trúc thư mục](PRD/06_Kien_Truc_He_Thong_Va_Cau_Truc_Thu_Muc.md)
+
+## CSDL vận hành và task 14 (xác minh 30/09/2026)
+
+Supabase đang có **24 bảng public**, gồm 23 bảng theo thiết kế mới và bảng cũ `cau_hinh_khoan_luong` để tương thích. `chi_tiet_phieu_luong` giữ `ma_khoan` nullable và `loai_khoan_luu` bắt buộc; có các FK mới và `loai_khoan` nullable. Schema tạo mới 23 bảng khác với CSDL vận hành sau migration.
+
+Web Admin: `/CauHinhLuong` có bốn tab Tăng ca, Phụ cấp, Khấu trừ, Thưởng. Ba tab đầu ghi vào ba bảng mới. Thưởng chỉ CRUD dòng `THUONG` của bảng cũ. Giữ nguyên cấu hình phụ cấp/khấu trừ cũ và snapshot phiếu lương. Vi phạm dùng VNĐ/phút theo seed hiện tại. Thuế TNCN dùng thuật toán lũy tiến trong phân hệ tính lương; định mức thuế/tạm ứng tại đây chỉ là tham chiếu.
+
+RLS bật trên 24 bảng; chưa có policy public tại thời điểm xác minh. Web Admin dùng Npgsql hiện có; quyền truy cập API Supabase cần kiểm tra riêng.
+
+Chạy web: `dotnet run --project src/OvertimeHotel.HRM.WebAdmin --launch-profile http`.
+Kiểm tra HTTP: đặt `PAYROLL_TEST_PASSWORD` cho tài khoản Admin/HR (và `PAYROLL_TEST_USER` nếu cần), chạy `node tests/payroll-smoke.mjs`. Script tạo/xóa các cấu hình SMOKE riêng, không thay đổi cấu hình nghiệp vụ hiện có.

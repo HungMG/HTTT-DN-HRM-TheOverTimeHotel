@@ -22,7 +22,7 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index()
     {
-        const string cacheKey = "HomeDashboardMetrics_V1";
+        const string cacheKey = "HomeDashboardMetrics_V2";
         if (!_cache.TryGetValue(cacheKey, out HomeDashboardViewModel? model) || model == null)
         {
             model = new HomeDashboardViewModel();
@@ -43,10 +43,11 @@ public class HomeController : Controller
                 model.TongCaLamViec = await _context.CaLamViecs.CountAsync();
                 model.SoCaQuaDem = await _context.CaLamViecs.CountAsync(x => x.QuaDem);
 
-                model.TongKhoanLuong = await _context.CauHinhKhoanLuongs.CountAsync();
-                model.SoKhoanPhuCap = await _context.CauHinhKhoanLuongs.CountAsync(x => x.LoaiKhoan == "PHU_CAP");
+                model.SoLoaiTangCa = await _context.CauHinhTangCas.CountAsync();
+                model.SoKhoanPhuCap = await _context.CauHinhPhuCaps.CountAsync();
                 model.SoKhoanThuong = await _context.CauHinhKhoanLuongs.CountAsync(x => x.LoaiKhoan == "THUONG");
-                model.SoKhoanKhauTru = await _context.CauHinhKhoanLuongs.CountAsync(x => x.LoaiKhoan == "KHAU_TRU");
+                model.SoKhoanKhauTru = await _context.CauHinhKhauTrus.CountAsync();
+                model.TongKhoanLuong = model.SoLoaiTangCa + model.SoKhoanPhuCap + model.SoKhoanThuong + model.SoKhoanKhauTru;
 
                 model.TongTaiKhoan = await _context.TaiKhoans.CountAsync();
                 model.TaiKhoanHoatDong = await _context.TaiKhoans.CountAsync(t => t.TrangThai);

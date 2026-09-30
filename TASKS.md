@@ -66,9 +66,9 @@
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Cao | **Hạn chót:** 22/09/2026
   - **Trạng thái:** `Hoàn thành`
 
-- [x] **TSK-07:** Khởi tạo Project Supabase & Chạy Script SQL tạo 23 bảng 3NF
+- [x] **TSK-07:** Khởi tạo Project Supabase & Nâng cấp 24 bảng vận hành
   - **Phân hệ:** Cơ sở dữ liệu
-  - **Mô tả & Output:** Khởi tạo và nâng cấp database `OvertimeHotel-HRM-DB` trên Supabase Cloud (Singapore), chạy migration tạo 23 bảng chuẩn 3NF kèm đầy đủ PK, FK, CHECK constraints, Indexes và kích hoạt khóa bảo mật Row Level Security (RLS) trên toàn bộ các bảng
+  - **Mô tả & Output:** Khởi tạo và nâng cấp database `OvertimeHotel-HRM-DB` trên Supabase Cloud (Singapore), chạy migration bổ sung cấu trúc mới, giữ bảng cấu hình cũ để tương thích; CSDL vận hành có 24 bảng; có PK, FK, CHECK constraints và Indexes theo migration hiện tại và kích hoạt khóa bảo mật Row Level Security (RLS) trên toàn bộ các bảng
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 22/09/2026
   - **Trạng thái:** `Hoàn thành`
 
@@ -80,13 +80,13 @@
 
 - [x] **TSK-09:** Kết nối Supabase qua Npgsql / Entity Framework Core
   - **Phân hệ:** C# Data Access
-  - **Mô tả & Output:** Cài đặt Npgsql EF Core & Supabase C# SDK; Xây dựng đầy đủ 23 Entities C#, Enums, Constants, DTOs và `AppDbContext.cs` cấu hình quan hệ bảng 3 cấp (Phiếu lương -> Chi tiết trung gian -> 3 Bảng chi tiết khấu trừ)
+  - **Mô tả & Output:** Cài đặt Npgsql EF Core & Supabase C# SDK; Xây dựng đầy đủ 24 Entities C# (gồm cấu hình khoản lương cũ), Enums, Constants, DTOs và `AppDbContext.cs` cấu hình quan hệ bảng 3 cấp (Phiếu lương -> Chi tiết trung gian -> 3 Bảng chi tiết khấu trừ)
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 29/09/2026
   - **Trạng thái:** `Hoàn thành`
 
 - [x] **TSK-10:** Thiết lập Sao lưu (Backup) & Phục hồi (Restore) Supabase
   - **Phân hệ:** An toàn CSDL
-  - **Mô tả & Output:** Xây dựng `BackupService`, `BackupController` trên Web Admin cho phép xuất Snapshot JSON, khôi phục dữ liệu và thống kê số liệu của toàn bộ 23 bảng CSDL
+  - **Mô tả & Output:** Xây dựng `BackupService`, `BackupController` trên Web Admin cho phép xuất Snapshot JSON, khôi phục dữ liệu và thống kê số liệu của toàn bộ 24 bảng CSDL vận hành
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Cao | **Hạn chót:** 29/09/2026
   - **Trạng thái:** `Hoàn thành`
 
@@ -114,7 +114,7 @@
 
 - [x] **TSK-14:** Xây dựng Web Admin: Quản trị Danh mục hệ thống
   - **Phân hệ:** Web Admin (MVC)
-  - **Mô tả & Output:** Màn hình Web quản lý phòng ban, chức vụ, ca làm việc, cấu hình khoản phụ cấp/thưởng/phạt
+  - **Mô tả & Output:** Màn hình Web quản lý phòng ban, chức vụ, ca làm việc; CRUD riêng tăng ca (hệ số), phụ cấp (ngày/tháng, chịu thuế), khấu trừ (bảo hiểm/thuế/vi phạm/tạm ứng); thưởng tiếp tục dùng CAU_HINH_KHOAN_LUONG với LoaiKhoan=THUONG; dashboard đếm bảng mới, chặn xóa cấu hình đã dùng. Giữ MaKhoan và LoaiKhoanLuu để tương thích CSDL vận hành 24 bảng.
   - **Người phụ trách:** Nguyễn Đình Cường | **Độ ưu tiên:** Cao | **Hạn chót:** 13/10/2026
   - **Trạng thái:** `Hoàn thành`
 
