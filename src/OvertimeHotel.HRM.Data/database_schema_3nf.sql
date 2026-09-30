@@ -1,6 +1,7 @@
 -- ======================================================================================
 -- HỆ THỐNG QUẢN LÝ NHÂN SỰ & TIỀN LƯƠNG KHÁCH SẠN THE OVERTIME HOTEL
--- DDL SCRIPT TẠO 17 BẢNG CHUẨN 3NF (POSTGRESQL / SUPABASE CLOUD DATABASE)
+-- DDL SCRIPT TẠO 23 BẢNG CHUẨN 3NF (POSTGRESQL / SUPABASE CLOUD DATABASE)
+-- Bao gồm bảng Audit Trail (NHAT_KY_QUAN_TRI) và Phân hệ Lương phân tách 3 cấp
 -- ======================================================================================
 
 -- 1. BẢNG PHONG_BAN (Phòng ban / Bộ phận)
@@ -10,29 +11,29 @@ CREATE TABLE IF NOT EXISTS PHONG_BAN (
     mo_ta VARCHAR(255)
 );
 
--- 2. BẢNG CHUC_VU (Chức vụ / Vị trí công tác)
+-- 2. BẢNG CHUC_VU (Chức vụ / Vị trí)
 CREATE TABLE IF NOT EXISTS CHUC_VU (
     ma_chuc_vu SERIAL PRIMARY KEY,
     ten_chuc_vu VARCHAR(100) NOT NULL UNIQUE,
     mo_ta VARCHAR(255)
 );
 
--- 3. BẢNG NHAN_VIEN (Hồ sơ nhân viên - Thực thể trung tâm)
+-- 3. BẢNG NHAN_VIEN (Hồ sơ nhân sự)
 CREATE TABLE IF NOT EXISTS NHAN_VIEN (
     ma_nhan_vien SERIAL PRIMARY KEY,
     ma_phong_ban INT NOT NULL REFERENCES PHONG_BAN(ma_phong_ban) ON DELETE RESTRICT,
     ma_chuc_vu INT NOT NULL REFERENCES CHUC_VU(ma_chuc_vu) ON DELETE RESTRICT,
-    ho VARCHAR(100) NOT NULL,
-    ten VARCHAR(50) NOT NULL,
+    ho_ten VARCHAR(150) NOT NULL,
     ngay_sinh DATE NOT NULL,
-    gioi_tinh VARCHAR(10) NOT NULL CHECK (gioi_tinh IN ('NAM', 'NU', 'KHAC')),
+    gioi_tinh VARCHAR(10) NOT NULL CHECK (gioi_tinh IN ('NAM', 'NU')),
     dien_thoai VARCHAR(20) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     dia_chi VARCHAR(255),
     trinh_do VARCHAR(50) NOT NULL,
     ngay_vao_lam DATE NOT NULL,
     ngay_thoi_viec DATE,
-    trang_thai VARCHAR(30) NOT NULL DEFAULT 'DANG_LAM' CHECK (trang_thai IN ('DANG_LAM', 'NGHI_PHEP', 'DA_THOI_VIEC'))
+    trang_thai VARCHAR(30) NOT NULL DEFAULT 'DANG_LAM' CHECK (trang_thai IN ('DANG_LAM', 'NGHI_PHEP', 'THOI_VIEC')),
+    CONSTRAINT chk_ngay_thoi_viec CHECK (ngay_thoi_viec IS NULL OR ngay_thoi_viec >= ngay_vao_lam)
 );
 
 -- 4. BẢNG HOP_DONG (Hợp đồng lao động)
@@ -44,10 +45,11 @@ CREATE TABLE IF NOT EXISTS HOP_DONG (
     ngay_bat_dau DATE NOT NULL,
     ngay_ket_thuc DATE,
     luong_co_ban DECIMAL(15,2) NOT NULL CHECK (luong_co_ban >= 0),
-    trang_thai VARCHAR(30) NOT NULL DEFAULT 'HIEU_LUC' CHECK (trang_thai IN ('HIEU_LUC', 'HET_HAN', 'DA_CHAM_DUT'))
+    trang_thai VARCHAR(30) NOT NULL DEFAULT 'HIEU_LUC' CHECK (trang_thai IN ('HIEU_LUC', 'HET_HAN', 'CHAM_DUT')),
+    CONSTRAINT chk_ngay_hop_dong CHECK (ngay_ket_thuc IS NULL OR ngay_ket_thuc >= ngay_bat_dau)
 );
 
--- 5. BẢNG VAI_TRO (Vai trò người dùng - RBAC)
+-- 5. BẢNG VAI_TRO (Vai trò RBAC)
 CREATE TABLE IF NOT EXISTS VAI_TRO (
     ma_vai_tro SERIAL PRIMARY KEY,
     ten_vai_tro VARCHAR(50) NOT NULL UNIQUE,
@@ -64,7 +66,7 @@ CREATE TABLE IF NOT EXISTS TAI_KHOAN (
     trang_thai BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- 7. BẢNG QUYEN (Danh mục quyền chức năng)
+-- 7. BẢNG QUYEN (Quyền hạn chức năng)
 CREATE TABLE IF NOT EXISTS QUYEN (
     ma_quyen SERIAL PRIMARY KEY,
     ma_quyen_code VARCHAR(50) NOT NULL UNIQUE,
@@ -72,14 +74,30 @@ CREATE TABLE IF NOT EXISTS QUYEN (
     mo_ta VARCHAR(255)
 );
 
--- 8. BẢNG VAI_TRO_QUYEN (Bảng trung gian phân quyền RBAC M:N)
+-- 8. BẢNG VAI_TRO_QUYEN (Bảng trung gian Vai trò - Quyền)
 CREATE TABLE IF NOT EXISTS VAI_TRO_QUYEN (
     ma_vai_tro INT NOT NULL REFERENCES VAI_TRO(ma_vai_tro) ON DELETE CASCADE,
     ma_quyen INT NOT NULL REFERENCES QUYEN(ma_quyen) ON DELETE CASCADE,
     PRIMARY KEY (ma_vai_tro, ma_quyen)
 );
 
--- 9. BẢNG CA_LAM_VIEC (Danh mục ca làm chuẩn 24/7)
+-- 9. BẢNG NHAT_KY_QUAN_TRI (Audit trail kiểm toán hệ thống)
+CREATE TABLE IF NOT EXISTS NHAT_KY_QUAN_TRI (
+    ma_nhat_ky BIGSERIAL PRIMARY KEY,
+    ma_tai_khoan_thuc_hien INT NULL REFERENCES TAI_KHOAN(ma_tai_khoan) ON DELETE SET NULL,
+    ma_tai_khoan_bi_tac_dong INT NULL REFERENCES TAI_KHOAN(ma_tai_khoan) ON DELETE SET NULL,
+    ten_nguoi_thuc_hien VARCHAR(100) NOT NULL,
+    ten_tai_khoan_bi_tac_dong VARCHAR(100) NOT NULL,
+    hanh_dong VARCHAR(40) NOT NULL,
+    noi_dung VARCHAR(500) NOT NULL,
+    gia_tri_cu VARCHAR(1000),
+    gia_tri_moi VARCHAR(1000),
+    ly_do VARCHAR(500),
+    dia_chi_ip VARCHAR(64),
+    thoi_gian TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 10. BẢNG CA_LAM_VIEC (Ca làm việc chuẩn)
 CREATE TABLE IF NOT EXISTS CA_LAM_VIEC (
     ma_ca SERIAL PRIMARY KEY,
     ten_ca VARCHAR(50) NOT NULL UNIQUE,
@@ -88,7 +106,7 @@ CREATE TABLE IF NOT EXISTS CA_LAM_VIEC (
     qua_dem BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- 10. BẢNG PHAN_CA (Lịch phân ca làm việc)
+-- 11. BẢNG PHAN_CA (Phân ca lịch trực)
 CREATE TABLE IF NOT EXISTS PHAN_CA (
     ma_phan_ca SERIAL PRIMARY KEY,
     ma_nhan_vien INT NOT NULL REFERENCES NHAN_VIEN(ma_nhan_vien) ON DELETE CASCADE,
@@ -96,25 +114,23 @@ CREATE TABLE IF NOT EXISTS PHAN_CA (
     ngay_lam_viec DATE NOT NULL,
     bat_dau_du_kien TIMESTAMPTZ NOT NULL,
     ket_thuc_du_kien TIMESTAMPTZ NOT NULL,
-    trang_thai VARCHAR(30) NOT NULL DEFAULT 'DA_PHAN' CHECK (trang_thai IN ('DA_PHAN', 'HOAN_THANH', 'VANG_MAT'))
+    trang_thai VARCHAR(30) NOT NULL DEFAULT 'DA_PHAN' CHECK (trang_thai IN ('DA_PHAN', 'HOAN_THANH', 'VANG')),
+    CONSTRAINT uq_phan_ca_nv_ngay UNIQUE (ma_nhan_vien, ngay_lam_viec, ma_ca)
 );
 
--- 11. BẢNG CHAM_CONG (Bản ghi quét thẻ thực tế)
+-- 12. BẢNG CHAM_CONG (Ghi nhận quét thẻ thực tế)
 CREATE TABLE IF NOT EXISTS CHAM_CONG (
     ma_cham_cong SERIAL PRIMARY KEY,
     ma_phan_ca INT NOT NULL UNIQUE REFERENCES PHAN_CA(ma_phan_ca) ON DELETE CASCADE,
     gio_check_in TIMESTAMPTZ,
     gio_check_out TIMESTAMPTZ,
-    phut_di_tre INT NOT NULL DEFAULT 0,
-    phut_ve_som INT NOT NULL DEFAULT 0,
-    gio_tang_ca_ot DECIMAL(4,2) NOT NULL DEFAULT 0.00,
-    trang_thai VARCHAR(30) NOT NULL DEFAULT 'DUNG_GIO' CHECK (trang_thai IN ('DUNG_GIO', 'DI_TRE', 'VE_SOM', 'VANG_MAT')),
-    phuong_thuc_checkin VARCHAR(20) DEFAULT NULL,
-    toa_do_checkin VARCHAR(50) DEFAULT NULL,
-    thiet_bi_checkin VARCHAR(100) DEFAULT NULL
+    phut_di_tre INT NOT NULL DEFAULT 0 CHECK (phut_di_tre >= 0),
+    phut_ve_som INT NOT NULL DEFAULT 0 CHECK (phut_ve_som >= 0),
+    gio_tang_ca_ot DECIMAL(4,2) NOT NULL DEFAULT 0.00 CHECK (gio_tang_ca_ot >= 0),
+    trang_thai VARCHAR(30) NOT NULL DEFAULT 'DUNG_GIO' CHECK (trang_thai IN ('DUNG_GIO', 'DI_TRE', 'VE_SOM', 'TRE_VA_SOM', 'VANG'))
 );
 
--- 12. BẢNG LOAI_DON (Danh mục loại đơn từ)
+-- 13. BẢNG LOAI_DON (Danh mục loại đơn từ)
 CREATE TABLE IF NOT EXISTS LOAI_DON (
     ma_loai_don SERIAL PRIMARY KEY,
     ten_loai_don VARCHAR(100) NOT NULL UNIQUE,
@@ -122,7 +138,7 @@ CREATE TABLE IF NOT EXISTS LOAI_DON (
     mo_ta VARCHAR(255)
 );
 
--- 13. BẢNG DON_TU (Đơn từ trực tuyến & Duyệt đơn)
+-- 14. BẢNG DON_TU (Đơn từ trực tuyến)
 CREATE TABLE IF NOT EXISTS DON_TU (
     ma_don SERIAL PRIMARY KEY,
     ma_nhan_vien INT NOT NULL REFERENCES NHAN_VIEN(ma_nhan_vien) ON DELETE CASCADE,
@@ -137,7 +153,7 @@ CREATE TABLE IF NOT EXISTS DON_TU (
     ngay_duyet TIMESTAMPTZ
 );
 
--- 14. BẢNG KY_LUONG (Kỳ tính lương tháng)
+-- 15. BẢNG KY_LUONG (Kỳ tính lương tháng)
 CREATE TABLE IF NOT EXISTS KY_LUONG (
     ma_ky_luong SERIAL PRIMARY KEY,
     thang INT NOT NULL CHECK (thang BETWEEN 1 AND 12),
@@ -148,16 +164,7 @@ CREATE TABLE IF NOT EXISTS KY_LUONG (
     CONSTRAINT uq_ky_luong_thang_nam UNIQUE (thang, nam)
 );
 
--- 15. BẢNG CAU_HINH_KHOAN_LUONG (Cấu hình khoản phụ cấp, thưởng, phạt)
-CREATE TABLE IF NOT EXISTS CAU_HINH_KHOAN_LUONG (
-    ma_khoan SERIAL PRIMARY KEY,
-    ten_khoan VARCHAR(150) NOT NULL UNIQUE,
-    loai_khoan VARCHAR(30) NOT NULL CHECK (loai_khoan IN ('PHU_CAP', 'THUONG', 'KHAU_TRU')),
-    gia_tri_mac_dinh DECIMAL(15,2) NOT NULL DEFAULT 0.00,
-    mo_ta VARCHAR(255)
-);
-
--- 16. BẢNG PHIEU_LUONG (Bảng lương tháng nhân viên)
+-- 16. BẢNG PHIEU_LUONG (Bảng lương tháng nhân viên - Master Header)
 CREATE TABLE IF NOT EXISTS PHIEU_LUONG (
     ma_phieu_luong SERIAL PRIMARY KEY,
     ma_nhan_vien INT NOT NULL REFERENCES NHAN_VIEN(ma_nhan_vien) ON DELETE RESTRICT,
@@ -174,41 +181,94 @@ CREATE TABLE IF NOT EXISTS PHIEU_LUONG (
     CONSTRAINT uq_phieu_luong_nv_ky UNIQUE (ma_nhan_vien, ma_ky_luong)
 );
 
--- 17. BẢNG CHI_TIET_PHIEU_LUONG (Bản chụp từng khoản thu chi)
+-- 17. BẢNG CAU_HINH_TANG_CA (Cấu hình loại OT - Tách riêng)
+CREATE TABLE IF NOT EXISTS CAU_HINH_TANG_CA (
+    ma_loai_ot SERIAL PRIMARY KEY,
+    ten_loai_ot VARCHAR(100) NOT NULL UNIQUE,
+    he_so DECIMAL(4,2) NOT NULL CHECK (he_so > 0),
+    mo_ta VARCHAR(255)
+);
+
+-- 18. BẢNG CAU_HINH_PHU_CAP (Cấu hình định mức phụ cấp - Tách riêng)
+CREATE TABLE IF NOT EXISTS CAU_HINH_PHU_CAP (
+    ma_phu_cap SERIAL PRIMARY KEY,
+    ten_phu_cap VARCHAR(150) NOT NULL UNIQUE,
+    loai_tinh VARCHAR(30) NOT NULL CHECK (loai_tinh IN ('THEO_NGAY_CONG', 'CO_DINH_THANG')),
+    muc_dinh_muc DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    chiu_thue_tncn BOOLEAN NOT NULL DEFAULT FALSE,
+    mo_ta VARCHAR(255)
+);
+
+-- 19. BẢNG CAU_HINH_KHAU_TRU (Cấu hình danh mục khoản trừ - Tách riêng)
+CREATE TABLE IF NOT EXISTS CAU_HINH_KHAU_TRU (
+    ma_khoan_tru SERIAL PRIMARY KEY,
+    ten_khoan_tru VARCHAR(150) NOT NULL UNIQUE,
+    loai_khoan_tru VARCHAR(30) NOT NULL CHECK (loai_khoan_tru IN ('BAO_HIEM', 'THUE', 'VI_PHAM', 'TAM_UNG')),
+    ty_le_hoac_dinh_muc DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    mo_ta VARCHAR(255)
+);
+
+-- 20. BẢNG CHI_TIET_PHIEU_LUONG (Bảng trung gian điều phối dòng lương)
 CREATE TABLE IF NOT EXISTS CHI_TIET_PHIEU_LUONG (
     ma_chi_tiet SERIAL PRIMARY KEY,
     ma_phieu_luong INT NOT NULL REFERENCES PHIEU_LUONG(ma_phieu_luong) ON DELETE CASCADE,
-    ma_khoan INT NOT NULL REFERENCES CAU_HINH_KHOAN_LUONG(ma_khoan) ON DELETE RESTRICT,
+    ma_loai_ot INT NULL REFERENCES CAU_HINH_TANG_CA(ma_loai_ot) ON DELETE RESTRICT,
+    ma_phu_cap INT NULL REFERENCES CAU_HINH_PHU_CAP(ma_phu_cap) ON DELETE RESTRICT,
+    ma_khoan_tru INT NULL REFERENCES CAU_HINH_KHAU_TRU(ma_khoan_tru) ON DELETE RESTRICT,
+    loai_khoan VARCHAR(30) NOT NULL CHECK (loai_khoan IN ('TANG_CA', 'PHU_CAP', 'THUONG', 'KHAU_TRU')),
     ten_khoan_luu VARCHAR(150) NOT NULL,
-    loai_khoan_luu VARCHAR(30) NOT NULL,
     so_tien DECIMAL(15,2) NOT NULL,
     ghi_chu VARCHAR(255)
 );
 
--- 18. BẢNG NHAT_KY_QUAN_TRI (Audit trail thao tác quản trị tài khoản)
-CREATE TABLE IF NOT EXISTS NHAT_KY_QUAN_TRI (
-    ma_nhat_ky BIGSERIAL PRIMARY KEY,
-    ma_tai_khoan_thuc_hien INT NULL REFERENCES TAI_KHOAN(ma_tai_khoan) ON DELETE SET NULL,
-    ma_tai_khoan_bi_tac_dong INT NULL REFERENCES TAI_KHOAN(ma_tai_khoan) ON DELETE SET NULL,
-    ten_nguoi_thuc_hien VARCHAR(100) NOT NULL,
-    ten_tai_khoan_bi_tac_dong VARCHAR(100) NOT NULL,
-    hanh_dong VARCHAR(40) NOT NULL,
-    noi_dung VARCHAR(500) NOT NULL,
-    gia_tri_cu VARCHAR(1000),
-    gia_tri_moi VARCHAR(1000),
-    ly_do VARCHAR(500),
-    dia_chi_ip VARCHAR(64),
-    thoi_gian TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+-- 21. BẢNG CHI_TIET_TRU_BAO_HIEM (Chi tiết khấu trừ bảo hiểm bắt buộc - Bảng con 1)
+CREATE TABLE IF NOT EXISTS CHI_TIET_TRU_BAO_HIEM (
+    ma_chi_tiet_bh SERIAL PRIMARY KEY,
+    ma_chi_tiet INT NOT NULL REFERENCES CHI_TIET_PHIEU_LUONG(ma_chi_tiet) ON DELETE CASCADE,
+    luong_dong_bao_hiem DECIMAL(15,2) NOT NULL CHECK (luong_dong_bao_hiem >= 0),
+    ty_le_bhxh DECIMAL(5,2) NOT NULL DEFAULT 8.00,
+    tien_bhxh DECIMAL(15,2) NOT NULL,
+    ty_le_bhyt DECIMAL(5,2) NOT NULL DEFAULT 1.50,
+    tien_bhyt DECIMAL(15,2) NOT NULL,
+    ty_le_bhtn DECIMAL(5,2) NOT NULL DEFAULT 1.00,
+    tien_bhtn DECIMAL(15,2) NOT NULL,
+    tong_bao_hiem DECIMAL(15,2) NOT NULL
 );
 
--- TẠO CHỈ MỤC (INDEXES) TỐI ƯU HIỆU NĂNG TRUY VẤN
+-- 22. BẢNG CHI_TIET_TRU_THUE_TNCN (Chi tiết khấu trừ thuế TNCN lũy tiến - Bảng con 2)
+CREATE TABLE IF NOT EXISTS CHI_TIET_TRU_THUE_TNCN (
+    ma_chi_tiet_thue SERIAL PRIMARY KEY,
+    ma_chi_tiet INT NOT NULL REFERENCES CHI_TIET_PHIEU_LUONG(ma_chi_tiet) ON DELETE CASCADE,
+    thu_nhap_chiu_thue DECIMAL(15,2) NOT NULL CHECK (thu_nhap_chiu_thue >= 0),
+    giam_tru_ban_than DECIMAL(15,2) NOT NULL DEFAULT 11000000.00,
+    so_nguoi_phu_thuoc INT NOT NULL DEFAULT 0 CHECK (so_nguoi_phu_thuoc >= 0),
+    giam_tru_phu_thuoc DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    thu_nhap_tinh_thue DECIMAL(15,2) NOT NULL CHECK (thu_nhap_tinh_thue >= 0),
+    tien_thue DECIMAL(15,2) NOT NULL CHECK (tien_thue >= 0)
+);
+
+-- 23. BẢNG CHI_TIET_TRU_VI_PHAM_TAM_UNG (Chi tiết phạt kỷ luật & tạm ứng - Bảng con 3)
+CREATE TABLE IF NOT EXISTS CHI_TIET_TRU_VI_PHAM_TAM_UNG (
+    ma_chi_tiet_vp SERIAL PRIMARY KEY,
+    ma_chi_tiet INT NOT NULL REFERENCES CHI_TIET_PHIEU_LUONG(ma_chi_tiet) ON DELETE CASCADE,
+    loai_tru VARCHAR(30) NOT NULL CHECK (loai_tru IN ('DI_TRE', 'VE_SOM', 'KY_LUAT', 'LAM_HONG', 'TAM_UNG')),
+    so_phut_vi_pham INT NOT NULL DEFAULT 0 CHECK (so_phut_vi_pham >= 0),
+    so_tien_tru DECIMAL(15,2) NOT NULL CHECK (so_tien_tru >= 0),
+    ly_do_chi_tiet VARCHAR(255) NOT NULL
+);
+
+-- ======================================================================================
+-- TẠO CHỈ MỤC (INDEXES) TỐI ƯU HIỆU NĂNG TRUY VẤN CSDL
+-- ======================================================================================
 CREATE INDEX IF NOT EXISTS idx_nhan_vien_phong_ban ON NHAN_VIEN(ma_phong_ban);
 CREATE INDEX IF NOT EXISTS idx_nhan_vien_chuc_vu ON NHAN_VIEN(ma_chuc_vu);
-CREATE INDEX IF NOT EXISTS idx_nhan_vien_ten ON NHAN_VIEN(ten, ho);
-CREATE INDEX IF NOT EXISTS idx_phan_ca_ngay ON PHAN_CA(ngay_lam_viec, ma_nhan_vien);
-CREATE INDEX IF NOT EXISTS idx_cham_cong_phan_ca ON CHAM_CONG(ma_phan_ca);
-CREATE INDEX IF NOT EXISTS idx_don_tu_nhan_vien ON DON_TU(ma_nhan_vien, trang_thai);
-CREATE INDEX IF NOT EXISTS idx_phieu_luong_ky ON PHIEU_LUONG(ma_ky_luong);
+CREATE INDEX IF NOT EXISTS idx_hop_dong_nhan_vien ON HOP_DONG(ma_nhan_vien);
+CREATE INDEX IF NOT EXISTS idx_tai_khoan_vai_tro ON TAI_KHOAN(ma_vai_tro);
+CREATE INDEX IF NOT EXISTS idx_nhat_ky_thoi_gian ON NHAT_KY_QUAN_TRI(thoi_gian DESC);
+CREATE INDEX IF NOT EXISTS idx_phan_ca_nv_ngay ON PHAN_CA(ma_nhan_vien, ngay_lam_viec);
+CREATE INDEX IF NOT EXISTS idx_don_tu_nv ON DON_TU(ma_nhan_vien);
+CREATE INDEX IF NOT EXISTS idx_phieu_luong_nv_ky ON PHIEU_LUONG(ma_nhan_vien, ma_ky_luong);
 CREATE INDEX IF NOT EXISTS idx_chi_tiet_phieu ON CHI_TIET_PHIEU_LUONG(ma_phieu_luong);
-CREATE INDEX IF NOT EXISTS idx_nhat_ky_quan_tri_thoi_gian ON NHAT_KY_QUAN_TRI(thoi_gian DESC);
-CREATE INDEX IF NOT EXISTS idx_nhat_ky_quan_tri_tai_khoan ON NHAT_KY_QUAN_TRI(ma_tai_khoan_bi_tac_dong);
+CREATE INDEX IF NOT EXISTS idx_chi_tiet_bh_ct ON CHI_TIET_TRU_BAO_HIEM(ma_chi_tiet);
+CREATE INDEX IF NOT EXISTS idx_chi_tiet_thue_ct ON CHI_TIET_TRU_THUE_TNCN(ma_chi_tiet);
+CREATE INDEX IF NOT EXISTS idx_chi_tiet_vp_ct ON CHI_TIET_TRU_VI_PHAM_TAM_UNG(ma_chi_tiet);

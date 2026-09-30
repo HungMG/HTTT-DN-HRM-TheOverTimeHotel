@@ -25,8 +25,14 @@ public class AppDbContext : DbContext
     public DbSet<DonTu> DonTus => Set<DonTu>();
     public DbSet<KyLuong> KyLuongs => Set<KyLuong>();
     public DbSet<CauHinhKhoanLuong> CauHinhKhoanLuongs => Set<CauHinhKhoanLuong>();
+    public DbSet<CauHinhTangCa> CauHinhTangCas => Set<CauHinhTangCa>();
+    public DbSet<CauHinhPhuCap> CauHinhPhuCaps => Set<CauHinhPhuCap>();
+    public DbSet<CauHinhKhauTru> CauHinhKhauTrus => Set<CauHinhKhauTru>();
     public DbSet<PhieuLuong> PhieuLuongs => Set<PhieuLuong>();
     public DbSet<ChiTietPhieuLuong> ChiTietPhieuLuongs => Set<ChiTietPhieuLuong>();
+    public DbSet<ChiTietTruBaoHiem> ChiTietTruBaoHiems => Set<ChiTietTruBaoHiem>();
+    public DbSet<ChiTietTruThueTncn> ChiTietTruThueTncns => Set<ChiTietTruThueTncn>();
+    public DbSet<ChiTietTruViPhamTamUng> ChiTietTruViPhamTamUngs => Set<ChiTietTruViPhamTamUng>();
     public DbSet<NhatKyQuanTri> NhatKyQuanTris => Set<NhatKyQuanTri>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -347,7 +353,7 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // 17. CHI_TIET_PHIEU_LUONG
+        // 17. CHI_TIET_PHIEU_LUONG (Bảng trung gian điều phối)
         modelBuilder.Entity<ChiTietPhieuLuong>(entity =>
         {
             entity.ToTable("chi_tiet_phieu_luong");
@@ -355,8 +361,12 @@ public class AppDbContext : DbContext
             entity.Property(e => e.MaChiTiet).HasColumnName("ma_chi_tiet");
             entity.Property(e => e.MaPhieuLuong).HasColumnName("ma_phieu_luong");
             entity.Property(e => e.MaKhoan).HasColumnName("ma_khoan");
+            entity.Property(e => e.MaLoaiOt).HasColumnName("ma_loai_ot");
+            entity.Property(e => e.MaPhuCap).HasColumnName("ma_phu_cap");
+            entity.Property(e => e.MaKhoanTru).HasColumnName("ma_khoan_tru");
             entity.Property(e => e.TenKhoanLuu).HasColumnName("ten_khoan_luu").HasMaxLength(150).IsRequired();
             entity.Property(e => e.LoaiKhoanLuu).HasColumnName("loai_khoan_luu").HasMaxLength(30).IsRequired();
+            entity.Property(e => e.LoaiKhoan).HasColumnName("loai_khoan").HasMaxLength(30);
             entity.Property(e => e.SoTien).HasColumnName("so_tien").HasPrecision(15, 2).IsRequired();
             entity.Property(e => e.GhiChu).HasColumnName("ghi_chu").HasMaxLength(255);
 
@@ -368,10 +378,131 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.CauHinhKhoanLuong)
                 .WithMany(c => c.ChiTietPhieuLuongs)
                 .HasForeignKey(e => e.MaKhoan)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.CauHinhTangCa)
+                .WithMany(c => c.ChiTietPhieuLuongs)
+                .HasForeignKey(e => e.MaLoaiOt)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.CauHinhPhuCap)
+                .WithMany(c => c.ChiTietPhieuLuongs)
+                .HasForeignKey(e => e.MaPhuCap)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.CauHinhKhauTru)
+                .WithMany(c => c.ChiTietPhieuLuongs)
+                .HasForeignKey(e => e.MaKhoanTru)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // 18. NHAT_KY_QUAN_TRI
+        // 18. CAU_HINH_TANG_CA
+        modelBuilder.Entity<CauHinhTangCa>(entity =>
+        {
+            entity.ToTable("cau_hinh_tang_ca");
+            entity.HasKey(e => e.MaLoaiOt);
+            entity.Property(e => e.MaLoaiOt).HasColumnName("ma_loai_ot");
+            entity.Property(e => e.TenLoaiOt).HasColumnName("ten_loai_ot").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.HeSo).HasColumnName("he_so").HasPrecision(4, 2).IsRequired();
+            entity.Property(e => e.MoTa).HasColumnName("mo_ta").HasMaxLength(255);
+
+            entity.HasIndex(e => e.TenLoaiOt).IsUnique();
+        });
+
+        // 19. CAU_HINH_PHU_CAP
+        modelBuilder.Entity<CauHinhPhuCap>(entity =>
+        {
+            entity.ToTable("cau_hinh_phu_cap");
+            entity.HasKey(e => e.MaPhuCap);
+            entity.Property(e => e.MaPhuCap).HasColumnName("ma_phu_cap");
+            entity.Property(e => e.TenPhuCap).HasColumnName("ten_phu_cap").HasMaxLength(150).IsRequired();
+            entity.Property(e => e.LoaiTinh).HasColumnName("loai_tinh").HasMaxLength(30).IsRequired();
+            entity.Property(e => e.MucDinhMuc).HasColumnName("muc_dinh_muc").HasPrecision(15, 2).HasDefaultValue(0.00m);
+            entity.Property(e => e.ChiuThueTncn).HasColumnName("chiu_thue_tncn").HasDefaultValue(false);
+            entity.Property(e => e.MoTa).HasColumnName("mo_ta").HasMaxLength(255);
+
+            entity.HasIndex(e => e.TenPhuCap).IsUnique();
+        });
+
+        // 20. CAU_HINH_KHAU_TRU
+        modelBuilder.Entity<CauHinhKhauTru>(entity =>
+        {
+            entity.ToTable("cau_hinh_khau_tru");
+            entity.HasKey(e => e.MaKhoanTru);
+            entity.Property(e => e.MaKhoanTru).HasColumnName("ma_khoan_tru");
+            entity.Property(e => e.TenKhoanTru).HasColumnName("ten_khoan_tru").HasMaxLength(150).IsRequired();
+            entity.Property(e => e.LoaiKhoanTru).HasColumnName("loai_khoan_tru").HasMaxLength(30).IsRequired();
+            entity.Property(e => e.TyLeHoacDinhMuc).HasColumnName("ty_le_hoac_dinh_muc").HasPrecision(15, 2).HasDefaultValue(0.00m);
+            entity.Property(e => e.MoTa).HasColumnName("mo_ta").HasMaxLength(255);
+
+            entity.HasIndex(e => e.TenKhoanTru).IsUnique();
+        });
+
+        // 21. CHI_TIET_TRU_BAO_HIEM
+        modelBuilder.Entity<ChiTietTruBaoHiem>(entity =>
+        {
+            entity.ToTable("chi_tiet_tru_bao_hiem");
+            entity.HasKey(e => e.MaChiTietBh);
+            entity.Property(e => e.MaChiTietBh).HasColumnName("ma_chi_tiet_bh");
+            entity.Property(e => e.MaChiTiet).HasColumnName("ma_chi_tiet");
+            entity.Property(e => e.LuongDongBaoHiem).HasColumnName("luong_dong_bao_hiem").HasPrecision(15, 2).IsRequired();
+            entity.Property(e => e.TyLeBhxh).HasColumnName("ty_le_bhxh").HasPrecision(5, 2).HasDefaultValue(8.00m);
+            entity.Property(e => e.TienBhxh).HasColumnName("tien_bhxh").HasPrecision(15, 2).IsRequired();
+            entity.Property(e => e.TyLeBhyt).HasColumnName("ty_le_bhyt").HasPrecision(5, 2).HasDefaultValue(1.50m);
+            entity.Property(e => e.TienBhyt).HasColumnName("tien_bhyt").HasPrecision(15, 2).IsRequired();
+            entity.Property(e => e.TyLeBhtn).HasColumnName("ty_le_bhtn").HasPrecision(5, 2).HasDefaultValue(1.00m);
+            entity.Property(e => e.TienBhtn).HasColumnName("tien_bhtn").HasPrecision(15, 2).IsRequired();
+            entity.Property(e => e.TongBaoHiem).HasColumnName("tong_bao_hiem").HasPrecision(15, 2).IsRequired();
+
+            entity.HasOne(e => e.ChiTietPhieuLuong)
+                .WithMany(c => c.ChiTietTruBaoHiems)
+                .HasForeignKey(e => e.MaChiTiet)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 22. CHI_TIET_TRU_THUE_TNCN
+        modelBuilder.Entity<ChiTietTruThueTncn>(entity =>
+        {
+            entity.ToTable("chi_tiet_tru_thue_tncn");
+            entity.HasKey(e => e.MaChiTietThue);
+            entity.Property(e => e.MaChiTietThue).HasColumnName("ma_chi_tiet_thue");
+            entity.Property(e => e.MaChiTiet).HasColumnName("ma_chi_tiet");
+            entity.Property(e => e.ThuNhapChiuThue).HasColumnName("thu_nhap_chiu_thue").HasPrecision(15, 2).IsRequired();
+            entity.Property(e => e.GiamTruBanThan).HasColumnName("giam_tru_ban_than").HasPrecision(15, 2).HasDefaultValue(11000000.00m);
+            entity.Property(e => e.SoNguoiPhuThuoc).HasColumnName("so_nguoi_phu_thuoc").HasDefaultValue(0);
+            entity.Property(e => e.GiamTruPhuThuoc).HasColumnName("giam_tru_phu_thuoc").HasPrecision(15, 2).HasDefaultValue(0.00m);
+            entity.Property(e => e.ThuNhapTinhThue).HasColumnName("thu_nhap_tinh_thue").HasPrecision(15, 2).IsRequired();
+            entity.Property(e => e.TienThue).HasColumnName("tien_thue").HasPrecision(15, 2).IsRequired();
+
+            entity.HasOne(e => e.ChiTietPhieuLuong)
+                .WithMany(c => c.ChiTietTruThueTncns)
+                .HasForeignKey(e => e.MaChiTiet)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 23. CHI_TIET_TRU_VI_PHAM_TAM_UNG
+        modelBuilder.Entity<ChiTietTruViPhamTamUng>(entity =>
+        {
+            entity.ToTable("chi_tiet_tru_vi_pham_tam_ung");
+            entity.HasKey(e => e.MaChiTietVp);
+            entity.Property(e => e.MaChiTietVp).HasColumnName("ma_chi_tiet_vp");
+            entity.Property(e => e.MaChiTiet).HasColumnName("ma_chi_tiet");
+            entity.Property(e => e.LoaiTru).HasColumnName("loai_tru").HasMaxLength(30).IsRequired();
+            entity.Property(e => e.SoPhutViPham).HasColumnName("so_phut_vi_pham").HasDefaultValue(0);
+            entity.Property(e => e.SoTienTru).HasColumnName("so_tien_tru").HasPrecision(15, 2).IsRequired();
+            entity.Property(e => e.LyDoChiTiet).HasColumnName("ly_do_chi_tiet").HasMaxLength(255).IsRequired();
+
+            entity.HasOne(e => e.ChiTietPhieuLuong)
+                .WithMany(c => c.ChiTietTruViPhamTamUngs)
+                .HasForeignKey(e => e.MaChiTiet)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 24. NHAT_KY_QUAN_TRI
         modelBuilder.Entity<NhatKyQuanTri>(entity =>
         {
             entity.ToTable("nhat_ky_quan_tri");

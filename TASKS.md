@@ -38,15 +38,15 @@
   - **Người phụ trách:** Nguyễn Hoàng Long | **Độ ưu tiên:** Cao | **Hạn chót:** 15/09/2026
   - **Trạng thái:** `Hoàn thành`
 
-- [x] **TSK-03:** Thiết kế mô hình ERD & Lược đồ logic 3NF
+- [x] **TSK-03:** Thiết kế mô hình ERD & Lược đồ logic 3NF (Nâng cấp 23 thực thể)
   - **Phân hệ:** Thiết kế CSDL
-  - **Mô tả & Output:** Thiết kế 17 thực thể (có HOP_DONG), vẽ ERD và xuất file `.erdplus`, `.drawio`, `.html`
+  - **Mô tả & Output:** Thiết kế 23 thực thể chuẩn 3NF: Phân tách độc lập 3 danh mục cấu hình lương, bảng trung gian điều phối, 3 bảng chi tiết khấu trừ (Bảo hiểm, Thuế TNCN, Kỷ luật & Tạm ứng) và bảng kiểm toán `NHAT_KY_QUAN_TRI`; xuất file `.drawio`, `.html`, `.svg`, `.jpg`
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 15/09/2026
   - **Trạng thái:** `Hoàn thành`
 
-- [x] **TSK-04:** Lập Từ điển dữ liệu CSDL chi tiết (17 bảng)
+- [x] **TSK-04:** Lập Từ điển dữ liệu CSDL chi tiết (23 bảng 3NF)
   - **Phân hệ:** Thiết kế CSDL
-  - **Mô tả & Output:** Mô tả 6 cột cho 17 bảng (Tên, Kiểu dữ liệu, Khóa, Null, Ràng buộc, Diễn giải)
+  - **Mô tả & Output:** Mô tả đầy đủ 6 cột chuẩn cho 23 bảng (Tên thuộc tính, Kiểu dữ liệu, Khóa PK/FK/UK, Null, Ràng buộc, Diễn giải ngữ nghĩa nghiệp vụ)
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Cao | **Hạn chót:** 15/09/2026
   - **Trạng thái:** `Hoàn thành`
 
@@ -66,9 +66,9 @@
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Cao | **Hạn chót:** 22/09/2026
   - **Trạng thái:** `Hoàn thành`
 
-- [x] **TSK-07:** Khởi tạo Project Supabase & Chạy Script SQL tạo 17 bảng
+- [x] **TSK-07:** Khởi tạo Project Supabase & Chạy Script SQL tạo 23 bảng 3NF
   - **Phân hệ:** Cơ sở dữ liệu
-  - **Mô tả & Output:** Tạo database `OvertimeHotel-HRM-DB` trên Supabase Cloud (Singapore), chạy DDL script tạo 17 bảng (PostgreSQL) kèm PK, FK, Index (tách họ và tên)
+  - **Mô tả & Output:** Khởi tạo và nâng cấp database `OvertimeHotel-HRM-DB` trên Supabase Cloud (Singapore), chạy migration tạo 23 bảng chuẩn 3NF kèm đầy đủ PK, FK, CHECK constraints, Indexes và kích hoạt khóa bảo mật Row Level Security (RLS) trên toàn bộ các bảng
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 22/09/2026
   - **Trạng thái:** `Hoàn thành`
 
@@ -80,13 +80,13 @@
 
 - [x] **TSK-09:** Kết nối Supabase qua Npgsql / Entity Framework Core
   - **Phân hệ:** C# Data Access
-  - **Mô tả & Output:** Cài đặt Npgsql EF Core & Supabase C# SDK; Xây dựng 17 Entities C#, Enums, Constants, DTOs và `AppDbContext.cs` cấu hình quan hệ bảng
+  - **Mô tả & Output:** Cài đặt Npgsql EF Core & Supabase C# SDK; Xây dựng đầy đủ 23 Entities C#, Enums, Constants, DTOs và `AppDbContext.cs` cấu hình quan hệ bảng 3 cấp (Phiếu lương -> Chi tiết trung gian -> 3 Bảng chi tiết khấu trừ)
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 29/09/2026
   - **Trạng thái:** `Hoàn thành`
 
 - [x] **TSK-10:** Thiết lập Sao lưu (Backup) & Phục hồi (Restore) Supabase
   - **Phân hệ:** An toàn CSDL
-  - **Mô tả & Output:** Xây dựng `BackupService`, `BackupController` trên Web Admin cho phép xuất Snapshot JSON, khôi phục dữ liệu và thống kê 17 bảng
+  - **Mô tả & Output:** Xây dựng `BackupService`, `BackupController` trên Web Admin cho phép xuất Snapshot JSON, khôi phục dữ liệu và thống kê số liệu của toàn bộ 23 bảng CSDL
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Cao | **Hạn chót:** 29/09/2026
   - **Trạng thái:** `Hoàn thành`
 
@@ -96,7 +96,7 @@
 
 - [x] **TSK-11:** Nạp dữ liệu mẫu (Seed Data) phong phú lên Supabase
   - **Phân hệ:** Cơ sở dữ liệu
-  - **Mô tả & Output:** Tạo sẵn 8 phòng ban, 10 chức vụ, 4 vai trò RBAC, 3 mẫu ca 24/7, 20 nhân viên, 20 hợp đồng lao động
+  - **Mô tả & Output:** Tạo sẵn 8 phòng ban, 10 chức vụ, 4 vai trò RBAC, 3 mẫu ca 24/7, 20 nhân viên, 20 hợp đồng lao động, 3 bảng cấu hình định mức tăng ca, phụ cấp, khấu trừ và chi tiết khấu trừ mẫu trên Supabase Cloud
   - **Người phụ trách:** Võ Huỳnh Minh Sang | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 06/10/2026
   - **Trạng thái:** `Hoàn thành`
 
@@ -162,21 +162,21 @@
 
 ### GIAI ĐOẠN 5: TÍNH LƯƠNG 2 TẦNG & XUẤT PHIẾU LƯƠNG PDF (TUẦN 9)
 
-- [ ] **TSK-21:** Lập trình C# thuật toán Tính lương tự động 2 tầng
+- [ ] **TSK-21:** Lập trình C# thuật toán Tính lương tự động 2 tầng (Chuẩn 3 cấp)
   - **Phân hệ:** Nghiệp vụ Tiền lương
-  - **Mô tả & Output:** Tính toán: Lương công + Tăng ca OT + Phụ cấp ca đêm 30% + Thưởng - Trừ BHXH 10.5% - Phạt
+  - **Mô tả & Output:** Tính toán: Lương công + Tăng ca OT (hệ số) + Phụ cấp ca đêm 30% + Phụ cấp cố định/ngày - Trừ BHXH 10.5% - Thuế TNCN lũy tiến - Phạt đi trễ; tự động lưu vào 3 bảng chi tiết khấu trừ
   - **Người phụ trách:** _Chưa phân công_ | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 03/11/2026
   - **Trạng thái:** `Chưa bắt đầu`
 
 - [ ] **TSK-22:** Quản lý kỳ lương & Chốt khóa sổ bảng lương tháng
   - **Phân hệ:** Tiền lương
-  - **Mô tả & Output:** Tạo kỳ lương tháng, duyệt bảng lương, lưu snapshot vào bảng `CHI_TIET_PHIEU_LUONG`
+  - **Mô tả & Output:** Tạo kỳ lương tháng, duyệt bảng lương, chốt snapshot vào bảng trung gian `CHI_TIET_PHIEU_LUONG` và 3 bảng con chi tiết khấu trừ
   - **Người phụ trách:** _Chưa phân công_ | **Độ ưu tiên:** Cao | **Hạn chót:** 03/11/2026
   - **Trạng thái:** `Chưa bắt đầu`
 
 - [ ] **TSK-23:** Lập trình chức năng Xuất phiếu lương PDF (QuestPDF)
   - **Phân hệ:** Xuất PDF
-  - **Mô tả & Output:** Tích hợp QuestPDF: Sinh file PDF phiếu lương tháng và in bảng tổng hợp năm
+  - **Mô tả & Output:** Tích hợp QuestPDF: Sinh file PDF phiếu lương tháng hiển thị rõ ràng 3 bảng con khấu trừ (BHXH 10.5%, Thuế TNCN, Phạt vi phạm) và in bảng tổng hợp năm
   - **Người phụ trách:** _Chưa phân công_ | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 03/11/2026
   - **Trạng thái:** `Chưa bắt đầu`
 

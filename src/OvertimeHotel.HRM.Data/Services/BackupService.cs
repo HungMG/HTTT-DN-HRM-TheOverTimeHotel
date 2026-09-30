@@ -20,6 +20,9 @@ public class BackupSnapshot
     public List<LoaiDon> LoaiDons { get; set; } = new();
     public List<KyLuong> KyLuongs { get; set; } = new();
     public List<CauHinhKhoanLuong> CauHinhKhoanLuongs { get; set; } = new();
+    public List<CauHinhTangCa> CauHinhTangCas { get; set; } = new();
+    public List<CauHinhPhuCap> CauHinhPhuCaps { get; set; } = new();
+    public List<CauHinhKhauTru> CauHinhKhauTrus { get; set; } = new();
     public List<NhanVien> NhanViens { get; set; } = new();
     public List<HopDong> HopDongs { get; set; } = new();
     public List<TaiKhoan> TaiKhoans { get; set; } = new();
@@ -28,6 +31,9 @@ public class BackupSnapshot
     public List<DonTu> DonTus { get; set; } = new();
     public List<PhieuLuong> PhieuLuongs { get; set; } = new();
     public List<ChiTietPhieuLuong> ChiTietPhieuLuongs { get; set; } = new();
+    public List<ChiTietTruBaoHiem> ChiTietTruBaoHiems { get; set; } = new();
+    public List<ChiTietTruThueTncn> ChiTietTruThueTncns { get; set; } = new();
+    public List<ChiTietTruViPhamTamUng> ChiTietTruViPhamTamUngs { get; set; } = new();
     public List<NhatKyQuanTri> NhatKyQuanTris { get; set; } = new();
 }
 
@@ -62,6 +68,9 @@ public class BackupService : IBackupService
             LoaiDons = await _context.LoaiDons.AsNoTracking().ToListAsync(),
             KyLuongs = await _context.KyLuongs.AsNoTracking().ToListAsync(),
             CauHinhKhoanLuongs = await _context.CauHinhKhoanLuongs.AsNoTracking().ToListAsync(),
+            CauHinhTangCas = await _context.CauHinhTangCas.AsNoTracking().ToListAsync(),
+            CauHinhPhuCaps = await _context.CauHinhPhuCaps.AsNoTracking().ToListAsync(),
+            CauHinhKhauTrus = await _context.CauHinhKhauTrus.AsNoTracking().ToListAsync(),
             NhanViens = await _context.NhanViens.AsNoTracking().ToListAsync(),
             HopDongs = await _context.HopDongs.AsNoTracking().ToListAsync(),
             TaiKhoans = await _context.TaiKhoans.AsNoTracking().ToListAsync(),
@@ -70,6 +79,9 @@ public class BackupService : IBackupService
             DonTus = await _context.DonTus.AsNoTracking().ToListAsync(),
             PhieuLuongs = await _context.PhieuLuongs.AsNoTracking().ToListAsync(),
             ChiTietPhieuLuongs = await _context.ChiTietPhieuLuongs.AsNoTracking().ToListAsync(),
+            ChiTietTruBaoHiems = await _context.ChiTietTruBaoHiems.AsNoTracking().ToListAsync(),
+            ChiTietTruThueTncns = await _context.ChiTietTruThueTncns.AsNoTracking().ToListAsync(),
+            ChiTietTruViPhamTamUngs = await _context.ChiTietTruViPhamTamUngs.AsNoTracking().ToListAsync(),
             NhatKyQuanTris = await _context.NhatKyQuanTris.AsNoTracking().ToListAsync()
         };
 
@@ -183,6 +195,36 @@ public class BackupService : IBackupService
                 totalCount += snapshot.CauHinhKhoanLuongs.Count;
             }
 
+            if (snapshot.CauHinhTangCas.Count > 0)
+            {
+                foreach (var item in snapshot.CauHinhTangCas)
+                {
+                    if (!await _context.CauHinhTangCas.AnyAsync(x => x.MaLoaiOt == item.MaLoaiOt))
+                        _context.CauHinhTangCas.Add(item);
+                }
+                totalCount += snapshot.CauHinhTangCas.Count;
+            }
+
+            if (snapshot.CauHinhPhuCaps.Count > 0)
+            {
+                foreach (var item in snapshot.CauHinhPhuCaps)
+                {
+                    if (!await _context.CauHinhPhuCaps.AnyAsync(x => x.MaPhuCap == item.MaPhuCap))
+                        _context.CauHinhPhuCaps.Add(item);
+                }
+                totalCount += snapshot.CauHinhPhuCaps.Count;
+            }
+
+            if (snapshot.CauHinhKhauTrus.Count > 0)
+            {
+                foreach (var item in snapshot.CauHinhKhauTrus)
+                {
+                    if (!await _context.CauHinhKhauTrus.AnyAsync(x => x.MaKhoanTru == item.MaKhoanTru))
+                        _context.CauHinhKhauTrus.Add(item);
+                }
+                totalCount += snapshot.CauHinhKhauTrus.Count;
+            }
+
             await _context.SaveChangesAsync();
 
             // 2. Phục hồi VaiTroQuyen
@@ -283,6 +325,36 @@ public class BackupService : IBackupService
                 totalCount += snapshot.ChiTietPhieuLuongs.Count;
             }
 
+            if (snapshot.ChiTietTruBaoHiems.Count > 0)
+            {
+                foreach (var item in snapshot.ChiTietTruBaoHiems)
+                {
+                    if (!await _context.ChiTietTruBaoHiems.AnyAsync(x => x.MaChiTietBh == item.MaChiTietBh))
+                        _context.ChiTietTruBaoHiems.Add(item);
+                }
+                totalCount += snapshot.ChiTietTruBaoHiems.Count;
+            }
+
+            if (snapshot.ChiTietTruThueTncns.Count > 0)
+            {
+                foreach (var item in snapshot.ChiTietTruThueTncns)
+                {
+                    if (!await _context.ChiTietTruThueTncns.AnyAsync(x => x.MaChiTietThue == item.MaChiTietThue))
+                        _context.ChiTietTruThueTncns.Add(item);
+                }
+                totalCount += snapshot.ChiTietTruThueTncns.Count;
+            }
+
+            if (snapshot.ChiTietTruViPhamTamUngs.Count > 0)
+            {
+                foreach (var item in snapshot.ChiTietTruViPhamTamUngs)
+                {
+                    if (!await _context.ChiTietTruViPhamTamUngs.AnyAsync(x => x.MaChiTietVp == item.MaChiTietVp))
+                        _context.ChiTietTruViPhamTamUngs.Add(item);
+                }
+                totalCount += snapshot.ChiTietTruViPhamTamUngs.Count;
+            }
+
             await _context.SaveChangesAsync();
 
             // 6. Phục hồi nhật ký quản trị sau khi các tài khoản đã tồn tại.
@@ -327,8 +399,14 @@ public class BackupService : IBackupService
             ["don_tu (Đơn từ trực tuyến)"] = await _context.DonTus.CountAsync(),
             ["ky_luong (Kỳ tính lương)"] = await _context.KyLuongs.CountAsync(),
             ["cau_hinh_khoan_luong (Cấu hình thu chi)"] = await _context.CauHinhKhoanLuongs.CountAsync(),
+            ["cau_hinh_tang_ca (Cấu hình tăng ca OT)"] = await _context.CauHinhTangCas.CountAsync(),
+            ["cau_hinh_phu_cap (Cấu hình phụ cấp)"] = await _context.CauHinhPhuCaps.CountAsync(),
+            ["cau_hinh_khau_tru (Cấu hình khoản trừ)"] = await _context.CauHinhKhauTrus.CountAsync(),
             ["phieu_luong (Phiếu lương tháng)"] = await _context.PhieuLuongs.CountAsync(),
             ["chi_tiet_phieu_luong (Chi tiết phiếu lương)"] = await _context.ChiTietPhieuLuongs.CountAsync(),
+            ["chi_tiet_tru_bao_hiem (Chi tiết trừ bảo hiểm)"] = await _context.ChiTietTruBaoHiems.CountAsync(),
+            ["chi_tiet_tru_thue_tncn (Chi tiết trừ thuế TNCN)"] = await _context.ChiTietTruThueTncns.CountAsync(),
+            ["chi_tiet_tru_vi_pham_tam_ung (Chi tiết phạt & tạm ứng)"] = await _context.ChiTietTruViPhamTamUngs.CountAsync(),
             ["nhat_ky_quan_tri (Nhật ký quản trị)"] = await _context.NhatKyQuanTris.CountAsync()
         };
 
