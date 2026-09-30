@@ -1,0 +1,502 @@
+/* ============================================================================
+   KHUNG ỨNG DỤNG · SIDEBAR + TAB TRONG TRANG
+   Bổ sung chất "khách sạn 5★": sidebar xanh navy đậm, nội dung nền trắng.
+   ========================================================================== */
+
+:root {
+  --app-sidebar-w: 240px;
+  --app-sidebar-bg: #0f172a;
+  --app-sidebar-bg-deep: #0b1325;
+  --app-sidebar-text: #94a3b8;
+  --app-sidebar-text-active: #ffffff;
+  --app-sidebar-hover: rgba(255, 255, 255, .06);
+  --app-surface: #f7fafd;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--app-surface);
+}
+
+.app-sidebar {
+  width: var(--app-sidebar-w);
+  flex: 0 0 var(--app-sidebar-w);
+  background: linear-gradient(180deg, var(--app-sidebar-bg) 0%, var(--app-sidebar-bg-deep) 100%);
+  border-right: 1px solid rgba(212, 175, 55, .22);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  isolation: isolate;
+}
+
+/* Hoa tiết Art Deco: nan quạt cách điệu, chỉ hiện trên nền navy sâu */
+.app-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .5;
+  background:
+    repeating-conic-gradient(from 0deg at 50% 0%,
+      rgba(212, 175, 55, .06) 0deg 9deg,
+      transparent 9deg 18deg);
+  background-size: 260px 200px;
+  background-repeat: repeat-y;
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, .9), transparent 55%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, .9), transparent 55%);
+}
+
+.app-sidebar::-webkit-scrollbar { width: 6px; }
+.app-sidebar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .3); border-radius: 3px; }
+
+/* ── Thương hiệu ─────────────────────────────────────────────────────── */
+.app-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 18px 16px;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(212, 175, 55, .18);
+}
+
+.app-sidebar-logo {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, .75);
+  background: #ffffff;
+  display: block;
+}
+
+.app-sidebar-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.app-sidebar-brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+
+.app-sidebar-brand-name {
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: .2px;
+}
+
+.app-sidebar-brand-sub {
+  font-size: .62rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--hotel-gold);
+}
+
+/* ── Điều hướng ──────────────────────────────────────────────────────── */
+.app-sidebar-nav { flex: 1 1 auto; padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; }
+
+.app-sidebar-footer {
+  padding: 10px 10px 16px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.app-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  color: var(--app-sidebar-text);
+  text-decoration: none;
+  font-size: .86rem;
+  font-weight: 500;
+  border-left: 3px solid transparent;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+
+.app-nav-item i { font-size: 1rem; flex: 0 0 auto; }
+.app-nav-item span { flex: 1 1 auto; }
+
+.app-nav-item:hover:not(.is-disabled) { background: var(--app-sidebar-hover); color: #e2e8f0; }
+
+.app-nav-item.is-active {
+  background: rgba(212, 175, 55, .14);
+  color: var(--app-sidebar-text-active);
+  border-left-color: var(--hotel-gold);
+  font-weight: 600;
+}
+
+.app-nav-item.is-active i { color: var(--hotel-gold-light); }
+
+.app-nav-item.is-disabled { opacity: .55; cursor: not-allowed; }
+
+.app-nav-soon {
+  font-style: normal;
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, .18);
+  color: #cbd5e1;
+  flex: 0 0 auto;
+}
+
+/* ── Vùng nội dung ───────────────────────────────────────────────────── */
+.app-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Đường kẻ vàng hai nét dưới thanh tiêu đề */
+.app-topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--hotel-gold) 0%, rgba(212, 175, 55, .18) 45%, transparent 100%);
+}
+
+.app-topbar-title { font-family: var(--font-display); font-size: 1.18rem; font-weight: 700; color: var(--hotel-navy); margin: 0; }
+.app-topbar-actions { display: flex; align-items: center; gap: 12px; }
+
+.app-user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 14px 5px 5px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  text-decoration: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.app-user-pill:hover { border-color: var(--hotel-gold); box-shadow: 0 6px 18px rgba(212, 175, 55, .25); }
+
+.app-user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .9rem;
+  border: 2px solid var(--hotel-gold-light);
+}
+
+.app-user-name { font-weight: 600; font-size: .82rem; color: var(--hotel-navy); line-height: 1.2; }
+
+.app-role-badge { font-size: .62rem; border-radius: 999px; padding: 2px 8px; font-weight: 700; }
+
+/* Vùng nội dung co giãn theo chiều cao trang, không bị cắt dòng cuối.
+   min-height: 0 rất quan trọng trong bố cục flex: nếu thiếu, phần tử con sẽ
+   bám lấy kích thước nội dung và tràn ra ngoài khung thay vì cuộn. */
+.app-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 20px 24px 32px;
+}
+
+/* Footer nằm trong luồng trang nên không được chừa khoảng trống cố định ở
+   đáy body. Khoảng trống thừa đó khiến con trượt cuộn hết hạn mà nội dung
+   vẫn còn cách mép dưới ~60px, nhìn như mất khúc cuối thanh cuộn. */
+body:has(.app-shell) { margin-bottom: 0; }
+
+/* Footer nằm ngoài .app-content nên không được hưởng lề ngang của nó.
+   Không chỉnh thì chữ sát đúng mép màn hình (gap = 0), lệch hẳn so với
+   nội dung phía trên và trông như bị cắt chữ. */
+.app-shell > .app-main > footer {
+  background: #fff;
+  padding-inline: 24px;
+}
+
+/* Chuyển cảnh xuất hiện do site.js đảm nhiệm qua các lớp pp-banner-anim,
+   pp-box-anim và pp-table-anim (chuẩn "PowerPoint Entrance" trong rule 5.4).
+   Không khai báo thêm animation ở đây để tránh hai luồng transform chạy
+   chồng lên nhau, làm khối bị lệch so với nhau. */
+
+/* ── Tab trong trang ─────────────────────────────────────────────────── */
+.page-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 1px;
+}
+
+.page-tabs::-webkit-scrollbar { height: 4px; }
+.page-tabs::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+.page-tab {
+  /* Trải đều trên trục ngang: mọi tab rộng bằng nhau nên đường viền dưới
+     chạy thẳng, không bị lệch nhau. min-width giữ nhãn không bị cắt,
+     màn hình hẹp thì thanh tab cuộn ngang. */
+  flex: 1 1 0;
+  min-width: max-content;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 14px;
+  font-size: .85rem;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 8px 8px 0 0;
+  transition:
+    color .24s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color .24s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color .24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.page-tab i { font-size: .95rem; transition: color .24s cubic-bezier(0.16, 1, 0.3, 1); }
+
+.page-tab:hover:not(.is-disabled) {
+  color: var(--hotel-royal);
+  background: rgba(212, 175, 55, .08);
+}
+
+.page-tab.is-active {
+  color: var(--hotel-navy);
+  background: #ffffff;
+  border-bottom-color: var(--hotel-gold);
+}
+
+.page-tab.is-active i { color: var(--hotel-gold-dark); }
+
+.page-tab.is-disabled { opacity: .5; cursor: not-allowed; }
+
+/* Tab đang mở được cho nét vàng chạy ngang ở chân tab */
+.page-tab.is-active::after {
+  background: linear-gradient(90deg, transparent, var(--hotel-gold), transparent);
+  content: "";
+  height: 1px;
+  left: 12%;
+  position: absolute;
+  right: 12%;
+  bottom: -1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-tab,
+  .page-tab i { transition: none; }
+}
+
+.page-tab-soon {
+  font-style: normal;
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+/* ── Tiêu đề section trong trang ─────────────────────────────────────── */
+.page-section-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0 0 12px;
+}
+
+/* Đường kẻ vàng đặc trưng Art Deco nối dài sang phần nội dung */
+.page-section-title::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, var(--hotel-gold) 0%, rgba(212, 175, 55, 0) 85%);
+}
+
+/* ── Thẻ chỉ số ──────────────────────────────────────────────────────── */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+/* Vạch vàng mảnh trên đỉnh thẻ, nở ra khi rê chuột */
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 38px;
+  background: linear-gradient(90deg, var(--hotel-gold), var(--hotel-gold-light));
+  transition: width .32s cubic-bezier(.22, 1, .36, 1);
+}
+
+a.stat-card:hover::before,
+.stat-card:hover::before { width: 100%; }
+
+a.stat-card { text-decoration: none; }
+a.stat-card:hover { border-color: #93c5fd; transform: translateY(-3px); box-shadow: 0 10px 22px -6px rgba(15, 23, 42, .1); }
+
+.stat-label {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.stat-figure {
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--hotel-navy);
+  line-height: 1.1;
+  margin: 6px 0 2px;
+}
+
+.stat-figure-unit { font-family: var(--font-sans); font-size: .8rem; font-weight: 500; color: #94a3b8; margin-left: 4px; }
+.stat-meta { font-size: .76rem; color: #64748b; }
+.stat-delta-up { color: #16a34a; font-weight: 600; }
+.stat-delta-down { color: #dc2626; font-weight: 600; }
+.stat-delta-flat { color: #64748b; font-weight: 600; }
+
+/* ── Bảng hàng việc chờ xử lý ────────────────────────────────────────── */
+.queue-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.queue-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background .18s ease, padding-left .18s ease;
+}
+
+.queue-row:last-child { border-bottom: 0; }
+.queue-row:hover { background: #f8fafc; padding-left: 22px; }
+
+.queue-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+.queue-dot-danger { background: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, .14); }
+.queue-dot-warning { background: #d97706; box-shadow: 0 0 0 3px rgba(217, 119, 6, .14); }
+.queue-dot-info { background: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .14); }
+
+.queue-main { flex: 1 1 auto; min-width: 0; }
+.queue-title { font-weight: 600; font-size: .88rem; color: var(--hotel-navy); margin: 0; }
+.queue-sub { font-size: .78rem; color: #64748b; margin: 2px 0 0; }
+.queue-wait { font-size: .74rem; font-weight: 700; color: #dc2626; white-space: nowrap; }
+.queue-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+
+/* ── Thanh tiến độ quẹt thẻ trong thẻ ca trực ───────────────────────── */
+.shift-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.shift-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--hotel-gold-dark), var(--hotel-gold));
+  transition: width .6s cubic-bezier(.22, 1, .36, 1);
+}
+
+/* ── Trạng thái rỗng ─────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+}
+
+.empty-state i { font-size: 2.4rem; color: #86efac; display: block; margin-bottom: 10px; }
+.empty-state-title { font-weight: 600; color: var(--hotel-navy); margin: 0 0 4px; }
+
+/* ── Trạng thái module đang phát triển ───────────────────────────────── */
+.wip-panel {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.wip-panel i { font-size: 2.6rem; color: var(--hotel-gold-dark); display: block; margin-bottom: 12px; }
+.wip-panel-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--hotel-navy); margin: 0 0 6px; }
+.wip-panel-text { color: #64748b; margin: 0 auto; max-width: 460px; font-size: .88rem; }
+
+/* ── Đáp ứng màn hình nhỏ ────────────────────────────────────────────── */
+@media (max-width: 991.98px) {
+  .app-shell { flex-direction: column; }
+
+  .app-sidebar {
+    width: 100%;
+    flex: 0 0 auto;
+    height: auto;
+    position: relative;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    padding-right: 8px;
+  }
+
+  .app-sidebar-brand { border-bottom: 0; border-right: 1px solid rgba(212, 175, 55, .18); padding: 12px 14px; }
+  .app-sidebar-nav { flex-direction: row; padding: 10px 8px; }
+  .app-sidebar-footer { border-top: 0; flex-direction: row; padding: 10px 8px; }
+  .app-nav-item { white-space: nowrap; border-left: 0; border-bottom: 3px solid transparent; }
+  .app-nav-item.is-active { border-left: 0; border-bottom-color: var(--hotel-gold); }
+  .app-content { padding: 16px; }
+  /* Footer phải theo đúng lề của .app-content, nếu không sẽ lệch 8px */
+  .app-shell > .app-main > footer { padding-inline: 16px; }
+}

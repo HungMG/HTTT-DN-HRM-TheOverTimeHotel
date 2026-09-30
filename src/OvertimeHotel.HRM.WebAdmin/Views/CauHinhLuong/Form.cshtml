@@ -8,7 +8,7 @@
 }
 <link rel="stylesheet" href="~/css/payroll.css" asp-append-version="true" />
 <div class="catalog-page payroll-workspace">
-    <partial name="_CatalogNavTabs" />
+    <partial name="_PageTabs" model="@("payroll")" />
     <section class="catalog-hero mb-4">
         <h1 class="catalog-title h2 mb-2">@ViewData["Title"]</h1>
         <p class="mb-0">Định mức áp dụng cho các kỳ lương mới; dữ liệu phiếu lương đã chốt được giữ nguyên.</p>

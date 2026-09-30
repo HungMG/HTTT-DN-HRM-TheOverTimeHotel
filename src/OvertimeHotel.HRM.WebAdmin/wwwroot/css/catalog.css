@@ -6,8 +6,25 @@
 }
 
 .catalog-page {
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-sans);
   color: #1e293b;
+}
+
+/* Bootstrap đặt margin âm cho .row để bù padding của container. Ở đây
+   .catalog-page không có padding, nên hàng thẻ KPI tràn ra ngoài khung
+   8px mỗi bên và lệch hẳn so với hero cùng thanh tab ở trên.
+   Bỏ margin âm rồi cắt padding của cột đầu/cuối để mép thẻ khớp đúng
+   mép hero, vẫn giữ nguyên khoảng cách giữa các thẻ. */
+.catalog-page > .row {
+  margin-inline: 0;
+}
+
+.catalog-page > .row > :first-child {
+  padding-left: 0;
+}
+
+.catalog-page > .row > :last-child {
+  padding-right: 0;
 }
 
 .catalog-hero {
@@ -41,7 +58,8 @@
 }
 
 .catalog-title {
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-display);
+  font-size: var(--page-title-size);
   font-weight: 700;
 }
 
@@ -574,7 +592,7 @@
 
 .catalog-module-index {
   color: #cbd5e1;
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-display);
   font-size: 2.5rem;
   font-weight: 700;
   line-height: 1;
@@ -614,7 +632,7 @@
 }
 
 .catalog-module-copy h2 {
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 700;
   margin: 0.3rem 0 0.45rem;
@@ -649,7 +667,24 @@
 
 /* Interaction system dùng chung */
 .catalog-command-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem 1.5rem;
   min-height: 150px;
+}
+
+/* Cột nội dung bên trái co giãn theo bề ngang. min-width: 0 rất quan trọng:
+   cho phép cột này co lại thay vì đẩy cụm nút bên phải ra ngoài khung,
+   nhờ đó tiêu đề dài sẽ xuống dòng chứ không bị cắt mất chữ. */
+.catalog-command-bar > :first-child {
+  flex: 1 1 26rem;
+  min-width: 0;
+}
+
+.catalog-command-bar .catalog-title {
+  overflow-wrap: anywhere;
 }
 
 .catalog-command-bar .btn-light {
@@ -667,6 +702,7 @@
 .catalog-command-actions {
   align-items: center;
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   gap: 0.65rem;
   position: relative;
@@ -894,7 +930,7 @@
 }
 
 .catalog-editor-header h2 {
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-display);
   font-size: 1.4rem;
   margin: 0.2rem 0 0;
 }
@@ -986,7 +1022,7 @@
 }
 
 .catalog-confirm-card h2 {
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-display);
   font-weight: 700;
   margin: 0.35rem 0;
 }
@@ -1367,6 +1403,15 @@
   cursor: pointer;
   user-select: none;
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+  /* Bù đều chiều cao giữa các thẻ cùng hàng: cột Bootstrap đã giãn bằng nhau,
+     nhưng thẻ bên trong phải tự lấy hết chiều cao đó thì các khối mới thẳng hàng. */
+  height: 100%;
+  width: 100%;
+}
+
+/* Cột chữ bên phải cho phép co lại, tránh đẩy icon ra khỏi thẻ khi nội dung dài */
+.catalog-kpi-card > :last-child {
+  min-width: 0;
 }
 
 .catalog-kpi-card:hover {
@@ -1470,16 +1515,21 @@
 }
 
 .catalog-kpi-value {
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-display);
   font-size: 1.55rem;
   font-weight: 700;
   margin: 0.15rem 0 0;
   color: #0f172a;
+  /* Căn con số và đơn vị trên cùng một đường chân chữ cho các thẻ thẳng hàng */
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 0.3rem;
 }
 
 .catalog-kpi-value small {
   font-size: 0.85rem;
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-sans);
   color: #64748b;
   font-weight: 600;
 }
@@ -1495,7 +1545,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: 0.15rem;
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .catalog-amount-sign {
@@ -1535,7 +1585,7 @@
 }
 
 .catalog-empty-state h4 {
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-display);
   font-weight: 700;
   color: #1e293b;
   margin-bottom: 0.35rem;

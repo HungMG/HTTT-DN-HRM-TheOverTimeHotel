@@ -18,9 +18,9 @@ html {
 }
 
 body {
-  margin-bottom: 60px;
+  margin: 0;
   background-color: #f8fafc;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   color: #1e293b;
 }
 
@@ -33,10 +33,40 @@ body {
   --hotel-gold-dark: #b8860b;
   --hotel-slate-bg: #f8fafc;
   --hotel-card-border: rgba(226, 232, 240, 0.8);
+
+  /* ── Hệ chữ The OverTime Hotel ──────────────────────────────────────────
+     Be Vietnam Pro: typeface thiết kế bởi xưởng chữ Việt Nam, dấu tiếng Việt
+     đúng chuẩn và rất dễ đọc với bảng dữ liệu dày đặc.
+     Fraunces: serif hiện đại có trục quang học, cho nét sang trọng của khách sạn 5★. */
+  --font-sans: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Fraunces', 'Playfair Display', Georgia, serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  /* Cỡ chữ tiêu đề trang: dùng CHUNG cho cả nhóm danh mục và nhóm tài khoản
+     để hai bố cục luôn khớp nhau ở mọi bề rộng. Trước đây nhóm tài khoản
+     tự đặt clamp() chạy theo vw nên lệch so với .h2 của Bootstrap. */
+  --page-title-size: calc(1.325rem + 0.9vw);
+}
+
+/* Bootstrap đặt .h2/h2 thành 2rem từ 1200px trở lên; token của ta bám đúng
+   nhịp đó để tiêu đề không bị nhảy cỡ khi đổi nhóm trang. */
+@media (min-width: 1200px) {
+  :root {
+    --page-title-size: 2rem;
+  }
 }
 
 .font-serif {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-display);
+}
+
+/* Số liệu dùng chữ số đều nhau để các cột thống kê thẳng hàng */
+.tabular-nums,
+table td,
+table th,
+.kpi-value,
+.stat-figure {
+  font-variant-numeric: tabular-nums;
 }
 
 .hotel-nav-brand {
@@ -44,7 +74,7 @@ body {
   align-items: center;
   gap: 11px;
   color: #1e3a8a !important;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-display);
   font-size: 1.42rem;
   font-weight: 700;
   letter-spacing: .3px;
@@ -367,6 +397,18 @@ body {
   animation: blurTextFloatUp 0.52s cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: transform, filter, opacity;
   white-space: pre;
+}
+
+/* Hào quang vàng kim (rule 5.2) khi khối chỉ số vừa được tính lại.
+   Đặt ở site.css để mọi trang dùng chung đều nhận hiệu ứng, không riêng
+   trang tài khoản. */
+.kpi-pulse-active {
+  border-color: rgba(212, 175, 55, 0.7) !important;
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.65), 0 0 4px rgba(253, 224, 71, 0.8) !important;
+  transform: scale(1.025);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Hiệu ứng rời trang nhẹ nhàng khi click chuyển link */

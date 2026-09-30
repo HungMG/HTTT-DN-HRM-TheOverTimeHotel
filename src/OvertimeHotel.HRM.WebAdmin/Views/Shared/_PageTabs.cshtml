@@ -1,0 +1,87 @@
+@using OvertimeHotel.HRM.WebAdmin.Security
+@{
+    // Nhóm tab do trang cha truyền qua model, ví dụ: <partial name="_PageTabs" model="@("people")" />
+    var group = Model as string ?? string.Empty;
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+
+    var tabs = new List<(string Key, string Label, string Icon, string? Controller, string? Action, string? Permission)>();
+
+    switch (group)
+    {
+        case "people":
+            tabs =
+            [
+                ("nhanvien", "Hồ sơ nhân viên", "bi-people-fill", "NhanVien", "Index", PermissionCodes.ManageEmployees),
+                ("hopdong", "Hợp đồng lao động", "bi-file-earmark-text-fill", "HopDong", "Index", PermissionCodes.ManageContracts),
+                ("phongban", "Phòng ban", "bi-building-fill", "PhongBan", "Index", PermissionCodes.ManageCatalog),
+                ("chucvu", "Chức vụ", "bi-person-vcard-fill", "ChucVu", "Index", PermissionCodes.ManageCatalog)
+            ];
+            break;
+
+        case "shift":
+            tabs =
+            [
+                ("phanca", "Lịch phân ca 24/7", "bi-calendar2-week-fill", "PhanCa", "Index", PermissionCodes.AssignShifts),
+                ("calamviec", "Khung ca làm việc", "bi-clock-fill", "CaLamViec", "Index", PermissionCodes.ManageCatalog),
+                ("chamcong", "Chấm công", "bi-fingerprint", null, null, PermissionCodes.ViewDepartmentAttendance),
+                ("dontu", "Đơn từ trực tuyến", "bi-file-earmark-text", null, null, PermissionCodes.ApproveLeave)
+            ];
+            break;
+
+        case "payroll":
+            tabs =
+            [
+                ("cauhinh", "Cấu hình khoản lương", "bi-sliders", "CauHinhLuong", "Index", PermissionCodes.CalculatePayroll),
+                ("phieuluong", "Phiếu lương", "bi-file-earmark-spreadsheet", null, null, PermissionCodes.ExportPayslipPdf),
+                ("kyluong", "Kỳ lương", "bi-calendar3", null, null, PermissionCodes.CalculatePayroll)
+            ];
+            break;
+
+        case "accounts":
+            tabs =
+            [
+                ("users", "Tài khoản người dùng", "bi-person-gear", "UserAccounts", "Index", PermissionCodes.ManageAccounts),
+                ("roles", "Vai trò & Quyền", "bi-shield-lock", "UserAccounts", "RolePermissions", PermissionCodes.ManagePermissions),
+                ("audit", "Nhật ký quản trị", "bi-journal-text", null, null, PermissionCodes.ManagePermissions)
+            ];
+            break;
+
+        case "system":
+            tabs =
+            [
+                ("backup", "Sao lưu & Phục hồi", "bi-database-check", "Backup", "Index", PermissionCodes.BackupDatabase),
+                ("catalog", "Danh mục hệ thống", "bi-collection", "SystemCatalog", "Index", PermissionCodes.ManageCatalog)
+            ];
+            break;
+    }
+
+    var visible = tabs.Where(t => t.Permission is null || User.HasPermission(t.Permission)).ToList();
+}
+
+@if (visible.Count > 0)
+{
+    <nav class="page-tabs" aria-label="Điều hướng nhóm chức năng">
+        @foreach (var tab in visible)
+        {
+            var isSoon = tab.Controller is null;
+            var isActive = !isSoon && currentController.Equals(tab.Controller, StringComparison.OrdinalIgnoreCase);
+
+            if (isSoon)
+            {
+                <span class="page-tab is-disabled" aria-disabled="true" title="Đang phát triển">
+                    <i class="bi @tab.Icon"></i>
+                    <span class="page-tab-label">@tab.Label</span>
+                    <em class="page-tab-soon">Sắp có</em>
+                </span>
+            }
+            else
+            {
+                <a class="page-tab@(isActive ? " is-active" : "")"
+                   asp-controller="@tab.Controller" asp-action="@tab.Action">
+                    <i class="bi @tab.Icon"></i>
+                    <span class="page-tab-label">@tab.Label</span>
+                </a>
+            }
+        }
+    </nav>
+}

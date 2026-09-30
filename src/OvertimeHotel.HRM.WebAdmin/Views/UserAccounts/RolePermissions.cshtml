@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Phân quyền vai trò";
 }
+    <partial name="_PageTabs" model="@("accounts")" />
+
 <div class="account-workspace account-workspace--bleed account-form-workspace">
     <header class="account-command-bar account-reveal">
         <a asp-action="Index" class="account-icon-action"><i class="bi bi-arrow-left"></i></a>

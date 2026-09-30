@@ -21,7 +21,7 @@
   padding: 20px;
   overflow: hidden;
   box-shadow: 0 26px 80px rgba(8, 9, 14, 0.24);
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-sans);
 }
 .account-workspace::before {
   content: "";
@@ -33,7 +33,11 @@
   background-size: 32px 32px;
   mask-image: linear-gradient(to bottom, #000, transparent 70%);
 }
-.account-workspace--bleed { width: min(1580px, calc(100vw - 28px)); left: 50%; transform: translateX(-50%); }
+/* Khối này phải chiếm đúng bề rộng vùng nội dung như các trang danh mục.
+   Trước đây dùng width: calc(100vw - 28px) + left: 50% + translateX(-50%):
+   100vw tính cả thanh cuộn và canh theo cửa sổ chứ không theo vùng nội dung,
+   nên khối lệch trái ~130px và tràn sang cả vùng sidebar. */
+.account-workspace--bleed { width: 100%; max-width: 1580px; }
 .account-workspace a { text-decoration: none; }
 
 .account-command-bar {
@@ -88,7 +92,7 @@
 .account-command-brandline .account-eyebrow { margin-bottom: 0; }
 .account-eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; color: var(--aw-muted); font-size: .66rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 .account-live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--aw-green); box-shadow: 0 0 0 4px rgba(88, 214, 141, .1), 0 0 14px rgba(88, 214, 141, .7); }
-.account-command-copy h1 { margin: 0; font-family: "Playfair Display", Georgia, serif; font-size: clamp(1.35rem, 2vw, 2rem); font-weight: 700; letter-spacing: -.02em; }
+.account-command-copy h1 { margin: 0; font-family: var(--font-display); font-size: var(--page-title-size); font-weight: 700; letter-spacing: -.02em; }
 .account-command-copy h1 span { color: #acaebe; font-weight: 420; }
 .account-command-copy p { display: block; width: 100%; margin: 5px 0 0; color: var(--aw-muted); font-size: .82rem; }
 .account-command-actions { display: flex; align-items: center; gap: 10px; }
@@ -171,7 +175,7 @@
 .sequence-play i { margin-left: 2px; }
 .sequence-meta { display: flex; align-items: center; gap: 15px; color: var(--aw-muted); font-size: .64rem; }
 .sequence-meta i { color: var(--aw-red); }
-.sequence-time { padding: 5px 8px; color: var(--aw-text); border: 1px solid var(--aw-line); border-radius: 5px; background: #fff; font-family: "SFMono-Regular", Consolas, monospace; }
+.sequence-time { padding: 5px 8px; color: var(--aw-text); border: 1px solid var(--aw-line); border-radius: 5px; background: #fff; font-family: var(--font-mono); }
 .account-table-wrap { overflow: auto; }
 .account-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--aw-line); background: #fff; }
 .account-pagination-summary { color: var(--aw-muted); font-size: .72rem; font-weight: 650; }
@@ -194,7 +198,7 @@
 .account-identity > div:last-child, .account-work-unit { display: grid; gap: 3px; }
 .account-identity strong, .account-work-unit strong { color: #172554; font-size: .72rem; font-weight: 620; white-space: nowrap; }
 .account-identity span, .account-work-unit span { color: var(--aw-faint); font-size: .61rem; white-space: nowrap; }
-.account-username { display: flex; align-items: center; gap: 6px; color: #c8c9d2; font-family: "SFMono-Regular", Consolas, monospace; font-size: .67rem; }
+.account-username { display: flex; align-items: center; gap: 6px; color: #c8c9d2; font-family: var(--font-mono); font-size: .67rem; }
 .account-username i { color: var(--aw-violet-bright); }
 .account-you-chip { display: inline-flex; margin-top: 4px; padding: 2px 5px; color: #96caff; border: 1px solid rgba(88,166,255,.22); border-radius: 4px; background: rgba(88,166,255,.08); font-size: .52rem; text-transform: uppercase; }
 .role-chip, .state-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid; border-radius: 5px; font-size: .6rem; font-weight: 650; white-space: nowrap; }
@@ -285,8 +289,9 @@
 .identity-summary-copy > span { color: var(--aw-muted); font-size: .66rem; }
 .identity-summary-meta { display: flex; align-items: center; gap: 7px; }
 
-/* Readable type scale — aligned with the larger TSK-14 catalog screens */
-.account-command-copy h1 { font-size: clamp(1.65rem, 2.25vw, 2.2rem); }
+/* Readable type scale — tiêu đề dùng chung token --page-title-size với nhóm
+   danh mục nên không khai báo lại cỡ chữ ở đây (trước đây đặt clamp() riêng
+   khiến tiêu đề lệch cỡ so với các trang còn lại). */
 .account-eyebrow { font-size: .76rem; }
 .account-command-copy p { font-size: .94rem; }
 .account-dashboard-action { font-size: .8rem; }
@@ -564,7 +569,8 @@
   .identity-preview { padding-block: 17px; }
 }
 @media (max-width: 575px) {
-  .account-workspace--bleed { width: calc(100vw - 12px); }
+  /* Bỏ width: calc(100vw - 12px): 100vw tính cả thanh cuộn nên khối rộng
+     hơn khung chứa 4px và sinh thanh cuộn ngang trên màn hình hẹp. */
   .account-command-bar--accounts-index { min-height: 142px; padding-top: 46px; }
   .account-dashboard-breadcrumb { top: 13px; left: 12px; font-size: .7rem; }
   .account-command-copy p { display: none; }
