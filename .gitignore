@@ -46,6 +46,9 @@ _pkginfo.txt
 appsettings.Development.json
 **/App_Data/DataProtection-Keys/
 
+# Anh chup man hinh tham chao, khong dua len kho ma
+Screenshot_*.png
+
 ## ==============================================================================
 ## OS & Office Temporary Files
 ## ==============================================================================
@@ -59,3 +62,7 @@ $RECYCLE.BIN/
 ~$*.xlsx
 ~$*.pptx
 *.tmp
+
+# Cong do trong giai doan (Chromium headless)
+.probe/
+.npmcache/
