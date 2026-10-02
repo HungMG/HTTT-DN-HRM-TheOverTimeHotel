@@ -251,6 +251,12 @@ body:has(.app-shell) { margin-bottom: 0; }
   margin-bottom: 20px;
   overflow-x: auto;
   padding-bottom: 1px;
+  animation: pageTabsBarIn .42s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+@keyframes pageTabsBarIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .page-tabs::-webkit-scrollbar { height: 4px; }
@@ -273,13 +279,16 @@ body:has(.app-shell) { margin-bottom: 0; }
   color: #64748b;
   text-decoration: none;
   white-space: nowrap;
+  border: 1px solid transparent;
   border-bottom: 2.5px solid transparent;
   margin-bottom: -1px;
-  border-radius: 8px 8px 0 0;
+  border-radius: 10px 10px 0 0;
   transition:
     color .24s cubic-bezier(0.16, 1, 0.3, 1),
     border-color .24s cubic-bezier(0.16, 1, 0.3, 1),
-    background-color .24s cubic-bezier(0.16, 1, 0.3, 1);
+    background-color .24s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow .24s cubic-bezier(0.16, 1, 0.3, 1),
+    transform .24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .page-tab i { font-size: .95rem; transition: color .24s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -287,30 +296,40 @@ body:has(.app-shell) { margin-bottom: 0; }
 .page-tab:hover:not(.is-disabled) {
   color: var(--hotel-royal);
   background: rgba(212, 175, 55, .08);
+  border-color: rgba(212, 175, 55, .28);
 }
 
 .page-tab.is-active {
-  color: var(--hotel-navy);
-  background: #ffffff;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--hotel-navy), var(--hotel-blue));
+  border-color: rgba(212, 175, 55, .55);
   border-bottom-color: var(--hotel-gold);
+  box-shadow: 0 8px 18px -6px rgba(30, 58, 138, .45);
+  font-weight: 700;
+  transform: translateY(-1px);
 }
 
-.page-tab.is-active i { color: var(--hotel-gold-dark); }
+.page-tab.is-active i { color: var(--hotel-gold-light); }
+
+/* Nhãn nhấn mạnh để người dùng nhận ra ngay tab đang mở, không chỉ dựa vào
+   màu chữ vì độ tương phản navy-trắng trên nền sáng quá mỏng. */
+.page-tab.is-active .page-tab-label { letter-spacing: .012em; }
 
 .page-tab.is-disabled { opacity: .5; cursor: not-allowed; }
 
-/* Tab đang mở được cho nét vàng chạy ngang ở chân tab */
+/* Vạch vàng chạy ngang chân tab đang mở để ghép với đường kẻ của tab. */
 .page-tab.is-active::after {
-  background: linear-gradient(90deg, transparent, var(--hotel-gold), transparent);
+  background: linear-gradient(90deg, transparent, var(--hotel-gold-light), transparent);
   content: "";
-  height: 1px;
-  left: 12%;
+  height: 2px;
+  left: 8%;
   position: absolute;
-  right: 12%;
+  right: 8%;
   bottom: -1px;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .page-tabs { animation: none; }
   .page-tab,
   .page-tab i { transition: none; }
 }
@@ -463,18 +482,14 @@ a.stat-card:hover { border-color: #93c5fd; transform: translateY(-3px); box-shad
 .empty-state i { font-size: 2.4rem; color: #86efac; display: block; margin-bottom: 10px; }
 .empty-state-title { font-weight: 600; color: var(--hotel-navy); margin: 0 0 4px; }
 
-/* ── Trạng thái module đang phát triển ───────────────────────────────── */
-.wip-panel {
-  background: #ffffff;
-  border: 1px dashed #cbd5e1;
-  border-radius: 14px;
-  padding: 48px 24px;
-  text-align: center;
+/* ── Lời chào trên dashboard ─────────────────────────────────────────── */
+.page-greeting {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--hotel-navy);
+  margin: 0 0 6px;
 }
-
-.wip-panel i { font-size: 2.6rem; color: var(--hotel-gold-dark); display: block; margin-bottom: 12px; }
-.wip-panel-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--hotel-navy); margin: 0 0 6px; }
-.wip-panel-text { color: #64748b; margin: 0 auto; max-width: 460px; font-size: .88rem; }
 
 /* ── Đáp ứng màn hình nhỏ ────────────────────────────────────────────── */
 @media (max-width: 991.98px) {

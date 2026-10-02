@@ -4,33 +4,6 @@
 }
 
 <div class="catalog-page">
-    <!-- HERO COMMAND BANNER -->
-    <section class="catalog-hero catalog-command-bar mb-4 position-relative">
-        <div class="catalog-art-deco-pattern" aria-hidden="true"></div>
-        <div class="position-relative" style="z-index: 2;">
-            <nav aria-label="Điều hướng">
-                <ol class="catalog-breadcrumb catalog-breadcrumb--dark">
-                    <li><a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a></li>
-                    <li><a asp-controller="SystemCatalog" asp-action="Index">Danh mục hệ thống</a></li>
-                    <li aria-current="page">Phòng ban</li>
-                </ol>
-            </nav>
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill" style="font-size: 0.65rem;">
-                    <i class="bi bi-stars"></i> THE OVERTIME HOTEL
-                </span>
-                <span class="catalog-eyebrow mb-0"><i class="bi bi-diagram-3-fill me-1"></i> Cơ cấu tổ chức</span>
-            </div>
-            <h1 class="catalog-title h2 mb-1 text-white">Quản lý Phòng Ban Khách Sạn</h1>
-            <p class="text-white-50 mb-0">Thiết lập các bộ phận vận hành, khối dịch vụ khách lưu trú và phòng ban nghiệp vụ.</p>
-        </div>
-        <div class="catalog-command-actions position-relative" style="z-index: 2;">
-            <button type="button" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-bs-toggle="modal" data-bs-target="#createPhongBanModal">
-                <i class="bi bi-plus-lg me-1 text-primary"></i> Thêm phòng ban
-            </button>
-        </div>
-    </section>
-
     <!-- 4 TABS LIÊN THÔNG DANH MỤC -->
     <partial name="_PageTabs" model="@("people")" />
 
@@ -64,7 +37,10 @@
                 </button>
             </form>
 
-            <div class="d-flex align-items-center gap-2">
+            <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn" data-bs-toggle="modal" data-bs-target="#createPhongBanModal">
+                    <i class="bi bi-plus-lg me-1"></i> Thêm phòng ban
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="PhongBan" title="Xuất danh sách ra file CSV mở bằng Excel" aria-label="Xuất CSV">
                     <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất CSV
                 </button>

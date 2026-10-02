@@ -92,7 +92,7 @@
 
             @if (canViewSystem)
             {
-                <a class="app-nav-item@(IsCurrent("Backup") || IsCurrent("SystemCatalog") ? " is-active" : "")"
+                <a class="app-nav-item@(IsCurrent("Backup") ? " is-active" : "")"
                    asp-controller="Backup" asp-action="Index">
                     <i class="bi bi-shield-check"></i><span>Hệ thống</span>
                 </a>

@@ -7,34 +7,20 @@
     <partial name="_PageTabs" model="@("accounts")" />
 
 <div class="account-workspace account-workspace--bleed" data-account-workspace data-status-filter="@(Model.IsActive.HasValue ? Model.IsActive.Value.ToString().ToLowerInvariant() : string.Empty)" data-audit-from="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" data-audit-to="@(Model.AuditTo?.ToString("yyyy-MM-dd"))">
-    <header class="account-command-bar account-command-bar--accounts-index account-reveal">
-        <nav class="account-dashboard-breadcrumb" aria-label="Điều hướng">
-            <a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a>
-            <span aria-hidden="true">/</span>
-            <strong>Tài khoản &amp; phân quyền</strong>
-        </nav>
-        <div class="account-product-mark" aria-hidden="true">
-            <span></span><span></span><span></span>
+    <!-- Tiêu đề đã nằm ở .app-topbar nên trang này không lặp lại banner.
+         Thanh công cụ chỉ giữ thao tác, đặt ngay trên lưới dữ liệu. -->
+    <div class="account-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="account-environment-pill" title="Môi trường quản trị">
+            <i class="bi bi-shield-check"></i>
+            <span>RBAC</span>
+            <strong>Trực tuyến</strong>
         </div>
-        <div class="account-command-copy">
-            <div class="account-command-brandline">
-                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill account-hotel-badge"><i class="bi bi-stars" aria-hidden="true"></i> THE OVERTIME HOTEL</span>
-                <div class="account-eyebrow"><span class="account-live-dot"></span> Không gian quản trị</div>
-            </div>
-            <h1>Tài khoản <span>&amp; phân quyền</span></h1>
-            <p>Điều phối danh tính, trạng thái và vai trò truy cập của toàn bộ nhân sự.</p>
-        </div>
-        <div class="account-command-actions">
-            <div class="account-environment-pill" title="Môi trường quản trị">
-                <i class="bi bi-shield-check"></i>
-                <span>RBAC</span>
-                <strong>Trực tuyến</strong>
-            </div>
-            <a asp-action="Create" class="account-primary-action">
-                <i class="bi bi-plus-lg"></i><span>Tạo tài khoản</span>
+        <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
+            <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn">
+                <i class="bi bi-plus-lg me-1"></i> Tạo tài khoản
             </a>
         </div>
-    </header>
+    </div>
 
     <div class="account-popup-stack" aria-live="polite" aria-atomic="true">
         @if (TempData["Success"] is string successMessage)

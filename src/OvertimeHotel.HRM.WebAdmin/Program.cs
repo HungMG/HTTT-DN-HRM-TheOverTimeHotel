@@ -32,7 +32,13 @@ builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+// RazorRuntimeCompilation chỉ bật ở Development để sửa .cshtml có hiệu lực ngay
+// mà không tăng thời gian biên dịch và bộ nhớ ở môi trường Production.
+var mvcBuilder = builder.Services.AddControllersWithViews();
+if (builder.Environment.IsDevelopment())
+{
+    mvcBuilder.AddRazorRuntimeCompilation();
+}
 builder.Services.AddMemoryCache();
 
 // Cấu hình Coexistence Authentication: Cookie Auth cho Web Admin & JWT Bearer cho Mobile API

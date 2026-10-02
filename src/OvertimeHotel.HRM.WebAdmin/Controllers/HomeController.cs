@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -9,6 +10,9 @@ using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
+// Khách chưa đăng nhập không được thấy bảng điều khiển. Nếu không chặn ở đây thì
+// mở web với cookie trống sẽ render nhánh "wip-panel" trần, trông như trang lỗi.
+[Authorize]
 public class HomeController : Controller
 {
     private readonly AppDbContext _context;
@@ -325,6 +329,9 @@ public class HomeController : Controller
         return View();
     }
 
+    // Trang lỗi phải mở cho khách: app.UseExceptionHandler("/Home/Error") là điểm
+    // đích cho mọi ngoại lệ, kể cả khi chưa có cookie đăng nhập.
+    [AllowAnonymous]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {

@@ -5,10 +5,13 @@
     <partial name="_PageTabs" model="@("accounts")" />
 
 <div class="account-workspace account-workspace--bleed account-form-workspace">
-    <header class="account-command-bar account-reveal">
-        <a asp-action="Index" class="account-icon-action"><i class="bi bi-arrow-left"></i></a>
-        <div class="account-command-copy"><div class="account-eyebrow"><span class="account-live-dot"></span> Phân quyền tập trung</div><h1>Quyền <span>theo vai trò</span></h1><p>Thay đổi sẽ áp dụng cho toàn bộ tài khoản thuộc vai trò được chọn.</p></div>
-    </header>
+    <div class="account-toolbar account-reveal">
+        <a asp-action="Index" class="account-icon-action" aria-label="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
+        <div class="account-toolbar-note">
+            <i class="bi bi-shield-lock"></i>
+            <span>Phân quyền tập trung — thay đổi sẽ áp dụng cho toàn bộ tài khoản thuộc vai trò được chọn.</span>
+        </div>
+    </div>
     <form asp-action="SaveRolePermissions" method="post" class="account-reveal">
         @Html.AntiForgeryToken()
         <section class="inspector-card">

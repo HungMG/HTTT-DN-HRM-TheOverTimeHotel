@@ -8,10 +8,6 @@
 <link rel="stylesheet" href="~/css/payroll.css" asp-append-version="true" />
 <div class="catalog-page payroll-workspace">
     <partial name="_PageTabs" model="@("payroll")" />
-    <section class="catalog-hero mb-4">
-        <h1 class="catalog-title h2 mb-2">Cấu hình @title.ToLower()</h1>
-        <p class="mb-0">Quản lý định mức cho các kỳ lương mới. Phiếu lương đã chốt giữ nguyên dữ liệu.</p>
-    </section>
     <nav class="payroll-category-tabs mb-4" aria-label="Danh mục cấu hình lương">
         @foreach (var category in Enum.GetValues<CauHinhLuongCategory>())
         {

@@ -15,35 +15,6 @@
 }
 
 <div class="catalog-page employee-workspace">
-    <!-- HERO COMMAND BANNER -->
-    <section class="catalog-hero catalog-command-bar mb-4 position-relative">
-        <div class="catalog-art-deco-pattern" aria-hidden="true"></div>
-        <div class="position-relative" style="z-index: 2;">
-            <nav aria-label="Điều hướng">
-                <ol class="catalog-breadcrumb catalog-breadcrumb--dark">
-                    <li><a asp-controller="Home" asp-action="Index"><i class="bi bi-house-door"></i> Dashboard</a></li>
-                    <li aria-current="page">Hồ sơ nhân sự</li>
-                </ol>
-            </nav>
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill" style="font-size: 0.65rem;">
-                    <i class="bi bi-stars"></i> THE OVERTIME HOTEL
-                </span>
-                <span class="catalog-eyebrow mb-0"><i class="bi bi-people-fill me-1"></i> Quản trị nhân sự</span>
-            </div>
-            <h1 class="catalog-title h2 mb-1 text-white">Quản Lý Hồ Sơ Nhân Viên</h1>
-            <p class="text-white-50 mb-0">Hồ sơ thông tin nhân sự toàn diện, phân bổ theo 8 phòng ban và chức danh vị trí khách sạn 5 sao.</p>
-        </div>
-        <div class="catalog-command-actions position-relative" style="z-index: 2;">
-            <a asp-controller="Home" asp-action="Index" class="catalog-back-action">
-                <i class="bi bi-speedometer2"></i><span>Dashboard</span>
-            </a>
-            <button type="button" class="btn btn-light fw-bold rounded-3 px-3 position-relative shadow-sm hover-lift" data-bs-toggle="modal" data-bs-target="#createEmployeeModal">
-                <i class="bi bi-plus-lg me-1 text-primary"></i> Thêm nhân viên
-            </button>
-        </div>
-    </section>
-
     <!-- 6 TABS LIÊN THÔNG ĐIỀU HÀNH -->
     <partial name="_PageTabs" model="@("people")" />
 
@@ -117,7 +88,10 @@
                 }
             </form>
 
-            <div class="d-flex align-items-center gap-2">
+            <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn" data-bs-toggle="modal" data-bs-target="#createEmployeeModal">
+                    <i class="bi bi-plus-lg me-1"></i> Thêm nhân viên
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="NhanVien" title="Xuất danh sách ra file CSV mở bằng Excel">
                     <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất CSV
                 </button>

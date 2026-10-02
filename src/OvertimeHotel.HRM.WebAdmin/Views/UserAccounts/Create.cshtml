@@ -4,17 +4,16 @@
 }
 
 <div class="account-workspace account-workspace--bleed account-form-workspace">
-    <header class="account-command-bar account-reveal">
+    <div class="account-toolbar account-reveal">
         <a asp-action="Index" class="account-icon-action" aria-label="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
-        <div class="account-command-copy">
-            <div class="account-eyebrow"><span class="account-live-dot"></span> Tài khoản mới</div>
-            <h1>Tạo <span>tài khoản mới</span></h1>
-            <p>Liên kết nhân viên với một tài khoản và thiết lập quyền truy cập.</p>
+        <div class="account-toolbar-note">
+            <i class="bi bi-person-plus"></i>
+            <span>Liên kết nhân viên với một tài khoản và thiết lập quyền truy cập.</span>
         </div>
         <div class="account-step-indicator" aria-label="Tiến trình cấu hình">
             <span class="is-active">1</span><i></i><span class="is-active">2</span><i></i><span>3</span>
         </div>
-    </header>
+    </div>
 
     @if (!ViewData.ModelState.IsValid)
     {

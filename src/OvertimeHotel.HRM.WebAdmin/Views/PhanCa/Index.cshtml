@@ -38,17 +38,6 @@
     /* ==========================================================================
        ENTERPRISE SHIFT SCHEDULER & 24H TIMELINE STYLES (THE OVERTIME HOTEL)
        ========================================================================== */
-    .phanca-page .catalog-hero {
-        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #172554 100%);
-        border: 1px solid rgba(212, 175, 55, 0.45);
-        border-radius: 20px;
-        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
-        color: #fff;
-        overflow: hidden;
-        padding: 1.6rem 2rem;
-        position: relative;
-    }
-
     .shift-workspace-card {
         border: 1px solid #e2e8f0;
         border-top: 3.5px solid #1e3a8a;
@@ -401,65 +390,24 @@
 <!-- Bỏ px-* của Bootstrap: .app-content đã có lề 24px. Giữ lề riêng ở đây
      khiến nội dung lệch 16px so với tab, thẻ KPI và footer của các trang khác. -->
 <div class="catalog-page phanca-page py-3">
-    <!-- =========================================================================
-         1. HERO COMMAND BANNER LUXURY THE OVERTIME HOTEL (ĐỒNG BỘ PHÒNG BAN, CHỨC VỤ)
-         ========================================================================= -->
-    <section class="catalog-hero catalog-command-bar mb-3 position-relative d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-3">
-        <div class="catalog-art-deco-pattern" aria-hidden="true"></div>
-        <div class="position-relative" style="z-index: 2;">
-            <!-- BREADCRUMB DARK THEME LUXURY -->
-            <nav aria-label="Điều hướng">
-                <ol class="catalog-breadcrumb catalog-breadcrumb--dark mb-2">
-                    <li>
-                        <a asp-controller="Home" asp-action="Index" class="d-inline-flex align-items-center gap-1">
-                            <i class="bi bi-speedometer2"></i> Dashboard
-                        </a>
-                    </li>
-                    <li><span class="text-white-50">Vận Hành</span></li>
-                    <li aria-current="page" class="text-white fw-bold">Phân Ca 24/7</li>
-                </ol>
-            </nav>
-
-            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill shadow-sm" style="font-size: 0.68rem; letter-spacing: 0.5px;">
-                    <i class="bi bi-stars"></i> THE OVERTIME HOTEL
-                </span>
-                <span class="catalog-eyebrow mb-0"><i class="bi bi-calendar2-week-fill me-1"></i> VẬN HÀNH 24/7</span>
-                <span class="badge rounded-pill px-2 py-1 fw-bold" style="font-size: 0.68rem; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.35);">
-                    <i class="bi bi-check-circle-fill me-1"></i>Vận hành 24/7
-                </span>
-                <span class="badge rounded-pill px-2 py-1 fw-bold" style="font-size: 0.68rem; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4);">
-                    <i class="bi bi-moon-stars-fill me-1"></i>+30% Ca Đêm
-                </span>
-            </div>
-
-            <h1 class="catalog-title h2 mb-1 text-white fw-bold header-title-responsive">
-                Quản Lý &amp; Lập Lịch Phân Ca 24/7
-            </h1>
-            <p class="text-white-50 mb-0 small" style="max-width: 680px;">
-                Ma trận ca trực tuần, biểu đồ dòng thời gian 24 giờ liên tục và điều phối nhân lực theo từng bộ phận vận hành.
-            </p>
-        </div>
-
-        <!-- Khu vực nút bấm điều hướng & thao tác nổi bật -->
-        <div class="catalog-command-actions position-relative d-flex flex-wrap align-items-center gap-2" style="z-index: 2;">
-            <button type="button" class="btn btn-warning fw-bold btn-sm px-3 py-2 text-dark shadow-sm rounded-pill hover-lift" 
-                    data-bs-toggle="modal" data-bs-target="#modalCreatePhanCa">
-                <i class="bi bi-plus-circle-fill me-1"></i> + Xếp Ca Mới
-            </button>
-
-            <!-- Nút Tuần Này nạp tại chỗ In-Place không reload toàn trang -->
-            <button type="button" onclick="loadWeekInPlace('@todayWeek')" class="btn btn-light btn-sm px-3 py-2 rounded-pill hover-lift text-primary fw-bold shadow-sm" title="Quay về tuần hiện tại (In-Place)">
-                <i class="bi bi-calendar-event me-1"></i> Tuần Này
-            </button>
-
-            <a asp-controller="CaLamViec" asp-action="Index" class="btn btn-outline-light btn-sm px-3 py-2 rounded-pill hover-lift" title="Quản lý cấu hình 3 mẫu ca chuẩn">
-                <i class="bi bi-clock-history me-1"></i> Mẫu Ca
-            </a>
-        </div>
-    </section>
-
     <partial name="_PageTabs" model="@("shift")" />
+
+    <!-- HÀNG CÔNG CỤ: các nút từng nằm trong băng hero nay đã hạ xuống sát bảng lịch -->
+    <div class="catalog-toolbar d-flex flex-wrap justify-content-end align-items-center gap-2 mb-3">
+        <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn"
+                data-bs-toggle="modal" data-bs-target="#modalCreatePhanCa">
+            <i class="bi bi-plus-circle-fill me-1"></i> Xếp Ca Mới
+        </button>
+
+        <!-- Nút Tuần Này nạp tại chỗ In-Place không reload toàn trang -->
+        <button type="button" onclick="loadWeekInPlace('@todayWeek')" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold catalog-action-btn" title="Quay về tuần hiện tại (In-Place)">
+            <i class="bi bi-calendar-event me-1"></i> Tuần Này
+        </button>
+
+        <a asp-controller="CaLamViec" asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold catalog-action-btn" title="Quản lý cấu hình 3 mẫu ca chuẩn">
+            <i class="bi bi-clock-history me-1"></i> Mẫu Ca
+        </a>
+    </div>
 
     <!-- BỐ CỤC CHÍNH 2 CỘT: KHỐI LỊCH BÊN TRÁI RỘNG RÃI + KHỐI CHỈ SỐ DỌC SÁT BÊN PHẢI -->
     <div class="row g-3">

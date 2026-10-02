@@ -50,16 +50,37 @@
         .hotel-showcase {
             position: relative;
             flex: 1.15;
-            background-image: url('https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=85');
-            background-size: cover;
-            background-position: center;
             display: flex;
             flex-direction: column;
+            /* space-between + gap: gap là khoảng cách TỐI THIỂU, nên ở màn hình thấp
+               hai khối vẫn không dính vào nhau, còn ở màn hình cao khoảng hở giữa
+               chính là không gian để ảnh sân thượng lộ ra. */
             justify-content: space-between;
-            padding: 3.5rem;
+            gap: 2.5rem;
+            padding: 3.25rem 3.5rem;
             color: #FFFFFF;
             overflow: hidden;
+            isolation: isolate;
             animation: showcaseCinematicEnter 0.95s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        /* Ảnh nền tách riêng thành một lớp riêng để chạy hiệu ứng Ken Burns
+           (zoom chậm 32 giây) mà không kéo theo phần chữ ở trên. Chỉ dùng
+           transform nên nằm trên composition layer của GPU, không layout pass. */
+        .showcase-photo {
+            position: absolute;
+            inset: -4%;
+            background-image: url('https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1600&q=85');
+            background-size: cover;
+            background-position: 50% 58%;
+            z-index: 0;
+            will-change: transform;
+            animation: showcaseKenBurns 32s ease-in-out infinite alternate;
+        }
+
+        @@keyframes showcaseKenBurns {
+            0% { transform: scale(1.04) translate3d(0, 0, 0); }
+            100% { transform: scale(1.17) translate3d(-1.8%, -1.4%, 0); }
         }
 
         @@keyframes showcaseCinematicEnter {
@@ -100,8 +121,12 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.93) 0%, rgba(30, 58, 138, 0.78) 50%, rgba(11, 19, 37, 0.95) 100%);
-            backdrop-filter: blur(2px);
+            /* Gradient toán dối: giữa màn hình để hở ảnh ra (nơi có trời & sân thượng
+               đẹp nhất), dồn dập dần về mép trái + đáy để chữ trắng luôn đủ tương
+           phản. Không dùng backdrop-filter nữa vì nó làm nhòe luôn phần ảnh đẹp. */
+            background:
+                linear-gradient(100deg, rgba(9, 15, 32, 0.86) 0%, rgba(11, 20, 40, 0.55) 34%, rgba(11, 20, 40, 0.18) 62%, rgba(11, 20, 40, 0.10) 100%),
+                linear-gradient(0deg, rgba(9, 15, 32, 0.92) 0%, rgba(9, 15, 32, 0.55) 22%, rgba(9, 15, 32, 0) 52%);
             z-index: 1;
         }
 
@@ -110,22 +135,9 @@
             z-index: 2;
         }
 
-        .hotel-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 20px;
-            background: rgba(212, 175, 55, 0.15);
-            border: 1px solid rgba(212, 175, 55, 0.45);
-            border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--brand-gold-light);
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-            animation: elemCinematicIn 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+        /* Khối dưới: thụt nhẹ vào trong để tạo phân cấp thị giác với khối tiêu đề */
+        .showcase-content--bottom {
+            padding-left: 0.5rem;
         }
 
         .brand-title {
@@ -145,17 +157,35 @@
         }
 
         .showcase-glass-card {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(253, 224, 71, 0.35);
+            background: rgba(9, 15, 32, 0.42);
+            border: 1px solid rgba(253, 224, 71, 0.32);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             border-radius: 20px;
-            padding: 1.8rem;
+            padding: 1.6rem 1.8rem;
             max-width: 520px;
             box-shadow: 0 25px 50px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(212, 175, 55, 0.18);
-            margin-top: 2rem;
+            position: relative;
+            overflow: hidden;
             animation: elemCinematicIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;
             transition: transform 0.35s ease, box-shadow 0.35s ease;
+        }
+
+        /* Dải sáng vàng kim quét ngang đầu thẻ khi rê chuột — chi tiết " ánh đèn
+           hành lang khách sạn" rất hợp thương hiệu, chỉ dùng transform nên mượt. */
+        .showcase-glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 60%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--brand-gold-light), transparent);
+            transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .showcase-glass-card:hover::before {
+            left: 100%;
         }
 
         .showcase-glass-card:hover {
@@ -227,6 +257,114 @@
             box-shadow: 0 0 25px rgba(212, 175, 55, 0.45), 0 12px 26px rgba(30, 58, 138, 0.35);
             margin-bottom: 1.25rem;
             animation: emblemPopEntrance 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+        }
+
+        /* Dải niềm tin nhỏ ngay dưới logo: phá vỡ mặt bằng trắng phẳng của panel
+           và đưa thêm một tầng thông tin trước khi tới form. */
+        .login-trust-strip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.25rem;
+            margin-bottom: 1.75rem;
+            padding: 0.65rem 0.5rem;
+            border-radius: 12px;
+            background: linear-gradient(120deg, rgba(30, 58, 138, 0.05), rgba(212, 175, 55, 0.09));
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            animation: elemCinematicIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+        }
+
+        .login-trust-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: #475569;
+            white-space: nowrap;
+        }
+
+        .login-trust-item i {
+            font-size: 0.9rem;
+            color: var(--brand-gold-dark);
+        }
+
+        .login-trust-sep {
+            width: 1px;
+            height: 18px;
+            background: #E2E8F0;
+        }
+
+        /* =====================================================================
+           🔔 HỘP THÔNG BÁO KÍNH SANG TRỌNG — thay cho alert() thô của trình duyệt
+           ===================================================================== */
+        .hotel-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1060;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: rgba(9, 15, 32, 0.62);
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s;
+        }
+
+        .hotel-modal-backdrop.is-open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .hotel-modal-card {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem 1.75rem 1.5rem;
+            border-radius: 24px;
+            background: #FFFFFF;
+            border: 1px solid rgba(212, 175, 55, 0.55);
+            box-shadow: 0 30px 70px -12px rgba(9, 15, 32, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+            text-align: center;
+            transform: translateY(18px) scale(0.94);
+            opacity: 0;
+            transition: transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.28s ease;
+        }
+
+        .hotel-modal-backdrop.is-open .hotel-modal-card {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        .hotel-modal-icon {
+            width: 58px;
+            height: 58px;
+            margin: 0 auto 1.1rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #B45309;
+            background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+            box-shadow: 0 0 0 6px rgba(212, 175, 55, 0.12);
+        }
+
+        .hotel-modal-card h5 {
+            font-family: var(--font-display, 'Fraunces', serif);
+            font-weight: 700;
+            color: #0F172A;
+            margin-bottom: 0.5rem;
+        }
+
+        .hotel-modal-card p {
+            color: #475569;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
         }
 
         .hotel-emblem img {
@@ -498,23 +636,190 @@
             will-change: transform, filter, opacity;
         }
 
+        /* =====================================================================
+           🌟 DẢI CHÀO MỪNG (WELCOME RIBBON) — điểm nhấn chuyển động chính
+           của trang, chạy ngay khi vừa mở web trước khi đăng nhập.
+           ===================================================================== */
+        .welcome-ribbon {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 20px 9px 14px;
+            margin-bottom: 1.5rem;
+            border-radius: 50px;
+            background: linear-gradient(100deg, rgba(212, 175, 55, 0.22), rgba(30, 58, 138, 0.28));
+            border: 1px solid rgba(253, 224, 71, 0.42);
+            box-shadow: 0 10px 28px -8px rgba(0, 0, 0, 0.55);
+            overflow: hidden;
+            animation: welcomeRibbonIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+            will-change: transform, opacity;
+        }
+
+        /* Quầng sáng trượt qua dải — loop vô hạn, chỉ dùng transform (GPU) */
+        .welcome-ribbon::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: -60%;
+            width: 45%;
+            background: linear-gradient(100deg, transparent, rgba(253, 224, 71, 0.32), transparent);
+            transform: skewX(-22deg);
+            animation: welcomeRibbonSheen 4.2s cubic-bezier(0.4, 0, 0.2, 1) 1.4s infinite;
+            pointer-events: none;
+        }
+
+        @@keyframes welcomeRibbonIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-18px) scale(0.94);
+                filter: blur(8px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                filter: blur(0);
+            }
+        }
+
+        @@keyframes welcomeRibbonSheen {
+            0% { left: -60%; }
+            55%, 100% { left: 125%; }
+        }
+
+        .welcome-ribbon-icon {
+            position: relative;
+            width: 30px;
+            height: 30px;
+            flex: 0 0 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: #0F172A;
+            background: linear-gradient(135deg, var(--brand-gold-light), var(--brand-gold-dark));
+            box-shadow: 0 0 0 1px rgba(253, 224, 71, 0.5), 0 4px 12px -2px rgba(212, 175, 55, 0.6);
+            animation: welcomeStarPulse 2.6s ease-in-out infinite;
+        }
+
+        @@keyframes welcomeStarPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.12); }
+        }
+
+        .welcome-ribbon-copy {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.25;
+        }
+
+        .welcome-ribbon-copy small {
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 1.6px;
+            text-transform: uppercase;
+            color: var(--brand-gold-light);
+        }
+
+        .welcome-ribbon-copy strong {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #FFFFFF;
+        }
+
+        /* Ô "đang trực tuyến" nhấp nháy cùng nhịp với ngôi sao */
+        .welcome-live {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #4ADE80;
+            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+            animation: welcomeLivePing 2.4s ease-out infinite;
+        }
+
+        @@keyframes welcomeLivePing {
+            0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.65); }
+            70% { box-shadow: 0 0 0 9px rgba(74, 222, 128, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
+
+        /* Đường kẻ trang trí dưới tiêu đề — vàng kim chạy dài */
+        .showcase-rule {
+            position: relative;
+            width: 168px;
+            height: 2px;
+            margin-top: 1.6rem;
+            background: linear-gradient(90deg, var(--brand-gold), rgba(212, 175, 55, 0));
+            border-radius: 2px;
+            animation: showcaseRuleGrow 1s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both;
+        }
+
+        /* text-white-50 (opacity .5) bị loá trên vùng núi sáng, nên mô tả dùng
+           trắng đục gần như đặc kèm bóng đổ mảnh để luôn đọc rõ. */
+        .showcase-lead {
+            color: rgba(255, 255, 255, 0.92);
+            text-shadow: 0 2px 14px rgba(9, 15, 32, 0.75);
+            max-width: 480px;
+        }
+
+        @@keyframes showcaseRuleGrow {
+            0% { transform: scaleX(0); transform-origin: left center; opacity: 0; }
+            100% { transform: scaleX(1); transform-origin: left center; opacity: 1; }
+        }
+
         @@media (max-width: 991px) {
             .login-wrapper {
                 flex-direction: column;
             }
             .hotel-showcase {
-                padding: 2.5rem 1.5rem;
+                padding: 2.25rem 1.5rem;
                 flex: none;
-                min-height: 280px;
+                min-height: 300px;
+                justify-content: center;
+            }
+            /* Ở màn hình hẹp ảnh gần như không còn vai trò trang trí, dồn tối
+               hơn để chữ dễ đọc thay vì để lộ ảnh mờ */
+            .hotel-showcase::before {
+                background:
+                    linear-gradient(180deg, rgba(9, 15, 32, 0.62) 0%, rgba(11, 20, 40, 0.80) 45%, rgba(9, 15, 32, 0.94) 100%);
+            }
+            .welcome-ribbon {
+                margin-bottom: 1.15rem;
+            }
+            .showcase-rule {
+                margin-top: 1.1rem;
             }
             .brand-title {
                 font-size: 2.2rem;
             }
-            .showcase-glass-card {
+            .showcase-glass-card,
+            .showcase-content--bottom {
                 display: none;
             }
             .login-panel {
                 padding: 2.5rem 1.5rem;
+            }
+            .login-trust-strip {
+                gap: 0.85rem;
+                margin-bottom: 1.5rem;
+            }
+        }
+
+        /* Màn hình rất hẹp: bỏ dải niềm tin cho khỏi chật, chỉ giữ biểu tượng */
+        @@media (max-width: 575px) {
+            .login-trust-item {
+                font-size: 0.68rem;
+            }
+            .login-trust-sep {
+                height: 14px;
+            }
+            .hotel-emblem {
+                width: 88px;
+                height: 88px;
             }
         }
     </style>
@@ -524,19 +829,30 @@
 <div class="login-wrapper">
     <!-- CỘT TRÁI: SHOWCASE HÌNH ẢNH KHÁCH SẠN 5 SAO THƯỢNG LƯU -->
     <div class="hotel-showcase">
+        <!-- Ảnh nền tách lớp riêng để chạy hiệu ứng Ken Burns không kéo theo chữ -->
+        <div class="showcase-photo" role="img" aria-label="Sân thượng khách sạn The OverTime lúc hoàng hôn"></div>
+
         <div class="showcase-content">
-            <div class="hotel-badge">
-                <i class="bi bi-stars"></i> Khách Sạn Nghỉ Dưỡng Quốc Tế 5★
+            <!-- Dải chào mừng: điểm nhấn chuyển động đầu tiên khi vừa mở web -->
+            <div class="welcome-ribbon">
+                <span class="welcome-ribbon-icon"><i class="bi bi-stars"></i></span>
+                <span class="welcome-ribbon-copy">
+                    <small>Xin chào quý khách · Khách sạn 5★</small>
+                    <strong>Cổng Quản Trị Nhân Sự</strong>
+                </span>
+                <span class="welcome-live" aria-hidden="true"></span>
             </div>
+
             <h1 class="brand-title" id="showcaseBrandTitle">
                 The OverTime<br /><span>Hotel &amp; Resort</span>
             </h1>
-            <p class="text-white-50 mt-2 fs-5 blur-line" style="max-width: 480px; animation-delay: 0.25s;">
+            <div class="showcase-rule" aria-hidden="true"></div>
+            <p class="showcase-lead mt-2 fs-5 blur-line" style="animation-delay: 0.25s;">
                 Cổng quản trị thông tin nhân sự và điều hành tiền lương tự động 24/7
             </p>
         </div>
 
-        <div class="showcase-content">
+        <div class="showcase-content showcase-content--bottom">
             <div class="showcase-glass-card">
                 <div class="d-flex align-items-center mb-3">
                     <div class="text-warning fs-5 me-2">
@@ -546,10 +862,10 @@
                         <i class="bi bi-star-fill"></i>
                         <i class="bi bi-star-fill"></i>
                     </div>
-                    <span class="text-white-50 small">Vận hành liên tục 24 giờ / 7 ngày</span>
+                    <span class="small" style="color: rgba(255, 255, 255, 0.78);">Vận hành liên tục 24 giờ / 7 ngày</span>
                 </div>
                 <h6 class="fw-bold text-white mb-2">Hệ Thống Quản Trị Nhân Sự Cấp Cao (HRM Enterprise)</h6>
-                <p class="text-white-50 small mb-0">
+                <p class="small mb-0" style="color: rgba(255, 255, 255, 0.78);">
                     Phân tách cổng quản trị máy chủ (Web Admin) và ứng dụng di động (.NET MAUI App) kết nối đồng bộ cơ sở dữ liệu Supabase Cloud.
                 </p>
             </div>
@@ -573,6 +889,15 @@
                 <p class="text-muted small blur-line" style="animation-delay: 0.15s;">
                     Nhập thông tin tài khoản được cấp để truy cập hệ thống
                 </p>
+            </div>
+
+            <!-- Dải niềm tin: bảo mật · Supabase · .NET 10 -->
+            <div class="login-trust-strip">
+                <span class="login-trust-item"><i class="bi bi-shield-check"></i> Kết nối mã hóa</span>
+                <span class="login-trust-sep" aria-hidden="true"></span>
+                <span class="login-trust-item"><i class="bi bi-cloud-check"></i> Supabase Cloud</span>
+                <span class="login-trust-sep" aria-hidden="true"></span>
+                <span class="login-trust-item"><i class="bi bi-cpu"></i> .NET 10</span>
             </div>
 
             <!-- THÔNG BÁO LỖI NẾU CÓ -->
@@ -635,7 +960,7 @@
                             Ghi nhớ 7 ngày
                         </label>
                     </div>
-                    <a href="javascript:void(0)" onclick="alert('Vui lòng liên hệ Quản trị viên (Admin) hoặc Chuyên viên Nhân sự để được cấp lại mật khẩu.');" class="small text-decoration-none text-primary fw-semibold">
+                    <a href="#" id="forgotPasswordLink" class="small text-decoration-none text-primary fw-semibold">
                         Quên mật khẩu?
                     </a>
                 </div>
@@ -675,6 +1000,18 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- HỘP THÔNG BÁO KÍNH SANG TRỌNG (thay cho alert() thô của trình duyệt) -->
+<div class="hotel-modal-backdrop" id="hotelModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="hotelModalTitle" aria-hidden="true">
+    <div class="hotel-modal-card">
+        <div class="hotel-modal-icon"><i class="bi bi-key"></i></div>
+        <h5 id="hotelModalTitle">Quên mật khẩu</h5>
+        <p>Vui lòng liên hệ <b>Quản trị viên (Admin)</b> hoặc <b>Chuyên viên Nhân sự</b> để được cấp lại mật khẩu.</p>
+        <button type="button" class="btn btn-hotel-primary w-100" id="hotelModalClose">
+            <i class="bi bi-check2 me-2"></i>Đã hiểu
+        </button>
     </div>
 </div>
 
@@ -762,10 +1099,70 @@
 
     // 5. Hàm tự động điền tài khoản test nhanh
     function fillAccount(username, password) {
-        document.getElementById('usernameInput').value = username;
-        document.getElementById('passwordInput').value = password;
-        document.getElementById('usernameInput').focus();
+        const usernameField = document.getElementById('usernameInput');
+        const passwordField = document.getElementById('passwordInput');
+
+        usernameField.value = username;
+        passwordField.value = password;
+        usernameField.focus();
+
+        // Gợi sóng nhấp nháy trên hai ô vừa điền để người dùng thấy rõ thay đổi
+        [usernameField, passwordField].forEach(function (input) {
+            input.style.transition = 'none';
+            input.style.borderColor = '#D4AF37';
+            input.style.boxShadow = '0 0 0 4px rgba(212, 175, 55, 0.18)';
+            requestAnimationFrame(function () {
+                input.style.transition = 'border-color 0.5s ease, box-shadow 0.5s ease';
+                input.style.borderColor = '';
+                input.style.boxShadow = '';
+            });
+        });
     }
+
+    // 6. Hộp thoại kính sang trọng — thay cho alert() thô của trình duyệt
+    const modalBackdrop = document.getElementById('hotelModalBackdrop');
+    const modalCloseBtn = document.getElementById('hotelModalClose');
+    const forgotLink = document.getElementById('forgotPasswordLink');
+
+    function openHotelModal() {
+        modalBackdrop.classList.add('is-open');
+        modalBackdrop.setAttribute('aria-hidden', 'false');
+
+        // Chưa focus được ngay: backdrop đang chuyển visibility trong 0.28s mà
+        // phần tử visibility:hidden thì trình duyệt không cho nhận focus.
+        // Chờ hiệu ứng mờ (opacity) chạy xong rồi mới chuyển tiêu điểm vào nút.
+        function grabFocus(e) {
+            if (e.propertyName !== 'opacity') return;
+            modalBackdrop.removeEventListener('transitionend', grabFocus);
+            modalCloseBtn.focus();
+        }
+        modalBackdrop.addEventListener('transitionend', grabFocus);
+    }
+
+    function closeHotelModal() {
+        modalBackdrop.classList.remove('is-open');
+        modalBackdrop.setAttribute('aria-hidden', 'true');
+        forgotLink.focus();
+    }
+
+    forgotLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        openHotelModal();
+    });
+
+    modalCloseBtn.addEventListener('click', closeHotelModal);
+
+    // Click ra ngoài thẻ thì đóng, giống hành vi của hộp thoại phổ biến
+    modalBackdrop.addEventListener('click', function (e) {
+        if (e.target === modalBackdrop) closeHotelModal();
+    });
+
+    // Bấm phím Esc để thoát
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modalBackdrop.classList.contains('is-open')) {
+            closeHotelModal();
+        }
+    });
 </script>
 
 </body>

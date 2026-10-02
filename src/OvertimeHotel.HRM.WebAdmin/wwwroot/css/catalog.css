@@ -27,42 +27,6 @@
   padding-right: 0;
 }
 
-.catalog-hero {
-  background: linear-gradient(135deg, var(--hotel-navy), var(--hotel-blue));
-  border: 1px solid rgba(212, 175, 55, 0.42);
-  border-radius: 20px;
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
-  color: #fff;
-  overflow: hidden;
-  padding: 1.75rem 2rem;
-  position: relative;
-}
-
-.catalog-hero::after {
-  border: 1px solid rgba(212, 175, 55, 0.18);
-  border-radius: 50%;
-  content: "";
-  height: 190px;
-  position: absolute;
-  right: -55px;
-  top: -75px;
-  width: 190px;
-}
-
-.catalog-eyebrow {
-  color: #fde047;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.catalog-title {
-  font-family: var(--font-display);
-  font-size: var(--page-title-size);
-  font-weight: 700;
-}
-
 .catalog-card {
   background: #fff;
   border: 0;
@@ -299,441 +263,20 @@
   padding: 0.35rem 0.7rem;
 }
 
-.catalog-hub-card {
-  border: 1px solid transparent;
-  transition: transform 0.25s ease, box-shadow 0.25s ease,
-    border-color 0.25s ease;
-}
-
-.catalog-hub-card:hover {
-  border-color: rgba(212, 175, 55, 0.75);
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.15);
-  transform: translateY(-5px);
-}
-
-.catalog-hub-icon {
-  font-size: 1.65rem;
-  height: 58px;
-  width: 58px;
-}
-
-/* Nhận diện riêng cho từng module, tránh bốn biểu tượng đồng dạng */
-.catalog-module-mark {
-  align-items: center;
-  display: inline-flex;
-  flex: 0 0 76px;
-  height: 72px;
-  justify-content: center;
-  position: relative;
-  transition: transform 220ms ease, box-shadow 220ms ease;
-  width: 76px;
-}
-
-.catalog-module-mark > i {
-  font-size: 1.85rem;
-  line-height: 1;
-}
-
-.catalog-module-mark > small {
-  bottom: 7px;
-  font-size: 0.55rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  position: absolute;
-}
-
-/* Phòng ban: khối kiến trúc vuông, gợi hình tòa nhà */
-.catalog-module-mark--department {
-  background: linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0.1) 1px,
-        transparent 1px
-      )
-      0 0 / 15px 15px,
-    linear-gradient(135deg, #1d4ed8, #172554);
-  border: 1px solid #93c5fd;
-  border-radius: 8px 8px 20px 8px;
-  box-shadow: 8px 8px 0 #dbeafe;
-  color: #fff;
-}
-
-/* Chức vụ: huy hiệu tròn, khác hoàn toàn khối phòng ban */
-.catalog-module-mark--position {
-  background: radial-gradient(circle at 32% 25%, #4ade80, #15803d 48%, #14532d);
-  border: 3px double #bbf7d0;
-  border-radius: 50%;
-  box-shadow: 0 0 0 6px #dcfce7;
-  color: #fff;
-}
-
-.catalog-module-mark--position > small {
-  background: #fff;
-  border-radius: 999px;
-  bottom: -4px;
-  color: #166534;
-  padding: 0.15rem 0.45rem;
-}
-
-/* Ca làm việc: mặt đồng hồ tối với vòng vàng */
-.catalog-module-mark--shift {
-  background: radial-gradient(circle at center, #1e293b 0 46%, transparent 47%),
-    conic-gradient(from 0deg, #eab308, #fef08a, #eab308, #fef08a, #eab308);
-  border: 5px solid #0f172a;
-  border-radius: 50% 50% 50% 14px;
-  box-shadow: 6px 7px 0 rgba(15, 23, 42, 0.18);
-  color: #fef08a;
-}
-
-.catalog-module-mark--shift > small {
-  bottom: -1px;
-  color: #0f172a;
-  transform: translateY(100%);
-}
-
-/* Khoản lương: hình vé/thẻ tài chính nằm ngang */
-.catalog-module-mark--payroll {
-  background: linear-gradient(135deg, #fff7ed, #fde68a);
-  border: 2px solid #d97706;
-  border-radius: 6px 18px 6px 18px;
-  box-shadow: 7px 7px 0 #fef3c7;
-  color: #92400e;
-  width: 92px;
-}
-
-.catalog-module-mark--payroll::before,
-.catalog-module-mark--payroll::after {
-  background: #fff;
-  border: 1px solid #d97706;
-  border-radius: 50%;
-  content: "";
-  height: 14px;
-  position: absolute;
-  top: 29px;
-  width: 14px;
-}
-
-.catalog-module-mark--payroll::before {
-  left: -8px;
-}
-
-.catalog-module-mark--payroll::after {
-  right: -8px;
-}
-
-.catalog-hub-card:hover .catalog-module-mark {
-  transform: translateY(-4px) rotate(-2deg);
-}
-
-/* Trang trung tâm danh mục */
-.catalog-hub-hero {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  min-height: 176px;
-}
-
-.catalog-hub-hero::before {
-  background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.045) 1px,
-      transparent 1px
-    ),
-    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-  background-size: 26px 26px;
-  content: "";
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-}
-
-.catalog-hub-hero-copy {
-  max-width: 740px;
-  position: relative;
-  z-index: 1;
-}
-
-.catalog-hub-hero-copy > p {
-  color: rgba(255, 255, 255, 0.68);
-  max-width: 650px;
-}
-
-.catalog-hub-status {
-  align-items: center;
-  backdrop-filter: blur(8px);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(253, 224, 71, 0.38);
-  border-radius: 16px;
-  display: flex;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  position: relative;
-  z-index: 1;
-}
-
-.catalog-hub-status > span {
-  align-items: center;
-  background: #fde047;
-  border-radius: 50%;
-  color: #172554;
-  display: inline-flex;
-  height: 36px;
-  justify-content: center;
-  width: 36px;
-}
-
-.catalog-hub-status strong,
-.catalog-hub-status small {
-  display: block;
-  white-space: nowrap;
-}
-
-.catalog-hub-status small {
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 0.68rem;
-  margin-top: 0.12rem;
-  text-transform: uppercase;
-}
-
-.catalog-breadcrumb {
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 0.72rem;
-  gap: 0.5rem;
-  list-style: none;
-  margin: 0 0 0.65rem;
-  padding: 0;
-}
-
-.catalog-breadcrumb li + li::before {
-  content: "/";
-  margin-right: 0.5rem;
-  opacity: 0.45;
-}
-
-.catalog-breadcrumb a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.catalog-breadcrumb a:hover {
-  text-decoration: underline;
-}
-
-.catalog-breadcrumb--dark {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.catalog-breadcrumb--dark li[aria-current="page"] {
-  color: #fde047;
-}
-
-.catalog-module-grid {
-  display: grid;
-  gap: 1.15rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.catalog-module-card {
-  --module-color: #1d4ed8;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-top: 4px solid var(--module-color);
-  border-radius: 18px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
-  color: #1e293b;
-  display: flex;
-  flex-direction: column;
-  min-height: 294px;
-  overflow: hidden;
-  padding: 1.5rem;
-  position: relative;
-  text-decoration: none;
-  transition: border-color 200ms ease, box-shadow 200ms ease,
-    transform 200ms ease;
-}
-
-.catalog-module-card::after {
-  background: var(--module-color);
-  border-radius: 50%;
-  content: "";
-  height: 150px;
-  opacity: 0.045;
-  position: absolute;
-  right: -54px;
-  top: -58px;
-  width: 150px;
-}
-
-.catalog-module-card--position {
-  --module-color: #15803d;
-}
-
-.catalog-module-card--shift {
-  --module-color: #0f172a;
-}
-
-.catalog-module-card--payroll {
-  --module-color: #d97706;
-}
-
-.catalog-module-card:hover,
-.catalog-module-card:focus-visible {
-  border-color: var(--module-color);
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
-  color: #1e293b;
-  outline: none;
-  transform: translateY(-4px);
-}
-
-.catalog-module-card:focus-visible {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--module-color) 18%, transparent),
-    0 18px 42px rgba(15, 23, 42, 0.14);
-}
-
-.catalog-module-index {
-  color: #cbd5e1;
-  font-family: var(--font-display);
-  font-size: 2.5rem;
-  font-weight: 700;
-  line-height: 1;
-  position: absolute;
-  right: 1.25rem;
-  top: 1.05rem;
-}
-
-.catalog-module-card-top {
-  align-items: flex-start;
-  display: flex;
-  justify-content: space-between;
-  min-height: 86px;
-}
-
-.catalog-module-type {
-  background: color-mix(in srgb, var(--module-color) 9%, white);
-  border-radius: 999px;
-  color: var(--module-color);
-  font-size: 0.66rem;
-  font-weight: 800;
-  margin-right: 3.5rem;
-  padding: 0.38rem 0.7rem;
-  text-transform: uppercase;
-}
-
-.catalog-module-copy {
-  margin-top: 1rem;
-}
-
-.catalog-module-copy > small {
-  color: var(--module-color);
-  font-size: 0.67rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.catalog-module-copy h2 {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin: 0.3rem 0 0.45rem;
-}
-
-.catalog-module-copy p {
-  color: #64748b;
-  font-size: 0.86rem;
-  line-height: 1.65;
-  margin: 0;
-  max-width: 470px;
-}
-
-.catalog-module-link {
-  align-items: center;
-  color: var(--module-color);
-  display: inline-flex;
-  font-size: 0.78rem;
-  font-weight: 800;
-  gap: 0.4rem;
-  margin-top: auto;
-  padding-top: 1.15rem;
-}
-
-.catalog-module-link i {
-  transition: transform 180ms ease;
-}
-
-.catalog-module-card:hover .catalog-module-link i {
-  transform: translate(3px, -3px);
-}
-
 /* Interaction system dùng chung */
-.catalog-command-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1.25rem 1.5rem;
-  min-height: 150px;
-}
-
-/* Cột nội dung bên trái co giãn theo bề ngang. min-width: 0 rất quan trọng:
-   cho phép cột này co lại thay vì đẩy cụm nút bên phải ra ngoài khung,
-   nhờ đó tiêu đề dài sẽ xuống dòng chứ không bị cắt mất chữ. */
-.catalog-command-bar > :first-child {
-  flex: 1 1 26rem;
+/* Bộ lọc chiếm trọn một hàng, cụm nút hành động nằm cạnh dưới và căn phải.
+   Bố cục hai hàng cố định này ổn định ở mọi bề rộng màn hình; nếu ép tất cả
+   vào một hàng thì tổng bề rộng tối thiểu vượt quá khung và nút "Lọc" sẽ bị
+   bỏ trơi xuống dòng dưới. min-width: 0 cho phép các ô co lại an toàn. */
+.catalog-filter-form {
+  flex: 1 1 100%;
   min-width: 0;
 }
 
-.catalog-command-bar .catalog-title {
-  overflow-wrap: anywhere;
-}
-
-.catalog-command-bar .btn-light {
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.22);
-  transition: transform 180ms ease, box-shadow 180ms ease;
-  z-index: 1;
-}
-
-.catalog-command-bar .btn-light:hover {
-  box-shadow: 0 16px 32px rgba(2, 6, 23, 0.3);
-  transform: translateY(-2px);
-}
-
-.catalog-command-actions {
-  align-items: center;
-  display: flex;
+/* Cụm nút hành động luôn bám mép phải, kể cả khi rớt xuống hàng dưới bộ lọc. */
+.catalog-toolbar-actions {
   flex: 0 0 auto;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  position: relative;
-  z-index: 1;
-}
-
-.catalog-back-action {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 11px;
-  color: #fff;
-  display: inline-flex;
-  font-size: 0.8rem;
-  font-weight: 700;
-  gap: 0.45rem;
-  padding: 0.55rem 0.8rem;
-  text-decoration: none;
-  transition: background 180ms ease, border-color 180ms ease;
-}
-
-.catalog-back-action:hover,
-.catalog-back-action:focus-visible {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: #fde047;
-  color: #fde047;
-  outline: none;
-}
-
-.catalog-filter-form {
-  max-width: 520px;
+  margin-left: auto;
 }
 
 .catalog-card {
@@ -1087,53 +630,15 @@
   }
 }
 
+
 @media (max-width: 767px) {
-  .catalog-hub-hero {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .catalog-hub-status {
-    width: 100%;
-  }
-
-  .catalog-module-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .catalog-module-type {
-    margin-right: 2.8rem;
-  }
-
-  .catalog-command-bar {
-    align-items: flex-start !important;
-    flex-direction: column;
-  }
-
-  .catalog-command-actions,
-  .catalog-command-bar .btn-light,
   .catalog-filter-form {
     width: 100%;
-  }
-
-  .catalog-command-actions > a {
-    justify-content: center;
-    flex: 1 1 auto;
   }
 
   .catalog-toast-stack {
     left: 1rem;
     right: 1rem;
-  }
-
-  .catalog-module-mark {
-    flex-basis: 64px;
-    height: 62px;
-    width: 64px;
-  }
-
-  .catalog-module-mark--payroll {
-    width: 78px;
   }
 }
 
@@ -1152,99 +657,6 @@
    ========================================================================== */
 
 /* Họa tiết Art Deco hình học mạ vàng trên nền banner */
-.catalog-art-deco-pattern {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle at 1px 1px, rgba(212, 175, 55, 0.18) 1px, transparent 0);
-  background-size: 24px 24px;
-  pointer-events: none;
-  opacity: 0.85;
-}
-
-/* Status Pill và Beacon phát sáng trên Hub */
-.catalog-hub-status-group {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.catalog-status-beacon {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.3rem;
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
-}
-
-.catalog-hub-demo-pill {
-  font-size: 0.72rem;
-  color: #fde047;
-  background: rgba(254, 240, 138, 0.12);
-  border: 1px solid rgba(254, 240, 138, 0.3);
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-  backdrop-filter: blur(4px);
-}
-
-/* Metric Pills trên thẻ Hub */
-.catalog-metric-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.catalog-metric-pill {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-}
-
-.catalog-metric-pill--primary {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-}
-
-.catalog-metric-pill--secondary {
-  background: #f8fafc;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-}
-
-.catalog-metric-pill--success {
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
-}
-
-.catalog-metric-pill--warning {
-  background: #fffbeb;
-  color: #b45309;
-  border: 1px solid #fde68a;
-}
-
-.catalog-metric-pill--dark {
-  background: #0f172a;
-  color: #fde047;
-  border: 1px solid #334155;
-}
-
-.catalog-quick-btn {
-  font-size: 0.78rem;
-  transition: all 180ms ease;
-}
-
-.catalog-quick-btn:hover {
-  transform: translateY(-2px);
-}
 
 /* Thanh Tabs điều hướng 4 phân hệ liên thông */
 .catalog-nav-tabs-wrapper {
@@ -1600,34 +1012,6 @@
   color: #172554;
 }
 
-.employee-workspace .catalog-hero {
-  border-color: rgba(212, 175, 55, .55);
-  background: linear-gradient(135deg, #111c33 0%, #0f172a 62%, #090e1a 100%);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, .18), inset 0 1px rgba(255, 255, 255, .05);
-}
-
-.employee-workspace .catalog-hero .badge.bg-warning {
-  color: #090e1a !important;
-  background: #fde047 !important;
-}
-
-.employee-workspace .catalog-command-bar .btn-light {
-  color: #0f172a;
-  border-color: rgba(15, 23, 42, .14);
-  background: #ffffff;
-  box-shadow: 0 8px 20px rgba(2, 6, 23, .18);
-}
-
-.employee-workspace .catalog-command-bar .btn-light i {
-  color: #0d6efd !important;
-}
-
-.employee-workspace .catalog-command-bar .btn-light:hover {
-  color: #0f172a;
-  border-color: rgba(15, 23, 42, .28);
-  background: #f8fafc;
-}
-
 .employee-workspace .catalog-nav-tabs-wrapper,
 .employee-workspace .catalog-card {
   border: 1px solid #e2e8f0;
@@ -1689,28 +1073,10 @@
   background: linear-gradient(135deg, #1e3a8a, #090e1a);
 }
 
-.employee-workspace .catalog-action-btn,
-.employee-workspace .btn-outline-secondary,
-.employee-workspace .btn-outline-primary,
-.employee-workspace .btn-outline-danger {
-  color: #172554;
-  border-color: #e2e8f0;
-  background: #ffffff;
-}
-
-.employee-workspace .catalog-action-btn:hover,
-.employee-workspace .btn-outline-secondary:hover,
-.employee-workspace .btn-outline-primary:hover {
-  color: #172554;
-  border-color: #1e3a8a;
-  background: #eff6ff;
-}
-
-.employee-workspace .btn-outline-danger:hover {
-  color: #dc2626;
-  border-color: #ef4444;
-  background: #fef2f2;
-}
+/* Không còn ép màu cho nhóm nút outline trong .employee-workspace: mọi nút
+   (thêm, xuất CSV, in, sửa, ẩn) giờ giữ đúng màu Bootstrap mặc định, đồng
+   nhất với 5 tab danh mục còn lại. Nhóm cũ từng đè lên .btn-hotel-primary
+   và biến nút chính "Thêm nhân viên" thành nền trắng. */
 
 .employee-workspace .catalog-badge {
   color: #1e3a8a;
@@ -1796,7 +1162,6 @@
 @media print {
   header,
   footer,
-  .catalog-command-bar,
   .catalog-nav-tabs-wrapper,
   .catalog-toolbar,
   .catalog-action-btn,

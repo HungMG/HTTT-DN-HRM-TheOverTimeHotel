@@ -40,67 +40,6 @@
 .account-workspace--bleed { width: 100%; max-width: 1580px; }
 .account-workspace a { text-decoration: none; }
 
-.account-command-bar {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  min-height: 92px;
-  padding: 16px 18px;
-  margin-bottom: 16px;
-  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,249,252,.98));
-  border: 1px solid var(--aw-line);
-  border-radius: 12px;
-  box-shadow: inset 0 1px rgba(255,255,255,.8), 0 12px 28px rgba(15,23,42,.08);
-}
-.account-product-mark {
-  display: grid;
-  place-items: center;
-  position: relative;
-  width: 54px;
-  height: 54px;
-  flex: 0 0 54px;
-  border: 1px solid rgba(212, 175, 55, .55);
-  border-radius: 14px;
-  background: linear-gradient(145deg, #1e3a8a, #0f172a);
-  box-shadow: 0 8px 22px rgba(30, 58, 138, .2), inset 0 0 20px rgba(255, 255, 255, .08);
-}
-.account-product-mark span { position: absolute; display: block; width: 5px; border-radius: 10px; background: var(--aw-violet-bright); box-shadow: 0 0 12px rgba(184, 156, 255, .65); }
-.account-product-mark span:nth-child(1) { height: 15px; transform: translate(-10px, 4px); }
-.account-product-mark span:nth-child(2) { height: 29px; transform: translate(0, -2px); }
-.account-product-mark span:nth-child(3) { height: 21px; transform: translate(10px, 1px); }
-.account-command-copy { min-width: 0; flex: 1; }
-.account-command-bar--accounts-index { min-height: 138px; padding-top: 50px; }
-.account-command-bar--accounts-index {
-  border-color: rgba(125, 211, 252, .38);
-  background:
-    radial-gradient(ellipse at 90% -42%, rgba(186, 230, 253, .34), transparent 45%),
-    radial-gradient(ellipse at 64% 145%, rgba(37, 99, 235, .5), transparent 58%),
-    radial-gradient(circle at 18% 12%, rgba(59, 130, 246, .18), transparent 28%),
-    linear-gradient(108deg, #020617 0%, #071a46 48%, #0b3b88 100%);
-  box-shadow: 0 14px 30px rgba(2, 6, 23, .24), inset 0 1px rgba(255, 255, 255, .08), inset 0 -1px rgba(125, 211, 252, .1);
-}
-.account-dashboard-breadcrumb { position: absolute; top: 17px; left: 18px; display: flex; align-items: center; gap: 9px; color: rgba(255, 255, 255, .72); font-size: .76rem; font-weight: 650; }
-.account-dashboard-breadcrumb a { color: rgba(255, 255, 255, .78); transition: color .18s ease; }
-.account-dashboard-breadcrumb a:hover { color: #fde047; }
-.account-dashboard-breadcrumb a i { margin-right: 5px; }
-.account-dashboard-breadcrumb > span { color: #d4af37; font-size: 1rem; line-height: 1; }
-.account-dashboard-breadcrumb strong { color: #fde047; font-weight: 750; }
-.account-command-brandline { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-bottom: 4px; }
-.account-hotel-badge { font-size: .65rem; line-height: 1.15; }
-.account-command-brandline .account-eyebrow { margin-bottom: 0; }
-.account-eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; color: var(--aw-muted); font-size: .66rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
-.account-live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--aw-green); box-shadow: 0 0 0 4px rgba(88, 214, 141, .1), 0 0 14px rgba(88, 214, 141, .7); }
-.account-command-copy h1 { margin: 0; font-family: var(--font-display); font-size: var(--page-title-size); font-weight: 700; letter-spacing: -.02em; }
-.account-command-copy h1 span { color: #acaebe; font-weight: 420; }
-.account-command-copy p { display: block; width: 100%; margin: 5px 0 0; color: var(--aw-muted); font-size: .82rem; }
-.account-command-actions { display: flex; align-items: center; gap: 10px; }
-.account-dashboard-action { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .55rem .8rem; color: #ffffff; border: 1px solid rgba(255, 255, 255, .28); border-radius: 11px; background: rgba(255, 255, 255, .08); font-size: .8rem; font-weight: 700; transition: background .18s ease, border-color .18s ease, color .18s ease; }
-.account-dashboard-action i { color: #ffffff; font-size: .9rem; }
-.account-dashboard-action--inline { display: flex; width: fit-content; min-height: 46px; margin-top: 14px; padding-inline: 1rem; }
-.account-dashboard-action:hover { color: #fde047; border-color: #fde047; background: rgba(255, 255, 255, .16); }
-.account-dashboard-action:focus-visible { outline: 2px solid #fde047; outline-offset: 2px; }
 .account-environment-pill { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; color: var(--aw-muted); border: 1px solid var(--aw-line); border-radius: 8px; background: rgba(255,255,255,.025); font-size: .72rem; }
 .account-environment-pill i { color: var(--aw-green); }
 .account-environment-pill strong { color: var(--aw-text); font-weight: 650; }
@@ -110,6 +49,40 @@
 .account-primary-action:focus-visible, .account-form-actions button:focus-visible, .account-row-actions a:focus-visible, .account-row-actions button:focus-visible { outline: 2px solid var(--aw-violet-bright); outline-offset: 2px; }
 .account-icon-action { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; color: var(--aw-text); border: 1px solid var(--aw-line-strong); border-radius: 9px; background: rgba(255,255,255,.035); transition: .18s ease; }
 .account-icon-action:hover { color: var(--aw-violet); border-color: rgba(30,58,138,.35); background: rgba(30,58,138,.07); }
+
+/* Thanh công cụ thay cho băng hero navy cũ: tiêu đề đã nằm ở .app-topbar nên
+   ở đây chỉ giữ nút quay lại, một dòng mô tả ngắn và thao tác liên quan. */
+.account-toolbar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 58px;
+  padding: 9px 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--aw-line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,249,252,.98));
+  box-shadow: 0 8px 22px rgba(15,23,42,.06), inset 0 1px rgba(255,255,255,.8);
+}
+.account-toolbar-note {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--aw-muted);
+  font-size: .8rem;
+  line-height: 1.4;
+}
+.account-toolbar-note i { color: var(--aw-violet); font-size: .95rem; flex: 0 0 auto; }
+.account-toolbar-note b { color: var(--aw-text); font-weight: 700; }
+/* Màn hình hẹp: gộp về nhiều dòng thay vì tràn ngang. */
+@media (max-width: 767.98px) {
+  .account-toolbar { flex-wrap: wrap; }
+  .account-toolbar-note { flex-basis: 100%; order: 3; }
+}
 
 .account-notice { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 13px; margin-bottom: 14px; border: 1px solid; border-radius: 9px; font-size: .78rem; }
 .account-notice span { flex: 1; }
@@ -292,9 +265,6 @@
 /* Readable type scale — tiêu đề dùng chung token --page-title-size với nhóm
    danh mục nên không khai báo lại cỡ chữ ở đây (trước đây đặt clamp() riêng
    khiến tiêu đề lệch cỡ so với các trang còn lại). */
-.account-eyebrow { font-size: .76rem; }
-.account-command-copy p { font-size: .94rem; }
-.account-dashboard-action { font-size: .8rem; }
 .account-environment-pill { min-height: 44px; font-size: .84rem; }
 .account-primary-action,
 .account-form-actions button { min-height: 46px; padding-inline: 20px; font-size: .9rem; }
@@ -558,8 +528,6 @@
 }
 @media (max-width: 860px) {
   .account-workspace { padding: 12px; border-radius: 12px; }
-  .account-command-bar { align-items: flex-start; flex-wrap: wrap; }
-  .account-command-actions { width: 100%; justify-content: flex-end; }
   .account-editor-grid, .account-inspector-layout { grid-template-columns: 1fr; }
   .account-outline-panel, .account-preview-panel { position: static; }
   .account-outline-panel { display: grid; grid-template-columns: 1fr 1fr; }
@@ -571,12 +539,6 @@
 @media (max-width: 575px) {
   /* Bỏ width: calc(100vw - 12px): 100vw tính cả thanh cuộn nên khối rộng
      hơn khung chứa 4px và sinh thanh cuộn ngang trên màn hình hẹp. */
-  .account-command-bar--accounts-index { min-height: 142px; padding-top: 46px; }
-  .account-dashboard-breadcrumb { top: 13px; left: 12px; font-size: .7rem; }
-  .account-command-copy p { display: none; }
-  .account-product-mark { width: 44px; height: 44px; flex-basis: 44px; }
-  .account-command-actions { justify-content: stretch; }
-  .account-dashboard-action--inline { margin-top: 9px; }
   .account-environment-pill { display: none; }
   .account-primary-action { flex: 1; }
   .account-stat-grid { grid-template-columns: 1fr 1fr; gap: 7px; }
@@ -690,49 +652,8 @@
     linear-gradient(90deg, rgba(30, 58, 138, .03) 1px, transparent 1px);
 }
 
-/* Header navy với nhấn vàng thương hiệu. */
-.account-command-bar {
-  color: #ffffff;
-  border: 1px solid rgba(212, 175, 55, .42);
-  background: linear-gradient(135deg, var(--hotel-navy), var(--hotel-blue));
-  box-shadow: 0 16px 36px rgba(15, 23, 42, .18);
-}
-
-/* Banner danh sách tài khoản dùng cùng bảng màu với banner danh mục chức vụ. */
-.account-command-bar--accounts-index {
-  overflow: hidden;
-  border-color: rgba(212, 175, 55, .42);
-  background: linear-gradient(135deg, var(--hotel-navy), var(--hotel-blue));
-  box-shadow: 0 16px 36px rgba(15, 23, 42, .18);
-}
-
-.account-product-mark {
-  border-color: #d4af37;
-  background: linear-gradient(145deg, #111c33, #090e1a);
-  box-shadow: 0 8px 18px rgba(9, 14, 26, .28), inset 0 0 18px rgba(255, 255, 255, .05);
-}
-
-.account-product-mark span {
-  background: #d4af37;
-  box-shadow: 0 0 6px rgba(212, 175, 55, .28);
-}
-
-.account-eyebrow { color: #fde047; }
-.account-command-copy h1,
-.account-command-copy h1 span,
 .account-environment-pill strong { color: #ffffff; }
-.account-command-bar--accounts-index .account-command-copy h1 {
-  color: #ffffff;
-  -webkit-text-stroke: 0;
-  text-shadow: none;
-}
-.account-command-copy p { color: rgba(226, 232, 240, .72); }
 .account-environment-pill { color: rgba(226, 232, 240, .82); }
-
-.account-live-dot {
-  background: #10b981;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, .12);
-}
 
 .account-environment-pill {
   border-color: rgba(212, 175, 55, .72);
@@ -758,21 +679,7 @@
   box-shadow: 0 10px 24px rgba(15, 23, 42, .22);
 }
 
-/* Nút tạo tài khoản tách khỏi nền banner royal blue. */
-.account-command-actions .account-primary-action {
-  color: #ffffff;
-  border-color: rgba(212, 175, 55, .65);
-  background: #0f172a;
-  box-shadow: 0 8px 20px rgba(9, 14, 26, .34);
-}
-
-.account-command-actions .account-primary-action:hover {
-  color: #ffffff;
-  border-color: #fde047;
-  background: #111c33;
-  box-shadow: 0 11px 26px rgba(9, 14, 26, .45);
-}
-
+/* Ma trận phân quyền theo vai trò. */
 .account-role-permission-trigger { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 7px; background: #eff6ff; font-size: .68rem; font-weight: 800; }
 .account-role-permission-trigger:hover { color: #fff; border-color: #1d4ed8; background: #1d4ed8; }
 .account-role-permission-dialog { width: min(700px, calc(100vw - 28px)); padding: 0; border: 1px solid #dbe4f0; border-radius: 14px; box-shadow: 0 24px 70px rgba(15,23,42,.3); }

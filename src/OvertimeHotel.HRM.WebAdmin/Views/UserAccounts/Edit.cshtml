@@ -10,19 +10,18 @@
 }
 
 <div class="account-workspace account-workspace--bleed account-form-workspace">
-    <header class="account-command-bar account-reveal">
+    <div class="account-toolbar account-reveal">
         <a asp-action="Index" class="account-icon-action" aria-label="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
-        <div class="account-command-copy">
-            <div class="account-eyebrow"><span class="account-live-dot"></span> Tài khoản / @Model.AccountId.ToString("D3")</div>
-            <h1>Chỉnh sửa <span>tài khoản</span></h1>
-            <p>Điều chỉnh thông tin đăng nhập, kênh vai trò và khóa bảo mật.</p>
+        <div class="account-toolbar-note">
+            <i class="bi bi-person-gear"></i>
+            <span>Tài khoản <b>#@Model.AccountId.ToString("D3")</b> · Điều chỉnh thông tin đăng nhập, kênh vai trò và khóa bảo mật.</span>
         </div>
         <div class="account-environment-pill">
             <i class="bi @(Model.IsActive ? "bi-play-fill" : "bi-pause-fill")"></i>
             <span>Trạng thái</span>
             <strong>@(Model.IsActive ? "Hoạt động" : "Đã khóa")</strong>
         </div>
-    </header>
+    </div>
 
     @if (!ViewData.ModelState.IsValid)
     {
