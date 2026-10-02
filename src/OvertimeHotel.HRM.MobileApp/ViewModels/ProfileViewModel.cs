@@ -39,7 +39,6 @@ public class ProfileViewModel : INotifyPropertyChanged
     private string _popupIconBgColor = "#FFFBEB";
     private string _popupIconTextColor = "#B45309";
     private string _popupBorderColor = "#D4AF37";
-    private bool _isPasswordSuccess;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -275,7 +274,6 @@ public class ProfileViewModel : INotifyPropertyChanged
 
             if (success)
             {
-                _isPasswordSuccess = true;
                 CurrentPassword = string.Empty;
                 NewPassword = string.Empty;
                 ConfirmPassword = string.Empty;
@@ -284,13 +282,11 @@ public class ProfileViewModel : INotifyPropertyChanged
             }
             else
             {
-                _isPasswordSuccess = false;
                 ShowPopup("Đổi Mật Khẩu Thất Bại", message, false);
             }
         }
         catch (Exception ex)
         {
-            _isPasswordSuccess = false;
             ShowPopup("Lỗi Hệ Thống", ex.Message, false);
         }
         finally
