@@ -19,35 +19,33 @@
                         Stroke="Transparent"
                         StrokeThickness="0"
                         BackgroundColor="#0B1B4D"
-                        Padding="24,52,24,42"
-                        StrokeShape="RoundRectangle 0,0,0,36">
+                        Padding="24,52,24,46"
+                        StrokeShape="RoundRectangle 36">
                     <Border.Shadow>
                         <Shadow Brush="#020817" Offset="0,6" Radius="18" Opacity="0.22" />
                     </Border.Shadow>
 
-                    <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
 
                         <!--
-                            Ảnh brand_mark_navy.png đã có sẵn đĩa kem + vành kim
-                            dựng sẵn trong file. Bọc thêm một vòng vàng ở đây sẽ tạo
-                            hai vòng tròn lồng nhau nên chỉ cần khung trong suốt để
-                            giữ bóng đổ và khoảng cách, không vẽ vành.
+                            Dùng đúng icon ứng dụng (app_icon.png = bản sao của
+                            Resources/AppIcon/appicon.png đưa vào MauiImage để XAML
+                            gọi được). Khung bọc chỉ để CẮT BO TRÒN chứ không trang
+                            trí: không Stroke, không Shadow, không viền gì thêm.
+                            Ô vuông gốc có gradient xanh sáng hơn dải #0B1B4D nên để
+                            nguyên sẽ lộ thành miếng dán vuông; bo tròn đúng kiểu
+                            launcher làm icon hòa vào dải mà vẫn nguyên tác.
                         -->
                         <Border Stroke="Transparent"
                                 StrokeThickness="0"
                                 BackgroundColor="Transparent"
-                                StrokeShape="RoundRectangle 46"
-                                WidthRequest="96"
-                                HeightRequest="96"
+                                StrokeShape="RoundRectangle 70"
+                                WidthRequest="140"
+                                HeightRequest="140"
                                 HorizontalOptions="Center">
-                            <Border.Shadow>
-                                <Shadow Brush="#000000" Offset="0,8" Radius="20" Opacity="0.4" />
-                            </Border.Shadow>
-                            <Image Source="brand_mark_navy.png"
-                                   WidthRequest="96"
-                                   HeightRequest="96"
-                                   Aspect="AspectFit"
-                                   SemanticProperties.Description="Huy hiệu The OverTime Hotel" />
+                            <Image Source="app_icon.png"
+                                   Aspect="AspectFill"
+                                   SemanticProperties.Description="Biểu trưng ứng dụng The OverTime Hotel" />
                         </Border>
 
                         <Label Text="THE OVERTIME HOTEL"
@@ -62,19 +60,6 @@
                                FontSize="12"
                                FontFamily="SegoeUI"
                                HorizontalTextAlignment="Center" />
-
-                        <Border StrokeShape="RoundRectangle 12"
-                                Stroke="#D4AF37"
-                                StrokeThickness="1"
-                                BackgroundColor="#1E3A8A"
-                                Padding="14,5"
-                                HorizontalOptions="Center">
-                            <Label Text="CỔNG NHÂN SỰ DI ĐỒNG · 5★"
-                                   TextColor="#FDE047"
-                                   FontSize="10"
-                                   FontFamily="SegoeUIBold"
-                                   CharacterSpacing="1.2" />
-                        </Border>
                     </VerticalStackLayout>
                 </Border>
 

@@ -85,7 +85,17 @@
 		     phóng to một bản 96px duy nhất trên máy màn hình 4×. -->
 		<MauiImage Update="Resources\Images\brand_mark_light.png" Resize="True" BaseSize="128,128" />
 		<MauiImage Update="Resources\Images\brand_mark_navy.png" Resize="True" BaseSize="128,128" />
-		
+
+		<!-- Icon ứng dụng, bản sao của Resources\AppIcon\appicon.png.
+		     MauiIcon chỉ là đầu vào cho launcher/splash lúc build, KHÔNG đăng ký
+		     vào MauiImage nên XAML không gọi được; bản sao trong Resources\Images
+		     mới là thứ LoginPage trỏ tới (Source="app_icon.png").
+		     BaseSize="140,140" đúng bằng kích thước hiển thị trên LoginPage nên
+		     Resizetizer xuất đúng bản theo từng mật độ, không phóng một bản
+		     1024px duy nhất trên máy màn hình 4×. Sửa icon thì cập nhật cả hai
+		     vị trí (AppIcon và Images) để khớp nhau. -->
+		<MauiImage Update="Resources\Images\app_icon.png" Resize="True" BaseSize="140,140" />
+
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />
 
