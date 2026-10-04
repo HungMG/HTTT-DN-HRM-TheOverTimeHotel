@@ -28,25 +28,19 @@
                     <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
 
                         <!--
-                            Dùng đúng icon ứng dụng (app_icon.png = bản sao của
-                            Resources/AppIcon/appicon.png đưa vào MauiImage để XAML
-                            gọi được). Khung bọc chỉ để CẮT BO TRÒN chứ không trang
-                            trí: không Stroke, không Shadow, không viền gì thêm.
-                            Ô vuông gốc có gradient xanh sáng hơn dải #0B1B4D nên để
-                            nguyên sẽ lộ thành miếng dán vuông; bo tròn đúng kiểu
-                            launcher làm icon hòa vào dải mà vẫn nguyên tác.
+                            Bộ dấu của khách sạn, nền TRONG SUỐT (app_icon.png do
+                            scripts/generate_mobile_brand_icons.py sinh, cùng bộ
+                            sinh ra icon launcher). Nhờ vậy đĩa kem + vành kim tự
+                            nổi lên trên dải #0B1B4D: không còn ô xanh nào đè lên
+                            icon, và cũng không cần khung bo tròn để cắt — hình
+                            tròn đã nằm sẵn trong ảnh. Không Stroke, không Shadow.
                         -->
-                        <Border Stroke="Transparent"
-                                StrokeThickness="0"
-                                BackgroundColor="Transparent"
-                                StrokeShape="RoundRectangle 70"
-                                WidthRequest="140"
-                                HeightRequest="140"
-                                HorizontalOptions="Center">
-                            <Image Source="app_icon.png"
-                                   Aspect="AspectFill"
-                                   SemanticProperties.Description="Biểu trưng ứng dụng The OverTime Hotel" />
-                        </Border>
+                        <Image Source="app_icon.png"
+                               Aspect="AspectFit"
+                               WidthRequest="156"
+                               HeightRequest="156"
+                               HorizontalOptions="Center"
+                               SemanticProperties.Description="Biểu trưng ứng dụng The OverTime Hotel" />
 
                         <Label Text="THE OVERTIME HOTEL"
                                TextColor="#FFFFFF"
