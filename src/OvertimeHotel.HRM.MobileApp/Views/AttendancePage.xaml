@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:models="clr-namespace:OvertimeHotel.HRM.MobileApp.Models"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.AttendancePage"
+             x:DataType="vm:AttendanceViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="*,Auto">
+
+        <!-- ==================== NỘI DUNG CHÍNH ==================== -->
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Spacing="16" Padding="20,24,20,32">
+
+                <!-- HEADER: NÚT QUAY LẠI & TIÊU ĐỀ -->
+                <Grid x:Name="pageHeader" Opacity="0" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
+                    <Button Grid.Column="0"
+                            Text="← Quay Lại"
+                            Clicked="OnBackButtonClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="12"
+                            BackgroundColor="#EFF6FF"
+                            TextColor="#1E3A8A"
+                            BorderColor="#BFDBFE"
+                            BorderWidth="1"
+                            CornerRadius="10"
+                            HeightRequest="36"
+                            Padding="12,0" />
+
+                    <Label Grid.Column="1"
+                           Text="Chấm Công"
+                           FontFamily="SegoeUIBold"
+                           FontSize="18"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+
+                    <Image Grid.Column="2"
+                           Source="brand_mark_light.png"
+                           WidthRequest="28"
+                           HeightRequest="28"
+                           Aspect="AspectFit"
+                           VerticalOptions="Center"
+                           SemanticProperties.Description="Huy hiệu The OverTime Hotel" />
+                </Grid>
+
+                <!-- SKELETON SHIMMER KHI ĐANG TẢI (thay cho ActivityIndicator) -->
+                <VerticalStackLayout x:Name="skeletonLayout" Spacing="14" IsVisible="{Binding IsLoading}">
+                    <Border StrokeShape="RoundRectangle 20" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="18">
+                        <VerticalStackLayout Spacing="12">
+                            <BoxView HeightRequest="14" WidthRequest="120" Color="#E2E8F0" HorizontalOptions="Start" />
+                            <BoxView HeightRequest="30" WidthRequest="200" Color="#E2E8F0" HorizontalOptions="Start" />
+                            <BoxView HeightRequest="14" WidthRequest="160" Color="#E2E8F0" HorizontalOptions="Start" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border StrokeShape="RoundRectangle 20" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="18">
+                        <VerticalStackLayout Spacing="12">
+                            <BoxView HeightRequest="56" Color="#E2E8F0" />
+                            <BoxView HeightRequest="14" WidthRequest="180" Color="#E2E8F0" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border StrokeShape="RoundRectangle 20" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="18">
+                        <VerticalStackLayout Spacing="10">
+                            <BoxView HeightRequest="12" Color="#E2E8F0" />
+                            <BoxView HeightRequest="12" Color="#E2E8F0" />
+                            <BoxView HeightRequest="12" Color="#E2E8F0" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- ============ THẺ CA LÀM VIỆC HÔM NAY ============ -->
+                <Border x:Name="shiftCard"
+                        Opacity="0"
+                        IsVisible="{Binding HasShiftToday}"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#E2E8F0"
+                        BackgroundColor="#FFFFFF"
+                        Padding="18">
+                    <VerticalStackLayout Spacing="14">
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label Grid.Column="0"
+                                   Text="{Binding ShiftName}"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="16"
+                                   TextColor="#0F172A"
+                                   VerticalOptions="Center" />
+
+                            <Border Grid.Column="1"
+                                    BackgroundColor="{Binding StatusBgColor}"
+                                    Stroke="Transparent"
+                                    StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 20"
+                                    Padding="12,5"
+                                    VerticalOptions="Center">
+                                <Label Text="{Binding StatusText}"
+                                       FontFamily="SegoeUIBold"
+                                       FontSize="10"
+                                       CharacterSpacing="1.2"
+                                       TextColor="{Binding StatusTextColor}" />
+                            </Border>
+                        </Grid>
+
+                        <Label Text="{Binding ShiftTimeText}"
+                               FontFamily="SegoeUI"
+                               FontSize="28"
+                               TextColor="#1E3A8A"
+                               HorizontalOptions="Center" />
+
+                        <!-- Hai ô giờ vào / giờ ra -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <Border Grid.Column="0" StrokeShape="RoundRectangle 16" BackgroundColor="#F8FAFC" Stroke="#E2E8F0" Padding="14,10">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="VÀO CA" FontFamily="SegoeUIBold" FontSize="9" CharacterSpacing="1.2" TextColor="#94A3B8" HorizontalOptions="Center" />
+                                    <Label Text="{Binding CheckInTimeText}" FontFamily="SegoeUIBold" FontSize="18" TextColor="#0F172A" HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+                            <Border Grid.Column="1" StrokeShape="RoundRectangle 16" BackgroundColor="#F8FAFC" Stroke="#E2E8F0" Padding="14,10">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="RA CA" FontFamily="SegoeUIBold" FontSize="9" CharacterSpacing="1.2" TextColor="#94A3B8" HorizontalOptions="Center" />
+                                    <Label Text="{Binding CheckOutTimeText}" FontFamily="SegoeUIBold" FontSize="18" TextColor="#0F172A" HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </Grid>
+
+                        <BoxView HeightRequest="1" Color="#F1F5F9" />
+
+                        <!-- Ba chỉ số đối soát: đi trễ / về sớm / OT -->
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                <Label Text="ĐI TRỄ" FontFamily="SegoeUI" FontSize="9" TextColor="#94A3B8" HorizontalOptions="Center" />
+                                <Label Text="{Binding PhutDiTreText}" FontFamily="SegoeUIBold" FontSize="15" TextColor="#B45309" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="VỀ SỚM" FontFamily="SegoeUI" FontSize="9" TextColor="#94A3B8" HorizontalOptions="Center" />
+                                <Label Text="{Binding PhutVeSomText}" FontFamily="SegoeUIBold" FontSize="15" TextColor="#1D4ED8" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="2" Spacing="2">
+                                <Label Text="LÀM THÊM" FontFamily="SegoeUI" FontSize="9" TextColor="#94A3B8" HorizontalOptions="Center" />
+                                <Label Text="{Binding GioOtText}" FontFamily="SegoeUIBold" FontSize="15" TextColor="#059669" HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ============ NÚT QUẹT THẺ LỚN ============ -->
+                <Border x:Name="punchCard"
+                        Opacity="0"
+                        IsVisible="{Binding HasShiftToday}"
+                        StrokeShape="RoundRectangle 22"
+                        BackgroundColor="#FFFFFF"
+                        Stroke="#D4AF37"
+                        StrokeThickness="2"
+                        Padding="18,20">
+                    <VerticalStackLayout Spacing="12">
+
+                        <Label Text="{Binding ActionButtonIcon}"
+                               FontFamily="SegoeUIBold"
+                               FontSize="34"
+                               TextColor="#D4AF37"
+                               HorizontalOptions="Center" />
+
+                        <Button x:Name="btnPunch"
+                                Text="{Binding ActionButtonText}"
+                                Clicked="OnPunchClicked"
+                                FontFamily="SegoeUIBold"
+                                FontSize="18"
+                                CharacterSpacing="1.5"
+                                TextColor="White"
+                                BackgroundColor="{Binding ActionButtonColor}"
+                                BorderWidth="0"
+                                CornerRadius="18"
+                                HeightRequest="66"
+                                IsEnabled="{Binding CanPunchCard}" />
+
+                        <Label x:Name="lblPunchHint"
+                               Text="Chạm để quẹt thẻ vào ca"
+                               FontFamily="SegoeUI"
+                               FontSize="11"
+                               TextColor="#94A3B8"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ============ THÔNG BÁO KHÔNG CÓ CA ============ -->
+                <Border x:Name="noShiftCard"
+                        Opacity="0"
+                        IsVisible="{Binding HasNoShiftToday}"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#E2E8F0"
+                        BackgroundColor="#FFFFFF"
+                        Padding="18">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="○" FontFamily="SegoeUIBold" FontSize="30" TextColor="#94A3B8" HorizontalOptions="Center" />
+                        <Label Text="{Binding ShiftName}" FontFamily="SegoeUIBold" FontSize="15" TextColor="#0F172A" HorizontalOptions="Center" />
+                        <Label Text="{Binding ShiftTimeText}" FontFamily="SegoeUI" FontSize="12" TextColor="#64748B" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ============ LỊCH SỬ CHẤM CÔNG THÁNG ============ -->
+                <Grid x:Name="historySection" Opacity="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="0,6,0,0">
+                    <Button Grid.Column="0"
+                            Text="‹"
+                            Clicked="OnPreviousMonthClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="18"
+                            BackgroundColor="#EFF6FF"
+                            TextColor="#1E3A8A"
+                            BorderColor="#BFDBFE"
+                            BorderWidth="1"
+                            CornerRadius="10"
+                            HeightRequest="34"
+                            WidthRequest="38" />
+
+                    <Label Grid.Column="1"
+                           Text="{Binding MonthLabel}"
+                           FontFamily="SegoeUIBold"
+                           FontSize="14"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+
+                    <Button Grid.Column="2"
+                            Text="›"
+                            Clicked="OnNextMonthClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="18"
+                            BackgroundColor="#EFF6FF"
+                            TextColor="#1E3A8A"
+                            BorderColor="#BFDBFE"
+                            BorderWidth="1"
+                            CornerRadius="10"
+                            HeightRequest="34"
+                            WidthRequest="38" />
+                </Grid>
+
+                <Border x:Name="historyCard"
+                        Opacity="0"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#E2E8F0"
+                        BackgroundColor="#FFFFFF">
+                    <VerticalStackLayout>
+                        <CollectionView ItemsSource="{Binding MonthlyRecords}"
+                                    IsVisible="{Binding HasMonthlyRecords}"
+                                    SelectionMode="None">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="models:AttendanceRecord">
+                                    <Grid Padding="16,12" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                            <Label Text="{Binding NgayLamViec}"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="13"
+                                                   TextColor="#0F172A" />
+                                            <Label FontFamily="SegoeUI" FontSize="11" TextColor="#64748B">
+                                                <Label.FormattedText>
+                                                    <FormattedString>
+                                                        <Span Text="{Binding TenCa}" />
+                                                        <Span Text="  ·  Vào " />
+                                                        <Span Text="{Binding CheckInText}" />
+                                                        <Span Text="  ·  Ra " />
+                                                        <Span Text="{Binding CheckOutText}" />
+                                                    </FormattedString>
+                                                </Label.FormattedText>
+                                            </Label>
+                                            <Label FontFamily="SegoeUI" FontSize="10" TextColor="#94A3B8">
+                                                <Label.FormattedText>
+                                                    <FormattedString>
+                                                        <Span Text="Trễ " />
+                                                        <Span Text="{Binding PhutDiTreText}" />
+                                                        <Span Text="  ·  Sớm " />
+                                                        <Span Text="{Binding PhutVeSomText}" />
+                                                        <Span Text="  ·  OT " />
+                                                        <Span Text="{Binding GioOtText}" />
+                                                    </FormattedString>
+                                                </Label.FormattedText>
+                                            </Label>
+                                        </VerticalStackLayout>
+
+                                        <Border Grid.Column="1"
+                                                BackgroundColor="{Binding TrangThaiBgColor}"
+                                                Stroke="Transparent"
+                                                StrokeThickness="0"
+                                                StrokeShape="RoundRectangle 20"
+                                                Padding="10,4"
+                                                VerticalOptions="Start">
+                                            <Label Text="{Binding TrangThaiText}"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="9"
+                                                   CharacterSpacing="0.8"
+                                                   TextColor="{Binding TrangThaiTextColor}" />
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+
+                        <Label Text="Chưa có dữ liệu chấm công trong tháng này"
+                               IsVisible="{Binding HasNoMonthlyRecords}"
+                               FontFamily="SegoeUI"
+                               FontSize="12"
+                               TextColor="#94A3B8"
+                               Padding="16,24"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- ==================== CUSTOM MODAL POPUP (không dùng DisplayAlert) ==================== -->
+        <Grid x:Name="popupOverlay"
+              Grid.Row="0"
+              IsVisible="{Binding IsPopupVisible}"
+              BackgroundColor="#660F172A">
+            <Border x:Name="popupCard"
+                    WidthRequest="290"
+                    StrokeShape="RoundRectangle 24"
+                    BackgroundColor="#FFFFFF"
+                    Stroke="{Binding PopupBorderColor}"
+                    StrokeThickness="1.5"
+                    Padding="22"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+
+                <VerticalStackLayout Spacing="14">
+
+                    <Border x:Name="popupIconBox"
+                            WidthRequest="54"
+                            HeightRequest="54"
+                            BackgroundColor="{Binding PopupIconBgColor}"
+                            Stroke="{Binding PopupBorderColor}"
+                            StrokeThickness="1.5"
+                            StrokeShape="RoundRectangle 27"
+                            HorizontalOptions="Center">
+                        <Label Text="{Binding PopupIconText}"
+                               FontFamily="SegoeUIBold"
+                               FontSize="24"
+                               TextColor="{Binding PopupIconTextColor}"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <Label Text="{Binding PopupTitle}"
+                           FontFamily="SegoeUIBold"
+                           FontSize="19"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+
+                    <Label Text="{Binding PopupMessage}"
+                           FontFamily="SegoeUI"
+                           FontSize="13"
+                           LineBreakMode="WordWrap"
+                           TextColor="#475569"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+
+                    <Button Text="{Binding PopupButtonText}"
+                            Clicked="OnPopupConfirmClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="13"
+                            CharacterSpacing="1.2"
+                            TextColor="White"
+                            BackgroundColor="#1E3A8A"
+                            BorderColor="#D4AF37"
+                            BorderWidth="1"
+                            CornerRadius="14"
+                            HeightRequest="48"
+                            Margin="0,4,0,0" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+    </Grid>
+</ContentPage>

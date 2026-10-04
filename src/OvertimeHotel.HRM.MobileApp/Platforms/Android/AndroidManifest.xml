@@ -1,6 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true"></application>
+	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true">
+		<!--
+			Google Maps SDK key cho khối bản đồ GPS ở nhánh Nhân viên.
+			Khác với Supabase key, key này KHÔNG phải bí mật: nó được đóng cứng vào APK
+			và ai decompile cũng đọc được. Google hiểu điều đó nên bắt buộc khoá API bằng
+			Application restrictions (package + SHA-1) và chỉ cho phép Maps SDK for Android.
+			Thành viên nhóm dùng máy khác phải thêm SHA-1 debug keystore của mình vào
+			Application restrictions trong Google Cloud Console, nếu không bản đồ sẽ trắng.
+		-->
+		<meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyCeGRiFxhjo8KFsD_67vPQYONPdglpqqzo" />
+	</application>
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />
+	<!-- Task 17: ghi nhận vị trí quẹt thẻ để đối chiếu chống gian lận chấm công -->
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 </manifest>

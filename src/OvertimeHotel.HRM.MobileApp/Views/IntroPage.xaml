@@ -13,10 +13,12 @@
                                HorizontalOptions="Center"
                                Spacing="6"
                                Margin="0,16,0,0">
-            <Label Text="★"
-                   TextColor="#D4AF37"
-                   FontSize="16"
-                   VerticalOptions="Center" />
+            <Image Source="brand_mark_light.png"
+                   WidthRequest="24"
+                   HeightRequest="24"
+                   Aspect="AspectFit"
+                   VerticalOptions="Center"
+                   SemanticProperties.Description="Huy hiệu The OverTime Hotel" />
             <Label Text="THE OVERTIME HOTEL"
                    TextColor="#1E3A8A"
                    FontFamily="SegoeUIBold"

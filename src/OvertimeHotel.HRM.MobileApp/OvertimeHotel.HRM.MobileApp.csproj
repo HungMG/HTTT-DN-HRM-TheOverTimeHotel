@@ -45,6 +45,25 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+
+		<!--
+			LocalApiServer=true: build vẫn đóng gói đầy đủ như bản phát hành (không
+			đụng lỗi SIGABRT "No assemblies found" chỉ có ở Debug), nhưng bật symbol DEBUG
+			để ApiConfig trỏ về http://10.0.2.2:5065 và Android cho phép cleartext.
+			Dùng khi cần thử app trên emulator với WebAdmin chạy ở máy dev.
+			Không bật mặc định — bản build thường vẫn khoá cứng https:// production.
+			Lệnh: dotnet build -c Release -p:LocalApiServer=true
+		-->
+		<DefineConstants Condition="'$(LocalApiServer)' == 'true'">$(DefineConstants);DEBUG</DefineConstants>
+
+		<!--
+			DemoMode=true: chạy App trên bộ nhớ cục bộ (DemoAuthService,
+			DemoLeaveApprovalService, DemoAttendanceService) — không gọi Supabase/Cloud.
+			Dùng để thuyết trình offline hoặc kiểm thử giao diện khi máy dev không
+			truy cập được API. KHÔNG bật cho bản phát hành.
+			Lệnh: dotnet build -c Release -p:DemoMode=true
+		-->
+		<DefineConstants Condition="'$(DemoMode)' == 'true'">$(DefineConstants);DEMO</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -57,6 +76,15 @@
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
 		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
+
+		<!-- Logo thương hiệu hiển thị TRONG app (thay ngôi sao ★ ở LoginPage,
+		     IntroPage, AttendancePage, LocationClockPanel).
+		     BaseSize="128,128" khớp với kích thước file sinh ra ở
+		     scripts/generate_mobile_brand_icons.py (INAPP_BASE) — nhờ vậy
+		     Resizetizer xuất đúng bản theo từng mật độ mdpi→xxxhdpi, thay vì
+		     phóng to một bản 96px duy nhất trên máy màn hình 4×. -->
+		<MauiImage Update="Resources\Images\brand_mark_light.png" Resize="True" BaseSize="128,128" />
+		<MauiImage Update="Resources\Images\brand_mark_navy.png" Resize="True" BaseSize="128,128" />
 		
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />
@@ -67,6 +95,11 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+		<!-- Bản đồ tương tác cho cổng Nhân viên. LƯU Ý: trên Android, control này LUÔN render
+		     qua Google Play Services (không phải OpenStreetMap) nên BẮT BUỘC phải khai báo
+		     meta-data com.google.android.geo.API_KEY trong Platforms/Android/AndroidManifest.xml.
+ Thiếu key sẽ ra màn hình xám trống, không có ô báo lỗi. -->
+		<PackageReference Include="Microsoft.Maui.Controls.Maps" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
 	</ItemGroup>
 

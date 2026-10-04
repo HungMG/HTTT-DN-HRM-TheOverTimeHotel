@@ -1,8 +1,14 @@
+using System.ComponentModel;
 using OvertimeHotel.HRM.MobileApp.Animations;
 using OvertimeHotel.HRM.MobileApp.ViewModels;
 
 namespace OvertimeHotel.HRM.MobileApp.Views;
 
+/// <summary>
+/// Màn hình đăng nhập của The OverTime Hotel.
+/// Vai trò không cần chọn tay ở đây — CSDL quyết định sau khi xác thực tài khoản,
+/// và <see cref="LoginViewModel"/> điều hướng sang nhánh trang chủ tương ứng.
+/// </summary>
 public partial class LoginPage : ContentPage
 {
     private readonly LoginViewModel _viewModel;
@@ -11,6 +17,7 @@ public partial class LoginPage : ContentPage
     public LoginPage(LoginViewModel viewModel)
     {
         InitializeComponent();
+
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         BindingContext = _viewModel;
 
@@ -21,31 +28,24 @@ public partial class LoginPage : ContentPage
     {
         base.OnAppearing();
 
-        // 1. KHỞI TẠO VỊ TRÍ ĐỂ CHẠY HIỆU ỨNG CÁC KHỐI BAY VÀO CHẬM RÃI & MƯỢT MÀ
-        brandSection.Opacity = 0;
-        brandSection.TranslationY = -45;
+        ApplyBrandStatusBar();
 
-        roleSelectorBorder.Opacity = 0;
-        roleSelectorBorder.TranslationY = 35;
+        // Dải đầu và thẻ đăng nhập là hai khối nằm chồng nhau (thẻ nổi lên dải navy).
+        // Hoạt ảnh riêng từng khối để không nhân đôi Transform trên cùng một cây.
+        brandHeader.Opacity = 0;
+        brandHeader.TranslationY = -40;
 
         formCardBorder.Opacity = 0;
-        formCardBorder.TranslationY = 65;
-        formCardBorder.Scale = 0.90;
+        formCardBorder.TranslationY = 45;
+        formCardBorder.Scale = 0.94;
 
-        quickChipsSection.Opacity = 0;
-        quickChipsSection.TranslationY = 40;
+        accountHintSection.Opacity = 0;
+        accountHintSection.TranslationY = 30;
 
-        // 2. CHẠY CHUỖI HOẠT ẢNH BAY CÁC KHỐI NỐI TIẾP VỚI ĐỘ NẢY LÒ XO (SPRING PHYSICS)
         await Task.Delay(80);
         _ = Task.WhenAll(
-            brandSection.FadeToAsync(1.0, 550, Easing.CubicOut),
-            brandSection.TranslateToAsync(0, 0, 600, Easing.CubicOut)
-        );
-
-        await Task.Delay(160);
-        _ = Task.WhenAll(
-            roleSelectorBorder.FadeToAsync(1.0, 500, Easing.CubicOut),
-            roleSelectorBorder.TranslateToAsync(0, 0, 550, Easing.CubicOut)
+            brandHeader.FadeToAsync(1.0, 550, Easing.CubicOut),
+            brandHeader.TranslateToAsync(0, 0, 600, Easing.CubicOut)
         );
 
         await Task.Delay(160);
@@ -57,53 +57,96 @@ public partial class LoginPage : ContentPage
 
         await Task.Delay(140);
         _ = Task.WhenAll(
-            quickChipsSection.FadeToAsync(1.0, 500, Easing.CubicOut),
-            quickChipsSection.TranslateToAsync(0, 0, 600, Easing.SpringOut)
+            accountHintSection.FadeToAsync(1.0, 500, Easing.CubicOut),
+            accountHintSection.TranslateToAsync(0, 0, 600, Easing.CubicOut)
         );
     }
 
-    private async void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    protected override void OnDisappearing()
     {
-        // Hiệu ứng Popup Modal nảy lò xo khi có lỗi
-        if (e.PropertyName == nameof(LoginViewModel.IsPopupVisible) && _viewModel.IsPopupVisible)
-        {
-            popupOverlay.Opacity = 0;
-            popupCard.Scale = 0.75;
-            popupCard.Opacity = 0;
+        base.OnDisappearing();
 
-            _ = popupOverlay.FadeToAsync(1, 180, Easing.CubicOut);
-            await popupCard.BounceInAsync(360);
+        _shimmerCts?.Cancel();
+        _shimmerCts = null;
+    }
+
+    /// <summary>
+    /// Ép biểu tượng thanh trạng thái (đồng hồ, pin, sóng) hiện màu TỐI.
+    /// <para>
+    /// Android 15 (API 35) đã bỏ hiệu lực <c>Window.SetStatusBarColor</c>, nên không thể
+    /// tô nền thanh trạng thái theo dải navy của trang — hệ thống luôn vẽ một lớp
+    /// scrim xám sáng (#E6E7E9). Trên nền sáng đó, biểu tượng mặc định màu trắng gần
+    /// như chìm hẳn; đổi sang màu tối là cách duy nhất còn hiệu lực trên API 35.
+    /// </para>
+    /// </summary>
+    private static void ApplyBrandStatusBar()
+    {
+        if (DeviceInfo.Current.Platform != DevicePlatform.Android)
+        {
+            return;
         }
 
-        // Hiệu ứng nhịp thở lướt sáng cho Skeleton (Breathing Shimmer Loop)
+        // WindowInsetsController chỉ có từ Android 11 (API 30).
+        if (!OperatingSystem.IsAndroidVersionAtLeast(30))
+        {
+            return;
+        }
+
+        // Android.App.Activity.Current không còn tồn tại trong .NET 10 for Android;
+        // Platform.CurrentActivity là API chính thức của MAUI cho việc này.
+        var activity = Platform.CurrentActivity;
+        var window = activity?.Window;
+        if (window is null)
+        {
+            return;
+        }
+
+        activity!.RunOnUiThread(() =>
+        {
+            // Cờ APPEARANCE_LIGHT_STATUS_BARS nghĩa là biểu tượng TỐI. Bật cờ này
+            // để đồng hồ và các glyph nổi rõ trên lớp scrim xám sáng mặc định.
+            const int lightBars = (int)Android.Views.WindowInsetsControllerAppearance.LightStatusBars;
+            window.InsetsController?.SetSystemBarsAppearance(lightBars, lightBars);
+        });
+    }
+
+    private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        // Skeleton shimmer thay cho vòng tròn xoay (quy chuẩn §2)
         if (e.PropertyName == nameof(LoginViewModel.IsLoading))
         {
             if (_viewModel.IsLoading)
             {
+                _shimmerCts?.Cancel();
                 _shimmerCts = new CancellationTokenSource();
                 _ = skeletonLayout.ShimmerLoopAsync(_shimmerCts.Token);
             }
             else
             {
                 _shimmerCts?.Cancel();
+                _shimmerCts = null;
             }
         }
 
-        // Hiệu ứng rung lắc báo lỗi khi nhập sai mật khẩu (iOS Error Shake)
+        // Rung lắc báo lỗi khi nhập sai mật khẩu (iOS Error Shake)
         if (e.PropertyName == nameof(LoginViewModel.HasError) && _viewModel.HasError)
         {
             await formCardBorder.ShakeAsync(8, 3);
         }
 
-        // Hiệu ứng chuyển biến chữ chú thích vai trò (Text Morphing) và nảy lò xo nút chọn
-        if (e.PropertyName == nameof(LoginViewModel.SelectedRole))
+        // Popup lỗi: nảy lò xo từ tâm màn hình thay cho DisplayAlert thô
+        if (e.PropertyName == nameof(LoginViewModel.IsPopupVisible) && _viewModel.IsPopupVisible)
         {
-            _ = lblRoleSubtitle.MorphTextAsync(_viewModel.RoleSubtitle);
-            var activeBtn = _viewModel.IsEmployeeSelected ? btnRoleEmployee : btnRoleManager;
-            if (activeBtn != null)
-            {
-                _ = activeBtn.SpringTapAsync(0.95, 50, 150);
-            }
+            popup.Show(
+                title: _viewModel.PopupTitle,
+                message: _viewModel.PopupMessage,
+                iconText: _viewModel.PopupIconText,
+                iconTextColor: _viewModel.PopupIconTextColor,
+                iconBgColor: _viewModel.PopupIconBgColor,
+                borderColor: _viewModel.PopupBorderColor,
+                confirmText: _viewModel.PopupButtonText,
+                showCancel: false,
+                onConfirm: null);
         }
     }
 
@@ -117,30 +160,6 @@ public partial class LoginPage : ContentPage
     }
 
     private async void OnBiometricButtonClicked(object? sender, EventArgs e)
-    {
-        if (sender is VisualElement btn)
-        {
-            await btn.SpringTapAsync();
-        }
-    }
-
-    private async void OnRoleButtonClicked(object? sender, EventArgs e)
-    {
-        if (sender is VisualElement btn)
-        {
-            await btn.SpringTapAsync();
-        }
-    }
-
-    private async void OnChipButtonClicked(object? sender, EventArgs e)
-    {
-        if (sender is VisualElement btn)
-        {
-            await btn.SpringTapAsync();
-        }
-    }
-
-    private async void OnPopupConfirmClicked(object? sender, EventArgs e)
     {
         if (sender is VisualElement btn)
         {

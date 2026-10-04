@@ -134,11 +134,11 @@
   - **Người phụ trách:** Nhóm phát triển | **Độ ưu tiên:** Cao | **Hạn chót:** 20/10/2026
   - **Trạng thái:** `Hoàn thành (Chờ duyệt)`
 
-- [ ] **TSK-17:** Lập trình App: Module Chấm công Check-in/Check-out
+- [x] **TSK-17:** Lập trình App: Module Chấm công Check-in/Check-out
   - **Phân hệ:** App .NET MAUI
   - **Mô tả & Output:** Nút bấm quẹt thẻ trên điện thoại, tự động đối soát ca, tính số phút đi trễ, về sớm, giờ OT
-  - **Người phụ trách:** _Chưa phân công_ | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 20/10/2026
-  - **Trạng thái:** `Chưa bắt đầu`
+  - **Người phụ trách:** Nhóm phát triển | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 20/10/2026
+  - **Trạng thái:** `Hoàn thành (Chờ duyệt)`
 
 - [ ] **TSK-18:** Lập trình App: Cổng nộp đơn điện tử của Nhân viên
   - **Phân hệ:** App .NET MAUI

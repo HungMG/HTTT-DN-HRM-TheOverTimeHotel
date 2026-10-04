@@ -72,6 +72,8 @@ public class DemoAuthService : IAuthService
             HoTen: account.HoTen,
             TenDangNhap: account.TenDangNhap,
             TenVaiTro: account.Role,
+            TenPhongBan: account.Department,
+            TenChucVu: account.Position,
             Token: CurrentUser.Token
         ));
     }

@@ -45,6 +45,8 @@ public class MobileAuthController : ControllerBase
             .Include(t => t.VaiTro)
             .Include(t => t.NhanVien)
                 .ThenInclude(nv => nv!.PhongBan)
+            .Include(t => t.NhanVien)
+                .ThenInclude(nv => nv!.ChucVu)
             .FirstOrDefaultAsync(t => t.TenDangNhap.ToLower() == username.ToLower());
 
         // Kiểm tra bảo mật: Không tiết lộ username đúng hay password đúng (nguyên tắc Zero Trust)
@@ -57,6 +59,10 @@ public class MobileAuthController : ControllerBase
         var roleName = account.VaiTro?.TenVaiTro ?? "Employee";
         var hoTen = account.NhanVien != null ? $"{account.NhanVien.Ho} {account.NhanVien.Ten}".Trim() : account.TenDangNhap;
         var deptId = account.NhanVien?.MaPhongBan;
+        // Mobile hiển thị "Phạm vi quyền lý" và dòng phụ vai trò — cần TÊN phòng ban/chức vụ,
+        // không phải mã. JWT chỉ mang DepartmentId nên phải trả kèm trong body.
+        var tenPhongBan = account.NhanVien?.PhongBan?.TenPhongBan;
+        var tenChucVu = account.NhanVien?.ChucVu?.TenChucVu;
 
         // Sinh JWT Token
         var token = GenerateJwtToken(account.MaTaiKhoan, account.MaNhanVien, account.TenDangNhap, roleName, deptId, hoTen);
@@ -71,6 +77,8 @@ public class MobileAuthController : ControllerBase
             HoTen: hoTen,
             TenDangNhap: account.TenDangNhap,
             TenVaiTro: roleName,
+            TenPhongBan: tenPhongBan,
+            TenChucVu: tenChucVu,
             Token: token
         ));
     }

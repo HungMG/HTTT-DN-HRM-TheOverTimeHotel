@@ -62,7 +62,7 @@ public class ProfileViewModel : INotifyPropertyChanged
         {
             FullName = user.HoTen;
             Username = user.TenDangNhap;
-            RoleName = user.TenVaiTro;
+            RoleName = HomeViewModelBase.LocalizeRole(user.TenVaiTro);
             DepartmentName = user.TenPhongBan;
             PositionName = user.TenChucVu;
             Email = string.IsNullOrWhiteSpace(user.Email) ? $"{user.TenDangNhap}@overtimehotel.vn" : user.Email;
@@ -81,15 +81,15 @@ public class ProfileViewModel : INotifyPropertyChanged
         }
         else
         {
-            FullName = "Ngô Thị Bích";
-            Username = "ngothibich";
-            RoleName = "Employee";
-            DepartmentName = "Bộ phận Buồng phòng";
-            PositionName = "Nhân viên Buồng phòng";
-            Email = "bich.ngo@overtimehotel.vn";
-            Phone = "0912 345 678";
-            EmployeeId = 13;
-            AvatarLetter = "B";
+            FullName = "Phạm Thị Mai";
+            Username = "employee";
+            RoleName = "Nhân viên";
+            DepartmentName = "Bộ Phận Tiền Sảnh (FO)";
+            PositionName = "Nhân Viên Lễ Tân";
+            Email = "mai.pham@overtimehotel.com";
+            Phone = "0934567890";
+            EmployeeId = 4;
+            AvatarLetter = "M";
         }
     }
 
@@ -334,7 +334,9 @@ public class ProfileViewModel : INotifyPropertyChanged
     {
         if (Shell.Current != null)
         {
-            await Shell.Current.GoToAsync("//MainPage");
+            // Quay lại đúng nhánh trang chủ mà người dùng đang thuộc về.
+            bool isEmployee = _authService.CurrentUser?.IsEmployee == true;
+            await Shell.Current.GoToAsync(isEmployee ? "//EmployeeHomePage" : "//ManagerHomePage");
         }
     }
 

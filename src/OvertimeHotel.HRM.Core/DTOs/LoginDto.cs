@@ -10,5 +10,7 @@ public record LoginResponse(
     string? HoTen = null,
     string? TenDangNhap = null,
     string? TenVaiTro = null,
+    string? TenPhongBan = null,
+    string? TenChucVu = null,
     string? Token = null
 );

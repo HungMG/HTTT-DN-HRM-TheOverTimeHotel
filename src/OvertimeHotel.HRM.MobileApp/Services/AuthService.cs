@@ -148,6 +148,19 @@ public class AuthService : IAuthService
                 }
             }
 
+            // JWT chỉ mang mã (EmployeeId, DepartmentId) chứ không mang tên phòng ban / chức vụ.
+            // Gọi API hồ sơ để lấy đủ thông tin — nếu không, mọi phiên khôi phục sẽ mặc định
+            // vai trò "Employee" và quản lý bị đẩy nhầm sang nhánh Nhân viên.
+            var profile = await FetchProfileAsync(token);
+            if (profile != null)
+            {
+                CurrentUser = ParseUserSessionFromJwt(token, profile);
+                return CurrentUser.IsLoggedIn;
+            }
+
+            // Không gọi được API (mất mạng, máy chủ chưa bật): vẫn cho vào app bằng dữ liệu trong token,
+            // nhưng nêu rõ là chưa xác định được phạm vi quyền lý.
+            _logger.LogWarning("Không lấy được hồ sơ khi khôi phục phiên — dùng thông tin trong JWT.");
             CurrentUser = ParseUserSessionFromJwt(token, null);
             return CurrentUser.IsLoggedIn;
         }
@@ -155,6 +168,42 @@ public class AuthService : IAuthService
         {
             _logger.LogWarning(ex, "Lỗi khi thử tự động đăng nhập từ JWT lưu trữ.");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Gọi GET /api/mobile/profile bằng token đang lưu để lấy tên phòng ban, chức vụ và vai trò đầy đủ.
+    /// Trả về null nếu token hết hạn, tài khoản bị khoá, hoặc không gọi được máy chủ.
+    /// </summary>
+    private async Task<LoginResponse?> FetchProfileAsync(string token)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/mobile/profile");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            using var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                // 401/403 nghĩa là token hoặc tài khoản không còn hợp lệ -> xoá token, buộc đăng nhập lại.
+                if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                {
+                    SecureStorage.Remove(JwtStorageKey);
+                }
+
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var profile = JsonSerializer.Deserialize<LoginResponse>(json, options);
+
+            return profile is { Success: true } ? profile : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không gọi được API hồ sơ khi khôi phục phiên.");
+            return null;
         }
     }
 
@@ -201,6 +250,9 @@ public class AuthService : IAuthService
             session.TenDangNhap = response.TenDangNhap ?? "";
             session.HoTen = response.HoTen ?? "";
             session.TenVaiTro = response.TenVaiTro ?? "Employee";
+            // JWT chỉ mang DepartmentId (mã) chứ không mang tên — phải lấy tên từ body login.
+            session.TenPhongBan = response.TenPhongBan ?? "";
+            session.TenChucVu = response.TenChucVu ?? "";
         }
 
         if (!string.IsNullOrEmpty(token))
@@ -234,11 +286,15 @@ public class AuthService : IAuthService
                     session.HoTen = fnProp.GetString() ?? "";
                 }
 
-                // role
+                // role — máy chủ ký bằng ClaimTypes.Role nên JWT chứa key dạng URI đầy đủ của ASP.NET Core
+                // Identity, KHÔNG phải "role" ngắn gọn. Thử cả hai để không phụ thuộc cách ký token.
                 if (string.IsNullOrEmpty(session.TenVaiTro) || session.TenVaiTro == "Employee")
                 {
                     if (root.TryGetProperty("role", out var rProp))
                         session.TenVaiTro = rProp.GetString() ?? "Employee";
+                    else if (root.TryGetProperty(
+                        "http://schemas.microsoft.com/ws/2008/06/identity/claims/role", out var fullRProp))
+                        session.TenVaiTro = fullRProp.GetString() ?? "Employee";
                 }
 
                 // unique_name / name

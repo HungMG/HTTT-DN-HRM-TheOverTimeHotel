@@ -19,7 +19,6 @@ public class LoginViewModel : INotifyPropertyChanged
     private bool _isLoading;
     private string _errorMessage = string.Empty;
     private bool _isPasswordHidden = true;
-    private string _selectedRole = "Employee";
 
     // Trạng thái Custom Luxury Modal Popup
     private bool _isPopupVisible;
@@ -30,7 +29,6 @@ public class LoginViewModel : INotifyPropertyChanged
     private string _popupIconBgColor = "#FFFBEB";
     private string _popupIconTextColor = "#B45309";
     private string _popupBorderColor = "#D4AF37";
-    private bool _popupIsSuccess;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -40,13 +38,10 @@ public class LoginViewModel : INotifyPropertyChanged
 
         LoginCommand = new Command(async () => await ExecuteLoginAsync(), () => !IsLoading);
         TogglePasswordCommand = new Command(ExecuteTogglePassword);
-        SelectRoleCommand = new Command<string>(ExecuteSelectRole);
-        QuickFillCommand = new Command<string>(ExecuteQuickFill);
         BiometricLoginCommand = new Command(async () => await ExecuteBiometricLoginAsync(), () => !IsLoading);
-        ClosePopupCommand = new Command(async () => await ExecuteClosePopupAsync());
 
-        // Mặc định nạp sẵn tài khoản nhân viên buồng phòng để test nhanh
-        ExecuteQuickFill("ngothibich");
+        // Mặc định nạp sẵn tài khoản nhân viên để demo nhanh
+        ExecuteQuickFill("employee");
     }
 
     public string Username
@@ -115,24 +110,6 @@ public class LoginViewModel : INotifyPropertyChanged
         set => SetProperty(ref _isPasswordHidden, value);
     }
 
-    public string SelectedRole
-    {
-        get => _selectedRole;
-        set
-        {
-            if (SetProperty(ref _selectedRole, value))
-            {
-                OnPropertyChanged(nameof(IsEmployeeSelected));
-                OnPropertyChanged(nameof(IsManagerSelected));
-                OnPropertyChanged(nameof(RoleSubtitle));
-            }
-        }
-    }
-
-    public bool IsEmployeeSelected => SelectedRole == "Employee";
-    public bool IsManagerSelected => SelectedRole == "Manager";
-    public string RoleSubtitle => IsEmployeeSelected ? "Cổng dành cho Nhân viên ca 24/7" : "Cổng dành cho Quản lý bộ phận";
-
     // Custom Popup Properties
     public bool IsPopupVisible
     {
@@ -184,22 +161,19 @@ public class LoginViewModel : INotifyPropertyChanged
 
     public ICommand LoginCommand { get; }
     public ICommand TogglePasswordCommand { get; }
-    public ICommand SelectRoleCommand { get; }
-    public ICommand QuickFillCommand { get; }
     public ICommand BiometricLoginCommand { get; }
-    public ICommand ClosePopupCommand { get; }
 
     public async Task ExecuteLoginAsync()
     {
         if (string.IsNullOrWhiteSpace(Username))
         {
-            ShowCustomPopup("Thông Báo", "Vui lòng nhập tên đăng nhập hoặc mã nhân viên.", false);
+            ShowCustomPopup("Thông Báo", "Vui lòng nhập tên đăng nhập hoặc mã nhân viên.");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(Password))
         {
-            ShowCustomPopup("Thông Báo", "Vui lòng nhập mật khẩu đăng nhập.", false);
+            ShowCustomPopup("Thông Báo", "Vui lòng nhập mật khẩu đăng nhập.");
             return;
         }
 
@@ -216,24 +190,18 @@ public class LoginViewModel : INotifyPropertyChanged
 
             if (result.Success)
             {
-                // Khi đăng nhập thành công: Chuyển thẳng vào MainPage không cần bấm thêm bước xác nhận
-                if (Shell.Current != null)
-                {
-                    await Shell.Current.GoToAsync("//MainPage");
-                }
+                await NavigateToBranchAsync();
             }
             else
             {
-                _popupIsSuccess = false;
                 ErrorMessage = result.Message;
-                ShowCustomPopup("Đăng Nhập Thất Bại", result.Message, false);
+                ShowCustomPopup("Đăng Nhập Thất Bại", result.Message);
             }
         }
         catch (Exception ex)
         {
-            _popupIsSuccess = false;
             ErrorMessage = $"Lỗi: {ex.Message}";
-            ShowCustomPopup("Lỗi Hệ Thống", ex.Message, false);
+            ShowCustomPopup("Lỗi Hệ Thống", ex.Message);
         }
         finally
         {
@@ -246,37 +214,20 @@ public class LoginViewModel : INotifyPropertyChanged
         IsPasswordHidden = !IsPasswordHidden;
     }
 
-    private void ExecuteSelectRole(string? role)
-    {
-        if (!string.IsNullOrEmpty(role))
-        {
-            SelectedRole = role;
-        }
-    }
-
     public void ExecuteQuickFill(string? username)
     {
         switch (username?.ToLowerInvariant())
         {
-            case "ngothibich":
-                Username = "ngothibich";
-                Password = "123456";
-                SelectedRole = "Employee";
+            // Tài khoản mẫu phải khớp đúng bộ seed trong DemoAuthService, nếu không
+            // người dùng sẽ gõ đúng nhưng vẫn bị từ chối. admin và hr có mật khẩu riêng
+            // nên không điền sẵn — tránh điền sai gây ảo giác lỗi.
+            case "employee":
+                Username = "employee";
+                Password = "emp123";
                 break;
-            case "dothanhdat":
-                Username = "dothanhdat";
-                Password = "123456";
-                SelectedRole = "Manager";
-                break;
-            case "hr_sang":
-                Username = "hr_sang";
-                Password = "123456";
-                SelectedRole = "Manager";
-                break;
-            case "admin":
-                Username = "admin";
-                Password = "123456";
-                SelectedRole = "Manager";
+            case "manager":
+                Username = "manager";
+                Password = "manager123";
                 break;
         }
         ClearError();
@@ -291,27 +242,22 @@ public class LoginViewModel : INotifyPropertyChanged
         {
             // Giả lập quét sinh trắc học FaceID với Skeleton Shimmer
             await Task.Delay(800);
-            ExecuteQuickFill("ngothibich");
+            ExecuteQuickFill("employee");
 
             var result = await _authService.LoginAsync(Username, Password, RememberMe);
 
             if (result.Success)
             {
-                if (Shell.Current != null)
-                {
-                    await Shell.Current.GoToAsync("//MainPage");
-                }
+                await NavigateToBranchAsync();
             }
             else
             {
-                _popupIsSuccess = false;
-                ShowCustomPopup("Lỗi Sinh Trắc Học", "Không thể nhận diện khuôn mặt. Vui lòng thử lại.", false);
+                ShowCustomPopup("Lỗi Sinh Trắc Học", "Không thể nhận diện khuôn mặt. Vui lòng thử lại.");
             }
         }
         catch (Exception ex)
         {
-            _popupIsSuccess = false;
-            ShowCustomPopup("Lỗi", ex.Message, false);
+            ShowCustomPopup("Lỗi", ex.Message);
         }
         finally
         {
@@ -319,44 +265,37 @@ public class LoginViewModel : INotifyPropertyChanged
         }
     }
 
-    private void ShowCustomPopup(string title, string message, bool isSuccess)
+    /// <summary>
+    /// Chuẩn bị nội dung cho Custom Luxury Modal Popup trạng thái lỗi/cảnh báo.
+    /// Không dùng DisplayAlert thô theo quy chuẩn thiết kế §3.
+    /// </summary>
+    private void ShowCustomPopup(string title, string message)
     {
         PopupTitle = title;
         PopupMessage = message;
-        _popupIsSuccess = isSuccess;
 
-        if (isSuccess)
-        {
-            PopupIconText = "★";
-            PopupIconBgColor = "#FFFBEB"; // Vàng kim nhạt
-            PopupIconTextColor = "#B45309"; // Vàng đậm
-            PopupBorderColor = "#D4AF37"; // Vàng kim 5★
-            PopupButtonText = "VÀO TRANG CHỦ";
-        }
-        else
-        {
-            PopupIconText = "!";
-            PopupIconBgColor = "#FEF2F2"; // Đỏ nhạt
-            PopupIconTextColor = "#DC2626"; // Đỏ tươi
-            PopupBorderColor = "#FCA5A5";
-            PopupButtonText = "ĐỒNG Ý";
-        }
+        PopupIconText = "!";
+        PopupIconBgColor = "#FEF2F2"; // Đỏ nhạt
+        PopupIconTextColor = "#DC2626"; // Đỏ tươi
+        PopupBorderColor = "#FCA5A5";
+        PopupButtonText = "ĐỒNG Ý";
 
         IsPopupVisible = true;
     }
 
-    private async Task ExecuteClosePopupAsync()
+    /// <summary>
+    /// Chuyển tới nhánh trang chủ đúng theo vai trò do CSDL trả về:
+    /// Nhân viên vào EmployeeHomePage, còn lại (Quản lý, HR, Quản trị viên) vào ManagerHomePage.
+    /// </summary>
+    private async Task NavigateToBranchAsync()
     {
-        IsPopupVisible = false;
-
-        // Nếu là popup đăng nhập thành công, điều hướng vào trang chủ
-        if (_popupIsSuccess)
+        if (Shell.Current is null)
         {
-            if (Shell.Current != null)
-            {
-                await Shell.Current.GoToAsync("//MainPage");
-            }
+            return;
         }
+
+        bool isEmployee = _authService.CurrentUser?.IsEmployee == true;
+        await Shell.Current.GoToAsync(isEmployee ? "//EmployeeHomePage" : "//ManagerHomePage");
     }
 
     private void ClearError()

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.Controls.ShiftHeroCard">
+
+    <Border StrokeShape="RoundRectangle 20"
+            Stroke="#D4AF37"
+            StrokeThickness="1.5"
+            BackgroundColor="#1E3A8A"
+            Padding="18">
+        <Border.Shadow>
+            <Shadow Brush="#1E3A8A" Offset="0,6" Radius="16" Opacity="0.25" />
+        </Border.Shadow>
+
+        <VerticalStackLayout Spacing="12">
+
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Grid.Column="0"
+                       Text="CA LÀM VIỆC HÔM NAY"
+                       TextColor="#FDE047"
+                       FontSize="11"
+                       FontFamily="SegoeUIBold"
+                       CharacterSpacing="1"
+                       VerticalOptions="Center" />
+                <!--
+                    Nền tím indigo nằm ngoài bảng màu quy chuẩn §1 (navy/vàng/trắng).
+                    Dùng navy đậm hơn để huy hiệu vẫn tách bạch mà không rơi sang màu lạ.
+                -->
+                <Border Grid.Column="1"
+                        StrokeShape="RoundRectangle 8"
+                        Stroke="#D4AF37"
+                        StrokeThickness="1"
+                        BackgroundColor="#0B1B4D"
+                        Padding="8,2">
+                    <Label x:Name="lblNightBadge"
+                           Text="Ca Đêm (+30%)"
+                           TextColor="#FDE047"
+                           FontSize="10"
+                           FontFamily="SegoeUIBold" />
+                </Border>
+            </Grid>
+
+            <Label x:Name="lblShiftTime"
+                   Text="22:00 – 06:00"
+                   TextColor="#FFFFFF"
+                   FontSize="22"
+                   FontFamily="SegoeUIBold" />
+
+            <Label x:Name="lblShiftTask"
+                   Text="Trực sảnh &amp; An ninh"
+                   TextColor="#E2E8F0"
+                   FontSize="12"
+                   FontFamily="SegoeUI" />
+
+            <!-- Nút hành động chính: quẹt thẻ check-in -->
+            <Button x:Name="btnCheckIn"
+                    Text="QUẸT THẺ CHECK-IN CA"
+                    Clicked="OnCheckInClicked"
+                    BackgroundColor="#D4AF37"
+                    TextColor="#0B132B"
+                    FontFamily="SegoeUIBold"
+                    FontSize="14"
+                    CornerRadius="14"
+                    HeightRequest="52"
+                    Margin="0,6,0,0">
+                <Button.Shadow>
+                    <Shadow Brush="#D4AF37" Offset="0,4" Radius="10" Opacity="0.3" />
+                </Button.Shadow>
+            </Button>
+        </VerticalStackLayout>
+    </Border>
+
+</ContentView>

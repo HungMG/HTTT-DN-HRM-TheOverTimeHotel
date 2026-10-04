@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.Controls.LocationClockPanel"
+             x:DataType="vm:EmployeeDashboardViewModel">
+
+    <Border StrokeShape="RoundRectangle 20"
+            Stroke="#E2E8F0"
+            BackgroundColor="#FFFFFF"
+            Padding="0">
+
+        <VerticalStackLayout Spacing="0">
+
+            <!-- ============ DẢI ĐỒNG HỒ THẬT ============ -->
+            <Border BackgroundColor="#1E3A8A"
+                    Stroke="Transparent"
+                    StrokeThickness="0"
+                    Padding="16,14"
+                    StrokeShape="RoundRectangle 20,20,0,0">
+                <Grid ColumnDefinitions="*,Auto">
+
+                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                        <Label Text="THỜI GIAN THỰC"
+                               FontFamily="SegoeUIBold"
+                               FontSize="9"
+                               CharacterSpacing="1.4"
+                               TextColor="#FDE047" />
+                        <Label x:Name="lblRealTime"
+                               Text="{Binding RealTimeText}"
+                               FontFamily="SegoeUIBold"
+                               FontSize="30"
+                               TextColor="#FFFFFF" />
+                        <Label Text="{Binding RealDateText}"
+                               FontFamily="SegoeUI"
+                               FontSize="11"
+                               TextColor="#BFDBFE" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                        <Image Source="brand_mark_navy.png"
+                               WidthRequest="32"
+                               HeightRequest="32"
+                               Aspect="AspectFit"
+                               HorizontalOptions="End"
+                               SemanticProperties.Description="Huy hiệu The OverTime Hotel" />
+                        <Label Text="HỆ THỐNG"
+                               FontFamily="SegoeUIBold"
+                               FontSize="8"
+                               CharacterSpacing="1.2"
+                               TextColor="#93C5FD"
+                               HorizontalOptions="End" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- ============ BẢN ĐỒ VỊ TRÍ ============ -->
+            <Grid RowDefinitions="150,Auto">
+
+                <maps:Map x:Name="locationMap"
+                          Grid.Row="0"
+                          MapType="Street" />
+
+                <!-- Lớp phủ chờ khi chưa lấy được toạ độ -->
+                <Border x:Name="gpsWaitingOverlay"
+                        Grid.Row="0"
+                        BackgroundColor="#F1F5F9"
+                        IsVisible="True"
+                        Stroke="Transparent"
+                        StrokeThickness="0">
+                    <VerticalStackLayout Spacing="6" HorizontalOptions="Center" VerticalOptions="Center">
+                        <Label Text="◎"
+                               FontFamily="SegoeUIBold"
+                               FontSize="26"
+                               TextColor="#94A3B8"
+                               HorizontalOptions="Center" />
+                        <Label Text="{Binding GpsCoordinateText}"
+                               FontFamily="SegoeUI"
+                               FontSize="11"
+                               TextColor="#64748B"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ============ DẢI TOẠ ĐỘ ============ -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Padding="14,10" BackgroundColor="#F8FAFC">
+                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                        <Label Text="TOẠ ĐỘ GPS"
+                               FontFamily="SegoeUIBold"
+                               FontSize="8"
+                               CharacterSpacing="1.3"
+                               TextColor="#94A3B8" />
+                        <Label Text="{Binding GpsCoordinateText}"
+                               FontFamily="SegoeUIBold"
+                               FontSize="12"
+                               TextColor="#0F172A" />
+                        <Label Text="{Binding GpsRefreshLabel}"
+                               FontFamily="SegoeUI"
+                               FontSize="9"
+                               TextColor="#94A3B8" />
+                    </VerticalStackLayout>
+
+                    <Border Grid.Column="1"
+                            BackgroundColor="#ECFDF5"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 20"
+                            Padding="12,6"
+                            VerticalOptions="Center">
+                        <Label Text="● LIVE"
+                               FontFamily="SegoeUIBold"
+                               FontSize="9"
+                               CharacterSpacing="1.2"
+                               TextColor="#059669" />
+                    </Border>
+                </Grid>
+            </Grid>
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

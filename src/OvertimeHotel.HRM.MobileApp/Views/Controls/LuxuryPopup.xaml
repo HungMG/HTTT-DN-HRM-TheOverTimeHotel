@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.Controls.LuxuryPopup">
+
+    <Grid x:Name="popupOverlay"
+          BackgroundColor="#990F172A"
+          HorizontalOptions="Fill"
+          VerticalOptions="Fill">
+
+        <Border x:Name="popupCard"
+                StrokeShape="RoundRectangle 24"
+                Stroke="#D4AF37"
+                StrokeThickness="2"
+                BackgroundColor="#FFFFFF"
+                WidthRequest="330"
+                HorizontalOptions="Center"
+                VerticalOptions="Center"
+                Padding="24,28">
+            <Border.Shadow>
+                <Shadow Brush="#0F172A" Offset="0,12" Radius="24" Opacity="0.3" />
+            </Border.Shadow>
+
+            <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+
+                <!-- Icon tròn nổi bật: dùng chung hộp, chỉ đổi màu theo trạng thái -->
+                <Border x:Name="modalIconBox"
+                        StrokeShape="RoundRectangle 30"
+                        Stroke="#D4AF37"
+                        StrokeThickness="2"
+                        BackgroundColor="#FFFBEB"
+                        WidthRequest="60"
+                        HeightRequest="60"
+                        HorizontalOptions="Center">
+                    <Label x:Name="lblModalIcon"
+                           Text="★"
+                           TextColor="#B45309"
+                           FontSize="26"
+                           FontFamily="SegoeUIBold"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
+
+                <Label x:Name="lblModalTitle"
+                       Text="Thông Báo"
+                       FontFamily="SegoeUIBold"
+                       FontSize="18"
+                       TextColor="#0F172A"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center" />
+
+                <Label x:Name="lblModalMessage"
+                       Text="Nội dung chi tiết thông báo..."
+                       FontFamily="SegoeUI"
+                       FontSize="13"
+                       TextColor="#475569"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       LineBreakMode="WordWrap" />
+
+                <!-- Khung nút bấm: hỗ trợ 1 nút (đã bỏ trừ) hoặc 2 nút (Xác nhận / Hủy) -->
+                <Grid x:Name="modalButtonsGrid"
+                      ColumnDefinitions="*,*"
+                      ColumnSpacing="10"
+                      Margin="0,8,0,0"
+                      WidthRequest="260">
+                    <Button x:Name="btnModalCancel"
+                            Grid.Column="0"
+                            Text="Hủy Bỏ"
+                            Clicked="OnModalCancelClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="12"
+                            BackgroundColor="#F1F5F9"
+                            TextColor="#475569"
+                            BorderColor="#CBD5E1"
+                            BorderWidth="1"
+                            CornerRadius="12"
+                            HeightRequest="44" />
+
+                    <Button x:Name="btnModalConfirm"
+                            Grid.Column="1"
+                            Text="Xác Nhận"
+                            Clicked="OnModalConfirmClicked"
+                            FontFamily="SegoeUIBold"
+                            FontSize="12"
+                            BackgroundColor="#1E3A8A"
+                            TextColor="#FFFFFF"
+                            BorderColor="#D4AF37"
+                            BorderWidth="1.5"
+                            CornerRadius="12"
+                            HeightRequest="44" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+
+</ContentView>

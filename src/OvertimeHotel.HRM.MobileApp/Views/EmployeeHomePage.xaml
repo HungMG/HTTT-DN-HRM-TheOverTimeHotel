@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:controls="clr-namespace:OvertimeHotel.HRM.MobileApp.Views.Controls"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.EmployeeHomePage"
+             x:DataType="vm:EmployeeHomeViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+
+        <ScrollView>
+            <VerticalStackLayout Spacing="16" Padding="20,20,20,32">
+
+                <!-- ═══ KHỐI 1 · THANH TIÊU ĐỀ ═══ -->
+                <controls:ProfileHeaderBar x:Name="profileHeaderBar"
+                                           Opacity="0" />
+
+                <!-- ═══ KHỐI 2 · THẺ CA TRỰC + NÚT QUẸT THẺ (thao tác quan trọng nhất) ═══ -->
+                <controls:ShiftHeroCard x:Name="shiftHeroCard"
+                                        Opacity="0" />
+
+                <!-- ═══ KHỐI 3 · ĐỒNG HỒ THẬT & BẢN ĐỒ GPS ═══ -->
+                <controls:LocationClockPanel x:Name="locationClockPanel"
+                                            Opacity="0" />
+
+                <!-- ═══ KHỐI 4 · CHỈ SỐ THÁNG NÀY ═══ -->
+                <Grid x:Name="statsGrid"
+                      ColumnDefinitions="*,*,*"
+                      ColumnSpacing="10"
+                      Opacity="0">
+                    <controls:StatTile Grid.Column="0"
+                                       Caption="Ngày công"
+                                       Value="22"
+                                       SubCaption="công thực tế" />
+                    <controls:StatTile Grid.Column="1"
+                                       Caption="Ca trực đêm"
+                                       Value="8"
+                                       SubCaption="+30% phụ cấp"
+                                       ValueColor="#D4AF37" />
+                    <controls:StatTile Grid.Column="2"
+                                       Caption="Đơn của bạn"
+                                       Value="0"
+                                       SubCaption="chờ duyệt"
+                                       ValueColor="#059669" />
+                </Grid>
+
+                <!-- ═══ KHỐI 5 · LƯỚI CHỨC NĂNG ═══ -->
+                <Label x:Name="featuresHeader"
+                       Text="CHỨC NĂNG NGHIỆP VỤ"
+                       TextColor="#1E3A8A"
+                       FontSize="12"
+                       FontFamily="SegoeUIBold"
+                       Opacity="0" />
+
+                <Grid x:Name="featuresGrid"
+                      ColumnDefinitions="*,*"
+                      RowDefinitions="Auto,Auto"
+                      ColumnSpacing="12"
+                      RowSpacing="12"
+                      Opacity="0">
+                    <controls:FeatureTile Grid.Row="0" Grid.Column="0"
+                                          Icon="📅"
+                                          Title="Lịch Ca 24/7"
+                                          Description="Lịch trực tuần này"
+                                          ActionText="Xem Lịch"
+                                          TappedCommand="{Binding FeatureCommand}"
+                                          CommandParameter="Lịch Ca 24/7" />
+                    <controls:FeatureTile Grid.Row="0" Grid.Column="1"
+                                          Icon="💰"
+                                          Title="Phiếu Lương"
+                                          Description="Tra cứu lương Net"
+                                          ActionText="Xem Phiếu"
+                                          TappedCommand="{Binding FeatureCommand}"
+                                          CommandParameter="Phiếu Lương" />
+                    <controls:FeatureTile Grid.Row="1" Grid.Column="0"
+                                          Icon="📝"
+                                          Title="Đơn Điện Tử"
+                                          Description="Nghỉ phép, đổi ca"
+                                          ActionText="Tạo Đơn"
+                                          TappedCommand="{Binding FeatureCommand}"
+                                          CommandParameter="Đơn Điện Tử" />
+                    <controls:FeatureTile Grid.Row="1" Grid.Column="1"
+                                          Icon="👤"
+                                          Title="Hồ Sơ"
+                                          Description="Thông tin &amp; mật khẩu"
+                                          ActionText="Xem Hồ Sơ"
+                                          TappedCommand="{Binding ProfileCommand}" />
+                </Grid>
+
+                <Label x:Name="footerLabel"
+                       Text="The OverTime Hotel Mobile App v1.0 (.NET MAUI 10) · Supabase Cloud"
+                       TextColor="#94A3B8"
+                       FontSize="10"
+                       FontFamily="SegoeUI"
+                       HorizontalOptions="Center"
+                       Margin="0,4,0,0"
+                       Opacity="0" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Popup thông báo dùng chung, phủ toàn màn hình -->
+        <controls:LuxuryPopup x:Name="popup" ZIndex="999" />
+
+    </Grid>
+
+</ContentPage>
