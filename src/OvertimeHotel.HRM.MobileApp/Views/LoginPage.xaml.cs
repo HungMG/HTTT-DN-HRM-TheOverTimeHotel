@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime.Versioning;
 using OvertimeHotel.HRM.MobileApp.Animations;
 using OvertimeHotel.HRM.MobileApp.ViewModels;
 
@@ -94,20 +95,34 @@ public partial class LoginPage : ContentPage
 
         // Android.App.Activity.Current không còn tồn tại trong .NET 10 for Android;
         // Platform.CurrentActivity là API chính thức của MAUI cho việc này.
-        var activity = Platform.CurrentActivity;
-        var window = activity?.Window;
+        var window = Platform.CurrentActivity?.Window;
         if (window is null)
         {
             return;
         }
 
-        activity!.RunOnUiThread(() =>
-        {
-            // Cờ APPEARANCE_LIGHT_STATUS_BARS nghĩa là biểu tượng TỐI. Bật cờ này
-            // để đồng hồ và các glyph nổi rõ trên lớp scrim xám sáng mặc định.
-            const int lightBars = (int)Android.Views.WindowInsetsControllerAppearance.LightStatusBars;
-            window.InsetsController?.SetSystemBarsAppearance(lightBars, lightBars);
-        });
+        // OnAppearing đã chạy trên UI thread nên gọi thẳng, không bọc RunOnUiThread:
+        // trạng thái "đã kiểm tra API 30" không truyền được qua biên lambda, bọc vào
+        // đó thì trình phân tích CA1416 lại mất dấu và cảnh báo quay về.
+        SetDarkStatusBarIcons(window);
+    }
+
+    /// <summary>
+    /// Bật cờ APPEARANCE_LIGHT_STATUS_BARS (tên cờ gây hiểu nhầm: nghĩa là biểu tượng
+    /// thanh trạng thái hiện màu TỐI) để đồng hồ và các glyph nổi rõ trên lớp scrim
+    /// xám sáng mặc định của Android 15.
+    /// </summary>
+    /// <remarks>
+    /// Phải tách riêng một hàm và gắn <see cref="SupportedOSPlatformAttribute"/> để
+    /// <c>SupportedOSPlatform</c> tự chứng minh tính hợp lệ thay vì bắt buộc mọi nơi
+    /// gọi phải tự kiểm tra phiên bản — nhưng chỉ dùng được khi lệnh gọi nằm trực tiếp
+    /// trong nhánh đã đối chiếu <c>OperatingSystem.IsAndroidVersionAtLeast(30)</c>.
+    /// </remarks>
+    [SupportedOSPlatform("android30.0")]
+    private static void SetDarkStatusBarIcons(Android.Views.Window window)
+    {
+        const int lightBars = (int)Android.Views.WindowInsetsControllerAppearance.LightStatusBars;
+        window.InsetsController?.SetSystemBarsAppearance(lightBars, lightBars);
     }
 
     private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
