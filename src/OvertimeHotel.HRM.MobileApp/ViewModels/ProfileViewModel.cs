@@ -332,20 +332,23 @@ public class ProfileViewModel : INotifyPropertyChanged
 
     private async Task ExecuteBackAsync()
     {
-        if (Shell.Current != null)
+        // Quay lại đúng nhánh trang chủ mà người dùng đang thuộc về. Thanh tab đã
+        // dựng sẵn lúc đăng nhập nên chỉ cần nhảy, không dựng lại.
+        if (Shell.Current is AppShell shell)
         {
-            // Quay lại đúng nhánh trang chủ mà người dùng đang thuộc về.
-            bool isEmployee = _authService.CurrentUser?.IsEmployee == true;
-            await Shell.Current.GoToAsync(isEmployee ? "//EmployeeHomePage" : "//ManagerHomePage");
+            await shell.OpenHomeAsync();
         }
     }
 
     private async Task ExecuteLogoutAsync()
     {
         await _authService.LogoutAsync();
-        if (Shell.Current != null)
+        if (Shell.Current is AppShell shell)
         {
-            await Shell.Current.GoToAsync("//LoginPage");
+            // Gỡ tab trước khi rời phiên: nếu không, lần đăng nhập sau sẽ dựng chồng
+            // tab lên cây cũ và vai trò mới có thể thừa hưởng tab của vai trò cũ.
+            shell.ClearRoleTabs();
+            await shell.GoToAsync("//LoginPage");
         }
     }
 

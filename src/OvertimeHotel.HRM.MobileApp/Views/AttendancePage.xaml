@@ -13,7 +13,7 @@
 
         <!-- ==================== NỘI DUNG CHÍNH ==================== -->
         <ScrollView Grid.Row="0">
-            <VerticalStackLayout Spacing="16" Padding="20,24,20,32">
+            <VerticalStackLayout x:Name="pageBody" Spacing="16" Padding="20,24,20,32">
 
                 <!-- HEADER: NÚT QUAY LẠI & TIÊU ĐỀ -->
                 <Grid x:Name="pageHeader" Opacity="0" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">

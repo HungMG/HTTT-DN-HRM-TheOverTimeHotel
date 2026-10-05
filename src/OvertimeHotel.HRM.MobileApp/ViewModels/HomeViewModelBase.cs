@@ -27,7 +27,7 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
         AuthService = authService ?? throw new ArgumentNullException(nameof(authService));
         LeaveApprovalService = leaveApprovalService ?? throw new ArgumentNullException(nameof(leaveApprovalService));
 
-        ProfileCommand = new Command(() => _ = Shell.Current.GoToAsync("//ProfilePage"));
+        ProfileCommand = new Command(() => _ = Shell.Current.GoToAsync("//MainTabs/Profile"));
         FeatureCommand = new Command<string>(featureName => RequestFeature(featureName));
     }
 

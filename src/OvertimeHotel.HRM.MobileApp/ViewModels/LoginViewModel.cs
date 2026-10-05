@@ -284,18 +284,16 @@ public class LoginViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Chuyển tới nhánh trang chủ đúng theo vai trò do CSDL trả về:
-    /// Nhân viên vào EmployeeHomePage, còn lại (Quản lý, HR, Quản trị viên) vào ManagerHomePage.
+    /// Vào phần sau đăng nhập. AppShell tự dựng thanh tab đúng theo vai trò do CSDL
+    /// trả về: nhân viên có tab trang chủ của mình, còn lại (Quản lý, HR, Quản trị
+    /// viên) có tab quản lý — mỗi bên không thấy tab của bên kia.
     /// </summary>
     private async Task NavigateToBranchAsync()
     {
-        if (Shell.Current is null)
+        if (Shell.Current is AppShell shell)
         {
-            return;
+            await shell.OpenHomeAsync();
         }
-
-        bool isEmployee = _authService.CurrentUser?.IsEmployee == true;
-        await Shell.Current.GoToAsync(isEmployee ? "//EmployeeHomePage" : "//ManagerHomePage");
     }
 
     private void ClearError()

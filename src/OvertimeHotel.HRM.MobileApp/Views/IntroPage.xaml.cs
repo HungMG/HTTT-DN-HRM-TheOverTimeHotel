@@ -80,9 +80,11 @@ public partial class IntroPage : ContentPage
         {
             if (isSessionRestored && _authService.IsAuthenticated)
             {
-                // Đã có phiên đăng nhập: Vào thẳng nhánh trang chủ đúng vai trò
-                bool isEmployee = _authService.CurrentUser?.IsEmployee == true;
-                await Shell.Current.GoToAsync(isEmployee ? "//EmployeeHomePage" : "//ManagerHomePage");
+                // Đã có phiên đăng nhập: AppShell dựng thanh tab đúng vai trò luôn
+                if (Shell.Current is AppShell shell)
+                {
+                    await shell.OpenHomeAsync();
+                }
             }
             else
             {

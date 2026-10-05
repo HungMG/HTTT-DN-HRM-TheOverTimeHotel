@@ -6,6 +6,14 @@
     xmlns:views="clr-namespace:OvertimeHotel.HRM.MobileApp.Views"
     Title="The OverTime Hotel HRM">
 
+    <!--
+        KHÔNG khai báo màu thanh tab ở đây. Shell.TabBar*Color là attached
+        property và chỉ có tác dụng khi đặt trực tiếp lên đối tượng TabBar;
+        đặt qua <Shell.Resources> không được Shell tra tới — cây tab ở đây
+        do BuildRoleTabs dựng bằng code C#, không phải do XAML sinh ra.
+        Màu thật được đặt trong AppShell.BuildRoleTabs.
+    -->
+
     <ShellContent
         Title="Khởi Động"
         ContentTemplate="{DataTemplate views:IntroPage}"
@@ -16,25 +24,13 @@
         ContentTemplate="{DataTemplate views:LoginPage}"
         Route="LoginPage" />
 
-    <!-- Hai nhánh sau đăng nhập là hai trang riêng biệt, không dùng chung khung giao diện -->
-    <ShellContent
-        Title="Trang Chủ Nhân Viên"
-        ContentTemplate="{DataTemplate views:EmployeeHomePage}"
-        Route="EmployeeHomePage" />
-
-    <ShellContent
-        Title="Trang Chủ Quản Lý"
-        ContentTemplate="{DataTemplate views:ManagerHomePage}"
-        Route="ManagerHomePage" />
-
-    <ShellContent
-        Title="Hồ Sơ"
-        ContentTemplate="{DataTemplate views:ProfilePage}"
-        Route="ProfilePage" />
-
-    <ShellContent
-        Title="Chấm Công"
-        ContentTemplate="{DataTemplate views:AttendancePage}"
-        Route="AttendancePage" />
+    <!--
+        Thanh tab sau đăng nhập KHÔNG khai báo ở đây mà dựng động trong
+        AppShell.BuildRoleTabs theo vai trò (xem OpenHomeAsync). Lý do không
+        khai báo sẵn: số tab còn lại phụ thuộc CSDL trả về ai đang đăng nhập —
+        nhân viên không được thấy tab Quản Lý, mà trang đó chứa nút duyệt đơn
+        thật. XAML không diễn đạt được điều kiện đó, và khai báo tĩnh cũng dễ bị
+        truy cập bằng cách gõ tay route.
+    -->
 
 </Shell>

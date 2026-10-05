@@ -23,6 +23,8 @@ public partial class EmployeeHomePage : ContentPage
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _employeeDashboard = employeeDashboard ?? throw new ArgumentNullException(nameof(employeeDashboard));
 
+        SafeAreaInset.Track(this, pageBody, new Thickness(20, 20, 20, 32));
+
         BindingContext = _viewModel;
         locationClockPanel.Bind(_employeeDashboard);
 
@@ -100,7 +102,7 @@ public partial class EmployeeHomePage : ContentPage
     {
         if (Shell.Current is not null)
         {
-            await Shell.Current.GoToAsync("//ProfilePage");
+            await Shell.Current.GoToAsync("//MainTabs/Profile");
         }
     }
 
@@ -108,7 +110,7 @@ public partial class EmployeeHomePage : ContentPage
     {
         if (Shell.Current is not null)
         {
-            await Shell.Current.GoToAsync("//AttendancePage");
+            await Shell.Current.GoToAsync("//MainTabs/Attendance");
         }
     }
 

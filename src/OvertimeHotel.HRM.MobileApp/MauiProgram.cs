@@ -56,6 +56,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<ManagerHomeViewModel>();
 
 		// Đăng ký Views
+		builder.Services.AddSingleton<AppShell>();
 		builder.Services.AddTransient<IntroPage>();
 		builder.Services.AddTransient<LoginPage>();
 		builder.Services.AddTransient<EmployeeHomePage>();

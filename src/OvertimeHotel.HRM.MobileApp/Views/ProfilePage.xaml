@@ -11,7 +11,7 @@
     <Grid>
         <!-- 1. NỘI DUNG CHÍNH CỦA TRANG PROFILE -->
         <ScrollView>
-            <VerticalStackLayout Spacing="16" Padding="20,24,20,32">
+            <VerticalStackLayout x:Name="pageBody" Spacing="16" Padding="20,24,20,32">
 
                 <!-- HEADER ĐIỀU HƯỚNG: NÚT QUAY LẠI & TIÊU ĐỀ -->
                 <Grid x:Name="profileHeader" Opacity="0" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" Margin="0,6,0,8">

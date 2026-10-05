@@ -99,6 +99,16 @@
 		     512px duy nhất trên máy màn hình 4×. -->
 		<MauiImage Update="Resources\Images\app_icon.png" Resize="True" BaseSize="156,156" />
 
+		<!-- Icon thanh tab của AppShell. Shell.Content.Icon nhận ImageSource nên
+		     không dùng được ký tự emoji trong AppShell.xaml.cs — phải có PNG riêng.
+		     BaseSize="32,32" khớp kích thước tab ở mdpi; Resizetizer xuất đúng bản
+		     theo từng mật độ nên không phóng một bản 96px duy nhất trên máy 4×.
+		     Tất cả do scripts/generate_mobile_brand_icons.py sinh ra. -->
+		<MauiImage Update="Resources\Images\tab_home.png" Resize="True" BaseSize="32,32" />
+		<MauiImage Update="Resources\Images\tab_manager.png" Resize="True" BaseSize="32,32" />
+		<MauiImage Update="Resources\Images\tab_profile.png" Resize="True" BaseSize="32,32" />
+		<MauiImage Update="Resources\Images\tab_attendance.png" Resize="True" BaseSize="32,32" />
+
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />
 

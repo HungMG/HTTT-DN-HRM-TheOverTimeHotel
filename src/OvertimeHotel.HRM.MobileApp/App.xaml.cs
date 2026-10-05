@@ -4,14 +4,22 @@ namespace OvertimeHotel.HRM.MobileApp;
 
 public partial class App : Application
 {
-	public App()
+	private readonly IServiceProvider _services;
+
+	public App(IServiceProvider services)
 	{
+		_services = services ?? throw new ArgumentNullException(nameof(services));
+
 		InitializeComponent();
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
-		var window = new Window(new AppShell())
+		// AppShell nhận IAuthService để dựng thanh tab theo vai trò, nên phải lấy
+		// từ DI thay vì new trực tiếp (xem MauiProgram.AddSingleton<AppShell>).
+		var shell = _services.GetRequiredService<AppShell>();
+
+		var window = new Window(shell)
 		{
 			Title = "The OverTime Hotel · HRM Mobile App",
 			Width = 420,
