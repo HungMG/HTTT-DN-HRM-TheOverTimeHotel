@@ -176,9 +176,11 @@
                                            FontFamily="SegoeUI"
                                            FontSize="12"
                                            VerticalOptions="Center" />
+                                    <!-- Nhãn trạng thái máy chủ: đổi theo kết quả ping thật
+                                         nên không ghim màu xanh trong XAML nữa. -->
                                     <Label Grid.Column="2"
-                                           Text="● Supabase Online"
-                                           TextColor="#059669"
+                                           Text="{Binding ServerStatusText}"
+                                           TextColor="{Binding ServerStatusColor}"
                                            FontFamily="SegoeUIBold"
                                            FontSize="11"
                                            VerticalOptions="Center" />

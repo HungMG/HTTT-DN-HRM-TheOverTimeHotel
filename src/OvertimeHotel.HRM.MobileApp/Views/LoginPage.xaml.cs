@@ -31,6 +31,10 @@ public partial class LoginPage : ContentPage
 
         ApplyBrandStatusBar();
 
+        // Hỏi máy chủ API còn sống không. Fire-and-forget để không đợi mạng: dù máy
+        // chủ treo tới hết timeout thì phần đăng nhập vẫn hiện và vẫn gõ được.
+        _ = _viewModel.InitializeServerStatusAsync();
+
         // Dải đầu và thẻ đăng nhập là hai khối nằm chồng nhau (thẻ nổi lên dải navy).
         // Hoạt ảnh riêng từng khối để không nhân đôi Transform trên cùng một cây.
         brandHeader.Opacity = 0;

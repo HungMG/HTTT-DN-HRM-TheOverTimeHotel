@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using OvertimeHotel.HRM.MobileApp.Services;
@@ -19,6 +20,11 @@ public class LoginViewModel : INotifyPropertyChanged
     private bool _isLoading;
     private string _errorMessage = string.Empty;
     private bool _isPasswordHidden = true;
+
+    // Nhãn trạng thái máy chủ: khởi tạo ở trạng thái "đang kiểm tra" và chuyển sang
+    // xanh/đỏ sau khi ping xong, để không bao giờ hiện xanh khi chưa biết gì.
+    private string _serverStatusText = "● Đang kiểm tra...";
+    private Color _serverStatusColor = Color.FromArgb("#94A3B8");
 
     // Trạng thái Custom Luxury Modal Popup
     private bool _isPopupVisible;
@@ -108,6 +114,70 @@ public class LoginViewModel : INotifyPropertyChanged
     {
         get => _isPasswordHidden;
         set => SetProperty(ref _isPasswordHidden, value);
+    }
+
+    // Trạng thái kết nối máy chủ hiển thị cạnh ô "Ghi nhớ đăng nhập". Trước đây nhãn
+    // này là chữ tĩnh trong XAML nên luôn sáng xanh dù máy chủ có thể chết — người
+    // dùng tưởng hệ thống sẵn sàng rồi mới gõ mật khẩu. Giờ nó phản ánh đúng kết
+    // quả ping: xám khi đang hỏi, xanh khi thấy máy chủ, đỏ khi không kết nối được.
+    public string ServerStatusText
+    {
+        get => _serverStatusText;
+        private set => SetProperty(ref _serverStatusText, value);
+    }
+
+    public Color ServerStatusColor
+    {
+        get => _serverStatusColor;
+        private set => SetProperty(ref _serverStatusColor, value);
+    }
+
+    /// <summary>
+    /// Hỏi máy chủ API còn sống không, rồi cập nhật nhãn trạng thái cho khớp.
+    ///
+    /// Gọi HEAD tới gốc chứ không gọi mốc nghiệp vụ nào: cần phân biệt "máy chủ chết"
+    /// với "tài khoản sai", nên không được gửi kèm Bearer token — ping phải chạy được
+    /// cả lúc chưa đăng nhập. HEAD cũng không sinh phụ thuộc vào CSDL nên hỏng CSDL
+    /// vẫn báo xanh, đúng ý nghĩa "máy chủ trả lời".
+    ///
+    /// Mọi lỗi bị nuốt và chỉ phản ánh qua màu chữ: màn hình đăng nhập không được
+    /// chết vì một cuộc ping thất bại.
+    /// </summary>
+    public async Task InitializeServerStatusAsync()
+    {
+        ServerStatusText = "● Đang kiểm tra...";
+        ServerStatusColor = Color.FromArgb("#94A3B8");
+
+        // Timeout ngắn (4s) để máy chủ chết hiện trạng thái đỏ nhanh thay vì treo.
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Head, ApiConfig.BaseUrl);
+            using var response = await client.SendAsync(request);
+
+            // Máy chủ trả 401/404 vẫn nghĩa là nó đang sống và nói chuyện được với mình;
+            // chỉ coi là chết khi không nhận được bất kỳ câu trả lời HTTP nào.
+            ServerStatusText = "● Máy chủ sẵn sàng";
+            ServerStatusColor = Color.FromArgb("#059669");
+        }
+        catch (HttpRequestException)
+        {
+            ServerStatusText = "● Máy chủ không phản hồi";
+            ServerStatusColor = Color.FromArgb("#DC2626");
+        }
+        catch (TaskCanceledException)
+        {
+            // HttpClient ném TaskCanceledException khi hết Timeout.
+            ServerStatusText = "● Máy chủ không phản hồi";
+            ServerStatusColor = Color.FromArgb("#DC2626");
+        }
+        catch (Exception)
+        {
+            // DNS lỗi, sai cấu hình BaseUrl... đều quy về cùng một trạng thái hiển thị.
+            ServerStatusText = "● Máy chủ không phản hồi";
+            ServerStatusColor = Color.FromArgb("#DC2626");
+        }
     }
 
     // Custom Popup Properties

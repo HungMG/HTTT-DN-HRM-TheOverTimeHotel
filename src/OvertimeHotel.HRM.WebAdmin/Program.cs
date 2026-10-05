@@ -134,7 +134,12 @@ builder.Services.AddScoped<IBackupService, BackupService>();
 // Cấu hình Supabase Client cho các tác vụ Realtime / Storage
 var supabaseSection = builder.Configuration.GetSection("Supabase");
 var supabaseUrl = supabaseSection["Url"] ?? "";
-var supabaseKey = supabaseSection["PublishableKey"] ?? supabaseSection["AnonKey"] ?? "";
+// Ưu tiên AnonKey (JWT "eyJ...") vì Supabase Client dùng nó cho cả REST lẫn Auth.
+// PublishableKey dạng "sb_publishable_..." là khoá công khai dùng cho Storage/Edge
+// Functions: PostgREST từ chối nó với thông điệp "Secret API key required", nên đặt
+// sau AnonKey để cấu hình chỉ có mỗi PublishableKey vẫn chạy được, còn có cả hai thì
+// lấy đúng khoá nào PostgREST chấp nhận.
+var supabaseKey = supabaseSection["AnonKey"] ?? supabaseSection["PublishableKey"] ?? "";
 if (!string.IsNullOrWhiteSpace(supabaseUrl) && !string.IsNullOrWhiteSpace(supabaseKey))
 {
     builder.Services.AddSingleton(provider =>
