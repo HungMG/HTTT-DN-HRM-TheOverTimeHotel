@@ -42,6 +42,11 @@ public static class MauiProgram
 			builder.Services.AddSingleton<IAttendanceService, AttendanceService>();
 		}
 
+		// Client PostgREST dùng chung cho các service nghiệp vụ. Singleton để tái
+		// dùng một HttpClient/connection pool — dựng HttpClient mới cho mỗi lần
+		// quẹt thẻ sẽ rò bộ nhớ socket trên Android.
+		builder.Services.AddSingleton<SupabaseRestClient>();
+
 		// Ghi nhận vị trí quẹt thẻ để đối chiếu chống gian lận chấm công.
 		builder.Services.AddSingleton<IGeoLocationService, GeoLocationService>();
 
@@ -54,6 +59,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<EmployeeDashboardViewModel>();
 		builder.Services.AddTransient<EmployeeHomeViewModel>();
 		builder.Services.AddTransient<ManagerHomeViewModel>();
+		builder.Services.AddTransient<HrHomeViewModel>();
 
 		// Đăng ký Views
 		builder.Services.AddSingleton<AppShell>();
@@ -61,6 +67,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<LoginPage>();
 		builder.Services.AddTransient<EmployeeHomePage>();
 		builder.Services.AddTransient<ManagerHomePage>();
+		builder.Services.AddTransient<HrHomePage>();
 		builder.Services.AddTransient<ProfilePage>();
 		builder.Services.AddTransient<LeaveApprovalPage>();
 		builder.Services.AddTransient<LeaveDetailPage>();

@@ -95,7 +95,11 @@ public class LeaveRequestsController : ControllerBase
         }
         else if (normalizedRole == RoleType.HR)
         {
-            authorizedQuery = baseQuery.Where(d => d.MaLoaiDon == 3 || d.MaLoaiDon == 5); // HR xem loại 3, 5
+            // HR xử lý toàn bộ 5 loại đơn, kể cả đơn của quản lý — quản lý nộp đơn
+            // thì không còn ai ở cấp dưới để duyệt. Loại trừ đơn của chính HR.
+            authorizedQuery = baseQuery.Where(d =>
+                d.MaLoaiDon >= 1 && d.MaLoaiDon <= 5 &&
+                d.MaNhanVien != account.MaNhanVien);
         }
         else // Manager
         {
@@ -103,7 +107,8 @@ public class LeaveRequestsController : ControllerBase
             authorizedQuery = baseQuery.Where(d =>
                 (d.MaLoaiDon == 1 || d.MaLoaiDon == 2 || d.MaLoaiDon == 4) &&
                 d.NhanVien != null &&
-                d.NhanVien.MaPhongBan == managerDept);
+                d.NhanVien.MaPhongBan == managerDept &&
+                d.MaNhanVien != account.MaNhanVien); // không tự duyệt đơn của chính mình
         }
 
         // 4. Tính toán pendingCount (tổng số đơn chờ duyệt mà user này có quyền duyệt)
@@ -211,7 +216,9 @@ public class LeaveRequestsController : ControllerBase
             maLoaiDon: donTu.MaLoaiDon,
             currentStatus: donTu.TrangThai,
             approved: request.Approved,
-            phanHoi: request.PhanHoi
+            phanHoi: request.PhanHoi,
+            reviewerEmployeeId: reviewerEmployeeId,
+            requestEmployeeId: donTu.MaNhanVien
         );
 
         if (!isValid)
@@ -219,7 +226,10 @@ public class LeaveRequestsController : ControllerBase
             return errorCode switch
             {
                 "ALREADY_REVIEWED" => StatusCode(409, new LeaveReviewResult(false, errorCode, errorMessage!)),
-                "FORBIDDEN" => StatusCode(403, new LeaveReviewResult(false, errorCode, errorMessage!)),
+                // Tự duyệt và không đủ thẩm quyền đều là bị từ chối — cùng lớp
+                // lỗi 403 để client xử lý một kiểu.
+                "FORBIDDEN" or "SELF_REVIEW_FORBIDDEN" =>
+                    StatusCode(403, new LeaveReviewResult(false, errorCode, errorMessage!)),
                 _ => BadRequest(new LeaveReviewResult(false, errorCode ?? "VALIDATION_ERROR", errorMessage!))
             };
         }

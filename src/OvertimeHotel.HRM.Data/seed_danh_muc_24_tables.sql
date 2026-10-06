@@ -1,6 +1,10 @@
 -- ======================================================================================
 -- HỆ THỐNG QUẢN LÝ NHÂN SỰ & TIỀN LƯƠNG KHÁCH SẠN THE OVERTIME HOTEL
--- DỮ LIỆU SEED MẪU ĐẦY ĐỦ 23 BẢNG CHUẨN 3NF (POSTGRESQL / SUPABASE)
+-- DỮ LIỆU SEED MẪU PHẦN DANH MỤC NỀN TẢNG (POSTGRESQL / SUPABASE)
+-- Toàn hệ thống có 24 bảng chuẩn 3NF. File này nạp 9 bảng danh mục, phần còn
+-- lại (nhân sự, chấm công, lương, RBAC) nằm ở seed_data_24_tables.sql.
+-- Chạy TRƯỚC file kia: các bảng này là khoá ngoại mà file kia tham chiếu tới.
+-- Chạy lại được nhiều lần: mọi INSERT đều có ON CONFLICT, không xoá dữ liệu cũ.
 -- ======================================================================================
 
 -- 1. NẠP PHONG_BAN

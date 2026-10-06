@@ -36,7 +36,7 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
         {
             // 1. Lọc theo thẩm quyền RBAC
             var authorized = _seedRequests.Where(r =>
-                LeaveApprovalPolicy.CanView(user.TenVaiTro, user.MaPhongBan, r.MaPhongBan, r.MaLoaiDon)).ToList();
+                LeaveApprovalPolicy.CanView(user.TenVaiTro, user.MaPhongBan, r.MaPhongBan, r.MaLoaiDon, user.MaNhanVien, r.MaNhanVien)).ToList();
 
             var pendingCount = authorized.Count(r => r.TrangThai == "CHO_DUYET");
 
@@ -99,7 +99,9 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
                 maLoaiDon: item.MaLoaiDon,
                 currentStatus: item.TrangThai,
                 approved: approved,
-                phanHoi: phanHoi
+                phanHoi: phanHoi,
+                reviewerEmployeeId: user.MaNhanVien,
+                requestEmployeeId: item.MaNhanVien
             );
 
             if (!isValid)

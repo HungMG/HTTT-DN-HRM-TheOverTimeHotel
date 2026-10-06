@@ -37,7 +37,7 @@ Dự án xây dựng giải pháp tin học hóa quản trị nhân sự và tí
 - **Ngôn ngữ lập trình:** C# .NET 10 (`net10.0`)
 - **Web Admin Portal:** ASP.NET Core MVC .NET 10
 - **Mobile Application:** .NET MAUI Cross-platform .NET 10 (Android, iOS, Windows)
-- **Cơ sở dữ liệu:** Supabase Cloud Database (PostgreSQL Engine) với 17 bảng chuẩn hóa 3NF
+- **Cơ sở dữ liệu:** Supabase Cloud Database (PostgreSQL Engine) với 24 bảng chuẩn hóa 3NF
 - **ORM / Truy xuất CSDL:** Entity Framework Core 10 / Npgsql & Supabase C# SDK
 - **Xuất tài liệu PDF:** Thư viện C# QuestPDF
 

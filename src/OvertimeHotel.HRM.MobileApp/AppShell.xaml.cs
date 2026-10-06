@@ -17,6 +17,7 @@ public partial class AppShell : Shell
 	// chọn thì Shell tự tô, không cần bản icon thứ hai.
 	private const string TAB_ICON_EMPLOYEE = "tab_home.png";
 	private const string TAB_ICON_MANAGER = "tab_manager.png";
+	private const string TAB_ICON_HR = "tab_hr.png";
 	private const string TAB_ICON_PROFILE = "tab_profile.png";
 	private const string TAB_ICON_ATTENDANCE = "tab_attendance.png";
 
@@ -48,14 +49,14 @@ public partial class AppShell : Shell
 
 	/// <summary>
 	/// Dựng thanh tab theo đúng vai trò rồi nhảy tới trang chủ.
-	/// Nhân viên KHÔNG thấy tab Quản lý: tab bị bỏ hẳn khỏi cây Shell nên
-	/// cũng không gõ tay route để mở được — trang đó chứa nút duyệt đơn thật.
+	/// Nhân viên KHÔNG thấy tab Quản lý/Nhân sự: tab bị bỏ hẳn khỏi cây Shell
+	/// nên cũng không gõ tay route để mở được — trang đó chứa nút duyệt đơn thật.
 	/// </summary>
 	public async Task OpenHomeAsync()
 	{
-		bool isEmployee = _authService.CurrentUser?.IsEmployee == true;
+		var user = _authService.CurrentUser;
 
-		BuildRoleTabs(isEmployee);
+		BuildRoleTabs(user?.IsEmployee == true, user?.IsHR == true);
 		await GoToAsync(HomeRoute);
 	}
 
@@ -70,7 +71,7 @@ public partial class AppShell : Shell
 		_tabsBuilt = false;
 	}
 
-	private void BuildRoleTabs(bool isEmployee)
+	private void BuildRoleTabs(bool isEmployee, bool isHr)
 	{
 		if (_tabsBuilt)
 		{
@@ -81,12 +82,24 @@ public partial class AppShell : Shell
 
 		ClearRoleTabs();
 
+		// Ba nhánh trang chủ, mỗi nhánh một bộ chức năng riêng: nhân viên thao tác
+		// trong ca, quản lý duyệt đơn trong bộ phận, nhân sự xử lý hồ sơ và lương
+		// toàn khách sạn. Gộp HR vào nhánh quản lý sẽ khiến thẻ bấm phải tự ẩn
+		// theo quyền — dễ để sót nút mà người dùng bấm phải mới thấy lỗi quyền.
+		string homeTitle = isEmployee ? "Nhân Viên" : isHr ? "Nhân Sự" : "Quản Lý";
+		string homeIcon = isEmployee ? TAB_ICON_EMPLOYEE : isHr ? TAB_ICON_HR : TAB_ICON_MANAGER;
+		Type homePageType = isEmployee
+			? typeof(EmployeeHomePage)
+			: isHr
+				? typeof(HrHomePage)
+				: typeof(ManagerHomePage);
+
 		ShellContent homeTab = new()
 		{
-			Title = isEmployee ? "Nhân Viên" : "Quản Lý",
-			Icon = isEmployee ? TAB_ICON_EMPLOYEE : TAB_ICON_MANAGER,
+			Title = homeTitle,
+			Icon = homeIcon,
 			Route = "Home",
-			ContentTemplate = new DataTemplate(isEmployee ? typeof(EmployeeHomePage) : typeof(ManagerHomePage))
+			ContentTemplate = new DataTemplate(homePageType)
 		};
 
 		ShellContent profileTab = new()

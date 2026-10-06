@@ -1,14 +1,33 @@
 namespace OvertimeHotel.HRM.MobileApp.Services;
 
 /// <summary>
-/// Cấu hình Endpoint máy chủ API cho Mobile App.
-/// Bảo đảm tuân thủ nguyên tắc Zero Trust và giao thức bảo mật HTTPS trong Production.
+/// Cấu hình Endpoint của Mobile App.
+///
+/// <para>
+/// <b>App chỉ nói chuyện với Supabase Cloud.</b> PRD 06 vẽ Mobile App → Supabase
+/// REST/Realtime thẳng, không qua Web Admin: auth thì GoTrue, dữ liệu nghiệp vụ
+/// thì PostgREST. Vì vậy ở đây không còn URL của Web Admin nào cả.
+/// </para>
+///
+/// <para>
+/// <b>Đã xoá gì và vì sao.</b> Trước đây có <c>BaseUrl</c> trỏ
+/// <c>https://api.overtimehotel.com</c> cùng cơ chế <c>custom_api_base_url</c> cho
+/// phép trỏ sang máy khác. Trên bản Release domain đó không tồn tại (đã kiểm chứng
+/// bằng DNS) và <c>ValidateTransportSecurity</c> lại chặn mọi URL không phải HTTPS
+/// nên cũng không cứu được. Hai service dùng nó đều rơi vào chỗ bắt
+/// <c>HttpRequestException</c> rồi hiện chung thông báo "lỗi tải dữ liệu" — đúng
+/// triệu chứng người dùng gặp trên bản cài thật. Xoá hẳn để compiler bắt được chỗ
+/// gọi sót ngay lần build sau, thay vì để lại "bẫy" rồi âm thầm hỏng trên máy thật.
+/// </para>
+///
+/// <para>
+/// <b>Không còn escape hatch bằng HTTP.</b> Debug trên emulator giờ dùng thẳng
+/// Supabase Cloud qua chính các URL này — hoạt động giống hệt bản Release nên
+/// emulator và máy thật không lệch nhau.
+/// </para>
 /// </summary>
 public static class ApiConfig
 {
-    // URL môi trường Production bắt buộc dùng HTTPS để bảo vệ Bearer JWT Token
-    public const string ProductionBaseUrl = "https://api.overtimehotel.com";
-
     // ------------------------------------------------------------------
     //  Supabase Cloud — nguồn dữ liệu thật của Mobile App
     // ------------------------------------------------------------------
@@ -45,62 +64,4 @@ public static class ApiConfig
 
     /// <summary>Gốc PostgREST — nơi đọc/ghi bảng nghiệp vụ. Cùng lý do dấu "/" cuối.</summary>
     public static string RestBaseUrl => $"{SupabaseUrl}/rest/v1/";
-
-    // URL môi trường Local Debug cho lập trình viên (chỉ khả dụng trong bản dựng Debug)
-    private const string AndroidEmulatorDebugUrl = "http://10.0.2.2:5065";
-    private const string LocalhostDebugUrl = "http://localhost:5065";
-
-    /// <summary>
-    /// Kiểm tra ứng dụng đang chạy ở chế độ Production hay Debug.
-    /// Trong bản phát hành Release, IsProduction luôn luôn là true.
-    /// </summary>
-    public static bool IsProduction =>
-#if DEBUG
-        Preferences.Get("enforce_production_mode", false);
-#else
-        true;
-#endif
-
-    public static string BaseUrl
-    {
-        get
-        {
-            var rawUrl = ResolveBaseUrl();
-            ValidateTransportSecurity(rawUrl);
-            return rawUrl;
-        }
-    }
-
-    private static string ResolveBaseUrl()
-    {
-        // Cho phép cấu hình qua Preferences nếu muốn trỏ tới server riêng hoặc cloud test
-        var customUrl = Preferences.Get("custom_api_base_url", string.Empty);
-        if (!string.IsNullOrWhiteSpace(customUrl))
-        {
-            return customUrl.TrimEnd('/');
-        }
-
-#if DEBUG
-        // Môi trường Debug cục bộ: hỗ trợ tiện ích Android Emulator và Localhost
-        return DeviceInfo.Platform == DevicePlatform.Android && DeviceInfo.DeviceType == DeviceType.Virtual
-            ? AndroidEmulatorDebugUrl
-            : LocalhostDebugUrl;
-#else
-        // Môi trường Production: Mặc định luôn là HTTPS production URL
-        return ProductionBaseUrl;
-#endif
-    }
-
-    /// <summary>
-    /// Kiểm soát bảo mật đường truyền (Transport Layer Security - TLS):
-    /// Bắt buộc sử dụng HTTPS trong Production để triệt tiêu nguy cơ Man-in-the-Middle (MitM) đánh cắp JWT.
-    /// </summary>
-    public static void ValidateTransportSecurity(string url)
-    {
-        if (IsProduction && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                $"Bảo mật đường truyền (Zero Trust): Trong môi trường Production, URL API '{url}' bắt buộc phải sử dụng giao thức HTTPS để bảo vệ mã xác thực JWT.");
-        }
-    }
 }

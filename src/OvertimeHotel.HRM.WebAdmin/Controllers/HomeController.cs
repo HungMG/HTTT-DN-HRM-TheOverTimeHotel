@@ -173,6 +173,13 @@ public class HomeController : Controller
                 : query.Where(d => false);
         }
 
+        // Không ai tự duyệt đơn của chính mình, trừ quản trị viên — số liệu ở đây
+        // phải khớp đúng với API Mobile, nếu không sẽ lệch nhau giữa hai nền tảng.
+        if (!LeaveApprovalPolicy.IsAdmin(role) && CurrentEmployeeId() is int selfId)
+        {
+            query = query.Where(d => d.MaNhanVien != selfId);
+        }
+
         return query;
     }
 
@@ -312,6 +319,17 @@ public class HomeController : Controller
     private int? CurrentDepartmentId()
     {
         var raw = User.FindFirst("DepartmentId")?.Value;
+        return int.TryParse(raw, out var id) && id > 0 ? id : null;
+    }
+
+    /// <summary>
+    /// Đọc mã nhân viên của người đang đăng nhập từ claim. Dùng để loại đơn của
+    /// chính mình khỏi hàng đợi "cần bạn xử lý" — quản trị viên là ngoại lệ vì đó
+    /// là thoát vòng lặp khi chính họ cần nghỉ (khớp LeaveApprovalPolicy).
+    /// </summary>
+    private int? CurrentEmployeeId()
+    {
+        var raw = User.FindFirst("EmployeeId")?.Value;
         return int.TryParse(raw, out var id) && id > 0 ? id : null;
     }
 

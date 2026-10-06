@@ -82,7 +82,11 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
     public bool CanAct =>
         RequestItem is { TrangThai: "CHO_DUYET" } item &&
         _authService.CurrentUser is { IsLoggedIn: true } user &&
-        LeaveApprovalPolicy.CanReview(user.TenVaiTro, user.MaPhongBan, item.MaPhongBan, item.MaLoaiDon) &&
+        // Truyền cả hai mã nhân viên để policy loại đơn của chính mình. Server vẫn
+        // kiểm tra lại, nhưng ẩn nút ngay từ đây cho khỏi bấm phải mới báo lỗi.
+        LeaveApprovalPolicy.CanReview(
+            user.TenVaiTro, user.MaPhongBan, item.MaPhongBan, item.MaLoaiDon,
+            user.MaNhanVien, item.MaNhanVien) &&
         !IsSubmitting;
 
     public bool IsReviewed => RequestItem != null && RequestItem.TrangThai != "CHO_DUYET";

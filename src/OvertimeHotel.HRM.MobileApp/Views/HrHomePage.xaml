@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:controls="clr-namespace:OvertimeHotel.HRM.MobileApp.Views.Controls"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.HrHomePage"
+             x:DataType="vm:HrHomeViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+
+        <ScrollView>
+            <VerticalStackLayout x:Name="pageBody" Spacing="16" Padding="20,0,20,32">
+
+                <!-- ═══ KHỐI 1 · THANH TIÊU ĐỀ ═══ -->
+                <controls:ProfileHeaderBar x:Name="profileHeaderBar"
+                                           Opacity="0" />
+
+                <!-- ═══ KHỐI 2 · THẺ PHẠM VI NHÂN SỰ (khối hero navy riêng của nhánh này) ═══ -->
+                <Border x:Name="hrScopeCard"
+                        Opacity="0"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#D4AF37"
+                        StrokeThickness="1.5"
+                        BackgroundColor="#1E3A8A"
+                        Padding="18">
+                    <Border.Shadow>
+                        <Shadow Brush="#1E3A8A" Offset="0,6" Radius="16" Opacity="0.25" />
+                    </Border.Shadow>
+
+                    <VerticalStackLayout Spacing="12">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <Border Grid.Column="0"
+                                    StrokeShape="RoundRectangle 24"
+                                    Stroke="#D4AF37"
+                                    StrokeThickness="1.5"
+                                    BackgroundColor="#FFFBEB"
+                                    WidthRequest="44"
+                                    HeightRequest="44"
+                                    VerticalOptions="Center">
+                                <Label Text="👥"
+                                       TextColor="#B45309"
+                                       FontSize="20"
+                                       FontFamily="SegoeUIBold"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                <Label Text="BẢNG ĐIỀU KHIỂN NHÂN SỰ"
+                                       TextColor="#FDE047"
+                                       FontSize="13"
+                                       FontFamily="SegoeUIBold"
+                                       CharacterSpacing="0.8" />
+                                <Label x:Name="lblPermissionBadge"
+                                       Text="CÓ QUYỀN DUYỆT ĐƠN"
+                                       TextColor="#93C5FD"
+                                       FontSize="10"
+                                       FontFamily="SegoeUIBold"
+                                       CharacterSpacing="0.8" />
+                            </VerticalStackLayout>
+                        </Grid>
+
+                        <BoxView HeightRequest="1" Color="#312E81" />
+
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <VerticalStackLayout Grid.Column="0" Spacing="3">
+                                <Label Text="QUYỀN HẠN"
+                                       TextColor="#93C5FD"
+                                       FontSize="9"
+                                       FontFamily="SegoeUIBold"
+                                       CharacterSpacing="0.8" />
+                                <Label x:Name="lblCommandRole"
+                                       Text="Nhân Sự"
+                                       TextColor="#FFFFFF"
+                                       FontSize="14"
+                                       FontFamily="SegoeUIBold" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="3">
+                                <Label Text="PHẠM VI DUYỆT ĐƠN"
+                                       TextColor="#93C5FD"
+                                       FontSize="9"
+                                       FontFamily="SegoeUIBold"
+                                       CharacterSpacing="0.8" />
+                                <Label x:Name="lblCommandScope"
+                                       Text="Toàn khách sạn"
+                                       TextColor="#FFFFFF"
+                                       FontSize="14"
+                                       FontFamily="SegoeUIBold" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ═══ KHỐI 3 · CHỈ SỐ ĐIỀU HÀNH ═══ -->
+                <!--
+                    Hai ô đầu lấy số từ ILeaveApprovalService nên HrHomePage gán tay
+                    trong ApplyViewModel, không bind thẳng để tránh hiện giá trị mặc
+                    định trước khi có dữ liệu. Ô thứ ba là hằng số nghiệp vụ nên để
+                    cứng: theo LeaveApprovalPolicy, HR duyệt cả 5 loại đơn — con số
+                    này không đổi theo thời gian.
+                -->
+                <Grid x:Name="statsGrid"
+                      ColumnDefinitions="*,*,*"
+                      ColumnSpacing="10"
+                      Opacity="0">
+                    <controls:StatTile x:Name="pendingLeaveTile"
+                                       Grid.Column="0"
+                                       Caption="Đơn chờ duyệt"
+                                       Value="0"
+                                       SubCaption="Đang nạp..."
+                                       ValueColor="#059669" />
+                    <controls:StatTile x:Name="reviewedLeaveTile"
+                                       Grid.Column="1"
+                                       Caption="Đã xử lý"
+                                       Value="0"
+                                       SubCaption="trong phạm vi"
+                                       ValueColor="#1E3A8A" />
+                    <controls:StatTile Grid.Column="2"
+                                       Caption="Loại đơn"
+                                       Value="5"
+                                       SubCaption="Nghỉ · Ốm · Thai sản"
+                                       ValueColor="#D4AF37" />
+                </Grid>
+
+                <!-- ═══ KHỐI 4 · LƯỚI CHỨC NĂNG ═══ -->
+                <!--
+                    Bám theo nhóm quyền HR trong seed_data_17_tables.sql: quản lý
+                    nhân sự, hợp đồng lao động, tính lương, duyệt đơn. HR duyệt CẢ 5
+                    loại đơn toàn khách sạn — kể cả đơn của quản lý, vì quản lý nộp
+                    đơn thì không còn ai ở cấp dưới để duyệt.
+                -->
+                <Label x:Name="featuresHeader"
+                       Text="CHỨC NĂNG NHÂN SỰ"
+                       TextColor="#1E3A8A"
+                       FontSize="12"
+                       FontFamily="SegoeUIBold"
+                       Opacity="0" />
+
+                <Grid x:Name="featuresGrid"
+                      ColumnDefinitions="*,*"
+                      RowDefinitions="Auto,Auto"
+                      ColumnSpacing="12"
+                      RowSpacing="12"
+                      Opacity="0">
+                    <controls:FeatureTile Grid.Row="0" Grid.Column="0"
+                                          Icon="✅"
+                                          Title="Duyệt Đơn Từ"
+                                          Description="Cả 5 loại · toàn KS"
+                                          ActionText="Duyệt Ngay"
+                                          ActionColor="#16A34A"
+                                          TappedCommand="{Binding ApproveCommand}" />
+                    <controls:FeatureTile Grid.Row="0" Grid.Column="1"
+                                          Icon="📄"
+                                          Title="Hợp Đồng Lao Động"
+                                          Description="Gia hạn &amp; chấm dứt"
+                                          ActionText="Quản Lý"
+                                          TappedCommand="{Binding FeatureCommand}"
+                                          CommandParameter="Hợp Đồng Lao Động" />
+                    <controls:FeatureTile Grid.Row="1" Grid.Column="0"
+                                          Icon="💰"
+                                          Title="Tính Lương"
+                                          Description="Lương Net theo tháng"
+                                          ActionText="Chạy Tính Lương"
+                                          TappedCommand="{Binding FeatureCommand}"
+                                          CommandParameter="Tính Lương" />
+                    <controls:FeatureTile Grid.Row="1" Grid.Column="1"
+                                          Icon="👤"
+                                          Title="Hồ Sơ"
+                                          Description="Thông tin &amp; mật khẩu"
+                                          ActionText="Xem Hồ Sơ"
+                                          TappedCommand="{Binding ProfileCommand}" />
+                </Grid>
+
+                <Label x:Name="footerLabel"
+                       Text="The OverTime Hotel Mobile App v1.0 (.NET MAUI 10) · Supabase Cloud"
+                       TextColor="#94A3B8"
+                       FontSize="10"
+                       FontFamily="SegoeUI"
+                       HorizontalOptions="Center"
+                       Margin="0,4,0,0"
+                       Opacity="0" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Popup thông báo dùng chung, phủ toàn màn hình -->
+        <controls:LuxuryPopup x:Name="popup" ZIndex="999" />
+
+    </Grid>
+
+</ContentPage>

@@ -1,6 +1,9 @@
 -- ======================================================================================
 -- HỆ THỐNG QUẢN LÝ NHÂN SỰ & TIỀN LƯƠNG KHÁCH SẠN THE OVERTIME HOTEL
--- SCRIPT NẠP DỮ LIỆU MẪU (SEED DATA) 17 BẢNG CHUẨN 3NF (TASK 11)
+-- SCRIPT NẠP DỮ LIỆU MẪU (SEED DATA) — NHÂN SỰ, CHẤM CÔNG, LƯƠNG & RBAC
+-- Bổ sung cho file seed_danh_muc_24_tables.sql (phần danh mục nền tảng).
+-- Toàn hệ thống có 24 bảng chuẩn 3NF; hai file seed này cộng lại nạp đủ.
+-- Chạy lại được nhiều lần: mọi INSERT đều có ON CONFLICT, không xoá dữ liệu cũ.
 -- ======================================================================================
 
 -- 1. NẠP BẢNG PHONG_BAN (8 Phòng ban khách sạn)
@@ -74,9 +77,12 @@ SELECT setval('quyen_ma_quyen_seq', (SELECT MAX(ma_quyen) FROM QUYEN));
 INSERT INTO VAI_TRO_QUYEN (ma_vai_tro, ma_quyen) VALUES
 -- Admin có toàn quyền hệ thống + danh mục + backup
 (1, 1), (1, 2), (1, 3), (1, 4), (1, 5),
--- HR có quyền quản lý nhân sự, HĐLĐ, tính lương, xuất PDF, duyệt thôi việc và quản trị danh mục
-(2, 4), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 14), (2, 15), (2, 16),
--- Manager có quyền xếp ca, duyệt đơn nghỉ, duyệt OT, xem chấm công bộ phận
+-- HR có quyền quản lý nhân sự, HĐLĐ, tính lương, xuất PDF, và duyệt ĐƯỢC CẢ đơn nghỉ
+-- lẫn thôi việc: quản lý nộp đơn thì không còn ai ở cấp dưới để duyệt, nên toàn bộ
+-- 5 loại đơn đều phải đi qua nhân sự (khớp LeaveApprovalPolicy.HrAllowedTypes).
+(2, 4), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 12), (2, 14), (2, 15), (2, 16),
+-- Manager có quyền xếp ca, duyệt đơn nghỉ TRONG BỘ PHẬN, duyệt OT, xem chấm công
+-- bộ phận. KHÔNG có DUYET_THOI_VIEC: chấm dứt HĐLĐ thuộc về nhân sự.
 (3, 11), (3, 12), (3, 13), (3, 14), (3, 15), (3, 16),
 -- Employee có quyền chấm công, nộp đơn từ
 (4, 15), (4, 16)

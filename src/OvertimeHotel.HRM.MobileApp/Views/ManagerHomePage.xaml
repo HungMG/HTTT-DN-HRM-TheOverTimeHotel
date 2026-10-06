@@ -12,7 +12,7 @@
     <Grid>
 
         <ScrollView>
-            <VerticalStackLayout x:Name="pageBody" Spacing="16" Padding="20,20,20,32">
+            <VerticalStackLayout x:Name="pageBody" Spacing="16" Padding="20,0,20,32">
 
                 <!-- ═══ KHỐI 1 · THANH TIÊU ĐỀ ═══ -->
                 <controls:ProfileHeaderBar x:Name="profileHeaderBar"
