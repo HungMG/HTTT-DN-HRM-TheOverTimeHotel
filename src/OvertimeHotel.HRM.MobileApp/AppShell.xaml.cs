@@ -18,7 +18,7 @@ public partial class AppShell : Shell
 	private const string TAB_ICON_EMPLOYEE = "tab_home.png";
 	private const string TAB_ICON_MANAGER = "tab_manager.png";
 	private const string TAB_ICON_HR = "tab_hr.png";
-	private const string TAB_ICON_PROFILE = "tab_profile.png";
+	private const string TAB_ICON_SETTINGS = "tab_settings.png";
 	private const string TAB_ICON_ATTENDANCE = "tab_attendance.png";
 
 	// Bảng màu thanh tab theo nhận diện khách sạn 5★ (rules/mobile-design-rules.md):
@@ -45,6 +45,11 @@ public partial class AppShell : Shell
 
 		Routing.RegisterRoute("LeaveApprovalPage", typeof(LeaveApprovalPage));
 		Routing.RegisterRoute("LeaveDetailPage", typeof(LeaveDetailPage));
+
+		// Hồ Sơ và Đổi Mật Khẩu không còn là tab riêng mà là hai trang push mở từ
+		// tab Cài Đặt, nên phải đăng ký route toàn cục thì GoToAsync mới tới được.
+		Routing.RegisterRoute("ProfilePage", typeof(ProfilePage));
+		Routing.RegisterRoute("ChangePasswordPage", typeof(ChangePasswordPage));
 	}
 
 	/// <summary>
@@ -102,12 +107,12 @@ public partial class AppShell : Shell
 			ContentTemplate = new DataTemplate(homePageType)
 		};
 
-		ShellContent profileTab = new()
+		ShellContent settingsTab = new()
 		{
-			Title = "Hồ Sơ",
-			Icon = TAB_ICON_PROFILE,
-			Route = "Profile",
-			ContentTemplate = new DataTemplate(typeof(ProfilePage))
+			Title = "Cài Đặt",
+			Icon = TAB_ICON_SETTINGS,
+			Route = "Settings",
+			ContentTemplate = new DataTemplate(typeof(SettingsPage))
 		};
 
 		ShellContent attendanceTab = new()
@@ -118,8 +123,9 @@ public partial class AppShell : Shell
 			ContentTemplate = new DataTemplate(typeof(AttendancePage))
 		};
 
-		// Thứ tự tab cố định: trang chủ luôn ở đầu, Hồ Sơ và Chấm Công giữ nguyên
-		// chỗ của mình, nên đổi vai trò cũng không làm thanh tab dịch vị trí.
+		// Thứ tự tab cố định: trang chủ ở đầu, chức năng làm việc ở giữa,
+		// Cài Đặt sát mép phải. Cài Đặt nằm cuối vì nó là menu phụ — nhân viên
+		// vào bằng ngón tay phải, không cạnh tranh chỗ với ca trực ở giữa.
 		//
 		// Màu phải đặt ở đây chứ không khai trong <Shell.Resources>: TabBarForegroundColor
 		// là attached property của Shell và chỉ Shell mới tra tới trên cây Shell
@@ -138,14 +144,14 @@ public partial class AppShell : Shell
 		Shell.SetTabBarTitleColor(mainTabs, Color.FromArgb(TAB_BAR_TITLE));
 
 		mainTabs.Items.Add(homeTab);
-		mainTabs.Items.Add(profileTab);
 		mainTabs.Items.Add(attendanceTab);
+		mainTabs.Items.Add(settingsTab);
 
 		// Màu thanh tab chỉ ăn khi đặt trên TabBar; nhưng từng tab con cũng cần màu
 		// riêng cho nhãn, vì bộ dựng hình Shell tô màu chữ theo chính ShellContent.
 		// Thiếu bước này thì nhãn tab rơi về màu tiêu đề mặc định của hệ thống.
 		ApplyTabAppearance(homeTab);
-		ApplyTabAppearance(profileTab);
+		ApplyTabAppearance(settingsTab);
 		ApplyTabAppearance(attendanceTab);
 
 		Items.Add(mainTabs);

@@ -31,8 +31,8 @@ public partial class EmployeeHomePage : ContentPage
         _entranceBlocks = new VisualElement[]
         {
             profileHeaderBar,
-            shiftHeroCard,
             locationClockPanel,
+            shiftTimelineCard,
             statsGrid,
             featuresHeader,
             featuresGrid,
@@ -44,13 +44,12 @@ public partial class EmployeeHomePage : ContentPage
     {
         base.OnAppearing();
 
-        profileHeaderBar.ProfileTapped += OnProfileTapped;
-        shiftHeroCard.CheckInRequested += OnCheckInRequested;
         _viewModel.FeatureRequested += OnFeatureRequested;
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         await _viewModel.LoadAsync();
         profileHeaderBar.Bind(_viewModel);
-        shiftHeroCard.Bind(_viewModel);
+        BindShiftTimeline(_viewModel);
 
         await RunEntranceAnimationAsync();
         await StartEmployeeBranchAsync();
@@ -60,9 +59,8 @@ public partial class EmployeeHomePage : ContentPage
     {
         base.OnDisappearing();
 
-        profileHeaderBar.ProfileTapped -= OnProfileTapped;
-        shiftHeroCard.CheckInRequested -= OnCheckInRequested;
         _viewModel.FeatureRequested -= OnFeatureRequested;
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
 
         // Dừng đồng hồ và GPS để không tiêu hao pin khi người dùng rời trang chủ.
         _employeeDashboard.Stop();
@@ -98,19 +96,36 @@ public partial class EmployeeHomePage : ContentPage
         }
     }
 
-    private async void OnProfileTapped(object? sender, EventArgs e)
+    /// <summary>
+    /// Đẩy ca hôm nay của chính mình vào dải hối lịch trực. Chỉ hiện ca của bản
+    /// thân — lịch của đồng nghiệp cùng ca do quản lý phân, nhân viên không có
+    /// quyền đọc (RLS <c>doc_phan_ca</c> giới hạn theo <c>ma_nhan_vien</c>).
+    /// </summary>
+    private void BindShiftTimeline(EmployeeHomeViewModel viewModel)
     {
-        if (Shell.Current is not null)
-        {
-            await Shell.Current.GoToAsync("//MainTabs/Profile");
-        }
+        // ShiftTimeText có dạng "HH:mm – HH:mm"; tách ra hai đầu dải thời gian.
+        var parts = viewModel.ShiftTimeText.Split('–', StringSplitOptions.TrimEntries);
+
+        lblTimelineStart.Text = parts.Length > 0 ? parts[0] : "--:--";
+        lblTimelineEnd.Text = parts.Length > 1 ? parts[1] : "--:--";
+        lblTimelineShiftName.Text = viewModel.ShiftTaskText;
+
+        lblNightBadge.Text = string.IsNullOrEmpty(viewModel.NightBadgeText)
+            ? "Ca Làm Việc"
+            : viewModel.NightBadgeText;
+        nightBadgeBorder.IsVisible = viewModel.HasShiftToday;
     }
 
-    private async void OnCheckInRequested(object? sender, EventArgs e)
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (Shell.Current is not null)
+        switch (e.PropertyName)
         {
-            await Shell.Current.GoToAsync("//MainTabs/Attendance");
+            case nameof(EmployeeHomeViewModel.ShiftTimeText):
+            case nameof(EmployeeHomeViewModel.ShiftTaskText):
+            case nameof(EmployeeHomeViewModel.NightBadgeText):
+            case nameof(EmployeeHomeViewModel.HasShiftToday):
+                MainThread.BeginInvokeOnMainThread(() => BindShiftTimeline(_viewModel));
+                break;
         }
     }
 

@@ -18,7 +18,6 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
 
     private string _greeting = "Xin chào!";
     private string _roleDepartmentLine = "The OverTime Hotel";
-    private string _avatarInitial = "★";
     private string _pendingLeaveSub = "Đang nạp...";
     private int _pendingLeaveCount;
 
@@ -27,13 +26,15 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
         AuthService = authService ?? throw new ArgumentNullException(nameof(authService));
         LeaveApprovalService = leaveApprovalService ?? throw new ArgumentNullException(nameof(leaveApprovalService));
 
-        ProfileCommand = new Command(() => _ = Shell.Current.GoToAsync("//MainTabs/Profile"));
+        // Thẻ chức năng "Hồ Sơ" trên trang chủ nay mở thẳng trang Thông tin cá nhân,
+        // không qua tab Cài Đặt nữa — bỏ một bước bấm thừa.
+        ProfileCommand = new Command(() => _ = Shell.Current.GoToAsync("ProfilePage"));
         FeatureCommand = new Command<string>(featureName => RequestFeature(featureName));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>Mở trang Hồ Sơ cá nhân và đổi mật khẩu.</summary>
+    /// <summary>Mở trang Thông tin cá nhân (trang push từ Cài Đặt hoặc từ trang chủ).</summary>
     public ICommand ProfileCommand { get; }
 
     /// <summary>Mở một tính năng nghiệp vụ; nhận tên tính năng qua CommandParameter.</summary>
@@ -63,13 +64,6 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
         protected set => SetProperty(ref _roleDepartmentLine, value);
     }
 
-    /// <summary>Chữ cái đầu của họ tên hiển thị trong nút avatar ở góc phải.</summary>
-    public string AvatarInitial
-    {
-        get => _avatarInitial;
-        protected set => SetProperty(ref _avatarInitial, value);
-    }
-
     /// <summary>Số đơn từ đang chờ duyệt (nhánh Quản lý) hoặc của bạn (nhánh Nhân viên).</summary>
     public int PendingLeaveCount
     {
@@ -93,7 +87,6 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
         {
             Greeting = "Xin chào, Nhân viên!";
             RoleDepartmentLine = "Bộ phận Buồng phòng · The OverTime Hotel";
-            AvatarInitial = "★";
             PendingLeaveCount = 0;
             PendingLeaveSub = "Chưa đăng nhập";
             return;
@@ -101,15 +94,6 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
 
         Greeting = $"Xin chào, {user.HoTen}!";
         RoleDepartmentLine = BuildRoleDepartmentLine(user);
-
-        if (!string.IsNullOrWhiteSpace(user.HoTen))
-        {
-            var parts = user.HoTen.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length > 0)
-            {
-                AvatarInitial = parts[^1][0].ToString().ToUpperInvariant();
-            }
-        }
 
         await LoadPendingLeaveCountAsync(user);
         await LoadBranchKpiAsync(user);
@@ -149,8 +133,10 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
     /// <summary>
     /// Dòng phụ dưới lời chào: "Bộ phận X · Chức vụ Y (Vai trò)".
     /// Bỏ qua mọi phần rỗng để không sinh dấu phân cách treo lơ lửng kiểu "· (Manager)".
+    /// internal (không protected) vì tab Cài Đặt cũng dựng lại dòng này mà
+    /// SettingsViewModel không kế thừa lớp này.
     /// </summary>
-    protected static string BuildRoleDepartmentLine(UserSession user)
+    internal static string BuildRoleDepartmentLine(UserSession user)
     {
         var parts = new List<string>(3);
 

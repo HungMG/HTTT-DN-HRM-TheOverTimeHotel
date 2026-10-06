@@ -51,7 +51,6 @@ public partial class HrHomePage : ContentPage
     {
         base.OnAppearing();
 
-        profileHeaderBar.ProfileTapped += OnProfileTapped;
         _viewModel.FeatureRequested += OnFeatureRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
@@ -65,7 +64,6 @@ public partial class HrHomePage : ContentPage
     {
         base.OnDisappearing();
 
-        profileHeaderBar.ProfileTapped -= OnProfileTapped;
         _viewModel.FeatureRequested -= OnFeatureRequested;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
     }
@@ -101,14 +99,6 @@ public partial class HrHomePage : ContentPage
                 // PropertyChanged có thể phát từ thread của timer CSDL — ép về UI thread.
                 MainThread.BeginInvokeOnMainThread(() => ApplyViewModel(_viewModel));
                 break;
-        }
-    }
-
-    private async void OnProfileTapped(object? sender, EventArgs e)
-    {
-        if (Shell.Current is not null)
-        {
-            await Shell.Current.GoToAsync("//MainTabs/Profile");
         }
     }
 

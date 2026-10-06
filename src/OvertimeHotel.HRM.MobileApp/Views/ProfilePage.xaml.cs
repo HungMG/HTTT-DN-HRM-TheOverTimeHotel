@@ -3,6 +3,11 @@ using OvertimeHotel.HRM.MobileApp.ViewModels;
 
 namespace OvertimeHotel.HRM.MobileApp.Views;
 
+/// <summary>
+/// Màn Thông tin cá nhân. Mở từ dòng menu của tab Cài Đặt, hoặc từ thẻ
+/// "Hồ Sơ" trên trang chủ — cả hai đều là trang push nên có nút quay lại.
+/// Phần đổi mật khẩu đã tách sang <see cref="ChangePasswordPage"/>.
+/// </summary>
 public partial class ProfilePage : ContentPage
 {
     private readonly ProfileViewModel _viewModel;
@@ -12,11 +17,9 @@ public partial class ProfilePage : ContentPage
         InitializeComponent();
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
-        SafeAreaInset.Track(this, pageBody, new Thickness(20, 24, 20, 32));
+        SafeAreaInset.Track(this, pageBody, new Thickness(20, 0, 20, 32));
 
         BindingContext = _viewModel;
-
-        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
     }
 
     protected override async void OnAppearing()
@@ -27,7 +30,6 @@ public partial class ProfilePage : ContentPage
         // 1. Đặt vị trí ban đầu (Opacity đã là 0 trong XAML nên hoàn toàn không bị chớp hay giật)
         profileHeader.TranslationY = -25;
         identityCard.TranslationY = 35;
-        passwordCard.TranslationY = 35;
 
         await Task.Delay(50);
 
@@ -42,44 +44,11 @@ public partial class ProfilePage : ContentPage
             identityCard.FadeToAsync(1.0, 450, Easing.CubicOut),
             identityCard.TranslateToAsync(0, 0, 500, Easing.CubicOut)
         );
-
-        await Task.Delay(110);
-        _ = Task.WhenAll(
-            passwordCard.FadeToAsync(1.0, 450, Easing.CubicOut),
-            passwordCard.TranslateToAsync(0, 0, 500, Easing.CubicOut)
-        );
-    }
-
-    private async void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ProfileViewModel.IsPopupVisible) && _viewModel.IsPopupVisible)
-        {
-            profileModalOverlay.Opacity = 0;
-            profileModalCard.Scale = 0.75;
-            profileModalCard.Opacity = 0;
-
-            _ = profileModalOverlay.FadeToAsync(1, 180, Easing.CubicOut);
-            await profileModalCard.BounceInAsync(360);
-        }
     }
 
     private async void OnBackButtonClicked(object? sender, EventArgs e)
     {
         if (sender is VisualElement btn) await btn.SpringTapAsync();
-    }
-
-    private async void OnLogoutButtonClicked(object? sender, EventArgs e)
-    {
-        if (sender is VisualElement btn) await btn.SpringTapAsync();
-    }
-
-    private async void OnChangePasswordButtonClicked(object? sender, EventArgs e)
-    {
-        if (sender is VisualElement btn) await btn.SpringTapAsync();
-    }
-
-    private async void OnPopupDismissClicked(object? sender, EventArgs e)
-    {
-        if (sender is VisualElement btn) await btn.SpringTapAsync();
+        await Shell.Current.GoToAsync("..");
     }
 }

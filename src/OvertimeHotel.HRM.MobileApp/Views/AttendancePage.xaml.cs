@@ -16,7 +16,7 @@ public partial class AttendancePage : ContentPage
         InitializeComponent();
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
-        SafeAreaInset.Track(this, pageBody, new Thickness(20, 24, 20, 32));
+        SafeAreaInset.Track(this, pageBody, new Thickness(20, 0, 20, 32));
 
         BindingContext = _viewModel;
 
@@ -142,12 +142,6 @@ public partial class AttendancePage : ContentPage
     }
 
     // ==================== SỰ KIỆN GIAO DIỆN ====================
-
-    private async void OnBackButtonClicked(object? sender, EventArgs e)
-    {
-        if (sender is VisualElement btn) await btn.SpringTapAsync();
-        await Shell.Current.GoToAsync("..");
-    }
 
     private async void OnPunchClicked(object? sender, EventArgs e)
     {

@@ -47,7 +47,7 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
 
     #region Thuộc tính hiển thị
 
-    /// <summary>Đồng hồ thời gian thật định dạng HH:mm:ss.</summary>
+    /// <summary>Đồng hồ thời gian thật định dạng HH:mm (bỏ giây cho gọn, đủ dùng trong ca).</summary>
     public string RealTimeText
     {
         get => _realTimeText;
@@ -174,7 +174,7 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
     {
         var now = DateTime.Now;
 
-        RealTimeText = now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+        RealTimeText = now.ToString("HH:mm", CultureInfo.InvariantCulture);
         RealDateText = string.Create(
             CultureInfo.InvariantCulture,
             $"{VietnameseWeekday(now)}, {now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}");

@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+        <ScrollView>
+            <VerticalStackLayout x:Name="pageBody" Spacing="16" Padding="20,0,20,32">
+
+                <!-- ═══ HEADER: NHẬN DIỆN KHÁCH SẠN + TÊN NGƯỜI DÙNG ═══ -->
+                <!-- Logo đặt trực tiếp trên nền trắng, không bọc ô xanh: brand_mark_light
+                     là mực navy vẽ cho nền sáng, bọc ô navy sẽ khiến nó chìm hòa nền. -->
+                <Grid x:Name="pageHeader" Opacity="0" ColumnDefinitions="Auto,*" VerticalOptions="Center">
+                    <Image Grid.Column="0"
+                           Source="brand_mark_light.png"
+                           WidthRequest="42"
+                           HeightRequest="42"
+                           Aspect="AspectFit"
+                           VerticalOptions="Center"
+                           SemanticProperties.Description="Huy hiệu The OverTime Hotel" />
+
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" Margin="12,0,0,0" VerticalOptions="Center">
+                        <Label Text="Cài Đặt"
+                               FontFamily="SegoeUIBold"
+                               FontSize="18"
+                               TextColor="#0F172A" />
+                        <Label Text="{Binding FullName}"
+                               FontFamily="SegoeUI"
+                               FontSize="12"
+                               TextColor="#1E3A8A" />
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- ═══ DẢI THÔNG TIN NGƯỜI DÙNG ═══ -->
+                <Border x:Name="identityStrip"
+                        Opacity="0"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#D4AF37"
+                        StrokeThickness="1.5"
+                        BackgroundColor="#1E3A8A"
+                        Padding="18,16">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
+                        <Border Grid.Row="0" Grid.Column="0"
+                                StrokeShape="RoundRectangle 24"
+                                Stroke="#D4AF37"
+                                StrokeThickness="2"
+                                BackgroundColor="Transparent"
+                                WidthRequest="52"
+                                HeightRequest="52"
+                                VerticalOptions="Center">
+                            <Label Text="★"
+                                   TextColor="#FDE047"
+                                   FontSize="22"
+                                   FontFamily="SegoeUIBold"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+
+                        <VerticalStackLayout Grid.Row="0" Grid.Column="1" Spacing="1" Margin="12,0,0,0" VerticalOptions="Center">
+                            <Label Text="{Binding FullName}"
+                                   TextColor="#FFFFFF"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="16" />
+                            <Label Text="{Binding RoleDepartmentLine}"
+                                   TextColor="#BFDBFE"
+                                   FontFamily="SegoeUI"
+                                   FontSize="11" />
+                        </VerticalStackLayout>
+
+                        <BoxView Grid.Row="1" Grid.ColumnSpan="2"
+                                 HeightRequest="1"
+                                 Color="#3B5499"
+                                 Margin="0,14" />
+
+                        <Label Grid.Row="2" Grid.ColumnSpan="2"
+                               Text="{Binding Username, StringFormat='Tài khoản: @{0}'}"
+                               TextColor="#FDE047"
+                               FontFamily="SegoeUIBold"
+                               FontSize="11" />
+                    </Grid>
+                </Border>
+
+                <!-- ═══ NHÓM 1: TÀI KHOẢN ═══ -->
+                <Label x:Name="accountHeader"
+                       Opacity="0"
+                       Text="TÀI KHOẢN"
+                       TextColor="#94A3B8"
+                       FontFamily="SegoeUIBold"
+                       FontSize="10"
+                       CharacterSpacing="1.4"
+                       Margin="4,2,0,0" />
+
+                <!-- Dòng 1 · THÔNG TIN CÁ NHÂN -->
+                <Border x:Name="profileRow"
+                        Opacity="0"
+                        StrokeShape="RoundRectangle 18"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="#FFFFFF"
+                        Padding="16,14">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnProfileRowTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                        <Border Grid.Column="0"
+                                StrokeShape="RoundRectangle 12"
+                                Stroke="#BFDBFE"
+                                StrokeThickness="1"
+                                BackgroundColor="#EFF6FF"
+                                WidthRequest="42"
+                                HeightRequest="42"
+                                VerticalOptions="Center">
+                            <Label Text="👤"
+                                   FontSize="18"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="Thông tin cá nhân"
+                                   TextColor="#0F172A"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="14" />
+                            <Label Text="Họ tên, phòng ban, chức vụ"
+                                   TextColor="#94A3B8"
+                                   FontFamily="SegoeUI"
+                                   FontSize="11" />
+                        </VerticalStackLayout>
+
+                        <Label Grid.Column="2"
+                               Text="›"
+                               TextColor="#CBD5E1"
+                               FontSize="24"
+                               FontFamily="SegoeUIBold"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Dòng 2 · ĐỔI MẬT KHẨU -->
+                <Border x:Name="passwordRow"
+                        Opacity="0"
+                        StrokeShape="RoundRectangle 18"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="#FFFFFF"
+                        Padding="16,14">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnChangePasswordRowTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                        <Border Grid.Column="0"
+                                StrokeShape="RoundRectangle 12"
+                                Stroke="#FDE68A"
+                                StrokeThickness="1"
+                                BackgroundColor="#FFFBEB"
+                                WidthRequest="42"
+                                HeightRequest="42"
+                                VerticalOptions="Center">
+                            <Label Text="🔒"
+                                   FontSize="18"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="Đổi mật khẩu"
+                                   TextColor="#0F172A"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="14" />
+                            <Label Text="Cập nhật mật khẩu đăng nhập"
+                                   TextColor="#94A3B8"
+                                   FontFamily="SegoeUI"
+                                   FontSize="11" />
+                        </VerticalStackLayout>
+
+                        <Label Grid.Column="2"
+                               Text="›"
+                               TextColor="#CBD5E1"
+                               FontSize="24"
+                               FontFamily="SegoeUIBold"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- ═══ NHÓM 2: PHIÊN LÀM VIỆC ═══ -->
+                <Label x:Name="sessionHeader"
+                       Opacity="0"
+                       Text="PHIÊN LÀM VIỆC"
+                       TextColor="#94A3B8"
+                       FontFamily="SegoeUIBold"
+                       FontSize="10"
+                       CharacterSpacing="1.4"
+                       Margin="4,6,0,0" />
+
+                <!-- Dòng 3 · ĐĂNG XUẤT -->
+                <Border x:Name="logoutRow"
+                        Opacity="0"
+                        StrokeShape="RoundRectangle 18"
+                        Stroke="#FCA5A5"
+                        StrokeThickness="1"
+                        BackgroundColor="#FEF2F2"
+                        Padding="16,14">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnLogoutRowTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                        <Border Grid.Column="0"
+                                StrokeShape="RoundRectangle 12"
+                                Stroke="#FCA5A5"
+                                StrokeThickness="1"
+                                BackgroundColor="#FFFFFF"
+                                WidthRequest="42"
+                                HeightRequest="42"
+                                VerticalOptions="Center">
+                            <Label Text="⎋"
+                                   TextColor="#DC2626"
+                                   FontSize="18"
+                                   FontFamily="SegoeUIBold"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="Đăng xuất"
+                                   TextColor="#DC2626"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="14" />
+                            <Label Text="Thoát khỏi tài khoản trên thiết bị này"
+                                   TextColor="#F87171"
+                                   FontFamily="SegoeUI"
+                                   FontSize="11" />
+                        </VerticalStackLayout>
+
+                        <Label Grid.Column="2"
+                               Text="›"
+                               TextColor="#FCA5A5"
+                               FontSize="24"
+                               FontFamily="SegoeUIBold"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Label x:Name="versionLabel"
+                       Opacity="0"
+                       Text="The OverTime Hotel · Mobile App v1.0 (.NET MAUI 10)"
+                       TextColor="#CBD5E1"
+                       FontSize="10"
+                       FontFamily="SegoeUI"
+                       HorizontalOptions="Center"
+                       Margin="0,8,0,0" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>

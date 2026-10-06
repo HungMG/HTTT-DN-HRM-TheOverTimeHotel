@@ -13,24 +13,11 @@
 
         <!-- ==================== NỘI DUNG CHÍNH ==================== -->
         <ScrollView Grid.Row="0">
-            <VerticalStackLayout x:Name="pageBody" Spacing="16" Padding="20,24,20,32">
+            <VerticalStackLayout x:Name="pageBody" Spacing="16" Padding="20,0,20,32">
 
-                <!-- HEADER: NÚT QUAY LẠI & TIÊU ĐỀ -->
-                <Grid x:Name="pageHeader" Opacity="0" ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
-                    <Button Grid.Column="0"
-                            Text="← Quay Lại"
-                            Clicked="OnBackButtonClicked"
-                            FontFamily="SegoeUIBold"
-                            FontSize="12"
-                            BackgroundColor="#EFF6FF"
-                            TextColor="#1E3A8A"
-                            BorderColor="#BFDBFE"
-                            BorderWidth="1"
-                            CornerRadius="10"
-                            HeightRequest="36"
-                            Padding="12,0" />
-
-                    <Label Grid.Column="1"
+                <!-- HEADER: TIÊU ĐỀ & HUY HIỆU KHÁCH SẠN -->
+                <Grid x:Name="pageHeader" Opacity="0" ColumnDefinitions="*,Auto" VerticalOptions="Center">
+                    <Label Grid.Column="0"
                            Text="Chấm Công"
                            FontFamily="SegoeUIBold"
                            FontSize="18"
@@ -38,7 +25,7 @@
                            HorizontalOptions="Center"
                            VerticalOptions="Center" />
 
-                    <Image Grid.Column="2"
+                    <Image Grid.Column="1"
                            Source="brand_mark_light.png"
                            WidthRequest="28"
                            HeightRequest="28"

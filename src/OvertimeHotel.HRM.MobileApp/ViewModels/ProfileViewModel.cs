@@ -1,12 +1,13 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Input;
 using OvertimeHotel.HRM.MobileApp.Services;
 
 namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 
 /// <summary>
-/// ViewModel quản lý dữ liệu và logic của màn hình Thông Tin Cá Nhân &amp; Đổi Mật Khẩu (Profile).
+/// ViewModel của màn hình Thông Tin Cá Nhân. Trang này chỉ hiển thị, không
+/// có nút thao tác nào: đổi mật khẩu đã tách sang <see cref="ChangePasswordViewModel"/>,
+/// đăng xuất nằm ở <see cref="SettingsViewModel"/> — Cài Đặt mở từng màn một.
 /// </summary>
 public class ProfileViewModel : INotifyPropertyChanged
 {
@@ -23,34 +24,11 @@ public class ProfileViewModel : INotifyPropertyChanged
     private int _employeeId;
     private string _avatarLetter = "U";
 
-    // Đổi mật khẩu
-    private string _currentPassword = string.Empty;
-    private string _newPassword = string.Empty;
-    private string _confirmPassword = string.Empty;
-    private bool _isPasswordHidden = true;
-    private bool _isLoading;
-
-    // Custom Modal Popup Feedback
-    private bool _isPopupVisible;
-    private string _popupTitle = string.Empty;
-    private string _popupMessage = string.Empty;
-    private string _popupButtonText = "ĐỒNG Ý";
-    private string _popupIconText = "★";
-    private string _popupIconBgColor = "#FFFBEB";
-    private string _popupIconTextColor = "#B45309";
-    private string _popupBorderColor = "#D4AF37";
-
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ProfileViewModel(IAuthService authService)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
-
-        ChangePasswordCommand = new Command(async () => await ExecuteChangePasswordAsync(), () => !IsLoading);
-        TogglePasswordCommand = new Command(ExecuteTogglePassword);
-        ClosePopupCommand = new Command(ExecuteClosePopup);
-        BackCommand = new Command(async () => await ExecuteBackAsync());
-        LogoutCommand = new Command(async () => await ExecuteLogoutAsync());
 
         LoadUserInfo();
     }
@@ -145,211 +123,6 @@ public class ProfileViewModel : INotifyPropertyChanged
     {
         get => _avatarLetter;
         set => SetProperty(ref _avatarLetter, value);
-    }
-
-    public string CurrentPassword
-    {
-        get => _currentPassword;
-        set => SetProperty(ref _currentPassword, value);
-    }
-
-    public string NewPassword
-    {
-        get => _newPassword;
-        set => SetProperty(ref _newPassword, value);
-    }
-
-    public string ConfirmPassword
-    {
-        get => _confirmPassword;
-        set => SetProperty(ref _confirmPassword, value);
-    }
-
-    public bool IsPasswordHidden
-    {
-        get => _isPasswordHidden;
-        set => SetProperty(ref _isPasswordHidden, value);
-    }
-
-    public bool IsLoading
-    {
-        get => _isLoading;
-        set
-        {
-            if (SetProperty(ref _isLoading, value))
-            {
-                (ChangePasswordCommand as Command)?.ChangeCanExecute();
-            }
-        }
-    }
-
-    // Custom Modal Popup Properties
-    public bool IsPopupVisible
-    {
-        get => _isPopupVisible;
-        set => SetProperty(ref _isPopupVisible, value);
-    }
-
-    public string PopupTitle
-    {
-        get => _popupTitle;
-        set => SetProperty(ref _popupTitle, value);
-    }
-
-    public string PopupMessage
-    {
-        get => _popupMessage;
-        set => SetProperty(ref _popupMessage, value);
-    }
-
-    public string PopupButtonText
-    {
-        get => _popupButtonText;
-        set => SetProperty(ref _popupButtonText, value);
-    }
-
-    public string PopupIconText
-    {
-        get => _popupIconText;
-        set => SetProperty(ref _popupIconText, value);
-    }
-
-    public string PopupIconBgColor
-    {
-        get => _popupIconBgColor;
-        set => SetProperty(ref _popupIconBgColor, value);
-    }
-
-    public string PopupIconTextColor
-    {
-        get => _popupIconTextColor;
-        set => SetProperty(ref _popupIconTextColor, value);
-    }
-
-    public string PopupBorderColor
-    {
-        get => _popupBorderColor;
-        set => SetProperty(ref _popupBorderColor, value);
-    }
-
-    public ICommand ChangePasswordCommand { get; }
-    public ICommand TogglePasswordCommand { get; }
-    public ICommand ClosePopupCommand { get; }
-    public ICommand BackCommand { get; }
-    public ICommand LogoutCommand { get; }
-
-    private async Task ExecuteChangePasswordAsync()
-    {
-        if (string.IsNullOrWhiteSpace(CurrentPassword))
-        {
-            ShowPopup("Thông Báo", "Vui lòng nhập mật khẩu hiện tại.", false);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(NewPassword))
-        {
-            ShowPopup("Thông Báo", "Vui lòng nhập mật khẩu mới.", false);
-            return;
-        }
-
-        if (NewPassword.Length < 6)
-        {
-            ShowPopup("Thông Báo", "Mật khẩu mới phải có ít nhất 6 ký tự.", false);
-            return;
-        }
-
-        if (NewPassword != ConfirmPassword)
-        {
-            ShowPopup("Thông Báo", "Mật khẩu xác nhận không khớp với mật khẩu mới.", false);
-            return;
-        }
-
-        IsLoading = true;
-
-        try
-        {
-            await Task.Delay(400); // Tạo hiệu ứng tải mượt mà
-
-            var (success, message) = await _authService.ChangePasswordAsync(CurrentPassword, NewPassword);
-
-            if (success)
-            {
-                CurrentPassword = string.Empty;
-                NewPassword = string.Empty;
-                ConfirmPassword = string.Empty;
-
-                ShowPopup("Đổi Mật Khẩu Thành Công", message, true);
-            }
-            else
-            {
-                ShowPopup("Đổi Mật Khẩu Thất Bại", message, false);
-            }
-        }
-        catch (Exception ex)
-        {
-            ShowPopup("Lỗi Hệ Thống", ex.Message, false);
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private void ExecuteTogglePassword()
-    {
-        IsPasswordHidden = !IsPasswordHidden;
-    }
-
-    private void ShowPopup(string title, string message, bool isSuccess)
-    {
-        PopupTitle = title;
-        PopupMessage = message;
-
-        if (isSuccess)
-        {
-            PopupIconText = "✓";
-            PopupIconBgColor = "#ECFDF5";
-            PopupIconTextColor = "#059669";
-            PopupBorderColor = "#10B981";
-            PopupButtonText = "HOÀN TẤT";
-        }
-        else
-        {
-            PopupIconText = "!";
-            PopupIconBgColor = "#FEF2F2";
-            PopupIconTextColor = "#DC2626";
-            PopupBorderColor = "#FCA5A5";
-            PopupButtonText = "ĐỒNG Ý";
-        }
-
-        IsPopupVisible = true;
-    }
-
-    private void ExecuteClosePopup()
-    {
-        IsPopupVisible = false;
-    }
-
-    private async Task ExecuteBackAsync()
-    {
-        // Quay lại đúng nhánh trang chủ mà người dùng đang thuộc về. Thanh tab đã
-        // dựng sẵn lúc đăng nhập nên chỉ cần nhảy, không dựng lại.
-        if (Shell.Current is AppShell shell)
-        {
-            await shell.OpenHomeAsync();
-        }
-    }
-
-    private async Task ExecuteLogoutAsync()
-    {
-        await _authService.LogoutAsync();
-        if (Shell.Current is AppShell shell)
-        {
-            // Gỡ tab trước khi rời phiên: nếu không, lần đăng nhập sau sẽ dựng chồng
-            // tab lên cây cũ và vai trò mới có thể thừa hưởng tab của vai trò cũ.
-            shell.ClearRoleTabs();
-            await shell.GoToAsync("//LoginPage");
-        }
     }
 
     protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)

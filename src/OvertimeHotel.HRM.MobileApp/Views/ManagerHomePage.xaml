@@ -161,7 +161,7 @@
                     <controls:FeatureTile Grid.Row="1" Grid.Column="1"
                                           Icon="👤"
                                           Title="Hồ Sơ"
-                                          Description="Thông tin &amp; mật khẩu"
+                                          Description="Hồ sơ, phòng ban, chức vụ"
                                           ActionText="Xem Hồ Sơ"
                                           TappedCommand="{Binding ProfileCommand}" />
                 </Grid>

@@ -3,9 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="OvertimeHotel.HRM.MobileApp.Views.Controls.ProfileHeaderBar">
 
-    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+    <Grid>
 
-        <VerticalStackLayout Grid.Column="0" Spacing="3">
+        <VerticalStackLayout Spacing="3">
             <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
                 <Image Source="brand_mark_light.png"
                        WidthRequest="20"
@@ -35,31 +35,6 @@
                    FontFamily="SegoeUI"
                    LineBreakMode="TailTruncation" />
         </VerticalStackLayout>
-
-        <!-- Nút Hồ Sơ: bấm để xem thông tin cá nhân và đổi mật khẩu -->
-        <Border x:Name="btnProfileHeader"
-                Grid.Column="1"
-                StrokeShape="RoundRectangle 24"
-                Stroke="#D4AF37"
-                StrokeThickness="2"
-                BackgroundColor="#1E3A8A"
-                WidthRequest="48"
-                HeightRequest="48"
-                VerticalOptions="Center">
-            <Border.Shadow>
-                <Shadow Brush="#1E3A8A" Offset="0,4" Radius="10" Opacity="0.25" />
-            </Border.Shadow>
-            <Border.GestureRecognizers>
-                <TapGestureRecognizer Tapped="OnProfileTapped" />
-            </Border.GestureRecognizers>
-            <Label x:Name="lblHeaderAvatar"
-                   Text="★"
-                   TextColor="#FDE047"
-                   FontSize="22"
-                   FontFamily="SegoeUIBold"
-                   HorizontalOptions="Center"
-                   VerticalOptions="Center" />
-        </Border>
     </Grid>
 
 </ContentView>
