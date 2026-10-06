@@ -66,9 +66,14 @@ public static class MauiProgram
 		builder.Services.AddTransient<LeaveDetailPage>();
 		builder.Services.AddTransient<AttendancePage>();
 
-#if DEBUG
+		// KHÔNG bọc trong #if DEBUG: bản Release mới là bản chạy thật trên
+		// emulator, mà AddDebug() chỉ hoạt động ở Debug — nên mọi _logger.LogError
+		// trong AuthService im lặng đúng lúc cần nhất. AndroidLogProvider ghi
+		// thẳng vào Android.Util.Log nên vẫn sống trong Release. Cả hai đều chỉ ra
+		// logcat, không ghi ra UI và không ghi mật khẩu/token.
 		builder.Logging.AddDebug();
-#endif
+		builder.Logging.AddProvider(new AndroidLogProvider());
+		builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
 		return builder.Build();
 	}

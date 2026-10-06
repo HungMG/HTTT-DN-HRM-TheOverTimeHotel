@@ -25,6 +25,15 @@ public partial class ShiftHeroCard : ContentView
         lblShiftTime.Text = viewModel.ShiftTimeText;
         lblShiftTask.Text = viewModel.ShiftTaskText;
         lblNightBadge.Text = viewModel.NightBadgeText;
+
+        // Huy hiệu rỗng khi ca là ban ngày — ẩn hẳn khối chứ không để lọt chuỗi
+        // rỗng ra viền vàng, trông như lỗi hiển thị.
+        nightBadgeBorder.IsVisible = !string.IsNullOrEmpty(viewModel.NightBadgeText);
+
+        // Không có ca hôm nay thì nút không dẫn đâu được: tắt thay vì bấm rồi
+        // đưa nhân viên sang trang chấm công chỉ để đọc "không có ca".
+        btnCheckIn.Text = viewModel.CheckInButtonText;
+        btnCheckIn.IsEnabled = viewModel.HasShiftToday;
     }
 
     private async void OnCheckInClicked(object? sender, EventArgs e)

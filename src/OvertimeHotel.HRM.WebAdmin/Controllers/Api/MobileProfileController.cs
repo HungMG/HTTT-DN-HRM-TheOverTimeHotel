@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.DTOs;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers.Api;
 
@@ -27,10 +28,13 @@ public class MobileProfileController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetProfile()
     {
-        // Lấy mã tài khoản từ chính token đã xác thực, không nhận từ query string.
-        var rawId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                    ?? User.FindFirst("sub")?.Value;
-        if (!int.TryParse(rawId, out var maTaiKhoan))
+        // Token do Supabase GoTrue cấp: mã nhân viên nằm trong app_metadata và đã
+        // được rải ra claim phẳng "ma_nhan_vien" ở OnTokenValidated.
+        //
+        // Trước đây đọc ClaimTypes.NameIdentifier — nhưng "sub" của Supabase là
+        // UUID của auth.users, int.TryParse luôn fail dù token hợp lệ.
+        var maNhanVien = SupabaseClaims.GetMaNhanVien(User);
+        if (maNhanVien is not > 0)
         {
             return Unauthorized(new LoginResponse(false, "Phiên đăng nhập không hợp lệ."));
         }
@@ -41,9 +45,10 @@ public class MobileProfileController : ControllerBase
                 .ThenInclude(nv => nv!.PhongBan)
             .Include(t => t.NhanVien)
                 .ThenInclude(nv => nv!.ChucVu)
-            .FirstOrDefaultAsync(t => t.MaTaiKhoan == maTaiKhoan);
+            .FirstOrDefaultAsync(t => t.MaNhanVien == maNhanVien.Value);
 
         // Tài khoản bị khoá giữa chừng thì phải buộc app quay về màn Login.
+        // Claim chỉ là gợi ý để tra, không phải giấy uỷ quyền (Zero Trust).
         if (account == null || account.TrangThai != true)
         {
             return Unauthorized(new LoginResponse(false, "Tài khoản đã bị khoá hoặc không còn hiệu lực."));

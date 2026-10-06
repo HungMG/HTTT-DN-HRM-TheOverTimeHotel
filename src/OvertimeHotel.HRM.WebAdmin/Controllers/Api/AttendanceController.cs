@@ -1,11 +1,11 @@
 using System.Data.Common;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.DTOs;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers.Api;
 
@@ -68,6 +68,7 @@ public class AttendanceController : ControllerBase
     /// Quẹt thẻ vào ca. Đối soát số phút đi trễ so với giờ bắt đầu dự kiến của ca.
     /// </summary>
     [HttpPost("check-in")]
+    [Authorize(AuthenticationSchemes = "MobileBearer", Policy = PermissionCodes.MobileCheckIn)]
     public async Task<IActionResult> CheckIn([FromBody] CheckInRequest request)
     {
         if (request == null)
@@ -146,6 +147,7 @@ public class AttendanceController : ControllerBase
     /// Quẹt thẻ ra ca. Đối soát số phút về sớm và số giờ làm thêm (OT).
     /// </summary>
     [HttpPost("check-out")]
+    [Authorize(AuthenticationSchemes = "MobileBearer", Policy = PermissionCodes.MobileCheckIn)]
     public async Task<IActionResult> CheckOut([FromBody] CheckInRequest request)
     {
         if (request == null)
@@ -264,12 +266,25 @@ public class AttendanceController : ControllerBase
                     p.MaPhanCa,
                     p.NgayLamViec,
                     TenCa = p.CaLamViec != null ? p.CaLamViec.TenCa : string.Empty,
-                    p.ChamCong!.GioCheckIn,
-                    p.ChamCong.GioCheckOut,
-                    PhutDiTre = p.ChamCong.PhutDiTre,
-                    PhutVeSom = p.ChamCong.PhutVeSom,
-                    GioOt = p.ChamCong.GioTangCaOt,
-                    p.ChamCong.TrangThai
+
+                    // ChamCong là LEFT JOIN — ca vừa phân chưa ai quẹt thẻ thì cả
+                    // dòng cham_cong NULL. Đọc thẳng p.ChamCong!.X vào cột không
+                    // nullable khiến EF ném "Nullable object must have a value", làm
+                    // HỎNG CẢ THÁNG chỉ vì có MỘT ca chưa quẹt thẻ. Phải đệ quy
+                    // null ở từng cột.
+                    GioCheckIn = p.ChamCong != null ? p.ChamCong.GioCheckIn : null,
+                    GioCheckOut = p.ChamCong != null ? p.ChamCong.GioCheckOut : null,
+                    PhutDiTre = p.ChamCong != null ? p.ChamCong.PhutDiTre : 0,
+                    PhutVeSom = p.ChamCong != null ? p.ChamCong.PhutVeSom : 0,
+                    GioOt = p.ChamCong != null ? p.ChamCong.GioTangCaOt : 0m,
+
+                    // Ca chưa quẹt thẻ chưa có trạng thái chấm công. Trả chuỗi rỗng
+                    // thay vì "DUNG_GIO" — để mặc định thì Mobile hiển thị nhầm là
+                    // đã đi làm đúng giờ. _ => của ToAttendanceRecord rơi về "Vắng
+                    // mặt", đúng nghĩa với ca chưa có dữ liệu quẹt thẻ.
+                    TrangThai = p.ChamCong != null && !string.IsNullOrEmpty(p.ChamCong.TrangThai)
+                        ? p.ChamCong.TrangThai
+                        : string.Empty
                 })
                 .ToListAsync();
 
@@ -299,16 +314,24 @@ public class AttendanceController : ControllerBase
     /// </summary>
     private async Task<int?> ResolveEmployeeIdAsync()
     {
-        var accountIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!int.TryParse(accountIdStr, out var accountId))
+        // Token do Supabase GoTrue cấp: mã nhân viên nằm trong app_metadata và đã
+        // được rải ra claim phẳng "ma_nhan_vien" ở OnTokenValidated. Không dùng
+        // ClaimTypes.NameIdentifier vì "sub" của Supabase là UUID của auth.users —
+        // parse ra int luôn fail, dù token hoàn toàn hợp lệ.
+        var maNhanVien = SupabaseClaims.GetMaNhanVien(User);
+        if (maNhanVien is not > 0)
         {
             return null;
         }
 
+        // TaiKhoan.MaNhanVien có unique index nên FirstOrDefault trả đúng một dòng.
         var account = await _context.TaiKhoans
             .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.MaTaiKhoan == accountId);
+            .FirstOrDefaultAsync(t => t.MaNhanVien == maNhanVien.Value);
 
+        // Vẫn kiểm tra TrangThai trong CSDL: token đã cấp vẫn còn hiệu lực sau khi
+        // quản trị viên khoá tài khoản. Claim chỉ là gợi ý để tra, không phải
+        // giấy uỷ quyền (Zero Trust).
         if (account == null || account.TrangThai != true || account.MaNhanVien == 0)
         {
             return null;

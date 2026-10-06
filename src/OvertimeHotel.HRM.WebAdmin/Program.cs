@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.Data.Services;
@@ -42,15 +44,68 @@ if (builder.Environment.IsDevelopment())
 builder.Services.AddMemoryCache();
 
 // Cấu hình Coexistence Authentication: Cookie Auth cho Web Admin & JWT Bearer cho Mobile API
-var jwtKey = !string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"])
-    ? builder.Configuration["Jwt:Key"]
-    : Environment.GetEnvironmentVariable("JWT_KEY");
-if (string.IsNullOrWhiteSpace(jwtKey))
+//
+// Đọc Supabase ở đây (trước AddAuthentication) vì MobileBearer cần địa chỉ JWKS
+// để xác thực token do GoTrue ký. Khối cấu hình Supabase chi tiết vẫn giữ
+// nguyên ở dưới để dùng cho SupabaseClient.
+var supabaseUrl = builder.Configuration.GetSection("Supabase")["Url"] ?? "";
+var supabaseAuthIssuer = $"{supabaseUrl.TrimEnd('/')}/auth/v1";
+
+// Jwt:Key HS256 KHÔNG còn dùng để xác thực token Mobile nữa (token do GoTrue ký
+// ES256, xác thực qua JWKS). Biến này vẫn phải được fail-closed vì
+// MobileAuthController — endpoint đăng nhập kiểu cũ — dùng nó để ký token.
+// Jwt:Issuer/Jwt:Audience thuộc về lớp xác thực HS256 nên không còn ở đây;
+// MobileAuthController đọc trực tiếp từ IConfiguration.
+if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]) &&
+    string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JWT_KEY")))
 {
     throw new InvalidOperationException("Bảo mật hệ thống (Fail-Closed): Khóa bí mật Jwt:Key chưa được cấu hình trong appsettings hoặc biến môi trường JWT_KEY.");
 }
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "OvertimeHotel.HRM";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "OvertimeHotel.MobileApp";
+
+// JWKS của Supabase. Tự tải và tự làm mới: Supabase xoay vòng khoá ký, nên
+// hardcode khoá sẽ hỏng ngay sau lần xoay đầu tiên.
+//
+// Đi qua .well-known/openid-configuration chứ không tải thẳng jwks.json, vì
+// thư viện IdentityModel không kèm sẵn IConfigurationRetriever<JsonWebKeySet>.
+// Endpoint discovery của Supabase trả về jwks_uri (khoá công khai, an toàn) và
+// sẵn cả "issuer" khớp đúng ValidIssuer ở trên.
+//
+// Trả về delegate IssuerSigningKeyResolver vì TokenValidationParameters yêu cầu
+// IEnumerable<SecurityKey>, không nhận IConfigurationManager. Resolver được gọi
+// mỗi request và tự chọn đúng khoá theo "kid" trên header token.
+static IssuerSigningKeyResolver CreateSupabaseJwks(string authIssuer)
+{
+    var configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+        $"{authIssuer.TrimEnd('/')}/.well-known/openid-configuration",
+        new OpenIdConnectConfigurationRetriever())
+    {
+        // 12 giờ. Khoá Supabase hiếm khi xoay, và mỗi lần tải lại là một
+        // HTTP request ra ngoài. Khi Supabase xoay vòng sang kid mới thì token
+        // mới không khớp khoá nào trong cache, và handler tự tải lại ngay.
+        AutomaticRefreshInterval = TimeSpan.FromHours(12)
+    };
+
+    return (token, securityToken, kid, validationParameters) =>
+    {
+        var keys = configurationManager.GetConfigurationAsync(CancellationToken.None)
+            .GetAwaiter().GetResult()
+            .SigningKeys;
+
+        // Ưu tiên khoá khớp "kid" trên header token. Không lọc thì handler thử
+        // lần lượt từng khoá — chậm, và dễ báo "signature invalid" một cách gây
+        // hiểu nhầm thay vì "không tìm thấy khoá".
+        var matched = string.IsNullOrEmpty(kid)
+            ? keys
+            : keys.Where(k => string.Equals(k.KeyId, kid, StringComparison.Ordinal));
+
+        var resolved = matched.ToArray();
+
+        // Trả cache cũ khi Supabase tạm thời không trả lời: token đã ký hợp lệ
+        // vẫn được xác thực bằng khoá cũ, thay vì để mọi phiên sập cùng lúc.
+        // Cache cũng rỗng thì trả rỗng — handler sẽ từ chối token (401).
+        return resolved.Length > 0 ? resolved : keys;
+    };
+}
 
 builder.Services.AddAuthentication(options =>
     {
@@ -72,16 +127,33 @@ builder.Services.AddAuthentication(options =>
     {
         options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
         options.SaveToken = true;
+
+        // Mobile App đăng nhập thẳng Supabase nên token do GoTrue ký bằng
+        // ES256 và mang định dạng claim riêng (mã nhân viên / mã vai trò nằm
+        // trong app_metadata). Tắt ánh xạ claim để giữ nguyên tên key gốc,
+        // rồi tự rải app_metadata ra ở OnTokenValidated.
+        options.MapInboundClaims = false;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = jwtIssuer,
+            ValidIssuer = supabaseAuthIssuer,
             ValidateAudience = true,
-            ValidAudience = jwtAudience,
+            ValidAudience = "authenticated",
+
+            // Supabase công bố khoá công khai tại /auth/v1/.well-known/jwks.json.
+            // KHÔNG hardcode khoá: Supabase xoay vòng khoá ký (kid), hardcode sẽ
+            // khiến mọi token mới bị từ chối sau lần xoay đầu tiên.
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            IssuerSigningKeyResolver = CreateSupabaseJwks(supabaseAuthIssuer),
+
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(5)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = SupabaseClaims.FlattenAppMetadataAsync
         };
     });
 
@@ -104,6 +176,10 @@ builder.Services.AddAuthorization(options =>
     AddPermissionPolicy(PermissionCodes.ManageContracts);
     AddPermissionPolicy(PermissionCodes.AssignShifts);
     AddPermissionPolicy(PermissionCodes.ViewDepartmentAttendance);
+    // Quẹt thẻ check-in/out trên Mobile là thao tác GHI dữ liệu chấm công, nên
+    // phải qua RBAC chứ không chỉ cần token hợp lệ. Mã quyền tương ứng là
+    // quyen.ma_quyen_code = 'CHAM_CONG_DI_DONG' (ma_quyen = 15 trong CSDL).
+    AddPermissionPolicy(PermissionCodes.MobileCheckIn);
     AddPermissionPolicy(PermissionCodes.CalculatePayroll);
     AddPermissionPolicy(PermissionCodes.ExportPayslipPdf);
     AddPermissionPolicy(PermissionCodes.ApproveResignation);
@@ -132,8 +208,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IBackupService, BackupService>();
 
 // Cấu hình Supabase Client cho các tác vụ Realtime / Storage
+// (supabaseUrl đã đọc ở khối authentication phía trên).
 var supabaseSection = builder.Configuration.GetSection("Supabase");
-var supabaseUrl = supabaseSection["Url"] ?? "";
 // Ưu tiên AnonKey (JWT "eyJ...") vì Supabase Client dùng nó cho cả REST lẫn Auth.
 // PublishableKey dạng "sb_publishable_..." là khoá công khai dùng cho Storage/Edge
 // Functions: PostgREST từ chối nó với thông điệp "Secret API key required", nên đặt

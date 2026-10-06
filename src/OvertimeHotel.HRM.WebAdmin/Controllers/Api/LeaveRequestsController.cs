@@ -1,5 +1,4 @@
 using System.Data.Common;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +6,7 @@ using OvertimeHotel.HRM.Core.DTOs;
 using OvertimeHotel.HRM.Core.Enums;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers.Api;
 
@@ -264,17 +264,24 @@ public class LeaveRequestsController : ControllerBase
                 "Không thể truy cập dữ liệu lúc này. Vui lòng thử lại sau."));
     private async Task<(Core.Models.TaiKhoan? Account, IActionResult? Error)> GetCurrentAccountAsync()
     {
-        var accountIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!int.TryParse(accountIdStr, out var accountId))
+        // Token do Supabase GoTrue cấp: mã nhân viên nằm trong app_metadata và đã
+        // được rải ra claim phẳng "ma_nhan_vien" ở OnTokenValidated. Không dùng
+        // ClaimTypes.NameIdentifier vì "sub" của Supabase là UUID của auth.users —
+        // parse ra int luôn fail, dù token hoàn toàn hợp lệ.
+        var maNhanVien = SupabaseClaims.GetMaNhanVien(User);
+        if (maNhanVien is not > 0)
         {
             return (null, Unauthorized(new LeaveReviewResult(false, "UNAUTHENTICATED", "Token xác thực không hợp lệ.")));
         }
 
+        // Tra theo mã nhân viên (unique index) thay vì mã tài khoản. Vẫn kiểm
+        // tra TrangThai trong CSDL: token đã cấp vẫn còn hiệu lực sau khi quản
+        // trị viên khoá tài khoản (Zero Trust).
         var account = await _context.TaiKhoans
             .Include(t => t.VaiTro)
             .Include(t => t.NhanVien)
                 .ThenInclude(nv => nv!.PhongBan)
-            .FirstOrDefaultAsync(t => t.MaTaiKhoan == accountId);
+            .FirstOrDefaultAsync(t => t.MaNhanVien == maNhanVien.Value);
 
         if (account == null || account.TrangThai != true)
         {

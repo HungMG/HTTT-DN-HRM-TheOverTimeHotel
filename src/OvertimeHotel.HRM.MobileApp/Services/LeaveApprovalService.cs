@@ -9,8 +9,22 @@ namespace OvertimeHotel.HRM.MobileApp.Services;
 
 /// <summary>
 /// Dịch vụ duyệt đơn từ Production kết nối Backend WebAdmin qua Mobile REST API có JWT.
-/// Tuyệt đối không gọi trực tiếp Supabase REST bằng anon key, không fallback giả mạo kết quả.
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>Phạm vi có chủ đích:</b> khác với <c>AuthService</c> (đăng nhập + hồ sơ, gọi
+/// thẳng Supabase), dịch vụ này CỐ TÌNH đi qua Web Admin. Lý do là nghiệp vụ
+/// duyệt đơn cần chạy trên máy chủ: kiểm tra quyền theo vai trò, đối soát ca làm
+/// việc và ghi CSDL bằng kết nối Postgres trực tiếp — những việc app không được
+/// tự quyết.
+/// </para>
+/// <para>
+/// Token gửi lên là access token do Supabase GoTrue cấp; Web Admin xác thực bằng
+/// JWKS công khai của Supabase nên không cần chia sẻ mật khẩu giữa app và server.
+/// Không fallback giả mạo kết quả khi API lỗi — người dùng phải biết là thao tác
+/// chưa thành công.
+/// </para>
+/// </remarks>
 public class LeaveApprovalService : ILeaveApprovalService
 {
     private readonly HttpClient _httpClient;

@@ -11,6 +11,31 @@ using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers.Api;
 
+/// <summary>
+/// Đăng nhập kiểu cũ: Web Admin tự ký JWT bằng HS256 (<c>Jwt:Key</c>).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>ĐÃ LỖI THỜI — không còn client nào gọi.</b>
+/// </para>
+/// <para>
+/// Theo PRD 06, Mobile App đăng nhập thẳng vào Supabase GoTrue và nhận token do
+/// chính GoTrue ký (ES256 qua JWKS). Endpoint này tồn tại để các bản app cũ đã
+/// cài trên máy người dùng không chết ngay khi backend đổi lớp xác thực.
+/// </para>
+/// <para>
+/// <b>Không được mở rộng thêm tính năng lên đây.</b> Khi đã xoá hẳn bản app cũ
+/// thì xoá luôn controller này cùng cấu hình <c>Jwt:Key</c> trong appsettings.
+/// </para>
+/// <para>
+/// Lớp xác thực <c>MobileBearer</c> hiện đã chuyển sang JWKS của Supabase, nên
+/// token do endpoint này cấp <b>không còn được chấp nhận</b> nữa — dù đăng nhập
+/// thành công thì mọi API phía sau vẫn trả 401. Giữ lại chỉ để endpoint trả lỗi
+/// rõ ràng cho bản app cũ thay vì trả 404 gây khó chẩn đoán.
+/// </para>
+/// </remarks>
+[Obsolete("Mobile App đã chuyển sang đăng nhập trực tiếp Supabase GoTrue. " +
+          "Token do endpoint này cấp không còn được MobileBearer chấp nhận.")]
 [ApiController]
 [Route("api/mobile/auth")]
 [AllowAnonymous]

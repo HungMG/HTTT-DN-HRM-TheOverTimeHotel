@@ -46,7 +46,7 @@ public class LoginViewModel : INotifyPropertyChanged
         TogglePasswordCommand = new Command(ExecuteTogglePassword);
         BiometricLoginCommand = new Command(async () => await ExecuteBiometricLoginAsync(), () => !IsLoading);
 
-        // Mặc định nạp sẵn tài khoản nhân viên để demo nhanh
+        // Mặc định nạp sẵn tài khoản nhân viên thật trên Supabase Cloud để thử nhanh.
         ExecuteQuickFill("employee");
     }
 
@@ -133,12 +133,11 @@ public class LoginViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Hỏi máy chủ API còn sống không, rồi cập nhật nhãn trạng thái cho khớp.
+    /// Hỏi Supabase Cloud còn sống không, rồi cập nhật nhãn trạng thái cho khớp.
     ///
-    /// Gọi HEAD tới gốc chứ không gọi mốc nghiệp vụ nào: cần phân biệt "máy chủ chết"
-    /// với "tài khoản sai", nên không được gửi kèm Bearer token — ping phải chạy được
-    /// cả lúc chưa đăng nhập. HEAD cũng không sinh phụ thuộc vào CSDL nên hỏng CSDL
-    /// vẫn báo xanh, đúng ý nghĩa "máy chủ trả lời".
+    /// Ping đúng mốc của app (/auth/v1/settings) chứ không phải gốc trang: cần phân
+    /// biệt "máy chủ chết" với "tài khoản sai", nên không được gửi kèm Bearer
+    /// token — ping phải chạy được cả lúc chưa đăng nhập.
     ///
     /// Mọi lỗi bị nuốt và chỉ phản ánh qua màu chữ: màn hình đăng nhập không được
     /// chết vì một cuộc ping thất bại.
@@ -149,17 +148,27 @@ public class LoginViewModel : INotifyPropertyChanged
         ServerStatusColor = Color.FromArgb("#94A3B8");
 
         // Timeout ngắn (4s) để máy chủ chết hiện trạng thái đỏ nhanh thay vì treo.
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+        using var client = new HttpClient
+        {
+            BaseAddress = new Uri(ApiConfig.AuthBaseUrl),
+            Timeout = TimeSpan.FromSeconds(4)
+        };
+        client.DefaultRequestHeaders.Add("apikey", ApiConfig.SupabaseAnonKey);
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Head, ApiConfig.BaseUrl);
-            using var response = await client.SendAsync(request);
+            // KHÔNG được viết "/settings": đường dẫn tương đối bắt đầu bằng "/"
+            // sẽ xoá sạch "/auth/v1" trong BaseAddress (xem ApiConfig.AuthBaseUrl)
+            // và gõi thẳng vào https://<ref>.supabase.co/settings — 404.
+            using var response = await client.GetAsync("settings");
 
-            // Máy chủ trả 401/404 vẫn nghĩa là nó đang sống và nói chuyện được với mình;
-            // chỉ coi là chết khi không nhận được bất kỳ câu trả lời HTTP nào.
-            ServerStatusText = "● Máy chủ sẵn sàng";
-            ServerStatusColor = Color.FromArgb("#059669");
+            // Bắt buộc phải là 200 chứ không phải "có response nào". Ping sai
+            // đường dẫn vẫn trả 404 — đúng cái lỗi đã làm nhãn báo xanh trong khi
+            // đăng nhập chết. Nhãn này phải phản ánh đúng GoTrue còn phục vụ.
+            ServerStatusText = response.IsSuccessStatusCode ? "● Máy chủ sẵn sàng" : "● Máy chủ trả lỗi";
+            ServerStatusColor = response.IsSuccessStatusCode
+                ? Color.FromArgb("#059669")
+                : Color.FromArgb("#DC2626");
         }
         catch (HttpRequestException)
         {
@@ -237,7 +246,7 @@ public class LoginViewModel : INotifyPropertyChanged
     {
         if (string.IsNullOrWhiteSpace(Username))
         {
-            ShowCustomPopup("Thông Báo", "Vui lòng nhập tên đăng nhập hoặc mã nhân viên.");
+            ShowCustomPopup("Thông Báo", "Vui lòng nhập email công vụ của bạn.");
             return;
         }
 
@@ -288,16 +297,25 @@ public class LoginViewModel : INotifyPropertyChanged
     {
         switch (username?.ToLowerInvariant())
         {
-            // Tài khoản mẫu phải khớp đúng bộ seed trong DemoAuthService, nếu không
-            // người dùng sẽ gõ đúng nhưng vẫn bị từ chối. admin và hr có mật khẩu riêng
-            // nên không điền sẵn — tránh điền sai gây ảo giác lỗi.
+            // Đăng nhập thẳng với Supabase Auth nên nhận EMAIL, không phải tên
+            // đăng nhập trong bảng tai_khoan (bảng đó đã bị thu hồi quyền cho
+            // authenticated, app không đọc được). Ô nhập đã đổi nhãn cho khớp.
+            // Mật khẩu thống nhất do nhóm chốt cho 6 tài khoản demo trên Cloud.
             case "employee":
-                Username = "employee";
-                Password = "emp123";
+                Username = "bao.chau@overtimehotel.com";
+                Password = "123456789";
                 break;
             case "manager":
-                Username = "manager";
-                Password = "manager123";
+                Username = "dat.do@overtimehotel.com";
+                Password = "123456789";
+                break;
+            case "hr":
+                Username = "sang.vo@overtimehotel.com";
+                Password = "123456789";
+                break;
+            case "admin":
+                Username = "cuong.nguyen@overtimehotel.com";
+                Password = "123456789";
                 break;
         }
         ClearError();

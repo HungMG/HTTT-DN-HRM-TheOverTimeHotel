@@ -27,6 +27,7 @@
                     Dùng navy đậm hơn để huy hiệu vẫn tách bạch mà không rơi sang màu lạ.
                 -->
                 <Border Grid.Column="1"
+                        x:Name="nightBadgeBorder"
                         StrokeShape="RoundRectangle 8"
                         Stroke="#D4AF37"
                         StrokeThickness="1"

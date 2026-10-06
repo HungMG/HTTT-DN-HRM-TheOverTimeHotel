@@ -106,7 +106,7 @@
 
                                 <!-- Ô nhập tài khoản -->
                                 <VerticalStackLayout Spacing="6">
-                                    <Label Text="Tài khoản / Mã nhân viên"
+                                    <Label Text="Email công vụ"
                                            TextColor="#1E293B"
                                            FontSize="13"
                                            FontFamily="SegoeUIBold" />
@@ -116,12 +116,13 @@
                                             BackgroundColor="#F8FAFC"
                                             Padding="14,0">
                                         <Entry Text="{Binding Username}"
-                                               Placeholder="Nhập tên đăng nhập hoặc mã NV"
+                                               Placeholder="vidu: bao.chau@overtimehotel.com"
                                                PlaceholderColor="#94A3B8"
                                                TextColor="#0F172A"
                                                FontFamily="SegoeUI"
                                                FontSize="14"
                                                HeightRequest="48"
+                                               Keyboard="Email"
                                                ReturnType="Next"
                                                ClearButtonVisibility="WhileEditing" />
                                     </Border>
@@ -220,9 +221,9 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <!-- Gợi ý tài khoản mẫu: một dòng chữ nhỏ, không chiếm chỗ như 3 chip cũ.
-                     Nội dung phải khớp bộ seed trong DemoAuthService, nếu không người dùng
-                     gõ đúng theo hướng dẫn vẫn bị từ chối. -->
+                <!-- Gợi ý tài khoản mẫu: phải khớp đúng những email đã seed trên
+                     Supabase Cloud. Trước đây ghi "employee / emp123" — hai tài
+                     khoản đó không tồn tại nên người dùng gõ theo lại bị từ chối. -->
                 <VerticalStackLayout x:Name="accountHintSection" Spacing="4" Margin="24,16,24,0" HorizontalOptions="Center">
                     <Label Text="TÀI KHOẢN MẪU ĐỒ ÁN"
                            TextColor="#94A3B8"
@@ -230,12 +231,17 @@
                            FontSize="9"
                            CharacterSpacing="0.9"
                            HorizontalOptions="Center" />
-                    <Label Text="Nhân viên: employee / emp123"
+                    <Label Text="Nhân viên: bao.chau@overtimehotel.com"
                            TextColor="#64748B"
                            FontFamily="SegoeUI"
                            FontSize="11"
                            HorizontalOptions="Center" />
-                    <Label Text="Quản lý: manager / manager123"
+                    <Label Text="Quản lý: dat.do@overtimehotel.com"
+                           TextColor="#64748B"
+                           FontFamily="SegoeUI"
+                           FontSize="11"
+                           HorizontalOptions="Center" />
+                    <Label Text="Mật khẩu chung: 123456789"
                            TextColor="#64748B"
                            FontFamily="SegoeUI"
                            FontSize="11"
