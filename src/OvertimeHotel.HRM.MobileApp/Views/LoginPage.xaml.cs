@@ -97,6 +97,7 @@ public partial class LoginPage : ContentPage
             return;
         }
 
+#if ANDROID
         // Android.App.Activity.Current không còn tồn tại trong .NET 10 for Android;
         // Platform.CurrentActivity là API chính thức của MAUI cho việc này.
         var window = Platform.CurrentActivity?.Window;
@@ -109,8 +110,10 @@ public partial class LoginPage : ContentPage
         // trạng thái "đã kiểm tra API 30" không truyền được qua biên lambda, bọc vào
         // đó thì trình phân tích CA1416 lại mất dấu và cảnh báo quay về.
         SetDarkStatusBarIcons(window);
+#endif
     }
 
+    #if ANDROID
     /// <summary>
     /// Bật cờ APPEARANCE_LIGHT_STATUS_BARS (tên cờ gây hiểu nhầm: nghĩa là biểu tượng
     /// thanh trạng thái hiện màu TỐI) để đồng hồ và các glyph nổi rõ trên lớp scrim
@@ -128,6 +131,7 @@ public partial class LoginPage : ContentPage
         const int lightBars = (int)Android.Views.WindowInsetsControllerAppearance.LightStatusBars;
         window.InsetsController?.SetSystemBarsAppearance(lightBars, lightBars);
     }
+#endif
 
     private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

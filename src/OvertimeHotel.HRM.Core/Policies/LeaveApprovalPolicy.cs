@@ -24,6 +24,29 @@ public static class LeaveApprovalPolicy
     private static readonly HashSet<int> HrAllowedTypes = new() { 1, 2, 3, 4, 5 };
 
     /// <summary>
+    /// Toàn bộ loại đơn người dùng được phép nộp, theo đúng 5 dòng seed trong bảng
+    /// <c>LOAI_DON</c>.
+    /// </summary>
+    /// <remarks>
+    /// <b>Đừng đọc số 4 trong PRD là "thôi việc".</b> PRD 02 mục 4.4 ghi
+    /// <c>ma_loai_don = 4</c> cho đơn thôi việc, nhưng seed
+    /// <c>seed_data_24_tables.sql</c> và chính ma trận trên đây đều quy định
+    /// 4 là "Nghỉ việc riêng không lương" và 5 mới là "Đơn xin thôi việc". CSDL là
+    /// nguồn luật, PRD là bản thiết kế — lệch ở đây thì mỗi bên hiểu một kiểu.
+    /// </remarks>
+    private static readonly HashSet<int> SubmittableTypes = new() { 1, 2, 3, 4, 5 };
+
+    /// <summary>Định mức phép năm theo chế độ (ngày/năm), dùng cho cảnh báo quỹ phép.</summary>
+    public const int AnnualLeaveQuotaDays = 12;
+
+    /// <summary>Số ngày phải báo trước khi thôi việc theo Điều 35 BLLĐ 2019.</summary>
+    public static readonly Dictionary<bool, int> ResignationNoticeDays = new()
+    {
+        [true] = 45,  // HĐLĐ không xác định thời hạn
+        [false] = 30  // HĐLĐ xác định thời hạn
+    };
+
+    /// <summary>
     /// Chuẩn hóa tên vai trò từ chuỗi (hỗ trợ cả tiếng Anh và tiếng Việt trong DB).
     /// </summary>
     public static RoleType? NormalizeRole(string? role)
@@ -122,6 +145,138 @@ public static class LeaveApprovalPolicy
         int? requestEmployeeId = null)
     {
         return CanView(role, reviewerDeptId, requestDeptId, maLoaiDon, reviewerEmployeeId, requestEmployeeId);
+    }
+
+    /// <summary>
+    /// Liệt kê các mã loại đơn mà người dùng được phép nộp.
+    /// </summary>
+    public static IReadOnlyCollection<int> GetSubmittableRequestTypes() =>
+        SubmittableTypes.OrderBy(t => t).ToArray();
+
+    /// <summary>
+    /// Kiểm tra tính hợp lệ toàn diện khi NHÂN VIÊN NỘP đơn (phía app, TSK-18).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Gọi trước khi ghi để báo lỗi tiếng Việt sớm và đúng nguyên nhân. Đây KHÔNG
+    /// phải lớp bảo mật: RLS trên Supabase mới là lớp chặn thật, và hàm này cố
+    /// tình không nhận <c>maNhanVien</c> từ client — mã nhân viên luôn lấy từ phiên
+    /// đăng nhập, không tin giá trị người dùng gửi lên.
+    /// </para>
+    /// </remarks>
+    public static (bool IsValid, string? ErrorCode, string? ErrorMessage) ValidateCreate(
+        int maLoaiDon,
+        DateOnly tuNgay,
+        DateOnly denNgay,
+        string? lyDo,
+        DateOnly today)
+    {
+        if (!SubmittableTypes.Contains(maLoaiDon))
+        {
+            return (false, "INVALID_TYPE", "Loại đơn không hợp lệ. Vui lòng chọn lại loại đơn.");
+        }
+
+        if (tuNgay < today)
+        {
+            return (false, "PAST_DATE", "Ngày bắt đầu không được nằm trong quá khứ.");
+        }
+
+        if (denNgay < tuNgay)
+        {
+            return (false, "INVALID_PERIOD", "Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.");
+        }
+
+        // Nghỉ thai sản theo chế độ là 06 tháng; chặn sớm để không tạo đơn 6 tháng
+        // nhưng người dùng định gõ nhầm 6 năm. Còn lại thì không đặt trần cứng —
+        // trần nghiệp vụ thuộc quy chế từng khách sạn, chặn ở đây chỉ bắt nhập nhầm.
+        if (maLoaiDon == 3 && denNgay.DayNumber - tuNgay.DayNumber + 1 > 183)
+        {
+            return (false, "TOO_LONG", "Đơn nghỉ thai sản không được dài quá 06 tháng.");
+        }
+
+        // ly_do là TEXT nên CSDL không giới hạn, nhưng dài vô tận thì người duyệt
+        // không đọc nổi. 500 ký tự là trần thực tế, đủ cho một đoạn lý do.
+        if (string.IsNullOrWhiteSpace(lyDo))
+        {
+            return (false, "REASON_REQUIRED", "Vui lòng nhập lý do nghỉ.");
+        }
+
+        if (lyDo.Trim().Length > 500)
+        {
+            return (false, "REASON_TOO_LONG", "Lý do nghỉ không được vượt quá 500 ký tự.");
+        }
+
+        return (true, null, null);
+    }
+
+    /// <summary>
+    /// Kiểm tra khoảng ngày xin nghỉ có chồng lấn đơn đang chờ duyệt nào khác không.
+    /// </summary>
+    /// <remarks>
+    /// Hai khoảng [a1,a2] và [b1,b2] chồng nhau khi a1 ≤ b2 và b1 ≤ a2. Chỉ kiểm
+    /// các đơn <c>CHO_DUYET</c>: đơn đã bị từ chối thì ngày đó đã được hoàn trả,
+    /// nộp lại vẫn hợp lệ.
+    /// </remarks>
+    public static bool OverlapsAny(
+        DateOnly tuNgay,
+        DateOnly denNgay,
+        IEnumerable<(DateOnly TuNgay, DateOnly DenNgay)> existing)
+    {
+        ArgumentNullException.ThrowIfNull(existing);
+
+        foreach (var (existingTu, existingDen) in existing)
+        {
+            if (tuNgay <= existingDen && existingTu <= denNgay)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Kiểm tra đơn thôi việc có đủ thời hạn báo trước theo Điều 35 BLLĐ 2019 không.
+    /// </summary>
+    /// <param name="laHopDongKhongXacDinhThoiHan">
+    /// true nếu nhân viên đang trong hợp đồng không xác định thời hạn (báo trước 45 ngày).
+    /// </param>
+    public static (bool IsValid, string? ErrorCode, string? ErrorMessage) ValidateResignationNotice(
+        DateOnly ngayThoiViec,
+        DateOnly today,
+        bool laHopDongKhongXacDinhThoiHan)
+    {
+        var required = ResignationNoticeDays[laHopDongKhongXacDinhThoiHan];
+        var actual = ngayThoiViec.DayNumber - today.DayNumber;
+
+        if (actual < required)
+        {
+            return (false, "NOTICE_TOO_SHORT",
+                $"Theo Điều 35 BLLĐ, đơn thôi việc phải báo trước tối thiểu {required} ngày " +
+                $"(hợp đồng {(laHopDongKhongXacDinhThoiHan ? "không xác định thời hạn" : "xác định thời hạn")}). " +
+                $"Ngày bạn chọn chỉ còn {actual} ngày.");
+        }
+
+        return (true, null, null);
+    }
+
+    /// <summary>
+    /// Tính số ngày phép năm còn lại trong năm, dựa trên các đơn phép năm đã được duyệt.
+    /// </summary>
+    /// <param name="daDung">Tổng số ngày nghỉ trong các đơn loại 1 đã có trạng thái <c>DA_DUYET</c>.</param>
+    public static (bool IsValid, string? ErrorCode, string? ErrorMessage) ValidateAnnualLeaveBalance(
+        int soNgayXinNghi,
+        int daDung,
+        int quota = AnnualLeaveQuotaDays)
+    {
+        if (soNgayXinNghi + daDung > quota)
+        {
+            return (false, "EXCEEDS_QUOTA",
+                $"Đơn này xin {soNgayXinNghi} ngày nhưng quỹ phép năm của bạn chỉ còn " +
+                $"{Math.Max(0, quota - daDung)} ngày (đã dùng {daDung}/{quota}).");
+        }
+
+        return (true, null, null);
     }
 
     /// <summary>

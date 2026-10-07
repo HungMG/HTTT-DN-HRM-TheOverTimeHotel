@@ -57,6 +57,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<SettingsViewModel>();
 		builder.Services.AddTransient<LeaveApprovalViewModel>();
 		builder.Services.AddTransient<LeaveDetailViewModel>();
+		builder.Services.AddTransient<LeaveSubmitViewModel>();
 		builder.Services.AddTransient<AttendanceViewModel>();
 		builder.Services.AddTransient<EmployeeDashboardViewModel>();
 		builder.Services.AddTransient<EmployeeHomeViewModel>();
@@ -75,6 +76,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<SettingsPage>();
 		builder.Services.AddTransient<LeaveApprovalPage>();
 		builder.Services.AddTransient<LeaveDetailPage>();
+		builder.Services.AddTransient<LeaveSubmitPage>();
 		builder.Services.AddTransient<AttendancePage>();
 
 		// KHÔNG bọc trong #if DEBUG: bản Release mới là bản chạy thật trên

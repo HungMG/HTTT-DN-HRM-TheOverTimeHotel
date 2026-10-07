@@ -46,6 +46,10 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute("LeaveApprovalPage", typeof(LeaveApprovalPage));
 		Routing.RegisterRoute("LeaveDetailPage", typeof(LeaveDetailPage));
 
+		// Cổng nộp đơn phía nhân viên (TSK-18). Push từ ô "Đơn Điện Tử" trên
+		// trang chủ nhánh Nhân Viên, nên cũng phải đăng ký route toàn cục.
+		Routing.RegisterRoute("LeaveSubmitPage", typeof(LeaveSubmitPage));
+
 		// Hồ Sơ và Đổi Mật Khẩu không còn là tab riêng mà là hai trang push mở từ
 		// tab Cài Đặt, nên phải đăng ký route toàn cục thì GoToAsync mới tới được.
 		Routing.RegisterRoute("ProfilePage", typeof(ProfilePage));

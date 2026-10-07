@@ -48,4 +48,32 @@ public interface ILeaveApprovalService
     /// Từ chối một đơn từ kèm lý do bắt buộc.
     /// </summary>
     Task<(bool Success, string Message)> RejectAsync(int maDon, string lyDoTuChoi);
+
+    // ═══════════════════════════════════════════════════════════════
+    //  PHÍA NHÂN VIÊN NỘP ĐƠN (TSK-18)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Danh sách loại đơn người dùng được nộp, đọc từ bảng LOAI_DON của CSDL.
+    /// </summary>
+    Task<List<LeaveTypeOption>> GetSubmittableTypesAsync();
+
+    /// <summary>
+    /// Lịch sử đơn của CHÍNH người đang đăng nhập, mới nhất trước.
+    /// </summary>
+    /// <param name="chiChoDuyet">
+    /// true thì chỉ lấy đơn còn chờ duyệt; false thì lấy toàn bộ lịch sử.
+    /// </param>
+    Task<List<LeaveRequestItem>> GetMyRequestsAsync(bool chiChoDuyet = false);
+
+    /// <summary>
+    /// Nộp một đơn từ mới. Mã nhân viên luôn lấy từ phiên đăng nhập, không nhận
+    /// từ tham số để không thể nộp hộ người khác.
+    /// </summary>
+    Task<LeaveSubmitResult> SubmitRequestAsync(int maLoaiDon, DateOnly tuNgay, DateOnly denNgay, string lyDo);
+
+    /// <summary>
+    /// Số ngày phép năm đã dùng trong năm hiện tại (các đơn loại 1 đã được duyệt).
+    /// </summary>
+    Task<int> GetUsedAnnualLeaveDaysAsync();
 }

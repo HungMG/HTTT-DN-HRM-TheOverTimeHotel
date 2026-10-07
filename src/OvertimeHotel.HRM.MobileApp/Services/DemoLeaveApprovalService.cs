@@ -155,6 +155,177 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
         return (res.Success, res.Message);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  PHÍA NHÂN VIÊN NỘP ĐƠN (TSK-18) — chế độ Demo
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Danh mục loại đơn ghi cứng, khớp 5 dòng seed LOAI_DON của CSDL.
+    /// </summary>
+    /// <remarks>
+    /// Demo chạy không có mạng nên không đọc được bảng LOAI_DON. Nội dung phải
+    /// giữ nguyên với seed — nếu lệch thì form Demo duyệt được loại mà bản thật
+    /// không có, và người demo tưởng app chạy sai.
+    /// </remarks>
+    private static readonly List<LeaveTypeOption> DemoTypes =
+    [
+        new(1, "Nghỉ phép năm", true, "Nghỉ phép thường niên hưởng nguyên 100% lương theo chế độ"),
+        new(2, "Nghỉ ốm đau / BHXH", true, "Nghỉ theo chỉ định y tế, có giấy tờ BHXH chi trả"),
+        new(3, "Nghỉ thai sản", true, "Chế độ nghỉ thai sản dành cho lao động nữ (6 tháng)"),
+        new(4, "Nghỉ việc riêng không lương", false, "Nghỉ giải quyết việc gia đình, khấu trừ lương ngày công"),
+        new(5, "Đơn xin thôi việc", false, "Đơn nguyện vọng xin chấm dứt hợp đồng lao động trước hạn")
+    ];
+
+    private const int MA_LOAI_PHEP_NAM = 1;
+
+    /// <summary>Mã đơn demo cấp tiếp theo, đủ lớn để không đụng seed 100-105.</summary>
+    private int _nextMaDon = 200;
+
+    public Task<List<LeaveTypeOption>> GetSubmittableTypesAsync() =>
+        Task.FromResult<List<LeaveTypeOption>>([.. DemoTypes.OrderBy(t => t.MaLoaiDon)]);
+
+    public Task<List<LeaveRequestItem>> GetMyRequestsAsync(bool chiChoDuyet = false)
+    {
+        var user = _authService.CurrentUser;
+        if (user is null || !user.IsLoggedIn)
+        {
+            return Task.FromResult(new List<LeaveRequestItem>());
+        }
+
+        lock (_seedRequests)
+        {
+            var mine = _seedRequests
+                .Where(r => r.MaNhanVien == user.MaNhanVien)
+                .Where(r => !chiChoDuyet || r.TrangThai == "CHO_DUYET")
+                .OrderByDescending(r => r.NgayGui)
+                .ToList();
+
+            // Trả về bản sao: nếu trả chính danh sách, ViewModel sửa item trong
+            // CollectionView cũng sửa luôn dữ liệu gốc của service.
+            return Task.FromResult<List<LeaveRequestItem>>([.. mine.Select(Clone)]);
+        }
+    }
+
+    public Task<int> GetUsedAnnualLeaveDaysAsync()
+    {
+        var user = _authService.CurrentUser;
+        if (user is null || !user.IsLoggedIn)
+        {
+            return Task.FromResult(0);
+        }
+
+        lock (_seedRequests)
+        {
+            var year = DateTime.Today.Year;
+
+            // Khớp luật production: chỉ tính đơn phép năm ĐÃ DUYỆT trong năm.
+            var used = _seedRequests
+                .Where(r => r.MaNhanVien == user.MaNhanVien
+                            && r.MaLoaiDon == MA_LOAI_PHEP_NAM
+                            && r.TrangThai == "DA_DUYET"
+                            && r.DenNgay.Year == year)
+                .Sum(r => Math.Max(1, r.DenNgay.DayNumber - r.TuNgay.DayNumber + 1));
+
+            return Task.FromResult(used);
+        }
+    }
+
+    public async Task<LeaveSubmitResult> SubmitRequestAsync(
+        int maLoaiDon, DateOnly tuNgay, DateOnly denNgay, string lyDo)
+    {
+        var user = _authService.CurrentUser;
+        if (user is null || !user.IsLoggedIn)
+        {
+            return new LeaveSubmitResult(false, "UNAUTHENTICATED", "Chưa đăng nhập.");
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateCreate(
+            maLoaiDon, tuNgay, denNgay, lyDo, today);
+
+        if (!isValid)
+        {
+            return new LeaveSubmitResult(false, errorCode ?? "VALIDATION_ERROR", errorMessage!);
+        }
+
+        var pending = await GetMyRequestsAsync(chiChoDuyet: true);
+        if (LeaveApprovalPolicy.OverlapsAny(tuNgay, denNgay, pending.Select(r => (r.TuNgay, r.DenNgay))))
+        {
+            return new LeaveSubmitResult(
+                false, "OVERLAP",
+                "Bạn đã có đơn đang chờ duyệt trùng với khoảng ngày này. " +
+                "Vui lòng kiểm tra lịch sử đơn trước khi gửi tiếp.");
+        }
+
+        if (maLoaiDon == MA_LOAI_PHEP_NAM)
+        {
+            var used = await GetUsedAnnualLeaveDaysAsync();
+            var (quotaOk, quotaCode, quotaMsg) = LeaveApprovalPolicy.ValidateAnnualLeaveBalance(
+                denNgay.DayNumber - tuNgay.DayNumber + 1, used);
+
+            if (!quotaOk)
+            {
+                return new LeaveSubmitResult(false, quotaCode ?? "EXCEEDS_QUOTA", quotaMsg!);
+            }
+        }
+
+        var loai = DemoTypes.FirstOrDefault(t => t.MaLoaiDon == maLoaiDon);
+
+        lock (_seedRequests)
+        {
+            var item = new LeaveRequestItem
+            {
+                MaDon = _nextMaDon++,
+                MaNhanVien = user.MaNhanVien,
+                TenNhanVien = user.HoTen,
+                MaPhongBan = user.MaPhongBan,
+                TenPhongBan = user.TenPhongBan,
+                TenChucVu = user.TenChucVu,
+                MaLoaiDon = maLoaiDon,
+                TenLoaiDon = loai?.TenLoaiDon ?? $"Loại #{maLoaiDon}",
+                CoHuongLuong = loai?.CoHuongLuong ?? false,
+                TuNgay = tuNgay,
+                DenNgay = denNgay,
+                LyDo = lyDo.Trim(),
+                NgayGui = DateTimeOffset.UtcNow,
+                TrangThai = "CHO_DUYET"
+            };
+
+            _seedRequests.Add(item);
+
+            _logger.LogInformation("[DEMO] Nhân viên #{MaNhanVien} nộp đơn mới #{MaDon}.", user.MaNhanVien, item.MaDon);
+
+            return new LeaveSubmitResult(
+                true, "SUBMITTED",
+                $"[DEMO] Đã tạo đơn #{item.MaDon}. Dữ liệu chỉ tồn tại trong phiên Demo, không ghi xuống Supabase.",
+                item.MaDon);
+        }
+    }
+
+    /// <summary>Chép sang item mới để lời gọi của service không sửa được dữ liệu gốc.</summary>
+    private static LeaveRequestItem Clone(LeaveRequestItem src) => new()
+    {
+        MaDon = src.MaDon,
+        MaNhanVien = src.MaNhanVien,
+        TenNhanVien = src.TenNhanVien,
+        MaPhongBan = src.MaPhongBan,
+        TenPhongBan = src.TenPhongBan,
+        TenChucVu = src.TenChucVu,
+        MaLoaiDon = src.MaLoaiDon,
+        TenLoaiDon = src.TenLoaiDon,
+        CoHuongLuong = src.CoHuongLuong,
+        TuNgay = src.TuNgay,
+        DenNgay = src.DenNgay,
+        LyDo = src.LyDo,
+        NgayGui = src.NgayGui,
+        TrangThai = src.TrangThai,
+        MaNguoiDuyet = src.MaNguoiDuyet,
+        NguoiDuyetTen = src.NguoiDuyetTen,
+        NgayDuyet = src.NgayDuyet,
+        PhanHoiDuyet = src.PhanHoiDuyet
+    };
+
     private static List<LeaveRequestItem> MapToItems(List<LeaveRequestListItemDto> dtos)
     {
         return dtos.Select(d => new LeaveRequestItem

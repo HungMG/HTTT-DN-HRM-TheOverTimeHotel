@@ -9,6 +9,35 @@ public record LeaveRequestCreateDto(
 );
 
 /// <summary>
+/// Kết quả nộp đơn từ phía nhân viên (TSK-18).
+/// </summary>
+/// <remarks>
+/// <b>Vì sao không trả về bool trần.</b> Người dùng cần biết đơn có được tạo
+/// không, và nếu không thì vì sao — mã lỗi <c>Code</c> để ViewModel chuyển thành
+/// thông điệp phù hợp (lỗi hiển thị ngay trên form, còn lỗi hệ thống mới mở popup).
+/// </remarks>
+public record LeaveSubmitResult(
+    bool Success,
+    string Code,
+    string Message,
+    int MaDon = 0
+);
+
+/// <summary>
+/// Một loại đơn người dùng được chọn khi nộp, kèm mô tả luật đi kèm đúng loại đó.
+/// </summary>
+/// <remarks>
+/// Danh mục 5 loại nằm trong bảng <c>LOAI_DON</c> của CSDL chứ không ghi cứng ở
+/// app: nếu CSDL thêm loại mới thì form tự hiện, không phải sửa lại code.
+/// </remarks>
+public record LeaveTypeOption(
+    int MaLoaiDon,
+    string TenLoaiDon,
+    bool CoHuongLuong,
+    string MoTa
+);
+
+/// <summary>
 /// DTO gửi từ client để duyệt hoặc từ chối đơn.
 /// Lưu ý bảo mật: Không truyền MaNguoiDuyet từ client; Server tự trích xuất từ JWT token.
 /// </summary>

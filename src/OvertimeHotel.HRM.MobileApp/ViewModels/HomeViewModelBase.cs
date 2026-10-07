@@ -30,12 +30,20 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
         // không qua tab Cài Đặt nữa — bỏ một bước bấm thừa.
         ProfileCommand = new Command(() => _ = Shell.Current.GoToAsync("ProfilePage"));
         FeatureCommand = new Command<string>(featureName => RequestFeature(featureName));
+
+        // Thẻ chức năng "Đơn Điện Tử" (TSK-18). Mở cho MỌI vai trò, không chỉ
+        // nhân viên: quản lý và HR cũng là người lao động của chính khách sạn này,
+        // họ cần nộp được đơn của mình chứ không chỉ duyệt đơn của người khác.
+        LeaveSubmitCommand = new Command(() => _ = Shell.Current.GoToAsync("LeaveSubmitPage"));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>Mở trang Thông tin cá nhân (trang push từ Cài Đặt hoặc từ trang chủ).</summary>
     public ICommand ProfileCommand { get; }
+
+    /// <summary>Mở cổng nộp đơn điện tử của nhân viên (TSK-18).</summary>
+    public ICommand LeaveSubmitCommand { get; }
 
     /// <summary>Mở một tính năng nghiệp vụ; nhận tên tính năng qua CommandParameter.</summary>
     public ICommand FeatureCommand { get; }

@@ -170,10 +170,9 @@
                     <controls:FeatureTile Grid.Row="1" Grid.Column="0"
                                           Icon="📝"
                                           Title="Đơn Điện Tử"
-                                          Description="Nghỉ phép, đổi ca"
+                                          Description="Nghỉ phép, bệnh, thai sản, thôi việc"
                                           ActionText="Tạo Đơn"
-                                          TappedCommand="{Binding FeatureCommand}"
-                                          CommandParameter="Đơn Điện Tử" />
+                                          TappedCommand="{Binding LeaveSubmitCommand}" />
                     <controls:FeatureTile Grid.Row="1" Grid.Column="1"
                                           Icon="👤"
                                           Title="Hồ Sơ"

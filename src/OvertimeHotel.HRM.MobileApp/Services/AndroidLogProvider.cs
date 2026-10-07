@@ -74,6 +74,7 @@ public sealed class AndroidLogProvider : ILoggerProvider
                 message = $"{message} | {exception.GetType().Name}: {exception.Message}";
             }
 
+            #if ANDROID
             var priority = logLevel switch
             {
                 LogLevel.Trace or LogLevel.Debug => Android.Util.LogPriority.Debug,
@@ -83,6 +84,12 @@ public sealed class AndroidLogProvider : ILoggerProvider
             };
 
             Android.Util.Log.WriteLine(priority, _tag, message);
+#else
+            // Ngoài Android không có logcat (và Mono.Android.dll không được tham
+            // chiếu nên không bind được ở trên). Rơi về Debug.WriteLine để bản
+            // Windows/iOS vẫn thấy log ở cửa sổ Output của Visual Studio.
+            System.Diagnostics.Debug.WriteLine($"[{_tag}] {message}");
+#endif
         }
     }
 }

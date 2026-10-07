@@ -233,6 +233,211 @@ public class LeaveApprovalService : ILeaveApprovalService
         return (result.Success, result.Message);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  PHÍA NHÂN VIÊN NỘP ĐƠN (TSK-18)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>Mã loại đơn phép năm — loại duy nhất trừ vào quỹ phép năm.</summary>
+    private const int MA_LOAI_PHEP_NAM = 1;
+
+    private const string SelectLoaiDon = "ma_loai_don,ten_loai_don,co_huong_luong,mo_ta";
+
+    public async Task<List<LeaveTypeOption>> GetSubmittableTypesAsync()
+    {
+        var allowed = LeaveApprovalPolicy.GetSubmittableRequestTypes();
+
+        // Lọc ở tầng truy vấn thay vì tải 5 dòng về rồi lọc trong bộ nhớ: danh mục
+        // loại đơn là dữ liệu tham chiếu, để CSDL quyết định loại nào còn tồn tại.
+        var json = await _rest.GetAsync(
+            $"loai_don?select={SelectLoaiDon}&ma_loai_don=in.({string.Join(',', allowed)})&order=ma_loai_don.asc");
+
+        return [.. PostgrstJson.ParseArray(json).Select(row => new LeaveTypeOption(
+            MaLoaiDon: PostgrstJson.ReadNullableInt(row, "ma_loai_don") ?? 0,
+            TenLoaiDon: PostgrstJson.ReadString(row, "ten_loai_don"),
+            CoHuongLuong: PostgrstJson.ReadBool(row, "co_huong_luong"),
+            MoTa: PostgrstJson.ReadString(row, "mo_ta")))];
+    }
+
+    public async Task<List<LeaveRequestItem>> GetMyRequestsAsync(bool chiChoDuyet = false)
+    {
+        var maNhanVien = RequireEmployeeId();
+
+        // Khoá theo chính mình ngay trong truy vấn: app không tự lọc rồi tin là
+        // an toàn, RLS mới là lớp chặn thật. Truy vấn này chỉ phục vụ hiển thị.
+        var filters = new List<string> { $"ma_nhan_vien=eq.{maNhanVien}" };
+        if (chiChoDuyet)
+        {
+            filters.Add("trang_thai=eq." + STATUS_CHO_DUYET);
+        }
+
+        filters.Add("order=ngay_gui.desc");
+
+        var json = await _rest.GetAsync($"don_tu?select={SelectDonTu}&{string.Join('&', filters)}");
+        return MapToItems(json);
+    }
+
+    public async Task<int> GetUsedAnnualLeaveDaysAsync()
+    {
+        var maNhanVien = RequireEmployeeId();
+        var firstDay = new DateOnly(DateTime.Today.Year, 1, 1);
+        var nextYear = firstDay.AddYears(1);
+
+        // Chỉ tính đơn phép năm ĐÃ ĐƯỢC DUYỆT trong năm hiện tại. Đơn đang chờ
+        // hoặc bị từ chối không tiêu tốn quỹ — tính cả chúng thì quỹ phép của
+        // người dùng hiện ra âm bởi chính những đơn chưa ai xử lý.
+        var json = await _rest.GetAsync(
+            $"don_tu?select=tu_ngay,den_ngay&ma_nhan_vien=eq.{maNhanVien}" +
+            $"&ma_loai_don=eq.{MA_LOAI_PHEP_NAM}&trang_thai=eq.DA_DUYET" +
+            $"&den_ngay=gte.{firstDay:yyyy-MM-dd}&den_ngay=lt.{nextYear:yyyy-MM-dd}");
+
+        var used = 0;
+        foreach (var row in PostgrstJson.ParseArray(json))
+        {
+            var tu = PostgrstJson.ReadDate(row, "tu_ngay");
+            var den = PostgrstJson.ReadDate(row, "den_ngay");
+            used += Math.Max(1, den.DayNumber - tu.DayNumber + 1);
+        }
+
+        return used;
+    }
+
+    public async Task<LeaveSubmitResult> SubmitRequestAsync(
+        int maLoaiDon, DateOnly tuNgay, DateOnly denNgay, string lyDo)
+    {
+        try
+        {
+            var user = RequireSession();
+            var today = DateOnly.FromDateTime(DateTime.Today);
+
+            // Zero Trust: mã nhân viên lấy TỪ PHIÊN, không nhận từ tham số —
+            // không có đường để nộp đơn hộ người khác dù có sửa được app.
+            var maNhanVien = user.MaNhanVien;
+            if (maNhanVien <= 0)
+            {
+                return new LeaveSubmitResult(
+                    false, "UNAUTHENTICATED", "Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
+            }
+
+            var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateCreate(
+                maLoaiDon, tuNgay, denNgay, lyDo, today);
+
+            if (!isValid)
+            {
+                return new LeaveSubmitResult(false, errorCode ?? "VALIDATION_ERROR", errorMessage!);
+            }
+
+            var soNgay = denNgay.DayNumber - tuNgay.DayNumber + 1;
+
+            // Chặn trùng lịch: đã có đơn CHO_DUYET nào trùng khoảng ngày thì cảnh
+            // báo, không chặn cứng — người dùng vẫn có thể cần nộp (ví dụ đơn
+            // cũ treo lâu, giờ xin nộp lại). Chỉ đơn đang chờ mới tính.
+            var pending = await GetMyRequestsAsync(chiChoDuyet: true);
+            var coTrung = LeaveApprovalPolicy.OverlapsAny(
+                tuNgay, denNgay,
+                pending.Select(r => (r.TuNgay, r.DenNgay)));
+
+            if (coTrung)
+            {
+                return new LeaveSubmitResult(
+                    false, "OVERLAP", "Bạn đã có đơn đang chờ duyệt trùng với khoảng ngày này. " +
+                    "Vui lòng kiểm tra lịch sử đơn trước khi gửi tiếp.");
+            }
+
+            if (maLoaiDon == MA_LOAI_PHEP_NAM)
+            {
+                var used = await GetUsedAnnualLeaveDaysAsync();
+                var (quotaOk, quotaCode, quotaMsg) = LeaveApprovalPolicy.ValidateAnnualLeaveBalance(
+                    soNgay, used);
+
+                if (!quotaOk)
+                {
+                    return new LeaveSubmitResult(false, quotaCode ?? "EXCEEDS_QUOTA", quotaMsg!);
+                }
+            }
+
+            // ngay_gui và trang_thai KHÔNG gửi lên — để CSDL lấy DEFAULT (thời điểm
+            // gửi và CHO_DUYET). Nếu app tự điền trang_thai thì một máy sửa được
+            // có thể tự tạo đơn đã "được duyệt" và đánh lừa người duyệt.
+            var body = JsonSerializer.Serialize(
+                new CreatePayload(
+                    MaNhanVien: maNhanVien,
+                    MaLoaiDon: maLoaiDon,
+                    TuNgay: tuNgay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    DenNgay: denNgay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    LyDo: lyDo.Trim()),
+                JsonPayloadOptions);
+
+            var response = await _rest.PostAsync("don_tu", body);
+
+            if (_rest.NoRowsMatched)
+            {
+                return new LeaveSubmitResult(
+                    false, "SERVER_ERROR", "Máy chủ không xác nhận đã lưu đơn. Vui lòng thử lại.");
+            }
+
+            var maDon = ReadCreatedDonId(response);
+
+            _logger.LogInformation(
+                "Nhân viên #{MaNhanVien} nộp đơn loại {MaLoaiDon} từ {TuNgay} đến {DenNgay} ({SoNgay} ngày).",
+                maNhanVien, maLoaiDon, tuNgay, denNgay, soNgay);
+
+            return new LeaveSubmitResult(
+                true, "SUBMITTED",
+                $"Đã gửi đơn thành công. Đơn #{maDon} đang chờ người quản lý xét duyệt.",
+                maDon);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return new LeaveSubmitResult(false, "UNAUTHENTICATED", ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Thao tác nộp đơn bị máy chủ từ chối.");
+
+            // WasDeniedByPolicy = true nghĩa là RLS chặn INSERT. Đây KHÔNG phải
+            // lỗi người dùng — nhưng cũng không được nói "thử lại" vì sẽ không
+            // bao giờ được. Báo rõ việc cần quản trị viên cấp quyền.
+            return new LeaveSubmitResult(
+                false,
+                _rest.WasDeniedByPolicy ? "FORBIDDEN" : "SERVER_ERROR",
+                _rest.WasDeniedByPolicy
+                    ? "Máy chủ chưa cấp quyền ghi đơn cho tài khoản của bạn. Vui lòng liên hệ quản trị viên."
+                    : ex.Message);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Lỗi kết nối khi nộp đơn từ.");
+            return new LeaveSubmitResult(
+                false, "NETWORK_ERROR", "Không thể kết nối máy chủ để gửi đơn. Vui lòng thử lại.");
+        }
+    }
+
+    /// <summary>
+    /// Lấy mã đơn vừa tạo từ phản hồi PostgREST.
+    /// </summary>
+    /// <remarks>
+    /// <c>PostAsync</c> gửi kèm <c>Prefer: return=representation</c> nên phản hồi
+    /// chứa chính dòng vừa ghi. Nếu RLS chặn, hoặc dịch vụ trả 204, body rỗng thì
+    /// trả 0 — chỉ dùng để hiển thị, không làm hỏng luồng gửi đơn.
+    /// </remarks>
+    private static int ReadCreatedDonId(string response)
+    {
+        var rows = PostgrstJson.ParseArray(response);
+        return rows.Length == 0 ? 0 : PostgrstJson.ReadNullableInt(rows[0], "ma_don") ?? 0;
+    }
+
+    /// <summary>Lấy mã nhân viên từ phiên, chặn khi phiên hỏng thay vì ghi đơn rác.</summary>
+    private int RequireEmployeeId()
+    {
+        var maNhanVien = RequireSession().MaNhanVien;
+        if (maNhanVien <= 0)
+        {
+            throw new UnauthorizedAccessException("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
+        }
+
+        return maNhanVien;
+    }
+
     private Task<string> LoadScopeAsync(bool isPending) =>
         _rest.GetAsync($"don_tu?select={SelectDonTu}&{JoinScope(isPending)}");
 
@@ -463,4 +668,21 @@ public class LeaveApprovalService : ILeaveApprovalService
         [property: JsonPropertyName("ngay_duyet")] string NgayDuyet,
         [property: JsonPropertyName("ma_nguoi_duyet")] int MaNguoiDuyet,
         [property: JsonPropertyName("phan_hoi_duyet")] string? PhanHoiDuyet);
+
+    /// <summary>
+    /// Body POST cho <c>don_tu</c> (TSK-18).
+    /// </summary>
+    /// <remarks>
+    /// <b>Cố ý KHÔNG gửi <c>ngay_gui</c> và <c>trang_thai</c>.</b> Hai cột này có
+    /// DEFAULT ở CSDL (<c>CURRENT_TIMESTAMP</c> và <c>'CHO_DUYET'</c>) và do server
+    /// quyết định. Nếu app gửi kèm, một máy sửa được APK có thể tự tạo đơn ở
+    /// trạng thái "đã duyệt" và tự phê duyệt hộ — đúng lỗ hổng mà RLS cứu không
+    /// được, vì policy <c>FOR INSERT</c> không kiểm tra được cột do client tự chế.
+    /// </remarks>
+    private sealed record CreatePayload(
+        [property: JsonPropertyName("ma_nhan_vien")] int MaNhanVien,
+        [property: JsonPropertyName("ma_loai_don")] int MaLoaiDon,
+        [property: JsonPropertyName("tu_ngay")] string TuNgay,
+        [property: JsonPropertyName("den_ngay")] string DenNgay,
+        [property: JsonPropertyName("ly_do")] string LyDo);
 }

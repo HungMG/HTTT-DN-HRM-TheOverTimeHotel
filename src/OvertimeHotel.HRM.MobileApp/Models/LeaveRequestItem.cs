@@ -35,6 +35,22 @@ public class LeaveRequestItem
 
     public string NgayDuyetDisplay => NgayDuyet?.ToLocalTime().ToString("HH:mm dd/MM/yyyy") ?? "--";
 
+    /// <summary>
+    /// Đã có phản hồi của người duyệt chưa — quyết định hiện khối phản hồi.
+    /// </summary>
+    /// <remarks>
+    /// Không dùng <c>PhanHoiDuyet != null</c> thẳng trong XAML vì
+    /// <c>TargetNullValue</c> kiểu chuỗi rỗng sẽ bị coi là có nội dung, lúc đó
+    /// khối hiện ra với một dòng trống. Bọc thành bool cho chắc.
+    /// </remarks>
+    public bool HasPhanHoi => !string.IsNullOrWhiteSpace(PhanHoiDuyet);
+
+    /// <summary>Nhãn khối phản hồi, kèm tên người ký duyệt.</summary>
+    public string PhanHoiTitle =>
+        string.IsNullOrWhiteSpace(NguoiDuyetTen)
+            ? "Phản hồi của người duyệt"
+            : $"Phản hồi · {NguoiDuyetTen}";
+
     public int SoNgayNghi => Math.Max(1, DenNgay.DayNumber - TuNgay.DayNumber + 1);
 
     public string SoNgayNghiDisplay => $"{SoNgayNghi} ngày";

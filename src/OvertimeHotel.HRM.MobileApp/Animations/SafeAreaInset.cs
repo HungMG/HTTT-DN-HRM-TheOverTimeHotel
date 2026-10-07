@@ -63,12 +63,22 @@ public static class SafeAreaInset
 	{
 		if (DeviceInfo.Current.Platform == DevicePlatform.Android)
 		{
+#if ANDROID
 			return GetAndroidInset(target);
+#else
+			// Các hàm bên dưới khai báo tham số kiểu Android.* nên chỉ tồn tại khi
+			// build cho Android — iOS/MacCatalyst/Windows không tham chiếu
+			// Mono.Android.dll và sẽ không bind được chúng. Ở các nền tảng đó nhánh
+			// trên không bao giờ chạy tới (DeviceInfo trả về nền tảng khác), nên
+			// Thickness.Zero vẫn là kết quả đúng.
+			return Thickness.Zero;
+#endif
 		}
 
 		return Thickness.Zero;
 	}
 
+#if ANDROID
 	// WindowInsets.Type.SystemBars/GetInsets chỉ có từ Android 11 (API 30). Trên máy
 	// cũ hơn, hệ thống chưa vẽ tràn viền nên nội dung vốn đã nằm trong vùng an toàn —
 	// trả Zero là đúng. Nhánh kiểm tra phiên bản phải nằm ngay tại chỗ gọi để trợ
@@ -107,4 +117,5 @@ public static class SafeAreaInset
 			bars.Right / density,
 			bars.Bottom / density);
 	}
+#endif
 }
