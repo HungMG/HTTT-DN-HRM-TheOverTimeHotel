@@ -1,0 +1,211 @@
+@model CreateYeuCauTaiKhoanViewModel
+@{
+    ViewData["Title"] = "Gửi yêu cầu cấp tài khoản";
+}
+
+<div class="account-workspace account-workspace--bleed account-form-workspace">
+    <div class="account-toolbar account-reveal">
+        <a asp-action="Index" class="account-icon-action" aria-label="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
+        <div class="account-toolbar-note">
+            <i class="bi bi-person-plus"></i>
+            <span>Nhân sự duyệt hợp đồng lao động rồi gửi yêu cầu; bộ phận CNTT sẽ cấp tài khoản đăng nhập.</span>
+        </div>
+        <div class="account-step-indicator" aria-label="Tiến trình cấp tài khoản">
+            <span class="is-active">1</span><i></i><span>2</span><i></i><span>3</span>
+        </div>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="account-popup-stack" aria-live="assertive">
+            <div class="account-popup account-popup--danger" data-account-toast role="alert">
+                <div class="account-popup-icon"><i class="bi bi-exclamation-lg"></i></div>
+                <div class="account-popup-copy"><small>Chưa thể gửi yêu cầu</small><strong>Vui lòng kiểm tra và sửa các trường được đánh dấu bên dưới.</strong></div>
+                <button type="button" data-account-toast-close aria-label="Đóng thông báo"><i class="bi bi-x-lg"></i></button>
+                <span class="account-popup-progress"></span>
+            </div>
+        </div>
+    }
+
+    <form asp-action="Create" method="post" class="account-inspector-layout account-reveal">
+        @Html.AntiForgeryToken()
+        <div class="account-form-main">
+            <div asp-validation-summary="ModelOnly" class="account-validation" role="alert"></div>
+
+            <section class="inspector-card">
+                <div class="inspector-card-heading">
+                    <span class="inspector-index">01</span>
+                    <div><small>Đối tượng cấp</small><h2>Nhân viên &amp; hợp đồng</h2></div>
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div class="inspector-card-body">
+                    <div class="account-form-grid account-form-grid--7-5">
+                        <div class="account-field">
+                            <label asp-for="EmployeeId"><span>Nhân viên</span><small>Bắt buộc</small></label>
+                            <div class="account-select-wrap">
+                                <select asp-for="EmployeeId" asp-items="Model.EmployeeOptions">
+                                    <option value="">Chọn nhân viên chưa có tài khoản</option>
+                                </select>
+                                <i class="bi bi-chevron-expand"></i>
+                            </div>
+                            <span asp-validation-for="EmployeeId" class="account-field-error"></span>
+                            @if (Model.EmployeeOptions.Count == 0)
+                            {
+                                <div class="account-field-hint account-field-hint--warning"><i class="bi bi-info-circle"></i>Không còn nhân viên nào đang làm việc, chưa có tài khoản và có email công vụ.</div>
+                            }
+                            else
+                            {
+                                <div class="account-field-hint"><i class="bi bi-info-circle"></i>Chỉ hiện nhân viên đang làm việc, chưa có tài khoản và đã có email công vụ.</div>
+                            }
+                        </div>
+                        <div class="account-field">
+                            <label asp-for="RoleId"><span>Vai trò</span><small>RBAC</small></label>
+                            <div class="account-select-wrap">
+                                <select asp-for="RoleId" asp-items="Model.RoleOptions">
+                                    <option value="">Chọn vai trò</option>
+                                </select>
+                                <i class="bi bi-chevron-expand"></i>
+                            </div>
+                            <span asp-validation-for="RoleId" class="account-field-error"></span>
+                        </div>
+                        <div class="account-field account-field--full">
+                            <label asp-for="ContractId"><span>Hợp đồng làm căn cứ</span><small>Không bắt buộc</small></label>
+                            <div class="account-select-wrap">
+                                <select asp-for="ContractId" data-contract-select disabled>
+                                    <option value="">Gửi yêu cầu không gắn hợp đồng</option>
+                                    @foreach (var contract in Model.ActiveContracts)
+                                    {
+                                        <option value="@contract.ContractId"
+                                                data-employee-id="@contract.EmployeeId"
+                                                selected="@(Model.ContractId == contract.ContractId)">@contract.Label</option>
+                                    }
+                                </select>
+                                <i class="bi bi-chevron-expand"></i>
+                            </div>
+                            <span asp-validation-for="ContractId" class="account-field-error"></span>
+                            <div class="account-field-hint"><i class="bi bi-info-circle"></i>Chỉ hiện hợp đồng hiệu lực của nhân viên đã chọn.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="inspector-card">
+                <div class="inspector-card-heading">
+                    <span class="inspector-index">02</span>
+                    <div><small>Thông tin đăng nhập</small><h2>Tên đăng nhập dự kiến cấp</h2></div>
+                    <i class="bi bi-key"></i>
+                </div>
+                <div class="account-form-body">
+                    <div class="account-form-grid">
+                        <div class="account-field account-field--full">
+                            <label asp-for="Username"><span>Tên đăng nhập</span><small>Duy nhất khi yêu cầu còn mở</small></label>
+                            <div class="account-input-wrap">
+                                <i class="bi bi-at"></i>
+                                <input asp-for="Username" autocomplete="off" placeholder="Ví dụ: nv.nguyenvana" data-username-input />
+                            </div>
+                            <span asp-validation-for="Username" class="account-field-error"></span>
+                            <div class="account-field-hint"><i class="bi bi-info-circle"></i>Gợi ý sẽ tự động điền theo tên nhân viên; bạn có thể sửa lại.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="account-form-actions">
+                <a asp-action="Index">Hủy</a>
+                <button type="submit" disabled="@(Model.EmployeeOptions.Count == 0)"><i class="bi bi-send"></i>Gửi yêu cầu</button>
+            </div>
+        </div>
+
+        <aside class="account-preview-panel">
+            <div class="account-panel-heading">
+                <div><span>Quy trình</span><strong>Ba bước xử lý</strong></div>
+                <i class="bi bi-diagram-3"></i>
+            </div>
+            <div class="permission-stack">
+                <div><i class="bi bi-person-check"></i><span>Nhân sự gửi yêu cầu</span><small>Trạng thái Chờ CNTT</small></div>
+                <div><i class="bi bi-hand-index-thumb"></i><span>CNTT nhận việc</span><small>Trạng thái Đang xử lý</small></div>
+                <div><i class="bi bi-key"></i><span>CNTT cấp tài khoản</span><small>Trạng thái Đã cấp</small></div>
+            </div>
+            <div class="preview-note"><i class="bi bi-lightning-charge-fill"></i><span>Mật khẩu khởi tạo do CNTT đặt khi cấp; nhân viên nên đổi sau lần đăng nhập đầu tiên.</span></div>
+        </aside>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            "use strict";
+
+            const employee = document.getElementById("EmployeeId");
+            const username = document.getElementById("Username");
+            const contractSelect = document.querySelector("[data-contract-select]");
+
+            // Gợi ý tên đăng nhập: chữ đầu tên + chữ đầu họ, viết thường, bỏ dấu.
+            // Gợi ý chỉ chạy khi ô trống — không bao giờ ghi đè cái người dùng
+            // đã gõ, kể cả khi họ đã sửa tên đăng nhập của mình rồi đổi nhân viên.
+            const stripDiacritics = (value) =>
+                value
+                    .normalize("NFD")
+                    .replace(/[̀-ͯ]/g, "")
+                    .replace(/đ/g, "d")
+                    .replace(/Đ/g, "D");
+
+            const suggestUsername = () => {
+                if (!employee || !username || username.value.trim()) return;
+                const option = employee.selectedOptions[0];
+                if (!option || !option.value) return;
+
+                // Nhãn option là "Họ Tên · email"; phần đầu chính là họ tên.
+                const fullName = option.text.split("·")[0].trim();
+                const parts = fullName.split(/\s+/).filter(Boolean);
+                if (parts.length === 0) return;
+                const last = parts[parts.length - 1];
+                const first = parts[0];
+                const initial = stripDiacritics(first).charAt(0).toLowerCase();
+                username.value = `${initial}.${stripDiacritics(last).toLowerCase().replace(/\s+/g, "")}`;
+            };
+
+            // Hợp đồng đã nạp sẵn từ server (chỉ hợp đồng hiệu lực), mỗi option mang
+            // data-employee-id. Lọc ở trình duyệt theo nhân viên đang chọn thay
+            // vì gọi API lại: danh sách này nhỏ, và người dùng đổi nhân viên
+            // liên tiếp thì mỗi lần một vòng gọi mạng sẽ thấy giật.
+            const emptyOptionLabel = "Gửi yêu cầu không gắn hợp đồng";
+
+            const filterContracts = () => {
+                if (!contractSelect) return;
+                const employeeId = employee?.value || "";
+                const placeholder = contractSelect.querySelector("option[value='']");
+                let visibleCount = 0;
+
+                Array.from(contractSelect.options).forEach((option) => {
+                    if (!option.value) return;
+                    const matches = !!employeeId && option.dataset.employeeId === employeeId;
+                    option.hidden = !matches;
+                    option.disabled = !matches;
+                    if (matches) visibleCount++;
+                });
+
+                if (placeholder) placeholder.hidden = false;
+                contractSelect.disabled = !employeeId || visibleCount === 0;
+
+                if (employeeId && visibleCount > 0) {
+                    const selected = contractSelect.querySelector("option[value='']:not([disabled])");
+                    const chosenForOtherEmployee = contractSelect.selectedOptions[0]
+                        && contractSelect.selectedOptions[0].dataset.employeeId !== employeeId;
+                    if (!selected || chosenForOtherEmployee) contractSelect.selectedIndex = 0;
+                } else {
+                    contractSelect.selectedIndex = 0;
+                }
+            };
+
+            employee?.addEventListener("change", () => {
+                suggestUsername();
+                filterContracts();
+            });
+
+            suggestUsername();
+            filterContracts();
+        })();
+    </script>
+}

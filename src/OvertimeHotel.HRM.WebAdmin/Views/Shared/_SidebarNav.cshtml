@@ -23,7 +23,8 @@
                           || User.HasPermission(PermissionCodes.ApproveResignation)
                           || User.HasPermission(PermissionCodes.ApproveOvertime);
     var canViewAccounts = User.HasPermission(PermissionCodes.ManageAccounts)
-                          || User.HasPermission(PermissionCodes.ManagePermissions);
+                          || User.HasPermission(PermissionCodes.ManagePermissions)
+                          || User.HasPermission(PermissionCodes.ProvisionMobileAccount);
     var canViewSystem = User.HasPermission(PermissionCodes.BackupDatabase)
                         || User.HasPermission(PermissionCodes.ManageCatalog);
 
@@ -87,6 +88,19 @@
                 <a class="app-nav-item@(IsCurrent("UserAccounts") ? " is-active" : "")"
                    asp-controller="UserAccounts" asp-action="Index">
                     <i class="bi bi-person-gear"></i><span>Tài khoản</span>
+                </a>
+            }
+
+            @* Quy trình HR duyệt hợp đồng → CNTT cấp tài khoản. Tách khỏi mục
+               "Tài khoản" vì đây là hàng đợi công việc chờ xử lý, không phải danh
+               sách hồ sơ — và vì nó cần một quyền riêng (CAP_TAI_KHOAN_MOBILE)
+               mà nhóm "Tài khoản" không đòi hỏi. *@
+            @if (User.HasPermission(PermissionCodes.ManageAccounts) ||
+                 User.HasPermission(PermissionCodes.ProvisionMobileAccount))
+            {
+                <a class="app-nav-item@(IsCurrent("YeuCauTaiKhoan") ? " is-active" : "")"
+                   asp-controller="YeuCauTaiKhoan" asp-action="Index">
+                    <i class="bi bi-inboxes"></i><span>Yêu cầu cấp tài khoản</span>
                 </a>
             }
 

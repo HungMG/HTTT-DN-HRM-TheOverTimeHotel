@@ -93,7 +93,7 @@ INSERT INTO VAI_TRO_QUYEN (ma_vai_tro, ma_quyen) VALUES
 -- HR có quyền quản lý nhân sự, HĐLĐ, tính lương, xuất PDF, và duyệt ĐƯỢC CẢ đơn nghỉ
 -- lẫn thôi việc: quản lý nộp đơn thì không còn ai ở cấp dưới để duyệt, nên toàn bộ
 -- 5 loại đơn đều phải đi qua nhân sự (khớp LeaveApprovalPolicy.HrAllowedTypes).
-(2, 4), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 12), (2, 14), (2, 15), (2, 16),
+(2, 2), (2, 4), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 12), (2, 14), (2, 15), (2, 16),
 -- Manager có quyền xếp ca, duyệt đơn nghỉ TRONG BỘ PHẬN, duyệt OT, xem chấm công
 -- bộ phận. KHÔNG có DUYET_THOI_VIEC: chấm dứt HĐLĐ thuộc về nhân sự.
 (3, 11), (3, 12), (3, 13), (3, 14), (3, 15), (3, 16),

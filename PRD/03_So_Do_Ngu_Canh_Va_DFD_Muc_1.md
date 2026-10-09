@@ -136,6 +136,8 @@ Kho dữ liệu trong DFD là **gom nhóm nhiều bảng CSDL vùng trữ cùng 
 > **Ghi chú:** Các ô trong ma trận trên thể hiện **thao tác trên kho dữ liệu**, không phải tên luồng — xem lại bảng giải nghĩa C/U/R ở phần trên.
 >
 > **Bổ sung ngày 09/10/2026 — quy trình cấp tài khoản đi qua kho D2:** Với bảng `yeu_cau_tai_khoan` mới, tiến trình **2.0** không chỉ ghi vào nhóm RBAC (`vai_tro`, `quyen`, `vai_tro_quyen`) mà còn **tạo và cập nhật các yêu cầu cấp tài khoản**. Nguồn dữ liệu của yêu cầu là **kho D1** (HR đọc HĐLĐ đã duyệt ở tiến trình **1.0**), nên phép `R` của tiến trình 2.0 vào D1 là bắt buộc. Quy trình đầy đủ: **1.0** (duyệt HĐLĐ) → **2.0** (HR gửi yêu cầu) → **IT xử lý và cấp tài khoản** → kết quả ghi vào `yeu_cau_tai_khoan.trang_thai = 'DA_CAP'`.
+>
+> **Bổ sung cùng ngày — chức năng 2.5 đã có màn hình thật trên Web Admin** (`/YeuCauTaiKhoan`, `YeuCauTaiKhoanController`). Màn hình này là hiện thực hoá đầy đủ của tiến trình **2.0** trong ma trận CRUD ở trên: nó **C/U** trên kho **D2** (`yeu_cau_tai_khoan`, `tai_khoan`) và **R** trên kho **D1** để dựng danh sách nhân viên đủ điều kiện (luồng **G12**). Vì chưa có bảng thông báo, **việc IT biết có yêu cầu mới phụ thuộc người dùng tự mở Web Admin** — chưa có email hay push notification nào đẩy việc này đến đúng người.
 
 ### 2.3. Quy Tắc Phân Tách Quyền Ghi Danh Mục (Xóa Nhất Quán)
 
@@ -168,8 +170,12 @@ Phiên bản cũ của ma trận có mâu thuẫn: bảng `phong_ban`, `chuc_vu`
 | **G09** | **10.0** Sao lưu & Phục hồi | **9.0** Xác thực | *Kết quả phục hồi ảnh hưởng trạng thái tài khoản* | Trạng thái `tai_khoan.trang_thai`, danh sách phiên đang hoạt động cần vô hiệu hóa sau khi nạp lại dữ liệu | PRD 02 mục 8.5: *"Restore: Xác thực lại danh tính Admin → Nạp kịch bản phục hồi an toàn"* |
 | **G10** | **1.0** Quản lý NV & HĐLĐ | **2.0** Tài khoản & Phân quyền (RBAC) | *Hợp đồng lao động đã được duyệt, cần cấp tài khoản đăng nhập* | Bản ghi `hop_dong` có `trang_thai = 'HIEU_LUC'` cùng hồ sơ `nhan_vien` tương ứng | Bổ sung ngày 09/10/2026 — tiến trình 2.0 đọc D1 để biết ai vừa ký HĐLĐ và cần tài khoản; HR tạo yêu cầu trong bảng `yeu_cau_tai_khoan` (kho D2) |
 | **G11** | **2.0** Tài khoản & Phân quyền (RBAC) | **9.0** Xác thực & Quản lý Phiên làm việc | *Tài khoản vừa được bộ phận CNTT (IT) cấp* | Tên đăng nhập `ten_dang_nhap` và mã vai trò `ma_vai_tro` để IT cấp user trong `auth.users`; tiến trình 9.0 xác thực và gom quyền vào JWT | Bổ sung ngày 09/10/2026 — `yeu_cau_tai_khoan.trang_thai` chuyển `DA_CAP` là điều kiện tiên quyết để tiến trình 9.0 ghi nhận phiên làm việc |
+| **G12** | **1.0** Quản lý NV & HĐLĐ | **2.0** *(chức năng 2.5)* Quy trình cấp tài khoản | *Danh sách nhân viên đủ điều kiện được cấp tài khoản* | Bộ lọc 3 điều kiện tầng Web: chưa có dòng `tai_khoan` · `nhan_vien.trang_thai = 'DANG_LAM'` · có `email` công vụ. Kết quả trả về cho ô chọn "Nhân viên" của màn hình `/YeuCauTaiKhoan` | Bổ sung ngày 09/10/2026 — đây là phần **đọc** của chức năng 2.5; phần **ghi** yêu cầu nằm ngay trong kho D2 (xem `yeu_cau_tai_khoan` ở kho D2) |
 
-**Tóm tắt:** tổng cộng **11 luồng nội bộ (G01–G11)** — trong đó G07 là luồng nhiều đích (1 tiến trình → 11 tiến trình), và G06 gộp 5 nguồn vào 1 đích. Khi dựng sơ đồ bằng draw.io, các luồng này vẽ bằng **đường nét đứt** để phân biệt với luồng ngoài (tiến trình ↔ tác nhân) vẽ bằng **đường liền**.
+> **G12 bổ sung ngày 09/10/2026 — vì sao luồng này tách riêng khỏi G10:**
+> G10 mô tả HĐLĐ đã duyệt thì "cần cấp tài khoản" — mang tính **khái niệm nghiệp vụ**. G12 mô tả cụ thể **dữ liệu nào được đọc để dựng màn hình**: 3 điều kiện lọc ở tầng Web. Cả hai cùng đi xuống kho D1, nhưng G12 là luồng có thật trong mã nguồn (truy vấn lọc danh sách nhân viên của `YeuCauTaiKhoanController`) nên được ghi riêng để khi đối chiếu DFD với code không bị bỏ sót.
+
+**Tóm tắt:** tổng cộng **12 luồng nội bộ (G01–G12)** — trong đó G07 là luồng nhiều đích (1 tiến trình → 11 tiến trình), và G06 gộp 5 nguồn vào 1 đích. Khi dựng sơ đồ bằng draw.io, các luồng này vẽ bằng **đường nét đứt** để phân biệt với luồng ngoài (tiến trình ↔ tác nhân) vẽ bằng **đường liền**.
 
 ### 2.5. Bảng Ánh Xạ Cân Bằng Mức 0 ↔ Mức 1
 
@@ -197,7 +203,7 @@ DFD Mức 0 có **5 tác nhân × 2 chiều = 10 luồng (F01–F05)**. Bảng d
 | Tiến trình | Hộp chữ nhật, nhãn `Mã - Tên` | Ví dụ: `5.0 - Tính toán Lương tự động` |
 | Kho dữ liệu | Hai đường kẻ song song, nhãn `D1 - Tên` | **Phải là 2 đường**, không dùng hộp chữ nhật |
 | Luồng ngoài (↔ tác nhân) | Mũi tên nét liền, có nhãn tên luồng | Dùng lại đúng tên F01–F05 của Mức 0 để đối chiếu |
-| Luồng nội bộ (↔ tiến trình) | Mũi tên nét đứt, có nhãn `G01–G11` | Danh mục tại mục 2.4 |
+| Luồng nội bộ (↔ tiến trình) | Mũi tên nét đứt, có nhãn `G01–G12` | Danh mục tại mục 2.4 |
 | Thao tác lên kho | Ghi C / U / R cạnh mũi tên | `C`, `U` trên mũi tên đi ra kho; `R` trên mũi tên đi vào kho |
 | Thứ tự bố trí | Từ trái sang phải theo dòng nghiệp vụ | 9.0 ở ngoài cùng bên trái (cổng đăng nhập), 12.0 ở ngoài cùng bên phải (đẩy thông báo) |
 

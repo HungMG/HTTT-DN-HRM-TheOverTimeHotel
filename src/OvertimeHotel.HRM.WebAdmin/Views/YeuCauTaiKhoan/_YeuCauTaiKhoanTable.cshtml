@@ -1,0 +1,197 @@
+@model YeuCauTaiKhoanIndexViewModel
+@using OvertimeHotel.HRM.Core.Policies
+@using System.Security.Claims
+@using OvertimeHotel.HRM.WebAdmin.Security
+@{
+    var currentRole = User.FindFirstValue(ClaimTypes.Role);
+    var canProcess = LeaveApprovalPolicy.CanProcessAccountRequest(currentRole)
+                     && User.HasPermission(PermissionCodes.ProvisionMobileAccount);
+    var firstItem = Model.TotalFilteredRequests == 0 ? 0 : ((Model.PageNumber - 1) * Model.PageSize) + 1;
+    var lastItem = Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredRequests);
+    var firstPage = Math.Max(1, Model.PageNumber - 2);
+    var lastPage = Math.Min(Model.TotalPages, Model.PageNumber + 2);
+    var vietnamOffset = TimeSpan.FromHours(7);
+
+    string StatusChipClass(string status) => status switch
+    {
+        "CHO_IT" => "state-chip--active",
+        "DANG_XU_LY" => "role-chip--manager",
+        "DA_CAP" => "role-chip--employee",
+        _ => "state-chip--locked"
+    };
+
+    string RoleChipClass(string roleCode) => roleCode switch
+    {
+        "Admin" => "role-chip--admin",
+        "HR" => "role-chip--hr",
+        "Manager" => "role-chip--manager",
+        "IT" => "role-chip--admin",
+        _ => "role-chip--employee"
+    };
+
+    string VietnameseRoleName(string roleCode) => roleCode switch
+    {
+        "Admin" => "Quản trị viên",
+        "HR" => "Nhân sự",
+        "Manager" => "Quản lý",
+        "Employee" => "Nhân viên",
+        "IT" => "Công nghệ thông tin",
+        _ => roleCode
+    };
+}
+
+<div class="account-sequence-toolbar">
+    <div class="sequence-title">
+        <span class="sequence-play"><i class="bi bi-play-fill"></i></span>
+        <div>
+            <small>@(canProcess ? "Hộp thư bộ phận CNTT" : "Yêu cầu của bạn")</small>
+            <div class="sequence-title-line">
+                <strong>Danh sách yêu cầu cấp tài khoản</strong>
+                <span class="sequence-result-badge"><i class="bi bi-record-circle"></i> <b data-request-result-count>@Model.TotalFilteredRequests</b> kết quả</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="account-table-wrap">
+    <table class="account-table">
+        <thead>
+            <tr>
+                <th>Nhân viên</th>
+                <th>Tên đăng nhập</th>
+                <th>Vai trò</th>
+                <th>Căn cứ</th>
+                <th>Trạng thái</th>
+                <th><span class="visually-hidden">Thao tác</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Requests.Count == 0)
+            {
+                <tr data-request-empty-row>
+                    <td colspan="6">
+                        <div class="account-empty-state">
+                            <div><i class="bi bi-inbox"></i></div>
+                            <strong>Không có yêu cầu phù hợp</strong>
+                            <span>@(canProcess
+                                ? "Thử đổi bộ lọc trạng thái hoặc từ khoá tìm kiếm."
+                                : "Bạn chưa gửi yêu cầu nào, hoặc yêu cầu của bạn không khớp bộ lọc hiện tại.")</span>
+                        </div>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                var rowIndex = 0;
+                @foreach (var item in Model.Requests)
+                {
+                    rowIndex++;
+                    var sentAt = item.SentAt.ToOffset(vietnamOffset);
+                    <tr class="@(item.Status is "DA_CAP" or "TU_CHOI" ? "is-locked" : null)"
+                        style="--row-delay: @(rowIndex * 35)ms"
+                        data-request-row="@item.RequestId">
+                        <td>
+                            <div class="account-identity">
+                                <div class="account-avatar">@(item.EmployeeName.Length > 0 ? item.EmployeeName[..1].ToUpperInvariant() : "N")</div>
+                                <div>
+                                    <strong>@item.EmployeeName</strong>
+                                    <span>@(string.IsNullOrWhiteSpace(item.EmployeeEmail) ? "Chưa có email công vụ" : item.EmployeeEmail)</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="account-username"><i class="bi bi-code-slash"></i>@item.Username</div>
+                            <small class="account-inline-note"><i class="bi bi-send"></i>@item.SenderName gửi</small>
+                        </td>
+                        <td><span class="role-chip @RoleChipClass(item.RoleName)"><i></i>@VietnameseRoleName(item.RoleName)</span></td>
+                        <td>
+                            <div class="account-work-unit">
+                                <strong>@(string.IsNullOrWhiteSpace(item.ContractNo) ? "Không gắn hợp đồng" : item.ContractNo)</strong>
+                                <span>@(string.IsNullOrWhiteSpace(item.Department) ? "—" : item.Department)</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="state-chip @StatusChipClass(item.Status)"><i></i>@item.StatusLabel</span>
+                            @if (item.Status == "TU_CHOI" && !string.IsNullOrWhiteSpace(item.RejectionNote))
+                            {
+                                <small class="account-inline-note" title="@item.RejectionNote"><i class="bi bi-info-circle"></i>@item.RejectionNote</small>
+                            }
+                            else if (item.Status == "DA_CAP" && !string.IsNullOrWhiteSpace(item.GrantedUsername))
+                            {
+                                <small class="account-inline-note"><i class="bi bi-check2"></i>Tài khoản #@item.GrantedUsername</small>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(item.HandlerUsername))
+                            {
+                                <small class="account-inline-note"><i class="bi bi-person-check"></i>@item.HandlerUsername</small>
+                            }
+                        </td>
+                        <td>
+                            @* Nút nhận / cấp / từ chối là hành động MỞ CỬA Supabase
+                               Auth nên chỉ hiện với vai trò có CAP_TAI_KHOAN_MOBILE,
+                               đúng như [Authorize] ở tầng controller. *@
+                            @if (canProcess)
+                            {
+                                <div class="account-row-actions">
+                                    @if (item.Status == "CHO_IT")
+                                    {
+                                        <form asp-action="Claim" asp-route-id="@item.RequestId" method="post" class="account-toggle-form" data-request-action-form>
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" title="Nhận việc này"><i class="bi bi-hand-index-thumb"></i></button>
+                                        </form>
+                                    }
+                                    else if (item.Status == "DANG_XU_LY")
+                                    {
+                                        <form asp-action="Complete" asp-route-id="@item.RequestId" method="post" class="account-toggle-form" data-request-action-form>
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" title="Cấp tài khoản đăng nhập"><i class="bi bi-key"></i></button>
+                                        </form>
+                                        <button type="button" title="Từ chối yêu cầu"
+                                                data-request-reject="@item.RequestId"
+                                                data-request-reject-username="@item.Username">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <small class="account-inline-note"><i class="bi bi-clock-history"></i>@sentAt.ToString("dd/MM/yyyy · HH:mm")</small>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="account-pagination" aria-label="Phân trang danh sách yêu cầu">
+        <span class="account-pagination-summary">Hiển thị @firstItem–@lastItem / @Model.TotalFilteredRequests yêu cầu</span>
+        <div class="account-pagination-actions">
+            <button type="button" data-request-page="@(Model.PageNumber - 1)" disabled="@(Model.PageNumber == 1)" aria-label="Trang trước"><i class="bi bi-chevron-left"></i></button>
+            @if (firstPage > 1)
+            {
+                <button type="button" data-request-page="1">1</button>
+                @if (firstPage > 2)
+                {
+                    <span aria-hidden="true">…</span>
+                }
+            }
+            @for (var pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
+            {
+                <button type="button" data-request-page="@pageIndex" class="@(pageIndex == Model.PageNumber ? "is-current" : null)" aria-current="@(pageIndex == Model.PageNumber ? "page" : null)">@pageIndex</button>
+            }
+            @if (lastPage < Model.TotalPages)
+            {
+                @if (lastPage < Model.TotalPages - 1)
+                {
+                    <span aria-hidden="true">…</span>
+                }
+                <button type="button" data-request-page="@Model.TotalPages">@Model.TotalPages</button>
+            }
+            <button type="button" data-request-page="@(Model.PageNumber + 1)" disabled="@(Model.PageNumber == Model.TotalPages)" aria-label="Trang sau"><i class="bi bi-chevron-right"></i></button>
+        </div>
+    </nav>
+}

@@ -92,6 +92,46 @@ public static class LeaveApprovalPolicy
     public static bool CanAccessWebPortal(string? role) =>
         NormalizeRole(role) is RoleType.Admin or RoleType.HR or RoleType.Manager or RoleType.IT;
 
+    // ═══════════════════════════════════════════════════════════════════════
+    //  QUY TRÌNH "HR DUYỆT HĐ → IT CẤP TÀI KHOẢN" — TÁCH HAI HÀM, KHÔNG GỘP
+    // ═══════════════════════════════════════════════════════════════════════
+    //
+    //  VÌ SAO PHẢI TÁCH (đây là ranh giới bảo mật, không phải lựa chọn UI):
+    //
+    //  Quy trình cấp tài khoản có HAI bước khác hẳn về bản chất rủi ro:
+    //
+    //    1. GỬI YÊU CẦU — chỉ là ghi thêm một dòng vào bảng nội bộ
+    //       yeu_cau_tai_khoan. Không có tác dụng phụ, không mở cửa nào,
+    //       không sinh ra user nào trong auth.users.
+    //
+    //    2. XỬ LÝ — gọi POST /auth/v1/admin/users bằng service_role để tạo
+    //       user thật trong Supabase Auth. Đây CHÍNH LÀ CỬA VÀO của mọi
+    //       RLS policy trên toàn bộ dữ liệu khách sạn: token mà GoTrue cấp
+    //       cho user đó là thứ duy nhất Mobile App dùng để đọc/ghi dữ liệu.
+    //
+    //  Nếu gộp cả hai thành một hàm "được cấp tài khoản" và tra quyền đó cho
+    //  HR, thì HR tự gửi yêu cầu rồi tự bấm "Cấp tài khoản" — tức là tự cấp
+    //  cho mình (và cho bất kỳ ai) một tài khoản App. Đó là leo quyền, và
+    //  các trigger CSDL chỉ chặn được phần dễ thấy, không chặn được chuyện
+    //  này.
+    //
+    //  Vì vậy CanProcessAccountRequest bám đúng danh sách vai trò được gán mã
+    //  quyền CAP_TAI_KHOAN_MOBILE trong CSDL (ma_vai_tro 1 Admin và 5 IT),
+    //  để policy ở tầng C# và policy trong trigger chan_yeu_cau_tai_khoan_dung_quyen
+    //  luôn nói chung một điều. Lệch một bên là một bên vô hiệu.
+
+    /// <summary>
+    /// Quyền tạo/gửi yêu cầu cấp tài khoản — người quản lý hồ sơ nhân sự và hợp đồng.
+    /// </summary>
+    public static bool CanSubmitAccountRequest(string? role)
+        => NormalizeRole(role) is RoleType.Admin or RoleType.HR;
+
+    /// <summary>
+    /// Quyền xử lý yêu cầu — chỉ Admin và IT, đúng với mã quyền CAP_TAI_KHOAN_MOBILE.
+    /// </summary>
+    public static bool CanProcessAccountRequest(string? role)
+        => NormalizeRole(role) is RoleType.Admin or RoleType.IT;
+
     /// <summary>
     /// Liệt kê các mã loại đơn mà vai trò được phép tiếp nhận và duyệt.
     /// Dùng để lọc danh sách đơn ngay ở tầng truy vấn (ví dụ khối "Cần bạn xử lý"

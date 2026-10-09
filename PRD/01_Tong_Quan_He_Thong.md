@@ -50,6 +50,7 @@ Khách sạn tổ chức theo mô hình quản lý chuyên môn hóa phân cấp
 
 1. **Bước 1: Tiếp nhận nhân viên & Ký hợp đồng lao động (HĐLĐ):** Phòng HR lập hồ sơ lý lịch, ký kết hợp đồng (Thử việc, 1 năm, 3 năm, Vô thời hạn), ghi nhận mức lương cơ bản pháp lý, gán vào phòng ban và chức vụ.
 2. **Bước 2: Cấp tài khoản hệ thống & Phân quyền:** Sau khi ký HĐLĐ, **Phòng HR gửi yêu cầu cấp tài khoản** cho nhân viên (ghi nhận tại bảng `yeu_cau_tai_khoan`); **bộ phận Công nghệ Thông tin (CNTT/IT)** tiếp nhận và cấp tài khoản đăng nhập. Tài khoản được gán đúng 1 trong **5 vai trò chuẩn** (Admin, HR, Manager, Employee, IT) cùng tập **17 mã quyền** tương ứng trong ma trận RBAC.
+   *Toàn bộ quy trình này được thực hiện trên **màn hình quản lý yêu cầu cấp tài khoản** (`/YeuCauTaiKhoan`) của Web Admin: Phòng HR gửi yêu cầu, bộ phận CNTT nhận việc rồi cấp hoặc từ chối kèm lý do — mỗi bước đều để lại dấu vết trong CSDL.*
 3. **Bước 3: Lập lịch phân ca làm việc 24/7:** Quản lý bộ phận xếp ca làm (sáng/chiều/đêm) theo tuần hoặc tháng cho từng nhân viên.
 4. **Bước 4: Chấm công thực tế di động:** Nhân viên quẹt thẻ Check-in / Check-out trên điện thoại, hệ thống tự động đối soát ca, tính phút đi trễ, về sớm và giờ làm thêm (OT).
 5. **Bước 5: Quản lý đơn từ trực tuyến:** Nhân viên nộp 4 loại đơn điện tử (nghỉ phép, nghỉ bệnh, thai sản, thôi việc). Quản lý/HR tiếp nhận và phê duyệt trực tiếp.

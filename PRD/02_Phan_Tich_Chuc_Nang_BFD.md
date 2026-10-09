@@ -9,7 +9,7 @@
 
 ## 1. Sơ Đồ Cây Phân Rã Chức Năng BFD Tổng Quan (Level 1 & 2)
 
-Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD) thể hiện cấu trúc phân cấp từ Tiến trình gốc trung tâm (`0.0`) xuống 8 phân hệ nghiệp vụ Cấp 1 và 39 chức năng thành phần Cấp 2:
+Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD) thể hiện cấu trúc phân cấp từ Tiến trình gốc trung tâm (`0.0`) xuống 8 phân hệ nghiệp vụ Cấp 1 và 40 chức năng thành phần Cấp 2:
 
 ```text
                                 HỆ THỐNG QUẢN LÝ NHÂN SỰ & TIỀN LƯƠNG
@@ -29,10 +29,10 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
     │   sơ        │   tài khoản │   xếp ca       │   ốm (BHXH) │   (1.5-3.0) │   thu nhập  │   bộ phận   │   vụ
     ├──1.3 Quản lý├──2.3 Phân   ├──3.3 Quẹt thẻ  ├──4.3 Nghỉ   ├──5.3 Phụ cấp├──6.3 Xuất   ├──7.3 Học vấn├──8.3 Khung
     │   HĐLĐ      │   vai trò   │   Check-in/out │   thai sản  │   đêm 30%   │   QuestPDF  │   thâm niên │   giờ ca
-    ├──1.4 Lọc/Tìm└──2.4 Phân   ├──3.4 Theo dõi  ├──4.4 Đơn xin├──5.4 Ăn ca  └──6.4 Quyết  ├──7.4 Quỹ    ├──8.4 Tham số
-    │   kiếm NV       quyền RBAC│   trễ / sớm    │   thôi việc │   & thưởng      toán năm  │   lương/NS  │   lương/phạt
-    └──1.5 Điều                 └──3.5 Tính giờ  └──4.5 Xét    ├──5.5 Khấu                 └──7.5 Vi phạm└──8.5 Sao lưu
-        chuyển                       OT              duyệt đơn │   trừ 10.5%                   chấm công     & phục hồi
+    ├──1.4 Lọc/Tìm├──2.4 Phân   ├──3.4 Theo dõi  ├──4.4 Đơn xin├──5.4 Ăn ca  └──6.4 Quyết  ├──7.4 Quỹ    ├──8.4 Tham số
+    │   kiếm NV   │   quyền RBAC│   trễ / sớm    │   thôi việc │   & thưởng      toán năm  │   lương/NS  │   lương/phạt
+    └──1.5 Điều   └──2.5 Yêu cầu└──3.5 Tính giờ  └──4.5 Xét    ├──5.5 Khấu                 └──7.5 Vi phạm└──8.5 Sao lưu
+        chuyển        tài khoản    OT              duyệt đơn │   trừ 10.5%                   chấm công     & phục hồi
                                                                └──5.6 Phạt &
                                                                    Lương Net
 ```
@@ -44,7 +44,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 | Mã TT | Tên Phân Hệ Cấp 1 | Số Lượng Cấp 2 | Vai Trò Chịu Trách Nhiệm | Phạm Vi Nghiệp Vụ Trong Khách Sạn |
 |:---:|:---|:---:|:---|:---|
 | **1.0** | Quản lý Nhân sự & HĐLĐ | 5 chức năng | Phòng Hành chính - Nhân sự (HR) | Hồ sơ lý lịch, ký kết và theo dõi hạn HĐLĐ, điều động công tác. |
-| **2.0** | Tài khoản & Phân quyền (RBAC) | 4 chức năng | Quản trị viên hệ thống (Admin) | Xác thực danh tính, bảo mật tài khoản, phân quyền 5 vai trò. |
+| **2.0** | Tài khoản & Phân quyền (RBAC) | 5 chức năng | Quản trị viên hệ thống (Admin) + bộ phận CNTT (IT) | Xác thực danh tính, bảo mật tài khoản, phân quyền 5 vai trò, quy trình cấp tài khoản cho nhân viên mới. |
 | **3.0** | Ca làm & Chấm công 24/7 | 5 chức năng | Quản lý bộ phận & Nhân viên | Vận hành 3 ca liên tục, quẹt thẻ di động, tính phút trễ/sớm và giờ OT. |
 | **4.0** | Quản lý Đơn từ điện tử | 5 chức năng | Nhân viên, Quản lý, Nhân sự | Nộp và phê duyệt 4 loại đơn: Phép năm, Nghỉ ốm, Thai sản, Thôi việc. |
 | **5.0** | Tính toán Lương tự động | 6 chức năng | Phòng Hành chính - Nhân sự (HR) | Tự động hóa công thức 2 tầng: Gross (công, OT, đêm, thưởng) ➔ Net. |
@@ -54,7 +54,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 
 ---
 
-## 3. Đặc Tả Chi Tiết 39 Chức Năng Cấp 2 Theo Mô Hình IPO (Input – Process – Output)
+## 3. Đặc Tả Chi Tiết 40 Chức Năng Cấp 2 Theo Mô Hình IPO (Input – Process – Output)
 
 ---
 
@@ -140,6 +140,9 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 | **2.2** | **Quản lý tài khoản (Khóa/Mở)** | Admin | • `ma_tai_khoan`<br>• Thao tác: Khóa / Mở / Reset pass<br>• Mật khẩu mới (khi reset) | 1. Chặn Admin tự khóa tài khoản của chính mình.<br>2. Cập nhật `trang_thai = 'BiKhoa'` hoặc `'HoatDong'`.<br>3. Reset: Băm mật khẩu mới $\rightarrow$ Lưu `mat_khau_bam`. | • Trạng thái tài khoản đổi màu trên giao diện.<br>• Mật khẩu mới có hiệu lực ngay lập tức.<br>💾 `tai_khoan` |
 | **2.3** | **Phân 5 vai trò chuẩn** | Admin | • `ma_tai_khoan`<br>• `ma_vai_tro` mới chỉ định | 1. Kiểm tra tài khoản và vai trò hợp lệ trong DB.<br>2. Kiểm tra ràng buộc: Luôn duy trì tối thiểu 01 Admin.<br>3. Cập nhật `ma_vai_tro` vào bảng `tai_khoan`. | • Quyền hạn người dùng cập nhật ở lần login tiếp theo.<br>• Cập nhật vai trò hiển thị trên bảng quản lý.<br>💾 `tai_khoan`, `vai_tro` |
 | **2.4** | **Quản lý danh mục quyền (RBAC)** | Admin | • `ma_vai_tro`<br>• Danh sách `ma_quyen` được chọn | 1. Bắt đầu Transaction trong CSDL.<br>2. Xóa các quyền cũ của vai trò trong `vai_tro_quyen`.<br>3. Chèn hàng loạt các quyền mới được tích chọn.<br>4. Làm mới bộ đệm phân quyền (Refresh Cache). | • Bảng liên kết `vai_tro_quyen` được cập nhật đồng bộ.<br>• Các tài khoản mang vai trò lập tức nhận quyền mới.<br>💾 `vai_tro_quyen`, `quyen`, `vai_tro` |
+| **2.5** | **Yêu cầu & cấp tài khoản cho nhân viên mới** *(bổ sung 09/10/2026)* | HR (gửi) · Admin + IT (xử lý) | • `ma_nhan_vien` (chưa có `tai_khoan`, đang `DANG_LAM`, có `email` công vụ)<br>• `ten_dang_nhap` dự kiến, `ma_vai_tro` sẽ cấp<br>• `ma_hop_dong` làm căn cứ (khuyến nghị)<br>• Mật khẩu & xác nhận mật khẩu (lúc IT cấp) | 1. **Phía HR:** lọc danh sách nhân viên đủ 3 điều kiện (chưa có tài_khoản · `DANG_LAM` · có email công vụ); ghi yêu cầu `trang_thai = 'CHO_IT'`.<br>2. **Chặn leo quyền:** HR không được chọn vai trò **Admin** trong yêu cầu của chính mình.<br>3. **Chặn trùng:** index `uq_yeu_cau_ten_dang_nhap_dang_mo` chỉ cho 1 yêu cầu đang mở trên mỗi tên đăng nhập.<br>4. **Phía IT:** nhận việc (`CHO_IT` → `DANG_XU_LY`), kiểm tra email công vụ chưa trùng và `tai_khoan.trang_thai = true`.<br>5. **Cấp:** transaction ghi `tai_khoan` + nhật ký → commit → *sau đó mới* gọi Supabase Auth; lỗi thì rollback tài khoản nhưng **giữ yêu cầu ở `DANG_XU_LY`** kèm lý do.<br>6. **Chốt:** `DA_CAP` (kèm `ma_tai_khoan`) hoặc `TU_CHOI` (bắt buộc có `ghi_chu_tu_choi`). | • Yêu cầu xuất hiện trong hộp thư của bộ phận CNTT (IT), sắp theo `ngay_gui`.<br>• Nhân viên đăng nhập được Mobile App bằng email công vụ.<br>• Toàn bộ dấu vết ai gửi – ai xử lý truy vết được trong CSDL.<br>💾 `yeu_cau_tai_khoan`, `tai_khoan`, `nhan_vien`, `hop_dong`, `vai_tro`, `nhat_ky_quan_tri` |
+
+> **Vì sao tách 2.5 riêng thay vì gộp vào 2.2:** 2.2 thao tác trên hồ sơ tài khoản **đã tồn tại**; 2.5 là quy trình **phát sinh** tài khoản mới và có ranh giới phân quyền nghiêm ngặt hơn — phía gửi (HR) và phía cấp (Admin/IT) là **hai vai trò khác nhau**, tách bởi mã quyền `CAP_TAI_KHOAN_MOBILE`. Chi tiết thứ tự trạng thái, ràng buộc CSDL và các hạn chế còn tồn tại: xem `workflows/quy-trinh-cap-tai-khoan.md`.
 
 ---
 
@@ -429,7 +432,7 @@ Hệ thống phân định quyền hạn rõ ràng cho 5 vai trò chuẩn (Admin
 
 ---
 
-## 5. Ma Trận Đối Chiếu CRUD (39 Chức Năng ↔ 25 Bảng CSDL Supabase)
+## 5. Ma Trận Đối Chiếu CRUD (40 Chức Năng ↔ 25 Bảng CSDL Supabase)
 
 Bảng đối chiếu kiểm chứng mọi chức năng nghiệp vụ của hệ thống đều tương tác trực tiếp với 25 bảng đạt chuẩn 3NF:
 
@@ -442,7 +445,7 @@ Bảng đối chiếu kiểm chứng mọi chức năng nghiệp vụ của hệ
 │ hop_dong                  │ 1.3, 1.4, 4.4, 5.1, 5.2, 5.3, 5.5, 7.1                           │
 │ tai_khoan                 │ 2.1 (Login), 2.2 (Khóa/Mở/Reset), 2.3 (Phân vai trò)             │
 │ vai_tro, quyen, vai_tro_quyen │ 2.1, 2.3, 2.4 (Ma trận RBAC)                                 │
-│ yeu_cau_tai_khoan           │ 2.2 (Gửi & xử lý yêu cầu cấp tài khoản), 2.5 (Cấp tài khoản Mobile) │
+│ yeu_cau_tai_khoan           │ 2.5 (Gửi & xử lý yêu cầu cấp tài khoản)                            │
 │ ca_lam_viec               │ 3.1, 3.2, 3.3, 3.4, 5.3, 8.3                                     │
 │ phan_ca                   │ 3.2 (Xếp ca tuần), 3.3 (Kiểm tra ca quẹt thẻ), 7.5               │
 │ cham_cong                 │ 3.3 (Check-in/out), 3.4 (Trễ/sớm), 3.5 (OT), 5.1, 5.2, 5.3, 7.5  │
@@ -465,6 +468,6 @@ Bảng đối chiếu kiểm chứng mọi chức năng nghiệp vụ của hệ
 > | **Lịch sử điều động công tác** | 1.5 | Ghi nhận trong hồ sơ, chưa có bảng lịch sử riêng |
 > | **Nhật ký kiểm toán** (audit trail chống gian lận quẹt thẻ, log quản trị) | 3.3, 8.5 | Dữ liệu kiểm thực nằm rải trong `cham_cong`; chưa có bảng nhật ký tập trung |
 > | **Tệp đính kèm y tế** của đơn từ (giấy khám, giấy chứng sinh) | 4.2, 4.3 | Chưa có bảng lưu trữ tệp/đường dẫn tài liệu |
-> | **Thông báo** (push notification tới Mobile App) | 2.1, 4.1-4.5 | Chưa có bảng thông báo / hàng đợi gửi |
+> | **Thông báo** (push notification tới Mobile App) | 2.1, 2.5, 4.1-4.5 | Chưa có bảng thông báo / hàng đợi gửi — kể cả thông báo *"có yêu cầu cấp tài khoản mới"* cho bộ phận CNTT (IT), hiện IT phải tự mở Web Admin để xem hộp thư |
 
-> **Đã bổ sung xong (09/10/2026):** khái niệm *"quy trình cấp tài khoản đăng nhập cho nhân viên mới"* — trước đây nằm trong danh sách "chưa có bảng riêng" — nay đã có bảng **`yeu_cau_tai_khoan`** (bảng thứ 25) làm hàng đợi giữa Phòng HR và bộ phận CNTT (IT). Chi tiết cột và ràng buộc xem tại **PRD 04 — Bảng 9**.
+> **Đã bổ sung xong (09/10/2026):** khái niệm *"quy trình cấp tài khoản đăng nhập cho nhân viên mới"* — trước đây nằm trong danh sách "chưa có bảng riêng" — nay đã có bảng **`yeu_cau_tai_khoan`** (bảng thứ 25) làm hàng đợi giữa Phòng HR và bộ phận CNTT (IT), **kèm màn hình quản lý trên Web Admin** (`/YeuCauTaiKhoan`) thực hiện chức năng **2.5**. Chi tiết cột và ràng buộc xem tại **PRD 04 — Bảng 9**; mô tả quy trình và các hạn chế còn tồn tại xem tại `workflows/quy-trinh-cap-tai-khoan.md`.

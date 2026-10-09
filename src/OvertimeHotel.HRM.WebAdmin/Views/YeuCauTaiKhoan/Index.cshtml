@@ -1,0 +1,446 @@
+@model YeuCauTaiKhoanIndexViewModel
+@using System.Security.Claims
+@using OvertimeHotel.HRM.Core.Policies
+@using OvertimeHotel.HRM.WebAdmin.Security
+@{
+    ViewData["Title"] = "Yêu cầu cấp tài khoản";
+    var currentRole = User.FindFirstValue(ClaimTypes.Role);
+    var canProcess = LeaveApprovalPolicy.CanProcessAccountRequest(currentRole);
+}
+
+<partial name="_PageTabs" model="@("accounts")" />
+
+<div class="account-workspace account-workspace--bleed" data-request-workspace>
+    <div class="account-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="account-environment-pill" title="Phạm vi truy cập của bạn">
+            <i class="bi bi-shield-check"></i>
+            <span>RBAC</span>
+            <strong>@(canProcess ? "Toàn bộ yêu cầu" : "Yêu cầu của bạn")</strong>
+        </div>
+        <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
+            @* Nút gửi yêu cầu thuộc về người quản lý hồ sơ nhân sự (Admin/HR),
+               khác hẳn nhóm nút nhận/cấp/từ chối bên dưới vốn là việc của CNTT. *@
+            @if (Model.CanSubmitRequest)
+            {
+                <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn">
+                    <i class="bi bi-plus-lg me-1"></i> Gửi yêu cầu
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="account-popup-stack" aria-live="polite" aria-atomic="true">
+        @if (TempData["Success"] is string successMessage)
+        {
+            <div class="account-popup account-popup--success" data-account-toast role="status">
+                <div class="account-popup-icon"><i class="bi bi-check2"></i></div>
+                <div class="account-popup-copy"><small>Thao tác thành công</small><strong>@successMessage</strong></div>
+                <button type="button" data-account-toast-close aria-label="Đóng thông báo"><i class="bi bi-x-lg"></i></button>
+                <span class="account-popup-progress"></span>
+            </div>
+        }
+        @if (TempData["Error"] is string errorMessage)
+        {
+            <div class="account-popup account-popup--danger" data-account-toast role="alert">
+                <div class="account-popup-icon"><i class="bi bi-exclamation-lg"></i></div>
+                <div class="account-popup-copy"><small>Không thể thực hiện</small><strong>@errorMessage</strong></div>
+                <button type="button" data-account-toast-close aria-label="Đóng thông báo"><i class="bi bi-x-lg"></i></button>
+                <span class="account-popup-progress"></span>
+            </div>
+        }
+    </div>
+
+    <section class="account-stat-grid account-reveal" aria-label="Tổng quan yêu cầu cấp tài khoản">
+        <article class="motion-stat motion-stat--violet">
+            <div class="motion-stat-top"><span>01 / Tổng yêu cầu</span><i class="bi bi-inboxes"></i></div>
+            <div class="motion-stat-value" data-request-total>@Model.TotalRequests</div>
+            <div class="motion-stat-label">Tổng yêu cầu</div>
+            <div class="motion-stat-track"><span style="width: 100%"></span></div>
+        </article>
+        <article class="motion-stat motion-stat--amber">
+            <div class="motion-stat-top"><span>02 / Chờ CNTT</span><i class="bi bi-hourglass-split"></i></div>
+            <div class="motion-stat-value" data-request-pending>@Model.PendingRequests</div>
+            <div class="motion-stat-label">Chờ CNTT</div>
+            <div class="motion-stat-track"><span data-request-pending-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.PendingRequests * 100d / Model.TotalRequests) : 0)%"></span></div>
+        </article>
+        <article class="motion-stat motion-stat--violet">
+            <div class="motion-stat-top"><span>03 / Đang xử lý</span><i class="bi bi-person-workspace"></i></div>
+            <div class="motion-stat-value" data-request-processing>@Model.ProcessingRequests</div>
+            <div class="motion-stat-label">Đang xử lý</div>
+            <div class="motion-stat-track"><span data-request-processing-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.ProcessingRequests * 100d / Model.TotalRequests) : 0)%"></span></div>
+        </article>
+        <article class="motion-stat motion-stat--green">
+            <div class="motion-stat-top"><span>04 / Đã cấp</span><i class="bi bi-person-check"></i></div>
+            <div class="motion-stat-value" data-request-granted>@Model.GrantedRequests</div>
+            <div class="motion-stat-label">Đã cấp tài khoản</div>
+            <div class="motion-stat-track"><span data-request-granted-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.GrantedRequests * 100d / Model.TotalRequests) : 0)%"></span></div>
+        </article>
+        <article class="motion-stat motion-stat--red">
+            <div class="motion-stat-top"><span>05 / Từ chối</span><i class="bi bi-slash-circle"></i></div>
+            <div class="motion-stat-value" data-request-rejected>@Model.RejectedRequests</div>
+            <div class="motion-stat-label">Đã từ chối</div>
+            <div class="motion-stat-track"><span data-request-rejected-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.RejectedRequests * 100d / Model.TotalRequests) : 0)%"></span></div>
+        </article>
+    </section>
+
+    <section class="account-editor-grid account-reveal">
+        <aside class="account-outline-panel">
+            <div class="account-panel-heading">
+                <div><span>Bộ lọc</span><strong>Lọc yêu cầu</strong></div>
+                <i class="bi bi-sliders2"></i>
+            </div>
+            <form method="get" asp-action="Index" class="account-filter-form" data-request-filter-form>
+                <input type="hidden" name="page" value="@Model.PageNumber" data-request-page-input />
+                <div class="account-field">
+                    <label asp-for="Keyword"><span>Tìm kiếm</span><small>⌘ K</small></label>
+                    <div class="account-input-wrap">
+                        <i class="bi bi-search"></i>
+                        <input asp-for="Keyword" placeholder="Tên đăng nhập, tên nhân viên..." autocomplete="off" data-request-search-input />
+                    </div>
+                </div>
+                <div class="account-field">
+                    <label asp-for="TrangThai"><span>Trạng thái</span><small>Tiến trình</small></label>
+                    <div class="account-select-wrap">
+                        <select asp-for="TrangThai" asp-items="Model.StatusOptions" data-request-status-select></select>
+                        <i class="bi bi-chevron-expand"></i>
+                    </div>
+                </div>
+                <div class="account-filter-actions">
+                    <button type="submit"><i class="bi bi-funnel-fill"></i> Áp dụng</button>
+                    <a asp-action="Index" title="Đặt lại bộ lọc" data-request-filter-reset><i class="bi bi-arrow-counterclockwise"></i></a>
+                </div>
+            </form>
+
+            <section class="account-role-legend" role="list" aria-labelledby="requestAccessTitle">
+                <div class="account-panel-heading account-panel-heading--compact">
+                    <div><span>Quy trình</span><strong id="requestAccessTitle">Ai làm gì</strong></div>
+                </div>
+                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Duyệt hồ sơ &amp; gửi yêu cầu</small></div>
+                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--it"></span><span>Công nghệ thông tin</span><small>Nhận việc &amp; cấp tài khoản</small></div>
+                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--admin"></span><span>Quản trị viên</span><small>Gửi &amp; xử lý được</small></div>
+                <div class="preview-note"><i class="bi bi-lightning-charge-fill"></i><span>Chỉ bộ phận CNTT và Quản trị viên có quyền <b>CAP_TAI_KHOAN_MOBILE</b> mới mở được tài khoản trên Supabase Auth.</span></div>
+            </section>
+        </aside>
+
+        <div class="account-sequence-panel position-relative">
+            <div id="requestLoadingOverlay" class="in-place-loading-overlay d-none">
+                <div class="spinner-border text-primary mb-2" role="status" style="width: 2.3rem; height: 2.3rem;">
+                    <span class="visually-hidden">Đang tải...</span>
+                </div>
+                <div class="fw-bold text-dark small font-serif">Đang cập nhật danh sách yêu cầu...</div>
+                <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
+            </div>
+
+            <div id="requestTableContainer" class="in-place-enter in-place-container">
+                <partial name="_YeuCauTaiKhoanTable" model="Model" />
+            </div>
+        </div>
+    </section>
+</div>
+
+<dialog class="account-confirm-dialog" data-request-reject-dialog>
+    <div class="account-confirm-card">
+        <button type="button" class="account-confirm-close" data-request-reject-cancel aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+        <div class="account-confirm-icon"><i class="bi bi-slash-circle"></i></div>
+        <small>Xác nhận từ chối</small>
+        <h2 data-request-reject-title>Từ chối yêu cầu?</h2>
+        <p>Nhân sự sẽ thấy lý do này và có thể sửa rồi gửi lại. Từ chối mà không giải thích thì người lao động không biết cần sửa gì.</p>
+        <form asp-action="Reject" method="post" data-request-reject-form>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="" data-request-reject-id />
+            <label class="account-confirm-reason">
+                <span>Lý do từ chối <b>*</b></span>
+                <textarea rows="3" maxlength="500" name="lyDo" data-request-reject-reason placeholder="Nhập lý do từ chối yêu cầu"></textarea>
+                <small data-request-reject-reason-error>Vui lòng nhập lý do trước khi xác nhận.</small>
+            </label>
+            <div class="account-confirm-actions">
+                <button type="button" data-request-reject-cancel>Hủy bỏ</button>
+                <button type="submit"><i class="bi bi-check2"></i><span>Xác nhận từ chối</span></button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+@section Scripts {
+    <script>
+        (() => {
+            "use strict";
+
+            const workspace = document.querySelector("[data-request-workspace]");
+            if (!workspace) return;
+
+            const filterForm = document.querySelector("[data-request-filter-form]");
+            const tableContainer = document.getElementById("requestTableContainer");
+            const overlay = document.getElementById("requestLoadingOverlay");
+            const toastStack = document.querySelector(".account-popup-stack");
+            const rejectDialog = document.querySelector("[data-request-reject-dialog]");
+            const rejectForm = document.querySelector("[data-request-reject-form]");
+            const rejectIdInput = document.querySelector("[data-request-reject-id]");
+            const rejectReason = document.querySelector("[data-request-reject-reason]");
+            const rejectReasonError = document.querySelector("[data-request-reject-reason-error]");
+            const rejectTitle = document.querySelector("[data-request-reject-title]");
+
+            // Số KPI đang hiển thị, dùng làm điểm xuất cho countUp. Nếu không nhớ
+            // giá trị cũ thì hiệu ứng đếm số sẽ nhảy từ 0 mỗi lần — thấy giống
+            // đổi số đột ngột, đúng thứ mục 5 của coding-style cấm.
+            const readCurrent = (selector) => {
+                const node = document.querySelector(selector);
+                return node ? Number(node.textContent || 0) : 0;
+            };
+
+            const animateCountUp = (element, startValue, targetValue, duration = 450) => {
+                if (!element) return;
+                const startTime = performance.now();
+                const updateCount = (currentTime) => {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const easeProgress = 1 - Math.pow(1 - progress, 3);
+                    element.textContent = String(Math.round(startValue + (targetValue - startValue) * easeProgress));
+                    if (progress < 1) requestAnimationFrame(updateCount);
+                };
+                requestAnimationFrame(updateCount);
+            };
+
+            const showToast = (message, type = "success") => {
+                if (!toastStack) return;
+                const toast = document.createElement("div");
+                toast.className = `account-popup account-popup--${type === "success" ? "success" : "danger"}`;
+                toast.dataset.accountToast = "";
+                toast.setAttribute("role", type === "success" ? "status" : "alert");
+
+                const iconWrap = document.createElement("div");
+                iconWrap.className = "account-popup-icon";
+                const icon = document.createElement("i");
+                icon.className = type === "success" ? "bi bi-check2" : "bi bi-exclamation-lg";
+                iconWrap.append(icon);
+
+                const copy = document.createElement("div");
+                copy.className = "account-popup-copy";
+                const label = document.createElement("small");
+                label.textContent = type === "success" ? "Thao tác thành công" : "Không thể thực hiện";
+                const text = document.createElement("strong");
+                text.textContent = message;
+                copy.append(label, text);
+
+                const close = document.createElement("button");
+                close.type = "button";
+                close.dataset.accountToastClose = "";
+                close.setAttribute("aria-label", "Đóng thông báo");
+                const closeIcon = document.createElement("i");
+                closeIcon.className = "bi bi-x-lg";
+                close.append(closeIcon);
+
+                const progress = document.createElement("span");
+                progress.className = "account-popup-progress";
+                toast.append(iconWrap, copy, close, progress);
+                toastStack.prepend(toast);
+
+                requestAnimationFrame(() => toast.classList.add("is-visible"));
+                const closeToast = () => {
+                    toast.classList.remove("is-visible");
+                    toast.classList.add("is-leaving");
+                    setTimeout(() => toast.remove(), 260);
+                };
+                toast.querySelector("[data-account-toast-close]")?.addEventListener("click", closeToast);
+                setTimeout(closeToast, 5200);
+            };
+
+            // Đếm số KPI bằng đúng phép tính của server, không tự cộng ở client:
+            // số liệu phải khớp phân tát quyền, mà phân tát quyền chỉ server mới biết.
+            const updateStatistics = (data) => {
+                const pairs = [
+                    ["[data-request-total]", data.totalRequests],
+                    ["[data-request-pending]", data.pendingRequests],
+                    ["[data-request-processing]", data.processingRequests],
+                    ["[data-request-granted]", data.grantedRequests],
+                    ["[data-request-rejected]", data.rejectedRequests]
+                ];
+                pairs.forEach(([selector, value]) => {
+                    const node = document.querySelector(selector);
+                    if (!node || value === undefined || value === null) return;
+                    animateCountUp(node, Number(node.textContent || 0), Number(value));
+                });
+
+                const total = Number(data.totalRequests || 0);
+                const tracks = [
+                    ["[data-request-pending-track]", data.pendingRequests],
+                    ["[data-request-processing-track]", data.processingRequests],
+                    ["[data-request-granted-track]", data.grantedRequests],
+                    ["[data-request-rejected-track]", data.rejectedRequests]
+                ];
+                tracks.forEach(([selector, value]) => {
+                    const node = document.querySelector(selector);
+                    if (!node || value === undefined || value === null) return;
+                    node.style.width = `${total > 0 ? Math.round((Number(value) * 100) / total) : 0}%`;
+                });
+
+                const resultCount = document.querySelector("[data-request-result-count]");
+                if (resultCount && data.totalFilteredRequests !== undefined) {
+                    resultCount.textContent = String(data.totalFilteredRequests);
+                }
+
+                // Hào quang vàng kim gợi ý dữ liệu vừa được tính lại (mục 5).
+                document.querySelectorAll(".motion-stat").forEach((card, index) => {
+                    card.classList.add("kpi-pulse-active");
+                    setTimeout(() => card.classList.remove("kpi-pulse-active"), 520 + index * 70);
+                });
+            };
+
+            // Lọc / phân trang: chỉ nạp lại đúng khung bảng, không reload trang.
+            const loadRequests = async (overrideUrl = null) => {
+                if (!tableContainer) return;
+
+                let requestUrl;
+                if (overrideUrl) {
+                    requestUrl = new URL(overrideUrl, window.location.origin);
+                } else if (filterForm) {
+                    requestUrl = new URL(filterForm.action || window.location.href, window.location.origin);
+                    const formData = new FormData(filterForm);
+                    for (const [key, val] of formData.entries()) {
+                        const text = String(val).trim();
+                        if (text) requestUrl.searchParams.set(key, text);
+                        else requestUrl.searchParams.delete(key);
+                    }
+                } else {
+                    return;
+                }
+
+                overlay?.classList.remove("d-none");
+                try {
+                    const response = await fetch(requestUrl.toString(), {
+                        headers: { "Accept": "text/html", "X-Requested-With": "XMLHttpRequest" }
+                    });
+                    if (response.redirected) {
+                        throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+                    }
+                    if (!response.ok) {
+                        throw new Error("Không thể tải danh sách yêu cầu cấp tài khoản.");
+                    }
+
+                    tableContainer.innerHTML = await response.text();
+                    tableContainer.classList.remove("in-place-enter");
+                    void tableContainer.offsetWidth;
+                    tableContainer.classList.add("in-place-enter");
+                    bindActionForms();
+
+                    const headers = response.headers;
+                    updateStatistics({
+                        totalRequests: Number(headers.get("X-Total-Requests") || 0),
+                        pendingRequests: Number(headers.get("X-Pending-Requests") || 0),
+                        processingRequests: Number(headers.get("X-Processing-Requests") || 0),
+                        grantedRequests: Number(headers.get("X-Granted-Requests") || 0),
+                        rejectedRequests: Number(headers.get("X-Rejected-Requests") || 0),
+                        totalFilteredRequests: Number(headers.get("X-Result-Count") || 0)
+                    });
+
+                    // Đồng bộ URL để link vẫn copy được mà không reload trang.
+                    window.history.replaceState({}, "", requestUrl.toString());
+
+                    window.HotelMotion?.applyEntrance?.(tableContainer);
+                    window.HotelMotion?.applyBlurText?.(tableContainer);
+                } catch (error) {
+                    showToast(error instanceof Error ? error.message : "Lỗi khi lọc yêu cầu.", "danger");
+                } finally {
+                    overlay?.classList.add("d-none");
+                }
+            };
+
+            filterForm?.addEventListener("submit", (event) => {
+                event.preventDefault();
+                const pageInput = filterForm.querySelector("[data-request-page-input]");
+                if (pageInput) pageInput.value = "1";
+                void loadRequests();
+            });
+
+            document.querySelector("[data-request-filter-reset]")?.addEventListener("click", (event) => {
+                event.preventDefault();
+                if (filterForm) {
+                    filterForm.querySelectorAll("input[type='text'], select").forEach((control) => { control.value = ""; });
+                    const pageInput = filterForm.querySelector("[data-request-page-input]");
+                    if (pageInput) pageInput.value = "1";
+                }
+                void loadRequests();
+            });
+
+            // ── Hành động nhận việc / cấp tài khoản ──────────────────────────
+            // Gửi qua fetch kèm anti-forgery token để không reload toàn trang;
+            // server trả về số đếm mới để KPI đếm lại ngay.
+            const submitActionForm = async (form) => {
+                const button = form.querySelector("button[type='submit']");
+                if (button) button.disabled = true;
+                try {
+                    const response = await fetch(form.action, {
+                        method: "POST",
+                        headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+                        body: new FormData(form)
+                    });
+
+                    const contentType = response.headers.get("content-type") || "";
+                    const payload = contentType.includes("application/json") ? await response.json() : null;
+
+                    if (!response.ok || !payload?.success) {
+                        throw new Error(payload?.message || "Không thể thực hiện thao tác này.");
+                    }
+
+                    showToast(payload.message || "Đã cập nhật yêu cầu.");
+                    if (payload.data) updateStatistics(payload.data);
+                    await loadRequests();
+                } catch (error) {
+                    showToast(error instanceof Error ? error.message : "Lỗi khi xử lý yêu cầu.", "danger");
+                    if (button) button.disabled = false;
+                }
+            };
+
+            // Bảng được nạp lại bằng fetch nên phải gắn lại sự kiện sau mỗi lần.
+            const bindActionForms = () => {
+                tableContainer?.querySelectorAll("[data-request-action-form]").forEach((form) => {
+                    form.addEventListener("submit", (event) => {
+                        event.preventDefault();
+                        void submitActionForm(form);
+                    });
+                });
+            };
+
+            bindActionForms();
+
+            // ── Từ chối: bắt buộc có lý do ──────────────────────────────────
+            const closeRejectDialog = () => {
+                if (rejectDialog?.open) rejectDialog.close();
+                if (rejectReasonError) rejectReasonError.hidden = true;
+            };
+
+            document.addEventListener("click", (event) => {
+                const trigger = event.target.closest("[data-request-reject]");
+                if (!trigger) return;
+                const requestId = trigger.dataset.requestReject;
+                if (rejectIdInput) rejectIdInput.value = requestId;
+                if (rejectTitle) {
+                    rejectTitle.textContent = `Từ chối yêu cầu "${trigger.dataset.requestRejectUsername || requestId}"?`;
+                }
+                if (rejectReason) rejectReason.value = "";
+                if (rejectReasonError) rejectReasonError.hidden = true;
+                if (rejectDialog?.showModal) rejectDialog.showModal();
+            });
+
+            document.querySelectorAll("[data-request-reject-cancel]").forEach((button) => {
+                button.addEventListener("click", closeRejectDialog);
+            });
+
+            rejectDialog?.addEventListener("click", (event) => {
+                if (event.target === rejectDialog) closeRejectDialog();
+            });
+
+            rejectForm?.addEventListener("submit", (event) => {
+                event.preventDefault();
+                const reason = rejectReason?.value.trim() || "";
+                if (!reason) {
+                    if (rejectReasonError) rejectReasonError.hidden = false;
+                    rejectReason?.focus();
+                    return;
+                }
+                closeRejectDialog();
+                void submitActionForm(rejectForm);
+            });
+        })();
+    </script>
+}
