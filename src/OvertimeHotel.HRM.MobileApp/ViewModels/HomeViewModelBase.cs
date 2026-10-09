@@ -35,6 +35,7 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
         // nhân viên: quản lý và HR cũng là người lao động của chính khách sạn này,
         // họ cần nộp được đơn của mình chứ không chỉ duyệt đơn của người khác.
         LeaveSubmitCommand = new Command(() => _ = Shell.Current.GoToAsync("LeaveSubmitPage"));
+        AttendanceSummaryCommand = new Command(async () => await Shell.Current.GoToAsync("AttendanceSummaryPage"));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -44,6 +45,8 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
 
     /// <summary>Mở cổng nộp đơn điện tử của nhân viên (TSK-18).</summary>
     public ICommand LeaveSubmitCommand { get; }
+
+    public ICommand AttendanceSummaryCommand { get; }
 
     /// <summary>Mở một tính năng nghiệp vụ; nhận tên tính năng qua CommandParameter.</summary>
     public ICommand FeatureCommand { get; }

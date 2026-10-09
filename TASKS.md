@@ -152,11 +152,11 @@
   - **Người phụ trách:** Nguyễn Đình Cường | **Độ ưu tiên:** Cao | **Hạn chót:** 27/10/2026
   - **Trạng thái:** `Hoàn thành`
 
-- [ ] **TSK-20:** Liên kết tự động Đơn nghỉ phép đã duyệt vào Chấm công
-  - **Phân hệ:** C# Logic
-  - **Mô tả & Output:** Đơn nghỉ có hưởng lương tự động cộng vào ngày công tính lương của nhân viên trên Supabase
+- [x] **TSK-20:** Liên kết tự động Đơn nghỉ phép đã duyệt vào Chấm công
+  - **Phân hệ:** C# Logic & App .NET MAUI
+  - **Mô tả & Output:** Bảng Công & nghỉ phép theo tháng tổng hợp từ Supabase; đơn đã duyệt có hưởng lương được tính trên ngày có phân ca, mỗi ngày tối đa một công. Tải lại phản ánh trạng thái duyệt/lịch ca mới, không tạo giờ chấm công giả và không sửa bảng lương đã chốt. Có luồng xem công từ chi tiết đơn, phân quyền Employee/Manager/HR/Admin, API summary và chế độ Demo. Chi tiết: `PRD/TSK-20_Cong_Phep_Mobile.md`.
   - **Người phụ trách:** _Chưa phân công_ | **Độ ưu tiên:** Trung bình | **Hạn chót:** 27/10/2026
-  - **Trạng thái:** `Chưa bắt đầu`
+  - **Trạng thái:** `Hoàn thành`
 
 ---
 

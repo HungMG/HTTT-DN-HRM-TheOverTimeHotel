@@ -181,6 +181,12 @@
                                           TappedCommand="{Binding ProfileCommand}" />
                 </Grid>
 
+                <controls:FeatureTile Icon="📊"
+                                      Title="Công &amp; nghỉ phép"
+                                      Description="Công thực tế và phép hưởng lương theo tháng"
+                                      ActionText="Xem bảng công"
+                                      TappedCommand="{Binding AttendanceSummaryCommand}" />
+
                 <Label x:Name="footerLabel"
                        Text="The OverTime Hotel Mobile App v1.0 (.NET MAUI 10) · Supabase Cloud"
                        TextColor="#94A3B8"

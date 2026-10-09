@@ -251,6 +251,9 @@
                         </VerticalStackLayout>
                     </Border>
 
+                    <Button Text="Xem công &amp; nghỉ phép của nhân viên" Clicked="OnAttendanceClicked"
+                            BackgroundColor="#ECFDF5" TextColor="#047857" BorderColor="#A7F3D0" BorderWidth="1"
+                            FontFamily="SegoeUIBold" FontSize="12" MinimumHeightRequest="48" CornerRadius="12" />
                 </VerticalStackLayout>
             </ScrollView>
 

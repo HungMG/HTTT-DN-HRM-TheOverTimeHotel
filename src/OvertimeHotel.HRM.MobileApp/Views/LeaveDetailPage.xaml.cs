@@ -50,6 +50,13 @@ public partial class LeaveDetailPage : ContentPage
         }
     }
 
+    private async void OnAttendanceClicked(object? sender, EventArgs e)
+    {
+        if (_viewModel.RequestItem is not { } item) return;
+        if (sender is VisualElement button) await button.SpringTapAsync();
+        await Shell.Current.GoToAsync($"AttendanceSummaryPage?employeeId={item.MaNhanVien}&year={item.TuNgay.Year}&month={item.TuNgay.Month}");
+    }
+
     private async void OnActionButtonClicked(object? sender, EventArgs e)
     {
         if (sender is VisualElement btn) await btn.SpringTapAsync();

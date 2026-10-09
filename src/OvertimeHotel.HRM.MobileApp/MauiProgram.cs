@@ -32,14 +32,17 @@ public static class MauiProgram
 		if (useDemoMode)
 		{
 			builder.Services.AddSingleton<IAuthService, DemoAuthService>();
-			builder.Services.AddSingleton<ILeaveApprovalService, DemoLeaveApprovalService>();
+			builder.Services.AddSingleton<DemoLeaveApprovalService>();
+			builder.Services.AddSingleton<ILeaveApprovalService>(services => services.GetRequiredService<DemoLeaveApprovalService>());
 			builder.Services.AddSingleton<IAttendanceService, DemoAttendanceService>();
+			builder.Services.AddSingleton<IMobileAttendanceSummaryService, DemoAttendanceSummaryService>();
 		}
 		else
 		{
 			builder.Services.AddSingleton<IAuthService, AuthService>();
 			builder.Services.AddSingleton<ILeaveApprovalService, LeaveApprovalService>();
 			builder.Services.AddSingleton<IAttendanceService, AttendanceService>();
+			builder.Services.AddSingleton<IMobileAttendanceSummaryService, MobileAttendanceSummaryService>();
 		}
 
 		// Client PostgREST dùng chung cho các service nghiệp vụ. Singleton để tái
@@ -59,6 +62,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<LeaveDetailViewModel>();
 		builder.Services.AddTransient<LeaveSubmitViewModel>();
 		builder.Services.AddTransient<AttendanceViewModel>();
+		builder.Services.AddTransient<AttendanceSummaryViewModel>();
 		builder.Services.AddTransient<EmployeeDashboardViewModel>();
 		builder.Services.AddTransient<EmployeeHomeViewModel>();
 		builder.Services.AddTransient<ManagerHomeViewModel>();
@@ -78,6 +82,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<LeaveDetailPage>();
 		builder.Services.AddTransient<LeaveSubmitPage>();
 		builder.Services.AddTransient<AttendancePage>();
+		builder.Services.AddTransient<AttendanceSummaryPage>();
 
 		// KHÔNG bọc trong #if DEBUG: bản Release mới là bản chạy thật trên
 		// emulator, mà AddDebug() chỉ hoạt động ở Debug — nên mọi _logger.LogError
@@ -85,7 +90,9 @@ public static class MauiProgram
 		// thẳng vào Android.Util.Log nên vẫn sống trong Release. Cả hai đều chỉ ra
 		// logcat, không ghi ra UI và không ghi mật khẩu/token.
 		builder.Logging.AddDebug();
+#if ANDROID
 		builder.Logging.AddProvider(new AndroidLogProvider());
+#endif
 		builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
 		return builder.Build();

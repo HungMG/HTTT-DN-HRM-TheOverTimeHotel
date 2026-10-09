@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.DTOs;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers.Api;
@@ -20,11 +21,53 @@ public class AttendanceController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ILogger<AttendanceController> _logger;
+    private readonly IAttendanceSummaryService _summaryService;
 
-    public AttendanceController(AppDbContext context, ILogger<AttendanceController> logger)
+    public AttendanceController(AppDbContext context, ILogger<AttendanceController> logger,
+        IAttendanceSummaryService summaryService)
     {
         _context = context;
         _logger = logger;
+        _summaryService = summaryService;
+    }
+
+    [HttpGet("summary")]
+    public async Task<IActionResult> GetSummary([FromQuery] int year, [FromQuery] int month,
+        [FromQuery] int? employeeId, CancellationToken cancellationToken)
+    {
+        if (year is < 1 or > 9999 || month is < 1 or > 12 || employeeId is <= 0)
+            return BadRequest(new AttendanceApiError("VALIDATION_ERROR", "Tháng, năm hoặc mã nhân viên không hợp lệ."));
+
+        var viewerId = SupabaseClaims.GetMaNhanVien(User);
+        if (viewerId is not > 0)
+            return Unauthorized(new AttendanceApiError("UNAUTHENTICATED", "Vui lòng đăng nhập lại."));
+
+        try
+        {
+            var account = await _context.TaiKhoans.AsNoTracking().Include(a => a.VaiTro).Include(a => a.NhanVien)
+                .SingleOrDefaultAsync(a => a.MaNhanVien == viewerId.Value, cancellationToken);
+            if (account?.TrangThai != true || account.NhanVien == null)
+                return Unauthorized(new AttendanceApiError("UNAUTHENTICATED", "Phiên đăng nhập không còn hợp lệ."));
+
+            var targetId = employeeId ?? account.MaNhanVien;
+            var target = await _context.NhanViens.AsNoTracking().Where(e => e.MaNhanVien == targetId)
+                .Select(e => new { e.MaNhanVien, e.MaPhongBan }).SingleOrDefaultAsync(cancellationToken);
+            if (target == null || !AttendanceAccessPolicy.CanView(account.VaiTro?.TenVaiTro,
+                    account.MaNhanVien, account.NhanVien.MaPhongBan, targetId, target.MaPhongBan))
+                return StatusCode(403, new AttendanceApiError("FORBIDDEN", "Bạn không có quyền xem bảng công này."));
+
+            var from = new DateOnly(year, month, 1);
+            var to = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+            var summary = await _summaryService.GetAsync(targetId, from, to, cancellationToken);
+            return summary == null
+                ? NotFound(new AttendanceApiError("NOT_FOUND", "Không tìm thấy nhân viên."))
+                : Ok(summary);
+        }
+        catch (Exception ex) when (IsDatabaseUnavailable(ex))
+        {
+            _logger.LogError(ex, "Unable to load attendance summary for employee {EmployeeId}.", viewerId);
+            return StatusCode(503, new AttendanceApiError("SERVICE_UNAVAILABLE", "Không thể tải bảng công lúc này. Vui lòng thử lại."));
+        }
     }
 
     /// <summary>

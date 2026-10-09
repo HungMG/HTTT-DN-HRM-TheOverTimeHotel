@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../../src/OvertimeHotel.HRM.Core/OvertimeHotel.HRM.Core.csproj" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Models/UserSession.cs" Link="UserSession.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Models/LeaveRequestItem.cs" Link="LeaveRequestItem.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/IAuthService.cs" Link="IAuthService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/IAttendanceService.cs" Link="IAttendanceService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/ILeaveApprovalService.cs" Link="ILeaveApprovalService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/IMobileAttendanceSummaryService.cs" Link="IMobileAttendanceSummaryService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/DemoAuthService.cs" Link="DemoAuthService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/DemoLeaveApprovalService.cs" Link="DemoLeaveApprovalService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/DemoAttendanceService.cs" Link="DemoAttendanceService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/DemoAttendanceSummaryService.cs" Link="DemoAttendanceSummaryService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/ApiConfig.cs" Link="ApiConfig.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/PostgrstJson.cs" Link="PostgrstJson.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/SupabaseRestClient.cs" Link="SupabaseRestClient.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/AttendanceSummaryPostgrstMapper.cs" Link="AttendanceSummaryPostgrstMapper.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/MobileAttendanceSummaryService.cs" Link="MobileAttendanceSummaryService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/LeaveApprovalService.cs" Link="LeaveApprovalService.cs" />
+  </ItemGroup>
+</Project>

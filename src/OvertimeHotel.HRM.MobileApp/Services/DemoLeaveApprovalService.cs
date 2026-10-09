@@ -17,6 +17,36 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
 
     public bool IsDemoMode => true;
 
+    // Share the same demo requests with the attendance summary so approvals and
+    // leave submission immediately affect the monthly view.
+    internal List<OvertimeHotel.HRM.Core.Models.DonTu> GetAttendanceSnapshot()
+    {
+        lock (_seedRequests)
+        {
+            return _seedRequests.Select(r => new OvertimeHotel.HRM.Core.Models.DonTu
+            {
+                MaDon = r.MaDon,
+                MaNhanVien = r.MaNhanVien,
+                MaLoaiDon = r.MaLoaiDon,
+                TuNgay = r.TuNgay,
+                DenNgay = r.DenNgay,
+                TrangThai = r.TrangThai,
+                NgayDuyet = r.NgayDuyet,
+                LoaiDon = new OvertimeHotel.HRM.Core.Models.LoaiDon
+                {
+                    TenLoaiDon = r.TenLoaiDon,
+                    CoHuongLuong = r.CoHuongLuong
+                },
+                NhanVien = new OvertimeHotel.HRM.Core.Models.NhanVien
+                {
+                    MaNhanVien = r.MaNhanVien,
+                    Ho = r.TenNhanVien,
+                    MaPhongBan = r.MaPhongBan
+                }
+            }).ToList();
+        }
+    }
+
     public DemoLeaveApprovalService(IAuthService authService, ILogger<DemoLeaveApprovalService> logger)
     {
         _authService = authService;
