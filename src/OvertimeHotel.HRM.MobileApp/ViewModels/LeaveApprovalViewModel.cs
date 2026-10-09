@@ -18,7 +18,16 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     private readonly ILeaveApprovalService _leaveApprovalService;
     private readonly IAuthService _authService;
 
-    private List<LeaveRequestItem> _allLoadedRequests = new();
+    private const int PageSize = 40;
+    private readonly HashSet<int> _loadedIds = new();
+    private Task<List<DepartmentOption>>? _departmentOptionsTask;
+    private bool _departmentsLoaded;
+    private DepartmentOption _selectedDepartment;
+    private int _loadVersion;
+    private int _nextOffset;
+    private bool _hasMore;
+    private bool _isLoadingMore;
+    private string _loadMoreError = string.Empty;
     private bool _isLoading;
     private bool _isRefreshing;
     private bool _hasError;
@@ -30,6 +39,8 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<LeaveRequestItem> FilteredRequests { get; } = new();
+    public ObservableCollection<DepartmentOption> DepartmentOptions { get; } =
+        new() { new(null, "Tất cả phòng ban") };
 
     public ICommand LoadDataCommand { get; }
     public ICommand RefreshCommand { get; }
@@ -37,6 +48,11 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     public ICommand FilterTypeCommand { get; }
     public ICommand ViewDetailCommand { get; }
     public ICommand RetryCommand { get; }
+    public ICommand ResetFiltersCommand { get; }
+    public ICommand LoadMoreCommand { get; }
+    public ICommand ToggleDepartmentDropdownCommand { get; }
+    public ICommand SelectDepartmentCommand { get; }
+    public ICommand CloseDepartmentDropdownCommand { get; }
 
     public bool IsDemoMode => _leaveApprovalService.IsDemoMode;
 
@@ -44,13 +60,31 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     {
         _leaveApprovalService = leaveApprovalService ?? throw new ArgumentNullException(nameof(leaveApprovalService));
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _selectedDepartment = DepartmentOptions[0];
 
         LoadDataCommand = new Command(async () => await LoadDataAsync());
         RefreshCommand = new Command(async () => await RefreshAsync());
         SwitchTabCommand = new Command<string>(async (tab) => await SwitchTabAsync(tab));
-        FilterTypeCommand = new Command<string>(ApplyTypeFilter);
+        FilterTypeCommand = new Command<string>(async type => await ApplyTypeFilterAsync(type));
         ViewDetailCommand = new Command<LeaveRequestItem>(async (item) => await ViewDetailAsync(item));
         RetryCommand = new Command(async () => await LoadDataAsync());
+        ResetFiltersCommand = new Command(async () => await ResetFiltersAsync());
+        LoadMoreCommand = new Command(async () => await LoadMoreAsync());
+        ToggleDepartmentDropdownCommand = new Command(() =>
+        {
+            if (IsDepartmentPickerEnabled)
+                IsDepartmentDropdownOpen = !IsDepartmentDropdownOpen;
+        });
+        SelectDepartmentCommand = new Command<DepartmentOption>(option =>
+        {
+            if (option == null) return;
+            SelectedDepartment = option;
+            IsDepartmentDropdownOpen = false;
+        });
+        CloseDepartmentDropdownCommand = new Command(() =>
+        {
+            IsDepartmentDropdownOpen = false;
+        });
     }
 
     public bool IsLoading
@@ -61,6 +95,10 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
             if (SetProperty(ref _isLoading, value))
             {
                 OnPropertyChanged(nameof(HasNoData));
+                OnPropertyChanged(nameof(ResultsSummary));
+                OnPropertyChanged(nameof(IsListVisible));
+                OnPropertyChanged(nameof(IsDepartmentPickerEnabled));
+                OnPropertyChanged(nameof(CanLoadMore));
             }
         }
     }
@@ -79,6 +117,7 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
             if (SetProperty(ref _hasError, value))
             {
                 OnPropertyChanged(nameof(HasNoData));
+                OnPropertyChanged(nameof(IsListVisible));
             }
         }
     }
@@ -108,8 +147,73 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     public string SelectedTypeFilter
     {
         get => _selectedTypeFilter;
-        set => SetProperty(ref _selectedTypeFilter, value);
+        set
+        {
+            if (SetProperty(ref _selectedTypeFilter, value)) NotifyFiltersChanged();
+        }
     }
+
+    public bool CanFilterDepartments => _authService.CurrentUser is { } user && (user.IsAdmin || user.IsHR);
+    public bool IsDepartmentPickerEnabled => !IsLoading && !IsLoadingMore;
+
+    private bool _isDepartmentDropdownOpen;
+    public bool IsDepartmentDropdownOpen
+    {
+        get => _isDepartmentDropdownOpen;
+        set
+        {
+            if (SetProperty(ref _isDepartmentDropdownOpen, value))
+            {
+                OnPropertyChanged(nameof(DropdownChevron));
+            }
+        }
+    }
+    public string DropdownChevron => IsDepartmentDropdownOpen ? "▲" : "▼";
+
+    public DepartmentOption SelectedDepartment
+    {
+        get => _selectedDepartment;
+        set
+        {
+            if (value == null || !SetProperty(ref _selectedDepartment, value)) return;
+            IsDepartmentDropdownOpen = false;
+            NotifyFiltersChanged();
+            _ = LoadDataAsync();
+        }
+    }
+    public bool HasFilters => SelectedDepartment.MaPhongBan.HasValue || SelectedTypeFilter != "ALL";
+    public bool HasMore
+    {
+        get => _hasMore;
+        private set { if (SetProperty(ref _hasMore, value)) OnPropertyChanged(nameof(CanLoadMore)); }
+    }
+    public bool IsLoadingMore
+    {
+        get => _isLoadingMore;
+        private set
+        {
+            if (SetProperty(ref _isLoadingMore, value))
+            {
+                OnPropertyChanged(nameof(CanLoadMore));
+                OnPropertyChanged(nameof(IsDepartmentPickerEnabled));
+            }
+        }
+    }
+    public string LoadMoreError
+    {
+        get => _loadMoreError;
+        private set { if (SetProperty(ref _loadMoreError, value)) OnPropertyChanged(nameof(HasLoadMoreError)); }
+    }
+    public bool HasLoadMoreError => !string.IsNullOrEmpty(LoadMoreError);
+    public bool CanLoadMore => HasMore && !IsLoading && !IsLoadingMore;
+    public bool IsListVisible => !IsLoading && !HasError && FilteredRequests.Count > 0;
+    public string ResultsSummary => IsLoading ? "Đang tải đơn…"
+        : HasError ? "Chưa tải được danh sách"
+        : HasMore ? $"{FilteredRequests.Count} đơn đã tải · Còn đơn khác"
+        : $"{FilteredRequests.Count} đơn phù hợp";
+    public string EmptyMessage => SelectedDepartment.MaPhongBan.HasValue
+        ? $"Không có đơn phù hợp ở {SelectedDepartment.TenPhongBan}. Bạn có thể đổi phòng ban hoặc bỏ bộ lọc."
+        : "Không có đơn phù hợp với trạng thái và loại đơn đang chọn.";
 
     public int PendingCount
     {
@@ -137,10 +241,18 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
 
     public async Task LoadDataAsync()
     {
-        if (IsLoading) return;
+        // A newer filter wins even if the previous network response arrives last.
+        var version = ++_loadVersion;
         IsLoading = true;
+        IsLoadingMore = false;
         HasError = false;
         ErrorMessage = string.Empty;
+        LoadMoreError = string.Empty;
+        HasMore = false;
+        _nextOffset = 0;
+        _loadedIds.Clear();
+        FilteredRequests.Clear();
+        OnPropertyChanged(nameof(CanFilterDepartments));
 
         try
         {
@@ -154,38 +266,33 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
                 return;
             }
 
-            var viewParam = SelectedTab == "CHO_DUYET" ? "pending" : "reviewed";
-            // Keep all authorized types loaded; filter chips operate on this complete list.
+            if (CanFilterDepartments && !_departmentsLoaded)
+            {
+                var departments = await (_departmentOptionsTask ??= _leaveApprovalService.GetDepartmentOptionsAsync());
+                if (version != _loadVersion) return;
+                foreach (var department in departments) DepartmentOptions.Add(department);
+                _departmentsLoaded = true;
+            }
 
-            // Gọi API duy nhất trả về cả danh sách và số lượng pending
-            var response = await _leaveApprovalService.GetLeaveRequestsAsync(viewParam, "all");
-
+            var response = await GetPageAsync(0);
+            if (version != _loadVersion) return;
             PendingCount = response.PendingCount;
-            _allLoadedRequests = MapDtoListToItems(response.Items);
-
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                ApplyCurrentFilter();
-                IsLoading = false;
-            });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                IsLoading = false;
-                HasError = true;
-                ErrorMessage = ex.Message;
-            });
+            AddPage(response);
         }
         catch (Exception ex)
         {
-            MainThread.BeginInvokeOnMainThread(() =>
+            if (version != _loadVersion) return;
+            _departmentOptionsTask = null;
+            HasError = true;
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            if (version == _loadVersion)
             {
                 IsLoading = false;
-                HasError = true;
-                ErrorMessage = ex.Message;
-            });
+                NotifyResultsChanged();
+            }
         }
     }
 
@@ -198,37 +305,79 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
 
     private async Task SwitchTabAsync(string? tab)
     {
-        if (IsLoading || string.IsNullOrWhiteSpace(tab) || SelectedTab == tab) return;
+        if (string.IsNullOrWhiteSpace(tab) || SelectedTab == tab) return;
 
+        IsDepartmentDropdownOpen = false;
         SelectedTab = tab;
-        SelectedTypeFilter = "ALL";
         await LoadDataAsync();
     }
 
-    private void ApplyTypeFilter(string? typeId)
+    private async Task ApplyTypeFilterAsync(string? typeId)
     {
-        if (string.IsNullOrWhiteSpace(typeId)) return;
+        if (string.IsNullOrWhiteSpace(typeId) || SelectedTypeFilter == typeId) return;
+        IsDepartmentDropdownOpen = false;
         SelectedTypeFilter = typeId;
-        ApplyCurrentFilter();
+        await LoadDataAsync();
     }
 
-    private void ApplyCurrentFilter()
+    private async Task ResetFiltersAsync()
     {
-        FilteredRequests.Clear();
+        IsDepartmentDropdownOpen = false;
+        SelectedTypeFilter = "ALL";
+        SetProperty(ref _selectedDepartment, DepartmentOptions[0], nameof(SelectedDepartment));
+        NotifyFiltersChanged();
+        await LoadDataAsync();
+    }
 
-        IEnumerable<LeaveRequestItem> query = _allLoadedRequests;
+    private Task<LeaveRequestListResponse> GetPageAsync(int offset) =>
+        _leaveApprovalService.GetLeaveRequestsAsync(IsPendingTabSelected ? "pending" : "reviewed",
+            SelectedTypeFilter, CanFilterDepartments ? SelectedDepartment.MaPhongBan : null, offset, PageSize);
 
-        if (SelectedTypeFilter != "ALL" && int.TryParse(SelectedTypeFilter, out var typeId))
+    public async Task LoadMoreAsync()
+    {
+        if (!CanLoadMore || HasError) return;
+        var version = _loadVersion;
+        IsLoadingMore = true;
+        LoadMoreError = string.Empty;
+        try
         {
-            query = query.Where(r => r.MaLoaiDon == typeId);
+            var response = await GetPageAsync(_nextOffset);
+            if (version == _loadVersion) AddPage(response);
         }
-
-        foreach (var item in query)
+        catch (Exception ex)
         {
-            FilteredRequests.Add(item);
+            if (version == _loadVersion) LoadMoreError = ex.Message;
         }
+        finally
+        {
+            if (version == _loadVersion)
+            {
+                IsLoadingMore = false;
+                NotifyResultsChanged();
+            }
+        }
+    }
 
+    private void AddPage(LeaveRequestListResponse response)
+    {
+        foreach (var item in MapDtoListToItems(response.Items))
+            if (_loadedIds.Add(item.MaDon)) FilteredRequests.Add(item);
+        _nextOffset += response.Items.Count;
+        HasMore = response.HasMore;
+        NotifyResultsChanged();
+    }
+
+    private void NotifyResultsChanged()
+    {
         OnPropertyChanged(nameof(HasNoData));
+        OnPropertyChanged(nameof(IsListVisible));
+        OnPropertyChanged(nameof(ResultsSummary));
+    }
+
+    private void NotifyFiltersChanged()
+    {
+        OnPropertyChanged(nameof(HasFilters));
+        OnPropertyChanged(nameof(EmptyMessage));
     }
 
     private async Task ViewDetailAsync(LeaveRequestItem? item)

@@ -64,7 +64,7 @@ public class LeaveApprovalService : ILeaveApprovalService
     private const string SelectDonTu =
         "ma_don,ma_nhan_vien,ma_loai_don,ma_nguoi_duyet,tu_ngay,den_ngay,ly_do," +
         "ngay_gui,trang_thai,phan_hoi_duyet,ngay_duyet," +
-        "nv:nhan_vien!don_tu_ma_nhan_vien_fkey(ho,ten,ma_phong_ban," +
+        "nv:nhan_vien!don_tu_ma_nhan_vien_fkey!inner(ho,ten,ma_phong_ban," +
         "chuc_vu(ten_chuc_vu),phong_ban(ten_phong_ban))," +
         "loai_don!don_tu_ma_loai_don_fkey(ten_loai_don,co_huong_luong)," +
         "nd:nhan_vien!don_tu_ma_nguoi_duyet_fkey(ho,ten)";
@@ -75,7 +75,7 @@ public class LeaveApprovalService : ILeaveApprovalService
     /// select — PostgREST từ chối với PGRST108 nếu không.
     /// </summary>
     private const string SelectDonTuCount =
-        "ma_don,nv:nhan_vien!don_tu_ma_nhan_vien_fkey(ma_phong_ban)";
+        "ma_don,nv:nhan_vien!don_tu_ma_nhan_vien_fkey!inner(ma_phong_ban)";
 
     private readonly SupabaseRestClient _rest;
     private readonly IAuthService _authService;
@@ -93,7 +93,8 @@ public class LeaveApprovalService : ILeaveApprovalService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<LeaveRequestListResponse> GetLeaveRequestsAsync(string view = "pending", string type = "all")
+    public async Task<LeaveRequestListResponse> GetLeaveRequestsAsync(string view = "pending", string type = "all",
+        int? departmentId = null, int offset = 0, int? pageSize = null)
     {
         var user = RequireSession();
 
@@ -103,9 +104,14 @@ public class LeaveApprovalService : ILeaveApprovalService
             throw new InvalidOperationException("Bạn không có thẩm quyền truy cập danh sách duyệt đơn.");
         }
 
+        if (departmentId is <= 0) throw new ArgumentOutOfRangeException(nameof(departmentId));
+        if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+        if (pageSize is < 1 or > 100) throw new ArgumentOutOfRangeException(nameof(pageSize));
+
         var isPending = !string.Equals(view, "reviewed", StringComparison.OrdinalIgnoreCase);
 
         var filters = BuildScopeFilters(user);
+        if (departmentId.HasValue) filters.Add($"nv.ma_phong_ban=eq.{departmentId.Value}");
         filters.Add(isPending ? "trang_thai=eq." + STATUS_CHO_DUYET : "trang_thai=neq." + STATUS_CHO_DUYET);
 
         if (int.TryParse(type, NumberStyles.Integer, CultureInfo.InvariantCulture, out var maLoai))
@@ -115,15 +121,34 @@ public class LeaveApprovalService : ILeaveApprovalService
 
         // Đơn đã xử lý sắp theo ngày duyệt; đơn chờ sắp theo ngày gửi — đơn còn
         // chờ có ngay_duyet NULL nên sort theo cột đó sẽ loạn cả hai bảng.
-        filters.Add(isPending ? "order=ngay_gui.desc" : "order=ngay_duyet.desc");
+        filters.Add(isPending ? "order=ngay_gui.desc,ma_don.desc" : "order=ngay_duyet.desc,ma_don.desc");
+        if (pageSize.HasValue)
+        {
+            // One look-ahead row tells the UI whether another page exists.
+            filters.Add($"limit={pageSize.Value + 1}");
+            filters.Add($"offset={offset}");
+        }
 
         var json = await _rest.GetAsync($"don_tu?select={SelectDonTu}&{string.Join('&', filters)}");
 
-        // Chỉ đếm ở tab chờ duyệt: ở tab đã xử lý số chờ đã hiển thị bên tab kia,
-        // tính lại chỉ tốn thêm một vòng tròn mạng.
-        var pendingCount = isPending ? await CountPendingAsync(user) : 0;
+        var items = PostgrstJson.ParseArray(json).Select(ToListItemDto).ToList();
+        var hasMore = pageSize.HasValue && items.Count > pageSize.Value;
+        if (pageSize.HasValue) items = items.Take(pageSize.Value).ToList();
+        var pendingCount = offset == 0 ? await CountPendingAsync(user, departmentId, type) : 0;
 
-        return new LeaveRequestListResponse([.. PostgrstJson.ParseArray(json).Select(ToListItemDto)], pendingCount, "production");
+        return new LeaveRequestListResponse(items, pendingCount, "production", hasMore);
+    }
+
+    public async Task<List<DepartmentOption>> GetDepartmentOptionsAsync()
+    {
+        if (!RequireSession().CanApproveLeave)
+            throw new UnauthorizedAccessException("Bạn không có thẩm quyền truy cập danh sách phòng ban.");
+
+        var json = await _rest.GetAsync("phong_ban?select=ma_phong_ban,ten_phong_ban&order=ten_phong_ban.asc");
+        return PostgrstJson.ParseArray(json)
+            .Select(row => new DepartmentOption(PostgrstJson.ReadNullableInt(row, "ma_phong_ban"),
+                PostgrstJson.ReadString(row, "ten_phong_ban")))
+            .Where(option => option.MaPhongBan > 0).ToList();
     }
 
     public async Task<LeaveReviewResult> ReviewLeaveRequestAsync(int maDon, bool approved, string? phanHoi)
@@ -485,11 +510,14 @@ public class LeaveApprovalService : ILeaveApprovalService
         return filters;
     }
 
-    private async Task<int> CountPendingAsync(UserSession user)
+    private async Task<int> CountPendingAsync(UserSession user, int? departmentId = null, string type = "all")
     {
         try
         {
             var filters = BuildScopeFilters(user);
+            if (departmentId.HasValue) filters.Add($"nv.ma_phong_ban=eq.{departmentId.Value}");
+            if (int.TryParse(type, NumberStyles.Integer, CultureInfo.InvariantCulture, out var maLoai))
+                filters.Add($"ma_loai_don=eq.{maLoai}");
             filters.Add("trang_thai=eq." + STATUS_CHO_DUYET);
             return await _rest.CountAsync($"don_tu?select={SelectDonTuCount}&{string.Join('&', filters)}");
         }

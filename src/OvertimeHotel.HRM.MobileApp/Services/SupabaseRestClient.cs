@@ -106,7 +106,11 @@ public sealed class SupabaseRestClient
             // Content-Range là CONTENT header (HttpContentHeaders), không phải
             // response header — tra cứu trên response.Headers sẽ không thấy.
             // Và phải đọc ra chuỗi ngay trong using: dispose response là mất header.
-            contentRange = response.Content.Headers.ContentRange?.ToString();
+            // PostgREST emits item ranges such as "0-39/1205", without the
+            // "bytes" unit required by .NET's strongly typed ContentRange parser.
+            contentRange = response.Content.Headers.TryGetValues("Content-Range", out var ranges)
+                ? ranges.FirstOrDefault()
+                : null;
         }
         catch (HttpRequestException ex)
         {
@@ -114,7 +118,7 @@ public sealed class SupabaseRestClient
             throw new HttpRequestException("Không thể kết nối máy chủ. Vui lòng kiểm tra kết nối mạng.", ex);
         }
 
-        if (status != HttpStatusCode.OK && status != HttpStatusCode.NoContent)
+        if (status != HttpStatusCode.OK && status != HttpStatusCode.NoContent && status != HttpStatusCode.PartialContent)
         {
             throw BuildException(status, string.Empty, uri);
         }

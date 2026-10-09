@@ -15,9 +15,12 @@ public interface ILeaveApprovalService
     bool IsDemoMode { get; }
 
     /// <summary>
-    /// Lấy danh sách đơn và số lượng chờ duyệt trong cùng 1 request tối ưu network.
+    /// Lấy danh sách đơn, số chờ duyệt và trạng thái phân trang theo bộ lọc.
     /// </summary>
-    Task<LeaveRequestListResponse> GetLeaveRequestsAsync(string view = "pending", string type = "all");
+    Task<LeaveRequestListResponse> GetLeaveRequestsAsync(string view = "pending", string type = "all",
+        int? departmentId = null, int offset = 0, int? pageSize = null);
+
+    Task<List<DepartmentOption>> GetDepartmentOptionsAsync();
 
     /// <summary>
     /// Phê duyệt hoặc từ chối một đơn từ (Atomic và an toàn concurrency).

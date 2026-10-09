@@ -54,13 +54,18 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
         _seedRequests = InitializeSeedData();
     }
 
-    public Task<LeaveRequestListResponse> GetLeaveRequestsAsync(string view = "pending", string type = "all")
+    public Task<LeaveRequestListResponse> GetLeaveRequestsAsync(string view = "pending", string type = "all",
+        int? departmentId = null, int offset = 0, int? pageSize = null)
     {
         var user = _authService.CurrentUser;
-        if (user == null || !user.IsLoggedIn)
+        if (user == null || !user.CanApproveLeave)
         {
             return Task.FromResult(new LeaveRequestListResponse(new List<LeaveRequestListItemDto>(), 0, "demo"));
         }
+
+        if (departmentId is <= 0) throw new ArgumentOutOfRangeException(nameof(departmentId));
+        if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+        if (pageSize is < 1 or > 100) throw new ArgumentOutOfRangeException(nameof(pageSize));
 
         lock (_seedRequests)
         {
@@ -68,19 +73,20 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
             var authorized = _seedRequests.Where(r =>
                 LeaveApprovalPolicy.CanView(user.TenVaiTro, user.MaPhongBan, r.MaPhongBan, r.MaLoaiDon, user.MaNhanVien, r.MaNhanVien)).ToList();
 
+            if (departmentId.HasValue)
+                authorized = authorized.Where(r => r.MaPhongBan == departmentId).ToList();
+            if (int.TryParse(type, out var selectedType))
+                authorized = authorized.Where(r => r.MaLoaiDon == selectedType).ToList();
             var pendingCount = authorized.Count(r => r.TrangThai == "CHO_DUYET");
 
             // 2. Lọc theo view
-            var isPending = string.Equals(view, "pending", StringComparison.OrdinalIgnoreCase);
+            var isPending = !string.Equals(view, "reviewed", StringComparison.OrdinalIgnoreCase);
             var filtered = isPending
-                ? authorized.Where(r => r.TrangThai == "CHO_DUYET").OrderByDescending(r => r.NgayGui).ToList()
-                : authorized.Where(r => r.TrangThai != "CHO_DUYET").OrderByDescending(r => r.NgayDuyet ?? r.NgayGui).ToList();
+                ? authorized.Where(r => r.TrangThai == "CHO_DUYET").OrderByDescending(r => r.NgayGui).ThenByDescending(r => r.MaDon).ToList()
+                : authorized.Where(r => r.TrangThai != "CHO_DUYET").OrderByDescending(r => r.NgayDuyet ?? r.NgayGui).ThenByDescending(r => r.MaDon).ToList();
 
-            // 3. Lọc theo type
-            if (!string.Equals(type, "all", StringComparison.OrdinalIgnoreCase) && int.TryParse(type, out var maLoai))
-            {
-                filtered = filtered.Where(r => r.MaLoaiDon == maLoai).ToList();
-            }
+            var hasMore = pageSize.HasValue && filtered.Count > offset + pageSize.Value;
+            if (pageSize.HasValue) filtered = filtered.Skip(offset).Take(pageSize.Value).ToList();
 
             var dtos = filtered.Select(r => new LeaveRequestListItemDto(
                 MaDon: r.MaDon,
@@ -102,7 +108,20 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
                 HoTenNguoiDuyet: r.NguoiDuyetTen
             )).ToList();
 
-            return Task.FromResult(new LeaveRequestListResponse(dtos, pendingCount, "demo"));
+            return Task.FromResult(new LeaveRequestListResponse(dtos, pendingCount, "demo", hasMore));
+        }
+    }
+
+    public Task<List<DepartmentOption>> GetDepartmentOptionsAsync()
+    {
+        if (_authService.CurrentUser?.CanApproveLeave != true)
+            throw new UnauthorizedAccessException("Bạn không có thẩm quyền truy cập danh sách phòng ban.");
+        lock (_seedRequests)
+        {
+            return Task.FromResult(_seedRequests.Where(r => r.MaPhongBan.HasValue)
+                .GroupBy(r => r.MaPhongBan)
+                .Select(group => new DepartmentOption(group.Key, group.First().TenPhongBan))
+                .OrderBy(option => option.TenPhongBan).ToList());
         }
     }
 

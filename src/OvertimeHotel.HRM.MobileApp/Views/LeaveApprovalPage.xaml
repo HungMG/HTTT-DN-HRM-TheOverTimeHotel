@@ -3,13 +3,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
              xmlns:m="clr-namespace:OvertimeHotel.HRM.MobileApp.Models"
+             xmlns:converters="clr-namespace:OvertimeHotel.HRM.MobileApp.Converters"
              x:Class="OvertimeHotel.HRM.MobileApp.Views.LeaveApprovalPage"
              x:DataType="vm:LeaveApprovalViewModel"
              BackgroundColor="#F8FAFC"
              NavigationPage.HasNavigationBar="False"
              Shell.NavBarIsVisible="False">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Padding="16,12,16,16">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:StringToGeometryConverter x:Key="StringToGeometryConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Padding="16,12,16,16">
 
         <!-- 0. DEMO MODE BANNER -->
         <Border Grid.Row="0"
@@ -126,8 +133,168 @@
             </Grid>
         </Border>
 
-        <!-- 3. THANH CUỘN NGANG FILTER CHIPS THEO 5 LOẠI ĐƠN -->
-        <ScrollView Grid.Row="3" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,0,0,12">
+        <!-- 3. TIÊU ĐỀ BỘ LỌC PHÒNG BAN: TÁCH HÀNG ĐỘC LẬP CHO HR & ADMIN (KHÔNG LÀM CO GIÃN ĐỘ DÀI TRIGGER BÊN DƯỚI) -->
+        <Label Grid.Row="3"
+               Text="Phòng ban"
+               FontFamily="SegoeUIBold"
+               FontSize="13"
+               TextColor="#334155"
+               IsVisible="{Binding CanFilterDepartments}"
+               Margin="0,0,0,6" />
+
+        <!-- 4. TRIGGER BOX CHỌN PHÒNG BAN: CHIỀU CAO CỐ ĐỊNH 48DP ĐỘC LẬP MỌI ĐIỆN THOẠI -->
+        <Border Grid.Row="4"
+                x:Name="triggerBorder"
+                Stroke="#CBD5E1" StrokeShape="RoundRectangle 12"
+                BackgroundColor="#FFFFFF" Padding="14,0"
+                HeightRequest="48"
+                Margin="0,0,0,12"
+                IsVisible="{Binding CanFilterDepartments}"
+                IsEnabled="{Binding IsDepartmentPickerEnabled}">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding ToggleDepartmentDropdownCommand}" />
+            </Border.GestureRecognizers>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalOptions="Center">
+                <!-- Icon phòng ban đang chọn: Navy sang trọng -->
+                <Border Grid.Column="0"
+                        WidthRequest="32" HeightRequest="32"
+                        StrokeShape="RoundRectangle 8"
+                        BackgroundColor="#EFF6FF"
+                        Stroke="#DBEAFE"
+                        StrokeThickness="1"
+                        VerticalOptions="Center" HorizontalOptions="Center">
+                    <Path Data="{Binding SelectedDepartment.PathData, Converter={StaticResource StringToGeometryConverter}}"
+                          Stroke="#1E3A8A"
+                          StrokeThickness="1.8"
+                          StrokeLineCap="Round"
+                          StrokeLineJoin="Round"
+                          Aspect="Uniform"
+                          WidthRequest="16" HeightRequest="16"
+                          HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+
+                <!-- Tên phòng ban đang chọn -->
+                <Label Grid.Column="1"
+                       Text="{Binding SelectedDepartment.TenPhongBan}"
+                       FontFamily="SegoeUIBold" FontSize="14" TextColor="#1E3A8A"
+                       LineBreakMode="TailTruncation" VerticalOptions="Center" />
+
+                <!-- Mũi tên Chevron xoay chuyển trạng thái bằng Animation -->
+                <Border x:Name="chevronBorder"
+                        Grid.Column="2"
+                        StrokeShape="RoundRectangle 12"
+                        BackgroundColor="#F1F5F9"
+                        WidthRequest="26" HeightRequest="26"
+                        Padding="0" VerticalOptions="Center">
+                    <Label Text="▼"
+                           FontSize="9" TextColor="#64748B" FontFamily="SegoeUIBold"
+                           HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- BACKDROP BẮT CHẠM NGOÀI: TỰ ĐỘNG THU GỌN DROPDOWN KHI CHẠM RA NGOÀI -->
+        <BoxView x:Name="dropdownBackdrop"
+                 Grid.Row="0" Grid.RowSpan="8"
+                 Color="Transparent"
+                 IsVisible="False"
+                 ZIndex="150">
+            <BoxView.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CloseDepartmentDropdownCommand}" />
+            </BoxView.GestureRecognizers>
+        </BoxView>
+
+        <!-- FLOATING OVERLAY DROPDOWN CARD: NEO TRỰC TIẾP THEO ROW 4 (48dp + 6dp gap = Margin 54dp), 100% THỐNG NHẤT MỌI MÁY -->
+        <Border x:Name="dropdownCard"
+                Grid.Row="4" Grid.RowSpan="4"
+                VerticalOptions="Start"
+                Margin="0,54,0,0"
+                ZIndex="200"
+                Opacity="0"
+                TranslationY="-6"
+                InputTransparent="True"
+                Stroke="#CBD5E1" StrokeShape="RoundRectangle 14"
+                BackgroundColor="#FFFFFF"
+                Padding="6,6">
+            <Border.Shadow>
+                <Shadow Brush="#0F172A" Offset="0,8" Radius="20" Opacity="0.18" />
+            </Border.Shadow>
+            <!-- Thanh cuộn giới hạn chiều cao tối đa 240dp để dễ cuộn xem các phòng ban -->
+            <ScrollView MaximumHeightRequest="240"
+                        VerticalScrollBarVisibility="Always">
+                <VerticalStackLayout Spacing="3"
+                                     BindableLayout.ItemsSource="{Binding DepartmentOptions}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="m:DepartmentOption">
+                            <Border StrokeShape="RoundRectangle 10"
+                                    Stroke="Transparent"
+                                    BackgroundColor="Transparent"
+                                    Padding="10,8"
+                                    Margin="0,1">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border"
+                                                 Binding="{Binding Source={RelativeSource AncestorType={x:Type vm:LeaveApprovalViewModel}}, Path=SelectedDepartment}"
+                                                 Value="{Binding .}">
+                                        <Setter Property="BackgroundColor" Value="#EFF6FF" />
+                                        <Setter Property="Stroke" Value="#BFDBFE" />
+                                        <Setter Property="StrokeThickness" Value="1" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer 
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:LeaveApprovalViewModel}}, Path=SelectDepartmentCommand}"
+                                        CommandParameter="{Binding .}" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalOptions="Center">
+                                    <Border Grid.Column="0"
+                                            WidthRequest="32" HeightRequest="32"
+                                            StrokeShape="RoundRectangle 8"
+                                            BackgroundColor="#EFF6FF"
+                                            Stroke="#DBEAFE"
+                                            StrokeThickness="1"
+                                            VerticalOptions="Center" HorizontalOptions="Center">
+                                        <Path Data="{Binding PathData, Converter={StaticResource StringToGeometryConverter}}"
+                                              Stroke="#1E3A8A"
+                                              StrokeThickness="1.8"
+                                              StrokeLineCap="Round"
+                                              StrokeLineJoin="Round"
+                                              Aspect="Uniform"
+                                              WidthRequest="16" HeightRequest="16"
+                                              HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+                                    <Label Grid.Column="1" Text="{Binding TenPhongBan}"
+                                           FontFamily="SegoeUI" FontSize="13" TextColor="#0F172A"
+                                           VerticalOptions="Center" LineBreakMode="TailTruncation">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label"
+                                                         Binding="{Binding Source={RelativeSource AncestorType={x:Type vm:LeaveApprovalViewModel}}, Path=SelectedDepartment}"
+                                                         Value="{Binding .}">
+                                                <Setter Property="FontFamily" Value="SegoeUIBold" />
+                                                <Setter Property="TextColor" Value="#1E3A8A" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                    <Label Grid.Column="2" Text="✓"
+                                           FontSize="13" TextColor="#1E3A8A" FontFamily="SegoeUIBold"
+                                           VerticalOptions="Center" IsVisible="False">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label"
+                                                         Binding="{Binding Source={RelativeSource AncestorType={x:Type vm:LeaveApprovalViewModel}}, Path=SelectedDepartment}"
+                                                         Value="{Binding .}">
+                                                <Setter Property="IsVisible" Value="True" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </ScrollView>
+        </Border>
+
+        <!-- Request type chips combine with the selected department and status. -->
+        <ScrollView Grid.Row="5" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,0,0,6">
             <HorizontalStackLayout Spacing="8">
                 <!-- Chip: Tất cả -->
                 <!-- Chip: Tất cả -->
@@ -264,14 +431,29 @@
             </HorizontalStackLayout>
         </ScrollView>
 
-        <!-- 4. DANH SÁCH ĐƠN TỪ (COLLECTIONVIEW + PULL TO REFRESH) -->
-        <RefreshView Grid.Row="4"
+        <Grid Grid.Row="6" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,10">
+            <Label Text="{Binding ResultsSummary}" TextColor="#475569"
+                   FontFamily="SegoeUI" FontSize="12" VerticalOptions="Center"
+                   MaxLines="2" LineBreakMode="WordWrap" />
+            <Button Grid.Column="1" Text="Bỏ lọc" Command="{Binding ResetFiltersCommand}"
+                    IsVisible="{Binding HasFilters}"
+                    FontFamily="SegoeUIBold" FontSize="12" TextColor="#1E3A8A"
+                    BackgroundColor="#EFF6FF" CornerRadius="10"
+                    MinimumHeightRequest="48" MinimumWidthRequest="88" Padding="12,0"
+                    SemanticProperties.Description="Bỏ lọc phòng ban và loại đơn" />
+        </Grid>
+
+        <!-- Virtualized list, pull to refresh and incremental pages. -->
+        <RefreshView Grid.Row="7"
                      IsRefreshing="{Binding IsRefreshing}"
                      Command="{Binding RefreshCommand}"
                      RefreshColor="#1E3A8A">
             <Grid>
                 <!-- DANH SÁCH CARD ĐƠN TỪ -->
                 <CollectionView ItemsSource="{Binding FilteredRequests}"
+                                IsVisible="{Binding IsListVisible}"
+                                RemainingItemsThreshold="5"
+                                RemainingItemsThresholdReachedCommand="{Binding LoadMoreCommand}"
                                 SelectionMode="None"
                                 Margin="0,0,0,0">
                     <CollectionView.ItemTemplate>
@@ -412,6 +594,21 @@
                             </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
+                    <CollectionView.Footer>
+                        <VerticalStackLayout IsVisible="{Binding HasMore}" Spacing="8" Padding="0,4,0,16">
+                            <Label Text="{Binding LoadMoreError}" IsVisible="{Binding HasLoadMoreError}"
+                                   TextColor="#B91C1C" FontFamily="SegoeUI" FontSize="13"
+                                   HorizontalTextAlignment="Center" />
+                            <ActivityIndicator IsRunning="{Binding IsLoadingMore}"
+                                               IsVisible="{Binding IsLoadingMore}" Color="#1E3A8A" />
+                            <Button Text="Tải thêm đơn" Command="{Binding LoadMoreCommand}"
+                                    IsEnabled="{Binding CanLoadMore}"
+                                    FontFamily="SegoeUIBold" FontSize="13" TextColor="#1E3A8A"
+                                    BackgroundColor="#EFF6FF" CornerRadius="12"
+                                    MinimumHeightRequest="48"
+                                    SemanticProperties.Description="Tải thêm đơn phù hợp với bộ lọc hiện tại" />
+                        </VerticalStackLayout>
+                    </CollectionView.Footer>
                 </CollectionView>
 
                 <!-- EMPTY STATE (KHI KHÔNG CÓ ĐƠN NÀO) -->
@@ -426,12 +623,16 @@
                            FontFamily="SegoeUIBold"
                            FontSize="18"
                            HorizontalOptions="Center" />
-                    <Label Text="Không tìm thấy đơn từ nào trong danh mục hoặc bộ lọc hiện tại."
+                    <Label Text="{Binding EmptyMessage}"
                            TextColor="#64748B"
                            FontFamily="SegoeUI"
                            FontSize="13"
                            HorizontalTextAlignment="Center"
                            HorizontalOptions="Center" />
+                    <Button Text="Bỏ lọc" Command="{Binding ResetFiltersCommand}"
+                            IsVisible="{Binding HasFilters}" BackgroundColor="#EFF6FF"
+                            TextColor="#1E3A8A" FontFamily="SegoeUIBold" FontSize="13"
+                            CornerRadius="10" MinimumHeightRequest="48" Padding="20,0" />
                     <Button Text="🔄 Làm Mới"
                             Command="{Binding RefreshCommand}"
                             BackgroundColor="#1E3A8A"

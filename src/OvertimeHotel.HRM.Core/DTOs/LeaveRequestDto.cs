@@ -84,7 +84,8 @@ public record LeaveRequestListItemDto(
 public record LeaveRequestListResponse(
     List<LeaveRequestListItemDto> Items,
     int PendingCount,
-    string Source
+    string Source,
+    bool HasMore = false
 );
 
 /// <summary>
