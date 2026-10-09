@@ -1,6 +1,6 @@
 -- ======================================================================================
 -- HỆ THỐNG QUẢN LÝ NHÂN SỰ & TIỀN LƯƠNG KHÁCH SẠN THE OVERTIME HOTEL
--- DDL SCRIPT TẠO 23 BẢNG CHUẨN 3NF (POSTGRESQL / SUPABASE CLOUD DATABASE)
+-- DDL SCRIPT TẠO 24 BẢNG CHUẨN 3NF (POSTGRESQL / SUPABASE CLOUD DATABASE)
 -- Bao gồm bảng Audit Trail (NHAT_KY_QUAN_TRI) và Phân hệ Lương phân tách 3 cấp
 -- ======================================================================================
 
@@ -257,6 +257,31 @@ CREATE TABLE IF NOT EXISTS CHI_TIET_TRU_VI_PHAM_TAM_UNG (
     ly_do_chi_tiet VARCHAR(255) NOT NULL
 );
 
+-- 24. BẢNG YEU_CAU_TAI_KHOAN (Bảng trung gian: HR duyệt HĐ → IT cấp tài khoản)
+-- Trạng thái: CHO_IT (chờ IT) → DANG_XU_LY (IT đã nhận) → DA_CAP / TU_CHOI
+-- Ba CHECK dưới đây là bất biến nghiệp vụ: từ chối phải có lý do, "đã cấp"
+-- thì phải có tài khoản, và mọi trạng thái ngoài CHO_IT đều phải biết ai xử lý.
+CREATE TABLE IF NOT EXISTS YEU_CAU_TAI_KHOAN (
+    ma_yeu_cau        SERIAL PRIMARY KEY,
+    ma_nhan_vien      INT NOT NULL REFERENCES NHAN_VIEN(ma_nhan_vien) ON DELETE CASCADE,
+    ma_hop_dong       INT NULL REFERENCES HOP_DONG(ma_hop_dong) ON DELETE SET NULL,
+    ten_dang_nhap     VARCHAR(50) NOT NULL,
+    ma_vai_tro        INT NOT NULL REFERENCES VAI_TRO(ma_vai_tro) ON DELETE RESTRICT,
+    trang_thai        VARCHAR(30) NOT NULL DEFAULT 'CHO_IT' CHECK (trang_thai IN ('CHO_IT', 'DANG_XU_LY', 'DA_CAP', 'TU_CHOI')),
+    ngay_gui          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ma_nguoi_gui      INT NOT NULL REFERENCES NHAN_VIEN(ma_nhan_vien) ON DELETE RESTRICT,
+    ma_nguoi_xu_ly    INT NULL REFERENCES TAI_KHOAN(ma_tai_khoan) ON DELETE SET NULL,
+    ngay_xu_ly        TIMESTAMPTZ NULL,
+    ghi_chu_tu_choi   VARCHAR(500) NULL,
+    ma_tai_khoan      INT NULL REFERENCES TAI_KHOAN(ma_tai_khoan) ON DELETE SET NULL,
+    CONSTRAINT chk_yeu_cau_tu_choi_can_co_ghi_chu
+        CHECK (trang_thai <> 'TU_CHOI' OR ghi_chu_tu_choi IS NOT NULL),
+    CONSTRAINT chk_yeu_cau_da_cap_can_co_tai_khoan
+        CHECK ((trang_thai = 'DA_CAP') = (ma_tai_khoan IS NOT NULL)),
+    CONSTRAINT chk_yeu_cau_da_xu_ly_can_co_nguoi
+        CHECK (trang_thai = 'CHO_IT' OR ma_nguoi_xu_ly IS NOT NULL)
+);
+
 -- ======================================================================================
 -- TẠO CHỈ MỤC (INDEXES) TỐI ƯU HIỆU NĂNG TRUY VẤN CSDL
 -- ======================================================================================
@@ -272,3 +297,8 @@ CREATE INDEX IF NOT EXISTS idx_chi_tiet_phieu ON CHI_TIET_PHIEU_LUONG(ma_phieu_l
 CREATE INDEX IF NOT EXISTS idx_chi_tiet_bh_ct ON CHI_TIET_TRU_BAO_HIEM(ma_chi_tiet);
 CREATE INDEX IF NOT EXISTS idx_chi_tiet_thue_ct ON CHI_TIET_TRU_THUE_TNCN(ma_chi_tiet);
 CREATE INDEX IF NOT EXISTS idx_chi_tiet_vp_ct ON CHI_TIET_TRU_VI_PHAM_TAM_UNG(ma_chi_tiet);
+-- Chỉ khoá trùng tên đăng nhập khi yêu cầu còn mở: yêu cầu đã TU_CHOI rồi gửi
+-- lại phải dùng được đúng tên cũ, nếu khoá cứng thì không sửa nổi lỗi đã bị từ chối.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_yeu_cau_ten_dang_nhap_dang_mo
+    ON YEU_CAU_TAI_KHOAN (ten_dang_nhap)
+    WHERE trang_thai IN ('CHO_IT', 'DANG_XU_LY');

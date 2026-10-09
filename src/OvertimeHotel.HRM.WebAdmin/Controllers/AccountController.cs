@@ -86,12 +86,11 @@ public class AccountController : Controller
 
         var roleName = account.VaiTro?.TenVaiTro ?? "Employee";
 
-        // Kiểm tra phân quyền cổng Web: Admin, HR và Manager đều được truy cập.
+        // Kiểm tra phân quyền cổng Web: Admin, HR, Manager và IT đều được truy cập.
         // Employee tự phục vụ trên Ứng dụng Di động nên bị chặn ngay tại cổng Web.
-        var normalizedRole = LeaveApprovalPolicy.NormalizeRole(roleName);
-        if (normalizedRole is null or RoleType.Employee)
+        if (!LeaveApprovalPolicy.CanAccessWebPortal(roleName))
         {
-            ViewBag.RoleNotice = $"Tài khoản của bạn được phân quyền là '{roleName}'. Cổng Web Admin này dành cho cấp Quản trị (Admin), Nhân sự (HR) và Quản lý (Manager). Vui lòng đăng nhập trên Ứng dụng Di động (.NET MAUI App) để quẹt thẻ chấm công và nộp đơn từ trực tuyến!";
+            ViewBag.RoleNotice = $"Tài khoản của bạn được phân quyền là '{roleName}'. Cổng Web Admin này dành cho cấp Quản trị (Admin), Nhân sự (HR), Quản lý (Manager) và Công nghệ Thông tin (IT). Vui lòng đăng nhập trên Ứng dụng Di động (.NET MAUI App) để quẹt thẻ chấm công và nộp đơn từ trực tuyến!";
             return View(model);
         }
 
@@ -117,7 +116,7 @@ public class AccountController : Controller
             new Claim(ClaimTypes.Role, roleName),
             new Claim("FullName", account.NhanVien != null ? $"{account.NhanVien.Ho} {account.NhanVien.Ten}".Trim() : account.TenDangNhap),
             new Claim("EmployeeId", account.MaNhanVien.ToString()),
-            new Claim("Email", account.NhanVien?.Email ?? ""),
+            new Claim("Email", account.NhanVien?.EmailCongVu ?? ""),
             new Claim("DepartmentId", account.NhanVien?.MaPhongBan.ToString() ?? "0")
         };
         claims.AddRange(permissionCodes.Select(code => new Claim(PermissionCodes.ClaimType, code)));
@@ -183,7 +182,7 @@ public class AccountController : Controller
             EmployeeId = account.MaNhanVien,
             Username = account.TenDangNhap,
             FullName = account.NhanVien != null ? $"{account.NhanVien.Ho} {account.NhanVien.Ten}".Trim() : account.TenDangNhap,
-            Email = account.NhanVien?.Email ?? "",
+            Email = account.NhanVien?.EmailCongVu ?? "",
             Phone = account.NhanVien?.DienThoai ?? "",
             Address = account.NhanVien?.DiaChi ?? "Chưa cập nhật",
             Department = account.NhanVien?.PhongBan?.TenPhongBan ?? "Khách sạn",
@@ -242,7 +241,7 @@ public class AccountController : Controller
             input.EmployeeId = account.MaNhanVien;
             input.Username = account.TenDangNhap;
             input.FullName = account.NhanVien != null ? $"{account.NhanVien.Ho} {account.NhanVien.Ten}".Trim() : account.TenDangNhap;
-            input.Email = account.NhanVien?.Email ?? "";
+            input.Email = account.NhanVien?.EmailCongVu ?? "";
             input.Phone = account.NhanVien?.DienThoai ?? "";
             input.Address = account.NhanVien?.DiaChi ?? "Chưa cập nhật";
             input.Department = account.NhanVien?.PhongBan?.TenPhongBan ?? "Khách sạn";
@@ -298,7 +297,7 @@ public class AccountController : Controller
                 MatKhauBam = "e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7",
                 TrangThai = true,
                 VaiTro = new VaiTro { MaVaiTro = 1, TenVaiTro = "Admin" },
-                NhanVien = new NhanVien { MaNhanVien = 1, Ho = "Nguyễn Đình", Ten = "Cường", Email = "cuong.nguyen@overtimehotel.com", MaPhongBan = 1 }
+                NhanVien = new NhanVien { MaNhanVien = 1, Ho = "Nguyễn Đình", Ten = "Cường", EmailCongVu = "cuong.nguyen@overtimehotel.com", MaPhongBan = 1 }
             },
             new TaiKhoan
             {
@@ -309,7 +308,7 @@ public class AccountController : Controller
                 MatKhauBam = "d2dcec9f7289f448fcf9f6e8c722961e61b60f8d540bbd633332431b57a7869c",
                 TrangThai = true,
                 VaiTro = new VaiTro { MaVaiTro = 2, TenVaiTro = "HR" },
-                NhanVien = new NhanVien { MaNhanVien = 2, Ho = "Võ Huỳnh Minh", Ten = "Sang", Email = "sang.vo@overtimehotel.com", MaPhongBan = 2 }
+                NhanVien = new NhanVien { MaNhanVien = 2, Ho = "Võ Huỳnh Minh", Ten = "Sang", EmailCongVu = "sang.vo@overtimehotel.com", MaPhongBan = 2 }
             },
             new TaiKhoan
             {
@@ -320,7 +319,7 @@ public class AccountController : Controller
                 MatKhauBam = "e8392925a98c9c22795d1fc5d0dfee5b9a6943f6b768ec5a2a0c077e5ed119cf",
                 TrangThai = true,
                 VaiTro = new VaiTro { MaVaiTro = 3, TenVaiTro = "Manager" },
-                NhanVien = new NhanVien { MaNhanVien = 3, Ho = "Nguyễn Hoàng", Ten = "Long", Email = "long.nguyen@overtimehotel.com", MaPhongBan = 3 }
+                NhanVien = new NhanVien { MaNhanVien = 3, Ho = "Nguyễn Hoàng", Ten = "Long", EmailCongVu = "long.nguyen@overtimehotel.com", MaPhongBan = 3 }
             },
             new TaiKhoan
             {
@@ -331,7 +330,7 @@ public class AccountController : Controller
                 MatKhauBam = "ca35068eabfd1dc3ba09cbe6255036fb1e69e3e0b1e95a52f1494638bc759071",
                 TrangThai = true,
                 VaiTro = new VaiTro { MaVaiTro = 4, TenVaiTro = "Employee" },
-                NhanVien = new NhanVien { MaNhanVien = 4, Ho = "Châu Quốc", Ten = "Bảo", Email = "bao.chau@overtimehotel.com", MaPhongBan = 4 }
+                NhanVien = new NhanVien { MaNhanVien = 4, Ho = "Châu Quốc", Ten = "Bảo", EmailCongVu = "bao.chau@overtimehotel.com", MaPhongBan = 4 }
             }
         ];
     }

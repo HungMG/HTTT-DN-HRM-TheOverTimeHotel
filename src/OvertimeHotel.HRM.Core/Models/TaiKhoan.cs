@@ -11,4 +11,10 @@ public class TaiKhoan
 
     public virtual NhanVien? NhanVien { get; set; }
     public virtual VaiTro? VaiTro { get; set; }
+
+    // YEU_CAU_TAI_KHOAN tham chiếu TAI_KHOAN ở HAI cột khác nhau nên phải đặt
+    // tên phân biệt, nếu không hai navigation sẽ trùng nhau và EF không biết
+    // cột nào ứng với collection nào.
+    public virtual ICollection<YeuCauTaiKhoan> YeuCauTaiKhoanDaXuLy { get; set; } = new List<YeuCauTaiKhoan>();
+    public virtual ICollection<YeuCauTaiKhoan> YeuCauTaiKhoanDuocTao { get; set; } = new List<YeuCauTaiKhoan>();
 }

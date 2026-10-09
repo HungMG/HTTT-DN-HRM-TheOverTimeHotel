@@ -43,7 +43,7 @@ Nhằm phân định rõ ràng cổng quản trị máy chủ và ứng dụng n
                         ┌───────────────────────────────┐
                         │     SUPABASE CLOUD DATABASE   │
                         │       PostgreSQL Engine       │
-                        │    24 Bảng Chuẩn Hóa 3NF      │
+                        │    25 Bảng Chuẩn Hóa 3NF      │
                         │    + RLS (Row Level Security) │
                         └───────────────────────────────┘
 ```
@@ -81,7 +81,7 @@ src/
 ├── OvertimeHotel.HRM.slnx                     # Solution file Visual Studio 2026
 │
 ├── OvertimeHotel.HRM.Core/                    # [DỰ ÁN DÙNG CHUNG - CLASS LIBRARY .NET 10]
-│   ├── Models/                                # 24 Class Entities ánh xạ 24 bảng CSDL
+│   ├── Models/                                # 25 Class Entities ánh xạ 25 bảng CSDL
 │   │   ├── PhongBan.cs            ├── NhatKyQuanTri.cs
 │   │   ├── ChucVu.cs              ├── CauHinhKhoanLuong.cs
 │   │   ├── NhanVien.cs            ├── CauHinhKhauTru.cs
@@ -111,16 +111,16 @@ src/
 │
 ├── OvertimeHotel.HRM.Data/                    # [TẦNG TRUY XUẤT DỮ LIỆU - CHỈ WEBADMIN DÙNG]
 │   ├── Context/
-│   │   ├── AppDbContext.cs                    # EF Core DbContext, cấu hình quan hệ PK/FK (24 DbSet)
+│   │   ├── AppDbContext.cs                    # EF Core DbContext, cấu hình quan hệ PK/FK (25 DbSet)
 │   │   └── DatabaseSchemaInitializer.cs        # Tự tạo bảng nhật ký admin nếu thiếu
 │   ├── Supabase/
 │   │   ├── SupabaseClientFactory.cs           # Tạo Supabase SDK client (Realtime/Storage)
 │   │   └── SupabaseOptions.cs
 │   ├── Services/
 │   │   ├── IBackupService.cs                  # Interface sao lưu & phục hồi CSDL
-│   │   └── BackupService.cs                   # Xuất/nhập JSON 24 bảng + thống kê
+│   │   └── BackupService.cs                   # Xuất/nhập JSON 25 bảng + thống kê
 │   ├── migrations/                            # Script SQL áp dụng tay lên Supabase
-│   ├── database_schema_3nf.sql                # DDL 24 bảng chuẩn 3NF
+│   ├── database_schema_3nf.sql                # DDL 25 bảng chuẩn 3NF
 │   └── seed_data_24_tables.sql                # Dữ liệu danh mục & tài khoản mẫu
 │
 ├── OvertimeHotel.HRM.WebAdmin/                # [CỔNG QUẢN TRỊ ADMIN - ASP.NET CORE MVC .NET 10]
@@ -243,7 +243,7 @@ src/
 **Hiện trạng đã triển khai — sao lưu thủ công từ trong Web Admin:**
 
 * `BackupService` (`Data/Services/BackupService.cs`) nối thẳng PostgreSQL qua EF Core rồi:
-  * `ExportDatabaseToJsonAsync()` — gom **toàn bộ 24 bảng** thành **một file JSON** và tải về máy người dùng.
+  * `ExportDatabaseToJsonAsync()` — gom **toàn bộ 25 bảng** thành **một file JSON** và tải về máy người dùng.
   * `RestoreDatabaseFromJsonAsync(json)` — nạp ngược JSON, xóa & tạo lại dữ liệu theo thứ tự phụ thuộc FK.
   * `GetTableStatisticsAsync()` — đếm số bản ghi từng bảng.
 * `BackupController` (`[Authorize(Policy = PermissionCodes.BackupDatabase)]`) là điểm vào duy nhất:

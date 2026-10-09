@@ -12,6 +12,18 @@ public static class PermissionCodes
     // ── Nhóm: Quản trị hệ thống ────────────────────────────────────────────
     public const string SystemAdmin = "SYS_ADMIN";
     public const string ManageAccounts = "QL_TAI_KHOAN";
+
+    /// <summary>
+    /// Cấp user trong Supabase Auth để nhân viên đăng nhập Mobile App.
+    /// </summary>
+    /// <remarks>
+    /// Tách khỏi <see cref="ManageAccounts"/> có chủ đích: quản lý hồ sơ tài
+    /// khoản và cấp quyền đăng nhập là hai việc khác nhau. HR cần quyền cập
+    /// nhật tài khoản (đổi tên đăng nhập, khoá) nhưng KHÔNG được cấp quyền vào
+    /// app — cửa vào của mọi RLS policy trên Supabase chỉ nên mở cho Admin
+    /// và bộ phận CNTT.
+    /// </remarks>
+    public const string ProvisionMobileAccount = "CAP_TAI_KHOAN_MOBILE";
     public const string ManagePermissions = "QL_PHAN_QUYEN";
     public const string ManageCatalog = "QL_DANH_MUC";
     public const string BackupDatabase = "SAO_LUU_CSDL";

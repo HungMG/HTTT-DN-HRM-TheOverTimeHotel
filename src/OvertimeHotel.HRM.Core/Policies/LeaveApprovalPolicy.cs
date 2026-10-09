@@ -61,6 +61,12 @@ public static class LeaveApprovalPolicy
             "HR" or "NHANSU" or "QUANLYNHANSU" => RoleType.HR,
             "MANAGER" or "QUANLY" or "TRUONGPHONG" or "TRUONG_PHONG" => RoleType.Manager,
             "EMPLOYEE" or "NHANVIEN" or "NHAN_VIEN" => RoleType.Employee,
+            // IT không phải từ khoá cột: "IT" đúng nghĩa là Information
+            // Technology. Vẫn cần chấp nhận mã số và cách viết tiếng Việt
+            // có dấu, vì tên vai trò trong CSDL do người quản trị gõ tay qua
+            // màn hình danh mục chứ không phải hằng số trong code.
+            "IT" or "5" or "CNTT" or "IT_SUPPORT" or "IT_MANAGER" or "ITSUPPORT" or "ITMANAGER"
+                or "CONGNGHETHONGTIN" => RoleType.IT,
             _ => null
         };
     }
@@ -68,6 +74,23 @@ public static class LeaveApprovalPolicy
     public static bool IsAdmin(string? role) => NormalizeRole(role) == RoleType.Admin;
     public static bool IsHR(string? role) => NormalizeRole(role) == RoleType.HR;
     public static bool IsManager(string? role) => NormalizeRole(role) == RoleType.Manager;
+
+    /// <summary>
+    /// Bộ phận CNTT — vai trò được giao cấp phát tài khoản đăng nhập.
+    /// </summary>
+    public static bool IsIT(string? role) => NormalizeRole(role) == RoleType.IT;
+
+    /// <summary>
+    /// Vai trò được phép vào cổng Web Admin để thao tác.
+    ///
+    /// <para>
+    /// Employee tự phục vụ trên Mobile App nên bị chặn ở cổng Web. IT thì vào
+    /// được: cấp phát tài khoản là công việc chính của họ, và làm trên Web vì
+    /// cần đọc CSDL để đối chiếu hồ sơ nhân viên.
+    /// </para>
+    /// </summary>
+    public static bool CanAccessWebPortal(string? role) =>
+        NormalizeRole(role) is RoleType.Admin or RoleType.HR or RoleType.Manager or RoleType.IT;
 
     /// <summary>
     /// Liệt kê các mã loại đơn mà vai trò được phép tiếp nhận và duyệt.

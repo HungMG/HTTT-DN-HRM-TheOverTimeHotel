@@ -10,7 +10,9 @@
 - Hội nghị tiệc cưới và sự kiện (Convention Center).
 - Dịch vụ thư giãn, chăm sóc sức khỏe (Spa, Gym, Bể bơi).
 
-Do đặc thù ngành dịch vụ khách sạn, hoạt động đón tiếp và phục vụ khách hàng diễn ra **liên tục 24 giờ mỗi ngày (24/7)**, không có ngày nghỉ lễ, tết. Nguồn nhân lực là tài sản cốt lõi quyết định uy tín thương hiệu và chất lượng dịch vụ của khách sạn.
+Do đặc thù ngành dịch vụ khách sạn, hoạt động đón tiếp và phục vụ khách hàng diễn ra **liên tục 24 giờ mỗi ngày (24/7)**. Khách sạn không ngừng hoạt động vào dịp Lễ, Tết — mọi ca trực vẫn phải bố trí đầy đủ nhân sự. Nguồn nhân lực là tài sản cốt lõi quyết định uy tín thương hiệu và chất lượng dịch vụ của khách sạn.
+
+> **Quy ước ngày Lễ, Tết trong hệ thống:** nhân viên **đi làm** vào ngày Lễ, Tết thì giờ làm thêm được tính với **hệ số OT 3.0**; nhân viên **không đi làm** thì hưởng **nghỉ lễ, Tết bình thường** theo quy định, không phát sinh OT. (Xem chi tiết tại **PRD 05 — Quy Trình Và Công Thức Tính Lương**, mục *Tiền Tăng Ca*.)
 
 ---
 
@@ -40,13 +42,14 @@ Khách sạn tổ chức theo mô hình quản lý chuyên môn hóa phân cấp
 6. **Bộ Phận Kỹ Thuật - Bảo Trì (Engineering):** Kỹ sư điện lạnh, kỹ thuật viên âm thanh ánh sáng và bảo trì cơ sở vật chất.
 7. **Bộ Phận An Ninh - Bảo Vệ (Security):** Kiểm soát cổng ra vào, tuần tra an ninh trật tự và phòng cháy chữa cháy 24/7.
 8. **Phòng Tài Chính - Kế Toán:** Kiểm toán doanh thu, đối soát dữ liệu bảng lương và thực hiện chi trả lương cho nhân viên.
+9. **Bộ Phận Công Nghệ Thông Tin (IT):** Quản trị hệ thống, vận hành máy chủ Web Admin, và **cấp phát tài khoản đăng nhập** cho nhân sự (tiếp nhận yêu cầu cấp tài khoản do Phòng HR gửi sau khi duyệt hợp đồng lao động). Vai trò RBAC tương ứng là **IT** — tách biệt khỏi Bộ Phận Kỹ Thuật vì kỹ thuật bảo trì hạ tầng vật lý, còn IT quản trị phần mềm và là điểm vào của toàn bộ quyền truy cập.
 
 ---
 
 ## 4. Quy Trình Quản Lý Nhân Sự Tổng Quát (8 Bước Chuẩn Hóa)
 
 1. **Bước 1: Tiếp nhận nhân viên & Ký hợp đồng lao động (HĐLĐ):** Phòng HR lập hồ sơ lý lịch, ký kết hợp đồng (Thử việc, 1 năm, 3 năm, Vô thời hạn), ghi nhận mức lương cơ bản pháp lý, gán vào phòng ban và chức vụ.
-2. **Bước 2: Cấp tài khoản hệ thống & Phân quyền:** Quản trị viên cấp tài khoản và gán đúng 1 trong 4 vai trò chuẩn (Admin, HR, Manager, Employee).
+2. **Bước 2: Cấp tài khoản hệ thống & Phân quyền:** Sau khi ký HĐLĐ, **Phòng HR gửi yêu cầu cấp tài khoản** cho nhân viên (ghi nhận tại bảng `yeu_cau_tai_khoan`); **bộ phận Công nghệ Thông tin (CNTT/IT)** tiếp nhận và cấp tài khoản đăng nhập. Tài khoản được gán đúng 1 trong **5 vai trò chuẩn** (Admin, HR, Manager, Employee, IT) cùng tập **17 mã quyền** tương ứng trong ma trận RBAC.
 3. **Bước 3: Lập lịch phân ca làm việc 24/7:** Quản lý bộ phận xếp ca làm (sáng/chiều/đêm) theo tuần hoặc tháng cho từng nhân viên.
 4. **Bước 4: Chấm công thực tế di động:** Nhân viên quẹt thẻ Check-in / Check-out trên điện thoại, hệ thống tự động đối soát ca, tính phút đi trễ, về sớm và giờ làm thêm (OT).
 5. **Bước 5: Quản lý đơn từ trực tuyến:** Nhân viên nộp 4 loại đơn điện tử (nghỉ phép, nghỉ bệnh, thai sản, thôi việc). Quản lý/HR tiếp nhận và phê duyệt trực tiếp.

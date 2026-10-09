@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -45,7 +46,8 @@ public class NhanVienController : Controller
             query = query.Where(employee =>
                 employee.Ho.ToLower().Contains(value) ||
                 employee.Ten.ToLower().Contains(value) ||
-                employee.Email.ToLower().Contains(value) ||
+                employee.EmailCongVu.ToLower().Contains(value) ||
+                (employee.EmailCaNhan != null && employee.EmailCaNhan.ToLower().Contains(value)) ||
                 employee.DienThoai.Contains(value));
         }
 
@@ -75,7 +77,8 @@ public class NhanVienController : Controller
                 filtered = filtered.Where(employee =>
                     employee.Ho.ToLower().Contains(value) ||
                     employee.Ten.ToLower().Contains(value) ||
-                    employee.Email.ToLower().Contains(value) ||
+                    employee.EmailCongVu.ToLower().Contains(value) ||
+                    (employee.EmailCaNhan != null && employee.EmailCaNhan.ToLower().Contains(value)) ||
                     employee.DienThoai.Contains(value));
             }
 
@@ -206,7 +209,7 @@ public class NhanVienController : Controller
         }
         catch (DbUpdateException ex)
         {
-            _logger.LogError(ex, "Không thể tạo hồ sơ nhân viên {Email}.", model.Employee.Email);
+            _logger.LogError(ex, "Không thể tạo hồ sơ nhân viên {Email}.", model.Employee.EmailCongVu);
             TempData["Error"] = "Không thể thêm hồ sơ. Vui lòng kiểm tra dữ liệu hoặc kết nối CSDL.";
             return RedirectToAction(nameof(Index));
         }
@@ -243,7 +246,8 @@ public class NhanVienController : Controller
         employee.NgaySinh = model.Employee.NgaySinh;
         employee.GioiTinh = model.Employee.GioiTinh;
         employee.DienThoai = model.Employee.DienThoai;
-        employee.Email = model.Employee.Email;
+        employee.EmailCongVu = model.Employee.EmailCongVu;
+        employee.EmailCaNhan = model.Employee.EmailCaNhan;
         employee.DiaChi = model.Employee.DiaChi;
         employee.TrinhDo = model.Employee.TrinhDo;
         employee.NgayVaoLam = model.Employee.NgayVaoLam;
@@ -303,6 +307,7 @@ public class NhanVienController : Controller
 
     private async Task ValidateEmployeeAsync(NhanVien model, int? currentId = null)
     {
+        var emailFormat = new EmailAddressAttribute();
         if (string.IsNullOrWhiteSpace(model.Ho)) ModelState.AddModelError("Employee.Ho", "Vui lòng nhập họ.");
         if (string.IsNullOrWhiteSpace(model.Ten)) ModelState.AddModelError("Employee.Ten", "Vui lòng nhập tên.");
         if (model.MaPhongBan <= 0 || !await _context.PhongBans.AnyAsync(item => item.MaPhongBan == model.MaPhongBan)) ModelState.AddModelError("Employee.MaPhongBan", "Vui lòng chọn phòng ban hợp lệ.");
@@ -310,7 +315,25 @@ public class NhanVienController : Controller
         if (model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today)) ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
         if (model.NgayThoiViec.HasValue && model.NgayThoiViec < model.NgayVaoLam) ModelState.AddModelError("Employee.NgayThoiViec", "Ngày thôi việc không được trước ngày vào làm.");
         if (!SupportedEmployeeStatuses.Contains(model.TrangThai)) ModelState.AddModelError("Employee.TrangThai", "Trạng thái nhân viên không hợp lệ.");
-        if (await _context.NhanViens.AnyAsync(item => item.MaNhanVien != currentId && item.Email.ToLower() == model.Email.ToLower())) ModelState.AddModelError("Employee.Email", "Email nhân viên đã tồn tại.");
+        if (string.IsNullOrWhiteSpace(model.EmailCongVu))
+        {
+            ModelState.AddModelError("Employee.EmailCongVu", "Vui lòng nhập email công vụ — đây là email dùng để đăng nhập Mobile App.");
+        }
+        else if (!emailFormat.IsValid(model.EmailCongVu))
+        {
+            ModelState.AddModelError("Employee.EmailCongVu", "Email công vụ không đúng định dạng.");
+        }
+        else if (await _context.NhanViens.AnyAsync(item => item.MaNhanVien != currentId && item.EmailCongVu.ToLower() == model.EmailCongVu.ToLower()))
+        {
+            ModelState.AddModelError("Employee.EmailCongVu", "Email công vụ đã được dùng cho nhân viên khác.");
+        }
+
+        // Email cá nhân là tuỳ chọn: để trống cũng được, nhưng đã nhập thì phải
+        // đúng định dạng. Không kiểm tra trùng vì CSDL không đặt UNIQUE cho cột này.
+        if (!string.IsNullOrWhiteSpace(model.EmailCaNhan) && !emailFormat.IsValid(model.EmailCaNhan))
+        {
+            ModelState.AddModelError("Employee.EmailCaNhan", "Email cá nhân không đúng định dạng.");
+        }
     }
 
     private static void NormalizeEmployeeStatus(NhanVien model)
@@ -327,7 +350,8 @@ public class NhanVienController : Controller
     {
         model.Ho = model.Ho?.Trim() ?? string.Empty;
         model.Ten = model.Ten?.Trim() ?? string.Empty;
-        model.Email = model.Email?.Trim() ?? string.Empty;
+        model.EmailCongVu = model.EmailCongVu?.Trim() ?? string.Empty;
+        model.EmailCaNhan = string.IsNullOrWhiteSpace(model.EmailCaNhan) ? null : model.EmailCaNhan.Trim();
         model.DienThoai = model.DienThoai?.Trim() ?? string.Empty;
         model.DiaChi = string.IsNullOrWhiteSpace(model.DiaChi) ? null : model.DiaChi.Trim();
         model.TrinhDo = model.TrinhDo?.Trim() ?? string.Empty;

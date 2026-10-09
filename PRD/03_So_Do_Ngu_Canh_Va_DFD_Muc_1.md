@@ -87,12 +87,12 @@ DFD kinh điển (Gane & Sarson) không đánh dấu thao tác trên mũi tên m
 
 ### 2.1. Danh sách 8 Kho Dữ Liệu (Data Stores)
 
-Kho dữ liệu trong DFD là **gom nhóm nhiều bảng CSDL vùng trữ cùng chủ đề**, không phải "một kho = một bảng". Vì vậy 24 bảng CSDL được gom thành 8 kho:
+Kho dữ liệu trong DFD là **gom nhóm nhiều bảng CSDL vùng trữ cùng chủ đề**, không phải "một kho = một bảng". Vì vậy 25 bảng CSDL được gom thành 8 kho:
 
 | Mã | Tên Kho Dữ Liệu | Các Bảng CSDL Thành Phần (tên gốc trong Supabase) |
 |:---:|:---|:---|
 | **D1** | Kho Nhân sự & HĐLĐ | `phong_ban`, `chuc_vu`, `nhan_vien`, `hop_dong` |
-| **D2** | Kho Tài khoản & Phân quyền | `tai_khoan`, `vai_tro`, `quyen`, `vai_tro_quyen` |
+| **D2** | Kho Tài khoản & Phân quyền | `tai_khoan`, `vai_tro`, `quyen`, `vai_tro_quyen`, `yeu_cau_tai_khoan` |
 | **D3** | Kho Ca làm & Chấm công | `ca_lam_viec`, `phan_ca`, `cham_cong` |
 | **D4** | Kho Đơn từ điện tử | `loai_don`, `don_tu` |
 | **D5** | Kho Tiền lương & Thu chi | `ky_luong`, `phieu_luong`, `chi_tiet_phieu_luong`, `chi_tiet_tru_bao_hiem`, `chi_tiet_tru_thue_tncn`, `chi_tiet_tru_vi_pham_tam_ung`, `cau_hinh_khoan_luong`, `cau_hinh_tang_ca`, `cau_hinh_phu_cap`, `cau_hinh_khoan_tru` |
@@ -111,7 +111,7 @@ Kho dữ liệu trong DFD là **gom nhóm nhiều bảng CSDL vùng trữ cùng 
 - **D8 — Kho Tệp & Tài liệu đính kèm:** phục vụ **tệp đính kèm y tế của đơn từ** (ảnh chụp giấy nghỉ bệnh / thai sản), và tệp backup nén `.sql.gz` sinh ra ở luồng **F01_OUT**. **Cần xác minh:** hiện bảng `don_tu` **không có cột lưu đường dẫn tệp** (`LyDo` là kiểu `TEXT` thuần), và luồng backup hiện trả tệp về máy người dùng chứ chưa lưu trong Supabase Storage. Hai nhu cầu này về kỹ thuật khác nhau (ảnh y tế cần RLS riêng; file backup cần bảo mật tuyệt đối) nên **không nên gộp vào cùng một kho** nếu triển khai thật.
 - **Lịch sử điều động công tác:** chưa có bảng riêng. Thông tin này hiện chỉ được phản ánh **gián tiếp** qua hai bảng lịch sử: đổi phòng / chức vụ thể hiện ở bảng `hop_dong` (phát sinh HĐLĐ mới) và quá trình làm việc thể hiện ở bảng `cham_cong`. **Cần xác minh:** nếu báo cáo cần truy vết *"nhân viên này từng qua các phòng ban nào, ai điều động, lý do"*, phải bổ sung bảng `lich_su_dieu_dong`; khi đó **gộp vào D1** (cùng nhóm hồ sơ nhân sự) là hợp lý nhất.
 - **D1: Kho Nhân sự & HĐLĐ** (`NHAN_VIEN`, `HOP_DONG`, `PHONG_BAN`, `CHUC_VU`).
-- **D2: Kho Tài khoản & Phân quyền** (`TAI_KHOAN`, `VAI_TRO`, `QUYEN`, `VAI_TRO_QUYEN`).
+- **D2: Kho Tài khoản & Phân quyền** (`TAI_KHOAN`, `VAI_TRO`, `QUYEN`, `VAI_TRO_QUYEN`, `YEU_CAU_TAI_KHOAN`).
 - **D3: Kho Ca làm & Chấm công** (`CA_LAM_VIEC`, `PHAN_CA`, `CHAM_CONG`).
 - **D4: Kho Đơn từ điện tử** (`LOAI_DON`, `DON_TU`).
 - **D5: Kho Tiền lương & Thu chi** (`KY_LUONG`, `CAU_HINH_KHOAN_LUONG`, `PHIEU_LUONG`, `CHI_TIET_PHIEU_LUONG`).
@@ -121,7 +121,7 @@ Kho dữ liệu trong DFD là **gom nhóm nhiều bảng CSDL vùng trữ cùng 
 | Mã TT | Tên Tiến Trình Mức 1 | Tác Nhân | D1 (Nhân sự) | D2 (Account) | D3 (Chấm công) | D4 (Đơn từ) | D5 (Tiền lương) | D6 (Nhật ký) | D7 (Quỹ & Lễ) | D8 (Tệp) |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **1.0** | Quản lý Nhân viên & HĐLĐ | Phòng HR | **C, U, R** | **R** | — | — | — | — | **R** | **R** |
-| **2.0** | Tài khoản & Phân quyền (RBAC) | Quản trị viên (Admin) | **R** | **C, U, R** | — | — | — | **C, R** | — | — |
+| **2.0** | Tài khoản & Phân quyền (RBAC) | Quản trị viên (Admin) + Bộ phận CNTT (IT) | **R** | **C, U, R** | — | — | — | **C, R** | — | — |
 | **3.0** | Ca làm & Chấm công 24/7 | Manager & Employee | **R** | — | **C, U, R** | — | — | — | **R** | — |
 | **4.0** | Quản lý Đơn từ điện tử | Employee, Manager, HR | **R** | — | **R** | **C, U, R** | — | **R** | **R** | **R, C** |
 | **5.0** | Tính toán Lương tự động | HR & Ban Giám đốc | **R** | — | **R** | **R** | **C, U, R** | — | **R** | — |
@@ -134,6 +134,8 @@ Kho dữ liệu trong DFD là **gom nhóm nhiều bảng CSDL vùng trữ cùng 
 | **12.0** | Cảnh báo tự động & Thông báo | Tất cả 5 tác nhân | **R** | — | **R** | **R** | **R** | **C, R** | **R** | — |
 
 > **Ghi chú:** Các ô trong ma trận trên thể hiện **thao tác trên kho dữ liệu**, không phải tên luồng — xem lại bảng giải nghĩa C/U/R ở phần trên.
+>
+> **Bổ sung ngày 09/10/2026 — quy trình cấp tài khoản đi qua kho D2:** Với bảng `yeu_cau_tai_khoan` mới, tiến trình **2.0** không chỉ ghi vào nhóm RBAC (`vai_tro`, `quyen`, `vai_tro_quyen`) mà còn **tạo và cập nhật các yêu cầu cấp tài khoản**. Nguồn dữ liệu của yêu cầu là **kho D1** (HR đọc HĐLĐ đã duyệt ở tiến trình **1.0**), nên phép `R` của tiến trình 2.0 vào D1 là bắt buộc. Quy trình đầy đủ: **1.0** (duyệt HĐLĐ) → **2.0** (HR gửi yêu cầu) → **IT xử lý và cấp tài khoản** → kết quả ghi vào `yeu_cau_tai_khoan.trang_thai = 'DA_CAP'`.
 
 ### 2.3. Quy Tắc Phân Tách Quyền Ghi Danh Mục (Xóa Nhất Quán)
 
@@ -164,8 +166,10 @@ Phiên bản cũ của ma trận có mâu thuẫn: bảng `phong_ban`, `chuc_vu`
 | **G07** | **9.0** Xác thực | **Tất cả 11 tiến trình còn lại** | *Phiên làm việc đã xác thực & danh sách quyền được cấp* | JWT / token phiên, `ma_vai_tro`, tập mã quyền lấy từ `vai_tro_quyen` | Mọi tiến trình đều nằm sau cổng đăng nhập; tiến trình 6.0 cần nó để ràng buộc *"nhân viên chỉ xem phiếu lương của chính mình"* |
 | **G08** | **9.0** Xác thực | **12.0** Cảnh báo tự động | *Sự kiện cần đẩy thông báo tới người dùng* | Đăng nhập thất bại nhiều lần, phiên hết hạn, HĐLĐ sắp hết hạn trước 30 ngày | Luồng F01_OUT *"Log kiểm toán đăng nhập"* và F03_OUT *"Cảnh báo HĐLĐ"* đều cần đẩy qua 12.0 |
 | **G09** | **10.0** Sao lưu & Phục hồi | **9.0** Xác thực | *Kết quả phục hồi ảnh hưởng trạng thái tài khoản* | Trạng thái `tai_khoan.trang_thai`, danh sách phiên đang hoạt động cần vô hiệu hóa sau khi nạp lại dữ liệu | PRD 02 mục 8.5: *"Restore: Xác thực lại danh tính Admin → Nạp kịch bản phục hồi an toàn"* |
+| **G10** | **1.0** Quản lý NV & HĐLĐ | **2.0** Tài khoản & Phân quyền (RBAC) | *Hợp đồng lao động đã được duyệt, cần cấp tài khoản đăng nhập* | Bản ghi `hop_dong` có `trang_thai = 'HIEU_LUC'` cùng hồ sơ `nhan_vien` tương ứng | Bổ sung ngày 09/10/2026 — tiến trình 2.0 đọc D1 để biết ai vừa ký HĐLĐ và cần tài khoản; HR tạo yêu cầu trong bảng `yeu_cau_tai_khoan` (kho D2) |
+| **G11** | **2.0** Tài khoản & Phân quyền (RBAC) | **9.0** Xác thực & Quản lý Phiên làm việc | *Tài khoản vừa được bộ phận CNTT (IT) cấp* | Tên đăng nhập `ten_dang_nhap` và mã vai trò `ma_vai_tro` để IT cấp user trong `auth.users`; tiến trình 9.0 xác thực và gom quyền vào JWT | Bổ sung ngày 09/10/2026 — `yeu_cau_tai_khoan.trang_thai` chuyển `DA_CAP` là điều kiện tiên quyết để tiến trình 9.0 ghi nhận phiên làm việc |
 
-**Tóm tắt:** tổng cộng **9 luồng nội bộ (G01–G09)** — trong đó G07 là luồng nhiều đích (1 tiến trình → 11 tiến trình), và G06 gộp 5 nguồn vào 1 đích. Khi dựng sơ đồ bằng draw.io, các luồng này vẽ bằng **đường nét đứt** để phân biệt với luồng ngoài (tiến trình ↔ tác nhân) vẽ bằng **đường liền**.
+**Tóm tắt:** tổng cộng **11 luồng nội bộ (G01–G11)** — trong đó G07 là luồng nhiều đích (1 tiến trình → 11 tiến trình), và G06 gộp 5 nguồn vào 1 đích. Khi dựng sơ đồ bằng draw.io, các luồng này vẽ bằng **đường nét đứt** để phân biệt với luồng ngoài (tiến trình ↔ tác nhân) vẽ bằng **đường liền**.
 
 ### 2.5. Bảng Ánh Xạ Cân Bằng Mức 0 ↔ Mức 1
 
@@ -184,7 +188,7 @@ DFD Mức 0 có **5 tác nhân × 2 chiều = 10 luồng (F01–F05)**. Bảng d
 | **F05_IN** | Chấm công & Đơn từ điện tử | **3.0** (quẹt thẻ) + **4.0** (nộp đơn) | D3, D4 |
 | **F05_OUT** | Lịch ca, Duyệt đơn & Phiếu lương | **3.0** (lịch ca cá nhân) + **4.0** (kết quả duyệt đơn) + **6.0** (phiếu lương PDF) + **12.0** (thông báo) | D3, D4, D5, D6 |
 
-> **Kiểm tra cân bằng:** cả 12 tiến trình Mức 1 đều xuất hiện trong bảng trên — không có tiến trình "mồ côi". Ngược lại, **9.0, 10.0, 11.0, 12.0 là các tiến trình mới bổ sung** và chúng chỉ xuất hiện trong luồng nội bộ (G07–G09) chứ không sinh ra luồng ngoài mới với tác nhân — đúng với bản chất kỹ thuật của chúng (xác thực / sao lưu / khóa sổ / thông báo đều là tiến trình dọc theo luồng đã có).
+> **Kiểm tra cân bằng:** cả 12 tiến trình Mức 1 đều xuất hiện trong bảng trên — không có tiến trình "mồ côi". Ngược lại, **9.0, 10.0, 11.0, 12.0 là các tiến trình mới bổ sung** và chúng chỉ xuất hiện trong luồng nội bộ (G07–G11) chứ không sinh ra luồng ngoài mới với tác nhân — đúng với bản chất kỹ thuật của chúng (xác thực / sao lưu / khóa sổ / thông báo đều là tiến trình dọc theo luồng đã có).
 
 ### 2.6. Quy Ước Khi Dựng Sơ Đồ Mức 1 Bằng Công Cụ Vẽ
 
@@ -193,7 +197,7 @@ DFD Mức 0 có **5 tác nhân × 2 chiều = 10 luồng (F01–F05)**. Bảng d
 | Tiến trình | Hộp chữ nhật, nhãn `Mã - Tên` | Ví dụ: `5.0 - Tính toán Lương tự động` |
 | Kho dữ liệu | Hai đường kẻ song song, nhãn `D1 - Tên` | **Phải là 2 đường**, không dùng hộp chữ nhật |
 | Luồng ngoài (↔ tác nhân) | Mũi tên nét liền, có nhãn tên luồng | Dùng lại đúng tên F01–F05 của Mức 0 để đối chiếu |
-| Luồng nội bộ (↔ tiến trình) | Mũi tên nét đứt, có nhãn `G01–G09` | Danh mục tại mục 2.4 |
+| Luồng nội bộ (↔ tiến trình) | Mũi tên nét đứt, có nhãn `G01–G11` | Danh mục tại mục 2.4 |
 | Thao tác lên kho | Ghi C / U / R cạnh mũi tên | `C`, `U` trên mũi tên đi ra kho; `R` trên mũi tên đi vào kho |
 | Thứ tự bố trí | Từ trái sang phải theo dòng nghiệp vụ | 9.0 ở ngoài cùng bên trái (cổng đăng nhập), 12.0 ở ngoài cùng bên phải (đẩy thông báo) |
 
@@ -201,21 +205,22 @@ DFD Mức 0 có **5 tác nhân × 2 chiều = 10 luồng (F01–F05)**. Bảng d
 
 | Nơi khai báo | Số bảng | Tình trạng |
 |:---|:---:|:---|
-| PRD 03 (tài liệu này, mục 2.1) | 8 kho dữ liệu gom từ **24 bảng** | ✅ Đã cập nhật — khớp với mã nguồn |
-| Mã nguồn thực tế `AppDbContext.cs` | **24 `DbSet`** | Nguồn chuẩn để đối chiếu |
-| PRD 04 (`04_Thiet_Ke_CSDL_17_Bang.md`) | 17 bảng | ⚠️ **LỆCH** — chưa cập nhật theo các migration sau |
-| PRD 02 (mục 5, ma trận đối chiếu CRUD) | "17 bảng CSDL Supabase" | ⚠️ **LỆCH** — nhiều chỗ còn ghi 17 |
+| PRD 03 (tài liệu này, mục 2.1) | 8 kho dữ liệu gom từ **25 bảng** | ✅ Đã cập nhật — khớp với mã nguồn |
+| Mã nguồn thực tế `AppDbContext.cs` | **25 `DbSet`** | ✅ Đã cập nhật — đã có `DbSet<YeuCauTaiKhoan>` |
+| PRD 04 (`04_Thiet_Ke_CSDL_17_Bang.md`) | 25 bảng | ✅ Đã cập nhật đầy đủ — **tiêu đề nội dung** đã sửa thành *"25 Bảng"*. *(Lưu ý: **tên file** vẫn là `..._17_Bang.md` vì được tham chiếu ở nhiều nơi — **không đổi tên file**, chỉ đọc con số trong tiêu đề nội dung.)* |
+| PRD 02 (mục 5, ma trận đối chiếu CRUD) | **25 bảng CSDL Supabase** | ✅ Đã cập nhật — khớp với PRD 03 và mã nguồn |
 
-**Chi tiết 7 bảng đã bổ sung sau 17 bảng ban đầu** (theo `migrations/20260918_add_admin_audit_log.sql` và `migrations/20260930_upgrade_to_23_tables.sql`):
+**Chi tiết 8 bảng đã bổ sung sau 17 bảng ban đầu** (theo `migrations/20260918_add_admin_audit_log.sql`, `migrations/20260930_upgrade_to_23_tables.sql` và migration ngày 09/10/2026):
 
 | STT | Bảng | Kho DFD | Nhóm nghiệp vụ |
 |:---:|:---|:---:|:---|
 | 18 | `nhat_ky_quan_tri` | D6 | Nhật ký kiểm toán quản trị |
 | 19 | `cau_hinh_tang_ca` | D5 | Tham số hệ số tăng ca (OT) |
 | 20 | `cau_hinh_phu_cap` | D5 | Tham số phụ cấp (ăn ca, ca đêm 30%) |
-| 21 | `cau_hinh_khoan_tru` | D5 | Tham số khấu trừ (BHXH, thuế TNCN, phạt) |
+| 21 | `cau_hinh_khau_tru` | D5 | Tham số khấu trừ (BHXH, thuế TNCN, phạt) |
 | 22 | `chi_tiet_tru_bao_hiem` | D5 | Phân rã BHXH 8% / BHYT 1.5% / BHTN 1% |
 | 23 | `chi_tiet_tru_thue_tncn` | D5 | Phân rã thuế TNCN lũy tiến |
 | 24 | `chi_tiet_tru_vi_pham_tam_ung` | D5 | Phân rã tiền phạt đi trễ / về sớm / bỏ ca |
+| **25** | **`yeu_cau_tai_khoan`** | **D2** | **Quy trình HR gửi yêu cầu → bộ phận CNTT (IT) cấp tài khoản đăng nhập** |
 
-> **Ghi chú dẫn chiếu sang PRD 04:** Nội dung chi tiết từng bảng (tên cột, kiểu dữ liệu, khóa chính / khóa ngoại) của đủ 24 bảng **chưa được mô tả trong PRD 04** — PRD 04 hiện mới dừng ở bảng 17. Cần cập nhật PRD 04 và sửa tiêu đề từ *"17 Bảng"* thành *"24 Bảng"* cho khớp với sơ đồ này. Riêng tên cột thực tế của một số bảng đã **khác** so với PRD 04 (ví dụ bảng `phieu_luong` trong CSDL dùng `tien_luong_cong`, `tien_tang_ca`, `tong_phu_cap`, `tong_thuong`, `thuc_nhan` thay vì `tong_thu_nhap`, `tong_khau_tru`, `luong_thuc_nhan`) — **cần xác minh** khi cập nhật lại PRD 04.
+> **Ghi chú dẫn chiếu sang PRD 04:** Nội dung chi tiết từng bảng (tên cột, kiểu dữ liệu, khóa chính / khóa ngoại) của đủ **25 bảng** đã được mô tả đầy đủ trong PRD 04 — bao gồm bảng mới `yeu_cau_tai_khoan` (Bảng 9 trong từ điển dữ liệu của PRD 04). Riêng tên cột thực tế của một số bảng đã được đối chiếu lại với CSDL (ví dụ bảng `phieu_luong` trong CSDL dùng `tien_luong_cong`, `tien_tang_ca`, `tong_phu_cap`, `tong_thuong`, `thuc_nhan` thay vì `tong_thu_nhap`, `tong_khau_tru`, `luong_thuc_nhan`).

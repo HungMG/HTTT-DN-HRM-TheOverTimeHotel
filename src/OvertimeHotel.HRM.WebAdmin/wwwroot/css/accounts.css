@@ -140,6 +140,7 @@
 .role-swatch--hr { background: #58a6ff; }
 .role-swatch--manager { background: var(--aw-amber); }
 .role-swatch--employee { background: var(--aw-violet); }
+.role-swatch--it { background: #1e3a8a; }
 
 .account-sequence-panel { overflow: hidden; }
 .sequence-title { display: flex; align-items: center; gap: 10px; }
@@ -821,6 +822,7 @@
 .role-swatch--hr { background: #7c3aed; }
 .role-swatch--manager { background: #0284c7; }
 .role-swatch--employee { background: #059669; }
+.role-swatch--it { background: #1e3a8a; }
 .role-chip i,
 .state-chip i { box-shadow: none; }
 

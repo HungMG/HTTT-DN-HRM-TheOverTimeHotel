@@ -169,6 +169,9 @@ builder.Services.AddAuthorization(options =>
     }
 
     AddPermissionPolicy(PermissionCodes.ManageAccounts);
+    // Cấp user Supabase Auth — cửa vào của mọi RLS policy. Tách khỏi
+    // QL_TAI_KHOAN vì người quản lý hồ sơ tài khoản (HR) không nên tự mở cửa này.
+    AddPermissionPolicy(PermissionCodes.ProvisionMobileAccount);
     AddPermissionPolicy(PermissionCodes.ManagePermissions);
     AddPermissionPolicy(PermissionCodes.BackupDatabase);
     AddPermissionPolicy(PermissionCodes.ManageCatalog);
@@ -206,6 +209,16 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Đăng ký dịch vụ sao lưu & phục hồi CSDL
 builder.Services.AddScoped<IBackupService, BackupService>();
+
+// Cấp phát user Supabase Auth khi tạo tài khoản trên Web.
+// Đăng ký Singleton vì cấu hình là bất biến trong suốt vòng đời ứng dụng — đọc
+// IConfiguration ở thời điểm đăng ký thay vì mỗi request, và không giữ chuỗi
+// khoá bí mật trong object theo vòng đời ngắn. Service tự báo "chưa cấu hình"
+// khi thiếu khoá, nên thiếu cấu hình sẽ ra thông báo rõ ràng chứ không im lặng.
+builder.Services.AddSingleton<ISupabaseUserProvisioningService>(provider =>
+    new SupabaseUserProvisioningService(
+        provider.GetRequiredService<IConfiguration>().GetSection("Supabase")["Url"] ?? string.Empty,
+        provider.GetRequiredService<IConfiguration>()["Supabase:ServiceRoleKey"]));
 
 // Cấu hình Supabase Client cho các tác vụ Realtime / Storage
 // (supabaseUrl đã đọc ở khối authentication phía trên).

@@ -220,6 +220,12 @@ public class AuthService : IAuthService
             MaNhanVien = maNhanVien.Value,
             MaPhongBan = profile?.MaPhongBan,
             TenDangNhap = email,
+
+            // email truyền vào là email CÔNG VỤ (nhan_vien.email) — cùng giá trị
+            // GoTrue dùng để cấp token và cùng giá trị custom_access_token_hook
+            // đối chiếu khi gắn claim. Không gán thì UserSession.Email rỗng và
+            // màn Hồ Sơ dựng ra địa chỉ bịa từ TenDangNhp ở ProfileViewModel.
+            Email = email,
             HoTen = profile?.HoTen ?? string.Empty,
             DienThoai = profile?.DienThoai ?? string.Empty,
             TenVaiTro = await ResolveRoleNameAsync(token, maVaiTro.Value),

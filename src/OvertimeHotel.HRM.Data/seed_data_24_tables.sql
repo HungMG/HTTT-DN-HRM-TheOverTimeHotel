@@ -6,7 +6,7 @@
 -- Chạy lại được nhiều lần: mọi INSERT đều có ON CONFLICT, không xoá dữ liệu cũ.
 -- ======================================================================================
 
--- 1. NẠP BẢNG PHONG_BAN (8 Phòng ban khách sạn)
+-- 1. NẠP BẢNG PHONG_BAN (9 Phòng ban khách sạn)
 INSERT INTO PHONG_BAN (ma_phong_ban, ten_phong_ban, mo_ta) VALUES
 (1, 'Ban Giám Đốc (BOD)', 'Quản trị chiến lược và điều hành toàn bộ khách sạn'),
 (2, 'Bộ phận Tiền sảnh (FO - Front Office)', 'Đón tiếp khách, Check-in/Check-out, Dịch vụ hỗ trợ 24/7'),
@@ -15,14 +15,15 @@ INSERT INTO PHONG_BAN (ma_phong_ban, ten_phong_ban, mo_ta) VALUES
 (5, 'Bộ phận Bếp (Kitchen / Culinary)', 'Chế biến món ăn phục vụ bữa sáng buffet, trưa, tối'),
 (6, 'Bộ phận Kỹ thuật (ENG - Engineering)', 'Bảo trì hệ thống điện lạnh, cấp thoát nước, thang máy, PCCC'),
 (7, 'Bộ phận An ninh (Security)', 'Tuần tra bảo vệ tài sản, giám sát an ninh tòa nhà 24/7'),
-(8, 'Bộ phận Nhân sự & Tài chính (HR & ACC)', 'Tuyển dụng, HĐLĐ, chấm công, tính lương và tài chính')
-ON CONFLICT (ma_phong_ban) DO UPDATE 
+(8, 'Bộ phận Nhân sự & Tài chính (HR & ACC)', 'Tuyển dụng, HĐLĐ, chấm công, tính lương và tài chính'),
+(9, 'Bộ phận Công nghệ Thông tin (IT - Information Technology)', 'Quản trị hệ thống, hỗ trợ người dùng và CẤP PHÁT TÀI KHOẢN ĐĂNG NHẬP cho ứng dụng di động')
+ON CONFLICT (ma_phong_ban) DO UPDATE
 SET ten_phong_ban = EXCLUDED.ten_phong_ban, mo_ta = EXCLUDED.mo_ta;
 
 -- Cập nhật sequence của bảng phong_ban
 SELECT setval('phong_ban_ma_phong_ban_seq', (SELECT MAX(ma_phong_ban) FROM PHONG_BAN));
 
--- 2. NẠP BẢNG CHUC_VU (10 Chức danh nghề nghiệp)
+-- 2. NẠP BẢNG CHUC_VU (12 Chức danh nghề nghiệp)
 INSERT INTO CHUC_VU (ma_chuc_vu, ten_chuc_vu, mo_ta) VALUES
 (1, 'Tổng Giám Đốc (GM)', 'Điều hành toàn diện các hoạt động khách sạn'),
 (2, 'Trưởng Bộ Phận (Department Head)', 'Quản lý điều hành và phân công ca kíp bộ phận'),
@@ -33,24 +34,30 @@ INSERT INTO CHUC_VU (ma_chuc_vu, ten_chuc_vu, mo_ta) VALUES
 (7, 'Nhân viên Phục vụ (F&B Staff)', 'Phục vụ bàn tiệc, quầy bar và sự kiện'),
 (8, 'Kỹ sư Tòa nhà (Technician)', 'Vận hành và sửa chữa sự cố kỹ thuật hạ tầng'),
 (9, 'Nhân viên An ninh (Security Guard)', 'Trực cổng, tuần tra khuôn viên, phòng chống cháy nổ'),
-(10, 'Chuyên viên Nhân sự & Tiền lương (HR & Payroll)', 'Quản lý hồ sơ, chấm công, tính lương và bảo hiểm')
-ON CONFLICT (ma_chuc_vu) DO UPDATE 
+(10, 'Chuyên viên Nhân sự & Tiền lương (HR & Payroll)', 'Quản lý hồ sơ, chấm công, tính lương và bảo hiểm'),
+(11, 'Quản trị hệ thống CNTT (IT Support)', 'Hỗ trợ người dùng, bảo trì phần mềm và CẤP PHÁT TÀI KHOẢN ĐĂNG NHẬP'),
+(12, 'Trưởng bộ phận CNTT (IT Manager)', 'Điều hành bộ phận CNTT, phê duyệt và quản lý tài khoản đăng nhập')
+ON CONFLICT (ma_chuc_vu) DO UPDATE
 SET ten_chuc_vu = EXCLUDED.ten_chuc_vu, mo_ta = EXCLUDED.mo_ta;
 
 SELECT setval('chuc_vu_ma_chuc_vu_seq', (SELECT MAX(ma_chuc_vu) FROM CHUC_VU));
 
--- 3. NẠP BẢNG VAI_TRO (4 Vai trò RBAC)
+-- 3. NẠP BẢNG VAI_TRO (5 Vai trò RBAC)
+--    "IT" là bộ phận Công nghệ Thông tin (ma_phong_ban = 9), chủ công cấp
+--    phát tài khoản đăng nhập và sao lưu CSDL. Tách khỏi "Kỹ thuật"
+--    (ma_phong_ban = 6) là kỹ sư tòa nhà — bảo trì hạ tầng vật lý.
 INSERT INTO VAI_TRO (ma_vai_tro, ten_vai_tro, mo_ta) VALUES
 (1, 'Admin', 'Quản trị viên hệ thống (Web Admin Portal: Tài khoản, Danh mục, Sao lưu)'),
 (2, 'HR', 'Quản trị nhân sự (Web & App: Nhân viên, HĐLĐ, Tính lương, Duyệt thôi việc)'),
 (3, 'Manager', 'Quản lý bộ phận (Mobile App: Xếp lịch ca 24/7, Duyệt đơn phép/đổi ca/OT)'),
-(4, 'Employee', 'Nhân viên tự phục vụ (Mobile App: Quẹt thẻ chấm công, Nộp đơn, Xem lương)')
-ON CONFLICT (ma_vai_tro) DO UPDATE 
+(4, 'Employee', 'Nhân viên tự phục vụ (Mobile App: Quẹt thẻ chấm công, Nộp đơn, Xem lương)'),
+(5, 'IT', 'Bộ phận Công nghệ Thông tin (Web Admin: Cấp phát tài khoản đăng nhập, Sao lưu CSDL)')
+ON CONFLICT (ma_vai_tro) DO UPDATE
 SET ten_vai_tro = EXCLUDED.ten_vai_tro, mo_ta = EXCLUDED.mo_ta;
 
 SELECT setval('vai_tro_ma_vai_tro_seq', (SELECT MAX(ma_vai_tro) FROM VAI_TRO));
 
--- 4. NẠP BẢNG QUYEN (16 Quyền chức năng)
+-- 4. NẠP BẢNG QUYEN (17 Quyền chức năng)
 INSERT INTO QUYEN (ma_quyen, ma_quyen_code, ten_quyen, mo_ta) VALUES
 (1, 'SYS_ADMIN', 'Toàn quyền quản trị hệ thống', 'Truy cập mọi chức năng quản trị cấp cao'),
 (2, 'QL_TAI_KHOAN', 'Quản lý tài khoản người dùng', 'Thêm, sửa, khóa tài khoản trên Web Admin'),
@@ -67,7 +74,8 @@ INSERT INTO QUYEN (ma_quyen, ma_quyen_code, ten_quyen, mo_ta) VALUES
 (13, 'DUYET_TANG_CA_OT', 'Phê duyệt tăng ca làm thêm (OT)', 'Xác nhận số giờ làm thêm ngoài ca'),
 (14, 'XEM_CHAM_CONG_BO_PHAN', 'Xem dữ liệu chấm công bộ phận', 'Theo dõi quẹt thẻ in/out của nhân viên cấp dưới'),
 (15, 'CHAM_CONG_DI_DONG', 'Chấm công quẹt thẻ di động', 'Bấm nút Check-in / Check-out trên Mobile App'),
-(16, 'NOP_DON_TU', 'Nộp đơn từ trực tuyến', 'Gửi đơn nghỉ phép, việc riêng, thôi việc trên App')
+(16, 'NOP_DON_TU', 'Nộp đơn từ trực tuyến', 'Gửi đơn nghỉ phép, việc riêng, thôi việc trên App'),
+(17, 'CAP_TAI_KHOAN_MOBILE', 'Cấp phát tài khoản đăng nhập Mobile App', 'Tạo user trong Supabase Auth để nhân viên đăng nhập ứng dụng di động. Chỉ dành cho Quản trị viên và bộ phận Công nghệ Thông tin')
 ON CONFLICT (ma_quyen) DO UPDATE 
 SET ma_quyen_code = EXCLUDED.ma_quyen_code, ten_quyen = EXCLUDED.ten_quyen, mo_ta = EXCLUDED.mo_ta;
 
@@ -75,8 +83,13 @@ SELECT setval('quyen_ma_quyen_seq', (SELECT MAX(ma_quyen) FROM QUYEN));
 
 -- 5. NẠP BẢNG VAI_TRO_QUYEN (Ánh xạ RBAC M:N)
 INSERT INTO VAI_TRO_QUYEN (ma_vai_tro, ma_quyen) VALUES
--- Admin có toàn quyền hệ thống + danh mục + backup
-(1, 1), (1, 2), (1, 3), (1, 4), (1, 5),
+-- Admin có toàn quyền hệ thống + danh mục + backup + cấp tài khoản đăng nhập
+(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 17),
+-- IT (bộ phận Công nghệ Thông tin, ma_phong_ban = 9): cấp phát tài khoản
+-- đăng nhập cho nhân viên và sao lưu CSDL. Cố ý KHÔNG cấp QL_PHAN_QUYEN — nếu
+-- IT tự cấp lại quyền cho mình thì rào chắn trong migration 20261009 mất tác dụng.
+-- Cũng không cấp QL_NHAN_SU / TINH_LUONG: IT cấp tài khoản, không cần xem hồ sơ lương.
+(5, 2), (5, 5), (5, 17),
 -- HR có quyền quản lý nhân sự, HĐLĐ, tính lương, xuất PDF, và duyệt ĐƯỢC CẢ đơn nghỉ
 -- lẫn thôi việc: quản lý nộp đơn thì không còn ai ở cấp dưới để duyệt, nên toàn bộ
 -- 5 loại đơn đều phải đi qua nhân sự (khớp LeaveApprovalPolicy.HrAllowedTypes).

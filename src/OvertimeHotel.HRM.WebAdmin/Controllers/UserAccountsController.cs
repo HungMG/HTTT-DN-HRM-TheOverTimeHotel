@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
 
@@ -13,17 +14,24 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 [Authorize(Policy = PermissionCodes.ManageAccounts)]
 public class UserAccountsController : Controller
 {
-    private static readonly string[] SupportedRoles = ["Admin", "HR", "Manager", "Employee"];
+    // Vai trò RBAC mà màn hình này cho phép cấp. "IT" là bộ phận Công nghệ
+    // Thông tin — chủ công cấp phát tài khoản đăng nhập cho nhân viên.
+    private static readonly string[] SupportedRoles = ["Admin", "HR", "Manager", "Employee", "IT"];
     private const int AccountPageSize = 7;
     private const int AuditPageSize = 5;
 
     private readonly AppDbContext _context;
     private readonly ILogger<UserAccountsController> _logger;
+    private readonly ISupabaseUserProvisioningService _supabaseUserProvisioning;
 
-    public UserAccountsController(AppDbContext context, ILogger<UserAccountsController> logger)
+    public UserAccountsController(
+        AppDbContext context,
+        ILogger<UserAccountsController> logger,
+        ISupabaseUserProvisioningService supabaseUserProvisioning)
     {
         _context = context;
         _logger = logger;
+        _supabaseUserProvisioning = supabaseUserProvisioning;
     }
 
     [HttpGet]
@@ -48,7 +56,7 @@ public class UserAccountsController : Controller
                 (account.NhanVien != null &&
                  (account.NhanVien.Ho.ToLower().Contains(loweredKeyword) ||
                   account.NhanVien.Ten.ToLower().Contains(loweredKeyword) ||
-                  account.NhanVien.Email.ToLower().Contains(loweredKeyword))));
+                  account.NhanVien.EmailCongVu.ToLower().Contains(loweredKeyword))));
         }
 
         if (roleId.HasValue)
@@ -79,7 +87,7 @@ public class UserAccountsController : Controller
                     EmployeeName = account.NhanVien == null
                         ? "Chưa liên kết nhân viên"
                         : (account.NhanVien.Ho + " " + account.NhanVien.Ten).Trim(),
-                    Email = account.NhanVien == null ? string.Empty : account.NhanVien.Email,
+                    Email = account.NhanVien == null ? string.Empty : account.NhanVien.EmailCongVu,
                     Department = account.NhanVien == null || account.NhanVien.PhongBan == null
                         ? "—"
                         : account.NhanVien.PhongBan.TenPhongBan,
@@ -159,7 +167,10 @@ public class UserAccountsController : Controller
             }
             if (roleId.HasValue)
             {
-                var roleMap = new Dictionary<int, string> { { 1, "Admin" }, { 2, "HR" }, { 3, "Manager" }, { 4, "Employee" } };
+                var roleMap = new Dictionary<int, string>
+                {
+                    { 1, "Admin" }, { 2, "HR" }, { 3, "Manager" }, { 4, "Employee" }, { 5, "IT" }
+                };
                 if (roleMap.TryGetValue(roleId.Value, out var targetRole))
                 {
                     fallbackAccounts = fallbackAccounts.Where(a => a.RoleName == targetRole).ToList();
@@ -214,6 +225,7 @@ public class UserAccountsController : Controller
     }
 
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ProvisionMobileAccount)]
     public async Task<IActionResult> Create()
     {
         var model = new CreateAccountViewModel();
@@ -223,6 +235,7 @@ public class UserAccountsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ProvisionMobileAccount)]
     public async Task<IActionResult> Create(CreateAccountViewModel model)
     {
         model.Username = NormalizeUsername(model.Username);
@@ -261,6 +274,23 @@ public class UserAccountsController : Controller
             TrangThai = model.IsActive
         };
 
+        string? workEmail;
+        try
+        {
+            workEmail = await _context.NhanViens
+                .AsNoTracking()
+                .Where(employee => employee.MaNhanVien == model.EmployeeId)
+                .Select(employee => employee.EmailCongVu)
+                .SingleAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Không thể đọc email công vụ của nhân viên {EmployeeId}.", model.EmployeeId);
+            ModelState.AddModelError(string.Empty, "Không thể đọc thông tin email công vụ của nhân viên. Vui lòng thử lại.");
+            await LoadCreateOptionsAsync(model);
+            return View(model);
+        }
+
         try
         {
             // EnableRetryOnFailure cần execution strategy bọc toàn bộ transaction.
@@ -291,7 +321,45 @@ public class UserAccountsController : Controller
                 await transaction.CommitAsync();
             });
 
-            TempData["Success"] = $"Đã tạo tài khoản '{account.TenDangNhap}' thành công.";
+            // Cấp user Supabase Auth SAU KHI transaction đã commit.
+            // Gọi HTTP bên trong transaction PostgreSQL đang mở là sai: giữ
+            // connection lâu, và nếu HTTP thành công nhưng commit hỏng thì tài
+            // khoản app đã có mà tài khoản CSDL thì không — đúng trạng thái
+            // "đăng được app nhưng không có quyền nào" mà kế hoạch đã cảnh báo.
+            var provisionResult = await _supabaseUserProvisioning.CreateUserAsync(
+                workEmail ?? string.Empty,
+                model.Password,
+                HttpContext.RequestAborted);
+
+            if (!provisionResult.Success)
+            {
+                _logger.LogWarning(
+                    "Cấp tài khoản Supabase thất bại cho tài khoản {Username}: {ErrorCode}",
+                    account.TenDangNhap,
+                    provisionResult.ErrorCode);
+
+                await RollBackAccountAsync(account, provisionResult.ErrorMessage ?? "Không tạo được tài khoản đăng nhập.");
+                ModelState.AddModelError(
+                    string.Empty,
+                    provisionResult.ErrorMessage ?? "Không tạo được tài khoản đăng nhập trên Mobile App.");
+                await LoadCreateOptionsAsync(model);
+                return View(model);
+            }
+
+            _context.NhatKyQuanTris.Add(CreateAuditLog(
+                account.MaTaiKhoan,
+                account.TenDangNhap,
+                "CREATE_ACCOUNT_AUTH",
+                $"Cấp tài khoản Supabase Auth để nhân viên đăng nhập Mobile App bằng email công vụ.",
+                null,
+                $"Email công vụ: {workEmail}; Supabase User ID: {provisionResult.SupabaseUserId}",
+                "Nhân viên dùng email công vụ để đăng nhập ứng dụng di động."));
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] =
+                $"Đã tạo tài khoản '{account.TenDangNhap}' và cấp quyền đăng nhập Mobile App "
+                + $"bằng email công vụ '{workEmail}'.";
             return RedirectToAction(nameof(Index));
         }
         catch (DbUpdateException ex)
@@ -300,6 +368,37 @@ public class UserAccountsController : Controller
             ModelState.AddModelError(string.Empty, "Không thể tạo tài khoản do dữ liệu bị trùng hoặc kết nối CSDL gặp lỗi.");
             await LoadCreateOptionsAsync(model);
             return View(model);
+        }
+    }
+
+    /// <summary>
+    /// Gỡ bỏ dòng <c>tai_khoan</c> vừa tạo khi cấp user Supabase Auth thất bại.
+    ///
+    /// <para>
+    /// Không có rollback này thì CSDL còn tài khoản "đăng nhập được Web nhưng
+    /// không đăng nhập được app" — nhân viên không có cách tự khắc phục, mỗi
+    /// lần thử lại lại tạo thêm một dòng mới. Xoá ở đây đưa hệ thống về đúng
+    /// trạng thái trước khi bấm nút: như chưa tạo gì.
+    /// </para>
+    /// </summary>
+    private async Task RollBackAccountAsync(TaiKhoan account, string reason)
+    {
+        try
+        {
+            _context.NhatKyQuanTris.RemoveRange(
+                _context.NhatKyQuanTris.Where(log => log.MaTaiKhoanBiTacDong == account.MaTaiKhoan));
+            _context.TaiKhoans.Remove(account);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException rollbackException)
+        {
+            // Không rollback được thì KHÔNG nuốt lỗi: nếu im lặng, quản trị viên
+            // không biết mình còn dữ lại một tài khoản treo trong CSDL.
+            _logger.LogError(
+                rollbackException,
+                "Không gỡ được tài khoản {Username} sau khi cấp Supabase Auth thất bại. Lý do: {Reason}",
+                account.TenDangNhap,
+                reason);
         }
     }
 
@@ -398,7 +497,7 @@ public class UserAccountsController : Controller
             EmployeeName = account.NhanVien == null
                 ? "Chưa liên kết nhân viên"
                 : (account.NhanVien.Ho + " " + account.NhanVien.Ten).Trim(),
-            EmployeeEmail = account.NhanVien?.Email ?? string.Empty,
+            EmployeeEmail = account.NhanVien?.EmailCongVu ?? string.Empty,
             Username = account.TenDangNhap,
             RoleId = account.MaVaiTro,
             IsActive = account.TrangThai,
@@ -433,7 +532,7 @@ public class UserAccountsController : Controller
         model.EmployeeName = account.NhanVien == null
             ? "Chưa liên kết nhân viên"
             : (account.NhanVien.Ho + " " + account.NhanVien.Ten).Trim();
-        model.EmployeeEmail = account.NhanVien?.Email ?? string.Empty;
+        model.EmployeeEmail = account.NhanVien?.EmailCongVu ?? string.Empty;
         model.IsActive = account.TrangThai;
 
         var oldUsername = account.TenDangNhap;
@@ -778,7 +877,7 @@ public class UserAccountsController : Controller
             .Select(employee => new SelectListItem
             {
                 Value = employee.MaNhanVien.ToString(),
-                Text = (employee.Ho + " " + employee.Ten).Trim() + " · " + employee.Email,
+                Text = (employee.Ho + " " + employee.Ten).Trim() + " · " + employee.EmailCongVu,
                 Selected = employee.MaNhanVien == model.EmployeeId
             })
             .ToListAsync();
@@ -955,6 +1054,7 @@ public class UserAccountsController : Controller
         return action switch
         {
             "CREATE_ACCOUNT" => "Tạo tài khoản",
+            "CREATE_ACCOUNT_AUTH" => "Cấp tài khoản đăng nhập Mobile",
             "UPDATE_ACCOUNT" => "Cập nhật tài khoản",
             "RESET_PASSWORD" => "Đặt lại mật khẩu",
             "LOCK_ACCOUNT" => "Khóa tài khoản",
@@ -971,6 +1071,7 @@ public class UserAccountsController : Controller
             "HR" => "Nhân sự",
             "Manager" => "Quản lý",
             "Employee" => "Nhân viên",
+            "IT" => "Công nghệ thông tin",
             _ => roleName ?? "Chưa cấp"
         };
     }
@@ -1066,7 +1167,8 @@ public class UserAccountsController : Controller
             new SelectListItem { Value = "1", Text = "Quản trị viên", Selected = selectedRoleId == 1 },
             new SelectListItem { Value = "2", Text = "Nhân sự", Selected = selectedRoleId == 2 },
             new SelectListItem { Value = "3", Text = "Quản lý", Selected = selectedRoleId == 3 },
-            new SelectListItem { Value = "4", Text = "Nhân viên", Selected = selectedRoleId == 4 }
+            new SelectListItem { Value = "4", Text = "Nhân viên", Selected = selectedRoleId == 4 },
+            new SelectListItem { Value = "5", Text = "Công nghệ thông tin", Selected = selectedRoleId == 5 }
         ];
     }
 }

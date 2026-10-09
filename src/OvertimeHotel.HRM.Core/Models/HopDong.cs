@@ -12,4 +12,10 @@ public class HopDong
     public string TrangThai { get; set; } = "HIEU_LUC";
 
     public virtual NhanVien? NhanVien { get; set; }
+
+    /// <summary>
+    /// Các yêu cầu cấp tài khoản gửi dựa trên hợp đồng này. Quan hệ 1-n,
+    /// phía CSDL khai ON DELETE SET NULL nên xoá hợp đồng không xoá lịch sử IT.
+    /// </summary>
+    public virtual ICollection<YeuCauTaiKhoan> YeuCauTaiKhoans { get; set; } = new List<YeuCauTaiKhoan>();
 }

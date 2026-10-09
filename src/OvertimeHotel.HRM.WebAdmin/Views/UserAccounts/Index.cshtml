@@ -1,5 +1,6 @@
 @model AccountIndexViewModel
 @using System.Security.Claims
+@using OvertimeHotel.HRM.WebAdmin.Security
 @{
     ViewData["Title"] = "Quản trị tài khoản";
 }
@@ -16,9 +17,15 @@
             <strong>Trực tuyến</strong>
         </div>
         <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
-            <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn">
-                <i class="bi bi-plus-lg me-1"></i> Tạo tài khoản
-            </a>
+            @* Cấp phát tài khoản là việc của Admin và bộ phận CNTT. Người chỉ có
+               QL_TAI_KHOAN (HR) vẫn xem và sửa được hồ sơ tài khoản, nhưng không
+               mở được cửa này — cùng rào chắn với [Authorize] ở action Create. *@
+            @if (User.HasPermission(PermissionCodes.ProvisionMobileAccount))
+            {
+                <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn">
+                    <i class="bi bi-plus-lg me-1"></i> Tạo tài khoản
+                </a>
+            }
         </div>
     </div>
 
@@ -130,6 +137,7 @@
                 <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Hồ sơ &amp; chính sách</small></div>
                 <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--manager"></span><span>Quản lý</span><small>Phê duyệt vận hành</small></div>
                 <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--employee"></span><span>Nhân viên</span><small>Tự phục vụ cá nhân</small></div>
+        <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--it"></span><span>Công nghệ thông tin</span><small>Cấp phát tài khoản</small></div>
                 @if (User.IsInRole("Admin") || User.HasClaim("Permission", "QL_PHAN_QUYEN"))
                 {
                     <a asp-action="RolePermissions" class="account-role-legend-action"><i class="bi bi-shield-check"></i><span>Phân quyền vai trò</span><i class="bi bi-arrow-right"></i></a>

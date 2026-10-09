@@ -9,7 +9,7 @@ public class AppDbContext : DbContext
     {
     }
 
-    // 17 DbSets ánh xạ 17 bảng CSDL chuẩn 3NF
+    // 25 DbSet ánh xạ 25 bảng CSDL chuẩn 3NF
     public DbSet<PhongBan> PhongBans => Set<PhongBan>();
     public DbSet<ChucVu> ChucVus => Set<ChucVu>();
     public DbSet<NhanVien> NhanViens => Set<NhanVien>();
@@ -34,6 +34,7 @@ public class AppDbContext : DbContext
     public DbSet<ChiTietTruThueTncn> ChiTietTruThueTncns => Set<ChiTietTruThueTncn>();
     public DbSet<ChiTietTruViPhamTamUng> ChiTietTruViPhamTamUngs => Set<ChiTietTruViPhamTamUng>();
     public DbSet<NhatKyQuanTri> NhatKyQuanTris => Set<NhatKyQuanTri>();
+    public DbSet<YeuCauTaiKhoan> YeuCauTaiKhoans => Set<YeuCauTaiKhoan>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,7 +75,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.NgaySinh).HasColumnName("ngay_sinh").IsRequired();
             entity.Property(e => e.GioiTinh).HasColumnName("gioi_tinh").HasMaxLength(10).IsRequired();
             entity.Property(e => e.DienThoai).HasColumnName("dien_thoai").HasMaxLength(20).IsRequired();
-            entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.EmailCongVu).HasColumnName("email").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.EmailCaNhan).HasColumnName("email_ca_nhan").HasMaxLength(100);
             entity.Property(e => e.DiaChi).HasColumnName("dia_chi").HasMaxLength(255);
             entity.Property(e => e.TrinhDo).HasColumnName("trinh_do").HasMaxLength(50).IsRequired();
             entity.Property(e => e.NgayVaoLam).HasColumnName("ngay_vao_lam").IsRequired();
@@ -82,7 +84,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("DANG_LAM").IsRequired();
 
             entity.Ignore(e => e.HoTen);
-            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.EmailCongVu).IsUnique();
             entity.HasIndex(e => new { e.Ten, e.Ho }).HasDatabaseName("idx_nhan_vien_ten");
 
             entity.HasOne(e => e.PhongBan)
@@ -531,6 +533,78 @@ public class AppDbContext : DbContext
             entity.HasOne<TaiKhoan>()
                 .WithMany()
                 .HasForeignKey(e => e.MaTaiKhoanBiTacDong)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // 25. YEU_CAU_TAI_KHOAN (Bảng trung gian: HR duyệt HĐ → IT cấp tài khoản)
+        modelBuilder.Entity<YeuCauTaiKhoan>(entity =>
+        {
+            entity.ToTable("yeu_cau_tai_khoan");
+            entity.HasKey(e => e.MaYeuCau);
+            entity.Property(e => e.MaYeuCau).HasColumnName("ma_yeu_cau");
+            entity.Property(e => e.MaNhanVien).HasColumnName("ma_nhan_vien");
+            entity.Property(e => e.MaHopDong).HasColumnName("ma_hop_dong");
+            entity.Property(e => e.TenDangNhap).HasColumnName("ten_dang_nhap").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.MaVaiTro).HasColumnName("ma_vai_tro");
+            entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("CHO_IT").IsRequired();
+            entity.Property(e => e.NgayGui).HasColumnName("ngay_gui").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.MaNguoiGui).HasColumnName("ma_nguoi_gui");
+            entity.Property(e => e.MaNguoiXuLy).HasColumnName("ma_nguoi_xu_ly");
+            entity.Property(e => e.NgayXuLy).HasColumnName("ngay_xu_ly");
+            entity.Property(e => e.GhiChuTuChoi).HasColumnName("ghi_chu_tu_choi").HasMaxLength(500);
+            entity.Property(e => e.MaTaiKhoan).HasColumnName("ma_tai_khoan");
+
+            // Index là index CÓ ĐIỀU KIỆN, không phải UNIQUE thuần: chỉ những yêu
+            // cầu còn mở (CHO_IT/DANG_XU_LY) mới khoá trùng tên đăng nhập. Yêu
+            // cầu đã TU_CHOI rồi gửi lại vẫn phải dùng được đúng tên cũ, nếu
+            // khoá cứng thì nhân viên không bao giờ sửa nổi lỗi khiến mình bị
+            // từ chối.
+            entity.HasIndex(e => e.TenDangNhap)
+                .IsUnique()
+                .HasFilter("trang_thai IN ('CHO_IT','DANG_XU_LY')")
+                .HasDatabaseName("uq_yeu_cau_ten_dang_nhap_dang_mo");
+
+            // Index phục vụ màn hình "hộp thư của IT": yêu cầu đang chờ, cũ nhất
+            // lên đầu.
+            entity.HasIndex(e => e.NgayGui)
+                .HasFilter("trang_thai IN ('CHO_IT','DANG_XU_LY')")
+                .HasDatabaseName("idx_yeu_cau_tai_khoan_cho_it");
+
+            entity.HasOne(e => e.NhanVien)
+                .WithMany(n => n.YeuCauTaiKhoanCuaNhanVien)
+                .HasForeignKey(e => e.MaNhanVien)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Xoá hợp đồng không được xoá lịch sử IT đã xử lý — nên SetNull chứ
+            // không Cascade, và cột FK cho phép NULL.
+            entity.HasOne(e => e.HopDong)
+                .WithMany(h => h.YeuCauTaiKhoans)
+                .HasForeignKey(e => e.MaHopDong)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.VaiTro)
+                .WithMany(v => v.YeuCauTaiKhoans)
+                .HasForeignKey(e => e.MaVaiTro)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Người gửi là nhân viên HR. Restrict: xoá hồ sơ nhân viên không
+            // được xoá luôn dấu vết ai đã duyệt hợp đồng rồi gửi yêu cầu.
+            entity.HasOne(e => e.NguoiGui)
+                .WithMany(n => n.YeuCauTaiKhoanDaGui)
+                .HasForeignKey(e => e.MaNguoiGui)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.NguoiXuLy)
+                .WithMany(t => t.YeuCauTaiKhoanDaXuLy)
+                .HasForeignKey(e => e.MaNguoiXuLy)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.TaiKhoanDuocCap)
+                .WithMany(t => t.YeuCauTaiKhoanDuocTao)
+                .HasForeignKey(e => e.MaTaiKhoan)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
         });
     }

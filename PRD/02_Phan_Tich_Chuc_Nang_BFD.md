@@ -2,7 +2,7 @@
 
 **Dự án:** Hệ thống Quản lý Nhân sự & Tiền lương Khách sạn The OverTime Hotel  
 **Chuyên ngành:** Hệ thống Thông tin Doanh nghiệp (HTTTDN) / Công nghệ Phần mềm  
-**Nền tảng công nghệ:** C# .NET 10 (ASP.NET Core MVC & .NET MAUI) · Supabase Cloud Database (PostgreSQL 24 bảng)  
+**Nền tảng công nghệ:** C# .NET 10 (ASP.NET Core MVC & .NET MAUI) · Supabase Cloud Database (PostgreSQL 25 bảng)  
 **Tài liệu trực quan kèm theo:** Xem sơ đồ đồ họa tương tác tại `docs project/diagrams/HRM_KhachSan_BFD_IPO.html`
 
 ---
@@ -44,7 +44,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 | Mã TT | Tên Phân Hệ Cấp 1 | Số Lượng Cấp 2 | Vai Trò Chịu Trách Nhiệm | Phạm Vi Nghiệp Vụ Trong Khách Sạn |
 |:---:|:---|:---:|:---|:---|
 | **1.0** | Quản lý Nhân sự & HĐLĐ | 5 chức năng | Phòng Hành chính - Nhân sự (HR) | Hồ sơ lý lịch, ký kết và theo dõi hạn HĐLĐ, điều động công tác. |
-| **2.0** | Tài khoản & Phân quyền (RBAC) | 4 chức năng | Quản trị viên hệ thống (Admin) | Xác thực danh tính, bảo mật tài khoản, phân quyền 4 vai trò. |
+| **2.0** | Tài khoản & Phân quyền (RBAC) | 4 chức năng | Quản trị viên hệ thống (Admin) | Xác thực danh tính, bảo mật tài khoản, phân quyền 5 vai trò. |
 | **3.0** | Ca làm & Chấm công 24/7 | 5 chức năng | Quản lý bộ phận & Nhân viên | Vận hành 3 ca liên tục, quẹt thẻ di động, tính phút trễ/sớm và giờ OT. |
 | **4.0** | Quản lý Đơn từ điện tử | 5 chức năng | Nhân viên, Quản lý, Nhân sự | Nộp và phê duyệt 4 loại đơn: Phép năm, Nghỉ ốm, Thai sản, Thôi việc. |
 | **5.0** | Tính toán Lương tự động | 6 chức năng | Phòng Hành chính - Nhân sự (HR) | Tự động hóa công thức 2 tầng: Gross (công, OT, đêm, thưởng) ➔ Net. |
@@ -138,7 +138,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 |:---:|:---|:---:|:---|:---|:---|
 | **2.1** | **Đăng nhập / Đăng xuất** | Toàn bộ | • `ten_dang_nhap`, `mat_khau`<br>• Nền tảng truy cập (Web/Mobile) | 1. Tìm tài khoản; nếu `trang_thai = 'BiKhoa'` thì chặn.<br>2. So khớp mật khẩu băm PBKDF2/BCrypt.<br>3. Nạp danh sách quyền từ `vai_tro_quyen`.<br>4. Tạo Auth Cookie (Web) hoặc JWT Session (Mobile).<br>5. Đăng xuất: Xóa Cookie / hủy phiên làm việc. | • Đăng nhập thành công: Chuyển hướng Dashboard phù hợp.<br>• Thất bại: Thông báo lỗi tài khoản hoặc mật khẩu.<br>💾 `tai_khoan`, `vai_tro_quyen`, `quyen` |
 | **2.2** | **Quản lý tài khoản (Khóa/Mở)** | Admin | • `ma_tai_khoan`<br>• Thao tác: Khóa / Mở / Reset pass<br>• Mật khẩu mới (khi reset) | 1. Chặn Admin tự khóa tài khoản của chính mình.<br>2. Cập nhật `trang_thai = 'BiKhoa'` hoặc `'HoatDong'`.<br>3. Reset: Băm mật khẩu mới $\rightarrow$ Lưu `mat_khau_bam`. | • Trạng thái tài khoản đổi màu trên giao diện.<br>• Mật khẩu mới có hiệu lực ngay lập tức.<br>💾 `tai_khoan` |
-| **2.3** | **Phân 4 vai trò chuẩn** | Admin | • `ma_tai_khoan`<br>• `ma_vai_tro` mới chỉ định | 1. Kiểm tra tài khoản và vai trò hợp lệ trong DB.<br>2. Kiểm tra ràng buộc: Luôn duy trì tối thiểu 01 Admin.<br>3. Cập nhật `ma_vai_tro` vào bảng `tai_khoan`. | • Quyền hạn người dùng cập nhật ở lần login tiếp theo.<br>• Cập nhật vai trò hiển thị trên bảng quản lý.<br>💾 `tai_khoan`, `vai_tro` |
+| **2.3** | **Phân 5 vai trò chuẩn** | Admin | • `ma_tai_khoan`<br>• `ma_vai_tro` mới chỉ định | 1. Kiểm tra tài khoản và vai trò hợp lệ trong DB.<br>2. Kiểm tra ràng buộc: Luôn duy trì tối thiểu 01 Admin.<br>3. Cập nhật `ma_vai_tro` vào bảng `tai_khoan`. | • Quyền hạn người dùng cập nhật ở lần login tiếp theo.<br>• Cập nhật vai trò hiển thị trên bảng quản lý.<br>💾 `tai_khoan`, `vai_tro` |
 | **2.4** | **Quản lý danh mục quyền (RBAC)** | Admin | • `ma_vai_tro`<br>• Danh sách `ma_quyen` được chọn | 1. Bắt đầu Transaction trong CSDL.<br>2. Xóa các quyền cũ của vai trò trong `vai_tro_quyen`.<br>3. Chèn hàng loạt các quyền mới được tích chọn.<br>4. Làm mới bộ đệm phân quyền (Refresh Cache). | • Bảng liên kết `vai_tro_quyen` được cập nhật đồng bộ.<br>• Các tài khoản mang vai trò lập tức nhận quyền mới.<br>💾 `vai_tro_quyen`, `quyen`, `vai_tro` |
 
 ---
@@ -331,7 +331,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 │ • Khoảng thời gian báo cáo: Theo Tháng, theo Quý, hoặc theo Năm tài chính                     │
 │ • Tiêu chí lọc phạm vi: Toàn khách sạn hoặc theo từng Phòng ban cụ thể                        │
 │ • Hạn mức ngân sách quỹ lương được Ban Giám đốc phê duyệt từ đầu kỳ                           │
-│ • Nguồn dữ liệu tổng hợp từ 24 bảng: Hồ sơ nhân sự, bảng chấm công, phiếu lương tháng         │
+│ • Nguồn dữ liệu tổng hợp từ 25 bảng: Hồ sơ nhân sự, bảng chấm công, phiếu lương tháng         │
 └───────────────────────────────────────────────┬───────────────────────────────────────────────┘
                                                 │
                                                 ▼
@@ -383,7 +383,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 │ ⚙️ QUY TRÌNH XỬ LÝ & BẢO MẬT (PROCESS)                                                        │
 │ 1. Toàn vẹn dữ liệu: Kiểm tra khóa ngoại (FK) - Chặn xóa phòng ban/chức vụ nếu còn nhân viên  │
 │ 2. Cấu hình tham số: Lưu định mức vào cau_hinh_khoan_luong để công thức tính lương tự nạp     │
-│ 3. BackupService: Kết nối Supabase Cloud ➔ Trích xuất DDL 24 bảng + Dữ liệu ➔ Đóng gói tệp nén│
+│ 3. BackupService: Kết nối Supabase Cloud ➔ Trích xuất DDL 25 bảng + Dữ liệu ➔ Đóng gói tệp nén│
 │ 4. Restore: Xác thực lại danh tính Admin ➔ Nạp lại kịch bản phục hồi an toàn                  │
 │ 5. Ghi nhật ký kiểm toán quản trị an toàn thông tin                                           │
 └───────────────────────────────────────────────┬───────────────────────────────────────────────┘
@@ -395,7 +395,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 │ • Thông số định mức mới được áp dụng cho các kỳ tính lương tiếp theo                          │
 │ • File sao lưu an toàn CSDL tải về máy hoặc lưu trữ đám mây                                   │
 │ • Thông báo trạng thái và bản ghi kiểm toán ghi nhận trong nhật ký hệ thống                   │
-│ • Phạm vi CSDL: Toàn bộ 24 bảng Supabase PostgreSQL                                           │
+│ • Phạm vi CSDL: Toàn bộ 25 bảng Supabase PostgreSQL                                           │
 └───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -407,30 +407,31 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 | **8.2** | **Danh mục chức vụ** | Admin | • `ma_chuc_vu`, `ten_chuc_vu`, `mo_ta` | 1. Check không trùng tên chức danh công việc.<br>2. Chặn xóa nếu đang có nhân viên giữ chức vụ đó. | • Danh mục chức vụ chuẩn lưu trong bảng `chuc_vu`.<br>💾 `chuc_vu`, `nhan_vien` |
 | **8.3** | **Cấu hình khung giờ ca** *(chức năng chủ sở hữu)* | Admin | • `ma_ca`, giờ mở ca, giờ đóng ca, hệ số, cờ đêm | 1. Validate tính hợp lệ khung giờ ca 24/7.<br>2. Cập nhật bảng `ca_lam_viec` để áp dụng cho quy trình xếp ca.<br>3. **Phân định với 3.1:** 8.3 là chức năng **ghi (CREATE/UPDATE)** vào `ca_lam_viec`; 3.1 là mô tả nghiệp vụ vận hành trên cùng bảng dữ liệu — **Admin là vai trò duy nhất có quyền ghi**. | • Cập nhật cấu hình ca trong `ca_lam_viec`.<br>💾 `ca_lam_viec` |
 | **8.4** | **Định mức phụ cấp & phạt** | Admin | • `ma_khoan`, tên khoản, `loai_khoan` (`PHU_CAP`/`THUONG`/`KHAU_TRU`), `gia_tri_mac_dinh` | 1. Cho phép tùy chỉnh tham số (ăn ca 30k, phạt trễ 50k-100k, BHXH 8%...).<br>2. Lưu vào `cau_hinh_khoan_luong` để công thức lương tự áp dụng. | • Bảng `cau_hinh_khoan_luong` được cập nhật.<br>• Kỳ lương tiếp theo tự động lấy số mới.<br>💾 `cau_hinh_khoan_luong` |
-| **8.5** | **Sao lưu & Phục hồi CSDL** | Admin | • Thao tác: Backup Schema/Data hoặc Restore<br>• File dự phòng `.sql.gz`, mật khẩu Admin | 1. Backup: Dump cấu trúc 24 bảng + Data từ Supabase $\rightarrow$ Nén file.<br>2. Restore: Xác thực quyền Admin $\rightarrow$ Nạp script phục hồi.<br>3. Ghi log kiểm toán thao tác hệ thống. | • File backup tải về máy hoặc lưu trữ an toàn.<br>• Thông báo kết quả và nhật ký an toàn.<br>💾 Toàn bộ 24 bảng Supabase |
+| **8.5** | **Sao lưu & Phục hồi CSDL** | Admin | • Thao tác: Backup Schema/Data hoặc Restore<br>• File dự phòng `.sql.gz`, mật khẩu Admin | 1. Backup: Dump cấu trúc 25 bảng + Data từ Supabase $\rightarrow$ Nén file.<br>2. Restore: Xác thực quyền Admin $\rightarrow$ Nạp script phục hồi.<br>3. Ghi log kiểm toán thao tác hệ thống. | • File backup tải về máy hoặc lưu trữ an toàn.<br>• Thông báo kết quả và nhật ký an toàn.<br>💾 Toàn bộ 25 bảng Supabase |
 
 ---
 
 ## 4. Ma Trận Phân Quyền Vai Trò Người Dùng (RBAC Matrix)
 
-Hệ thống phân định quyền hạn rõ ràng cho 4 vai trò chuẩn, tương ứng với các mã quyền (`PermissionCodes`) được cấu hình trong bảng `quyen` và bảng trung gian `vai_tro_quyen`:
+Hệ thống phân định quyền hạn rõ ràng cho 5 vai trò chuẩn (Admin, HR, Manager, Employee, **IT** — bộ phận Công nghệ Thông tin), tương ứng với **17 mã quyền** (`PermissionCodes`) được cấu hình trong bảng `quyen` và bảng trung gian `vai_tro_quyen`. Mã quyền thứ 17 là `CAP_TAI_KHOAN_MOBILE`, tách riêng khỏi `QL_TAI_KHOAN` và chỉ cấp cho Admin + IT:
 
-| Phân Hệ Cấp 1 | Mã Quyền Chuẩn | Quản Trị Viên (Admin) | Phòng Nhân Sự (HR) | Quản Lý Bộ Phận (Manager) | Nhân Viên (Employee) |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| **1.0 Quản lý Nhân sự & HĐLĐ** | `NV_MANAGE` | Chỉ xem | **Toàn quyền (CRUD)** | Xem bộ phận mình | Chỉ xem hồ sơ cá nhân |
-| **2.0 Tài khoản & RBAC** | `USER_RBAC` | **Toàn quyền (CRUD)** | Không | Không | Đổi mật khẩu cá nhân |
-| **3.0 Ca làm & Chấm công** | `ATT_MANAGE` | Xem log kiểm toán | Giám sát toàn KS | **Xếp ca & Giám sát bộ phận** | **Quẹt thẻ trên Mobile** |
-| **4.0 Quản lý Đơn từ điện tử** | `LEAVE_FLOW` | Không | **Duyệt Thôi việc/Thai sản** | **Duyệt Nghỉ phép/Ốm** | **Tạo & nộp 4 loại đơn** |
-| **5.0 Tính toán Lương tự động**| `PAYROLL_CALC`| Không | **Thực thi tính lương** | Không | Không |
-| **6.0 Phiếu lương & Xuất PDF** | `PAYSLIP_VIEW` | Không | Tra cứu toàn KS & In | Tra cứu cá nhân | **Tra cứu & Tải PDF cá nhân**|
-| **7.0 Báo cáo & Thống kê** | `REPORT_VIEW` | Báo cáo an toàn | **Báo cáo chuyên sâu** | Báo cáo bộ phận mình | Không |
-| **8.0 Quản trị Hệ thống** | `SYS_CONFIG` | **Toàn quyền (CRUD)** | Không | Không | Không |
+
+| Phân Hệ Cấp 1 | Mã Quyền Chuẩn | Quản Trị Viên (Admin) | Phòng Nhân Sự (HR) | Quản Lý Bộ Phận (Manager) | Nhân Viên (Employee) | Bộ Phận CNTT (IT) |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **1.0 Quản lý Nhân sự & HĐLĐ** | `NV_MANAGE` | Chỉ xem | **Toàn quyền (CRUD)** | Xem bộ phận mình | Chỉ xem hồ sơ cá nhân | Không |
+| **2.0 Tài khoản & RBAC** | `USER_RBAC` | **Toàn quyền (CRUD)** | Quản lý hồ sơ tài khoản (không cấp tài khoản Mobile) | Không | Đổi mật khẩu cá nhân | **Cấp tài khoản Mobile (`CAP_TAI_KHOAN_MOBILE`)** |
+| **3.0 Ca làm & Chấm công** | `ATT_MANAGE` | Xem log kiểm toán | Giám sát toàn KS | **Xếp ca & Giám sát bộ phận** | **Quẹt thẻ trên Mobile** | Quản trị hệ thống, không xếp ca |
+| **4.0 Quản lý Đơn từ điện tử** | `LEAVE_FLOW` | Không | **Duyệt Thôi việc/Thai sản** | **Duyệt Nghỉ phép/Ốm** | **Tạo & nộp 4 loại đơn** | Không |
+| **5.0 Tính toán Lương tự động**| `PAYROLL_CALC`| Không | **Thực thi tính lương** | Không | Không | Không |
+| **6.0 Phiếu lương & Xuất PDF** | `PAYSLIP_VIEW` | Không | Tra cứu toàn KS & In | Tra cứu cá nhân | **Tra cứu & Tải PDF cá nhân**| Không |
+| **7.0 Báo cáo & Thống kê** | `REPORT_VIEW` | Báo cáo an toàn | **Báo cáo chuyên sâu** | Báo cáo bộ phận mình | Không | Báo cáo vận hành hệ thống |
+| **8.0 Quản trị Hệ thống** | `SYS_CONFIG` | **Toàn quyền (CRUD)** | Không | Không | Không | Hỗ trợ kỹ thuật, không đổi cấu hình |
 
 ---
 
-## 5. Ma Trận Đối Chiếu CRUD (39 Chức Năng ↔ 24 Bảng CSDL Supabase)
+## 5. Ma Trận Đối Chiếu CRUD (39 Chức Năng ↔ 25 Bảng CSDL Supabase)
 
-Bảng đối chiếu kiểm chứng mọi chức năng nghiệp vụ của hệ thống đều tương tác trực tiếp với 24 bảng đạt chuẩn 3NF:
+Bảng đối chiếu kiểm chứng mọi chức năng nghiệp vụ của hệ thống đều tương tác trực tiếp với 25 bảng đạt chuẩn 3NF:
 
 ```text
 ┌───────────────────────────┬──────────────────────────────────────────────────────────────────┐
@@ -441,6 +442,7 @@ Bảng đối chiếu kiểm chứng mọi chức năng nghiệp vụ của hệ
 │ hop_dong                  │ 1.3, 1.4, 4.4, 5.1, 5.2, 5.3, 5.5, 7.1                           │
 │ tai_khoan                 │ 2.1 (Login), 2.2 (Khóa/Mở/Reset), 2.3 (Phân vai trò)             │
 │ vai_tro, quyen, vai_tro_quyen │ 2.1, 2.3, 2.4 (Ma trận RBAC)                                 │
+│ yeu_cau_tai_khoan           │ 2.2 (Gửi & xử lý yêu cầu cấp tài khoản), 2.5 (Cấp tài khoản Mobile) │
 │ ca_lam_viec               │ 3.1, 3.2, 3.3, 3.4, 5.3, 8.3                                     │
 │ phan_ca                   │ 3.2 (Xếp ca tuần), 3.3 (Kiểm tra ca quẹt thẻ), 7.5               │
 │ cham_cong                 │ 3.3 (Check-in/out), 3.4 (Trễ/sớm), 3.5 (OT), 5.1, 5.2, 5.3, 7.5  │
@@ -453,7 +455,7 @@ Bảng đối chiếu kiểm chứng mọi chức năng nghiệp vụ của hệ
 ```
 
 > **Ghi chú: Các khái niệm nghiệp vụ đang được sử dụng nhưng chưa có bảng CSDL riêng.**
-> Trong ma trận đối chiếu trên, 24 bảng là toàn bộ CSDL Supabase đang vận hành. Ngoài ra, các khái niệm nghiệp vụ sau được **sử dụng trong mô tả chức năng** nhưng **chưa có bảng riêng**, cần được đề cập/bổ sung khi hoàn thiện thiết kế CSDL:
+> Trong ma trận đối chiếu trên, 25 bảng là toàn bộ CSDL Supabase đang vận hành. Ngoài ra, các khái niệm nghiệp vụ sau được **sử dụng trong mô tả chức năng** nhưng **chưa có bảng riêng**, cần được đề cập/bổ sung khi hoàn thiện thiết kế CSDL:
 >
 > | Khái niệm sử dụng trong nghiệp vụ | Chức năng liên quan | Hiện trạng |
 > |:---|:---|:---|
@@ -464,3 +466,5 @@ Bảng đối chiếu kiểm chứng mọi chức năng nghiệp vụ của hệ
 > | **Nhật ký kiểm toán** (audit trail chống gian lận quẹt thẻ, log quản trị) | 3.3, 8.5 | Dữ liệu kiểm thực nằm rải trong `cham_cong`; chưa có bảng nhật ký tập trung |
 > | **Tệp đính kèm y tế** của đơn từ (giấy khám, giấy chứng sinh) | 4.2, 4.3 | Chưa có bảng lưu trữ tệp/đường dẫn tài liệu |
 > | **Thông báo** (push notification tới Mobile App) | 2.1, 4.1-4.5 | Chưa có bảng thông báo / hàng đợi gửi |
+
+> **Đã bổ sung xong (09/10/2026):** khái niệm *"quy trình cấp tài khoản đăng nhập cho nhân viên mới"* — trước đây nằm trong danh sách "chưa có bảng riêng" — nay đã có bảng **`yeu_cau_tai_khoan`** (bảng thứ 25) làm hàng đợi giữa Phòng HR và bộ phận CNTT (IT). Chi tiết cột và ràng buộc xem tại **PRD 04 — Bảng 9**.

@@ -21,6 +21,7 @@ $$\text{Gross} = \text{Lương Ngày Công} + \text{Tiền Tăng Ca (OT)} + \tex
    - Ngày làm việc bình thường: Hệ số = **1.5** (150%).
    - Ngày nghỉ cuối tuần: Hệ số = **2.0** (200%).
    - Ngày Lễ, Tết: Hệ số = **3.0** (300%).
+   - **Quy ước áp dụng hệ số 3.0:** hệ số này chỉ dành cho nhân viên **đi làm thực tế** vào ngày Lễ, Tết. Nhân viên **không đi làm** thì hưởng **nghỉ Lễ, Tết bình thường** theo quy định, không tính OT. Cần có danh mục lịch nghỉ lễ để hệ thống tự phân loại ngày.
 
 3. **Phụ Cấp Ca Đêm (Theo Điều 98 Bộ luật Lao động):**
    $$\text{Phụ Cấp Ca Đêm} = \left(\frac{\text{Lương Cơ Bản}}{26 \times 8}\right) \times \text{Số Giờ Làm Việc Ca Đêm} \times 0.30$$

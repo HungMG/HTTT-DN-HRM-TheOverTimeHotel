@@ -10,7 +10,28 @@ public class NhanVien
     public DateOnly NgaySinh { get; set; }
     public string GioiTinh { get; set; } = "NAM";
     public string DienThoai { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Email công vụ — đây là ĐỊNH DANH ĐĂNG NHẬP của Mobile App, không phải
+    /// email liên hệ. <c>custom_access_token_hook</c> đối chiếu
+    /// <c>claims.email</c> với cột này (không phân biệt hoa thường); không khớp
+    /// thì hook không cấp claim vai trò và app fail-closed. Vì vậy sửa giá trị ở
+    /// đây là làm hỏng đăng nhập của chính nhân viên đó.
+    ///
+    /// <para>
+    /// Cột trong CSDL vẫn tên là <c>email</c> — đổi tên thành <c>email_cong_vu</c>
+    /// sẽ kéo theo phải sửa cả hai bản hook đang chạy trên Cloud, mà hook là
+    /// điểm cấp quyền duy nhất của app.
+    /// </para>
+    /// </summary>
+    public string EmailCongVu { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Email cá nhân — chỉ để lưu hồ sơ, KHÔNG dùng để đăng nhập ở bất kỳ đâu.
+    /// Có thể để trống (nullable trong CSDL).
+    /// </summary>
+    public string? EmailCaNhan { get; set; }
+
     public string? DiaChi { get; set; }
     public string TrinhDo { get; set; } = string.Empty;
     public DateOnly NgayVaoLam { get; set; }
@@ -28,4 +49,12 @@ public class NhanVien
     public virtual ICollection<DonTu> DonTus { get; set; } = new List<DonTu>();
     public virtual ICollection<DonTu> DonTuDaDuyets { get; set; } = new List<DonTu>();
     public virtual ICollection<PhieuLuong> PhieuLuongs { get; set; } = new List<PhieuLuong>();
+
+    // Hai bản ghi YEU_CAU_TAI_KHOAN cùng trỏ về NhanVien nhưng khác vai trò, nên
+    // phải đặt tên phân biệt — gộp chung một ICollection sẽ mất thông tin về
+    // việc ai là người gửi, ai là người được cấp tài khoản.
+    // (Bản ghi thứ ba — ma_nguoi_xu_ly — trỏ TAI_KHOAN chứ không phải NHAN_VIEN,
+    // nên nó nằm trên TaiKhoan chứ không ở đây.)
+    public virtual ICollection<YeuCauTaiKhoan> YeuCauTaiKhoanCuaNhanVien { get; set; } = new List<YeuCauTaiKhoan>();
+    public virtual ICollection<YeuCauTaiKhoan> YeuCauTaiKhoanDaGui { get; set; } = new List<YeuCauTaiKhoan>();
 }
