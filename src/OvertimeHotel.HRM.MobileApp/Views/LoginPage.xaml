@@ -15,11 +15,46 @@
             <VerticalStackLayout Spacing="0">
 
                 <!-- ════════ DẢI ĐẦU NAVY: nhận diện thương hiệu khách sạn ════════ -->
+
+                <!--
+                    Góc trên VUÔNG, góc dưới BO TRÒN.
+
+                    Lý do phải làm vậy: RoundRectangle bo cả 4 góc bằng MỘT bán
+                    kính duy nhất — MAUI không có API bo riêng từng góc (đã thử
+                    CornerRadii: báo MAUIX2002, thuộc tính không tồn tại). Khối này
+                    tràn sát mép màn hình mà vẫn bo 36 ở cả hai góc trên, nên vòng
+                    cung bị cắt cụt ngay tại mép, lộ nền #F8FAFC của trang thành hai
+                    khuyết trắng. Máy màn nhỏ cắt nhẹ nên gần như không thấy; máy màn
+                    lớn cắt nặng hơn, hai khuyết đó tách hẳn khối ra và trông như "vỡ".
+
+                    Cách đang dùng — Margin âm đẩy vòng cung tràn lên TRÊN màn
+                    hình: bo góc 36, kéo khối lên 40 (Margin="-40") thì trọn vòng
+                    cung nằm trên vạch y=0, phần người dùng thấy chỉ là navy phẳng —
+                    góc trên vuông thật, không còn vòng cung nào ở mép. Padding trên
+                    bù lại 52 -> 92 (92 - 40 = 52) nên khoảng hở dưới thanh trạng
+                    thái y hệt cũ, không bị nhảy.
+
+                    Quan trọng: ScrollView của MAUI CỐ TÌNH không cắt (clip) phần con
+                    vượt ra ngoài khung. Ở đây đó là điều kiện CẦN để vòng cung tràn
+                    lên được — chính màn hình mới là thứ cắt nó. Lý do "ScrollView
+                    không cắt nên vòng tròn vẫn hiện" là SAI: khi vòng cung đã nằm
+                    trên vạch y=0 thì nó nằm ngoài màn hình, không thể hiện.
+
+                    36 và 40 là hằng số tuyệt đối, KHÔNG theo tỉ lệ kích thước màn
+                    hình, nên đổi khung máy / mật độ / tỉ lệ màn hình thì bố cục y
+                    hệt. Quan hệ bắt buộc: |Margin âm| > bán kính bo, nếu không vòng
+                    cung sẽ lộ lại.
+
+                    Đã thử và KHÔNG ăn: phủ thêm hình chữ nhật vuông cao 36 cùng màu
+                    sát đỉnh để che vòng cung — lớp phủ không được vẽ ra, vòng cung
+                    vẫn hiện nguyên. Ghi lại để không thử lại.
+                -->
                 <Border x:Name="brandHeader"
+                        Margin="0,-40,0,0"
                         Stroke="Transparent"
                         StrokeThickness="0"
                         BackgroundColor="#0B1B4D"
-                        Padding="24,52,24,46"
+                        Padding="24,92,24,46"
                         StrokeShape="RoundRectangle 36">
                     <Border.Shadow>
                         <Shadow Brush="#020817" Offset="0,6" Radius="18" Opacity="0.22" />
