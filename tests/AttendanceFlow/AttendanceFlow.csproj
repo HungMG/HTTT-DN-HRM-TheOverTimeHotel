@@ -10,6 +10,7 @@
     <ProjectReference Include="../../src/OvertimeHotel.HRM.Core/OvertimeHotel.HRM.Core.csproj" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Models/UserSession.cs" Link="UserSession.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Models/LeaveRequestItem.cs" Link="LeaveRequestItem.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Models/DepartmentOption.cs" Link="DepartmentOption.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/IAuthService.cs" Link="IAuthService.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/IAttendanceService.cs" Link="IAttendanceService.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/ILeaveApprovalService.cs" Link="ILeaveApprovalService.cs" />
