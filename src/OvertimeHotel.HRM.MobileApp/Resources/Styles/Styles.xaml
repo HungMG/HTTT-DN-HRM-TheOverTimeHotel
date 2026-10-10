@@ -3,9 +3,12 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <Style TargetType="ActivityIndicator">
-        <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource White}}" />
-    </Style>
+    <!--
+        KHÔNG khai báo style cho ActivityIndicator: quy chuẩn mobile-design-rules.md
+        §2 cấm vòng tròn xoay trên mọi màn hình, thay bằng skeleton shimmer
+        (xem Animations/MobileMotion.ShimmerLoopAsync và các khối skeleton trong
+        từng trang). Giữ style ở đây chỉ là cái bao của template MAUI mặc định.
+    -->
 
     <Style TargetType="IndicatorView">
         <Setter Property="IndicatorColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray500}}"/>

@@ -16,8 +16,6 @@ public partial class SettingsPage : ContentPage
         InitializeComponent();
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
-        SafeAreaInset.Track(this, pageBody, new Thickness(20, 0, 20, 32));
-
         BindingContext = _viewModel;
     }
 

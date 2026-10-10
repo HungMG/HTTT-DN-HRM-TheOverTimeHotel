@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:m="clr-namespace:OvertimeHotel.HRM.MobileApp.Models"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.PayslipPage"
+             x:DataType="vm:PayslipViewModel"
+             Title="Phiếu Lương" BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False" Shell.NavBarIsVisible="False">
+    <ContentPage.Resources>
+        <Style TargetType="Label">
+            <Setter Property="FontFamily" Value="SegoeUI" />
+            <Setter Property="TextColor" Value="#64748B" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="FontFamily" Value="SegoeUIBold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinimumHeightRequest" Value="44" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BackgroundColor" Value="#EFF6FF" />
+            <Setter Property="TextColor" Value="#1E3A8A" />
+        </Style>
+    </ContentPage.Resources>
+
+    <!-- KHÔNG dùng RowSpacing và KHÔNG đặt Padding trên: banner demo hàng 0 luôn ẩn
+         (IsDemoMode = false) nhưng Grid vẫn chừa khoảng cách giữa các hàng, và Padding
+         trên cộng dồn với SafeArea mà Shell đã tự dành sẵn — cả hai cùng sinh khoảng
+         trống ngay trên header. Đo trên AVD API 35: trang chủ nhân viên bắt đầu ở
+         ~82 px, trang này trước khi sửa ở ~120 px. Khoảng cách giữa các khối khai
+         bằng Margin trực tiếp trên từng phần tử, đầu trang sát mép trên như trang chủ. -->
+    <Grid x:Name="payslipGrid" RowDefinitions="Auto,Auto,*" Padding="16,0,16,0">
+
+        <Border Grid.Row="0" IsVisible="{Binding IsDemoMode}" StrokeShape="RoundRectangle 8"
+                Stroke="#F59E0B" BackgroundColor="#FEF3C7" Padding="12,8" Margin="0,0,0,8">
+            <Label Text="CHẾ ĐỘ DEMO · Dữ liệu mẫu" TextColor="#B45309" FontFamily="SegoeUIBold" />
+        </Border>
+
+        <Grid x:Name="headerBar" Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"
+              VerticalOptions="Center" Margin="0,0,0,12">
+            <Button Text="←" Clicked="OnBackClicked" WidthRequest="44" CornerRadius="22" Padding="0"
+                    FontSize="20" SemanticProperties.Description="Quay lại" />
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="3">
+                <Label Text="Phiếu Lương" FontFamily="SegoeUIBold" FontSize="18" TextColor="#0F172A" />
+                <Label Text="{Binding EmployeeName}" LineBreakMode="TailTruncation" />
+            </VerticalStackLayout>
+            <Button Grid.Column="2" Text="↻" FontSize="22" WidthRequest="44" Padding="0"
+                    Command="{Binding RefreshCommand}" SemanticProperties.Description="Tải lại phiếu lương" />
+        </Grid>
+
+        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+
+            <!-- ═══ PANEL CHI TIẾT — mở tại chỗ, không push trang con ═══ -->
+            <Border x:Name="detailPanel" Grid.Row="0" IsVisible="{Binding HasDetail}" Margin="0,12,0,0"
+                    BackgroundColor="#1E3A8A" Stroke="#1E3A8A" StrokeShape="RoundRectangle 18" Padding="20">
+                <VerticalStackLayout Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="THỰC NHẬN" TextColor="#DBEAFE" FontFamily="SegoeUIBold"
+                                   FontSize="11" CharacterSpacing="1" />
+                            <Label Text="{Binding DetailPeriodText}" TextColor="#DBEAFE" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1" Text="✕" WidthRequest="40" CornerRadius="20" Padding="0"
+                                FontSize="16" BackgroundColor="#1E3A8A" TextColor="#DBEAFE"
+                                BorderColor="#3B5BA5" BorderWidth="1"
+                                Command="{Binding CloseDetailCommand}"
+                                SemanticProperties.Description="Đóng chi tiết phiếu lương" />
+                    </Grid>
+
+                    <HorizontalStackLayout Spacing="6">
+                        <Label Text="{Binding DetailNetText}" FontFamily="SegoeUIBold" FontSize="34" TextColor="White" />
+                        <Label Text="₫" TextColor="#DBEAFE" FontFamily="SegoeUIBold" FontSize="18"
+                               VerticalOptions="End" Margin="0,0,0,8" />
+                    </HorizontalStackLayout>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="TỔNG THU" FontSize="11" TextColor="#A7F3D0" FontFamily="SegoeUIBold" />
+                            <Label Text="{Binding DetailEarnedText}" FontFamily="SegoeUIBold" FontSize="16" TextColor="White" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2">
+                            <Label Text="TỔNG KHẤU TRỪ" FontSize="11" TextColor="#FECACA" FontFamily="SegoeUIBold" />
+                            <Label Text="{Binding DetailDeductionText}" FontFamily="SegoeUIBold" FontSize="16" TextColor="White" />
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <Label Text="{Binding DetailWorkDayText}" FontSize="11" TextColor="#DBEAFE" />
+
+                    <!-- Skeleton riêng cho lần tải chi tiết: danh sách phiếu đã có sẵn,
+                         chỉ mất thêm vài giây nên không che cả trang. -->
+                    <VerticalStackLayout Spacing="8" IsVisible="{Binding IsDetailLoading}">
+                        <BoxView HeightRequest="14" Color="#2A4A8F" HorizontalOptions="Start" />
+                        <BoxView HeightRequest="14" Color="#2A4A8F" HorizontalOptions="Start" />
+                    </VerticalStackLayout>
+
+                    <Border BackgroundColor="#FFFFFF" Stroke="#FFFFFF" StrokeShape="RoundRectangle 14" Padding="14">
+                        <VerticalStackLayout Spacing="0">
+                            <Label Text="CHI TIẾT TỪNG KHOẢN" FontFamily="SegoeUIBold" FontSize="11"
+                                   TextColor="#64748B" CharacterSpacing="1" Margin="0,0,0,8" />
+                            <VerticalStackLayout x:Name="detailItemsHost" Spacing="0" />
+                            <Label IsVisible="{Binding IsEmptyDetail}"
+                                   Text="Phiếu này không có dòng thu chi chi tiết."
+                                   FontSize="11" TextColor="#94A3B8" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- SKELETON SHIMMER khi đang tải danh sách (quy chuẩn §2: cấm ActivityIndicator) -->
+            <VerticalStackLayout x:Name="skeletonLayout" Grid.Row="1" Spacing="12" IsVisible="{Binding IsLoading}" VerticalOptions="End">
+                <Border Stroke="#E2E8F0" BackgroundColor="#FFFFFF" StrokeShape="RoundRectangle 16" Padding="16">
+                    <VerticalStackLayout Spacing="10">
+                        <BoxView HeightRequest="16" WidthRequest="120" Color="#E2E8F0" HorizontalOptions="Start" />
+                        <BoxView HeightRequest="26" WidthRequest="160" Color="#F1F5F9" HorizontalOptions="Start" />
+                        <BoxView HeightRequest="13" Color="#F1F5F9" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Stroke="#E2E8F0" BackgroundColor="#FFFFFF" StrokeShape="RoundRectangle 16" Padding="16">
+                    <VerticalStackLayout Spacing="10">
+                        <BoxView HeightRequest="16" WidthRequest="120" Color="#E2E8F0" HorizontalOptions="Start" />
+                        <BoxView HeightRequest="26" WidthRequest="160" Color="#F1F5F9" HorizontalOptions="Start" />
+                        <BoxView HeightRequest="13" Color="#F1F5F9" />
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+
+            <RefreshView Grid.Row="1" IsVisible="{Binding HasData}" IsRefreshing="{Binding IsRefreshing}"
+                         Command="{Binding RefreshCommand}" RefreshColor="#1E3A8A">
+                <CollectionView ItemsSource="{Binding Payslips}" SelectionMode="None">
+                    <CollectionView.Header>
+                        <Label Text="Chạm vào một phiếu để xem chi tiết từng khoản thu chi."
+                               LineHeight="1.3" Margin="0,4,0,12" />
+                    </CollectionView.Header>
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout Padding="20,28" Spacing="10">
+                            <Label Text="Chưa có phiếu lương" FontFamily="SegoeUIBold" FontSize="16"
+                                   TextColor="#334155" HorizontalTextAlignment="Center" />
+                            <Label Text="{Binding EmptyText}" HorizontalTextAlignment="Center" />
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="m:PayslipRowItem">
+                            <Border Stroke="#E2E8F0" BackgroundColor="#FFFFFF" StrokeShape="RoundRectangle 16"
+                                    Padding="16" Margin="0,0,0,12">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:PayslipViewModel}}, Path=SelectPayslipCommand}"
+                                        CommandParameter="{Binding MaPhieuLuong}" />
+                                </Border.GestureRecognizers>
+                                <VerticalStackLayout Spacing="8">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="{Binding PeriodText}" FontFamily="SegoeUIBold"
+                                                   FontSize="17" TextColor="#0F172A" />
+                                            <Label Text="{Binding WorkDayText}" FontSize="11" />
+                                        </VerticalStackLayout>
+                                        <Border Grid.Column="1" StrokeThickness="0" BackgroundColor="{Binding StatusBackground}"
+                                                StrokeShape="RoundRectangle 10" Padding="10,6" VerticalOptions="Center">
+                                            <Label Text="{Binding StatusText}" FontFamily="SegoeUIBold"
+                                                   TextColor="{Binding StatusColor}" />
+                                        </Border>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <Label Text="Thực nhận" VerticalOptions="Center" />
+                                        <Label Grid.Column="1" Text="{Binding NetText}" FontFamily="SegoeUIBold"
+                                               FontSize="20" TextColor="#1E3A8A" />
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.Footer>
+                        <Label Text="Chỉ hiển thị phiếu lương của chính bạn."
+                               FontSize="11" HorizontalTextAlignment="Center" Margin="8,8,8,24" />
+                    </CollectionView.Footer>
+                </CollectionView>
+            </RefreshView>
+
+            <VerticalStackLayout Grid.Row="1" IsVisible="{Binding HasError}" VerticalOptions="End"
+                                 Spacing="14" Padding="16">
+                <Label Text="Chưa tải được phiếu lương" FontFamily="SegoeUIBold" FontSize="18"
+                       TextColor="#0F172A" HorizontalTextAlignment="Center" />
+                <Label Text="{Binding ErrorMessage}" TextColor="#B91C1C" HorizontalTextAlignment="Center" />
+                <Button Text="Thử lại" Command="{Binding RefreshCommand}" BackgroundColor="#1E3A8A" TextColor="White" />
+                <Button Text="Đăng nhập lại" IsVisible="{Binding RequiresLogin}" Command="{Binding LoginCommand}" />
+            </VerticalStackLayout>
+        </Grid>
+    </Grid>
+</ContentPage>

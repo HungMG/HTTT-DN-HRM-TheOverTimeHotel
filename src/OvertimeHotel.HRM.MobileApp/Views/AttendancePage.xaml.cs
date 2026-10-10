@@ -16,8 +16,6 @@ public partial class AttendancePage : ContentPage
         InitializeComponent();
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
-        SafeAreaInset.Track(this, pageBody, new Thickness(20, 0, 20, 32));
-
         BindingContext = _viewModel;
 
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
@@ -207,5 +205,19 @@ public partial class AttendancePage : ContentPage
         {
             // Thiết bị không hỗ trợ định vị: bỏ qua, vẫn quẹt thẻ bình thường.
         }
+    }
+
+    /// <summary>Mở màn lịch phân ca 24/7 (nút dưới header tab Chấm Công).</summary>
+    private async void OnScheduleTapped(object? sender, EventArgs e)
+    {
+        if (sender is VisualElement card) await card.SpringTapAsync();
+        await Shell.Current.GoToAsync("SchedulePage");
+    }
+
+    /// <summary>Mở màn phiếu lương (nút dưới nút Lịch Ca 24/7).</summary>
+    private async void OnPayslipTapped(object? sender, EventArgs e)
+    {
+        if (sender is VisualElement card) await card.SpringTapAsync();
+        await Shell.Current.GoToAsync("PayslipPage");
     }
 }

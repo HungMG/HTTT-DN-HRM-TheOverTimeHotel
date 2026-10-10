@@ -58,6 +58,67 @@
                     </Border>
                 </VerticalStackLayout>
 
+                <!--
+                    Lịch 24/7 từng nằm ở khối chức năng trên trang chủ nhánh Nhân
+                    viên. Gỡ khối đó (2026-10-10) thì lịch trở nên không còn lối
+                    vào, nên chuyển nút bấm xuống đây — ngay dưới header của tab
+                    Chấm Công, đúng chỗ người dùng đang nghĩ tới khi muốn xem ca.
+                -->
+                <Border Stroke="#1E3A8A" BackgroundColor="#1E3A8A" StrokeShape="RoundRectangle 14" Padding="16,13">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnScheduleTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                            <Label Text="LỊCH CA 24/7"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="14"
+                                   TextColor="#FFFFFF" />
+                            <Label Text="Xem lịch trực đầy đủ theo tuần"
+                                   FontFamily="SegoeUI"
+                                   FontSize="11"
+                                   TextColor="#DBEAFE" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1"
+                               Text="›"
+                               FontFamily="SegoeUIBold"
+                               FontSize="24"
+                               TextColor="#D4AF37"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!--
+                    Phiếu Lương từng nằm trong ô chức năng ở trang chủ nhánh nhân viên,
+                    sau đó được đẩy xuống trang Công & nghỉ phép. Nay nhân viên đã có
+                    tab "Giấy Tờ" riêng nên chuyển phiếu lương ra đây — tab Chấm Công là
+                    nơi người lao động vào xem quyền lợi của mình hằng ngày, đặt cạnh
+                    lịch ca cho thành một cặp thông tin tài chính - công việc.
+                -->
+                <Border Stroke="#1E3A8A" BackgroundColor="#1E3A8A" StrokeShape="RoundRectangle 14" Padding="16,13">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnPayslipTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                            <Label Text="PHIẾU LƯƠNG"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="14"
+                                   TextColor="#FFFFFF" />
+                            <Label Text="Tra cứu lương từng tháng đã chốt"
+                                   FontFamily="SegoeUI"
+                                   FontSize="11"
+                                   TextColor="#DBEAFE" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1"
+                               Text="›"
+                               FontFamily="SegoeUIBold"
+                               FontSize="24"
+                               TextColor="#D4AF37"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
                 <!-- ============ THẺ CA LÀM VIỆC HÔM NAY ============ -->
                 <Border x:Name="shiftCard"
                         Opacity="0"

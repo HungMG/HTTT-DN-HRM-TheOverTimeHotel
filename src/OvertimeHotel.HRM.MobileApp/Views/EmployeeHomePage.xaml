@@ -140,52 +140,17 @@
                 </Grid>
 
                 <!-- ═══ KHỐI 5 · LƯỚI CHỨC NĂNG ═══ -->
-                <Label x:Name="featuresHeader"
-                       Text="CHỨC NĂNG CỦA TÔI"
-                       TextColor="#1E3A8A"
-                       FontSize="12"
-                       FontFamily="SegoeUIBold"
-                       Opacity="0" />
-
-                <Grid x:Name="featuresGrid"
-                      ColumnDefinitions="*,*"
-                      RowDefinitions="Auto,Auto"
-                      ColumnSpacing="12"
-                      RowSpacing="12"
-                      Opacity="0">
-                    <controls:FeatureTile Grid.Row="0" Grid.Column="0"
-                                          Icon="📅"
-                                          Title="Lịch Ca 24/7"
-                                          Description="Lịch trực tuần này"
-                                          ActionText="Xem Lịch"
-                                          TappedCommand="{Binding FeatureCommand}"
-                                          CommandParameter="Lịch Ca 24/7" />
-                    <controls:FeatureTile Grid.Row="0" Grid.Column="1"
-                                          Icon="💰"
-                                          Title="Phiếu Lương"
-                                          Description="Tra cứu lương Net"
-                                          ActionText="Xem Phiếu"
-                                          TappedCommand="{Binding FeatureCommand}"
-                                          CommandParameter="Phiếu Lương" />
-                    <controls:FeatureTile Grid.Row="1" Grid.Column="0"
-                                          Icon="📝"
-                                          Title="Đơn Điện Tử"
-                                          Description="Nghỉ phép, bệnh, thai sản, thôi việc"
-                                          ActionText="Tạo Đơn"
-                                          TappedCommand="{Binding LeaveSubmitCommand}" />
-                    <controls:FeatureTile Grid.Row="1" Grid.Column="1"
-                                          Icon="👤"
-                                          Title="Hồ Sơ"
-                                          Description="Hồ sơ, phòng ban, chức vụ"
-                                          ActionText="Xem Hồ Sơ"
-                                          TappedCommand="{Binding ProfileCommand}" />
-                </Grid>
-
-                <controls:FeatureTile Icon="📊"
-                                      Title="Công &amp; nghỉ phép"
-                                      Description="Công thực tế và phép hưởng lương theo tháng"
-                                      ActionText="Xem bảng công"
-                                      TappedCommand="{Binding AttendanceSummaryCommand}" />
+                <!--
+                    Khối chức năng đã được gỡ khỏi trang chủ nhánh NHÂN VIÊN
+                    (2026-10-10). Các thao tác chuyển xuống tầng điều hướng:
+                      · Lịch Ca 24/7   -> nút trên header tab Chấm Công
+                      · Phiếu Lương    -> nút trong trang "Công & nghỉ phép"
+                      · Đơn Điện Tử   -> nút trong trang "Công & nghỉ phép"
+                      · Hồ Sơ          -> tab Cài Đặt > Thông tin cá nhân
+                    Các ViewModel HomeViewModelBase.ProfileCommand /
+                    FeatureCommand / AttendanceSummaryCommand vẫn giữ nguyên vì
+                    nhánh Quản lý và Nhân sự còn dùng tới.
+                -->
 
                 <Label x:Name="footerLabel"
                        Text="The OverTime Hotel Mobile App v1.0 (.NET MAUI 10) · Supabase Cloud"

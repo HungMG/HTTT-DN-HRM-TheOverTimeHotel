@@ -7,6 +7,8 @@ namespace OvertimeHotel.HRM.MobileApp.Views;
 public partial class LeaveApprovalPage : ContentPage
 {
     private readonly LeaveApprovalViewModel _viewModel;
+    private CancellationTokenSource _skeletonCts = new();
+    private CancellationTokenSource _loadMoreCts = new();
 
     /// <summary>
     /// GSAP "power2.out" — Giảm tốc mượt mà tự nhiên, không giật, tối ưu cho trượt nhẹ và fade in.
@@ -34,7 +36,64 @@ public partial class LeaveApprovalPage : ContentPage
         if (e.PropertyName == nameof(LeaveApprovalViewModel.IsDepartmentDropdownOpen))
         {
             await AnimateDropdownAsync(_viewModel.IsDepartmentDropdownOpen);
+            return;
         }
+
+        // Danh sách đơn được nạp lại mỗi lần vào trang và mỗi lần bấm làm mới, nên
+        // nhịp thở skeleton phải bám theo cờ IsLoading chứ không chỉ vào OnAppearing.
+        if (e.PropertyName == nameof(LeaveApprovalViewModel.IsLoading))
+        {
+            if (_viewModel.IsLoading) StartSkeletonLoop(); else DisposeSkeleton();
+            return;
+        }
+
+        // Nhãn "Đang tải thêm đơn…" thay cho vòng tròn xoay ở chân danh sách.
+        if (e.PropertyName == nameof(LeaveApprovalViewModel.IsLoadingMore))
+        {
+            if (_viewModel.IsLoadingMore) StartLoadMoreLoop(); else DisposeLoadMoreLoop();
+        }
+    }
+
+    /// <summary>
+    /// Nhịp thở của khối skeleton danh sách đơn. Quy chuẩn §2 cấm ActivityIndicator —
+    /// skeleton cho quản lý thấy trước bố cục trang thay vì nhìn vòng tròn quay.
+    /// </summary>
+    private void StartSkeletonLoop()
+    {
+        DisposeSkeleton();
+        _skeletonCts = new CancellationTokenSource();
+        _ = skeletonLayout.ShimmerLoopAsync(_skeletonCts.Token);
+    }
+
+    /// <summary>
+    /// Dừng nhịp thở: animation nền vô ích vừa tốn pin vừa giữ CTS sống. Dispose
+    /// rồi tạo mới để lần nạp sau dùng lại được.
+    /// </summary>
+    private void DisposeSkeleton()
+    {
+        if (_skeletonCts.IsCancellationRequested) return;
+
+        _skeletonCts.Cancel();
+        _skeletonCts.Dispose();
+        _skeletonCts = new CancellationTokenSource();
+    }
+
+    /// <summary>Nhịp thở cho nhãn "Đang tải thêm đơn…" ở chân danh sách.</summary>
+    private void StartLoadMoreLoop()
+    {
+        DisposeLoadMoreLoop();
+        _loadMoreCts = new CancellationTokenSource();
+        _ = loadMoreLabel.ShimmerLoopAsync(_loadMoreCts.Token, minOpacity: 0.35, maxOpacity: 1.0, cycleDuration: 600);
+    }
+
+    /// <summary>Dừng nhịp thở nhãn tải thêm, cùng lý do và cùng cách xử lý như trên.</summary>
+    private void DisposeLoadMoreLoop()
+    {
+        if (_loadMoreCts.IsCancellationRequested) return;
+
+        _loadMoreCts.Cancel();
+        _loadMoreCts.Dispose();
+        _loadMoreCts = new CancellationTokenSource();
     }
 
     /// <summary>
@@ -113,6 +172,17 @@ public partial class LeaveApprovalPage : ContentPage
             headerBar.FadeToAsync(1.0, 350, Easing.CubicOut),
             headerBar.TranslateToAsync(0, 0, 400, Easing.CubicOut)
         );
+    }
+
+    /// <summary>
+    /// Dừng cả hai nhịp thở khi rời trang: chúng là animation nền, chạy tiếp vừa tốn
+    /// pin vừa giữ CTS sống trong khi trang đã không hiển thị.
+    /// </summary>
+    protected override void OnDisappearing()
+    {
+        DisposeSkeleton();
+        DisposeLoadMoreLoop();
+        base.OnDisappearing();
     }
 
     private async void OnBackClicked(object? sender, EventArgs e)

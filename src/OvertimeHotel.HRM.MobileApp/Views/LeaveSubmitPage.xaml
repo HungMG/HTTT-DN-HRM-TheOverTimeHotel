@@ -463,11 +463,31 @@
                                     HorizontalOptions="Center" />
                         </VerticalStackLayout>
 
-                        <ActivityIndicator IsRunning="{Binding IsLoading}"
-                                           IsVisible="{Binding IsLoading}"
-                                           Color="#1E3A8A"
-                                           VerticalOptions="Center"
-                                           HorizontalOptions="Center" />
+                        <!--
+                            SKELETON SHIMMER khi đang tải lịch sử đơn (quy chuẩn §2:
+                            cấm ActivityIndicator). Hai khối xám mô phỏng cùng cấu trúc
+                            thẻ đơn bên dưới nên người dùng thấy trước bố cục thay vì
+                            nhìn một vòng tròn quay ở giữa sheet.
+                        -->
+                        <VerticalStackLayout x:Name="historySkeleton" IsVisible="{Binding IsLoading}"
+                                             Spacing="10" Padding="14,0">
+                            <Border StrokeShape="RoundRectangle 16" Stroke="#E2E8F0"
+                                    BackgroundColor="#FFFFFF" Padding="14">
+                                <VerticalStackLayout Spacing="8">
+                                    <BoxView HeightRequest="14" WidthRequest="130" Color="#E2E8F0" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="11" WidthRequest="170" Color="#F1F5F9" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="24" WidthRequest="150" Color="#F1F5F9" HorizontalOptions="Start" />
+                                </VerticalStackLayout>
+                            </Border>
+                            <Border StrokeShape="RoundRectangle 16" Stroke="#E2E8F0"
+                                    BackgroundColor="#FFFFFF" Padding="14">
+                                <VerticalStackLayout Spacing="8">
+                                    <BoxView HeightRequest="14" WidthRequest="110" Color="#E2E8F0" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="11" WidthRequest="180" Color="#F1F5F9" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="24" WidthRequest="130" Color="#F1F5F9" HorizontalOptions="Start" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </VerticalStackLayout>
 
                         <CollectionView ItemsSource="{Binding MyRequests}"
                                         IsVisible="{Binding HasHistory}"

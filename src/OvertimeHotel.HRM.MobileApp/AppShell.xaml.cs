@@ -20,6 +20,7 @@ public partial class AppShell : Shell
 	private const string TAB_ICON_HR = "tab_hr.png";
 	private const string TAB_ICON_SETTINGS = "tab_settings.png";
 	private const string TAB_ICON_ATTENDANCE = "tab_attendance.png";
+	private const string TAB_ICON_DOCS = "tab_docs.png";
 
 	// Bảng màu thanh tab theo nhận diện khách sạn 5★ (rules/mobile-design-rules.md):
 	// nền trắng, tab đang chọn vàng kim, tab chưa chọn xám xanh, tab khoá xám nhạt.
@@ -46,10 +47,21 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute("LeaveApprovalPage", typeof(LeaveApprovalPage));
 		Routing.RegisterRoute("LeaveDetailPage", typeof(LeaveDetailPage));
 
-		// Cổng nộp đơn phía nhân viên (TSK-18). Push từ ô "Đơn Điện Tử" trên
-		// trang chủ nhánh Nhân Viên, nên cũng phải đăng ký route toàn cục.
+		// Cổng nộp đơn phía nhân viên (TSK-18). Từ 2026-10-10 được mở bằng nút
+		// "Đơn Điện Tử" trong trang Công & nghỉ phép (trang chủ nhánh nhân viên
+		// đã gỡ hết khối chức năng), nên cũng phải đăng ký route toàn cục.
 		Routing.RegisterRoute("LeaveSubmitPage", typeof(LeaveSubmitPage));
+
+		// Trang Công & nghỉ phép phục vụ CẢ HAI kiểu người dùng nên phải đăng ký route
+		// toàn cục: nhân viên mở nó bằng thẻ trong TabBar (route "Docs"), còn quản lý
+		// và nhân sự push tới bằng GoToAsync kèm ?employeeId=&year=&month= từ ô
+		// chức năng trên trang chủ và từ chi tiết đơn nghỉ phép.
 		Routing.RegisterRoute("AttendanceSummaryPage", typeof(AttendanceSummaryPage));
+
+		// Lịch 24/7 và Phiếu Lương mở từ nút trong các trang đã đăng nhập, không
+		// nằm trong cây tab nên phải đăng ký route toàn cục thì GoToAsync mới tới được.
+		Routing.RegisterRoute("SchedulePage", typeof(SchedulePage));
+		Routing.RegisterRoute("PayslipPage", typeof(PayslipPage));
 
 		// Hồ Sơ và Đổi Mật Khẩu không còn là tab riêng mà là hai trang push mở từ
 		// tab Cài Đặt, nên phải đăng ký route toàn cục thì GoToAsync mới tới được.
@@ -128,9 +140,25 @@ public partial class AppShell : Shell
 			ContentTemplate = new DataTemplate(typeof(AttendancePage))
 		};
 
+		// Tab "Giấy Tờ" — CHỈ nhánh nhân viên. Cùng một trang Công & nghỉ phép, nhưng
+		// nhân viên bấm thẳng từ thanh tab còn quản lý / nhân sự vẫn mở nó như một
+		// trang push từ ô chức năng trên trang chủ. Nhân viên là nhánh duy nhất gỡ
+		// hẳn khối ô chức năng khỏi trang chủ nên cũng là nhánh duy nhất cần đường
+		// đi nhanh tới bảng công và đơn nghỉ phép.
+		ShellContent? docsTab = isEmployee
+			? new ShellContent
+			{
+				Title = "Giấy Tờ",
+				Icon = TAB_ICON_DOCS,
+				Route = "Docs",
+				ContentTemplate = new DataTemplate(typeof(AttendanceSummaryPage))
+			}
+			: null;
+
 		// Thứ tự tab cố định: trang chủ ở đầu, chức năng làm việc ở giữa,
 		// Cài Đặt sát mép phải. Cài Đặt nằm cuối vì nó là menu phụ — nhân viên
 		// vào bằng ngón tay phải, không cạnh tranh chỗ với ca trực ở giữa.
+		// Nhân viên có thêm tab "Giấy Tờ" chen giữa Chấm Công và Cài Đặt.
 		//
 		// Màu phải đặt ở đây chứ không khai trong <Shell.Resources>: TabBarForegroundColor
 		// là attached property của Shell và chỉ Shell mới tra tới trên cây Shell
@@ -150,6 +178,12 @@ public partial class AppShell : Shell
 
 		mainTabs.Items.Add(homeTab);
 		mainTabs.Items.Add(attendanceTab);
+
+		// Giữ đúng vị trí "giữa thanh tab" đã cố ý chừa cho nhân viên: sau Chấm Công
+		// và trước Cài Đặt. Nhánh quản lý / nhân sự không có tab này nên Cài Đặt
+		// dồn lên ngay sau Chấm Công.
+		if (docsTab != null) mainTabs.Items.Add(docsTab);
+
 		mainTabs.Items.Add(settingsTab);
 
 		// Màu thanh tab chỉ ăn khi đặt trên TabBar; nhưng từng tab con cũng cần màu
@@ -158,6 +192,8 @@ public partial class AppShell : Shell
 		ApplyTabAppearance(homeTab);
 		ApplyTabAppearance(settingsTab);
 		ApplyTabAppearance(attendanceTab);
+
+		if (docsTab != null) ApplyTabAppearance(docsTab);
 
 		Items.Add(mainTabs);
 

@@ -5,18 +5,19 @@ namespace OvertimeHotel.HRM.MobileApp.Animations;
 /// <summary>
 /// Chừa khoảng đệm của hệ thống cho nội dung trang, tránh đè lên thanh trạng thái.
 ///
-/// Lý do cần: từ Android 15 (API 35) hệ thống bắt buộc vẽ ứng dụng tràn viền
-/// (edge-to-edge), nên nội dung nằm luôn dưới thanh trạng thái và thanh điều hướng.
-/// Thuộc tính <c>ios:Page.UseSafeArea</c> của MAUI chỉ có tác dụng trên iOS và MAUI
-/// chưa cung cấp lớp trừu tượng tương đương cho Android — vì vậy phải tự đọc
-/// WindowInsets của hệ thống rồi cộng vào Padding sẵn có của trang.
+/// ⚠️ KHÔNG còn trang nào trong ứng dụng gọi lớp này — giữ lại làm công cụ dự phòng.
+/// Đo trên AVD API 35 (720×1640 px, mật độ 2.0) cho thấy Shell ĐÃ tự chừa sẵn
+/// khoảng cho thanh trạng thái: trang gốc của tab bắt đầu ở ~37.5 dp, trong khi
+/// vùng an toàn thật chỉ ~33 dp. Gọi <see cref="Track"/> trên những trang đó đẩy
+/// nội dung xuống ~69 dp, sinh đúng khoảng trống dài ngay trên đầu header.
 ///
-/// Phía đáy cố tình KHÔNG cộng inset: Shell đã tự dành sẵn khoảng cho thanh điều
-/// hướng khi dựng tab bar, cộng thêm sẽ sinh một khoảng trống thừa dưới nội dung.
+/// Trang mẫu xem đúng là <c>Views/LeaveApprovalPage</c> (trang duyệt đơn) — không
+/// gọi <see cref="Track"/> và hiển thị sát đầu trang. Muốn bỏ khoảng trống thì cứ
+/// khai Padding trực tiếp trong XAML như các trang đó.
 ///
-/// Cách dùng: gọi <see cref="Track"/> một lần trong hàm khởi tạo trang. Trang tự
-/// điều chỉnh lại mỗi khi vừa hiện và mỗi khi đổi kích thước (xoay máy, bật/tắt
-/// thanh điều hướng) — không phải chỉ tính một lần lúc khởi tạo.
+/// Cách dùng nếu sau này cần: gọi <see cref="Track"/> một lần trong hàm khởi tạo
+/// trang. Trang tự điều chỉnh lại mỗi khi vừa hiện và mỗi khi đổi kích thước (xoay
+/// máy, bật/tắt thanh điều hướng) — không phải chỉ tính một lần lúc khởi tạo.
 /// </summary>
 public static class SafeAreaInset
 {

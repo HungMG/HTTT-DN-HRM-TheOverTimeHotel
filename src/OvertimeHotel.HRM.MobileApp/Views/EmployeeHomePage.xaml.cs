@@ -23,8 +23,6 @@ public partial class EmployeeHomePage : ContentPage
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _employeeDashboard = employeeDashboard ?? throw new ArgumentNullException(nameof(employeeDashboard));
 
-        SafeAreaInset.Track(this, pageBody, new Thickness(20, 0, 20, 32));
-
         BindingContext = _viewModel;
         locationClockPanel.Bind(_employeeDashboard);
 
@@ -34,8 +32,6 @@ public partial class EmployeeHomePage : ContentPage
             locationClockPanel,
             shiftTimelineCard,
             statsGrid,
-            featuresHeader,
-            featuresGrid,
             footerLabel
         };
     }
@@ -44,7 +40,6 @@ public partial class EmployeeHomePage : ContentPage
     {
         base.OnAppearing();
 
-        _viewModel.FeatureRequested += OnFeatureRequested;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         await _viewModel.LoadAsync();
@@ -59,7 +54,6 @@ public partial class EmployeeHomePage : ContentPage
     {
         base.OnDisappearing();
 
-        _viewModel.FeatureRequested -= OnFeatureRequested;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
 
         // Dừng đồng hồ và GPS để không tiêu hao pin khi người dùng rời trang chủ.
@@ -128,22 +122,4 @@ public partial class EmployeeHomePage : ContentPage
                 break;
         }
     }
-
-    private void OnFeatureRequested(object? sender, string featureName) => ShowComingSoonPopup(featureName);
-
-    /// <summary>
-    /// Hiện Custom Luxury Modal Popup cho tính năng chưa nối API.
-    /// Tuyệt đối không dùng DisplayAlert thô theo quy chuẩn thiết kế §3.
-    /// </summary>
-    private void ShowComingSoonPopup(string featureName) =>
-        popup.Show(
-            title: "Chức Năng Đang Nâng Cấp",
-            message: $"Tính năng [{featureName}] đang được kết nối với API Supabase ở các task tiếp theo.",
-            iconText: "★",
-            iconTextColor: "#B45309",
-            iconBgColor: "#FFFBEB",
-            borderColor: "#D4AF37",
-            confirmText: "ĐỒNG Ý",
-            showCancel: false,
-            onConfirm: null);
 }

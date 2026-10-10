@@ -10,6 +10,7 @@ namespace OvertimeHotel.HRM.MobileApp.Views;
 public partial class LeaveSubmitPage : ContentPage
 {
     private readonly LeaveSubmitViewModel _viewModel;
+    private CancellationTokenSource _skeletonCts = new();
 
     public LeaveSubmitPage(LeaveSubmitViewModel viewModel)
     {
@@ -35,14 +36,46 @@ public partial class LeaveSubmitPage : ContentPage
 
         // Nạp lại mỗi lần vào trang: người dùng có thể vừa gửi đơn rồi quay ra,
         // hoặc vừa được HR duyệt xong — số liệu cũ hiện ra sẽ sai ngay.
-        await _viewModel.LoadAsync();
+        try
+        {
+            await _viewModel.LoadAsync();
+        }
+        finally
+        {
+            DisposeSkeleton();
+        }
     }
 
     protected override void OnDisappearing()
     {
+        DisposeSkeleton();
         base.OnDisappearing();
         _viewModel.PopupRequested -= OnPopupRequested;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+    }
+
+    /// <summary>
+    /// Nhịp thở của khối skeleton lịch sử đơn. Quy chuẩn §2 cấm ActivityIndicator —
+    /// skeleton cho người dùng thấy trước bố cục thay vì nhìn vòng tròn quay.
+    /// </summary>
+    private void StartSkeletonLoop()
+    {
+        DisposeSkeleton();
+        _skeletonCts = new CancellationTokenSource();
+        _ = historySkeleton.ShimmerLoopAsync(_skeletonCts.Token);
+    }
+
+    /// <summary>
+    /// Dừng nhịp thở: animation nền vô ích vừa tốn pin vừa giữ CTS sống. Dispose
+    /// rồi tạo mới để lần vào trang sau dùng lại được.
+    /// </summary>
+    private void DisposeSkeleton()
+    {
+        if (_skeletonCts.IsCancellationRequested) return;
+
+        _skeletonCts.Cancel();
+        _skeletonCts.Dispose();
+        _skeletonCts = new CancellationTokenSource();
     }
 
     /// <summary>
@@ -65,6 +98,14 @@ public partial class LeaveSubmitPage : ContentPage
         if (e.PropertyName == nameof(LeaveSubmitViewModel.HistoryButtonText))
         {
             btnOpenHistory.Text = _viewModel.HistoryButtonText;
+            return;
+        }
+
+        // Lịch sử đơn nạp lại khi mở sheet và cả khi bấm nút thử lại, nên nhịp thở
+        // skeleton phải bám theo cờ IsLoading chứ không chỉ vào lúc vào trang.
+        if (e.PropertyName == nameof(LeaveSubmitViewModel.IsLoading))
+        {
+            if (_viewModel.IsLoading) StartSkeletonLoop(); else DisposeSkeleton();
             return;
         }
 

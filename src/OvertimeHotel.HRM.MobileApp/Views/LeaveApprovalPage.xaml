@@ -599,8 +599,21 @@
                             <Label Text="{Binding LoadMoreError}" IsVisible="{Binding HasLoadMoreError}"
                                    TextColor="#B91C1C" FontFamily="SegoeUI" FontSize="13"
                                    HorizontalTextAlignment="Center" />
-                            <ActivityIndicator IsRunning="{Binding IsLoadingMore}"
-                                               IsVisible="{Binding IsLoadingMore}" Color="#1E3A8A" />
+                            <!--
+                                Nút tải thêm đã tự khoá theo CanLoadMore nên "đang tải
+                                thêm" phải hiện ra bằng một nhãn chuyển động nhịp thở
+                                chứ không dùng vòng tròn xoay (quy chuẩn §2): spinner ở
+                                giữa chân danh sách khiến người dùng nghĩ trang bị treo.
+                            -->
+                            <Label x:Name="loadMoreLabel"
+                                   Text="Đang tải thêm đơn…"
+                                   IsVisible="{Binding IsLoadingMore}"
+                                   TextColor="#1E3A8A"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="13"
+                                   CharacterSpacing="1.2"
+                                   HorizontalTextAlignment="Center"
+                                   Margin="0,4,0,0" />
                             <Button Text="Tải thêm đơn" Command="{Binding LoadMoreCommand}"
                                     IsEnabled="{Binding CanLoadMore}"
                                     FontFamily="SegoeUIBold" FontSize="13" TextColor="#1E3A8A"
@@ -675,14 +688,72 @@
                             Margin="0,8,0,0" />
                 </VerticalStackLayout>
 
-                <!-- LOADING SPINNER -->
-                <ActivityIndicator IsRunning="{Binding IsLoading}"
-                                   IsVisible="{Binding IsLoading}"
-                                   Color="#1E3A8A"
-                                   WidthRequest="40"
-                                   HeightRequest="40"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center" />
+                <!--
+                     SKELETON SHIMMER khi đang tải (quy chuẩn §2: cấm ActivityIndicator).
+                     Ba khối xám mô phỏng đúng thẻ đơn bên trên — avatar tròn, dòng tên
+                     và chức vụ, hàng badge — để quản lý thấy trước bố cục trang thay
+                     vì nhìn một vòng tròn xoay ở giữa màn hình.
+                 -->
+                <VerticalStackLayout x:Name="skeletonLayout" IsVisible="{Binding IsLoading}"
+                                     Spacing="12" Padding="16,0" VerticalOptions="Center">
+                    <Border StrokeShape="RoundRectangle 16" Stroke="#E2E8F0"
+                            BackgroundColor="#FFFFFF" Padding="14">
+                        <VerticalStackLayout Spacing="10">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Border StrokeShape="RoundRectangle 22" Stroke="#E2E8F0"
+                                        BackgroundColor="#F1F5F9"
+                                        WidthRequest="44" HeightRequest="44" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                    <BoxView HeightRequest="14" WidthRequest="140" Color="#E2E8F0" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="10" WidthRequest="110" Color="#F1F5F9" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="10" WidthRequest="90" Color="#F1F5F9" HorizontalOptions="Start" />
+                                </VerticalStackLayout>
+                                <Border Grid.Column="2" StrokeShape="RoundRectangle 10"
+                                        BackgroundColor="#F1F5F9"
+                                        WidthRequest="62" HeightRequest="20" VerticalOptions="Start" />
+                            </Grid>
+                            <BoxView HeightRequest="22" Color="#F1F5F9" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border StrokeShape="RoundRectangle 16" Stroke="#E2E8F0"
+                            BackgroundColor="#FFFFFF" Padding="14">
+                        <VerticalStackLayout Spacing="10">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Border StrokeShape="RoundRectangle 22" Stroke="#E2E8F0"
+                                        BackgroundColor="#F1F5F9"
+                                        WidthRequest="44" HeightRequest="44" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                    <BoxView HeightRequest="14" WidthRequest="120" Color="#E2E8F0" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="10" WidthRequest="130" Color="#F1F5F9" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="10" WidthRequest="80" Color="#F1F5F9" HorizontalOptions="Start" />
+                                </VerticalStackLayout>
+                                <Border Grid.Column="2" StrokeShape="RoundRectangle 10"
+                                        BackgroundColor="#F1F5F9"
+                                        WidthRequest="62" HeightRequest="20" VerticalOptions="Start" />
+                            </Grid>
+                            <BoxView HeightRequest="22" Color="#F1F5F9" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border StrokeShape="RoundRectangle 16" Stroke="#E2E8F0"
+                            BackgroundColor="#FFFFFF" Padding="14">
+                        <VerticalStackLayout Spacing="10">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Border StrokeShape="RoundRectangle 22" Stroke="#E2E8F0"
+                                        BackgroundColor="#F1F5F9"
+                                        WidthRequest="44" HeightRequest="44" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                    <BoxView HeightRequest="14" WidthRequest="150" Color="#E2E8F0" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="10" WidthRequest="100" Color="#F1F5F9" HorizontalOptions="Start" />
+                                    <BoxView HeightRequest="10" WidthRequest="95" Color="#F1F5F9" HorizontalOptions="Start" />
+                                </VerticalStackLayout>
+                                <Border Grid.Column="2" StrokeShape="RoundRectangle 10"
+                                        BackgroundColor="#F1F5F9"
+                                        WidthRequest="62" HeightRequest="20" VerticalOptions="Start" />
+                            </Grid>
+                            <BoxView HeightRequest="22" Color="#F1F5F9" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
             </Grid>
         </RefreshView>
     </Grid>
