@@ -19,6 +19,8 @@ public class DemoAttendanceSummaryService(IAuthService authService, DemoLeaveApp
         var user = authService.CurrentUser;
         if (user?.IsLoggedIn != true) throw new UnauthorizedAccessException("Vui lòng đăng nhập lại.");
         var targetId = employeeId ?? user.MaNhanVien;
+        if (targetId == user.MaNhanVien && (user.IsAdmin || user.IsIT))
+            throw new InvalidOperationException("Tài khoản Quản trị viên không áp dụng lịch phân ca và chấm công.");
         var requests = leaveService.GetAttendanceSnapshot();
         var target = requests.FirstOrDefault(r => r.MaNhanVien == targetId)?.NhanVien;
         var departmentId = targetId == user.MaNhanVien ? user.MaPhongBan : target?.MaPhongBan;

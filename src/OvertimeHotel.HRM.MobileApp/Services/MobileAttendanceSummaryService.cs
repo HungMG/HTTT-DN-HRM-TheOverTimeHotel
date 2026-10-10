@@ -23,6 +23,9 @@ public sealed class MobileAttendanceSummaryService(SupabaseRestClient rest, IAut
             throw new UnauthorizedAccessException("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
 
         var targetId = employeeId ?? user.MaNhanVien;
+        if (targetId == user.MaNhanVien && (user.IsAdmin || user.IsIT))
+            throw new InvalidOperationException("Tài khoản Quản trị viên không áp dụng lịch phân ca và chấm công.");
+
         // Employee sessions must never send queries for another employee.
         if (targetId != user.MaNhanVien && !(user.IsManager || user.IsHR || user.IsAdmin))
             throw new InvalidOperationException("Bạn không có quyền xem bảng công này.");

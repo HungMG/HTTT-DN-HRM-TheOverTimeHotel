@@ -25,6 +25,8 @@ public class UserSession
     public bool IsManager => LeaveApprovalPolicy.IsManager(TenVaiTro);
     public bool IsHR => LeaveApprovalPolicy.IsHR(TenVaiTro);
     public bool IsAdmin => LeaveApprovalPolicy.IsAdmin(TenVaiTro);
+    public bool IsIT => LeaveApprovalPolicy.IsIT(TenVaiTro);
     public bool CanApproveLeave => IsLoggedIn && (IsManager || IsHR || IsAdmin) && (!IsManager || MaPhongBan.HasValue);
     public bool IsEmployee => LeaveApprovalPolicy.NormalizeRole(TenVaiTro) == RoleType.Employee;
+    public bool CanViewAttendanceSummary => !IsAdmin && !IsIT;
 }

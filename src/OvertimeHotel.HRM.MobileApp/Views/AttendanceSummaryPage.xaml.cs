@@ -78,7 +78,6 @@ public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
         StartSkeletonLoop();
         headerBar.Opacity = 0;
         headerBar.TranslationY = -12;
-
         // Dừng nhịp thở ngay khi nạp xong chứ không chờ rời trang: khối skeleton đã
         // ẩn đi (IsLoading=false) nên nhịp thở chạy tiếp chỉ là tốn pin vô ích.
         // finally để lỗi lúc nạp vẫn gỡ nhịp thở, không bỏ trạng thái treo.
@@ -90,6 +89,11 @@ public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
         finally
         {
             DisposeSkeleton();
+        }
+
+        if (_viewModel.HasError && _viewModel.IsAdminSelfAccess)
+        {
+            await DisplayAlert("Thông Báo", _viewModel.ErrorMessage, "Đóng");
         }
     }
 

@@ -166,10 +166,11 @@
                                           TappedCommand="{Binding ProfileCommand}" />
                 </Grid>
 
-                <controls:FeatureTile Icon="📊"
+                <controls:FeatureTile Icon="📋"
                                       Title="Công &amp; nghỉ phép"
                                       Description="Công thực tế và phép hưởng lương theo tháng"
                                       ActionText="Xem bảng công"
+                                      IsVisible="{Binding CanViewAttendanceSummary}"
                                       TappedCommand="{Binding AttendanceSummaryCommand}" />
 
                 <Label x:Name="footerLabel"

@@ -35,10 +35,24 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
         // nhân viên: quản lý và HR cũng là người lao động của chính khách sạn này,
         // họ cần nộp được đơn của mình chứ không chỉ duyệt đơn của người khác.
         LeaveSubmitCommand = new Command(() => _ = Shell.Current.GoToAsync("LeaveSubmitPage"));
-        AttendanceSummaryCommand = new Command(async () => await Shell.Current.GoToAsync("AttendanceSummaryPage"));
+        AttendanceSummaryCommand = new Command(async () =>
+        {
+            if (AuthService.CurrentUser?.CanViewAttendanceSummary != true)
+            {
+                if (Shell.Current?.CurrentPage != null)
+                {
+                    await Shell.Current.CurrentPage.DisplayAlert("Thông Báo", "Tài khoản Quản trị viên không áp dụng lịch phân ca và chấm công.", "Đóng");
+                }
+                return;
+            }
+            await Shell.Current.GoToAsync("AttendanceSummaryPage");
+        });
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>Cho biết vai trò hiện tại có áp dụng xem công & nghỉ phép hay không (Admin và IT trả false).</summary>
+    public bool CanViewAttendanceSummary => AuthService.CurrentUser?.CanViewAttendanceSummary ?? false;
 
     /// <summary>Mở trang Thông tin cá nhân (trang push từ Cài Đặt hoặc từ trang chủ).</summary>
     public ICommand ProfileCommand { get; }
@@ -105,6 +119,7 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
 
         Greeting = $"Xin chào, {user.HoTen}!";
         RoleDepartmentLine = BuildRoleDepartmentLine(user);
+        OnPropertyChanged(nameof(CanViewAttendanceSummary));
 
         await LoadPendingLeaveCountAsync(user);
         await LoadBranchKpiAsync(user);

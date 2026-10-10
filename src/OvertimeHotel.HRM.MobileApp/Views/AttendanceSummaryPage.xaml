@@ -197,10 +197,11 @@
             </Border>
             <Label Text="Đang đối chiếu công và nghỉ phép…" HorizontalTextAlignment="Center" TextColor="#64748B" />
         </VerticalStackLayout>
+
         <VerticalStackLayout Grid.Row="4" IsVisible="{Binding HasError}" VerticalOptions="Center" Spacing="14" Padding="16">
-            <Label Text="Chưa tải được bảng công" FontFamily="SegoeUIBold" FontSize="18" TextColor="#0F172A" HorizontalTextAlignment="Center" />
+            <Label Text="{Binding ErrorTitle}" FontFamily="SegoeUIBold" FontSize="18" TextColor="#0F172A" HorizontalTextAlignment="Center" />
             <Label Text="{Binding ErrorMessage}" TextColor="#B91C1C" HorizontalTextAlignment="Center" />
-            <Button Text="Thử lại" Command="{Binding RefreshCommand}" BackgroundColor="#1E3A8A" TextColor="White" />
+            <Button Text="Thử lại" IsVisible="{Binding CanRetry}" Command="{Binding RefreshCommand}" BackgroundColor="#1E3A8A" TextColor="White" />
             <Button Text="Đăng nhập lại" IsVisible="{Binding RequiresLogin}" Command="{Binding LoginCommand}" />
         </VerticalStackLayout>
     </Grid>

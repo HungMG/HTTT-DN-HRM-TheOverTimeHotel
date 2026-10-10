@@ -75,6 +75,10 @@ public class AttendanceSummaryViewModel : INotifyPropertyChanged
     public bool IsRefreshing { get => _isRefreshing; set => Set(ref _isRefreshing, value); }
     public bool HasError { get => _hasError; private set => Set(ref _hasError, value); }
     public bool RequiresLogin { get => _requiresLogin; private set => Set(ref _requiresLogin, value); }
+    private bool _isAdminSelfAccess;
+    public bool IsAdminSelfAccess { get => _isAdminSelfAccess; private set => Set(ref _isAdminSelfAccess, value); }
+    public bool CanRetry => !IsAdminSelfAccess;
+    public string ErrorTitle => IsAdminSelfAccess ? "Thông Báo" : "Chưa tải được bảng công";
     public string ErrorMessage { get => _errorMessage; private set => Set(ref _errorMessage, value); }
     public bool HasData => _summary != null && !HasError;
     public string EmployeeName => _summary?.EmployeeName ?? "Bảng công theo tháng";
@@ -124,6 +128,7 @@ public class AttendanceSummaryViewModel : INotifyPropertyChanged
         IsLoading = true;
         HasError = false;
         RequiresLogin = false;
+        IsAdminSelfAccess = false;
         ErrorMessage = "";
         _summary = null;
         Days.Clear();
@@ -133,6 +138,15 @@ public class AttendanceSummaryViewModel : INotifyPropertyChanged
             if (_routeError != null) throw new InvalidOperationException(_routeError);
             if (_authService.CurrentUser?.IsLoggedIn != true)
                 throw new UnauthorizedAccessException("Vui lòng đăng nhập để xem bảng công.");
+
+            var currentUser = _authService.CurrentUser;
+            var targetId = _employeeId ?? currentUser.MaNhanVien;
+            if (targetId == currentUser.MaNhanVien && (currentUser.IsAdmin || currentUser.IsIT))
+            {
+                IsAdminSelfAccess = true;
+                throw new InvalidOperationException("Tài khoản Quản trị viên không áp dụng lịch phân ca và chấm công.");
+            }
+
             var result = await _service.GetSummaryAsync(_period.Year, _period.Month, _employeeId, token);
             if (version != _loadVersion || token.IsCancellationRequested) return;
             _summary = result;
@@ -144,6 +158,10 @@ public class AttendanceSummaryViewModel : INotifyPropertyChanged
             if (version != _loadVersion) return;
             HasError = true;
             RequiresLogin = ex is UnauthorizedAccessException;
+            if (ex.Message.Contains("Tài khoản Quản trị viên không áp dụng"))
+            {
+                IsAdminSelfAccess = true;
+            }
             ErrorMessage = ex switch
             {
                 UnauthorizedAccessException or InvalidOperationException => ex.Message,
@@ -195,7 +213,8 @@ public class AttendanceSummaryViewModel : INotifyPropertyChanged
     private void NotifySummary()
     {
         foreach (var property in new[] { nameof(HasData), nameof(EmployeeName), nameof(TotalText), nameof(WorkedText),
-                     nameof(PaidLeaveText), nameof(ScheduledText), nameof(HasReviewDays), nameof(ReviewText) })
+                     nameof(PaidLeaveText), nameof(ScheduledText), nameof(HasReviewDays), nameof(ReviewText),
+                     nameof(ErrorTitle), nameof(CanRetry), nameof(IsAdminSelfAccess) })
             OnPropertyChanged(property);
     }
 
