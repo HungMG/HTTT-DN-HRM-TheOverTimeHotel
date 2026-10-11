@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.MobileApp.Animations;
 using OvertimeHotel.HRM.MobileApp.ViewModels;
 using OvertimeHotel.HRM.MobileApp.Views.Controls;
@@ -49,6 +50,7 @@ public partial class ManagerHomePage : ContentPage
         base.OnAppearing();
 
         _viewModel.FeatureRequested += OnFeatureRequested;
+        _viewModel.AttendanceSummaryForbidden += OnAttendanceSummaryForbidden;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         await _viewModel.LoadAsync();
@@ -62,6 +64,7 @@ public partial class ManagerHomePage : ContentPage
         base.OnDisappearing();
 
         _viewModel.FeatureRequested -= OnFeatureRequested;
+        _viewModel.AttendanceSummaryForbidden -= OnAttendanceSummaryForbidden;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
     }
 
@@ -108,6 +111,23 @@ public partial class ManagerHomePage : ContentPage
             iconBgColor: "#FFFBEB",
             borderColor: "#D4AF37",
             confirmText: "ĐỒNG Ý",
+            showCancel: false,
+            onConfirm: null);
+
+    /// <summary>
+    /// Bấm ô "Công &amp; nghỉ phép" mà vai trò không có hồ sơ lao động.
+    /// Cùng bộ thông báo với trang bảng công và cùng kiểu lỗi, nên lấy thẳng từ
+    /// exception thay vì chép lại câu chữ.
+    /// </summary>
+    private void OnAttendanceSummaryForbidden(object? sender, EventArgs e) =>
+        popup.Show(
+            title: "Thông Báo",
+            message: new AttendanceSummaryUnavailableException().Message,
+            iconText: "!",
+            iconTextColor: "#B91C1C",
+            iconBgColor: "#FEF2F2",
+            borderColor: "#1E3A8A",
+            confirmText: "ĐÓNG",
             showCancel: false,
             onConfirm: null);
 }

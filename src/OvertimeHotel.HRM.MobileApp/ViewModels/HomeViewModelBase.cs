@@ -35,23 +35,32 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
         // nhân viên: quản lý và HR cũng là người lao động của chính khách sạn này,
         // họ cần nộp được đơn của mình chứ không chỉ duyệt đơn của người khác.
         LeaveSubmitCommand = new Command(() => _ = Shell.Current.GoToAsync("LeaveSubmitPage"));
-        AttendanceSummaryCommand = new Command(async () =>
+
+        // Admin và IT không có hồ sơ lao động nên không có bảng công cho chính mình.
+        // Ô chức năng đã bị ẩn theo CanViewAttendanceSummary; lệnh này là lưới an toàn
+        // cho trường hợp ô vẫn còn hiện (đổi vai trò khi trang đang mở). Không báo
+        // bằng DisplayAlert thô — quy chuẩn §3 cấm, View sẽ bắt sự kiện và hiện
+        // Custom Luxury Popup.
+        AttendanceSummaryCommand = new Command(() =>
         {
             if (AuthService.CurrentUser?.CanViewAttendanceSummary != true)
             {
-                if (Shell.Current?.CurrentPage != null)
-                {
-                    await Shell.Current.CurrentPage.DisplayAlert("Thông Báo", "Tài khoản Quản trị viên không áp dụng lịch phân ca và chấm công.", "Đóng");
-                }
+                AttendanceSummaryForbidden?.Invoke(this, EventArgs.Empty);
                 return;
             }
-            await Shell.Current.GoToAsync("AttendanceSummaryPage");
+            _ = Shell.Current.GoToAsync("AttendanceSummaryPage");
         });
     }
 
+    /// <summary>
+    /// Phát ra khi bấm ô "Công &amp; nghỉ phép" mà vai trò hiện tại không được xem.
+    /// Trang chủ nhận sự kiện để hiện Custom Luxury Modal Popup.
+    /// </summary>
+    public event EventHandler? AttendanceSummaryForbidden;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>Cho biết vai trò hiện tại có áp dụng xem công & nghỉ phép hay không (Admin và IT trả false).</summary>
+    /// <summary>Cho biết vai trò hiện tại có áp dụng xem công &amp; nghỉ phép hay không (Admin và IT trả false).</summary>
     public bool CanViewAttendanceSummary => AuthService.CurrentUser?.CanViewAttendanceSummary ?? false;
 
     /// <summary>Mở trang Thông tin cá nhân (trang push từ Cài Đặt hoặc từ trang chủ).</summary>

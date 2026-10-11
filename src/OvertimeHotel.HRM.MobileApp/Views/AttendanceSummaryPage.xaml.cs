@@ -93,7 +93,16 @@ public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
 
         if (_viewModel.HasError && _viewModel.IsAdminSelfAccess)
         {
-            await DisplayAlert("Thông Báo", _viewModel.ErrorMessage, "Đóng");
+            popup.Show(
+                title: "Thông Báo",
+                message: _viewModel.ErrorMessage,
+                iconText: "!",
+                iconTextColor: "#B91C1C",
+                iconBgColor: "#FEF2F2",
+                borderColor: "#1E3A8A",
+                confirmText: "ĐÓNG",
+                showCancel: false,
+                onConfirm: null);
         }
     }
 

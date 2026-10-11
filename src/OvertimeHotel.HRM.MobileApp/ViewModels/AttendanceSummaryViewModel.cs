@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using OvertimeHotel.HRM.Core.DTOs;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.MobileApp.Models;
 using OvertimeHotel.HRM.MobileApp.Services;
 
@@ -141,11 +142,8 @@ public class AttendanceSummaryViewModel : INotifyPropertyChanged
 
             var currentUser = _authService.CurrentUser;
             var targetId = _employeeId ?? currentUser.MaNhanVien;
-            if (targetId == currentUser.MaNhanVien && (currentUser.IsAdmin || currentUser.IsIT))
-            {
-                IsAdminSelfAccess = true;
-                throw new InvalidOperationException("Tài khoản Quản trị viên không áp dụng lịch phân ca và chấm công.");
-            }
+            if (targetId == currentUser.MaNhanVien && !currentUser.CanViewAttendanceSummary)
+                throw new AttendanceSummaryUnavailableException();
 
             var result = await _service.GetSummaryAsync(_period.Year, _period.Month, _employeeId, token);
             if (version != _loadVersion || token.IsCancellationRequested) return;
@@ -158,10 +156,10 @@ public class AttendanceSummaryViewModel : INotifyPropertyChanged
             if (version != _loadVersion) return;
             HasError = true;
             RequiresLogin = ex is UnauthorizedAccessException;
-            if (ex.Message.Contains("Tài khoản Quản trị viên không áp dụng"))
-            {
-                IsAdminSelfAccess = true;
-            }
+            // Nhận diện theo KIỂU lỗi, không theo nội dung câu chữ: sửa thông báo
+            // trong AttendanceSummaryUnavailableException không được làm hỏng
+            // việc đổi tiêu đề và ẩn nút "Thử lại".
+            IsAdminSelfAccess = ex is AttendanceSummaryUnavailableException;
             ErrorMessage = ex switch
             {
                 UnauthorizedAccessException or InvalidOperationException => ex.Message,

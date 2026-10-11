@@ -28,5 +28,10 @@ public class UserSession
     public bool IsIT => LeaveApprovalPolicy.IsIT(TenVaiTro);
     public bool CanApproveLeave => IsLoggedIn && (IsManager || IsHR || IsAdmin) && (!IsManager || MaPhongBan.HasValue);
     public bool IsEmployee => LeaveApprovalPolicy.NormalizeRole(TenVaiTro) == RoleType.Employee;
-    public bool CanViewAttendanceSummary => !IsAdmin && !IsIT;
+
+    /// <summary>
+    /// Bám <see cref="AttendanceAccessPolicy.CanViewOwnAttendanceSummary"/> thay vì
+    /// tự viết điều kiện — cùng một nguồn luật với tầng service.
+    /// </summary>
+    public bool CanViewAttendanceSummary => AttendanceAccessPolicy.CanViewOwnAttendanceSummary(TenVaiTro);
 }

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
              xmlns:m="clr-namespace:OvertimeHotel.HRM.MobileApp.Models"
+             xmlns:controls="clr-namespace:OvertimeHotel.HRM.MobileApp.Views.Controls"
              x:Class="OvertimeHotel.HRM.MobileApp.Views.AttendanceSummaryPage"
              x:DataType="vm:AttendanceSummaryViewModel"
              Title="Công &amp; nghỉ phép" BackgroundColor="#F8FAFC"
@@ -29,6 +30,8 @@
          trống ngay trên header. Đo trên AVD API 35: trang chủ nhân viên bắt đầu ở
          ~82 px, trang này trước khi sửa ở ~136 px. Khoảng cách giữa các khối khai
          bằng Margin trực tiếp trên từng phần tử, đầu trang sát mép trên như trang chủ. -->
+    <Grid>
+
     <Grid x:Name="summaryGrid" RowDefinitions="Auto,Auto,Auto,Auto,*" Padding="16,0,16,0">
         <Border Grid.Row="0" IsVisible="{Binding IsDemoMode}" StrokeShape="RoundRectangle 8"
                 Stroke="#F59E0B" BackgroundColor="#FEF3C7" Padding="12,8" Margin="0,0,0,12">
@@ -204,5 +207,16 @@
             <Button Text="Thử lại" IsVisible="{Binding CanRetry}" Command="{Binding RefreshCommand}" BackgroundColor="#1E3A8A" TextColor="White" />
             <Button Text="Đăng nhập lại" IsVisible="{Binding RequiresLogin}" Command="{Binding LoginCommand}" />
         </VerticalStackLayout>
+
+    </Grid>
+
+    <!-- Popup thông báo dùng chung, phủ toàn màn hình.
+         Đặt trong một Grid bọc không khai báo RowDefinitions — y hệt 3 trang chủ
+         còn lại. Hai lý do cùng lúc: (1) ContentPage chỉ nhận MỘT phần tử con
+         trực tiếp nên không thể đặt popup ngang hàng với summaryGrid; (2) nếu
+         đặt popup bên trong summaryGrid thì nó rơi vào hàng 0 (Auto) và overlay
+         co lại chỉ bằng chiều cao hàng đó, mất tác dụng phủ màn hình. -->
+    <controls:LuxuryPopup x:Name="popup" ZIndex="999" />
+
     </Grid>
 </ContentPage>
