@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:models="clr-namespace:OvertimeHotel.HRM.MobileApp.Models"
+             xmlns:controls="clr-namespace:OvertimeHotel.HRM.MobileApp.Views.Controls"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.AdminHomePage"
+             x:DataType="vm:AdminHomeViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+        <RefreshView IsRefreshing="{Binding IsRefreshing}"
+                     Command="{Binding RefreshCommand}"
+                     RefreshColor="#1E3A8A">
+            <ScrollView>
+                <VerticalStackLayout Spacing="16" Padding="20,16,20,32">
+
+                    <!-- ═══ KHỐI 1 · THANH TIÊU ĐỀ & CHUÔNG THÔNG BÁO ═══ -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,4">
+                        <controls:ProfileHeaderBar x:Name="profileHeaderBar" Grid.Column="0" />
+
+                        <!-- Nút Chuông Thông Báo với Badge -->
+                        <Grid Grid.Column="1" WidthRequest="44" HeightRequest="44" VerticalOptions="Center">
+                            <Border StrokeShape="RoundRectangle 22"
+                                    BackgroundColor="#FFFFFF"
+                                    Stroke="#E2E8F0"
+                                    WidthRequest="40"
+                                    HeightRequest="40">
+                                <Label Text="🔔"
+                                       FontSize="18"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+                            <Border StrokeShape="RoundRectangle 8"
+                                    BackgroundColor="#B91C1C"
+                                    Stroke="Transparent"
+                                    WidthRequest="16"
+                                    HeightRequest="16"
+                                    HorizontalOptions="End"
+                                    VerticalOptions="Start"
+                                    Margin="0,0,2,0">
+                                <Label Text="1"
+                                       TextColor="#FFFFFF"
+                                       FontSize="9"
+                                       FontFamily="SegoeUIBold"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+                        </Grid>
+                    </Grid>
+
+                    <!-- ═══ KHỐI 2 · THẺ PHẠM VI QUẢN TRỊ (HERO NAVY + GOLD) ═══ -->
+                    <Border StrokeShape="RoundRectangle 20"
+                            Stroke="#D4AF37"
+                            StrokeThickness="1.5"
+                            BackgroundColor="#0B1B4D"
+                            Padding="18">
+                        <Border.Shadow>
+                            <Shadow Brush="#0B1B4D" Offset="0,6" Radius="16" Opacity="0.25" />
+                        </Border.Shadow>
+
+                        <VerticalStackLayout Spacing="12">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                <Border Grid.Column="0"
+                                        StrokeShape="RoundRectangle 24"
+                                        Stroke="#D4AF37"
+                                        StrokeThickness="1.5"
+                                        BackgroundColor="#FFFBEB"
+                                        WidthRequest="44"
+                                        HeightRequest="44"
+                                        VerticalOptions="Center">
+                                    <Label Text="🛡️"
+                                           FontSize="20"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                    <Label Text="BẢNG ĐIỀU KHIỂN HỆ THỐNG"
+                                           TextColor="#FDE047"
+                                           FontSize="13"
+                                           FontFamily="SegoeUIBold"
+                                           CharacterSpacing="0.8" />
+                                    <Label Text="{Binding PermissionLabel}"
+                                           TextColor="#93C5FD"
+                                           FontSize="10"
+                                           FontFamily="SegoeUIBold"
+                                           CharacterSpacing="0.8" />
+                                </VerticalStackLayout>
+                            </Grid>
+
+                            <BoxView HeightRequest="1" Color="#1E3A8A" />
+
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                <VerticalStackLayout Grid.Column="0" Spacing="3">
+                                    <Label Text="QUYỀN HẠN"
+                                           TextColor="#93C5FD"
+                                           FontSize="9"
+                                           FontFamily="SegoeUIBold"
+                                           CharacterSpacing="0.8" />
+                                    <Label Text="{Binding CommandRole}"
+                                           TextColor="#FFFFFF"
+                                           FontSize="14"
+                                           FontFamily="SegoeUIBold" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="3">
+                                    <Label Text="PHẠM VI GIÁM SÁT"
+                                           TextColor="#93C5FD"
+                                           FontSize="9"
+                                           FontFamily="SegoeUIBold"
+                                           CharacterSpacing="0.8" />
+                                    <Label Text="{Binding CommandScope}"
+                                           TextColor="#FFFFFF"
+                                           FontSize="14"
+                                           FontFamily="SegoeUIBold" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- ═══ KHỐI 3 · VIỆC CẦN XỬ LÝ HỆ THỐNG (URGENT ACTIONS) ═══ -->
+                    <Label Text="VIỆC CẦN XỬ LÝ HỆ THỐNG"
+                           TextColor="#1E3A8A"
+                           FontSize="12"
+                           FontFamily="SegoeUIBold"
+                           CharacterSpacing="0.5" />
+
+                    <!-- Thẻ 1: Yêu cầu cấp tài khoản đang chờ -->
+                    <Border Stroke="#D4AF37"
+                            StrokeThickness="1.5"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#0B1B4D" Offset="0,4" Radius="10" Opacity="0.06" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="8">
+                            <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" VerticalOptions="Center">
+                                    <Label Grid.Column="0" Text="🔑" FontSize="14" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Text="Yêu cầu cấp tài khoản đang chờ"
+                                           TextColor="#0F172A"
+                                           FontSize="13"
+                                           FontFamily="SegoeUIBold"
+                                           LineBreakMode="WordWrap"
+                                           VerticalOptions="Center" />
+                                </Grid>
+                                <Label Text="{Binding PendingAccountRequestDescription}"
+                                       TextColor="#475569"
+                                       FontSize="12"
+                                       FontFamily="SegoeUI"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+
+                            <Border Grid.Row="0" Grid.Column="1"
+                                    StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="#1E3A8A"
+                                    Padding="10,4"
+                                    VerticalOptions="Center">
+                                <Label Text="{Binding PendingAccountRequestCount}"
+                                       TextColor="#FFFFFF"
+                                       FontSize="13"
+                                       FontFamily="SegoeUIBold" />
+                            </Border>
+
+                            <Button Grid.Row="1" Grid.ColumnSpan="2"
+                                    Text="Xem yêu cầu &amp; hướng dẫn máy tính"
+                                    Command="{Binding OpenAccountRequestsCommand}"
+                                    BackgroundColor="#1E3A8A"
+                                    TextColor="#FFFFFF"
+                                    FontFamily="SegoeUIBold"
+                                    FontSize="12"
+                                    HeightRequest="40"
+                                    CornerRadius="10" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Thẻ 2: Đơn từ thuộc thẩm quyền Admin (Chỉ hiện khi có đơn - Phương án 1) -->
+                    <Border IsVisible="{Binding HasPendingLeaves}"
+                            Stroke="#E2E8F0"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#0B1B4D" Offset="0,4" Radius="10" Opacity="0.04" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="8">
+                            <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="4">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" VerticalOptions="Center">
+                                    <Label Grid.Column="0" Text="📝" FontSize="14" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Text="Đơn từ thẩm quyền Quản trị viên"
+                                           TextColor="#0F172A"
+                                           FontSize="13"
+                                           FontFamily="SegoeUIBold"
+                                           LineBreakMode="WordWrap"
+                                           VerticalOptions="Center" />
+                                </Grid>
+                                <Label Text="Đơn thôi việc cấp quản lý / đơn đặc biệt"
+                                       TextColor="#475569"
+                                       FontSize="12"
+                                       FontFamily="SegoeUI"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+
+                            <Border Grid.Row="0" Grid.Column="1"
+                                    StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="#FEF3C7"
+                                    Stroke="#D4AF37"
+                                    Padding="10,4"
+                                    VerticalOptions="Center">
+                                <Label Text="{Binding PendingLeaveCount}"
+                                       TextColor="#B45309"
+                                       FontSize="13"
+                                       FontFamily="SegoeUIBold" />
+                            </Border>
+
+                            <Button Grid.Row="1" Grid.ColumnSpan="2"
+                                    Text="{Binding UrgentApproveButtonText}"
+                                    Command="{Binding OpenLeaveApprovalCommand}"
+                                    BackgroundColor="#F1F5F9"
+                                    TextColor="#1E3A8A"
+                                    BorderColor="#CBD5E1"
+                                    BorderWidth="1"
+                                    FontFamily="SegoeUIBold"
+                                    FontSize="12"
+                                    HeightRequest="40"
+                                    CornerRadius="10" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Thẻ trạng thái khi Admin không có đơn tồn đọng -->
+                    <Border IsVisible="{Binding HasNoPendingLeaves}"
+                            Stroke="#E2E8F0"
+                            StrokeShape="RoundRectangle 14"
+                            BackgroundColor="#F8FAFC"
+                            Padding="14,10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalOptions="Center">
+                            <Label Grid.Column="0" Text="✅" FontSize="16" VerticalOptions="Center" />
+                            <Label Grid.Column="1"
+                                   Text="Không có đơn chờ duyệt cấp Quản trị viên"
+                                   TextColor="#15803D"
+                                   FontSize="12"
+                                   FontFamily="SegoeUIBold"
+                                   LineBreakMode="WordWrap"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!-- ═══ KHỐI 4 · TỔNG QUAN HỆ THỐNG (METRICS TILES) ═══ -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <!-- Cột 1: Tài khoản đang hoạt động -->
+                        <Border Grid.Column="0"
+                                Stroke="#E2E8F0"
+                                StrokeShape="RoundRectangle 16"
+                                BackgroundColor="#FFFFFF"
+                                Padding="14">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="Tài khoản hoạt động"
+                                       TextColor="#64748B"
+                                       FontSize="11"
+                                       FontFamily="SegoeUI" />
+                                <Label Text="{Binding ActiveAccountCount}"
+                                       TextColor="#0F172A"
+                                       FontSize="24"
+                                       FontFamily="SegoeUIBold" />
+                                <Label Text="An toàn tuyệt đối"
+                                       TextColor="#15803D"
+                                       FontSize="11"
+                                       FontFamily="SegoeUIBold" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <!-- Cột 2: Yêu cầu chờ xử lý -->
+                        <Border Grid.Column="1"
+                                Stroke="#E2E8F0"
+                                StrokeShape="RoundRectangle 16"
+                                BackgroundColor="#FFFFFF"
+                                Padding="14">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="Yêu cầu chờ xử lý"
+                                       TextColor="#64748B"
+                                       FontSize="11"
+                                       FontFamily="SegoeUI" />
+                                <Label Text="{Binding PendingAccountRequestCount}"
+                                       TextColor="#0F172A"
+                                       FontSize="24"
+                                       FontFamily="SegoeUIBold" />
+                                <Label Text="Cần chốt trên Web"
+                                       TextColor="#B45309"
+                                       FontSize="11"
+                                       FontFamily="SegoeUIBold" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </Grid>
+
+                    <!-- ═══ KHỐI 5 · HOẠT ĐỘNG GẦN ĐÂY (AUDIT LOG SNIPPET) ═══ -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                        <Label Grid.Column="0"
+                               Text="HOẠT ĐỘNG GẦN ĐÂY"
+                               TextColor="#1E3A8A"
+                               FontSize="12"
+                               FontFamily="SegoeUIBold"
+                               VerticalOptions="Center" />
+                        <Button Grid.Column="1"
+                                Text="Xem tất cả >"
+                                Command="{Binding OpenAuditLogsCommand}"
+                                BackgroundColor="Transparent"
+                                TextColor="#1E3A8A"
+                                FontSize="12"
+                                FontFamily="SegoeUIBold"
+                                HeightRequest="32"
+                                Padding="4,0" />
+                    </Grid>
+
+                    <Border Stroke="#E2E8F0"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#FFFFFF"
+                            Padding="14">
+                        <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding RecentActivities}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:AdminAuditLogItem">
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                        <Border Grid.Column="0"
+                                                StrokeShape="RoundRectangle 6"
+                                                BackgroundColor="{Binding BadgeColor}"
+                                                Padding="6,2"
+                                                VerticalOptions="Start">
+                                            <Label Text="{Binding ActionName}"
+                                                   TextColor="{Binding BadgeTextColor}"
+                                                   FontSize="10"
+                                                   FontFamily="SegoeUIBold" />
+                                        </Border>
+                                        <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                            <Label Text="{Binding Description}"
+                                                   TextColor="#0F172A"
+                                                   FontSize="12"
+                                                   FontFamily="SegoeUI"
+                                                   LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding FormattedTime}"
+                                                   TextColor="#94A3B8"
+                                                   FontSize="10"
+                                                   FontFamily="SegoeUI" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- ═══ KHỐI 6 · CẦU NỐI QUẢN TRỊ TRÊN MÁY TÍNH (DESKTOP BRIDGE) ═══ -->
+                    <Border Stroke="#CBD5E1"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#F1F5F9"
+                            Padding="16"
+                            Margin="0,4,0,0">
+                        <VerticalStackLayout Spacing="8">
+                            <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                                <Label Text="🖥️" FontSize="14" />
+                                <Label Text="TÁC VỤ QUẢN TRỊ TRÊN MÁY TÍNH"
+                                       TextColor="#1E3A8A"
+                                       FontSize="12"
+                                       FontFamily="SegoeUIBold" />
+                            </HorizontalStackLayout>
+                            <Label Text="Các tác vụ cấu hình lương 4 nhóm, phân quyền 17 mã chức năng và sao lưu/khôi phục dữ liệu cần thực hiện trên máy tính để đảm bảo an toàn."
+                                   TextColor="#475569"
+                                   FontSize="12"
+                                   FontFamily="SegoeUI"
+                                   LineBreakMode="WordWrap" />
+                            <Button Text="Mở thông tin cổng Web Admin"
+                                    Command="{Binding OpenDesktopWebCommand}"
+                                    BackgroundColor="#1E3A8A"
+                                    TextColor="#FFFFFF"
+                                    FontFamily="SegoeUIBold"
+                                    FontSize="12"
+                                    HeightRequest="38"
+                                    CornerRadius="10"
+                                    HorizontalOptions="Start" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+
+        <!-- Popup thông báo chung -->
+        <controls:LuxuryPopup x:Name="popup" ZIndex="999" />
+    </Grid>
+
+</ContentPage>

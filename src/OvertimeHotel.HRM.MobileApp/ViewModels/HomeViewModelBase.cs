@@ -102,8 +102,27 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
     public int PendingLeaveCount
     {
         get => _pendingLeaveCount;
-        protected set => SetProperty(ref _pendingLeaveCount, value);
+        protected set
+        {
+            if (SetProperty(ref _pendingLeaveCount, value))
+            {
+                OnPropertyChanged(nameof(HasPendingLeaves));
+                OnPropertyChanged(nameof(HasNoPendingLeaves));
+                OnPropertyChanged(nameof(UrgentApproveButtonText));
+            }
+        }
     }
+
+    /// <summary>Có đơn chờ duyệt hay không (dùng để ẩn/hiện thẻ khẩn cấp theo Phương án 1).</summary>
+    public bool HasPendingLeaves => PendingLeaveCount > 0;
+
+    /// <summary>Ngược lại của HasPendingLeaves (dùng để hiện thẻ hoàn thành nhiệm vụ).</summary>
+    public bool HasNoPendingLeaves => PendingLeaveCount == 0;
+
+    /// <summary>Nút hành động khẩn cấp có kèm số lượng đơn.</summary>
+    public string UrgentApproveButtonText => PendingLeaveCount > 0
+        ? $"Xử lý ngay ({PendingLeaveCount} đơn)"
+        : "Mở danh sách duyệt đơn";
 
     /// <summary>Dòng chú thích nhỏ dưới số đếm đơn.</summary>
     public string PendingLeaveSub

@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:models="clr-namespace:OvertimeHotel.HRM.MobileApp.Models"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.AdminAuditLogPage"
+             x:DataType="vm:AdminAuditLogViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="20,16,20,16">
+
+        <!-- Header Bar -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
+            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                <Label Text="NHẬT KÝ QUẢN TRỊ"
+                       TextColor="#1E3A8A"
+                       FontSize="16"
+                       FontFamily="SegoeUIBold"
+                       HorizontalOptions="Start" />
+                <Label Text="Lịch sử thao tác và kiểm toán hệ thống"
+                       TextColor="#64748B"
+                       FontSize="12"
+                       FontFamily="SegoeUI" />
+            </VerticalStackLayout>
+            <Border Grid.Column="2"
+                    StrokeShape="RoundRectangle 12"
+                    BackgroundColor="#EFF6FF"
+                    Stroke="Transparent"
+                    Padding="10,4"
+                    VerticalOptions="Center">
+                <Label Text="{Binding TotalLogs, StringFormat='{0} ghi nhận'}"
+                       TextColor="#1E3A8A"
+                       FontSize="11"
+                       FontFamily="SegoeUIBold" />
+            </Border>
+        </Grid>
+
+        <!-- Bộ Lọc Hoạt Động (Filter Pills) -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,0,0,16">
+            <HorizontalStackLayout Spacing="8">
+                <Button Text="Tất cả"
+                        Command="{Binding FilterCommand}"
+                        CommandParameter="ALL"
+                        BackgroundColor="#1E3A8A"
+                        TextColor="#FFFFFF"
+                        FontSize="12"
+                        FontFamily="SegoeUIBold"
+                        CornerRadius="16"
+                        HeightRequest="34"
+                        Padding="14,0" />
+                <Button Text="Tài khoản"
+                        Command="{Binding FilterCommand}"
+                        CommandParameter="ACCOUNT"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="#475569"
+                        BorderColor="#CBD5E1"
+                        BorderWidth="1"
+                        FontSize="12"
+                        FontFamily="SegoeUIBold"
+                        CornerRadius="16"
+                        HeightRequest="34"
+                        Padding="14,0" />
+                <Button Text="Đơn từ"
+                        Command="{Binding FilterCommand}"
+                        CommandParameter="LEAVE"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="#475569"
+                        BorderColor="#CBD5E1"
+                        BorderWidth="1"
+                        FontSize="12"
+                        FontFamily="SegoeUIBold"
+                        CornerRadius="16"
+                        HeightRequest="34"
+                        Padding="14,0" />
+                <Button Text="Phân ca"
+                        Command="{Binding FilterCommand}"
+                        CommandParameter="SHIFT"
+                        BackgroundColor="#FFFFFF"
+                        TextColor="#475569"
+                        BorderColor="#CBD5E1"
+                        BorderWidth="1"
+                        FontSize="12"
+                        FontFamily="SegoeUIBold"
+                        CornerRadius="16"
+                        HeightRequest="34"
+                        Padding="14,0" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <!-- Danh sách Nhật ký với Pull-To-Refresh -->
+        <RefreshView Grid.Row="2"
+                     IsRefreshing="{Binding IsRefreshing}"
+                     Command="{Binding RefreshCommand}"
+                     RefreshColor="#1E3A8A">
+            <CollectionView ItemsSource="{Binding FilteredLogs}"
+                            SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout Spacing="12" VerticalOptions="Center" HorizontalOptions="Center" Margin="0,60,0,0">
+                        <Border WidthRequest="48"
+                                HeightRequest="48"
+                                StrokeShape="RoundRectangle 24"
+                                BackgroundColor="#F1F5F9"
+                                Stroke="Transparent"
+                                HorizontalOptions="Center">
+                            <Label Text="i"
+                                   TextColor="#64748B"
+                                   FontSize="20"
+                                   FontFamily="SegoeUIBold"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+                        <Label Text="Chưa có nhật ký ghi nhận trong danh mục này"
+                               TextColor="#64748B"
+                               FontSize="13"
+                               FontFamily="SegoeUI"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:AdminAuditLogItem">
+                        <Border Stroke="#E2E8F0"
+                                StrokeShape="RoundRectangle 14"
+                                BackgroundColor="#FFFFFF"
+                                Padding="14"
+                                Margin="0,0,0,10">
+                            <Border.Shadow>
+                                <Shadow Brush="#0B1B4D" Offset="0,2" Radius="6" Opacity="0.04" />
+                            </Border.Shadow>
+
+                            <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                <!-- Hàng 1: Badge hành động & Thời gian -->
+                                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+                                    <Border Grid.Column="0"
+                                            StrokeShape="RoundRectangle 6"
+                                            BackgroundColor="{Binding BadgeColor}"
+                                            Stroke="Transparent"
+                                            Padding="8,3">
+                                        <Label Text="{Binding ActionName}"
+                                               TextColor="{Binding BadgeTextColor}"
+                                               FontSize="11"
+                                               FontFamily="SegoeUIBold" />
+                                    </Border>
+
+                                    <Label Grid.Column="2"
+                                           Text="{Binding FormattedTime}"
+                                           TextColor="#64748B"
+                                           FontSize="11"
+                                           FontFamily="SegoeUI"
+                                           VerticalOptions="Center" />
+                                </Grid>
+
+                                <!-- Hàng 2: Mô tả chi tiết hành động -->
+                                <Label Grid.Row="1"
+                                       Text="{Binding Description}"
+                                       TextColor="#0F172A"
+                                       FontSize="13"
+                                       FontFamily="SegoeUI"
+                                       LineBreakMode="WordWrap" />
+
+                                <!-- Hàng 3: Người thực hiện & Đối tượng -->
+                                <HorizontalStackLayout Grid.Row="2" Spacing="6">
+                                    <Label Text="Bởi:"
+                                           TextColor="#94A3B8"
+                                           FontSize="11"
+                                           FontFamily="SegoeUI" />
+                                    <Label Text="{Binding ActorName}"
+                                           TextColor="#475569"
+                                           FontSize="11"
+                                           FontFamily="SegoeUIBold" />
+                                    <Label Text="·"
+                                           TextColor="#CBD5E1"
+                                           FontSize="11" />
+                                    <Label Text="{Binding TargetUsername, StringFormat='Mục tiêu: {0}'}"
+                                           TextColor="#64748B"
+                                           FontSize="11"
+                                           FontFamily="SegoeUI" />
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+
+    </Grid>
+
+</ContentPage>

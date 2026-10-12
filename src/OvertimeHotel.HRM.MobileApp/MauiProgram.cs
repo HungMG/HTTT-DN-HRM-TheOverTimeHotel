@@ -12,7 +12,14 @@ public static class MauiProgram
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
+#if !WINDOWS
 			.UseMauiMaps()
+#else
+			.ConfigureMauiHandlers(handlers =>
+			{
+				handlers.AddHandler<Microsoft.Maui.Controls.Maps.Map, StubMapHandler>();
+			})
+#endif
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -88,6 +95,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<EmployeeHomeViewModel>();
 		builder.Services.AddTransient<ManagerHomeViewModel>();
 		builder.Services.AddTransient<HrHomeViewModel>();
+		builder.Services.AddTransient<AdminHomeViewModel>();
+		builder.Services.AddTransient<AdminAuditLogViewModel>();
+		builder.Services.AddTransient<HrStatisticsViewModel>();
 
 		// Đăng ký Views
 		builder.Services.AddSingleton<AppShell>();
@@ -96,6 +106,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<EmployeeHomePage>();
 		builder.Services.AddTransient<ManagerHomePage>();
 		builder.Services.AddTransient<HrHomePage>();
+		builder.Services.AddTransient<AdminHomePage>();
+		builder.Services.AddTransient<AdminAuditLogPage>();
+		builder.Services.AddTransient<HrStatisticsPage>();
 		builder.Services.AddTransient<ProfilePage>();
 		builder.Services.AddTransient<ChangePasswordPage>();
 		builder.Services.AddTransient<SettingsPage>();
@@ -124,3 +137,12 @@ public static class MauiProgram
 		return builder.Build();
 	}
 }
+
+#if WINDOWS
+public class StubMapHandler : Microsoft.Maui.Handlers.ViewHandler<Microsoft.Maui.Controls.Maps.Map, Microsoft.UI.Xaml.Controls.Border>
+{
+	public StubMapHandler() : base(PropertyMapper) { }
+	public static PropertyMapper<Microsoft.Maui.Controls.Maps.Map, StubMapHandler> PropertyMapper = new(ViewMapper);
+	protected override Microsoft.UI.Xaml.Controls.Border CreatePlatformView() => new();
+}
+#endif

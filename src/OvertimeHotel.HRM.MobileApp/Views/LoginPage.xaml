@@ -5,295 +5,302 @@
              xmlns:controls="clr-namespace:OvertimeHotel.HRM.MobileApp.Views.Controls"
              x:Class="OvertimeHotel.HRM.MobileApp.Views.LoginPage"
              x:DataType="vm:LoginViewModel"
-             BackgroundColor="#F8FAFC"
+             BackgroundColor="#0B1B4D"
              NavigationPage.HasNavigationBar="False"
              Shell.NavBarIsVisible="False">
 
-    <Grid>
+    <Grid BackgroundColor="#060C1D">
 
-        <ScrollView>
-            <VerticalStackLayout Spacing="0">
+        <!-- ════════ HÌNH NỀN DẢI LỤA SÓNG VÀNG 3D ART DECO (PHƯƠNG ÁN B) ════════ -->
+        <Image Source="login_bg_luxury.png"
+               Aspect="AspectFill"
+               HorizontalOptions="Fill"
+               VerticalOptions="Fill"
+               InputTransparent="True" />
 
-                <!-- ════════ DẢI ĐẦU NAVY: nhận diện thương hiệu khách sạn ════════ -->
+        <!-- Lớp phủ mềm làm dịu và tăng độ tương phản đọc chữ cho thẻ kính -->
+        <Border StrokeThickness="0"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill"
+                InputTransparent="True">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#4D060C1D" Offset="0.0" />
+                    <GradientStop Color="#1A060C1D" Offset="0.3" />
+                    <GradientStop Color="#40060C1D" Offset="0.7" />
+                    <GradientStop Color="#99060C1D" Offset="1.0" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
 
-                <!--
-                    Góc trên VUÔNG, góc dưới BO TRÒN.
+        <ScrollView Orientation="Vertical"
+                    VerticalScrollBarVisibility="Never"
+                    HorizontalScrollBarVisibility="Never"
+                    HorizontalOptions="Fill"
+                    VerticalOptions="Fill">
+            <Grid WidthRequest="380"
+                  HorizontalOptions="Center"
+                  VerticalOptions="Center"
+                  RowDefinitions="Auto,Auto,Auto"
+                  RowSpacing="0"
+                  Padding="0,20">
 
-                    Lý do phải làm vậy: RoundRectangle bo cả 4 góc bằng MỘT bán
-                    kính duy nhất — MAUI không có API bo riêng từng góc (đã thử
-                    CornerRadii: báo MAUIX2002, thuộc tính không tồn tại). Khối này
-                    tràn sát mép màn hình mà vẫn bo 36 ở cả hai góc trên, nên vòng
-                    cung bị cắt cụt ngay tại mép, lộ nền #F8FAFC của trang thành hai
-                    khuyết trắng. Máy màn nhỏ cắt nhẹ nên gần như không thấy; máy màn
-                    lớn cắt nặng hơn, hai khuyết đó tách hẳn khối ra và trông như "vỡ".
-
-                    Cách đang dùng — Margin âm đẩy vòng cung tràn lên TRÊN màn
-                    hình: bo góc 36, kéo khối lên 40 (Margin="-40") thì trọn vòng
-                    cung nằm trên vạch y=0, phần người dùng thấy chỉ là navy phẳng —
-                    góc trên vuông thật, không còn vòng cung nào ở mép. Padding trên
-                    bù lại 52 -> 92 (92 - 40 = 52) nên khoảng hở dưới thanh trạng
-                    thái y hệt cũ, không bị nhảy.
-
-                    Quan trọng: ScrollView của MAUI CỐ TÌNH không cắt (clip) phần con
-                    vượt ra ngoài khung. Ở đây đó là điều kiện CẦN để vòng cung tràn
-                    lên được — chính màn hình mới là thứ cắt nó. Lý do "ScrollView
-                    không cắt nên vòng tròn vẫn hiện" là SAI: khi vòng cung đã nằm
-                    trên vạch y=0 thì nó nằm ngoài màn hình, không thể hiện.
-
-                    36 và 40 là hằng số tuyệt đối, KHÔNG theo tỉ lệ kích thước màn
-                    hình, nên đổi khung máy / mật độ / tỉ lệ màn hình thì bố cục y
-                    hệt. Quan hệ bắt buộc: |Margin âm| > bán kính bo, nếu không vòng
-                    cung sẽ lộ lại.
-
-                    Đã thử và KHÔNG ăn: phủ thêm hình chữ nhật vuông cao 36 cùng màu
-                    sát đỉnh để che vòng cung — lớp phủ không được vẽ ra, vòng cung
-                    vẫn hiện nguyên. Ghi lại để không thử lại.
-                -->
-                <Border x:Name="brandHeader"
-                        Margin="0,-40,0,0"
-                        Stroke="Transparent"
-                        StrokeThickness="0"
-                        BackgroundColor="#0B1B4D"
-                        Padding="24,92,24,46"
-                        StrokeShape="RoundRectangle 36">
-                    <Border.Shadow>
-                        <Shadow Brush="#020817" Offset="0,6" Radius="18" Opacity="0.22" />
-                    </Border.Shadow>
-
-                    <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
-
-                        <!--
-                            Bộ dấu của khách sạn, nền TRONG SUỐT (app_icon.png do
-                            scripts/generate_mobile_brand_icons.py sinh, cùng bộ
-                            sinh ra icon launcher). Nhờ vậy đĩa kem + vành kim tự
-                            nổi lên trên dải #0B1B4D: không còn ô xanh nào đè lên
-                            icon, và cũng không cần khung bo tròn để cắt — hình
-                            tròn đã nằm sẵn trong ảnh. Không Stroke, không Shadow.
-                        -->
-                        <Image Source="app_icon.png"
-                               Aspect="AspectFit"
-                               WidthRequest="156"
-                               HeightRequest="156"
-                               HorizontalOptions="Center"
-                               SemanticProperties.Description="Biểu trưng ứng dụng The OverTime Hotel" />
+                <!-- ════════ PHẦN THƯƠNG HIỆU: ĐỒNG TRỤC 5★ SANG TRỌNG ════════ -->
+                <Grid Grid.Row="0"
+                      x:Name="brandHeader"
+                      HorizontalOptions="Fill"
+                      Margin="0,0,0,20">
+                    <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                        <!-- Biểu trưng khách sạn với vòng viền vàng kim sắc nét -->
+                        <Border StrokeShape="RoundRectangle 46"
+                                Stroke="#D4AF37"
+                                StrokeThickness="1.5"
+                                BackgroundColor="#071233"
+                                WidthRequest="88"
+                                HeightRequest="88"
+                                HorizontalOptions="Center"
+                                Padding="6">
+                            <Border.Shadow>
+                                <Shadow Brush="#020817" Offset="0,6" Radius="16" Opacity="0.4" />
+                            </Border.Shadow>
+                            <Image Source="app_icon.png"
+                                   Aspect="AspectFit"
+                                   WidthRequest="80"
+                                   HeightRequest="80"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   SemanticProperties.Description="Biểu trưng khách sạn The OverTime Hotel" />
+                        </Border>
 
                         <Label Text="THE OVERTIME HOTEL"
-                               TextColor="#FFFFFF"
+                               TextColor="#D4AF37"
                                FontFamily="SegoeUIBold"
-                               FontSize="22"
-                               CharacterSpacing="1.4"
-                               HorizontalOptions="Center" />
+                               FontSize="21"
+                               CharacterSpacing="2"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center"
+                               Margin="0,4,0,0" />
 
-                        <Label Text="Hệ Thống Quản Lý Nhân Sự &amp; Tiền Lương"
+                        <Label Text="HOSPITALITY MANAGEMENT SYSTEM"
                                TextColor="#93C5FD"
-                               FontSize="12"
+                               FontSize="11"
+                               CharacterSpacing="1.5"
                                FontFamily="SegoeUI"
+                               HorizontalOptions="Center"
                                HorizontalTextAlignment="Center" />
                     </VerticalStackLayout>
-                </Border>
+                </Grid>
 
-                <!-- ════════ THẺ ĐĂNG NHẬP nổi lên trên nền sáng ════════ -->
-                <Border x:Name="formCardBorder"
-                        Margin="18,-24,18,0"
+                <!-- ════════ THẺ KÍNH MỜ TRONG SUỐT (LUXURY FROSTED GLASS CARD) ════════ -->
+                <Border Grid.Row="1"
+                        x:Name="formCardBorder"
+                        HorizontalOptions="Fill"
                         StrokeShape="RoundRectangle 26"
-                        Stroke="#E2E8F0"
-                        StrokeThickness="1"
-                        BackgroundColor="#FFFFFF"
-                        Padding="22,24,22,24">
+                        Stroke="#80D4AF37"
+                        StrokeThickness="1.2"
+                        BackgroundColor="#52091433"
+                        Padding="22,26,22,26">
                     <Border.Shadow>
-                        <Shadow Brush="#020817" Offset="0,6" Radius="24" Opacity="0.12" />
+                        <Shadow Brush="#020817" Offset="0,10" Radius="28" Opacity="0.55" />
                     </Border.Shadow>
 
-                    <VerticalStackLayout Spacing="20">
+                    <Grid HorizontalOptions="Fill">
 
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="ĐĂNG NHẬP HỆ THỐNG"
-                                   TextColor="#0F172A"
-                                   FontSize="19"
-                                   FontFamily="SegoeUIBold"
-                                   HorizontalOptions="Center" />
-                            <Label Text="Sử dụng tài khoản do khách sạn cấp để bắt đầu ca làm việc."
-                                   TextColor="#64748B"
+                        <!-- Skeleton Shimmer khi đang tải -->
+                        <VerticalStackLayout x:Name="skeletonLayout" Spacing="16" IsVisible="{Binding IsLoading}" HorizontalOptions="Fill">
+                            <Border StrokeShape="RoundRectangle 25" BackgroundColor="#4D1E326B" HeightRequest="52" HorizontalOptions="Fill" />
+                            <Border StrokeShape="RoundRectangle 25" BackgroundColor="#4D1E326B" HeightRequest="52" HorizontalOptions="Fill" />
+                            <Border StrokeShape="RoundRectangle 25" BackgroundColor="#4D0D1E4A" HeightRequest="52" HorizontalOptions="Fill" />
+                            <Label Text="Đang kết nối bảo mật..."
+                                   TextColor="#94A3B8"
                                    FontSize="12"
                                    FontFamily="SegoeUI"
-                                   HorizontalTextAlignment="Center" />
+                                   HorizontalOptions="Center" />
                         </VerticalStackLayout>
 
-                        <!-- Skeleton shimmer thay cho vòng tròn xoay (quy chuẩn §2) -->
-                        <Grid>
-                            <VerticalStackLayout x:Name="skeletonLayout" Spacing="16" IsVisible="{Binding IsLoading}">
-                                <Border StrokeShape="RoundRectangle 8" BackgroundColor="#E2E8F0" HeightRequest="14" WidthRequest="160" HorizontalOptions="Start" />
-                                <Border StrokeShape="RoundRectangle 12" BackgroundColor="#F1F5F9" HeightRequest="48" />
+                        <!-- Form nhập liệu chính: Kính mờ dạng viên thuốc bo tròn hoàn toàn -->
+                        <VerticalStackLayout Spacing="16" IsVisible="{Binding IsNotLoading}" HorizontalOptions="Fill">
 
-                                <Border StrokeShape="RoundRectangle 8" BackgroundColor="#E2E8F0" HeightRequest="14" WidthRequest="100" HorizontalOptions="Start" />
-                                <Border StrokeShape="RoundRectangle 12" BackgroundColor="#F1F5F9" HeightRequest="48" />
-
-                                <Border StrokeShape="RoundRectangle 14" BackgroundColor="#CBD5E1" HeightRequest="52" />
-
-                                <Label Text="Đang xác thực bảo mật Supabase..."
-                                       TextColor="#64748B"
-                                       FontSize="12"
-                                       FontFamily="SegoeUI"
-                                       HorizontalOptions="Center" />
-                            </VerticalStackLayout>
-
-                            <VerticalStackLayout Spacing="16" IsVisible="{Binding IsNotLoading}">
-
-                                <!-- Ô nhập tài khoản -->
-                                <VerticalStackLayout Spacing="6">
-                                    <Label Text="Email công vụ"
-                                           TextColor="#1E293B"
-                                           FontSize="13"
-                                           FontFamily="SegoeUIBold" />
-                                    <Border StrokeShape="RoundRectangle 12"
-                                            Stroke="#CBD5E1"
-                                            StrokeThickness="1"
-                                            BackgroundColor="#F8FAFC"
-                                            Padding="14,0">
-                                        <Entry Text="{Binding Username}"
-                                               Placeholder="vidu: bao.chau@overtimehotel.com"
-                                               PlaceholderColor="#94A3B8"
-                                               TextColor="#0F172A"
-                                               FontFamily="SegoeUI"
-                                               FontSize="14"
-                                               HeightRequest="48"
-                                               Keyboard="Email"
-                                               ReturnType="Next"
-                                               ClearButtonVisibility="WhileEditing" />
-                                    </Border>
-                                </VerticalStackLayout>
-
-                                <!-- Ô nhập mật khẩu -->
-                                <VerticalStackLayout Spacing="6">
-                                    <Label Text="Mật khẩu"
-                                           TextColor="#1E293B"
-                                           FontSize="13"
-                                           FontFamily="SegoeUIBold" />
-                                    <Border StrokeShape="RoundRectangle 12"
-                                            Stroke="#CBD5E1"
-                                            StrokeThickness="1"
-                                            BackgroundColor="#F8FAFC"
-                                            Padding="14,0">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <Entry Grid.Column="0"
-                                                   Text="{Binding Password}"
-                                                   IsPassword="{Binding IsPasswordHidden}"
-                                                   Placeholder="Nhập mật khẩu"
-                                                   PlaceholderColor="#94A3B8"
-                                                   TextColor="#0F172A"
-                                                   FontFamily="SegoeUI"
-                                                   FontSize="14"
-                                                   HeightRequest="48"
-                                                   ReturnType="Done"
-                                                   ReturnCommand="{Binding LoginCommand}" />
-                                            <Button Grid.Column="1"
-                                                    Text="👁"
-                                                    Command="{Binding TogglePasswordCommand}"
-                                                    WidthRequest="40"
-                                                    HeightRequest="40"
-                                                    BackgroundColor="Transparent"
-                                                    TextColor="#64748B"
-                                                    FontSize="14"
-                                                    Padding="0"
-                                                    VerticalOptions="Center" />
-                                        </Grid>
-                                    </Border>
-                                </VerticalStackLayout>
-
-                                <!-- Ghi nhớ đăng nhập & trạng thái CSDL -->
-                                <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
-                                    <CheckBox Grid.Column="0"
-                                              IsChecked="{Binding RememberMe}"
-                                              Color="#1E3A8A"
-                                              VerticalOptions="Center" />
-                                    <Label Grid.Column="1"
-                                           Text="Ghi nhớ đăng nhập"
-                                           TextColor="#475569"
+                            <!-- Ô nhập Email dạng viên thuốc kèm Icon Vector thanh mảnh -->
+                            <Border StrokeShape="RoundRectangle 25"
+                                    Stroke="#4D2A437E"
+                                    StrokeThickness="1"
+                                    BackgroundColor="#4D071128"
+                                    HeightRequest="52"
+                                    HorizontalOptions="Fill"
+                                    Padding="18,0">
+                                <Grid ColumnDefinitions="Auto,*" VerticalOptions="Center" HorizontalOptions="Fill">
+                                    <!-- Icon Thư / Tài khoản dạng Vector chuẩn -->
+                                    <Path Grid.Column="0"
+                                          Data="M2,6 C2,4.9 2.9,4 4,4 H20 C21.1,4 22,4.9 22,6 V18 C22,19.1 21.1,20 20,20 H4 C2.9,20 2,19.1 2,18 Z M4,6 L12,12.5 L20,6"
+                                          Stroke="#94A3B8"
+                                          StrokeThickness="1.5"
+                                          StrokeLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Aspect="Uniform"
+                                          WidthRequest="18"
+                                          HeightRequest="18"
+                                          VerticalOptions="Center"
+                                          Margin="0,0,12,0" />
+                                    <Entry Grid.Column="1"
+                                           Text="{Binding Username}"
+                                           Placeholder="Email công vụ"
+                                           PlaceholderColor="#64748B"
+                                           TextColor="#FFFFFF"
                                            FontFamily="SegoeUI"
-                                           FontSize="12"
-                                           VerticalOptions="Center" />
-                                    <!-- Nhãn trạng thái máy chủ: đổi theo kết quả ping thật
-                                         nên không ghim màu xanh trong XAML nữa. -->
-                                    <Label Grid.Column="2"
-                                           Text="{Binding ServerStatusText}"
-                                           TextColor="{Binding ServerStatusColor}"
-                                           FontFamily="SegoeUIBold"
+                                           FontSize="14"
+                                           HorizontalOptions="Fill"
+                                           VerticalTextAlignment="Center"
+                                           Keyboard="Email"
+                                           ReturnType="Next"
+                                           ClearButtonVisibility="WhileEditing" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Ô nhập Mật khẩu dạng viên thuốc kèm Icon Khóa & Mắt Vector -->
+                            <Border StrokeShape="RoundRectangle 25"
+                                    Stroke="#4D2A437E"
+                                    StrokeThickness="1"
+                                    BackgroundColor="#4D071128"
+                                    HeightRequest="52"
+                                    HorizontalOptions="Fill"
+                                    Padding="18,0,12,0">
+                                <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center" HorizontalOptions="Fill">
+                                    <!-- Icon Ổ khóa dạng Vector chuẩn -->
+                                    <Path Grid.Column="0"
+                                          Data="M6,10 V7 C6,4.8 7.8,3 10,3 C12.2,3 14,4.8 14,7 V10 M4,10 H16 C17.1,10 18,10.9 18,12 V19 C18,20.1 17.1,21 16,21 H4 C2.9,21 2,20.1 2,19 V12 C2,10.9 2.9,10 4,10 Z M10,14 V17"
+                                          Stroke="#94A3B8"
+                                          StrokeThickness="1.5"
+                                          StrokeLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Aspect="Uniform"
+                                          WidthRequest="18"
+                                          HeightRequest="18"
+                                          VerticalOptions="Center"
+                                          Margin="0,0,12,0" />
+                                    <Entry Grid.Column="1"
+                                           Text="{Binding Password}"
+                                           IsPassword="{Binding IsPasswordHidden}"
+                                           Placeholder="Mật khẩu"
+                                           PlaceholderColor="#64748B"
+                                           TextColor="#FFFFFF"
+                                           FontFamily="SegoeUI"
+                                           FontSize="14"
+                                           HorizontalOptions="Fill"
+                                           VerticalTextAlignment="Center"
+                                           ReturnType="Done"
+                                           ReturnCommand="{Binding LoginCommand}" />
+                                    <!-- Nút Mắt Ẩn/Hiện Mật khẩu dạng Vector chuẩn -->
+                                    <Grid Grid.Column="2"
+                                          WidthRequest="36"
+                                          HeightRequest="36"
+                                          VerticalOptions="Center"
+                                          HorizontalOptions="Center">
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding TogglePasswordCommand}" />
+                                        </Grid.GestureRecognizers>
+                                        <Path Data="M1,12 C3.5,6.5 7.5,3.5 12,3.5 C16.5,3.5 20.5,6.5 23,12 C20.5,17.5 16.5,20.5 12,20.5 C7.5,20.5 3.5,17.5 1,12 Z M12,8.5 C10.1,8.5 8.5,10.1 8.5,12 C8.5,13.9 10.1,15.5 12,15.5 C13.9,15.5 15.5,13.9 15.5,12 C15.5,10.1 13.9,8.5 12,8.5 Z"
+                                              Stroke="#94A3B8"
+                                              StrokeThickness="1.5"
+                                              StrokeLineCap="Round"
+                                              StrokeLineJoin="Round"
+                                              Aspect="Uniform"
+                                              WidthRequest="20"
+                                              HeightRequest="20"
+                                              HorizontalOptions="Center"
+                                              VerticalOptions="Center" />
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- Trạng thái ghi nhớ và kết nối -->
+                            <Grid ColumnDefinitions="*,Auto" Margin="4,0,4,-2" VerticalOptions="Center">
+                                <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                                    <CheckBox IsChecked="{Binding RememberMe}"
+                                              Color="#D4AF37"
+                                              Scale="0.85"
+                                              VerticalOptions="Center" />
+                                    <Label Text="Ghi nhớ đăng nhập"
+                                           TextColor="#94A3B8"
+                                           FontFamily="SegoeUI"
                                            FontSize="11"
                                            VerticalOptions="Center" />
-                                </Grid>
+                                </HorizontalStackLayout>
+                                <Label Grid.Column="1"
+                                       Text="{Binding ServerStatusText}"
+                                       TextColor="{Binding ServerStatusColor}"
+                                       FontFamily="SegoeUIBold"
+                                       FontSize="10"
+                                       VerticalOptions="Center" />
+                            </Grid>
 
-                                <!-- Nút đăng nhập chính: navy đậm + viền vàng kim -->
-                                <Button x:Name="btnLoginMain"
-                                        Text="ĐĂNG NHẬP"
-                                        Command="{Binding LoginCommand}"
-                                        BackgroundColor="#1E3A8A"
-                                        TextColor="#FFFFFF"
-                                        FontFamily="SegoeUIBold"
-                                        FontSize="14"
-                                        CornerRadius="14"
-                                        HeightRequest="52"
-                                        BorderColor="#D4AF37"
-                                        BorderWidth="1.5">
-                                    <Button.Shadow>
-                                        <Shadow Brush="#1E3A8A" Offset="0,4" Radius="12" Opacity="0.3" />
-                                    </Button.Shadow>
-                                </Button>
+                            <!-- Nút ĐĂNG NHẬP: Xanh Navy đậm dạng viên thuốc, Chữ Trắng -->
+                            <Button x:Name="btnLoginMain"
+                                    Text="ĐĂNG NHẬP"
+                                    Command="{Binding LoginCommand}"
+                                    BackgroundColor="#0D1E4A"
+                                    TextColor="#FFFFFF"
+                                    FontFamily="SegoeUIBold"
+                                    FontSize="14"
+                                    CharacterSpacing="1"
+                                    CornerRadius="25"
+                                    HeightRequest="52"
+                                    HorizontalOptions="Fill"
+                                    BorderColor="#2563EB"
+                                    BorderWidth="1">
+                                <Button.Shadow>
+                                    <Shadow Brush="#020817" Offset="0,4" Radius="12" Opacity="0.4" />
+                                </Button.Shadow>
+                            </Button>
 
-                                <!-- Xác thực sinh trắc học -->
-                                <Button x:Name="btnBiometric"
-                                        Text="Đăng Nhập FaceID / Vân Tay"
-                                        Command="{Binding BiometricLoginCommand}"
-                                        BackgroundColor="#FFFFFF"
-                                        TextColor="#1E3A8A"
-                                        FontFamily="SegoeUIBold"
-                                        FontSize="13"
-                                        CornerRadius="12"
-                                        HeightRequest="44"
-                                        BorderColor="#1E3A8A"
-                                        BorderWidth="1.5" />
-                            </VerticalStackLayout>
-                        </Grid>
-                    </VerticalStackLayout>
+                            <!-- Nút Đăng nhập sinh trắc học: Nền tương tự ô tài khoản mật khẩu, kèm Icon FaceID chuẩn vector -->
+                            <Border x:Name="btnBiometric"
+                                    StrokeShape="RoundRectangle 25"
+                                    Stroke="#4D2A437E"
+                                    StrokeThickness="1"
+                                    BackgroundColor="#4D071128"
+                                    HeightRequest="52"
+                                    HorizontalOptions="Fill"
+                                    Padding="16,0">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding BiometricLoginCommand}" />
+                                </Border.GestureRecognizers>
+                                <HorizontalStackLayout Spacing="10" HorizontalOptions="Center" VerticalOptions="Center">
+                                    <!-- Biểu tượng FaceID vector chuẩn -->
+                                    <Path Data="M3,8 V5 C3,3.9 3.9,3 5,3 H8 M16,3 H19 C20.1,3 21,3.9 21,5 V8 M3,16 V19 C3,20.1 3.9,21 5,21 H8 M16,21 H19 C20.1,21 21,20.1 21,19 V16 M8.5,8.5 V9.5 M15.5,8.5 V9.5 M12,11 V13 M9,16 C10.5,17.5 13.5,17.5 15,16"
+                                          Stroke="#D4AF37"
+                                          StrokeThickness="1.8"
+                                          StrokeLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Aspect="Uniform"
+                                          WidthRequest="20"
+                                          HeightRequest="20"
+                                          VerticalOptions="Center" />
+                                    <Label Text="FaceID / Vân Tay"
+                                           TextColor="#FFFFFF"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="13"
+                                           VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+
+                        </VerticalStackLayout>
+                    </Grid>
                 </Border>
 
-                <!-- Gợi ý tài khoản mẫu: phải khớp đúng những email đã seed trên
-                     Supabase Cloud. Trước đây ghi "employee / emp123" — hai tài
-                     khoản đó không tồn tại nên người dùng gõ theo lại bị từ chối. -->
-                <VerticalStackLayout x:Name="accountHintSection" Spacing="4" Margin="24,16,24,0" HorizontalOptions="Center">
-                    <Label Text="TÀI KHOẢN MẪU ĐỒ ÁN"
-                           TextColor="#94A3B8"
-                           FontFamily="SegoeUIBold"
-                           FontSize="9"
-                           CharacterSpacing="0.9"
-                           HorizontalOptions="Center" />
-                    <Label Text="Nhân viên: bao.chau@overtimehotel.com"
-                           TextColor="#64748B"
-                           FontFamily="SegoeUI"
-                           FontSize="11"
-                           HorizontalOptions="Center" />
-                    <Label Text="Quản lý: dat.do@overtimehotel.com"
-                           TextColor="#64748B"
-                           FontFamily="SegoeUI"
-                           FontSize="11"
-                           HorizontalOptions="Center" />
-                    <Label Text="Mật khẩu chung: 123456789"
-                           TextColor="#64748B"
-                           FontFamily="SegoeUI"
-                           FontSize="11"
-                           HorizontalOptions="Center" />
-                </VerticalStackLayout>
-
-                <Label Text="The OverTime Hotel · Hệ thống HRM 5★"
-                       TextColor="#CBD5E1"
-                       FontSize="10"
+                <!-- Footer tinh tế dưới cùng -->
+                <Label Grid.Row="2"
+                       Text="The OverTime Hotel · Hệ thống HRM 5★"
+                       TextColor="#64748B"
+                       FontSize="11"
                        FontFamily="SegoeUI"
                        HorizontalOptions="Center"
-                       Margin="0,20,0,28" />
+                       Margin="0,32,0,16" />
 
-            </VerticalStackLayout>
+            </Grid>
         </ScrollView>
 
-        <!-- Popup lỗi dùng chung, phủ toàn màn hình -->
+        <!-- Popup lỗi dùng chung -->
         <controls:LuxuryPopup x:Name="popup" ZIndex="999" />
 
     </Grid>

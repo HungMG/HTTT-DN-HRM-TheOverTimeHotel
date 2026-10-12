@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -17,6 +17,10 @@ public partial class App : MauiWinUIApplication
 	public App()
 	{
 		this.InitializeComponent();
+		this.UnhandledException += (sender, e) =>
+		{
+			try { System.IO.File.WriteAllText("crash_winui.log", e.Exception?.ToString() ?? e.Message); } catch { }
+		};
 	}
 
 	protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();

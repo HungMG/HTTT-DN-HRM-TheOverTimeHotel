@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.HrStatisticsPage"
+             x:DataType="vm:HrStatisticsViewModel"
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Top Navigation Bar -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="20,16,20,12" BackgroundColor="#FFFFFF">
+            <Button Grid.Column="0"
+                    Text="‹ Quay lại"
+                    Command="{Binding BackCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="#1E3A8A"
+                    FontFamily="SegoeUIBold"
+                    FontSize="14"
+                    HeightRequest="40"
+                    Padding="0" />
+
+            <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center" VerticalOptions="Center">
+                <Label Text="THỐNG KÊ NHÂN SỰ"
+                       TextColor="#0F172A"
+                       FontSize="15"
+                       FontFamily="SegoeUIBold"
+                       HorizontalOptions="Center" />
+                <Label Text="{Binding SelectedPeriod}"
+                       TextColor="#64748B"
+                       FontSize="11"
+                       FontFamily="SegoeUI"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <Label Grid.Column="2"
+                   Text="{Binding LastUpdatedText}"
+                   TextColor="#94A3B8"
+                   FontSize="10"
+                   FontFamily="SegoeUI"
+                   VerticalOptions="Center" />
+        </Grid>
+
+        <!-- Body Content -->
+        <RefreshView Grid.Row="1"
+                     IsRefreshing="{Binding IsRefreshing}"
+                     Command="{Binding RefreshCommand}"
+                     RefreshColor="#1E3A8A">
+            <ScrollView>
+                <VerticalStackLayout Spacing="16" Padding="20,16,20,32">
+
+                    <!-- 1. TỔNG SỐ NHÂN SỰ -->
+                    <Border Stroke="#E2E8F0"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                <Label Text="TỔNG SỐ NHÂN SỰ TOÀN KHÁCH SẠN"
+                                       TextColor="#64748B"
+                                       FontSize="11"
+                                       FontFamily="SegoeUIBold" />
+                                <Label Text="{Binding TotalEmployees, StringFormat='{0} Nhân viên'}"
+                                       TextColor="#0F172A"
+                                       FontSize="24"
+                                       FontFamily="SegoeUIBold" />
+                                <Label Text="{Binding OfficialEmployees, StringFormat='Chính thức: {0} · Thử việc: 14'}"
+                                       TextColor="#15803D"
+                                       FontSize="12"
+                                       FontFamily="SegoeUIBold" />
+                            </VerticalStackLayout>
+                            <Border Grid.Column="1"
+                                    StrokeShape="RoundRectangle 24"
+                                    BackgroundColor="#EFF6FF"
+                                    WidthRequest="48"
+                                    HeightRequest="48"
+                                    VerticalOptions="Center"
+                                    Stroke="Transparent">
+                                <Label Text="👥" FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- 2. CƠ CẤU PHÒNG BAN -->
+                    <Border Stroke="#E2E8F0"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Text="CƠ CẤU THEO BỘ PHẬN"
+                                   TextColor="#1E3A8A"
+                                   FontSize="13"
+                                   FontFamily="SegoeUIBold" />
+
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="8">
+                                <Label Grid.Row="0" Grid.Column="0" Text="Buồng phòng (Housekeeping)" TextColor="#0F172A" FontSize="13" LineBreakMode="WordWrap" />
+                                <Label Grid.Row="0" Grid.Column="1" Text="45 nhân sự" TextColor="#1E3A8A" FontSize="13" FontFamily="SegoeUIBold" />
+
+                                <Label Grid.Row="1" Grid.Column="0" Text="Ẩm thực &amp; Bếp (F&amp;B)" TextColor="#0F172A" FontSize="13" LineBreakMode="WordWrap" />
+                                <Label Grid.Row="1" Grid.Column="1" Text="35 nhân sự" TextColor="#1E3A8A" FontSize="13" FontFamily="SegoeUIBold" />
+
+                                <Label Grid.Row="2" Grid.Column="0" Text="Tiền sảnh (Front Office)" TextColor="#0F172A" FontSize="13" LineBreakMode="WordWrap" />
+                                <Label Grid.Row="2" Grid.Column="1" Text="28 nhân sự" TextColor="#1E3A8A" FontSize="13" FontFamily="SegoeUIBold" />
+
+                                <Label Grid.Row="3" Grid.Column="0" Text="Kỹ thuật &amp; Bảo trì (Engineering)" TextColor="#0F172A" FontSize="13" LineBreakMode="WordWrap" />
+                                <Label Grid.Row="3" Grid.Column="1" Text="14 nhân sự" TextColor="#1E3A8A" FontSize="13" FontFamily="SegoeUIBold" />
+
+                                <Label Grid.Row="4" Grid.Column="0" Text="An ninh &amp; Bảo vệ (Security)" TextColor="#0F172A" FontSize="13" LineBreakMode="WordWrap" />
+                                <Label Grid.Row="4" Grid.Column="1" Text="12 nhân sự" TextColor="#1E3A8A" FontSize="13" FontFamily="SegoeUIBold" />
+
+                                <Label Grid.Row="5" Grid.Column="0" Text="Khối Văn phòng &amp; Hành chính" TextColor="#0F172A" FontSize="13" LineBreakMode="WordWrap" />
+                                <Label Grid.Row="5" Grid.Column="1" Text="8 nhân sự" TextColor="#1E3A8A" FontSize="13" FontFamily="SegoeUIBold" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- 3 & 4. TRÌNH ĐỘ HỌC VẤN & THÂM NIÊN -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Border Grid.Column="0"
+                                Stroke="#E2E8F0"
+                                StrokeShape="RoundRectangle 16"
+                                BackgroundColor="#FFFFFF"
+                                Padding="14">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="TRÌNH ĐỘ" TextColor="#1E3A8A" FontSize="11" FontFamily="SegoeUIBold" />
+                                <Label Text="• Đại học: 42%" TextColor="#0F172A" FontSize="12" />
+                                <Label Text="• CĐ/Nghề: 38%" TextColor="#0F172A" FontSize="12" />
+                                <Label Text="• Khác: 20%" TextColor="#64748B" FontSize="12" />
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <Border Grid.Column="1"
+                                Stroke="#E2E8F0"
+                                StrokeShape="RoundRectangle 16"
+                                BackgroundColor="#FFFFFF"
+                                Padding="14">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="THÂM NIÊN" TextColor="#1E3A8A" FontSize="11" FontFamily="SegoeUIBold" />
+                                <Label Text="• &lt; 1 năm: 24%" TextColor="#0F172A" FontSize="12" />
+                                <Label Text="• 1-3 năm: 48%" TextColor="#0F172A" FontSize="12" />
+                                <Label Text="• &gt; 3 năm: 28%" TextColor="#0F172A" FontSize="12" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </Grid>
+
+                    <!-- 5. TÌNH HÌNH CHUYÊN CẦN -->
+                    <Border Stroke="#E2E8F0"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <Grid ColumnDefinitions="*,*">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                <Label Text="TỶ LỆ ĐÚNG GIỜ" TextColor="#64748B" FontSize="11" FontFamily="SegoeUIBold" />
+                                <Label Text="{Binding AttendancePunctualRate}" TextColor="#15803D" FontSize="20" FontFamily="SegoeUIBold" />
+                                <Label Text="Theo ca trực thực tế" TextColor="#94A3B8" FontSize="10" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="ĐI TRỄ / VỀ SỚM" TextColor="#64748B" FontSize="11" FontFamily="SegoeUIBold" />
+                                <Label Text="{Binding AttendanceLateEarlyRate}" TextColor="#B45309" FontSize="20" FontFamily="SegoeUIBold" />
+                                <Label Text="Dưới 15 phút" TextColor="#94A3B8" FontSize="10" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- 6. QUỸ LƯƠNG TỔNG HỢP -->
+                    <Border Stroke="#D4AF37"
+                            StrokeThickness="1.5"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="TỔNG QUỸ LƯƠNG DỰ KIẾN (THÁNG HIỆN HÀNH)"
+                                   TextColor="#1E3A8A"
+                                   FontSize="11"
+                                   FontFamily="SegoeUIBold" />
+                            <Label Text="{Binding TotalPayrollFund}"
+                                   TextColor="#0F172A"
+                                   FontSize="22"
+                                   FontFamily="SegoeUIBold" />
+                            <Label Text="Chỉ hiển thị con số tổng hợp cho vai trò có thẩm quyền."
+                                   TextColor="#64748B"
+                                   FontSize="11"
+                                   FontFamily="SegoeUI" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+
+    </Grid>
+
+</ContentPage>

@@ -15,6 +15,18 @@ public partial class LoginPage : ContentPage
     private readonly LoginViewModel _viewModel;
     private CancellationTokenSource? _shimmerCts;
 
+    static LoginPage()
+    {
+#if ANDROID
+        Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("RemoveAndroidUnderline", (handler, view) =>
+        {
+            handler.PlatformView.Background = null;
+            handler.PlatformView.SetBackgroundColor(Android.Graphics.Color.Transparent);
+            handler.PlatformView.SetPadding(0, 0, 0, 0);
+        });
+#endif
+    }
+
     public LoginPage(LoginViewModel viewModel)
     {
         InitializeComponent();
@@ -35,35 +47,27 @@ public partial class LoginPage : ContentPage
         // chủ treo tới hết timeout thì phần đăng nhập vẫn hiện và vẫn gõ được.
         _ = _viewModel.InitializeServerStatusAsync();
 
-        // Dải đầu và thẻ đăng nhập là hai khối nằm chồng nhau (thẻ nổi lên dải navy).
-        // Hoạt ảnh riêng từng khối để không nhân đôi Transform trên cùng một cây.
+        // Hoạt ảnh xuất hiện mượt mà cho khối thương hiệu và tấm thẻ đáy
+        // Lưu ý: Tuyệt đối KHÔNG gán Scale < 1.0 vì Android MAUI sẽ neo lề trái (AnchorX=0),
+        // gây lỗi kẹt kích thước 95% và hở 54px màu xanh bên phải.
         brandHeader.Opacity = 0;
-        brandHeader.TranslationY = -40;
+        brandHeader.TranslationY = -30;
 
         formCardBorder.Opacity = 0;
-        formCardBorder.TranslationY = 45;
-        formCardBorder.Scale = 0.94;
+        formCardBorder.TranslationY = 35;
+        formCardBorder.Scale = 1.0;
+        formCardBorder.AnchorX = 0.5;
 
-        accountHintSection.Opacity = 0;
-        accountHintSection.TranslationY = 30;
-
-        await Task.Delay(80);
+        await Task.Delay(50);
         _ = Task.WhenAll(
-            brandHeader.FadeToAsync(1.0, 550, Easing.CubicOut),
-            brandHeader.TranslateToAsync(0, 0, 600, Easing.CubicOut)
+            brandHeader.FadeToAsync(1.0, 450, Easing.CubicOut),
+            brandHeader.TranslateToAsync(0, 0, 500, Easing.CubicOut)
         );
 
-        await Task.Delay(160);
+        await Task.Delay(100);
         _ = Task.WhenAll(
-            formCardBorder.FadeToAsync(1.0, 650, Easing.CubicOut),
-            formCardBorder.TranslateToAsync(0, 0, 750, Easing.SpringOut),
-            formCardBorder.ScaleToAsync(1.0, 750, Easing.SpringOut)
-        );
-
-        await Task.Delay(140);
-        _ = Task.WhenAll(
-            accountHintSection.FadeToAsync(1.0, 500, Easing.CubicOut),
-            accountHintSection.TranslateToAsync(0, 0, 600, Easing.CubicOut)
+            formCardBorder.FadeToAsync(1.0, 500, Easing.CubicOut),
+            formCardBorder.TranslateToAsync(0, 0, 550, Easing.CubicOut)
         );
     }
 
@@ -129,7 +133,9 @@ public partial class LoginPage : ContentPage
     private static void SetDarkStatusBarIcons(Android.Views.Window window)
     {
         const int lightBars = (int)Android.Views.WindowInsetsControllerAppearance.LightStatusBars;
-        window.InsetsController?.SetSystemBarsAppearance(lightBars, lightBars);
+        // Trang đăng nhập hiện có nền Xanh Navy đậm (#0B1B4D) toàn diện, nên xóa cờ
+        // LightStatusBars để biểu tượng (đồng hồ, pin, sóng) hiện màu TRẮNG sáng rõ nét.
+        window.InsetsController?.SetSystemBarsAppearance(0, lightBars);
     }
 #endif
 

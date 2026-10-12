@@ -76,6 +76,7 @@
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
 		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
+		<MauiImage Update="Resources\Images\login_bg_luxury.png" Resize="False" />
 
 		<!-- Logo thương hiệu hiển thị TRONG app (thay ngôi sao ★ ở LoginPage,
 		     IntroPage, AttendancePage, LocationClockPanel).
