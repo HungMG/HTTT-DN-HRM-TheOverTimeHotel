@@ -1,0 +1,266 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.ChamCongIndexViewModel
+@using OvertimeHotel.HRM.Core.Policies
+
+<!-- Metadata phục vụ cập nhật realtime KPI Cards tại chỗ -->
+<div id="attendancePartialMeta" class="d-none"
+     data-total="@Model.TongSoCaPhan"
+     data-checked-in="@Model.SoDaCheckIn"
+     data-working="@Model.SoDangLamViec"
+     data-on-time="@Model.SoDungGio"
+     data-late="@Model.SoDiTre"
+     data-early="@Model.SoVeSom"
+     data-hours="@Model.TongGioLamThucTe.ToString("N1", System.Globalization.CultureInfo.InvariantCulture)"
+     data-ot="@Model.TongGioOt.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)"></div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 attendance-data-table" style="font-size: 0.84rem;">
+        <thead class="table-light text-uppercase text-secondary border-bottom" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+            <tr>
+                <th class="ps-3 py-3" style="width: 45px;">#</th>
+                <th class="py-3">Nhân Sự</th>
+                <th class="py-3">Phòng Ban &amp; Chức Vụ</th>
+                <th class="py-3">Ca Trực &amp; Khung Giờ</th>
+                <th class="py-3 text-center">Quẹt Vào (Check-In)</th>
+                <th class="py-3 text-center">Quẹt Ra (Check-Out)</th>
+                <th class="py-3 text-center">Thời Gian Làm</th>
+                <th class="py-3 text-center">Trạng Thái</th>
+                <th class="pe-3 py-3 text-end" style="width: 90px;">Thao Tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Items != null && Model.Items.Count > 0)
+            {
+                var stt = (Model.PageNumber - 1) * Model.PageSize + 1;
+                foreach (var item in Model.Items)
+                {
+                    var isNight = item.TenCa.ToLowerInvariant().Contains("đêm");
+                    var isLate = item.PhutDiTre > 0;
+                    var isEarly = item.PhutVeSom > 0;
+                    var hasOt = item.GioTangCaOt > 0;
+
+                    <tr class="attendance-row @(item.DangLamViec ? "table-primary bg-opacity-10" : "")">
+                        <td class="ps-3 text-muted fw-semibold">@stt</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle text-white fw-bold d-flex align-items-center justify-content-center shadow-sm"
+                                     style="width: 34px; height: 34px; font-size: 0.85rem; background: #1e3a8a;">
+                                    @item.AvatarText
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark font-serif" style="font-size: 0.88rem;">@item.HoTen</div>
+                                    <span class="badge bg-light text-secondary border font-monospace" style="font-size: 0.65rem;">@item.MaNhanVienFormat</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="text-dark fw-semibold">@item.TenPhongBan</div>
+                            <div class="small text-muted" style="font-size: 0.75rem;">@item.TenChucVu</div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge @(isNight ? "bg-danger text-white" : "bg-primary text-white") rounded-pill px-2 py-1" style="font-size: 0.68rem;">
+                                    <i class="bi @(isNight ? "bi-moon-stars-fill" : "bi-sun-fill") me-1"></i>@item.TenCa
+                                </span>
+                                @if (item.QuaDem)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger border rounded-pill" style="font-size: 0.65rem;">+30% Đêm</span>
+                                }
+                            </div>
+                            <div class="small text-muted font-monospace" style="font-size: 0.75rem;">
+                                <i class="bi bi-calendar3 me-1"></i>@item.NgayLamViec.ToString("dd/MM/yyyy") &bull; @item.GioBatDauCaDisplay - @item.GioKetThucCaDisplay
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            @if (item.DaCheckIn)
+                            {
+                                <div class="fw-bold font-monospace @(isLate ? "text-danger" : "text-success")" style="font-size: 0.92rem;">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i>@item.GioCheckInDisplay
+                                </div>
+                                @if (isLate)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger border rounded-pill" style="font-size: 0.65rem;">
+                                        <i class="bi bi-clock-history me-1"></i>Trễ @item.PhutDiTre p
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success-subtle text-success border rounded-pill" style="font-size: 0.65rem;">Đúng giờ</span>
+                                }
+                                @if (!string.IsNullOrEmpty(item.PhuongThucCheckIn))
+                                {
+                                    <span class="badge bg-light text-muted border ms-1" style="font-size: 0.6rem;">@item.PhuongThucCheckIn</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-muted border px-2 py-1">
+                                    <i class="bi bi-dash-circle me-1"></i>Chưa check-in
+                                </span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (item.DaCheckOut)
+                            {
+                                <div class="fw-bold font-monospace @(isEarly ? "text-warning-emphasis" : "text-primary")" style="font-size: 0.92rem;">
+                                    <i class="bi bi-box-arrow-right me-1"></i>@item.GioCheckOutDisplay
+                                </div>
+                                @if (isEarly)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border rounded-pill" style="font-size: 0.65rem;">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Sớm @item.PhutVeSom p
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-primary-subtle text-primary border rounded-pill" style="font-size: 0.65rem;">Đầy đủ ca</span>
+                                }
+                            }
+                            else if (item.DangLamViec)
+                            {
+                                <div class="badge bg-primary text-white rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1 shadow-sm">
+                                    <span class="spinner-grow spinner-grow-sm text-warning" style="width: 8px; height: 8px;" role="status"></span>
+                                    <span>Đang làm việc</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-muted border px-2 py-1">
+                                    <i class="bi bi-dash-circle me-1"></i>Chưa check-out
+                                </span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <div class="fw-bold text-dark font-monospace" style="font-size: 0.88rem;">
+                                @item.ThoiGianLamDisplay
+                            </div>
+                            @if (hasOt)
+                            {
+                                <span class="badge bg-warning text-dark fw-bold rounded-pill" style="font-size: 0.65rem;">
+                                    <i class="bi bi-lightning-fill text-danger me-1"></i>+@item.GioTangCaOt.ToString("0.#")h OT
+                                </span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @switch (item.TrangThai)
+                            {
+                                case AttendanceCalculator.STATUS_DUNG_GIO:
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Đúng Giờ
+                                    </span>
+                                    break;
+                                case AttendanceCalculator.STATUS_DI_TRE:
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1">
+                                        <i class="bi bi-clock-history me-1"></i>Đi Trễ (@item.PhutDiTre p)
+                                    </span>
+                                    break;
+                                case AttendanceCalculator.STATUS_VE_SOM:
+                                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-3 py-1">
+                                        <i class="bi bi-box-arrow-left me-1"></i>Về Sớm (@item.PhutVeSom p)
+                                    </span>
+                                    break;
+                                case AttendanceCalculator.STATUS_TRE_VA_SOM:
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1">
+                                        <i class="bi bi-exclamation-octagon-fill me-1"></i>Trễ &amp; Về Sớm
+                                    </span>
+                                    break;
+                                case "DANG_LAM":
+                                    <span class="badge bg-primary text-white rounded-pill px-3 py-1 shadow-sm">
+                                        <i class="bi bi-person-walking me-1"></i>Đang Trực Ca
+                                    </span>
+                                    break;
+                                case AttendanceCalculator.STATUS_VANG:
+                                    <span class="badge bg-danger text-white rounded-pill px-3 py-1">
+                                        <i class="bi bi-x-circle-fill me-1"></i>Vắng Mặt
+                                    </span>
+                                    break;
+                                case "CHUA_CHECKIN":
+                                    <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3 py-1">
+                                        <i class="bi bi-hourglass-split me-1"></i>Chưa Quẹt Thẻ
+                                    </span>
+                                    break;
+                                default:
+                                    <span class="badge bg-light text-muted border rounded-pill px-3 py-1">
+                                        <i class="bi bi-clock me-1"></i>Chưa Đến Giờ
+                                    </span>
+                                    break;
+                            }
+                        </td>
+                        <td class="pe-3 text-end">
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 hover-lift"
+                                    onclick="openAttendanceDetailModal(@item.MaPhanCa)"
+                                    title="Xem chi tiết tọa độ GPS và lịch sử quẹt thẻ">
+                                <i class="bi bi-info-circle me-1"></i>Chi tiết
+                            </button>
+                        </td>
+                    </tr>
+                    stt++;
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="9" class="text-center py-5">
+                        <div class="py-4 text-muted">
+                            <i class="bi bi-calendar-x fs-1 text-warning d-block mb-2"></i>
+                            <h6 class="fw-bold text-dark">Không tìm thấy bản ghi chấm công nào phù hợp</h6>
+                            <p class="small text-muted mb-0">Thử thay đổi bộ lọc ngày, phòng ban hoặc từ khóa tìm kiếm để xem kết quả.</p>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- THANH PHÂN TRANG CỤC BỘ (IN-PLACE PAGINATION) -->
+<div class="card-footer bg-white border-top py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="small text-muted">
+        Hiển thị <strong>@((Model.PageNumber - 1) * Model.PageSize + (Model.Items != null && Model.Items.Count > 0 ? 1 : 0))</strong> -
+        <strong>@Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredItems)</strong>
+        trên tổng số <strong>@Model.TotalFilteredItems</strong> ca làm việc
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav aria-label="Phân trang chấm công">
+            <ul class="pagination pagination-sm mb-0 gap-1">
+                <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                    <button type="button" class="page-link rounded-pill px-3" onclick="changeAttendancePage(1)" title="Trang đầu">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </button>
+                </li>
+                <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                    <button type="button" class="page-link rounded-pill px-3" onclick="changeAttendancePage(@(Model.PageNumber - 1))" title="Trang trước">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                </li>
+
+                @{
+                    var startPage = Math.Max(1, Model.PageNumber - 2);
+                    var endPage = Math.Min(Model.TotalPages, Model.PageNumber + 2);
+                }
+
+                @for (int p = startPage; p <= endPage; p++)
+                {
+                    var isCurr = p == Model.PageNumber;
+                    <li class="page-item @(isCurr ? "active" : "")">
+                        <button type="button" class="page-link rounded-pill px-3 fw-bold @(isCurr ? "btn-hotel-primary" : "")" onclick="changeAttendancePage(@p)">
+                            @p
+                        </button>
+                    </li>
+                }
+
+                <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                    <button type="button" class="page-link rounded-pill px-3" onclick="changeAttendancePage(@(Model.PageNumber + 1))" title="Trang sau">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </li>
+                <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                    <button type="button" class="page-link rounded-pill px-3" onclick="changeAttendancePage(@Model.TotalPages)" title="Trang cuối">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>

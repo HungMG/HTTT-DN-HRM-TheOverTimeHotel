@@ -7,7 +7,6 @@
 }
 <link rel="stylesheet" href="~/css/payroll.css" asp-append-version="true" />
 <div class="catalog-page payroll-workspace">
-    <partial name="_PageTabs" model="@("payroll")" />
     <nav class="payroll-category-tabs mb-4" aria-label="Danh mục cấu hình lương">
         @foreach (var category in Enum.GetValues<CauHinhLuongCategory>())
         {

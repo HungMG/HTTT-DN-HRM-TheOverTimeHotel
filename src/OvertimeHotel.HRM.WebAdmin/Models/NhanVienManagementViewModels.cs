@@ -31,6 +31,20 @@ public class EmployeeListItemViewModel
     public string ContractState { get; init; } = "CHUA_CO";
 }
 
+public class NhanVienProfileModalViewModel
+{
+    public NhanVien Employee { get; init; } = new();
+    public HopDong? LatestContract { get; init; }
+    public IReadOnlyList<HopDong> ContractHistory { get; init; } = [];
+    public TaiKhoan? Account { get; init; }
+    public int? ContractDaysRemaining { get; init; }
+    public string ContractState { get; init; } = "CHUA_CO";
+    public PhongBan? Department => Employee.PhongBan;
+    public ChucVu? Position => Employee.ChucVu;
+    public int TenureYears => Math.Max(0, DateTime.Today.Year - Employee.NgayVaoLam.Year);
+    public int TenureMonths => Math.Max(0, ((DateTime.Today.Year - Employee.NgayVaoLam.Year) * 12) + DateTime.Today.Month - Employee.NgayVaoLam.Month);
+}
+
 public class NhanVienFormViewModel
 {
     public NhanVien Employee { get; set; } = new();

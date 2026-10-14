@@ -30,6 +30,10 @@
 
     var hasAnyGroup = canViewPeople || canViewShift || canViewPayroll || canViewApproval
                       || canViewAccounts || canViewSystem;
+
+    var topRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "User";
+    var topName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Quản trị viên";
+    var initial = !string.IsNullOrEmpty(topName) ? topName.Substring(0, 1).ToUpperInvariant() : "A";
 }
 
 <aside class="app-sidebar">
@@ -44,87 +48,127 @@
     </a>
 
     <nav class="app-sidebar-nav" aria-label="Điều hướng chính">
+        <!-- 1. TỔNG QUAN -->
+        <div class="app-sidebar-section-label">Tổng quan</div>
         <a class="app-nav-item@(IsCurrent("Home") && !IsCurrentAction("Home", "Privacy") ? " is-active" : "")"
            asp-controller="Home" asp-action="Index">
-            <i class="bi bi-speedometer2"></i><span>Tổng quan</span>
+            <i class="bi bi-speedometer2"></i><span>Bàn làm việc</span>
         </a>
 
         @if (hasAnyGroup)
         {
+            <!-- 2. NHÂN SỰ & HỢP ĐỒNG -->
             @if (canViewPeople)
             {
-                <a class="app-nav-item@(IsCurrent("NhanVien") || IsCurrent("HopDong") || IsCurrent("PhongBan") || IsCurrent("ChucVu") ? " is-active" : "")"
+                <div class="app-sidebar-section-label">Nhân sự &amp; HĐLĐ</div>
+                <a class="app-nav-item@(IsCurrent("NhanVien") ? " is-active" : "")"
                    asp-controller="NhanVien" asp-action="Index">
-                    <i class="bi bi-people-fill"></i><span>Nhân sự</span>
+                    <i class="bi bi-people-fill"></i><span>Hồ sơ nhân viên</span>
+                </a>
+                <a class="app-nav-item@(IsCurrent("HopDong") ? " is-active" : "")"
+                   asp-controller="HopDong" asp-action="Index">
+                    <i class="bi bi-file-earmark-text-fill"></i><span>Hợp đồng lao động</span>
+                </a>
+                <a class="app-nav-item@(IsCurrent("PhongBan") || IsCurrent("ChucVu") ? " is-active" : "")"
+                   asp-controller="PhongBan" asp-action="Index">
+                    <i class="bi bi-building"></i><span>Phòng ban &amp; Chức vụ</span>
                 </a>
             }
 
+            <!-- 3. CA LÀM & CHẤM CÔNG 24/7 -->
             @if (canViewShift)
             {
-                <a class="app-nav-item@(IsCurrent("PhanCa") || IsCurrent("CaLamViec") ? " is-active" : "")"
+                <div class="app-sidebar-section-label">Chấm công 24/7</div>
+                <a class="app-nav-item@(IsCurrent("PhanCa") ? " is-active" : "")"
                    asp-controller="PhanCa" asp-action="Index">
-                    <i class="bi bi-clock-history"></i><span>Ca &amp; Chấm công</span>
+                    <i class="bi bi-calendar-week-fill"></i><span>Ca &amp; Lịch làm việc</span>
                 </a>
-            }
-
-            @if (canViewPayroll)
-            {
-                <a class="app-nav-item@(IsCurrent("CauHinhLuong") || IsCurrent("CauHinhKhoanLuong") ? " is-active" : "")"
-                   asp-controller="CauHinhLuong" asp-action="Index">
-                    <i class="bi bi-wallet2"></i><span>Lương</span>
+                <a class="app-nav-item@(IsCurrent("ChamCong") ? " is-active" : "")"
+                   asp-controller="ChamCong" asp-action="Index">
+                    <i class="bi bi-fingerprint"></i><span>Nhật ký chấm công</span>
                 </a>
             }
 
             @if (canViewApproval)
             {
-                <span class="app-nav-item is-disabled" aria-disabled="true" title="Đang phát triển">
-                    <i class="bi bi-check2-square"></i><span>Duyệt</span>
-                    <em class="app-nav-soon">Sắp có</em>
+                <span class="app-nav-item is-disabled d-flex align-items-center justify-content-between" aria-disabled="true" title="Đang đồng bộ với Mobile App">
+                    <span class="d-flex align-items-center gap-2"><i class="bi bi-file-earmark-check"></i><span>Đơn từ trực tuyến</span></span>
+                    <span class="app-nav-badge">7</span>
                 </span>
             }
 
-            @if (canViewAccounts)
+            <!-- 4. LƯƠNG & BÁO CÁO -->
+            @if (canViewPayroll)
             {
-                <a class="app-nav-item@(IsCurrent("UserAccounts") ? " is-active" : "")"
-                   asp-controller="UserAccounts" asp-action="Index">
-                    <i class="bi bi-person-gear"></i><span>Tài khoản</span>
+                <div class="app-sidebar-section-label">Lương &amp; Báo cáo</div>
+                <a class="app-nav-item@(IsCurrent("CauHinhLuong") ? " is-active" : "")"
+                   asp-controller="CauHinhLuong" asp-action="Index">
+                    <i class="bi bi-wallet2"></i><span>Bảng tính lương</span>
+                </a>
+                <a class="app-nav-item@(IsCurrent("CauHinhKhoanLuong") ? " is-active" : "")"
+                   asp-controller="CauHinhKhoanLuong" asp-action="Index">
+                    <i class="bi bi-sliders"></i><span>Khoản lương &amp; Phụ cấp</span>
                 </a>
             }
 
-            @* Quy trình HR duyệt hợp đồng → CNTT cấp tài khoản. Tách khỏi mục
-               "Tài khoản" vì đây là hàng đợi công việc chờ xử lý, không phải danh
-               sách hồ sơ — và vì nó cần một quyền riêng (CAP_TAI_KHOAN_MOBILE)
-               mà nhóm "Tài khoản" không đòi hỏi. *@
-            @if (User.HasPermission(PermissionCodes.ManageAccounts) ||
-                 User.HasPermission(PermissionCodes.ProvisionMobileAccount))
+            <!-- 5. HỆ THỐNG & TÀI KHOẢN -->
+            @if (canViewAccounts || canViewSystem)
             {
-                <a class="app-nav-item@(IsCurrent("YeuCauTaiKhoan") ? " is-active" : "")"
-                   asp-controller="YeuCauTaiKhoan" asp-action="Index">
-                    <i class="bi bi-inboxes"></i><span>Yêu cầu cấp tài khoản</span>
-                </a>
-            }
+                <div class="app-sidebar-section-label">Hệ thống</div>
+                @if (canViewAccounts)
+                {
+                    <a class="app-nav-item@(IsCurrent("UserAccounts") ? " is-active" : "")"
+                       asp-controller="UserAccounts" asp-action="Index">
+                        <i class="bi bi-person-gear"></i><span>Tài khoản &amp; RBAC</span>
+                    </a>
+                }
 
-            @if (canViewSystem)
-            {
-                <a class="app-nav-item@(IsCurrent("Backup") ? " is-active" : "")"
-                   asp-controller="Backup" asp-action="Index">
-                    <i class="bi bi-shield-check"></i><span>Hệ thống</span>
-                </a>
+                @if (User.HasPermission(PermissionCodes.ManageAccounts) ||
+                     User.HasPermission(PermissionCodes.ProvisionMobileAccount))
+                {
+                    <a class="app-nav-item@(IsCurrent("YeuCauTaiKhoan") ? " is-active" : "")"
+                       asp-controller="YeuCauTaiKhoan" asp-action="Index">
+                        <i class="bi bi-inboxes"></i><span>Hàng đợi cấp tài khoản</span>
+                    </a>
+                }
+
+                @if (canViewSystem)
+                {
+                    <a class="app-nav-item@(IsCurrent("Backup") ? " is-active" : "")"
+                       asp-controller="Backup" asp-action="Index">
+                        <i class="bi bi-shield-check"></i><span>Sao lưu CSDL</span>
+                    </a>
+                }
             }
         }
     </nav>
 
-    <div class="app-sidebar-footer">
-        <a class="app-nav-item@(IsCurrentAction("Home", "Privacy") ? " is-active" : "")"
-           asp-controller="Home" asp-action="Privacy">
-            <i class="bi bi-file-earmark-text"></i><span>Chính sách</span>
-        </a>
+    <!-- THẺ TRẠNG THÁI VẬN HÀNH KHÁCH SẠN GÓC DƯỚI -->
+    <div class="app-sidebar-presence-card">
+        <div class="app-presence-header">
+            <span>Hôm nay, @DateTime.Today.ToString("dd/MM/yyyy")</span>
+            <span class="app-presence-pulse" title="Hệ thống 24/7 đang hoạt động"></span>
+        </div>
+        <div class="app-presence-stat">
+            <span>24/7 Vận hành</span>
+        </div>
+        <div class="app-presence-sub">The OverTime Hotel 5★</div>
+    </div>
 
-        @if (User.Identity?.IsAuthenticated == true)
-        {
-            <a class="app-nav-item" asp-controller="Account" asp-action="Logout">
-                <i class="bi bi-box-arrow-right"></i><span>Đăng xuất</span>
-            </a>
-        }
+    <!-- THẺ USER FOOTER SIDEBAR -->
+    <div class="app-sidebar-footer">
+        <div class="app-sidebar-user-card">
+            <span class="app-sidebar-user-avatar">@initial</span>
+            <div class="app-sidebar-user-info">
+                <div class="app-sidebar-user-name" title="@topName">@topName</div>
+                <div class="app-sidebar-user-role">@topRole</div>
+            </div>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <a class="app-sidebar-logout-btn" asp-controller="Account" asp-action="Logout" title="Đăng xuất">
+                    <i class="bi bi-box-arrow-right"></i>
+                </a>
+            }
+        </div>
     </div>
 </aside>

@@ -1,40 +1,49 @@
-# PRD 04: Thiết Kế Cơ Sở Dữ Liệu 25 Bảng Chuẩn 3NF (Supabase PostgreSQL)
+# PRD 04: Thiết Kế Cơ Sở Dữ Liệu 27 Bảng Chuẩn 3NF (Supabase PostgreSQL)
 
-> **Lưu ý về tên file:** File này vẫn mang tên `04_Thiet_Ke_CSDL_17_Bang.md` (đã được tham chiếu ở nhiều nơi nên **không đổi tên**), nhưng **nội dung thực tế mô tả 25 bảng**. Hãy luôn đọc con số trong **tiêu đề nội dung bên dưới**, không đọc con số trong tên file.
+> **Lưu ý về tên file:** File này vẫn mang tên `04_Thiet_Ke_CSDL_17_Bang.md` (đã được tham chiếu ở nhiều tài liệu và mã nguồn nên **không đổi tên file** để tránh đứt gãy liên kết), nhưng **nội dung thực tế mô tả đầy đủ 27 bảng CSDL chuẩn hóa 3NF**. Hãy luôn đối chiếu con số trong tiêu đề nội dung của tài liệu.
 
-> **Nguồn đối chiếu:** Toàn bộ nội dung dưới đây đã được đối chiếu với **schema thật ngày 07/10/2026** dump từ Supabase Cloud bằng lệnh `supabase db dump --linked --schema public` (PostgreSQL 17.6, schema `public`, 24 bảng). Bảng thứ **25** (`yeu_cau_tai_khoan`) được bổ sung ngày **09/10/2026** cho quy trình *HR duyệt HĐLĐ → bộ phận CNTT (IT) cấp tài khoản đăng nhập*.
+> **Nguồn đối chiếu & Tiến trình chuẩn hóa mở rộng:**
+> Toàn bộ thiết kế CSDL được kiểm chứng và nâng cấp qua 4 giai đoạn tiến hóa kiến trúc:
+> 1. **17 Bảng gốc:** Thiết kế sơ bộ ban đầu cho các nghiệp vụ cốt lõi (Hồ sơ, Hợp đồng, Tài khoản, Phân ca, Chấm công, Đơn từ, Kỳ lương, Cấu hình lương, Phiếu lương).
+> 2. **24 Bảng chuẩn 3NF (07/10/2026):** Dump từ CSDL vận hành Supabase Cloud (PostgreSQL 17.6). Phân rã chuẩn 3NF phân hệ tiền lương: tách 3 bảng cấu hình tham số (`cau_hinh_phu_cap`, `cau_hinh_khau_tru`, `cau_hinh_tang_ca`); tách 3 bảng chi tiết khấu trừ lương 3 tầng (`chi_tiet_tru_bao_hiem`, `chi_tiet_tru_thue_tncn`, `chi_tiet_tru_vi_pham_tam_ung`); bổ sung bảng kiểm toán an ninh `nhat_ky_quan_tri`; giữ bảng `cau_hinh_khoan_luong` làm bảng Legacy/Bonus.
+> 3. **25 Bảng (09/10/2026):** Bổ sung bảng thứ 25 `yeu_cau_tai_khoan`, tách riêng bộ phận Công nghệ Thông tin (`ma_phong_ban = 9`) và bổ sung nhóm vai trò thứ 5 (`IT`), thiết lập quy trình kiểm soát cấp tài khoản Mobile App: *HR duyệt HĐLĐ -> IT cấp tài khoản* kèm 4 triggers rào chắn CSDL chống tự cấp và leo quyền.
+> 4. **27 Bảng chính thức (14/10/2026):** Bổ sung 2 bảng `du_an` (Bảng 26) và `phan_cong_du_an` (Bảng 27) phục vụ Phân hệ 9 (Quản lý Dự án & Sự kiện Khách sạn: Tiệc cưới, Hội nghị MICE, Gala Dinner, Đoàn VIP...), hỗ trợ phân công nhân sự và kết chuyển thù lao sự kiện vào bảng lương tháng.
 
-## 1. Danh Mục Tổng Hợp 25 Bảng CSDL
+---
+
+## 1. Danh Mục Tổng Hợp 27 Bảng CSDL
 
 Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn hóa **dạng chuẩn 3 (3NF)** trên nền tảng Supabase Cloud (PostgreSQL Engine):
 
 | STT | Tên Bảng | Ý Nghĩa Nghiệp Vụ Trong Khách Sạn | Khóa Chính (PK) | Khóa Ngoại (FK) |
 |:---:|:---|:---|:---|:---|
-| **1** | `phong_ban` | Danh mục các phòng ban, bộ phận khách sạn (FO, HK, F&B, Kỹ thuật...) | `ma_phong_ban` | — |
-| **2** | `chuc_vu` | Danh mục vị trí công tác (Bếp trưởng, Lễ tân, Bellman, Trưởng ca...) | `ma_chuc_vu` | — |
-| **3** | `nhan_vien` | Hồ sơ lý lịch, thông tin cá nhân, liên hệ, học vấn của nhân sự | `ma_nhan_vien` | `ma_phong_ban`, `ma_chuc_vu` |
+| **1** | `phong_ban` | Danh mục các phòng ban, bộ phận khách sạn (FO, HK, F&B, Kỹ thuật, CNTT...) | `ma_phong_ban` | — |
+| **2** | `chuc_vu` | Danh mục vị trí công tác (Bếp trưởng, Lễ tân, Bellman, Trưởng ca, IT Support...) | `ma_chuc_vu` | — |
+| **3** | `nhan_vien` | Hồ sơ lý lịch, thông tin cá nhân, liên hệ (email công vụ + email cá nhân) | `ma_nhan_vien` | `ma_phong_ban`, `ma_chuc_vu` |
 | **4** | `hop_dong` | Hợp đồng lao động pháp lý, lưu thời hạn và mức lương cơ bản | `ma_hop_dong` | `ma_nhan_vien` |
-| **5** | `tai_khoan` | Tài khoản đăng nhập hệ thống, mật khẩu băm bảo mật | `ma_tai_khoan` | `ma_nhan_vien` (1-1), `ma_vai_tro` |
+| **5** | `tai_khoan` | Tài khoản đăng nhập hệ thống, mật khẩu băm, trạng thái kích hoạt boolean | `ma_tai_khoan` | `ma_nhan_vien` (1-1), `ma_vai_tro` |
 | **6** | `vai_tro` | 5 nhóm vai trò chuẩn: Admin, HR, Manager, Employee, IT | `ma_vai_tro` | — |
-| **7** | `quyen` | Danh mục quyền truy cập các màn hình chức năng | `ma_quyen` | — |
+| **7** | `quyen` | Danh mục quyền truy cập với mã quyền dạng chuỗi (`ma_quyen_code`) | `ma_quyen` | — |
 | **8** | `vai_tro_quyen` | Bảng trung gian giải quyết quan hệ N - N giữa Vai trò và Quyền (RBAC) | `(ma_vai_tro, ma_quyen)` | `ma_vai_tro`, `ma_quyen` |
-| **9** | `yeu_cau_tai_khoan` | Yêu cầu cấp tài khoản đăng nhập: HR gửi sau khi duyệt HĐLĐ, bộ phận CNTT (IT) tiếp nhận và cấp | `ma_yeu_cau` | `ma_nhan_vien` (người được cấp), `ma_hop_dong`, `ma_vai_tro`, `ma_nguoi_gui`, `ma_nguoi_xu_ly`, `ma_tai_khoan` |
-| **10** | `ca_lam_viec` | Danh mục 3 mẫu ca 24/7 (Sáng 6h-14h, Chiều 14h-22h, Đêm 22h-6h) | `ma_ca` | — |
+| **9** | `yeu_cau_tai_khoan` | Hàng đợi cấp tài khoản: HR gửi sau khi duyệt HĐLĐ, bộ phận CNTT (IT) tiếp nhận và cấp | `ma_yeu_cau` | `ma_nhan_vien`, `ma_hop_dong`, `ma_vai_tro`, `ma_nguoi_gui`, `ma_nguoi_xu_ly`, `ma_tai_khoan` |
+| **10** | `ca_lam_viec` | Danh mục 3 mẫu ca 24/7 (Sáng 6h-14h, Chiều 14h-22h, Đêm 22h-6h cờ qua đêm) | `ma_ca` | — |
 | **11** | `phan_ca` | Bảng xếp lịch ca làm việc trước cho nhân viên theo tuần/tháng | `ma_phan_ca` | `ma_nhan_vien`, `ma_ca` |
-| **12** | `cham_cong` | Bản ghi quẹt thẻ in/out thực tế, tự động tính phút trễ, sớm, giờ OT | `ma_cham_cong` | `ma_phan_ca` (1-1) |
+| **12** | `cham_cong` | Bản ghi quẹt thẻ in/out thực tế, tự động tính phút trễ, sớm, giờ OT (GPS/Wifi) | `ma_cham_cong` | `ma_phan_ca` (1-1) |
 | **13** | `loai_don` | Danh mục 4 loại đơn: Nghỉ phép, Nghỉ bệnh, Thai sản, Thôi việc | `ma_loai_don` | — |
 | **14** | `don_tu` | Quản lý nộp và xét duyệt đơn từ trực tuyến | `ma_don` | `ma_nhan_vien`, `ma_loai_don`, `ma_nguoi_duyet` |
-| **15** | `ky_luong` | Chu kỳ khóa sổ tính lương theo tháng (Tháng/Năm) | `ma_ky_luong` | — |
-| **16** | `cau_hinh_khoan_luong`| Tham số định mức phụ cấp, tiền thưởng, khoản khấu trừ định mức | `ma_khoan` | — |
-| **17** | `cau_hinh_phu_cap` | Tham số phụ cấp (ăn ca, đêm, đi lại...) kèm cờ chịu thuế TNCN | `ma_phu_cap` | — |
-| **18** | `cau_hinh_khau_tru` | Tham số khoản khấu trừ (BHXH, BHYT, thuế TNCN, vi phạm, tạm ứng) | `ma_khoan_tru` | — |
+| **15** | `ky_luong` | Chu kỳ khóa sổ tính lương theo tháng (Tháng/Năm, trạng thái MO/DANG_TINH/KHOA_SO) | `ma_ky_luong` | — |
+| **16** | `cau_hinh_khoan_luong`| Tham số định mức tiền thưởng (Bonus) và tương thích ngược Legacy | `ma_khoan` | — |
+| **17** | `cau_hinh_phu_cap` | Tham số phụ cấp (ăn ca, đêm, đi lại, trách nhiệm) kèm cờ chịu thuế TNCN | `ma_phu_cap` | — |
+| **18** | `cau_hinh_khau_tru` | Tham số khoản khấu trừ (BHXH, BHYT, BHTN, thuế TNCN, vi phạm, tạm ứng) | `ma_khoan_tru` | — |
 | **19** | `cau_hinh_tang_ca` | Danh mục loại tăng ca kèm hệ số nhân tiền lương theo giờ OT | `ma_loai_ot` | — |
-| **20** | `phieu_luong` | Bảng tổng hợp lương tháng: Gross, Giảm trừ, Net thực nhận | `ma_phieu_luong` | `ma_nhan_vien`, `ma_ky_luong` |
-| **21** | `chi_tiet_phieu_luong`| Bản ghi chi tiết từng dòng thu chi (Lương công, OT, Đêm 30%, BHXH 10.5%) | `ma_chi_tiet` | `ma_phieu_luong`, `ma_khoan`, `ma_loai_ot`, `ma_phu_cap`, `ma_khoan_tru` |
-| **22** | `chi_tiet_tru_bao_hiem` | Khai báo 3 khoản bảo hiểm bắt buộc BHXH + BHYT + BHTN của từng dòng chi tiết | `ma_chi_tiet_bh` | `ma_chi_tiet` (1-1) |
-| **23** | `chi_tiet_tru_thue_tncn` | Bảng tính thuế TNCN 5 mức bậc theo biểu lũy tiến từng dòng chi tiết | `ma_chi_tiet_thue` | `ma_chi_tiet` (1-1) |
+| **20** | `phieu_luong` | Bảng tổng hợp lương tháng: Lương công, OT, Phụ cấp, Thưởng, Khấu trừ, Net | `ma_phieu_luong` | `ma_nhan_vien`, `ma_ky_luong` |
+| **21** | `chi_tiet_phieu_luong`| Bản ghi chi tiết từng dòng thu chi (Snapshot tên khoản và loại khoản bất biến) | `ma_chi_tiet` | `ma_phieu_luong`, `ma_khoan`, `ma_loai_ot`, `ma_phu_cap`, `ma_khoan_tru` |
+| **22** | `chi_tiet_tru_bao_hiem` | Khai báo 3 khoản bảo hiểm bắt buộc BHXH 8% + BHYT 1.5% + BHTN 1% từng dòng | `ma_chi_tiet_bh` | `ma_chi_tiet` (1-1) |
+| **23** | `chi_tiet_tru_thue_tncn` | Bảng tính thuế TNCN 5 bậc lũy tiến từng dòng chi tiết | `ma_chi_tiet_thue` | `ma_chi_tiet` (1-1) |
 | **24** | `chi_tiet_tru_vi_pham_tam_ung` | Bảng ghi khấu trừ vi phạm (đi trễ, về sớm, kỷ luật) và tạm ứng | `ma_chi_tiet_vp` | `ma_chi_tiet` (1-1) |
-| **25** | `nhat_ky_quan_tri` | Nhật ký thao tác quản trị (ai làm gì, lúc nào, giá trị trước/sau) | `ma_nhat_ky` | `ma_tai_khoan_thuc_hien`, `ma_tai_khoan_bi_tac_dong` |
+| **25** | `nhat_ky_quan_tri` | Nhật ký thao tác quản trị (Audit Log: ai làm gì, lúc nào, giá trị cũ/mới, IP) | `ma_nhat_ky` | `ma_tai_khoan_thuc_hien`, `ma_tai_khoan_bi_tac_dong` |
+| **26** | `du_an` | Danh mục Dự án / Sự kiện Khách sạn (Tiệc cưới, MICE, Gala, Hội nghị, Bảo trì...) | `ma_du_an` | `ma_nguoi_quan_ly` (FK -> `nhan_vien`) |
+| **27** | `phan_cong_du_an` | Phân công nhân sự & Thù lao sự kiện, liên kết kết chuyển lương tháng | `ma_phan_cong` | `ma_du_an`, `ma_nhan_vien`, `ma_chi_tiet` (FK -> `chi_tiet_phieu_luong`) |
 
 ---
 
@@ -42,12 +51,12 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 
 ### Bảng 1: `phong_ban` (Phòng ban / Bộ phận)
 - `ma_phong_ban` (SERIAL, PK): Mã định danh phòng ban.
-- `ten_phong_ban` (VARCHAR(150), NOT NULL, UNIQUE): Tên phòng ban (Tiền sảnh, Buồng phòng...).
+- `ten_phong_ban` (VARCHAR(150), NOT NULL, UNIQUE): Tên phòng ban (Tiền sảnh, Buồng phòng, Ẩm thực F&B, Kỹ thuật, Công nghệ Thông tin...).
 - `mo_ta` (VARCHAR(255), NULL): Mô tả nhiệm vụ bộ phận.
 
 ### Bảng 2: `chuc_vu` (Chức vụ / Vị trí)
 - `ma_chuc_vu` (SERIAL, PK): Mã định danh chức vụ.
-- `ten_chuc_vu` (VARCHAR(100), NOT NULL, UNIQUE): Tên chức danh nghề nghiệp.
+- `ten_chuc_vu` (VARCHAR(100), NOT NULL, UNIQUE): Tên chức danh nghề nghiệp (Bếp trưởng, Lễ tân, Bellman, Trưởng ca, IT Support, IT Manager...).
 - `mo_ta` (VARCHAR(255), NULL): Mô tả tiêu chuẩn chuyên môn.
 
 ### Bảng 3: `nhan_vien` (Hồ sơ nhân viên)
@@ -59,11 +68,12 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ngay_sinh` (DATE, NOT NULL): Ngày tháng năm sinh.
 - `gioi_tinh` (VARCHAR(10), NOT NULL, CHECK in ('NAM', 'NU', 'KHAC')): Giới tính.
 - `dien_thoai` (VARCHAR(20), NOT NULL): Số điện thoại liên hệ.
-- `email` (VARCHAR(100), NOT NULL, UNIQUE): Thư điện tử — **khóa đối chiếu 1-1 với email của tài khoản Supabase Auth**.
+- `email` (VARCHAR(100), NOT NULL, UNIQUE): **Email công vụ** — định danh tài khoản đăng nhập Mobile App, đối chiếu 1-1 với `claims.email` trong `custom_access_token_hook`. Tuyệt đối không thay đổi tùy tiện vì làm gián đoạn phiên đăng nhập app.
+- `email_ca_nhan` (VARCHAR(100), NULL): **Email cá nhân** — dùng lưu trữ hồ sơ liên lạc nhân sự, nhận thông báo cá nhân; tách biệt hoàn toàn với định danh công vụ để việc cập nhật không ảnh hưởng đến cơ chế xác thực.
 - `dia_chi` (VARCHAR(255), NULL): Nơi ở hiện tại.
-- `trinh_do` (VARCHAR(50), NOT NULL): Học vấn (Trung cấp, Cao đẳng, Đại học...).
+- `trinh_do` (VARCHAR(50), NOT NULL): Học vấn (Trung cấp, Cao đẳng, Đại học, Thạc sĩ...).
 - `ngay_vao_lam` (DATE, NOT NULL): Ngày chính thức làm việc.
-- `ngay_thoi_viec` (DATE, NULL): Ngày nghỉ việc thực tế (NULL nếu còn làm).
+- `ngay_thoi_viec` (DATE, NULL): Ngày nghỉ việc thực tế (NULL nếu còn làm việc).
 - `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DANG_LAM', CHECK in ('DANG_LAM', 'NGHI_PHEP', 'DA_THOI_VIEC')): Trạng thái công tác.
 
 ### Bảng 4: `hop_dong` (Hợp đồng lao động)
@@ -73,7 +83,7 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `loai_hop_dong` (VARCHAR(50), NOT NULL): Loại HĐ (Thử việc, 1 năm, 3 năm, Vô thời hạn).
 - `ngay_bat_dau` (DATE, NOT NULL): Ngày có hiệu lực.
 - `ngay_ket_thuc` (DATE, NULL): Ngày hết hạn (NULL nếu vô thời hạn).
-- `luong_co_ban` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Mức lương thỏa thuận pháp lý.
+- `luong_co_ban` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Mức lương thỏa thuận pháp lý làm căn cứ đóng BHXH và tính lương công.
 - `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'HIEU_LUC', CHECK in ('HIEU_LUC', 'HET_HAN', 'DA_CHAM_DUT')): Hiệu lực hợp đồng.
 
 ### Bảng 5: `tai_khoan` (Tài khoản người dùng)
@@ -82,98 +92,92 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ma_vai_tro` (INT, FK -> vai_tro.ma_vai_tro, NOT NULL, ON DELETE RESTRICT): Nhóm vai trò được cấp.
 - `ten_dang_nhap` (VARCHAR(50), NOT NULL, UNIQUE): Tên đăng nhập hệ thống.
 - `mat_khau_bam` (VARCHAR(255), NOT NULL): Mật khẩu đã mã hóa an toàn (BCrypt/PBKDF2).
-- `trang_thai` (VARCHAR(20), DEFAULT 'HoatDong'): HoatDong hoặc BiKhoa.
+- `trang_thai` (BOOLEAN, NOT NULL, DEFAULT TRUE): Trạng thái tài khoản — `TRUE` (Đang hoạt động), `FALSE` (Bị khóa). Khớp chuẩn logic CSDL Supabase và điều kiện kiểm tra trong `custom_access_token_hook`.
 
 ### Bảng 6: `vai_tro` (Vai trò người dùng)
-- `ma_vai_tro` (SERIAL, PK): Mã định danh vai trò.
-- `ten_vai_tro` (VARCHAR(50), NOT NULL, UNIQUE): Admin, HR, Manager, Employee, IT.
+- `ma_vai_tro` (SERIAL, PK): Mã định danh vai trò (1: Admin, 2: HR, 3: Manager, 4: Employee, 5: IT).
+- `ten_vai_tro` (VARCHAR(50), NOT NULL, UNIQUE): Tên vai trò (Admin, HR, Manager, Employee, IT).
 - `mo_ta` (VARCHAR(255), NULL): Diễn giải phạm vi trách nhiệm.
 
-> ⚠️ **Bổ sung ngày 09/10/2026 — vai trò thứ 5 `IT` (mã = 5):** Bộ phận **Công nghệ Thông tin** được tách riêng khỏi Kỹ thuật (`ma_phong_ban = 6`, kỹ sư tòa nhà) vì hai việc khác hẳn: kỹ thuật bảo trì hạ tầng vật lý, còn IT thì quản trị hệ thống và **cấp phát tài khoản đăng nhập** — điểm vào của toàn bộ quyền truy cập. Vai trò này là tác nhân chính xử lý các bản ghi `yeu_cau_tai_khoan` (Bảng 9).
+> **Ghi chú về Vai trò thứ 5 `IT` (mã = 5):** Bộ phận Công nghệ Thông tin được tách riêng khỏi Kỹ thuật (`ma_phong_ban = 9`). Vai trò `IT` là tác nhân quản trị chuyên trách xử lý các bản ghi `yeu_cau_tai_khoan` (Bảng 9) và sao lưu CSDL, sở hữu quyền `CAP_TAI_KHOAN_MOBILE`.
 
 ### Bảng 7: `quyen` (Danh mục quyền truy cập)
-- `ma_quyen` (SERIAL, PK): Mã quyền.
-- `ten_quyen` (VARCHAR(100), NOT NULL, UNIQUE): Tên quyền (VD: NV_XEM, LUONG_TINH...).
+- `ma_quyen` (SERIAL, PK): Mã định danh quyền.
+- `ma_quyen_code` (VARCHAR(50), NOT NULL, UNIQUE): Mã quyền chuẩn hóa dạng chuỗi viết hoa (VD: `CHAM_CONG_DI_DONG`, `NOP_DON_TU`, `QL_TAI_KHOAN`, `CAP_TAI_KHOAN_MOBILE`, `TINH_LUONG`...). Ánh xạ 1-1 với hằng chuỗi trong `Security/PermissionCodes.cs` của Web Admin và được gom vào mảng claim `app_metadata.quyen` trong JWT.
+- `ten_quyen` (VARCHAR(100), NOT NULL, UNIQUE): Tên hiển thị quyền trên giao diện phân quyền.
 - `mo_ta` (VARCHAR(255), NULL): Diễn giải chức năng thao tác.
-
-> ⚠️ **Bổ sung ngày 09/10/2026 — mã quyền thứ 17 `CAP_TAI_KHOAN_MOBILE`:** Danh mục quyền hiện có **17 mã quyền** (đối chiếu 1-1 với các hằng trong `Security/PermissionCodes.cs` của Web Admin). Mã mới được tách **có chủ đích** khỏi `QL_TAI_KHOAN`: quản lý hồ sơ tài khoản và cấp quyền đăng nhập Mobile là hai việc khác nhau. HR cần `QL_TAI_KHOAN` (đổi tên đăng nhập, khoá tài khoản) nhưng **KHÔNG** được cấp `CAP_TAI_KHOAN_MOBILE` — cửa vào của mọi RLS policy trên Supabase chỉ nên mở cho **Admin** và bộ phận **CNTT**. Ba trigger CSDL chặn tài khoản tự cấp quyền cho chính mình.
 
 ### Bảng 8: `vai_tro_quyen` (Phân quyền RBAC)
 - `ma_vai_tro` (INT, FK -> vai_tro.ma_vai_tro, NOT NULL, ON DELETE CASCADE): Vai trò.
 - `ma_quyen` (INT, FK -> quyen.ma_quyen, NOT NULL, ON DELETE CASCADE): Quyền được cấp.
 - *Khóa chính tổng hợp:* `PRIMARY KEY (ma_vai_tro, ma_quyen)`.
-
-> ⚠️ **Nhóm RBAC sẽ được cập nhật sau khi chốt thiết kế đồng bộ tài khoản Supabase Auth.** Schema thật hiện đã có `quyen.ma_quyen_code VARCHAR(50) UNIQUE` (mã quyền dạng chuỗi, ví dụ `CHAM_CONG_DI_DONG`) và `tai_khoan.trang_thai` là **BOOLEAN** (đang bật / đang khoá) thay vì chuỗi `HoatDong` / `BiKhoa`. Các khác biệt này sẽ được chốt lại cùng kiến trúc đồng bộ tài khoản.
+- *Rào chắn an ninh:* Bị kiểm soát bởi trigger `trg_chan_cap_quyen_tai_khoan_di_dong`, chặn gán quyền `CAP_TAI_KHOAN_MOBILE` cho vai trò ngoài Admin và IT.
 
 ### Bảng 9: `yeu_cau_tai_khoan` (Yêu cầu cấp tài khoản đăng nhập)
 - `ma_yeu_cau` (SERIAL, PK): Mã yêu cầu cấp tài khoản.
-- `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE CASCADE): **Người được cấp tài khoản** — nhân viên mới được HR duyệt HĐLĐ.
-- `ma_hop_dong` (INT, FK -> hop_dong.ma_hop_dong, NULL, ON DELETE SET NULL): Hợp đồng lao động làm căn cứ phát sinh yêu cầu (NULL nếu yêu cầu phát sinh ngoài HĐLĐ).
-- `ten_dang_nhap` (VARCHAR(50), NOT NULL): Tên đăng nhập dự kiến cấp cho Mobile App — **chỉ được duy nhất trong hàng đợi**.
+- `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE CASCADE): Nhân viên được cấp tài khoản (người thụ hưởng).
+- `ma_hop_dong` (INT, FK -> hop_dong.ma_hop_dong, NULL, ON DELETE SET NULL): Hợp đồng lao động làm căn cứ phát sinh yêu cầu.
+- `ten_dang_nhap` (VARCHAR(50), NOT NULL): Tên đăng nhập dự kiến cấp cho Mobile App.
 - `ma_vai_tro` (INT, FK -> vai_tro.ma_vai_tro, NOT NULL, ON DELETE RESTRICT): Vai trò sẽ được gán khi cấp tài khoản.
-- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'CHO_IT', CHECK in ('CHO_IT', 'DANG_XU_LY', 'DA_CAP', 'TU_CHOI')): Trạng thái luồng cấp phát — HR gửi → IT nhận xử lý → cấp hoặc từ chối.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'CHO_IT', CHECK in ('CHO_IT', 'DANG_XU_LY', 'DA_CAP', 'TU_CHOI')): Trạng thái luồng cấp phát: HR gửi (`CHO_IT`) -> IT tiếp nhận (`DANG_XU_LY`) -> cấp xong (`DA_CAP`) hoặc từ chối (`TU_CHOI`).
 - `ngay_gui` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm HR gửi yêu cầu.
-- `ma_nguoi_gui` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): **Nhân viên HR gửi yêu cầu** (người khởi tạo).
-- `ma_nguoi_xu_ly` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): **Tài khoản IT xử lý** yêu cầu (NULL cho tới khi có người nhận việc).
-- `ngay_xu_ly` (TIMESTAMPTZ, NULL): Thời điểm IT kết luận xử lý (cấp hoặc từ chối).
-- `ghi_chu_tu_choi` (VARCHAR(500), NULL): Lý do từ chối — **bắt buộc có khi `trang_thai = 'TU_CHOI'`**.
-- `ma_tai_khoan` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): **Tài khoản kết quả** sau khi cấp (chỉ có giá trị khi `trang_thai = 'DA_CAP'`).
-- *Ràng buộc:* Unique index partial `uq_yeu_cau_ten_dang_nhap_dang_mo` trên `ten_dang_nhap` WHERE `trang_thai IN ('CHO_IT', 'DANG_XU_LY')` — chặn trùng tên đăng nhập trong hàng đợi, nhưng vẫn cho phép tái sử dụng tên đã cấp xong hoặc đã bị từ chối.
-
-> **Bối cảnh nghiệp vụ — vì sao cần bảng trung gian này?** Hệ thống có **hai lớp tài khoản tách biệt**: bảng `tai_khoan` (lớp tài khoản PostgreSQL phục vụ **Web Admin**) và bảng `auth.users` của **Supabase Auth** phục vụ **Mobile App**. Hai lớp này được đồng bộ qua quy trình cấp phát chứ không tự sinh — nên có thể tồn tại **một dòng trong `tai_khoan` mà không có dòng tương ứng trong `auth.users`**: nhân viên đăng nhập được Web nhưng **không đăng nhập được app**. Bảng `yeu_cau_tai_khoan` ghi lại **ai đang chờ ai** (HR gửi → IT xử lý), biến việc cấp phát tài khoản từ thao tác thủ công, dễ thất lạc thành một **quy trình có vết, có trạng thái, có thời điểm xử lý**.
-
-> **Chú ý khi vẽ ERD — bảng này tham chiếu 5 khóa ngoại vào 4 bảng:** `nhan_vien` bị tham chiếu **2 lần** (`ma_nhan_vien` là người được cấp tài khoản, `ma_nguoi_gui` là HR gửi yêu cầu) và `tai_khoan` cũng bị tham chiếu **2 lần** (`ma_nguoi_xu_ly` là IT xử lý, `ma_tai_khoan` là tài khoản kết quả). Khi dựng sơ đồ phải **ghi nhãn quan hệ khác nhau cho từng cặp**, tuyệt đối không vẽ hai đường nối trùng tên — nếu không sẽ không phân biệt được "tài khoản của người xử lý" với "tài khoản được cấp".
+- `ma_nguoi_gui` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Nhân viên HR duyệt HĐLĐ và gửi yêu cầu.
+- `ma_nguoi_xu_ly` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): Tài khoản IT tiếp nhận và xử lý yêu cầu.
+- `ngay_xu_ly` (TIMESTAMPTZ, NULL): Thời điểm IT kết luận xử lý.
+- `ghi_chu_tu_choi` (VARCHAR(500), NULL): Lý do từ chối (bắt buộc có khi `trang_thai = 'TU_CHOI'`).
+- `ma_tai_khoan` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): Tài khoản kết quả sau khi cấp thành công (bắt buộc có khi `trang_thai = 'DA_CAP'`).
+- *Ràng buộc:*
+  - CHECK `chk_yeu_cau_tu_choi_can_co_ghi_chu`: `(trang_thai <> 'TU_CHOI' OR ghi_chu_tu_choi IS NOT NULL)`.
+  - CHECK `chk_yeu_cau_da_cap_can_co_tai_khoan`: `((trang_thai = 'DA_CAP') = (ma_tai_khoan IS NOT NULL))`.
+  - CHECK `chk_yeu_cau_da_xu_ly_can_co_nguoi`: `(trang_thai = 'CHO_IT' OR ma_nguoi_xu_ly IS NOT NULL)`.
+  - UNIQUE INDEX partial: `uq_yeu_cau_ten_dang_nhap_dang_mo` trên `ten_dang_nhap` WHERE `trang_thai IN ('CHO_IT', 'DANG_XU_LY')`.
 
 ### Bảng 10: `ca_lam_viec` (Danh mục ca 24/7)
 - `ma_ca` (SERIAL, PK): Mã ca.
 - `ten_ca` (VARCHAR(50), NOT NULL, UNIQUE): Ca Sáng, Ca Chiều, Ca Đêm.
 - `gio_bat_dau` (TIME, NOT NULL): Khung giờ mở ca (06:00, 14:00, 22:00).
 - `gio_ket_thuc` (TIME, NOT NULL): Khung giờ đóng ca (14:00, 22:00, 06:00).
-- `qua_dem` (BOOLEAN, NOT NULL, DEFAULT FALSE): Đánh dấu ca có làm qua nửa đêm để tính phụ cấp đêm 30%.
-
-> ⚠️ Cột `he_so_luong` **không tồn tại** trong CSDL thật. Hệ số lương theo ca được lưu ở cấu hình tăng ca (`cau_hinh_tang_ca.he_so`) và phụ cấp đêm lấy theo cờ `qua_dem`.
+- `qua_dem` (BOOLEAN, NOT NULL, DEFAULT FALSE): Đánh dấu ca làm việc qua nửa đêm để kích hoạt phụ cấp ca đêm 30%.
 
 ### Bảng 11: `phan_ca` (Lịch xếp ca làm việc)
 - `ma_phan_ca` (SERIAL, PK): Mã bản ghi xếp ca.
 - `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE CASCADE): Nhân viên được xếp ca.
 - `ma_ca` (INT, FK -> ca_lam_viec.ma_ca, NOT NULL, ON DELETE RESTRICT): Ca làm việc được chỉ định.
 - `ngay_lam_viec` (DATE, NOT NULL): Ngày thực hiện ca.
-- `bat_dau_du_kien` (TIMESTAMPTZ, NOT NULL): Thời điểm dự kiến bắt đầu ca (quyết định mốc tính phút trễ).
-- `ket_thuc_du_kien` (TIMESTAMPTZ, NOT NULL): Thời điểm dự kiến kết thúc ca (quyết định mốc tính phút về sớm).
+- `bat_dau_du_kien` (TIMESTAMPTZ, NOT NULL): Mốc thời gian dự kiến bắt đầu ca (làm căn cứ tính phút đi trễ).
+- `ket_thuc_du_kien` (TIMESTAMPTZ, NOT NULL): Mốc thời gian dự kiến kết thúc ca (làm căn cứ tính phút về sớm).
 - `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DA_PHAN', CHECK in ('DA_PHAN', 'HOAN_THANH', 'VANG_MAT')): Trạng thái xử lý ca.
-
-> ⚠️ Cột `ghi_chu` **không tồn tại**. Mốc thời gian `bat_dau_du_kien` / `ket_thuc_du_kien` là **TIMESTAMPTZ** (không phải TIME) để hỗ trợ ca đêm vượt qua nửa đêm ngày hôm sau.
 
 ### Bảng 12: `cham_cong` (Bản ghi quẹt thẻ in/out)
 - `ma_cham_cong` (SERIAL, PK): Mã bản ghi chấm công.
-- `ma_phan_ca` (INT, FK -> phan_ca.ma_phan_ca, NOT NULL, UNIQUE, ON DELETE CASCADE): Bản ghi phân ca được chấm công — **quan hệ 1-1, không có `ma_nhan_vien` / `ma_ca` / `ngay_cham_cong` riêng** (nhân viên và ngày suy ra qua `phan_ca`).
+- `ma_phan_ca` (INT, FK -> phan_ca.ma_phan_ca, NOT NULL, UNIQUE, ON DELETE CASCADE): Bản ghi phân ca được chấm công (quan hệ 1-1, thông tin nhân viên và ca suy ra từ `phan_ca`).
 - `gio_check_in` (TIMESTAMPTZ, NULL): Thời điểm quẹt thẻ vào ca.
 - `gio_check_out` (TIMESTAMPTZ, NULL): Thời điểm quẹt thẻ ra ca.
 - `phut_di_tre` (INT, NOT NULL, DEFAULT 0): Số phút trễ so với `bat_dau_du_kien`.
-- `phut_ve_som` (INT, NOT NULL, DEFAULT 0): Số phút về sớm trước `ket_thuc_du_kien`.
-- `gio_tang_ca_ot` (DECIMAL(4,2), NOT NULL, DEFAULT 0.00): Số giờ làm thêm ngoài ca đã được duyệt.
-- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DUNG_GIO', CHECK in ('DUNG_GIO', 'DI_TRE', 'VE_SOM', 'VANG_MAT')): Kết luận chấm công của ngày đó.
-- `phuong_thuc_checkin` (VARCHAR(20), NULL): Phương thức xác thực vị trí: `GPS`, `WIFI`, hoặc `THU_CONG`.
-- `toa_do_checkin` (VARCHAR(50), NULL): Kinh độ, vĩ độ GPS thực tế lúc bấm quẹt (VD: `10.776889, 106.700806`).
-- `thiet_bi_checkin` (VARCHAR(100), NULL): Định danh thiết bị Mobile App gửi lên để chống mượn máy quẹt hộ.
+- `phut_ve_som` (INT, NOT NULL, DEFAULT 0): Số phút về sớm so với `ket_thuc_du_kien`.
+- `gio_tang_ca_ot` (DECIMAL(4,2), NOT NULL, DEFAULT 0.00): Số giờ làm thêm ngoài ca đã được phê duyệt.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DUNG_GIO', CHECK in ('DUNG_GIO', 'DI_TRE', 'VE_SOM', 'VANG_MAT')): Kết luận chấm công.
+- `phuong_thuc_checkin` (VARCHAR(20), NULL): Phương thức xác thực (`GPS`, `WIFI`, `THU_CONG`).
+- `toa_do_checkin` (VARCHAR(50), NULL): Tọa độ GPS thực tế lúc quẹt thẻ.
+- `thiet_bi_checkin` (VARCHAR(100), NULL): Định danh thiết bị phần cứng gửi lên từ Mobile App chống gian lận.
 
 ### Bảng 13: `loai_don` (Danh mục loại đơn)
 - `ma_loai_don` (SERIAL, PK): Mã loại đơn.
 - `ten_loai_don` (VARCHAR(100), NOT NULL, UNIQUE): Nghỉ phép, Nghỉ bệnh, Thai sản, Thôi việc.
-- `co_huong_luong` (BOOLEAN, NOT NULL, DEFAULT FALSE): Quy định có được hưởng lương hay không.
-- `mo_ta` (VARCHAR(255), NULL): Diễn giải quyền lợi đi kèm của từng loại đơn.
+- `co_huong_luong` (BOOLEAN, NOT NULL, DEFAULT FALSE): Quy định loại nghỉ có được hưởng nguyên lương hay không.
+- `mo_ta` (VARCHAR(255), NULL): Diễn giải quyền lợi đi kèm.
 
 ### Bảng 14: `don_tu` (Đơn từ điện tử)
 - `ma_don` (SERIAL, PK): Mã đơn từ.
 - `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE CASCADE): Người nộp đơn.
 - `ma_loai_don` (INT, FK -> loai_don.ma_loai_don, NOT NULL, ON DELETE RESTRICT): Loại đơn nộp.
-- `ma_nguoi_duyet` (INT, FK -> nhan_vien.ma_nhan_vien, NULL, ON DELETE SET NULL): Người ký duyệt đơn.
-- `tu_ngay` (DATE, NOT NULL): Ngày bắt đầu nghỉ / thôi việc.
+- `ma_nguoi_duyet` (INT, FK -> nhan_vien.ma_nhan_vien, NULL, ON DELETE SET NULL): Cấp quản lý ký duyệt đơn.
+- `tu_ngay` (DATE, NOT NULL): Ngày bắt đầu nghỉ / hiệu lực thôi việc.
 - `den_ngay` (DATE, NOT NULL): Ngày kết thúc nghỉ.
 - `ly_do` (TEXT, NOT NULL): Lý do nộp đơn.
-- `ngay_gui` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm nộp đơn.
-- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'CHO_DUYET', CHECK in ('CHO_DUYET', 'DA_DUYET', 'TU_CHOI')): Trạng thái xử lý.
-- `phan_hoi_duyet` (VARCHAR(255), NULL): Ý kiến chỉ đạo khi duyệt hoặc lý do từ chối.
+- `ngay_gui` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm gửi đơn.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'CHO_DUYET', CHECK in ('CHO_DUYET', 'DA_DUYET', 'TU_CHOI')): Tiến trình xử lý.
+- `phan_hoi_duyet` (VARCHAR(255), NULL): Ý kiến phê duyệt hoặc lý do từ chối.
 - `ngay_duyet` (TIMESTAMPTZ, NULL): Thời điểm phê duyệt.
 
 ### Bảng 15: `ky_luong` (Kỳ tính lương)
@@ -182,168 +186,313 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `nam` (INT, NOT NULL, CHECK (nam >= 2000)): Năm lương.
 - `tu_ngay` (DATE, NOT NULL): Ngày đầu chu kỳ tính công.
 - `den_ngay` (DATE, NOT NULL): Ngày cuối chu kỳ tính công.
-- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'MO', CHECK in ('MO', 'DANG_TINH', 'KHOA_SO')): Trạng thái chu kỳ (mở / đang tính / đã khoá sổ).
-- *Ràng buộc:* `UNIQUE (thang, nam)` — mỗi tháng/năm chỉ có đúng một kỳ tính lương.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'MO', CHECK in ('MO', 'DANG_TINH', 'KHOA_SO')): Trạng thái chu kỳ lương.
+- *Ràng buộc:* `UNIQUE (thang, nam)` — Mỗi tháng/năm chỉ có duy nhất một kỳ tính lương.
 
-> ⚠️ Không có cột `ten_ky_luong` (nhãn hiển thị do ứng dụng tự ghép "Lương tháng 10/2026" từ `thang` + `nam`) và không có cột `da_khoa_so` — trạng thái khoá sổ nằm trong `trang_thai = 'KHOA_SO'`.
-
-### Bảng 16: `cau_hinh_khoan_luong` (Cấu hình khoản thu chi)
+### Bảng 16: `cau_hinh_khoan_luong` (Cấu hình khoản thu chi - Legacy & Khoản Thưởng)
 - `ma_khoan` (SERIAL, PK): Mã khoản thu chi.
-- `ten_khoan` (VARCHAR(150), NOT NULL, UNIQUE): Phụ cấp ăn ca, Phụ cấp đêm, Thưởng, Phạt trễ...
-- `loai_khoan` (VARCHAR(30), NOT NULL, CHECK in ('PHU_CAP', 'THUONG', 'KHAU_TRU')): Phân loại cộng hoặc trừ.
-- `gia_tri_mac_dinh` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Giá trị số tiền cố định (nếu có).
-- `mo_ta` (VARCHAR(255), NULL): Diễn giải cách áp dụng khoản thu chi này.
+- `ten_khoan` (VARCHAR(150), NOT NULL, UNIQUE): Tên khoản (VD: Thưởng hiệu suất KPI, Thưởng tháng 13, Thưởng sự kiện...).
+- `loai_khoan` (VARCHAR(30), NOT NULL, CHECK in ('PHU_CAP', 'THUONG', 'KHAU_TRU')): Phân loại thu chi.
+- `gia_tri_mac_dinh` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Giá trị tiền cố định định mức.
+- `mo_ta` (VARCHAR(255), NULL): Diễn giải cách áp dụng.
 
-> ⚠️ Cột `ti_le_phan_tram` **không tồn tại** trong CSDL thật. Mọi tỷ lệ phần trăm được lưu riêng ở các bảng chuyên dụng: `cau_hinh_phu_cap.muc_dinh_muc`, `cau_hinh_khau_tru.ty_le_hoac_dinh_muc`, `cau_hinh_tang_ca.he_so` và tỷ lệ BHXH/BHYT/BHTN trong `chi_tiet_tru_bao_hiem`.
+> **Vai trò bảng Legacy / Bonus trong kiến trúc:**
+> Bảng này vốn là bảng tham số gốc trong thiết kế 17 bảng ban đầu. Khi hệ thống chuẩn hóa 3NF thành 24 bảng, các cấu hình phụ cấp, khấu trừ và tăng ca được bóc tách sang 3 bảng chuyên dụng (`cau_hinh_phu_cap`, `cau_hinh_khau_tru`, `cau_hinh_tang_ca`). Bảng `cau_hinh_khoan_luong` được giữ lại để **tương thích ngược hoàn toàn (Legacy support)** với các bản ghi cũ và hiện chuyên trách phục vụ quản lý **các khoản Thưởng (Bonus)** với `loai_khoan = 'THUONG'`. Cột `chi_tiet_phieu_luong.ma_khoan` trỏ về bảng này để liên kết các dòng tiền thưởng.
 
 ### Bảng 17: `cau_hinh_phu_cap` (Cấu hình phụ cấp)
 - `ma_phu_cap` (SERIAL, PK): Mã khoản phụ cấp.
-- `ten_phu_cap` (VARCHAR(150), NOT NULL, UNIQUE): Phụ cấp ăn ca, Phụ cấp ca đêm, Phụ cấp đi lại, Phụ cấp độc hạ...
-- `loai_tinh` (VARCHAR(30), NOT NULL, CHECK in ('THEO_NGAY_CONG', 'CO_DINH_THANG')): Cơ chế tính — nhân với số ngày công hoặc cộng cố định một tháng.
-- `muc_dinh_muc` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Đơn giá / mức phụ cấp áp dụng.
-- `chiu_thue_tncn` (BOOLEAN, NOT NULL, DEFAULT FALSE): Khoản phụ cấp có tính vào thu nhập chịu thuế TNCN hay không.
-- `mo_ta` (VARCHAR(255), NULL): Ghi chú chính sách phụ cấp.
+- `ten_phu_cap` (VARCHAR(150), NOT NULL, UNIQUE): Phụ cấp ăn ca, Phụ cấp ca đêm 30%, Phụ cấp đi lại, Phụ cấp trách nhiệm...
+- `loai_tinh` (VARCHAR(30), NOT NULL, CHECK in ('THEO_NGAY_CONG', 'CO_DINH_THANG')): Cơ chế tính — nhân với số ngày công thực tế hoặc cộng cố định theo tháng.
+- `muc_dinh_muc` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Định mức tiền phụ cấp áp dụng.
+- `chiu_thue_tncn` (BOOLEAN, NOT NULL, DEFAULT FALSE): Quy định khoản phụ cấp có tính vào thu nhập chịu thuế TNCN hay không.
+- `mo_ta` (VARCHAR(255), NULL): Ghi chú chính sách phụ cấp khách sạn.
 
 ### Bảng 18: `cau_hinh_khau_tru` (Cấu hình khoản khấu trừ)
 - `ma_khoan_tru` (SERIAL, PK): Mã khoản khấu trừ.
-- `ten_khoan_tru` (VARCHAR(150), NOT NULL, UNIQUE): BHXH, BHYT, BHTN, Thuế TNCN, Phạt đi trễ, Tạm ứng...
-- `loai_khoan_tru` (VARCHAR(30), NOT NULL, CHECK in ('BAO_HIEM', 'THUE', 'VI_PHAM', 'TAM_UNG')): Nhóm khoản khấu trừ.
-- `ty_le_hoac_dinh_muc` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tỷ lệ (%) áp dụng, hoặc mức tiền cố định nếu là khoản trừ theo hạn mức.
-- `mo_ta` (VARCHAR(255), NULL): Diễn giải cách áp dụng khoản khấu trừ này.
+- `ten_khoan_tru` (VARCHAR(150), NOT NULL, UNIQUE): BHXH 8%, BHYT 1.5%, BHTN 1%, Thuế TNCN, Phạt đi trễ, Phạt về sớm, Tạm ứng lương...
+- `loai_khoan_tru` (VARCHAR(30), NOT NULL, CHECK in ('BAO_HIEM', 'THUE', 'VI_PHAM', 'TAM_UNG')): Nhóm phân loại khấu trừ.
+- `ty_le_hoac_dinh_muc` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tỷ lệ phần trăm (%) áp dụng hoặc định mức tiền phạt/khấu trừ cố định.
+- `mo_ta` (VARCHAR(255), NULL): Diễn giải căn cứ pháp lý và nội quy khách sạn.
 
 ### Bảng 19: `cau_hinh_tang_ca` (Cấu hình tăng ca)
 - `ma_loai_ot` (SERIAL, PK): Mã loại tăng ca.
-- `ten_loai_ot` (VARCHAR(100), NOT NULL, UNIQUE): Tăng ca ngày thường, Tăng ca ngày nghỉ, Tăng ca đêm, Tăng ca ngày lễ...
-- `he_so` (DECIMAL(4,2), NOT NULL, CHECK > 0): Hệ số nhân tiền lương cho 1 giờ tăng ca (VD: ngày thường 1.5, ngày nghỉ 2.0, đêm lễ 3.0).
-- `mo_ta` (VARCHAR(255), NULL): Diễn giải quy định áp dụng loại tăng ca này.
+- `ten_loai_ot` (VARCHAR(100), NOT NULL, UNIQUE): Tăng ca ngày thường, Tăng ca ngày nghỉ tuần, Tăng ca đêm, Tăng ca ngày lễ tết...
+- `he_so` (DECIMAL(4,2), NOT NULL, CHECK > 0): Hệ số nhân tiền lương theo giờ OT (VD: ngày thường 1.5, ngày nghỉ 2.0, ngày lễ 3.0).
+- `mo_ta` (VARCHAR(255), NULL): Diễn giải quy định áp dụng.
 
 ### Bảng 20: `phieu_luong` (Phiếu lương tổng hợp)
 - `ma_phieu_luong` (SERIAL, PK): Mã phiếu lương.
 - `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Nhân viên nhận lương.
 - `ma_ky_luong` (INT, FK -> ky_luong.ma_ky_luong, NOT NULL, ON DELETE RESTRICT): Kỳ lương tương ứng.
-- `luong_co_ban` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Lương cơ bản snapshot tại thời điểm tính.
-- `ngay_cong_thuc_te` (DECIMAL(4,2), NOT NULL, DEFAULT 0.00): Số công làm việc thực tế trong kỳ (số ngày công quy đổi).
-- `tien_luong_cong` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tiền lương theo công thức 2 tầng (lương công × ngày công thực tế / 26).
-- `tien_tang_ca` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng tiền tăng ca đã được duyệt trong kỳ.
-- `tong_phu_cap` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng các khoản phụ cấp cộng vào lương.
-- `tong_thuong` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng tiền thưởng / điểm KPI trong kỳ.
-- `tong_khau_tru` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng các khoản khấu trừ (BHXH, BHYT, BHTN, thuế TNCN, vi phạm, tạm ứng).
-- `thuc_nhan` (DECIMAL(15,2), NOT NULL): Lương Net thực chuyển khoản = tổng thu − tổng khấu trừ.
-- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'NHAP', CHECK in ('NHAP', 'DA_DUYET', 'DA_THANH_TOAN')): Trạng thái duyệt & chi trả.
-- *Ràng buộc:* `UNIQUE (ma_nhan_vien, ma_ky_luong)` — mỗi nhân viên chỉ có một phiếu lương cho mỗi kỳ.
-
-> ⚠️ CSDL thật **không có** `tong_thu_nhap` (Gross), `luong_thuc_nhan`, `so_ngay_cong_chuan` và `ngay_lap`. Gross được tính lúc xuất phiếu lương từ tổng các cột thu; thời điểm lập phiếu gắn với `ky_luong.tu_ngay` / `den_ngay`.
+- `luong_co_ban` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Lương cơ bản snapshot tại thời điểm tính lương.
+- `ngay_cong_thuc_te` (DECIMAL(4,2), NOT NULL, DEFAULT 0.00): Số ngày công thực tế làm việc trong kỳ.
+- `tien_luong_cong` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tiền lương theo công thức 2 tầng = Lương cơ bản × (Ngày công thực tế / 26).
+- `tien_tang_ca` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng tiền làm thêm giờ đã duyệt trong kỳ.
+- `tong_phu_cap` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng các khoản phụ cấp (ăn ca, đêm, đi lại, thù lao dự án...).
+- `tong_thuong` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng tiền thưởng hiệu suất KPI / lễ tết trong kỳ.
+- `tong_khau_tru` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng các khoản khấu trừ (Bảo hiểm 10.5%, Thuế TNCN, vi phạm, tạm ứng).
+- `thuc_nhan` (DECIMAL(15,2), NOT NULL): Lương Net thực chuyển khoản = (Tiền lương công + Tăng ca + Phụ cấp + Thưởng) - Khấu trừ.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'NHAP', CHECK in ('NHAP', 'DA_DUYET', 'DA_THANH_TOAN')): Trạng thái duyệt và chi trả.
+- *Ràng buộc:* `UNIQUE (ma_nhan_vien, ma_ky_luong)` — Mỗi nhân viên chỉ có đúng một phiếu lương tổng hợp cho mỗi kỳ tính lương.
 
 ### Bảng 21: `chi_tiet_phieu_luong` (Chi tiết phiếu lương)
-- `ma_chi_tiet` (SERIAL, PK): Mã bản ghi chi tiết.
+- `ma_chi_tiet` (SERIAL, PK): Mã bản ghi dòng chi tiết thu chi.
 - `ma_phieu_luong` (INT, FK -> phieu_luong.ma_phieu_luong, NOT NULL, ON DELETE CASCADE): Phiếu lương chủ.
-- `ten_khoan_luu` (VARCHAR(150), NOT NULL): **Snapshot tên khoản** tại thời điểm tính lương.
-- `loai_khoan_luu` (VARCHAR(30), NOT NULL): **Snapshot loại khoản** tại thời điểm tính lương (`PHU_CAP` / `THUONG` / `KHAU_TRU`).
-- `so_tien` (DECIMAL(15,2), NOT NULL): Số tiền cụ thể được cộng hoặc trừ.
-- `ghi_chu` (VARCHAR(255), NULL): Diễn giải công thức tính chi tiết.
-- `ma_khoan` (INT, FK -> cau_hinh_khoan_luong.ma_khoan, NULL, ON DELETE RESTRICT): Khoản thu chi chuẩn mà dòng này tham chiếu.
-- `ma_loai_ot` (INT, FK -> cau_hinh_tang_ca.ma_loai_ot, NULL, ON DELETE RESTRICT): Loại tăng ca sinh ra dòng chi tiết này.
-- `ma_phu_cap` (INT, FK -> cau_hinh_phu_cap.ma_phu_cap, NULL, ON DELETE RESTRICT): Khoản phụ cấp sinh ra dòng chi tiết này.
-- `ma_khoan_tru` (INT, FK -> cau_hinh_khau_tru.ma_khoan_tru, NULL, ON DELETE RESTRICT): Khoản khấu trừ sinh ra dòng chi tiết này.
-- `loai_khoan` (VARCHAR(30), NULL): Nhóm khoản lưu trữ theo dòng (phụ cấp / tăng ca / khấu trừ...).
-
-> **Vì sao bắt buộc phải có `ten_khoan_luu` + `loai_khoan_luu` (snapshot)?** Bảng chi tiết phiếu lương là **bản ghi bất biến theo thời gian** (immutable): nó phải in ra y hệt những gì nhân viên đã nhận vào tháng đó, kể cả khi HR sau này đổi tên khoản thu chi trong bảng cấu hình. Nếu chỉ lưu `ma_khoan` và hiển thị bằng `JOIN` sang bảng cấu hình thì phiếu lương cũ sẽ bị đổi tên ngoài ý muốn — sai lệch với giấy tờ đã phát hành và vi phạm nguyên tắc chuẩn hóa "lịch sử tài chính bất biến". Vì vậy `ten_khoan_luu` / `loai_khoan_luu` là cột **snapshot bắt buộc**, còn các cột `ma_*` chỉ là liên kết truy vết về cấu hình gốc.
+- `ten_khoan_luu` (VARCHAR(150), NOT NULL): **Snapshot tên khoản** tại thời điểm phát hành (bảo toàn lịch sử tài chính bất biến).
+- `loai_khoan_luu` (VARCHAR(30), NOT NULL): **Snapshot loại khoản** (`PHU_CAP` / `THUONG` / `KHAU_TRU`).
+- `so_tien` (DECIMAL(15,2), NOT NULL): Số tiền cụ thể cộng hoặc trừ.
+- `ghi_chu` (VARCHAR(255), NULL): Diễn giải công thức hoặc nguồn phát sinh dòng tiền.
+- `ma_khoan` (INT, FK -> cau_hinh_khoan_luong.ma_khoan, NULL, ON DELETE RESTRICT): Khoản thưởng hoặc khoản định mức Legacy tham chiếu.
+- `ma_loai_ot` (INT, FK -> cau_hinh_tang_ca.ma_loai_ot, NULL, ON DELETE RESTRICT): Loại tăng ca phát sinh dòng này.
+- `ma_phu_cap` (INT, FK -> cau_hinh_phu_cap.ma_phu_cap, NULL, ON DELETE RESTRICT): Khoản phụ cấp chuẩn phát sinh dòng này.
+- `ma_khoan_tru` (INT, FK -> cau_hinh_khau_tru.ma_khoan_tru, NULL, ON DELETE RESTRICT): Khoản khấu trừ chuẩn phát sinh dòng này.
+- `loai_khoan` (VARCHAR(30), NULL): Nhóm phân loại dòng chi tiết.
 
 ### Bảng 22: `chi_tiet_tru_bao_hiem` (Chi tiết khấu trừ bảo hiểm)
 - `ma_chi_tiet_bh` (SERIAL, PK): Mã bản ghi bảo hiểm.
-- `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NOT NULL, ON DELETE CASCADE): Dòng chi tiết lương chủ (quan hệ 1-1).
-- `luong_dong_bao_hiem` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Mức lương làm căn cứ đóng bảo hiểm của dòng này.
-- `ty_le_bhxh` (DECIMAL(5,2), NOT NULL, DEFAULT 8.00): Tỷ lệ hưu trí - xã hội (%).
-- `tien_bhxh` (DECIMAL(15,2), NOT NULL): Số tiền BHXH đã trừ.
-- `ty_le_bhyt` (DECIMAL(5,2), NOT NULL, DEFAULT 1.50): Tỷ lệ bảo hiểm y tế (%).
-- `tien_bhyt` (DECIMAL(15,2), NOT NULL): Số tiền BHYT đã trừ.
-- `ty_le_bhtn` (DECIMAL(5,2), NOT NULL, DEFAULT 1.00): Tỷ lệ bảo hiểm thất nghiệp (%).
-- `tien_bhtn` (DECIMAL(15,2), NOT NULL): Số tiền BHTN đã trừ.
-- `tong_bao_hiem` (DECIMAL(15,2), NOT NULL): Tổng cả 3 khoản bảo hiểm đã trừ trong dòng này.
+- `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NOT NULL, ON DELETE CASCADE): Dòng chi tiết lương chủ (Quan hệ 1-1).
+- `luong_dong_bao_hiem` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Mức lương làm căn cứ trích đóng bảo hiểm.
+- `ty_le_bhxh` (DECIMAL(5,2), NOT NULL, DEFAULT 8.00): Tỷ lệ đóng BHXH người lao động (8%).
+- `tien_bhxh` (DECIMAL(15,2), NOT NULL): Số tiền BHXH trích trừ.
+- `ty_le_bhyt` (DECIMAL(5,2), NOT NULL, DEFAULT 1.50): Tỷ lệ đóng BHYT người lao động (1.5%).
+- `tien_bhyt` (DECIMAL(15,2), NOT NULL): Số tiền BHYT trích trừ.
+- `ty_le_bhtn` (DECIMAL(5,2), NOT NULL, DEFAULT 1.00): Tỷ lệ đóng BHTN người lao động (1%).
+- `tien_bhtn` (DECIMAL(15,2), NOT NULL): Số tiền BHTN trích trừ.
+- `tong_bao_hiem` (DECIMAL(15,2), NOT NULL): Tổng cả 3 khoản bảo hiểm bắt buộc trích trừ trong dòng này (10.5%).
 
 ### Bảng 23: `chi_tiet_tru_thue_tncn` (Chi tiết khấu trừ thuế TNCN)
 - `ma_chi_tiet_thue` (SERIAL, PK): Mã bản ghi thuế TNCN.
-- `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NOT NULL, ON DELETE CASCADE): Dòng chi tiết lương chủ (quan hệ 1-1).
-- `thu_nhap_chiu_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Tổng thu nhập chịu thuế của dòng này.
-- `giam_tru_ban_than` (DECIMAL(15,2), NOT NULL, DEFAULT 11000000.00): Mức giảm trừ bản thân 11.000.000 đồng/tháng.
-- `so_nguoi_phu_thuoc` (INT, NOT NULL, DEFAULT 0, CHECK >= 0): Số người phụ thuộc được đăng ký giảm trừ.
-- `giam_tru_phu_thuoc` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng mức giảm trừ người phụ thuộc (thường 6.220.000 đồng/người/tháng).
-- `thu_nhap_tinh_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Thu nhập tính thuế sau khi trừ các khoản giảm trừ gia đình.
-- `tien_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Số thuế TNCN phải nộp theo biểu lũy tiến 5 mức bậc.
+- `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NOT NULL, ON DELETE CASCADE): Dòng chi tiết lương chủ (Quan hệ 1-1).
+- `thu_nhap_chiu_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Tổng thu nhập chịu thuế trong kỳ.
+- `giam_tru_ban_than` (DECIMAL(15,2), NOT NULL, DEFAULT 11000000.00): Mức giảm trừ gia cảnh cho bản thân người nộp thuế (11.000.000 VNĐ/tháng).
+- `so_nguoi_phu_thuoc` (INT, NOT NULL, DEFAULT 0, CHECK >= 0): Số lượng người phụ thuộc đăng ký hợp lệ.
+- `giam_tru_phu_thuoc` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng tiền giảm trừ người phụ thuộc (4.400.000 VNĐ/người/tháng theo luật hiện hành).
+- `thu_nhap_tinh_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Thu nhập tính thuế sau giảm trừ.
+- `tien_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Số tiền thuế TNCN trích nộp theo biểu lũy tiến từng phần.
 
 ### Bảng 24: `chi_tiet_tru_vi_pham_tam_ung` (Chi tiết khấu trừ vi phạm & tạm ứng)
 - `ma_chi_tiet_vp` (SERIAL, PK): Mã bản ghi vi phạm / tạm ứng.
-- `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NOT NULL, ON DELETE CASCADE): Dòng chi tiết lương chủ (quan hệ 1-1).
-- `loai_tru` (VARCHAR(30), NOT NULL, CHECK in ('DI_TRE', 'VE_SOM', 'KY_LUAT', 'LAM_HONG', 'TAM_UNG')): Loại vi phạm bị phạt hoặc khoản tạm ứng.
-- `so_phut_vi_pham` (INT, NOT NULL, DEFAULT 0, CHECK >= 0): Số phút vi phạm (áp dụng cho `DI_TRE` / `VE_SOM`).
-- `so_tien_tru` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Số tiền thực bị trừ.
-- `ly_do_chi_tiet` (VARCHAR(255), NOT NULL): Diễn giải cụ thể lý do khấu trừ (VD: "Trễ 45 phút ca Sáng 12/10").
+- `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NOT NULL, ON DELETE CASCADE): Dòng chi tiết lương chủ (Quan hệ 1-1).
+- `loai_tru` (VARCHAR(30), NOT NULL, CHECK in ('DI_TRE', 'VE_SOM', 'KY_LUAT', 'LAM_HONG', 'TAM_UNG')): Phân loại vi phạm kỷ luật hoặc tạm ứng lương.
+- `so_phut_vi_pham` (INT, NOT NULL, DEFAULT 0, CHECK >= 0): Số phút vi phạm áp dụng đối với lỗi đi trễ / về sớm.
+- `so_tien_tru` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Số tiền thực tế khấu trừ vào lương.
+- `ly_do_chi_tiet` (VARCHAR(255), NOT NULL): Diễn giải cụ thể căn cứ trừ tiền.
 
-### Bảng 25: `nhat_ky_quan_tri` (Nhật ký quản trị)
-- `ma_nhat_ky` (BIGSERIAL, PK): Mã nhật ký (dùng BIGSERIAL vì bảng này tăng trưởng liên tục theo mọi thao tác quản trị).
+### Bảng 25: `nhat_ky_quan_tri` (Nhật ký quản trị - Audit Log)
+- `ma_nhat_ky` (BIGSERIAL, PK): Mã nhật ký tự tăng liên tục.
 - `ma_tai_khoan_thuc_hien` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): Tài khoản thực hiện thao tác.
-- `ma_tai_khoan_bi_tac_dong` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): Tài khoản bị tác động bởi thao tác (VD: khi Admin khoá tài khoản của nhân viên).
-- `ten_nguoi_thuc_hien` (VARCHAR(100), NOT NULL): Họ tên người thực hiện — lưu chuỗi để nhật ký không bị mất dữ liệu khi tài khoản bị xoá.
-- `ten_tai_khoan_bi_tac_dong` (VARCHAR(100), NOT NULL): Tên đăng nhập bị tác động — snapshot tương tự.
-- `hanh_dong` (VARCHAR(40), NOT NULL): Mã hành động (VD: `TAO_MOI`, `SUA`, `XOA`, `KHOA_TAI_KHOAN`, `DUYET_DON`).
-- `noi_dung` (VARCHAR(500), NOT NULL): Mô tả nội dung thao tác.
-- `gia_tri_cu` (VARCHAR(1000), NULL): Giá trị trước khi thay đổi (dạng chuỗi JSON/text).
-- `gia_tri_moi` (VARCHAR(1000), NULL): Giá trị sau khi thay đổi (dạng chuỗi JSON/text).
-- `ly_do` (VARCHAR(500), NULL): Lý do thực hiện thao tác.
-- `dia_chi_ip` (VARCHAR(64), NULL): Địa chỉ IP của thiết bị phát sinh thao tác.
-- `thoi_gian` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm thao tác.
+- `ma_tai_khoan_bi_tac_dong` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): Tài khoản bị tác động.
+- `ten_nguoi_thuc_hien` (VARCHAR(100), NOT NULL): Snapshot họ tên người thực hiện (bảo lưu dấu vết kể cả khi tài khoản bị xóa).
+- `ten_tai_khoan_bi_tac_dong` (VARCHAR(100), NOT NULL): Snapshot tên tài khoản bị tác động.
+- `hanh_dong` (VARCHAR(40), NOT NULL): Mã thao tác (`TAO_MOI`, `CAP_NHAT`, `XOA`, `KHOA_TAI_KHOAN`, `DUYET_DON`, `CHOT_KY_LUONG`...).
+- `noi_dung` (VARCHAR(500), NOT NULL): Mô tả chi tiết hành động quản trị.
+- `gia_tri_cu` (VARCHAR(1000), NULL): Dữ liệu trước thay đổi (chuỗi JSON/Text).
+- `gia_tri_moi` (VARCHAR(1000), NULL): Dữ liệu sau thay đổi (chuỗi JSON/Text).
+- `ly_do` (VARCHAR(500), NULL): Lý do can thiệp hệ thống.
+- `dia_chi_ip` (VARCHAR(64), NULL): Địa chỉ IP thiết bị phát sinh thao tác.
+- `thoi_gian` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Mốc thời gian ghi nhận hành động.
+
+### Bảng 26: `du_an` (Dự án / Sự kiện Khách sạn)
+- `ma_du_an` (SERIAL, PK): Mã định danh duy nhất của dự án / sự kiện.
+- `ten_du_an` (VARCHAR(200), NOT NULL, UNIQUE): Tên dự án, sự kiện tổ chức tại khách sạn (VD: "Tiệc cưới Hoàng Gia - Sảnh Diamond", "Hội nghị Thượng đỉnh Kinh tế MICE 2026", "Festival Ẩm thực Mùa Thu"...).
+- `loai_du_an` (VARCHAR(50), NOT NULL, CHECK in ('TIEC_CUOI', 'HOI_NGHI_MICE', 'GALA_DINNER', 'FESTIVAL_AM_THUC', 'DOAN_VIP', 'BAO_TRI_NANG_CAP')): Phân loại tính chất sự kiện để điều phối nguồn lực phù hợp.
+- `dia_diem` (VARCHAR(255), NOT NULL): Khu vực tổ chức trong khách sạn (Grand Ballroom, Lotus Hall, Rooftop Sky Bar, Hồ bơi tầng 5, Phòng VIP 888...).
+- `ngay_bat_dau` (TIMESTAMPTZ, NOT NULL): Thời điểm bắt đầu triển khai chuẩn bị sự kiện.
+- `ngay_ket_thuc` (TIMESTAMPTZ, NOT NULL): Thời điểm kết thúc, bàn giao hiện trường và nghiệm thu sự kiện.
+- `ngan_sach_phu_cap` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00, CHECK >= 0): Tổng ngân sách phân bổ chi trả thù lao / phụ cấp tăng cường cho nhân sự tham gia sự kiện.
+- `ma_nguoi_quan_ly` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Trưởng ban tổ chức / Quản lý điều hành dự án sự kiện (thường là Trưởng bộ phận Event/F&B/Sảnh).
+- `mo_ta` (TEXT, NULL): Kịch bản chi tiết, yêu cầu phục vụ đặc biệt, quy mô số lượng khách, quy chuẩn an ninh và kỹ thuật.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'LEN_KE_HOACH', CHECK in ('LEN_KE_HOACH', 'DANG_DIEN_RA', 'HOAN_THANH', 'HUY')): Tiến độ vòng đời sự kiện.
+
+### Bảng 27: `phan_cong_du_an` (Phân công nhân sự & Thù lao sự kiện)
+- `ma_phan_cong` (SERIAL, PK): Mã bản ghi phân công nhân sự.
+- `ma_du_an` (INT, FK -> du_an.ma_du_an, NOT NULL, ON DELETE CASCADE): Dự án / sự kiện tiếp nhận nhân sự.
+- `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE CASCADE): Nhân viên được điều động tham gia sự kiện.
+- `vai_tro_du_an` (VARCHAR(100), NOT NULL): Vai trò chuyên môn được giao trong sự kiện (`DIEU_PHOI`, `KY_THUAT_AM_THANH_AS`, `PHUC_VU_TIEC`, `LE_TAN_DON_KHACH`, `AN_NINH_VIP`, `BEP_TIEC`...).
+- `nhiem_vu_cu_the` (VARCHAR(255), NULL): Chi tiết công việc cụ thể tại vị trí trực chiến.
+- `so_tien_phu_cap` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00, CHECK >= 0): Mức thù lao / phụ cấp sự kiện dành riêng cho nhân sự này.
+- `danh_gia` (VARCHAR(30), NOT NULL, DEFAULT 'CHUA_DANH_GIA', CHECK in ('CHUA_DANH_GIA', 'HOAN_THANH', 'XUAT_SAC', 'KHONG_THAM_GIA')): Kết quả đánh giá hiệu suất của quản lý sau khi kết thúc sự kiện.
+- `trang_thai_chi_tra` (VARCHAR(30), NOT NULL, DEFAULT 'CHUA_CHI_TRA', CHECK in ('CHUA_CHI_TRA', 'DA_KET_CHUYEN_LUONG', 'HUY_BO')): Trạng thái thanh toán thù lao. Khi tính lương tháng, các khoản đã nghiệm thu sẽ được chuyển sang `DA_KET_CHUYEN_LUONG`.
+- `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NULL, ON DELETE SET NULL): Khóa ngoại liên kết sang dòng chi tiết phiếu lương sau khi kết chuyển thù lao vào kỳ lương tháng (tạo liên kết 2 chiều minh bạch).
+- `ngay_danh_gia` (TIMESTAMPTZ, NULL): Thời điểm quản lý nghiệm thu và chấm điểm đánh giá.
+- *Ràng buộc:* `UNIQUE (ma_du_an, ma_nhan_vien)` — Mỗi nhân viên chỉ được phân công một vị trí chính trong một dự án sự kiện để đảm bảo tập trung trách nhiệm và tránh phân bổ trùng lặp thù lao.
 
 ---
 
-## 3. Lớp Bảo Mật CSDL (Row Level Security)
+## 3. Lớp Bảo Mật CSDL (Row Level Security & Quyền Hạn)
 
-Ngoài 25 bảng nghiệp vụ, CSDL còn có **lớp bảo mật cấp hàng (RLS)** được cấu hình thật trên Supabase Cloud. Tóm tắt chốt ngày 07/10/2026 (đã cập nhật thêm bảng thứ 25 ngày 09/10/2026):
+### 3.1. Thiết lập RLS toàn diện trên 27 bảng
+- **Bật RLS: 27/27 bảng** — áp dụng `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` cho toàn bộ các bảng trong schema `public`.
+- **Chính sách phân quyền RBAC:**
+  - Nhóm danh mục tĩnh (`phong_ban`, `chuc_vu`, `ca_lam_viec`, `loai_don`, `vai_tro`, `quyen`): Mở quyền đọc (`SELECT`) cho mọi user đã xác thực (`auth.uid() IS NOT NULL`), khóa quyền ghi chỉ dành cho `service_role`.
+  - Nhóm dữ liệu cá nhân (`nhan_vien`, `hop_dong`, `cham_cong`, `don_tu`, `phieu_luong`): Phân quyền đọc dựa trên hàm `nhan_vien_hien_tai()`: nhân viên chỉ xem dữ liệu của chính mình; Quản lý/HR/Admin xem theo phạm vi phân cấp.
+  - Nhóm dự án & sự kiện (`du_an`, `phan_cong_du_an`): Quản lý sự kiện và Ban Giám đốc có quyền lập kế hoạch và điều phối; nhân viên được phân công có quyền xem thông tin sự kiện và thù lao cá nhân.
+  - Bảng nhạy cảm (`tai_khoan`, `yeu_cau_tai_khoan`, `nhat_ky_quan_tri`): Không cấp quyền truy cập trực tiếp cho client `authenticated`; mọi thao tác đều thực thi qua backend Web Admin bằng `service_role`.
 
-- **Bật RLS: 25/25 bảng** — không bảng nào để trống (`ENABLE ROW LEVEL SECURITY` áp dụng cho toàn bộ bảng trong schema `public`).
-- **Tổng cộng 31 policy RLS** (đếm trực tiếp từ dump `CREATE POLICY` ngày 07/10/2026), chia làm 2 nhóm theo thao tác:
+### 3.2. Hàm bảo mật `SECURITY DEFINER`
+Các policy RLS không đọc trực tiếp bảng phân quyền để tránh lỗi đệ quy vòng lặp (infinite recursion), mà thông qua các hàm tiện ích bảo mật `SECURITY DEFINER`:
 
-| Nhóm policy | Số lượng | Thao tác | Ví dụ tên policy |
-|:---|:---:|:---|:---|
-| Đọc (`FOR SELECT`) | 23 | Xem danh sách, tự động giới hạn theo người đang đăng nhập | `doc_ho_so_nhan_vien`, `doc_phieu_luong`, `doc_don_tu` |
-| Ghi (`FOR INSERT`) | 3 | Nhân viên tự nộp đơn / tự ghi chấm công; quản lý xếp ca | `nop_don_tu_cua_toi`, `them_cham_cong_cua_toi`, `them_phan_ca_quan_ly` |
-| Ghi (`FOR UPDATE`) | 5 | Nhân viên tự sửa; quản lý duyệt và sửa theo phạm vi phòng ban | `duyet_don_tu_quan_ly`, `sua_cham_cong_quan_ly`, `sua_phan_ca_quan_ly` |
-
-> **Ghi chú phạm vi:**
-> - Các bảng danh mục dùng chung (`phong_ban`, `chuc_vu`, `loai_don`, `ca_lam_viec`, `vai_tro`, `quyen`, `vai_tro_quyen`) chỉ mở **đọc** cho mọi user đã đăng nhập (`auth.uid() IS NOT NULL`); mọi thao tác thêm/sửa/xoá danh mục thực hiện qua `service_role` phía server.
-> - Bảng `tai_khoan` có RLS bật nhưng **không có policy nào**, kèm `GRANT ALL ... TO service_role` (không cấp cho `authenticated`) — tức là bảng này bị khoá hoàn toàn với client, chỉ truy cập được qua backend/`service_role`.
-> - ⚠️ Bảng **`yeu_cau_tai_khoan`** (Bảng 9) được kế thừa cùng cách xử lý với `tai_khoan`: không mở policy cho client, mọi thao tác tạo yêu cầu (HR) và cấp tài khoản (IT) đều đi qua Web Admin với `service_role`. Lý do: bảng này chứa `ten_dang_nhap` — thông tin định danh đăng nhập — nên không được phép lộ bất kỳ cột nào cho `authenticated`.
-
-### 3.1. Hàm bảo mật `SECURITY DEFINER`
-
-Các policy **không** đọc trực tiếp bảng phân quyền mà thông qua các hàm `SECURITY DEFINER` (đã `REVOKE ALL ... FROM PUBLIC`, chỉ cấp quyền cho `anon` / `authenticated` / `service_role`), để tránh vòng lặp vô hạn khi policy truy vấn lại chính bảng đang bảo vệ:
-
-| Hàm | Trả về | Công dụng trong policy |
+| Hàm | Kiểu trả về | Công dụng trong Policy RLS |
 |:---|:---|:---|
-| `nhan_vien_hien_tai()` | `INT` | Mã nhân viên của user đang đăng nhập, đọc từ `auth.jwt() -> app_metadata ->> 'ma_nhan_vien'`. |
-| `vai_tro_hien_tai()` | `INT` | Mã vai trò của user đang đăng nhập, đọc từ `app_metadata ->> 'ma_vai_tro'`. |
-| `la_quan_ly_hien_tai()` | `BOOLEAN` | `TRUE` khi vai trò thuộc nhóm quản lý (mã vai trò ∈ {1, 2, 3} = Admin, HR, Manager); nhóm nhân viên bị chặn. |
-| `phong_ban_hien_tai()` | `INT` | Mã phòng ban của user đang đăng nhập — dùng để Manager chỉ được sửa/xếp ca trong phòng ban mình. |
-| `phong_ban_cua_don(p_ma_don)` | `INT` | Phòng ban sở hữu của một đơn từ — dùng cho policy duyệt đơn cấp quản lý. |
-| `xac_thuc_dang_nhap(p_ten_dang_nhap, p_mat_khau)` | `TABLE` | Hàm xác thực cũ, **giữ lại để tương thích, KHÔNG phải đường xác thực chính** (đường chính là Supabase Auth / GoTrue). |
+| `nhan_vien_hien_tai()` | `INT` | Lấy `ma_nhan_vien` của người dùng từ token JWT: `auth.jwt() -> app_metadata ->> 'ma_nhan_vien'`. |
+| `vai_tro_hien_tai()` | `INT` | Lấy `ma_vai_tro` của người dùng từ token JWT: `app_metadata ->> 'ma_vai_tro'`. |
+| `la_quan_ly_hien_tai()` | `BOOLEAN` | Trả về `TRUE` nếu vai trò thuộc nhóm quản lý (mã vai trò ∈ {1, 2, 3} = Admin, HR, Manager). |
+| `phong_ban_hien_tai()` | `INT` | Trả về `ma_phong_ban` của người dùng để Manager chỉ xếp ca và duyệt công trong phạm vi phòng ban mình quản lý. |
+| `phong_ban_cua_don(p_ma_don)` | `INT` | Trả về phòng ban của người nộp đơn phục vụ policy duyệt đơn cấp quản lý phòng ban. |
+| `xac_thuc_dang_nhap(p_ten_dang_nhap, p_mat_khau)` | `TABLE` | Hàm xác thực nội bộ tương thích ngược (đường xác thực chính là GoTrue Supabase Auth). |
 
-### 3.2. Cơ chế nhúng quyền vào JWT: `custom_access_token_hook`
+### 3.3. Cơ chế nhúng quyền vào JWT: `custom_access_token_hook`
+Hàm `custom_access_token_hook(event jsonb)` được GoTrue Auth gọi mỗi khi cấp mới hoặc làm mới Access Token:
+1. Đối chiếu `claims.email` với `nhan_vien.email` (không phân biệt hoa thường), nối sang `tai_khoan` để lấy `ma_nhan_vien` và `ma_vai_tro`, kiểm tra cờ tài khoản đang hoạt động `tai_khoan.trang_thai = TRUE`.
+2. Nếu không khớp tài khoản hoạt động nào, trả về claim gốc không bổ sung quyền hạn, khiến mọi policy RLS tự động chặn truy cập.
+3. Nếu khớp, gom danh sách mã quyền dạng chuỗi `quyen.ma_quyen_code` từ bảng `vai_tro_quyen` (VD: `CHAM_CONG_DI_DONG`, `NOP_DON_TU`, `CAP_TAI_KHOAN_MOBILE`...).
+4. Hợp nhất (`||`) `ma_nhan_vien`, `ma_vai_tro` và mảng `quyen` vào `app_metadata` mà vẫn bảo toàn các khóa hệ thống (`provider`, `providers`).
 
-Hàm `custom_access_token_hook(event jsonb)` (`SECURITY DEFINER`, chỉ `service_role` và `supabase_auth_admin` được gọi) được GoTrue gọi mỗi lần cấp access token:
+---
 
-1. Đối chiếu `claims.email` với `nhan_vien.email` (không phân biệt hoa thường), nối sang `tai_khoan` để lấy `ma_nhan_vien` và `ma_vai_tro`, chỉ nhận tài khoản đang `trang_thai = TRUE`.
-2. Nếu không khớp tài khoản nào đang hoạt động → trả claim gốc, **không thêm quyền nào** → mọi policy sẽ chặn.
-3. Gom danh sách quyền của vai trò từ `vai_tro_quyen` → `quyen`, lấy **mã quyền dạng chuỗi `ma_quyen_code`** (không phải mã số) — đây chính là các hằng trong `Security/PermissionCodes.cs` của Web Admin (`CHAM_CONG_DI_DONG`, `NOP_DON_TU`, `CAP_TAI_KHOAN_MOBILE`, ...).
-4. **Merge** (không thay thế) `ma_nhan_vien`, `ma_vai_tro`, `quyen` vào `app_metadata` bằng `jsonb_set` để giữ nguyên các key GoTrue tự thêm (`provider`, `providers`).
+## 4. Hệ Thống 4 Triggers Rào Chắn Bảo Mật & Toàn Vẹn CSDL
 
-Nhờ đó, các hàm `nhan_vien_hien_tai()` / `vai_tro_hien_tai()` / `la_quan_ly_hien_tai()` chỉ cần đọc claim trong JWT là đủ ra quyết định, không tốn một vòng truy vấn bảng nào cho mỗi lần đánh giá policy.
+Nhằm bảo đảm an toàn dữ liệu ở cấp độ phần cứng CSDL (Database Engine Level), 4 triggers đặc thù được kích hoạt tự động để ngăn chặn mọi hành vi vượt quyền, thao tác nhầm hoặc tấn công SQL bypass qua Dashboard:
 
-### 3.3. Bảng trung gian trong quy trình cấp tài khoản: `yeu_cau_tai_khoan`
+```text
+[Màn hình Web / Script SQL]
+             │
+             ├──> vai_tro_quyen ──────> [trg_chan_cap_quyen_tai_khoan_di_dong] : Chặn gán sai vai trò & chặn leo quyền Admin
+             ├──> vai_tro       ──────> [trg_chan_doi_ten_vai_tro_quan_tri]   : Khóa bất biến tên vai trò Admin & IT
+             └──> yeu_cau_tai_khoan ──> [trg_chan_yeu_cau_tai_khoan_trung]   : Chặn gửi trùng yêu cầu cho người đã có tài khoản
+                                    ──> [trg_chan_yeu_cau_tai_khoan_dung_quyen]: Chặn chốt cấp tài khoản nếu thiếu quyền IT/Admin
+```
 
-Bảng `yeu_cau_tai_khoan` (Bảng 9) nằm **ngoài** phạm vi JWT claim: nó không phải bảng tra cứu quyền mà là **hàng đợi công việc** giữa hai bộ phận. Cách kiểm tra quyền trên bảng này vì vậy diễn ra ở tầng ứng dụng (Web Admin), không nằm trong policy:
+### 4.1. Trigger 1: `trg_chan_cap_quyen_tai_khoan_di_dong`
+- **Bảng áp dụng:** `public.vai_tro_quyen` (BEFORE INSERT OR UPDATE).
+- **Hàm thực thi:** `public.chan_cap_quyen_tai_khoan_di_dong()`.
+- **Cơ chế & Mục tiêu an ninh:**
+  1. *Chặn cấp quyền sai đối tượng:* Quyền `CAP_TAI_KHOAN_MOBILE` (cấp phát user trong Supabase Auth) là chìa khóa mở vào toàn bộ RLS policy của Mobile App. Trigger nghiêm cấm tuyệt đối việc gán mã quyền này cho các vai trò ngoài Quản trị viên (`ma_vai_tro = 1`) và Công nghệ Thông tin (`ma_vai_tro = 5`). Bất kỳ thao tác thêm/sửa nào vi phạm đều bị CSDL ném ngoại lệ `integrity_constraint_violation`.
+  2. *Chặn đường leo quyền (Privilege Escalation):* Ngăn chặn vai trò khác (kể cả IT) tự ý gán thêm quyền cho vai trò Admin (`ma_vai_tro = 1`). Chỉ có chính Admin mới được thao tác trên quyền hạn của vai trò Admin.
+  3. *Tương thích script seed:* Tự động bỏ qua kiểm tra nếu cặp khóa `(ma_vai_tro, ma_quyen)` đã tồn tại trong CSDL, giúp câu lệnh `INSERT ... ON CONFLICT DO NOTHING` của các script khởi tạo dữ liệu không bị nghẽn.
 
-| Quyền cần có (`ma_quyen_code`) | Ai được phép | Hành động trên `yeu_cau_tai_khoan` |
-|:---|:---|:---|
-| `CAP_TAI_KHOAN_MOBILE` | Vai trò **Admin** và **IT** | Xem danh sách yêu cầu đang chờ, tiếp nhận (`CHO_IT` → `DANG_XU_LY`), cấp (`DA_CAP`) hoặc từ chối (`TU_CHOI` kèm `ghi_chu_tu_choi`) |
-| *(không cần quyền đặc biệt — chỉ cần chức danh HR)* | Phòng **HR** | Tạo yêu cầu sau khi duyệt HĐLĐ (`ngay_gui`, `ma_nguoi_gui`) |
+### 4.2. Trigger 2: `trg_chan_doi_ten_vai_tro_quan_tri`
+- **Bảng áp dụng:** `public.vai_tro` (BEFORE UPDATE).
+- **Hàm thực thi:** `public.chan_doi_ten_vai_tro_quan_tri()`.
+- **Cơ chế & Mục tiêu an ninh:**
+  - Toàn bộ mã nguồn backend C# ASP.NET Core MVC và các chính sách phân quyền đều so sánh vai trò dựa trên chuỗi định danh chuẩn hóa: `Admin` và `IT` (ví dụ: `NormalizeRole`, `GetVietnameseRoleName`, kiểm tra giữ tài khoản Admin cuối cùng).
+  - Nếu quản trị viên thực hiện câu lệnh `UPDATE` đổi tên vai trò của ID 1 hoặc ID 5 trên Dashboard, hệ thống phân quyền sẽ bị lỗi âm thầm (silent failure) dẫn tới mất quyền toàn bộ.
+  - Trigger phát hiện thay đổi `NEW.ten_vai_tro IS DISTINCT FROM OLD.ten_vai_tro` trên các vai trò cốt lõi và ném lỗi từ chối ngay lập tức.
 
-> **Vì sao tách `CAP_TAI_KHOAN_MOBILE` khỏi `QL_TAI_KHOAN`?** Nếu gộp chung, HR sẽ theo đường `QL_TAI_KHOAN` mà lỡ tay cấp tài khoản Mobile — tức là tự mở cửa vào toàn bộ dữ liệu mà RLS policy bảo vệ. Tách quyền là để **phân định trách nhiệm**: HR quản lý hồ sơ tài khoản, IT là bộ phận duy nhất (cùng Admin) được cấp quyền sinh user trong `auth.users`. Ba trigger CSDL chặn tài khoản tự cấp quyền này cho chính mình.
+### 4.3. Trigger 3: `trg_chan_yeu_cau_tai_khoan_trung`
+- **Bảng áp dụng:** `public.yeu_cau_tai_khoan` (BEFORE INSERT OR UPDATE).
+- **Hàm thực thi:** `public.chan_yeu_cau_tai_khoan_trung()`.
+- **Cơ chế & Mục tiêu an ninh:**
+  - Chặn việc gửi yêu cầu cấp tài khoản cho nhân viên đã có tài khoản hoạt động trong hệ thống.
+  - Trigger quét 2 điều kiện:
+    1. `ten_dang_nhap` đã thuộc về một tài khoản đang tồn tại trong bảng `tai_khoan`.
+    2. `ma_nhan_vien` đã được cấp một tài khoản khác trong bảng `tai_khoan`.
+  - *Ngoại lệ hợp lệ:* Khi trạng thái chuyển sang `DA_CAP`, chính yêu cầu đó sẽ trỏ `ma_tai_khoan` tới tài khoản mới được sinh ra. Trigger sử dụng điều kiện `t.ma_tai_khoan IS DISTINCT FROM NEW.ma_tai_khoan` để bỏ qua tài khoản kết quả của chính yêu cầu, đảm bảo luồng cấp phát thành công không bị tự chặn.
+
+### 4.4. Trigger 4: `trg_chan_yeu_cau_tai_khoan_dung_quyen`
+- **Bảng áp dụng:** `public.yeu_cau_tai_khoan` (BEFORE INSERT OR UPDATE).
+- **Hàm thực thi:** `public.chan_yeu_cau_tai_khoan_dung_quyen()`.
+- **Cơ chế & Mục tiêu an ninh:**
+  - Bảo vệ tính toàn vẹn khi chốt cấp tài khoản: Khi yêu cầu được gán `ma_tai_khoan` (báo hiệu cấp thành công `DA_CAP`), trigger bắt buộc `ma_nguoi_xu_ly` không được phép NULL.
+  - Trigger truy vấn ngược từ `tai_khoan` người xử lý -> `vai_tro_quyen` -> `quyen` để xác minh người xử lý bắt buộc phải sở hữu mã quyền `CAP_TAI_KHOAN_MOBILE` (vai trò Admin hoặc IT).
+  - Đây là lớp phòng thủ chuyên sâu (Defense in Depth) ở tầng CSDL: kể cả khi kẻ tấn công vượt qua bộ lọc `[Authorize]` ở tầng ứng dụng hoặc thao tác trực tiếp trên SQL console, CSDL vẫn ném ngoại lệ `insufficient_privilege` từ chối thao tác.
+
+---
+
+## 5. Mạng Lưới Quan Hệ Liên Kết & Sơ Đồ Thực Thể (ERD 27 Bảng 3NF)
+
+### 5.1. Sơ đồ thực thể quan hệ hoàn chỉnh (Mermaid ERD)
+
+```mermaid
+erDiagram
+    %% PHAN HE 1: TO CHUC & HO SO NHAN SU
+    phong_ban ||--o{ nhan_vien : "thuoc phong ban"
+    chuc_vu ||--o{ nhan_vien : "dam nhiem chuc vu"
+    nhan_vien ||--o{ hop_dong : "ky ket hop dong"
+    nhan_vien ||--o| tai_khoan : "so huu tai khoan 1-1"
+
+    %% PHAN HE 2: TAI KHOAN, RBAC & AUDIT LOG
+    vai_tro ||--o{ tai_khoan : "phan bo vai tro"
+    vai_tro ||--o{ vai_tro_quyen : "chua danh sach quyen"
+    quyen ||--o{ vai_tro_quyen : "thuoc ve vai tro"
+    tai_khoan ||--o{ nhat_ky_quan_tri : "thuc hien hanh dong"
+    tai_khoan ||--o{ nhat_ky_quan_tri : "bi tac dong boi"
+
+    %% QUY TRINH CAP TAI KHOAN TRUNG GIAN (5 FKs)
+    nhan_vien ||--o{ yeu_cau_tai_khoan : "nguoi duoc cap tai khoan"
+    nhan_vien ||--o{ yeu_cau_tai_khoan : "HR gui yeu cau"
+    hop_dong ||--o{ yeu_cau_tai_khoan : "can cu phap ly HDLD"
+    tai_khoan ||--o{ yeu_cau_tai_khoan : "IT xu ly yeu cau"
+    tai_khoan ||--o| yeu_cau_tai_khoan : "tai khoan ket qua cap xong"
+    vai_tro ||--o{ yeu_cau_tai_khoan : "vai tro du kien gan"
+
+    %% PHAN HE 3: CA TRUC & CHAM CONG 24/7
+    ca_lam_viec ||--o{ phan_ca : "loai ca truc duoc phan"
+    nhan_vien ||--o{ phan_ca : "nhan vien duoc xep ca"
+    phan_ca ||--o| cham_cong : "quet the vao ra 1-1"
+
+    %% PHAN HE 4: DON TU TRUC TUYEN
+    loai_don ||--o{ don_tu : "phan loai don"
+    nhan_vien ||--o{ don_tu : "nhan vien nop don"
+    nhan_vien ||--o{ don_tu : "quan ly xet duyet don"
+
+    %% PHAN HE 5: TIEN LUONG & THU CHI 3 CAP
+    ky_luong ||--o{ phieu_luong : "thuoc ky tinh luong"
+    nhan_vien ||--o{ phieu_luong : "nhan phieu luong"
+    phieu_luong ||--o{ chi_tiet_phieu_luong : "chi tiet dong thu chi"
+    
+    cau_hinh_khoan_luong ||--o{ chi_tiet_phieu_luong : "tham chieu thuong bonus"
+    cau_hinh_phu_cap ||--o{ chi_tiet_phieu_luong : "tham chieu phu cap"
+    cau_hinh_khau_tru ||--o{ chi_tiet_phieu_luong : "tham chieu khau tru"
+    cau_hinh_tang_ca ||--o{ chi_tiet_phieu_luong : "tham chieu he so OT"
+
+    chi_tiet_phieu_luong ||--o| chi_tiet_tru_bao_hiem : "tinh bao hiem 10.5% 1-1"
+    chi_tiet_phieu_luong ||--o| chi_tiet_tru_thue_tncn : "tinh thue TNCN luy tien 1-1"
+    chi_tiet_phieu_luong ||--o| chi_tiet_tru_vi_pham_tam_ung : "tinh vi pham tam ung 1-1"
+
+    %% PHAN HE 9: QUAN LY DU AN & SU KIEN KHACH SAN
+    nhan_vien ||--o{ du_an : "quan ly truong ban to chuc"
+    du_an ||--o{ phan_cong_du_an : "phan bo vi tri su kien"
+    nhan_vien ||--o{ phan_cong_du_an : "nhan vien tham gia su kien"
+    chi_tiet_phieu_luong ||--o| phan_cong_du_an : "ket chuyen thu lao vao luong"
+```
+
+### 5.2. Ma trận liên kết khóa ngoại (Foreign Keys Matrix)
+
+| Bảng Chứa Khóa Ngoại | Cột Khóa Ngoại | Bảng Tham Chiếu (PK) | Quan Hệ | Hành Vi Khi Xóa (ON DELETE) | Ý Nghĩa Nghiệp Vụ |
+|:---|:---|:---|:---:|:---:|:---|
+| `nhan_vien` | `ma_phong_ban` | `phong_ban(ma_phong_ban)` | N - 1 | RESTRICT | Nhân viên trực thuộc một phòng ban. Không thể xóa phòng ban nếu còn nhân sự. |
+| `nhan_vien` | `ma_chuc_vu` | `chuc_vu(ma_chuc_vu)` | N - 1 | RESTRICT | Nhân viên đảm nhiệm một chức vụ chuyên môn. |
+| `hop_dong` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | HĐLĐ thuộc về nhân viên. Xóa nhân viên xóa hợp đồng liên quan. |
+| `tai_khoan` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | 1 - 1 | CASCADE | Mỗi nhân viên có tối đa 1 tài khoản đăng nhập (UNIQUE). |
+| `tai_khoan` | `ma_vai_tro` | `vai_tro(ma_vai_tro)` | N - 1 | RESTRICT | Tài khoản được phân vào một nhóm vai trò bảo mật. |
+| `vai_tro_quyen` | `ma_vai_tro` | `vai_tro(ma_vai_tro)` | N - 1 | CASCADE | Khóa ghép RBAC: vai trò liên kết quyền. |
+| `vai_tro_quyen` | `ma_quyen` | `quyen(ma_quyen)` | N - 1 | CASCADE | Khóa ghép RBAC: quyền liên kết vai trò. |
+| `yeu_cau_tai_khoan` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Nhân viên mới cần cấp tài khoản di động. |
+| `yeu_cau_tai_khoan` | `ma_hop_dong` | `hop_dong(ma_hop_dong)` | N - 1 | SET NULL | Hợp đồng lao động làm căn cứ phát sinh yêu cầu. |
+| `yeu_cau_tai_khoan` | `ma_vai_tro` | `vai_tro(ma_vai_tro)` | N - 1 | RESTRICT | Vai trò dự kiến gán cho tài khoản. |
+| `yeu_cau_tai_khoan` | `ma_nguoi_gui` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Nhân viên HR gửi yêu cầu sau khi duyệt HĐLĐ. |
+| `yeu_cau_tai_khoan` | `ma_nguoi_xu_ly` | `tai_khoan(ma_tai_khoan)` | N - 1 | SET NULL | Tài khoản chuyên viên IT tiếp nhận và cấp phát. |
+| `yeu_cau_tai_khoan` | `ma_tai_khoan` | `tai_khoan(ma_tai_khoan)` | 1 - 1 | SET NULL | Tài khoản kết quả sau khi IT cấp thành công. |
+| `phan_ca` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Lịch phân ca gán cho nhân viên. |
+| `phan_ca` | `ma_ca` | `ca_lam_viec(ma_ca)` | N - 1 | RESTRICT | Ca làm việc được gán trong ngày. |
+| `cham_cong` | `ma_phan_ca` | `phan_ca(ma_phan_ca)` | 1 - 1 | CASCADE | Bản ghi quẹt thẻ gắn trực tiếp với 1 ca làm việc đã xếp. |
+| `don_tu` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Nhân viên nộp đơn điện tử. |
+| `don_tu` | `ma_loai_don` | `loai_don(ma_loai_don)` | N - 1 | RESTRICT | Phân loại đơn xin phép. |
+| `don_tu` | `ma_nguoi_duyet` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Quản lý có thẩm quyền duyệt đơn. |
+| `phieu_luong` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Nhân viên sở hữu phiếu lương tháng. |
+| `phieu_luong` | `ma_ky_luong` | `ky_luong(ma_ky_luong)` | N - 1 | RESTRICT | Kỳ tính lương khóa sổ. |
+| `chi_tiet_phieu_luong` | `ma_phieu_luong` | `phieu_luong(ma_phieu_luong)` | N - 1 | CASCADE | Dòng chi tiết thuộc phiếu lương tổng hợp. |
+| `chi_tiet_phieu_luong` | `ma_khoan` | `cau_hinh_khoan_luong(ma_khoan)` | N - 1 | RESTRICT | Tham chiếu định mức thưởng Bonus (Legacy). |
+| `chi_tiet_phieu_luong` | `ma_phu_cap` | `cau_hinh_phu_cap(ma_phu_cap)` | N - 1 | RESTRICT | Tham chiếu cấu hình phụ cấp chuẩn. |
+| `chi_tiet_phieu_luong` | `ma_khoan_tru` | `cau_hinh_khau_tru(ma_khoan_tru)` | N - 1 | RESTRICT | Tham chiếu cấu hình khấu trừ chuẩn. |
+| `chi_tiet_phieu_luong` | `ma_loai_ot` | `cau_hinh_tang_ca(ma_loai_ot)` | N - 1 | RESTRICT | Tham chiếu loại tăng ca và hệ số OT. |
+| `chi_tiet_tru_bao_hiem` | `ma_chi_tiet` | `chi_tiet_phieu_luong(ma_chi_tiet)` | 1 - 1 | CASCADE | Tách dòng chi tiết bảo hiểm 10.5% (3NF). |
+| `chi_tiet_tru_thue_tncn` | `ma_chi_tiet` | `chi_tiet_phieu_luong(ma_chi_tiet)` | 1 - 1 | CASCADE | Tách dòng chi tiết tính thuế lũy tiến (3NF). |
+| `chi_tiet_tru_vi_pham_tam_ung` | `ma_chi_tiet` | `chi_tiet_phieu_luong(ma_chi_tiet)` | 1 - 1 | CASCADE | Tách dòng chi tiết phạt vi phạm và tạm ứng (3NF). |
+| `nhat_ky_quan_tri` | `ma_tai_khoan_thuc_hien` | `tai_khoan(ma_tai_khoan)` | N - 1 | SET NULL | Tài khoản thực hiện hành vi can thiệp hệ thống. |
+| `nhat_ky_quan_tri` | `ma_tai_khoan_bi_tac_dong` | `tai_khoan(ma_tai_khoan)` | N - 1 | SET NULL | Tài khoản bị tác động (khóa, đổi quyền, reset mật khẩu). |
+| `du_an` | `ma_nguoi_quan_ly` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Trưởng ban tổ chức / Quản lý điều hành dự án sự kiện. |
+| `phan_cong_du_an` | `ma_du_an` | `du_an(ma_du_an)` | N - 1 | CASCADE | Dự án sự kiện tiếp nhận nhân sự. Xóa sự kiện xóa phân công. |
+| `phan_cong_du_an` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Nhân sự khách sạn được điều động phục vụ sự kiện. |
+| `phan_cong_du_an` | `ma_chi_tiet` | `chi_tiet_phieu_luong(ma_chi_tiet)` | 1 - 1 | SET NULL | Kết chuyển thù lao sự kiện vào dòng phụ cấp trên phiếu lương tháng. |

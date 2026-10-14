@@ -5,8 +5,6 @@
     ViewData["Title"] = "Quản trị tài khoản";
 }
 
-    <partial name="_PageTabs" model="@("accounts")" />
-
 <div class="account-workspace account-workspace--bleed" data-account-workspace data-status-filter="@(Model.IsActive.HasValue ? Model.IsActive.Value.ToString().ToLowerInvariant() : string.Empty)" data-audit-from="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" data-audit-to="@(Model.AuditTo?.ToString("yyyy-MM-dd"))">
     <!-- Tiêu đề đã nằm ở .app-topbar nên trang này không lặp lại banner.
          Thanh công cụ chỉ giữ thao tác, đặt ngay trên lưới dữ liệu. -->

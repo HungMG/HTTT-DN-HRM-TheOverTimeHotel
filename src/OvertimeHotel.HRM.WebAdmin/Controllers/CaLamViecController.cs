@@ -22,6 +22,12 @@ public class CaLamViecController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? keyword)
     {
+        // Khi người dùng bấm trực tiếp vào /CaLamViec hoặc Mẫu ca, tự động chuyển về popup trong trang Ca & Lịch làm việc
+        if (Request.Headers.XRequestedWith != "XMLHttpRequest")
+        {
+            return RedirectToAction("Index", "PhanCa", new { openShiftModal = "true" });
+        }
+
         keyword = keyword?.Trim();
         var query = _context.CaLamViecs.AsNoTracking().Include(x => x.PhanCas).AsQueryable();
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -58,22 +64,33 @@ public class CaLamViecController : Controller
     });
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(CaLamViec model)
+    public async Task<IActionResult> Create(CaLamViec model, string? returnUrl = null)
     {
         Normalize(model);
         await ValidateAsync(model);
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            if (!string.IsNullOrWhiteSpace(returnUrl))
+            {
+                TempData["Error"] = ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu ca làm việc không hợp lệ.";
+                return LocalRedirect(returnUrl);
+            }
+            return View(model);
+        }
 
         try
         {
             _context.CaLamViecs.Add(model);
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã thêm ca làm việc “{model.TenCa}”.";
+            if (!string.IsNullOrWhiteSpace(returnUrl)) return LocalRedirect(returnUrl);
             return RedirectToAction(nameof(Index));
         }
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Không thể tạo ca làm việc {ShiftName}.", model.TenCa);
+            TempData["Error"] = "Không thể thêm ca làm việc. Vui lòng kiểm tra dữ liệu hoặc kết nối CSDL.";
+            if (!string.IsNullOrWhiteSpace(returnUrl)) return LocalRedirect(returnUrl);
             ModelState.AddModelError(string.Empty, "Không thể thêm ca làm việc. Vui lòng kiểm tra dữ liệu hoặc kết nối CSDL.");
             return View(model);
         }
@@ -87,12 +104,20 @@ public class CaLamViecController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, CaLamViec model)
+    public async Task<IActionResult> Edit(int id, CaLamViec model, string? returnUrl = null)
     {
         if (id != model.MaCa) return BadRequest();
         Normalize(model);
         await ValidateAsync(model, id);
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            if (!string.IsNullOrWhiteSpace(returnUrl))
+            {
+                TempData["Error"] = ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault()?.ErrorMessage ?? "Dữ liệu ca làm việc không hợp lệ.";
+                return LocalRedirect(returnUrl);
+            }
+            return View(model);
+        }
 
         var entity = await _context.CaLamViecs.FindAsync(id);
         if (entity == null) return NotFound();
@@ -105,18 +130,21 @@ public class CaLamViecController : Controller
         {
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã cập nhật ca làm việc “{entity.TenCa}”.";
+            if (!string.IsNullOrWhiteSpace(returnUrl)) return LocalRedirect(returnUrl);
             return RedirectToAction(nameof(Index));
         }
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Không thể cập nhật ca làm việc {ShiftId}.", id);
+            TempData["Error"] = "Không thể cập nhật ca làm việc. Vui lòng kiểm tra dữ liệu hoặc kết nối CSDL.";
+            if (!string.IsNullOrWhiteSpace(returnUrl)) return LocalRedirect(returnUrl);
             ModelState.AddModelError(string.Empty, "Không thể cập nhật ca làm việc. Vui lòng kiểm tra dữ liệu hoặc kết nối CSDL.");
             return View(model);
         }
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(int id, string? returnUrl = null)
     {
         var entity = await _context.CaLamViecs.Include(x => x.PhanCas).FirstOrDefaultAsync(x => x.MaCa == id);
         if (entity == null) return NotFound();
@@ -124,6 +152,7 @@ public class CaLamViecController : Controller
         if (entity.PhanCas.Count != 0)
         {
             TempData["Error"] = $"Không thể xóa “{entity.TenCa}” vì đang có {entity.PhanCas.Count} lịch phân ca.";
+            if (!string.IsNullOrWhiteSpace(returnUrl)) return LocalRedirect(returnUrl);
             return RedirectToAction(nameof(Index));
         }
 
@@ -139,6 +168,7 @@ public class CaLamViecController : Controller
             TempData["Error"] = "Không thể xóa ca làm việc vì dữ liệu đang được sử dụng.";
         }
 
+        if (!string.IsNullOrWhiteSpace(returnUrl)) return LocalRedirect(returnUrl);
         return RedirectToAction(nameof(Index));
     }
 

@@ -1,0 +1,632 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.ChamCongIndexViewModel
+@using OvertimeHotel.HRM.Core.Policies
+@{
+    ViewData["Title"] = "Nhật Ký Chấm Công 24/7 · Check-in & Check-out";
+}
+
+<div class="container-fluid px-3 px-md-4 py-3 schedule-page-container">
+
+    <!-- 1. THANH TIÊU ĐỀ & ĐIỀU HƯỚNG TỔNG QUAN -->
+    <div class="card border-0 rounded-4 shadow-sm p-3 p-md-4 mb-4 bg-white catalog-hero-card" style="border-left: 5px solid #1e3a8a !important;">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 font-monospace" style="font-size: 0.75rem;">
+                        <i class="bi bi-shield-check me-1"></i>HỆ THỐNG VẬN HÀNH 24/7
+                    </span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1 font-monospace" style="font-size: 0.75rem;">
+                        <i class="bi bi-clock-history me-1"></i>REAL-TIME ATTENDANCE
+                    </span>
+                </div>
+                <h2 class="h4 mb-1 font-serif fw-bold text-dark hotel-blur-text">
+                    Nhật Ký Chấm Công 24/7 &amp; Quẹt Thẻ Ra Vào
+                </h2>
+                <p class="text-muted small mb-0 font-sans">
+                    Theo dõi thời gian làm việc thực tế, giao nhận ca và ghi nhận chính xác giờ check-in, check-out, đi trễ, về sớm.
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a asp-controller="PhanCa" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-semibold hover-lift" style="font-size: 0.85rem;">
+                    <i class="bi bi-calendar-week me-1"></i> Lưới Phân Ca 24/7
+                </a>
+                <button type="button" class="btn btn-hotel-primary rounded-pill px-4 py-2 fw-bold shadow-sm hover-lift" onclick="window.print()" style="font-size: 0.85rem;">
+                    <i class="bi bi-printer me-1"></i> In Nhật Ký
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. BENTO GRID: 5 CHỈ SỐ KPI CHẤM CÔNG VÀNG KIM -->
+    <div class="row g-3 mb-4">
+        <!-- KPI 1: Tổng số ca phân -->
+        <div class="col-6 col-md-4 col-xl">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #1e3a8a !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Tổng ca phân bổ</span>
+                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="bi bi-calendar-check-fill" style="font-size: 0.9rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h3 class="h3 mb-0 fw-bold text-dark font-serif kpi-count-up" id="kpiTongSoCa" data-target="@Model.TongSoCaPhan">@Model.TongSoCaPhan</h3>
+                    <span class="small text-muted font-sans">ca</span>
+                </div>
+                <div class="small text-muted mt-1" style="font-size: 0.72rem;">
+                    Trong khoảng ngày lọc
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 2: Đã Check-In & Đang Làm Việc -->
+        <div class="col-6 col-md-4 col-xl">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #0284c7 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đã vào ca / Đang trực</span>
+                    <div class="rounded-circle bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="bi bi-box-arrow-in-right" style="font-size: 0.9rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h3 class="h3 mb-0 fw-bold text-info-emphasis font-serif kpi-count-up" id="kpiSoDaCheckIn" data-target="@Model.SoDaCheckIn">@Model.SoDaCheckIn</h3>
+                    <span class="badge bg-primary text-white rounded-pill" id="kpiSoDangLamViecBadge" style="font-size: 0.65rem;">
+                        <span class="spinner-grow spinner-grow-sm text-warning" style="width: 6px; height: 6px;" role="status"></span>
+                        <span id="kpiSoDangLamViecText">@Model.SoDangLamViec đang làm</span>
+                    </span>
+                </div>
+                <div class="small text-muted mt-1" style="font-size: 0.72rem;">
+                    Đã quẹt thẻ check-in
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 3: Đúng giờ -->
+        <div class="col-6 col-md-4 col-xl">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #059669 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đúng giờ</span>
+                    <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="bi bi-check2-circle" style="font-size: 1rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h3 class="h3 mb-0 fw-bold text-success font-serif kpi-count-up" id="kpiSoDungGio" data-target="@Model.SoDungGio">@Model.SoDungGio</h3>
+                    <span class="small text-muted font-sans">ca</span>
+                </div>
+                <div class="small text-muted mt-1" id="kpiDungGioPct" style="font-size: 0.72rem;">
+                    @(Model.TongSoCaPhan > 0 ? Math.Round((double)Model.SoDungGio * 100 / Model.TongSoCaPhan, 1) : 0)% tổng số ca
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 4: Đi trễ / Về sớm -->
+        <div class="col-6 col-md-6 col-xl">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #d97706 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đi trễ / Về sớm</span>
+                    <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 0.9rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h3 class="h3 mb-0 fw-bold text-warning-emphasis font-serif kpi-count-up" id="kpiDiTreVeSom" data-target="@(Model.SoDiTre + Model.SoVeSom)">@(Model.SoDiTre + Model.SoVeSom)</h3>
+                    <span class="badge bg-warning-subtle text-warning-emphasis border rounded-pill" id="kpiDiTreVeSomBadge" style="font-size: 0.65rem;">@Model.SoDiTre trễ &bull; @Model.SoVeSom sớm</span>
+                </div>
+                <div class="small text-muted mt-1" style="font-size: 0.72rem;">
+                    Cần theo dõi vi phạm
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 5: Tổng giờ làm thực tế -->
+        <div class="col-12 col-md-6 col-xl">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #b45309 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Tổng giờ làm việc</span>
+                    <div class="rounded-circle bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="bi bi-hourglass-split" style="font-size: 0.9rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h3 class="h3 mb-0 fw-bold font-serif" id="kpiTongGioLam" style="color: #b45309;">@Model.TongGioLamThucTe.ToString("N1")</h3>
+                    <span class="small text-muted font-sans">giờ</span>
+                    <span class="badge bg-warning text-dark rounded-pill fw-bold @(Model.TongGioOt > 0 ? "" : "d-none")" id="kpiOtBadge" style="font-size: 0.65rem;">+@Model.TongGioOt.ToString("0.#")h OT</span>
+                </div>
+                <div class="small text-muted mt-1" style="font-size: 0.72rem;">
+                    Thực tế ghi nhận qua quẹt thẻ
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. THANH CÔNG CỤ BỘ LỌC TẬP TRUNG (IN-PLACE FILTER TOOLBAR) -->
+    <div class="card border-0 rounded-4 shadow-sm p-3 bg-white mb-4">
+        <form id="formAttendanceFilter" method="get" onsubmit="event.preventDefault(); applyAttendanceFilters(1);">
+            <input type="hidden" name="page" id="attendanceFilterPage" value="@Model.PageNumber" />
+            <input type="hidden" name="rangeType" id="attendanceFilterRangeType" value="@Model.RangeType" />
+
+            <!-- Hàng 1: Preset chọn khoảng ngày -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pb-3 mb-3 border-bottom">
+                <div class="d-flex flex-wrap align-items-center gap-1">
+                    <span class="text-muted small fw-bold me-2"><i class="bi bi-calendar-range me-1"></i>Thời gian:</span>
+                    <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold range-preset-btn @(Model.RangeType == "today" ? "btn-hotel-primary" : "btn-light border")" onclick="selectDateRange('today')">Hôm nay</button>
+                    <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold range-preset-btn @(Model.RangeType == "yesterday" ? "btn-hotel-primary" : "btn-light border")" onclick="selectDateRange('yesterday')">Hôm qua</button>
+                    <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold range-preset-btn @(Model.RangeType == "week" ? "btn-hotel-primary" : "btn-light border")" onclick="selectDateRange('week')">Tuần này</button>
+                    <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold range-preset-btn @(Model.RangeType == "month" ? "btn-hotel-primary" : "btn-light border")" onclick="selectDateRange('month')">Tháng này</button>
+                    <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold range-preset-btn @(Model.RangeType == "custom" ? "btn-hotel-primary" : "btn-light border")" onclick="selectDateRange('custom')">Tùy chọn khoảng ngày</button>
+                </div>
+
+                <div id="customDateRangeInputs" class="d-flex align-items-center gap-2 @(Model.RangeType == "custom" ? "" : "d-none")">
+                    <div class="input-group input-group-sm" style="width: 145px;">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
+                        <input type="date" class="form-control" name="fromDate" id="attendanceFilterFromDate" value="@(Model.TuNgay?.ToString("yyyy-MM-dd"))" onchange="applyAttendanceFilters(1)" />
+                    </div>
+                    <span class="text-muted small">&rarr;</span>
+                    <div class="input-group input-group-sm" style="width: 145px;">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
+                        <input type="date" class="form-control" name="toDate" id="attendanceFilterToDate" value="@(Model.DenNgay?.ToString("yyyy-MM-dd"))" onchange="applyAttendanceFilters(1)" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hàng 2: Bộ lọc chi tiết theo Phòng ban, Ca, Trạng thái, Từ khóa -->
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" name="keyword" id="attendanceFilterKeyword"
+                               placeholder="Tìm họ tên, mã NV-..." value="@Model.Keyword" autocomplete="off" />
+                    </div>
+                </div>
+
+                <div class="col-6 col-md-2">
+                    <select class="form-select form-select-sm" name="phongBanId" id="attendanceFilterPhongBan" onchange="applyAttendanceFilters(1)">
+                        <option value="">-- Tất cả phòng ban --</option>
+                        @foreach (var opt in Model.PhongBanOptions)
+                        {
+                            <option value="@opt.Value" selected="@opt.Selected">@opt.Text</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-6 col-md-2">
+                    <select class="form-select form-select-sm" name="caId" id="attendanceFilterCa" onchange="applyAttendanceFilters(1)">
+                        <option value="">-- Tất cả ca trực --</option>
+                        @foreach (var opt in Model.CaOptions)
+                        {
+                            <option value="@opt.Value" selected="@opt.Selected">@opt.Text</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-6 col-md-2">
+                    <select class="form-select form-select-sm" name="trangThai" id="attendanceFilterTrangThai" onchange="applyAttendanceFilters(1)">
+                        <option value="">-- Tất cả trạng thái --</option>
+                        <option value="DUNG_GIO" selected="@(Model.TrangThai == "DUNG_GIO")">Đúng giờ</option>
+                        <option value="DI_TRE" selected="@(Model.TrangThai == "DI_TRE")">Đi trễ</option>
+                        <option value="VE_SOM" selected="@(Model.TrangThai == "VE_SOM")">Về sớm</option>
+                        <option value="DANG_LAM" selected="@(Model.TrangThai == "DANG_LAM")">Đang làm việc</option>
+                        <option value="CHUA_CHECKIN" selected="@(Model.TrangThai == "CHUA_CHECKIN")">Chưa quẹt thẻ</option>
+                        <option value="VANG" selected="@(Model.TrangThai == "VANG")">Vắng mặt</option>
+                    </select>
+                </div>
+
+                <div class="col-6 col-md-3 d-flex align-items-center justify-content-end gap-2">
+                    <button type="submit" class="btn btn-sm btn-hotel-primary rounded-pill px-3 py-1 fw-bold shadow-sm">
+                        <i class="bi bi-funnel-fill me-1"></i> Lọc
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1" onclick="resetAttendanceFilters()">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- 4. KHUNG BẢNG DỮ LIỆU CHẤM CÔNG (TARGETED ISOLATION CONTAINER) -->
+    <div class="card border-0 rounded-4 shadow-sm overflow-hidden bg-white position-relative" style="border: 1px solid #e2e8f0 !important;">
+        <!-- Loading Overlay Cục Bộ -->
+        <div id="attendanceLoadingOverlay" class="in-place-loading-overlay d-none">
+            <div class="spinner-border text-primary mb-2" role="status" style="width: 2.2rem; height: 2.2rem;">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+            <div class="fw-bold text-dark small font-serif">Đang nạp dữ liệu chấm công...</div>
+            <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
+        </div>
+
+        <div id="attendanceTableWrapper" class="in-place-enter in-place-container">
+            <partial name="_AttendanceTablePartial" model="Model" />
+        </div>
+    </div>
+</div>
+
+<!-- 5. LUXURY MODAL: CHI TIẾT BẢN GHI CHẤM CÔNG & QUẸT THẺ RA VÀO -->
+<div class="modal fade" id="modalAttendanceDetail" tabindex="-1" aria-labelledby="modalAttendanceDetailTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden modal-luxury-card">
+            <div class="modal-header bg-white border-bottom py-3 px-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm"
+                         style="width: 44px; height: 44px; font-size: 1.1rem; background: #1e3a8a;">
+                        <i class="bi bi-fingerprint text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="text-uppercase small fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px; color: #b45309;">
+                            <i class="bi bi-stars text-warning me-1"></i>Hồ sơ chấm công điện tử · The OverTime Hotel
+                        </div>
+                        <h3 class="modal-title h5 mb-0 font-serif fw-bold text-dark" id="modalAttendanceDetailTitle">
+                            Chi Tiết Lượt Chấm Công Ca Trực
+                        </h3>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+
+            <div class="modal-body p-4 bg-light bg-opacity-50">
+                <!-- Thông tin nhân sự -->
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white mb-3" style="border-left: 4px solid #1e3a8a !important;">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-7">
+                            <div class="small text-muted" style="font-size: 0.72rem;">NHÂN VIÊN THỰC HIỆN</div>
+                            <h4 class="h5 fw-bold text-dark mb-0 font-serif" id="dtlEmpName">...</h4>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <span class="badge bg-light text-secondary border font-monospace" id="dtlEmpCode">...</span>
+                                <span class="text-muted small">&bull;</span>
+                                <span class="small text-dark fw-semibold" id="dtlDeptName">...</span>
+                                <span class="text-muted small">&bull;</span>
+                                <span class="small text-muted" id="dtlPositionName">...</span>
+                            </div>
+                        </div>
+                        <div class="col-md-5 text-md-end">
+                            <span class="badge bg-primary text-white rounded-pill px-3 py-2 font-monospace fs-6" id="dtlShiftName">...</span>
+                            <div class="small text-muted mt-1" id="dtlShiftHours">...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2 Cột Check-In và Check-Out Timeline -->
+                <div class="row g-3 mb-3">
+                    <!-- Khung Check-In -->
+                    <div class="col-md-6">
+                        <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100" style="border-top: 3px solid #059669 !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="small fw-bold text-success text-uppercase" style="font-size: 0.72rem;">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i> Quẹt Thẻ Vào (Check-In)
+                                </span>
+                                <span class="badge bg-success-subtle text-success border rounded-pill" id="dtlCheckInBadge">Đã vào</span>
+                            </div>
+
+                            <div class="p-2 rounded-3 bg-light border mb-3 text-center">
+                                <div class="small text-muted" style="font-size: 0.72rem;">Thời điểm check-in</div>
+                                <div class="fs-5 fw-bold text-dark font-monospace" id="dtlCheckInTime">...</div>
+                            </div>
+
+                            <ul class="list-group list-group-flush small" style="font-size: 0.78rem;">
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted">Ca dự kiến bắt đầu:</span>
+                                    <strong id="dtlPlannedStart">...</strong>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted">Độ lệch thời gian:</span>
+                                    <span id="dtlLateTime" class="fw-bold">...</span>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted">Phương thức xác thực:</span>
+                                    <span class="badge bg-light text-dark border" id="dtlMethod">...</span>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted">Thiết bị ghi nhận:</span>
+                                    <span class="text-muted font-monospace" id="dtlDevice">...</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Khung Check-Out -->
+                    <div class="col-md-6">
+                        <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100" style="border-top: 3px solid #1e3a8a !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="small fw-bold text-primary text-uppercase" style="font-size: 0.72rem;">
+                                    <i class="bi bi-box-arrow-right me-1"></i> Quẹt Thẻ Ra (Check-Out)
+                                </span>
+                                <span class="badge bg-primary-subtle text-primary border rounded-pill" id="dtlCheckOutBadge">Đã ra</span>
+                            </div>
+
+                            <div class="p-2 rounded-3 bg-light border mb-3 text-center">
+                                <div class="small text-muted" style="font-size: 0.72rem;">Thời điểm check-out</div>
+                                <div class="fs-5 fw-bold text-dark font-monospace" id="dtlCheckOutTime">...</div>
+                            </div>
+
+                            <ul class="list-group list-group-flush small" style="font-size: 0.78rem;">
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted">Ca dự kiến kết thúc:</span>
+                                    <strong id="dtlPlannedEnd">...</strong>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted">Về sớm / Đúng giờ:</span>
+                                    <span id="dtlEarlyTime" class="fw-bold">...</span>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted">Số giờ làm thực tế:</span>
+                                    <strong id="dtlActualHours" class="text-primary font-monospace">...</strong>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted">Tăng ca ngoài giờ (OT):</span>
+                                    <span class="badge bg-warning text-dark font-monospace" id="dtlOtHours">+0h OT</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thông tin vị trí GPS & Xác thực an toàn -->
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-geo-alt-fill text-danger"></i>
+                        <span class="small fw-bold text-dark text-uppercase" style="font-size: 0.72rem;">Tọa độ GPS &amp; Bán kính khách sạn</span>
+                    </div>
+                    <div class="p-2 rounded-3 bg-light border font-monospace small text-muted text-break" id="dtlGpsCoordinates">
+                        ...
+                    </div>
+                    <small class="text-muted mt-2" style="font-size: 0.72rem;">
+                        <i class="bi bi-info-circle me-1"></i>Hệ thống tự động đối chiếu vị trí quẹt thẻ di động của nhân viên với tọa độ khách sạn The OverTime Hotel (bán kính hợp lệ &le; 200m).
+                    </small>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light border-top py-2 px-4 d-flex justify-content-between align-items-center">
+                <span class="small text-muted" id="dtlFooterSummary">
+                    <i class="bi bi-shield-check text-success me-1"></i>Dữ liệu đã được mã hóa an toàn trên Supabase Cloud
+                </span>
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // 1. Áp dụng bộ lọc tại chỗ (In-Place Fetch Transition)
+    function applyAttendanceFilters(pageNumber) {
+        if (pageNumber !== undefined) {
+            document.getElementById('attendanceFilterPage').value = pageNumber;
+        }
+
+        const form = document.getElementById('formAttendanceFilter');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+
+        const overlay = document.getElementById('attendanceLoadingOverlay');
+        const wrapper = document.getElementById('attendanceTableWrapper');
+
+        if (overlay) overlay.classList.remove('d-none');
+
+        fetch('/ChamCong?' + params.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Lỗi khi nạp dữ liệu chấm công');
+            return response.text();
+        })
+        .then(html => {
+            if (wrapper) {
+                wrapper.innerHTML = html;
+                wrapper.classList.remove('in-place-enter');
+                void wrapper.offsetWidth; // Force reflow
+                wrapper.classList.add('in-place-enter');
+
+                // Cập nhật các chỉ số Bento KPI Cards theo dữ liệu mới
+                const meta = wrapper.querySelector('#attendancePartialMeta');
+                if (meta) {
+                    updateKpiCardsFromMeta(meta);
+                }
+            }
+            window.history.pushState(null, '', '/ChamCong?' + params.toString());
+        })
+        .catch(err => {
+            console.error('Lỗi nạp chấm công tại chỗ:', err);
+            window.location.href = '/ChamCong?' + params.toString();
+        })
+        .finally(() => {
+            if (overlay) overlay.classList.add('d-none');
+        });
+    }
+
+    // 2. Chuyển trang phân trang
+    function changeAttendancePage(page) {
+        applyAttendanceFilters(page);
+    }
+
+    // 3. Chọn Preset khoảng ngày (Hôm nay, Hôm qua, Tuần này, Tháng này, Tùy chọn)
+    function selectDateRange(rangeType) {
+        document.getElementById('attendanceFilterRangeType').value = rangeType;
+
+        document.querySelectorAll('.range-preset-btn').forEach(btn => {
+            btn.className = 'btn btn-sm rounded-pill px-3 py-1 fw-semibold range-preset-btn btn-light border';
+        });
+
+        event.target.className = 'btn btn-sm rounded-pill px-3 py-1 fw-semibold range-preset-btn btn-hotel-primary';
+
+        const customInputs = document.getElementById('customDateRangeInputs');
+        if (customInputs) {
+            if (rangeType === 'custom') {
+                customInputs.classList.remove('d-none');
+            } else {
+                customInputs.classList.add('d-none');
+                applyAttendanceFilters(1);
+            }
+        }
+    }
+
+    // 4. Đặt lại toàn bộ bộ lọc
+    function resetAttendanceFilters() {
+        document.getElementById('attendanceFilterKeyword').value = '';
+        document.getElementById('attendanceFilterPhongBan').value = '';
+        document.getElementById('attendanceFilterCa').value = '';
+        document.getElementById('attendanceFilterTrangThai').value = '';
+        document.getElementById('attendanceFilterRangeType').value = 'today';
+        document.getElementById('attendanceFilterPage').value = '1';
+
+        document.querySelectorAll('.range-preset-btn').forEach(btn => {
+            btn.className = 'btn btn-sm rounded-pill px-3 py-1 fw-semibold range-preset-btn btn-light border';
+        });
+        const todayBtn = document.querySelector('.range-preset-btn:first-child');
+        if (todayBtn) todayBtn.className = 'btn btn-sm rounded-pill px-3 py-1 fw-semibold range-preset-btn btn-hotel-primary';
+
+        const customInputs = document.getElementById('customDateRangeInputs');
+        if (customInputs) customInputs.classList.add('d-none');
+
+        applyAttendanceFilters(1);
+    }
+
+    // 5. Cập nhật các thẻ chỉ số KPI Bento Grid khi dữ liệu thay đổi
+    function updateKpiCardsFromMeta(meta) {
+        const total = parseInt(meta.getAttribute('data-total')) || 0;
+        const checkedIn = parseInt(meta.getAttribute('data-checked-in')) || 0;
+        const working = parseInt(meta.getAttribute('data-working')) || 0;
+        const onTime = parseInt(meta.getAttribute('data-on-time')) || 0;
+        const late = parseInt(meta.getAttribute('data-late')) || 0;
+        const early = parseInt(meta.getAttribute('data-early')) || 0;
+        const hours = meta.getAttribute('data-hours') || '0.0';
+        const ot = parseFloat(meta.getAttribute('data-ot')) || 0;
+
+        const elTotal = document.getElementById('kpiTongSoCa');
+        if (elTotal) {
+            const start = parseInt(elTotal.textContent) || 0;
+            if (typeof animateCountUp === 'function') animateCountUp(elTotal, start, total, 450);
+            else elTotal.textContent = total;
+        }
+
+        const elCheckedIn = document.getElementById('kpiSoDaCheckIn');
+        if (elCheckedIn) {
+            const start = parseInt(elCheckedIn.textContent) || 0;
+            if (typeof animateCountUp === 'function') animateCountUp(elCheckedIn, start, checkedIn, 450);
+            else elCheckedIn.textContent = checkedIn;
+        }
+
+        const elWorkingText = document.getElementById('kpiSoDangLamViecText');
+        if (elWorkingText) {
+            elWorkingText.textContent = `${working} đang làm`;
+        }
+
+        const elOnTime = document.getElementById('kpiSoDungGio');
+        if (elOnTime) {
+            const start = parseInt(elOnTime.textContent) || 0;
+            if (typeof animateCountUp === 'function') animateCountUp(elOnTime, start, onTime, 450);
+            else elOnTime.textContent = onTime;
+        }
+
+        const elOnTimePct = document.getElementById('kpiDungGioPct');
+        if (elOnTimePct) {
+            const pct = total > 0 ? Math.round(onTime * 100 / total) : 0;
+            elOnTimePct.textContent = `${pct}% tổng số ca`;
+        }
+
+        const elLateEarly = document.getElementById('kpiDiTreVeSom');
+        if (elLateEarly) {
+            const start = parseInt(elLateEarly.textContent) || 0;
+            if (typeof animateCountUp === 'function') animateCountUp(elLateEarly, start, late + early, 450);
+            else elLateEarly.textContent = (late + early);
+        }
+
+        const elLateEarlyBadge = document.getElementById('kpiDiTreVeSomBadge');
+        if (elLateEarlyBadge) {
+            elLateEarlyBadge.textContent = `${late} trễ • ${early} sớm`;
+        }
+
+        const elHours = document.getElementById('kpiTongGioLam');
+        if (elHours) {
+            elHours.textContent = hours;
+        }
+
+        const elOtBadge = document.getElementById('kpiOtBadge');
+        if (elOtBadge) {
+            if (ot > 0) {
+                elOtBadge.classList.remove('d-none');
+                elOtBadge.textContent = `+${ot}h OT`;
+            } else {
+                elOtBadge.classList.add('d-none');
+            }
+        }
+
+        // Kích hoạt hiệu ứng hào quang vàng kim lướt qua các thẻ KPI
+        const kpis = document.querySelectorAll('.kpi-card-item');
+        kpis.forEach((item, idx) => {
+            setTimeout(() => {
+                item.classList.add('kpi-pulse-active');
+                setTimeout(() => item.classList.remove('kpi-pulse-active'), 350);
+            }, idx * 60);
+        });
+    }
+
+    // 6. Xem chi tiết bản ghi quẹt thẻ qua Modal Luxury
+    function openAttendanceDetailModal(maPhanCa) {
+        fetch('/ChamCong/ChiTiet?maPhanCa=' + maPhanCa)
+        .then(res => res.json())
+        .then(result => {
+            if (!result.success || !result.data) {
+                alert('Không thể tải chi tiết ca trực này.');
+                return;
+            }
+
+            const d = result.data;
+
+            document.getElementById('dtlEmpName').textContent = d.hoTen;
+            document.getElementById('dtlEmpCode').textContent = d.maNhanVienFormat;
+            document.getElementById('dtlDeptName').textContent = d.tenPhongBan;
+            document.getElementById('dtlPositionName').textContent = d.tenChucVu;
+            document.getElementById('dtlShiftName').textContent = d.tenCa;
+            document.getElementById('dtlShiftHours').textContent = `Khung giờ: ${d.gioBatDauCa} - ${d.gioKetThucCa} (${d.ngayLamViec})`;
+
+            document.getElementById('dtlCheckInTime').textContent = d.gioCheckIn;
+            document.getElementById('dtlPlannedStart').textContent = d.batDauDuKien;
+            document.getElementById('dtlLateTime').innerHTML = d.phutDiTre > 0
+                ? `<span class="badge bg-danger-subtle text-danger border">Trễ ${d.phutDiTre} phút</span>`
+                : '<span class="badge bg-success-subtle text-success border">Đúng giờ</span>';
+
+            document.getElementById('dtlMethod').textContent = d.phuongThucCheckIn || 'Không xác định';
+            document.getElementById('dtlDevice').textContent = d.thietBiCheckIn || 'Không có dữ liệu';
+
+            document.getElementById('dtlCheckOutTime').textContent = d.gioCheckOut;
+            document.getElementById('dtlPlannedEnd').textContent = d.ketThucDuKien;
+            document.getElementById('dtlEarlyTime').innerHTML = d.phutVeSom > 0
+                ? `<span class="badge bg-warning-subtle text-warning-emphasis border">Về sớm ${d.phutVeSom} phút</span>`
+                : '<span class="badge bg-primary-subtle text-primary border">Đầy đủ ca</span>';
+
+            document.getElementById('dtlActualHours').textContent = (d.soGioLamThucTe > 0 ? d.soGioLamThucTe + ' giờ' : '—');
+            document.getElementById('dtlOtHours').textContent = (d.gioTangCaOt > 0 ? '+' + d.gioTangCaOt + 'h OT' : 'Không có OT');
+
+            document.getElementById('dtlGpsCoordinates').textContent = d.toaDoCheckIn || 'Không có tọa độ GPS';
+
+            const modalEl = document.getElementById('modalAttendanceDetail');
+            if (modalEl) {
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        })
+        .catch(err => {
+            console.error('Lỗi nạp chi tiết chấm công:', err);
+            alert('Lỗi nạp chi tiết chấm công.');
+        });
+    }
+
+    // 6. Kích hoạt hiệu ứng CountUp & Pulse khi tải trang
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.kpi-count-up').forEach(el => {
+            const target = parseInt(el.getAttribute('data-target')) || 0;
+            if (typeof animateCountUp === 'function') {
+                animateCountUp(el, 0, target, 700);
+            }
+        });
+
+        const kpis = document.querySelectorAll('.kpi-card-item');
+        kpis.forEach((item, idx) => {
+            setTimeout(() => {
+                item.classList.add('kpi-pulse-active');
+                setTimeout(() => item.classList.remove('kpi-pulse-active'), 350);
+            }, idx * 70);
+        });
+    });
+</script>
+}

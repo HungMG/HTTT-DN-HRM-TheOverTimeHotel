@@ -26,7 +26,16 @@
 
         <div class="app-main">
             <header class="app-topbar">
-                <h1 class="app-topbar-title">@ViewData["Title"]</h1>
+                <div class="d-flex align-items-center gap-3">
+                    <h1 class="app-topbar-title">@ViewData["Title"]</h1>
+                </div>
+
+                <!-- Ô TÌM KIẾM TOÀN CỤC CHUẨN SAAS (CTRL + K) -->
+                <div class="app-topbar-search d-none d-md-block">
+                    <i class="bi bi-search app-search-icon"></i>
+                    <input type="text" id="globalSearchInput" class="app-search-input" placeholder="Tìm nhân viên, đơn từ, ca trực, cài đặt... (Ctrl + K)" />
+                    <kbd class="app-search-kbd">Ctrl K</kbd>
+                </div>
 
                 <div class="app-topbar-actions">
                     @if (User.Identity?.IsAuthenticated == true)

@@ -61,8 +61,10 @@ public class PhanCaItemDto
 public class CreatePhanCaInputModel
 {
     public int MaNhanVien { get; set; }
+    public List<int> DanhSachMaNhanVien { get; set; } = new();
     public int MaCa { get; set; }
     public DateOnly NgayLamViec { get; set; }
+    public List<DateOnly> DanhSachNgayLamViec { get; set; } = new();
     public string TrangThai { get; set; } = "DA_PHAN";
     public string? ReturnUrl { get; set; }
 }

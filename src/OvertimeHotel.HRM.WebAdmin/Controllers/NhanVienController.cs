@@ -25,7 +25,7 @@ public class NhanVienController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, int? departmentId, string? status, string? contractFilter, int page = 1, int pageSize = 10)
+    public async Task<IActionResult> Index(string? keyword, int? departmentId, string? status, string? contractFilter, int page = 1, int pageSize = 10, bool isPartial = false)
     {
         keyword = keyword?.Trim();
         status = string.IsNullOrWhiteSpace(status) ? null : status;
@@ -67,6 +67,8 @@ public class NhanVienController : Controller
                 .Include(employee => employee.PhongBan)
                 .Include(employee => employee.ChucVu)
                 .Include(employee => employee.HopDongs)
+                .Include(employee => employee.TaiKhoan)
+                    .ThenInclude(t => t!.VaiTro)
                 .ToListAsync();
 
             // Lọc trên bộ nhớ máy chủ (0ms)
@@ -160,13 +162,18 @@ public class NhanVienController : Controller
                 ExpiredContracts = allContractItems.Count(item => item.days < 0)
             };
 
+            if (isPartial || Request.Headers.XRequestedWith == "XMLHttpRequest")
+            {
+                return PartialView("_EmployeeTablePartial", model);
+            }
+
             return View(model);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi khi truy vấn danh sách nhân viên từ CSDL Supabase.");
             TempData["Error"] = "Lỗi kết nối CSDL Supabase: " + ex.Message;
-            return View(new NhanVienIndexViewModel
+            var errorModel = new NhanVienIndexViewModel
             {
                 Keyword = keyword,
                 DepartmentId = departmentId,
@@ -183,7 +190,14 @@ public class NhanVienController : Controller
                         TrangThai = "DANG_LAM"
                     }
                 }
-            });
+            };
+
+            if (isPartial || Request.Headers.XRequestedWith == "XMLHttpRequest")
+            {
+                return PartialView("_EmployeeTablePartial", errorModel);
+            }
+
+            return View(errorModel);
         }
     }
 
@@ -355,6 +369,45 @@ public class NhanVienController : Controller
         model.DienThoai = model.DienThoai?.Trim() ?? string.Empty;
         model.DiaChi = string.IsNullOrWhiteSpace(model.DiaChi) ? null : model.DiaChi.Trim();
         model.TrinhDo = model.TrinhDo?.Trim() ?? string.Empty;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ProfileModal(int id)
+    {
+        var employee = await _context.NhanViens
+            .AsNoTracking()
+            .Include(e => e.PhongBan)
+            .Include(e => e.ChucVu)
+            .Include(e => e.HopDongs)
+            .Include(e => e.TaiKhoan)
+                .ThenInclude(t => t!.VaiTro)
+            .Include(e => e.YeuCauTaiKhoanCuaNhanVien)
+            .FirstOrDefaultAsync(e => e.MaNhanVien == id);
+
+        if (employee == null)
+        {
+            return NotFound("<div class='p-4 text-center text-danger'>Không tìm thấy thông tin nhân viên này trong hệ thống.</div>");
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var contracts = employee.HopDongs.OrderByDescending(h => h.NgayBatDau).ToList();
+        var latestContract = contracts.FirstOrDefault();
+        var daysRemaining = latestContract?.NgayKetThuc is DateOnly endDate
+            ? endDate.DayNumber - today.DayNumber
+            : (int?)null;
+        var contractState = GetContractState(latestContract, daysRemaining);
+
+        var model = new NhanVienProfileModalViewModel
+        {
+            Employee = employee,
+            LatestContract = latestContract,
+            ContractHistory = contracts,
+            Account = employee.TaiKhoan,
+            ContractDaysRemaining = daysRemaining,
+            ContractState = contractState
+        };
+
+        return PartialView("_EmployeeProfileModalContent", model);
     }
 
     private static string GetContractState(HopDong? contract, int? daysRemaining)

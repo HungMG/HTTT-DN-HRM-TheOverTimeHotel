@@ -8,7 +8,6 @@
 }
 <link rel="stylesheet" href="~/css/payroll.css" asp-append-version="true" />
 <div class="catalog-page payroll-workspace">
-    <partial name="_PageTabs" model="@("payroll")" />
     <form asp-action="@action" asp-route-id="@(Model.Id == 0 ? (int?)null : Model.Id)" method="post" class="catalog-card catalog-form-card">
         <input asp-for="Id" type="hidden" />
         <input asp-for="Category" type="hidden" />

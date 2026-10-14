@@ -1,0 +1,516 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.NhanVienProfileModalViewModel
+@{
+    var emp = Model.Employee;
+    var contract = Model.LatestContract;
+    var account = Model.Account;
+    var initials = emp.Ten.Length > 0 ? emp.Ten.Substring(0, 1).ToUpper() : "N";
+    var age = DateTime.Today.Year - emp.NgaySinh.Year;
+    if (emp.NgaySinh > DateOnly.FromDateTime(DateTime.Today.AddYears(-age))) age--;
+}
+
+<!-- SCOPED STYLING CHO SEGMENTED CONTROL TAB BAR 5 SAO -->
+<style>
+.profile-segmented-nav {
+    display: flex;
+    background: #f1f5f9;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 5px;
+    gap: 4px;
+}
+.profile-tab-item {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+}
+.profile-tab-item:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
+}
+.profile-tab-item.active {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.profile-tab-item.active .tab-icon {
+    color: #1e3a8a !important;
+    transform: scale(1.1);
+}
+.profile-tab-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 20%;
+    right: 20%;
+    height: 2.5px;
+    background: linear-gradient(90deg, #d4af37, #fde047, #d4af37);
+    border-radius: 999px;
+}
+.profile-tab-item .tab-icon {
+    font-size: 1.05rem;
+    color: #64748b;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+.tab-chip {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+}
+.tab-chip--success {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+.tab-chip--primary {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+.tab-chip--warning {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+.tab-chip--danger {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+.tab-chip--muted {
+    background: #e2e8f0;
+    color: #64748b;
+}
+.profile-prop-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px dashed #e2e8f0;
+}
+.profile-prop-row:last-child {
+    border-bottom: 0;
+}
+</style>
+
+<!-- HEADER HERO BANNER -->
+<div class="profile-modal-hero p-4 rounded-4 mb-4 position-relative overflow-hidden"
+     style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #172554 100%); color: #fff;">
+    <div class="position-absolute end-0 top-0 p-4 opacity-10 pe-none" style="font-size: 8rem; line-height: 1;">
+        <i class="bi bi-building"></i>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-3 position-relative z-1">
+        <div class="profile-avatar shadow-lg d-flex align-items-center justify-content-center fw-bold"
+             style="width: 76px; height: 76px; border-radius: 22px; background: linear-gradient(135deg, #1e40af, #3b82f6); font-size: 2rem; border: 3px solid #d4af37; color: #fff;">
+            @initials
+        </div>
+        <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <h3 class="h4 mb-0 fw-bold font-serif text-white">@emp.HoTen</h3>
+                <span class="badge bg-white text-primary font-monospace fw-bold px-2 py-1 shadow-sm">
+                    NV-@emp.MaNhanVien
+                </span>
+                @switch (emp.TrangThai)
+                {
+                    case "DANG_LAM":
+                        <span class="badge bg-success bg-opacity-75 text-white rounded-pill px-3 py-1">
+                            <i class="bi bi-check-circle-fill me-1"></i>Đang làm việc
+                        </span>
+                        break;
+                    case "NGHI_PHEP":
+                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1">
+                            <i class="bi bi-clock-history me-1"></i>Tạm nghỉ
+                        </span>
+                        break;
+                    default:
+                        <span class="badge bg-secondary rounded-pill px-3 py-1">
+                            <i class="bi bi-x-circle me-1"></i>Đã nghỉ việc
+                        </span>
+                        break;
+                }
+            </div>
+            <div class="text-white-50 small d-flex flex-wrap align-items-center gap-3">
+                <span><i class="bi bi-building me-1 text-warning"></i>@(emp.PhongBan?.TenPhongBan ?? "Chưa phân phòng")</span>
+                <span>&bull;</span>
+                <span><i class="bi bi-person-badge me-1 text-info"></i>@(emp.ChucVu?.TenChucVu ?? "Chưa phân chức vụ")</span>
+                <span>&bull;</span>
+                <span><i class="bi bi-calendar-event me-1"></i>Vào làm: @emp.NgayVaoLam.ToString("dd/MM/yyyy")</span>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a asp-controller="NhanVien" asp-action="Edit" asp-route-id="@emp.MaNhanVien"
+               class="btn btn-sm btn-light rounded-pill px-3 fw-semibold shadow-sm text-nowrap">
+                <i class="bi bi-pencil-square text-primary me-1"></i> Sửa hồ sơ
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 5-STAR EXECUTIVE SEGMENTED TAB CONTROL BAR -->
+<div class="profile-segmented-nav mb-4" role="tablist" id="profileTabs">
+    <button class="profile-tab-item active" id="tab-info-btn" data-bs-toggle="pill" data-bs-target="#tab-info-pane" type="button" role="tab" aria-controls="tab-info-pane" aria-selected="true">
+        <i class="bi bi-person-vcard tab-icon"></i>
+        <span class="tab-label">Hồ Sơ Cá Nhân</span>
+    </button>
+    <button class="profile-tab-item" id="tab-contract-btn" data-bs-toggle="pill" data-bs-target="#tab-contract-pane" type="button" role="tab" aria-controls="tab-contract-pane" aria-selected="false">
+        <i class="bi bi-file-earmark-ruled tab-icon"></i>
+        <span class="tab-label">Hợp Đồng</span>
+        @if (contract != null)
+        {
+            @if (Model.ContractState == "DA_HET_HAN")
+            {
+                <span class="tab-chip tab-chip--danger">Hết hạn</span>
+            }
+            else if (Model.ContractState == "SAP_HET_HAN")
+            {
+                <span class="tab-chip tab-chip--warning">Sắp hết hạn</span>
+            }
+            else
+            {
+                <span class="tab-chip tab-chip--success">Hiệu lực</span>
+            }
+        }
+        else
+        {
+            <span class="tab-chip tab-chip--muted">Chưa có</span>
+        }
+    </button>
+    <button class="profile-tab-item" id="tab-account-btn" data-bs-toggle="pill" data-bs-target="#tab-account-pane" type="button" role="tab" aria-controls="tab-account-pane" aria-selected="false">
+        <i class="bi bi-shield-check tab-icon"></i>
+        <span class="tab-label">Tài Khoản &amp; RBAC</span>
+        @if (account != null)
+        {
+            <span class="tab-chip tab-chip--primary">Đã cấp</span>
+        }
+        else
+        {
+            <span class="tab-chip tab-chip--muted">Chưa có</span>
+        }
+    </button>
+    <button class="profile-tab-item" id="tab-org-btn" data-bs-toggle="pill" data-bs-target="#tab-org-pane" type="button" role="tab" aria-controls="tab-org-pane" aria-selected="false">
+        <i class="bi bi-diagram-3 tab-icon"></i>
+        <span class="tab-label">Phòng Ban &amp; Vị Trí</span>
+    </button>
+</div>
+
+<!-- TAB CONTENTS -->
+<div class="tab-content" id="profileTabsContent">
+
+    <!-- 1. TAB THÔNG TIN CÁ NHÂN -->
+    <div class="tab-pane fade show active" id="tab-info-pane" role="tabpanel" aria-labelledby="tab-info-btn" tabindex="0">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card border rounded-4 p-4 h-100 shadow-sm bg-white" style="border-color: #e2e8f0 !important;">
+                    <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2">
+                        <span class="rounded-circle bg-warning bg-opacity-15 text-warning d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                            <i class="bi bi-person-vcard fs-6"></i>
+                        </span>
+                        Nhân thân &amp; Liên lạc
+                    </h6>
+                    <div class="d-flex flex-column small">
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Họ và tên:</span>
+                            <span class="fw-bold text-dark font-serif">@emp.HoTen</span>
+                        </div>
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Giới tính:</span>
+                            <span class="fw-semibold text-dark">@(emp.GioiTinh == "NAM" ? "Nam" : "Nữ")</span>
+                        </div>
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Ngày sinh:</span>
+                            <span class="fw-semibold text-dark">@emp.NgaySinh.ToString("dd/MM/yyyy") (@age tuổi)</span>
+                        </div>
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Số điện thoại:</span>
+                            <span class="fw-semibold text-primary font-monospace">@emp.DienThoai</span>
+                        </div>
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Email công vụ:</span>
+                            <span class="fw-semibold text-dark">@emp.EmailCongVu</span>
+                        </div>
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Email cá nhân:</span>
+                            <span class="text-muted">@(string.IsNullOrWhiteSpace(emp.EmailCaNhan) ? "Chưa cập nhật" : emp.EmailCaNhan)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card border rounded-4 p-4 h-100 shadow-sm bg-white" style="border-color: #e2e8f0 !important;">
+                    <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2">
+                        <span class="rounded-circle bg-success bg-opacity-15 text-success d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                            <i class="bi bi-briefcase fs-6"></i>
+                        </span>
+                        Công tác &amp; Trình độ
+                    </h6>
+                    <div class="d-flex flex-column small">
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Ngày vào làm:</span>
+                            <span class="fw-semibold text-dark">@emp.NgayVaoLam.ToString("dd/MM/yyyy")</span>
+                        </div>
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Thâm niên công tác:</span>
+                            <span class="fw-bold text-success">
+                                @if (Model.TenureYears > 0)
+                                {
+                                    <span>@Model.TenureYears năm @(Model.TenureMonths % 12) tháng</span>
+                                }
+                                else
+                                {
+                                    <span>@Model.TenureMonths tháng</span>
+                                }
+                            </span>
+                        </div>
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Trình độ chuyên môn:</span>
+                            <span class="fw-semibold text-dark">@(string.IsNullOrWhiteSpace(emp.TrinhDo) ? "Phổ thông / Nghiệp vụ" : emp.TrinhDo)</span>
+                        </div>
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Địa chỉ liên hệ:</span>
+                            <span class="text-dark text-end" style="max-width: 60%;">@(string.IsNullOrWhiteSpace(emp.DiaChi) ? "Chưa cập nhật" : emp.DiaChi)</span>
+                        </div>
+                        <div class="profile-prop-row">
+                            <span class="text-muted">Ngày thôi việc:</span>
+                            <span class="text-muted">@(emp.NgayThoiViec.HasValue ? emp.NgayThoiViec.Value.ToString("dd/MM/yyyy") : "Đang công tác")</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. TAB HỢP ĐỒNG LAO ĐỘNG -->
+    <div class="tab-pane fade" id="tab-contract-pane" role="tabpanel" aria-labelledby="tab-contract-btn" tabindex="0">
+        @if (contract != null)
+        {
+            <div class="card border rounded-4 p-4 mb-3 shadow-sm position-relative overflow-hidden bg-white"
+                 style="border-color: #e2e8f0 !important; border-left: 5px solid #1e3a8a !important; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom">
+                    <div>
+                        <div class="text-uppercase small text-primary fw-bold" style="font-size: 0.72rem; letter-spacing: 0.5px;">Hợp đồng lao động hiện tại</div>
+                        <h4 class="h5 mb-0 fw-bold font-monospace text-dark">@contract.SoHopDong</h4>
+                    </div>
+                    <div>
+                        @switch (Model.ContractState)
+                        {
+                            case "DA_HET_HAN":
+                                <span class="badge bg-danger rounded-pill px-3 py-2">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Đã hết hạn
+                                </span>
+                                break;
+                            case "SAP_HET_HAN":
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-2">
+                                    <i class="bi bi-clock-history me-1"></i>Sắp hết hạn (còn @Model.ContractDaysRemaining ngày)
+                                </span>
+                                break;
+                            default:
+                                <span class="badge bg-success rounded-pill px-3 py-2">
+                                    <i class="bi bi-shield-check me-1"></i>Đang còn hiệu lực
+                                </span>
+                                break;
+                        }
+                    </div>
+                </div>
+
+                <div class="row g-3 small">
+                    <div class="col-sm-6 col-md-3">
+                        <span class="text-muted d-block">Loại hợp đồng:</span>
+                        <strong class="text-dark">@contract.LoaiHopDong</strong>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <span class="text-muted d-block">Lương cơ bản:</span>
+                        <strong class="text-primary fs-6 font-monospace">@contract.LuongCoBan.ToString("N0") đ</strong>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <span class="text-muted d-block">Ngày bắt đầu:</span>
+                        <strong class="text-dark">@contract.NgayBatDau.ToString("dd/MM/yyyy")</strong>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <span class="text-muted d-block">Ngày kết thúc:</span>
+                        <strong class="text-dark">@(contract.NgayKetThuc.HasValue ? contract.NgayKetThuc.Value.ToString("dd/MM/yyyy") : "Vô thời hạn")</strong>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.ContractHistory.Count > 1)
+            {
+                <h6 class="fw-bold text-dark mt-4 mb-2 small text-uppercase">
+                    <i class="bi bi-clock-history me-1"></i> Lịch sử các hợp đồng lao động (@Model.ContractHistory.Count)
+                </h6>
+                <div class="table-responsive rounded-3 border bg-white">
+                    <table class="table table-sm table-hover mb-0 small align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Số hợp đồng</th>
+                                <th>Loại</th>
+                                <th>Thời hạn</th>
+                                <th>Lương cơ bản</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var h in Model.ContractHistory)
+                            {
+                                <tr>
+                                    <td class="font-monospace fw-bold">@h.SoHopDong</td>
+                                    <td>@h.LoaiHopDong</td>
+                                    <td>@h.NgayBatDau.ToString("dd/MM/yyyy") &rarr; @(h.NgayKetThuc.HasValue ? h.NgayKetThuc.Value.ToString("dd/MM/yyyy") : "Vô thời hạn")</td>
+                                    <td class="text-primary fw-semibold font-monospace">@h.LuongCoBan.ToString("N0") đ</td>
+                                    <td>
+                                        <span class="badge bg-light text-secondary border">@h.TrangThai</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="text-center py-5 bg-white border rounded-4 shadow-sm" style="border-color: #e2e8f0 !important;">
+                <i class="bi bi-file-earmark-x text-muted opacity-50" style="font-size: 3rem;"></i>
+                <h6 class="mt-3 text-dark fw-bold">Nhân viên chưa ký kết hợp đồng lao động</h6>
+                <p class="text-muted small mb-3">Chưa có bản ghi hợp đồng lao động nào liên kết với nhân sự này.</p>
+                <a asp-controller="HopDong" asp-action="Index" class="btn btn-sm btn-hotel-primary rounded-pill px-4">
+                    <i class="bi bi-plus-circle me-1"></i> Lập hợp đồng mới
+                </a>
+            </div>
+        }
+    </div>
+
+    <!-- 3. TAB TÀI KHOẢN & PHÂN QUYỀN RBAC -->
+    <div class="tab-pane fade" id="tab-account-pane" role="tabpanel" aria-labelledby="tab-account-btn" tabindex="0">
+        @if (account != null)
+        {
+            <div class="card border rounded-4 p-4 shadow-sm mb-3 bg-white" style="border-color: #e2e8f0 !important;">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                            <i class="bi bi-person-gear"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small">Tên đăng nhập hệ thống</div>
+                            <h5 class="mb-0 fw-bold text-dark font-monospace">@account.TenDangNhap</h5>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        @if (account.TrangThai)
+                        {
+                            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle rounded-pill px-3 py-2">
+                                <i class="bi bi-check-circle me-1"></i>Đang hoạt động
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle rounded-pill px-3 py-2">
+                                <i class="bi bi-lock me-1"></i>Đang bị khóa
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <div class="row g-3 small">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border" style="border-color: #e2e8f0 !important;">
+                            <span class="text-muted d-block mb-1">Vai trò phân quyền (Role):</span>
+                            <span class="badge bg-primary fs-6 px-3 py-1">
+                                <i class="bi bi-shield-shaded me-1"></i>@(account.VaiTro?.TenVaiTro ?? "Chưa gán vai trò")
+                            </span>
+                            <small class="d-block text-muted mt-2">Mã vai trò: @account.MaVaiTro</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border" style="border-color: #e2e8f0 !important;">
+                            <span class="text-muted d-block mb-1">Kênh truy cập ủy quyền:</span>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <span class="badge bg-dark rounded-pill px-2 py-1"><i class="bi bi-laptop me-1"></i>Web Admin</span>
+                                <span class="badge bg-info text-dark rounded-pill px-2 py-1"><i class="bi bi-phone me-1"></i>Mobile App</span>
+                                <span class="badge bg-success rounded-pill px-2 py-1"><i class="bi bi-cloud-check me-1"></i>Supabase Auth</span>
+                            </div>
+                            <small class="d-block text-muted mt-2">Đăng nhập bằng Email: @emp.EmailCongVu</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5 bg-white border rounded-4 shadow-sm" style="border-color: #e2e8f0 !important;">
+                <i class="bi bi-shield-x text-muted opacity-50" style="font-size: 3rem;"></i>
+                <h6 class="mt-3 text-dark fw-bold">Chưa cấp tài khoản đăng nhập</h6>
+                <p class="text-muted small mb-3">Nhân sự này chưa có tài khoản trên máy chủ Web hoặc ứng dụng Mobile App.</p>
+                <a asp-controller="YeuCauTaiKhoan" asp-action="Index" class="btn btn-sm btn-outline-primary rounded-pill px-4">
+                    <i class="bi bi-inboxes me-1"></i> Xem hàng đợi cấp tài khoản IT
+                </a>
+            </div>
+        }
+    </div>
+
+    <!-- 4. TAB PHÒNG BAN & CHỨC VỤ -->
+    <div class="tab-pane fade" id="tab-org-pane" role="tabpanel" aria-labelledby="tab-org-btn" tabindex="0">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card border rounded-4 p-4 h-100 shadow-sm bg-white" style="border-color: #e2e8f0 !important;">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="rounded-circle bg-warning bg-opacity-20 text-warning d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 1.4rem;">
+                            <i class="bi bi-building"></i>
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Phòng ban trực thuộc</span>
+                            <h5 class="mb-0 fw-bold text-dark font-serif">@(emp.PhongBan?.TenPhongBan ?? "Chưa phân bổ phòng")</h5>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-0">
+                        @(string.IsNullOrWhiteSpace(emp.PhongBan?.MoTa) ? "Đơn vị vận hành trực thuộc cơ cấu khách sạn The OverTime Hotel." : emp.PhongBan.MoTa)
+                    </p>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card border rounded-4 p-4 h-100 shadow-sm bg-white" style="border-color: #e2e8f0 !important;">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 1.4rem;">
+                            <i class="bi bi-person-vcard"></i>
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem;">Chức vụ đảm nhiệm</span>
+                            <h5 class="mb-0 fw-bold text-dark font-serif">@(emp.ChucVu?.TenChucVu ?? "Chưa phân chức vụ")</h5>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-0">
+                        @(string.IsNullOrWhiteSpace(emp.ChucVu?.MoTa) ? "Đảm nhận nhiệm vụ chuyên môn theo hợp đồng lao động và quy chế vận hành 24/7." : emp.ChucVu.MoTa)
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info border-0 rounded-4 mt-3 small d-flex align-items-center gap-2">
+            <i class="bi bi-info-circle-fill fs-5"></i>
+            <div>
+                <strong>Quy chế phân ca &amp; chấm công:</strong> Nhân sự này có thể được xếp vào các ca làm việc (Sáng 06h-14h, Chiều 14h-22h, Ca đêm 22h-06h +30% phụ cấp) trong module <strong>Chấm công 24/7</strong>.
+            </div>
+        </div>
+    </div>
+
+</div>

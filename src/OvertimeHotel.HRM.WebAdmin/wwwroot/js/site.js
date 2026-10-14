@@ -355,7 +355,21 @@
   document.addEventListener('pointerdown', triggerSlowMoRipple, { passive: true });
 
   // -------------------------------------------------------------
-  // 5. XUẤT API GLOBAL CHO CÁC MODULE KHÁC DÙNG CHUNG (TSK-13, TSK-16...)
+  // 5. PHÍM TẮT TOÀN CỤC CTRL + K (HOẶC CMD + K) CHO Ô TÌM KIẾM
+  // -------------------------------------------------------------
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      const searchInput = document.getElementById('globalSearchInput');
+      if (searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+    }
+  });
+
+  // -------------------------------------------------------------
+  // 6. XUẤT API GLOBAL CHO CÁC MODULE KHÁC DÙNG CHUNG (TSK-13, TSK-16...)
   // -------------------------------------------------------------
   window.HotelMotion = {
     applyEntrance: applyPowerPointEntrance,

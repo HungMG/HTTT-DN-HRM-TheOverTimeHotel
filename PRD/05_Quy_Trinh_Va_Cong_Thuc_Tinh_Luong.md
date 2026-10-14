@@ -10,7 +10,7 @@ $$\text{Lương Thực Nhận (Net)} = \text{Tổng Thu Nhập (Gross)} - \text{
 
 ### Tầng 1: Tổng Thu Nhập (Gross)
 
-$$\text{Gross} = \text{Lương Ngày Công} + \text{Tiền Tăng Ca (OT)} + \text{Phụ Cấp Ca Đêm} + \text{Phụ Cấp Ăn Ca} + \text{Tiền Thưởng}$$
+$$\text{Gross} = \text{Lương Ngày Công} + \text{Tiền Tăng Ca (OT)} + \text{Phụ Cấp Ca Đêm (30\%)} + \text{Phụ Cấp Ăn Ca} + \text{Phụ Cấp Khác} + \text{Phụ Cấp Dự Án / Sự Kiện} + \text{Tiền Thưởng}$$
 
 1. **Lương Ngày Công Thực Tế:**
    $$\text{Lương Ngày Công} = \left(\frac{\text{Lương Cơ Bản theo HĐLĐ}}{26}\right) \times \text{Số Ngày Công Thực Tế}$$
@@ -27,9 +27,66 @@ $$\text{Gross} = \text{Lương Ngày Công} + \text{Tiền Tăng Ca (OT)} + \tex
    $$\text{Phụ Cấp Ca Đêm} = \left(\frac{\text{Lương Cơ Bản}}{26 \times 8}\right) \times \text{Số Giờ Làm Việc Ca Đêm} \times 0.30$$
    *(Cộng thêm ít nhất 30% tiền lương tính theo đơn giá tiền lương của ngày làm việc bình thường).*
 
-4. **Phụ Cấp Ăn Ca & Tiền Thưởng:**
-   - Phụ cấp ăn ca: 30.000 VNĐ / ngày công thực tế có mặt tại khách sạn.
-   - Tiền thưởng: Thưởng doanh thu buồng phòng, thưởng phục vụ tiệc cưới sự kiện hoặc tiền thưởng hiệu quả công việc (KPI).
+4. **Phụ Cấp Ăn Ca & Phụ Cấp Khác:**
+   - **Phụ cấp ăn ca:** 30.000 VNĐ / ngày công thực tế có mặt tại khách sạn (khoản không chịu thuế TNCN theo quy định).
+   - **Phụ cấp khác:** Phụ cấp trách nhiệm, phụ cấp điện thoại, phụ cấp độc hại (nếu có theo cấu hình `cau_hinh_phu_cap`).
+
+5. **Phụ Cấp Dự Án / Thù Lao Sự Kiện Khách Sạn:**
+   - Thù lao chi trả cho nhân viên khi được điều động tham gia phục vụ các sự kiện, tiệc cưới, hội nghị (MICE) hoặc các chiến dịch dự án đặc thù của khách sạn ngoài ca định biên tiêu chuẩn.
+   - Chi tiết về nguồn dữ liệu quét, hệ số đánh giá hoàn thành/xuất sắc, snapshot bất biến và tính chất thuế TNCN được đặc tả chi tiết tại **Mục 1.1**.
+
+6. **Tiền Thưởng (Bonus / Incentive):**
+   - Thưởng doanh thu buồng phòng, thưởng hiệu quả công việc (KPI) hoặc tiền thưởng đột xuất theo quyết định của Ban Giám đốc khách sạn.
+
+---
+
+### 1.1. Đặc Tả Cơ Chế Tính & Quyết Toán Phụ Cấp Dự Án / Sự Kiện Khách Sạn
+
+Trong mô hình kinh doanh khách sạn 5 sao The OverTime Hotel, ngoài các ca làm việc cố định 24/7 (Sáng, Chiều, Đêm), khách sạn thường xuyên tổ chức các sự kiện lớn: tiệc cưới hoàng gia, hội nghị quốc tế MICE, tiệc gala tri ân, buffet chuyên đề,... Nhân sự các bộ phận (ẩm thực F&B, buồng phòng, lễ tân, an ninh, kỹ thuật âm thanh ánh sáng...) được điều động hoặc đăng ký tham gia các dự án / sự kiện này với mức thù lao riêng biệt.
+
+#### 1. Nguồn Dữ Liệu & Điều Kiện Quét Quyết Toán
+Khi chạy tiến trình tính lương kỳ tháng cho từng nhân viên, hệ thống tự động quét các phân công dự án từ bảng `phan_cong_du_an` thỏa mãn đầy đủ các điều kiện:
+- `ma_nhan_vien = @MaNhanVien`: Bản ghi phân công thuộc về nhân viên đang được tính lương.
+- `trang_thai_chi_tra = 'CHUA_CHI_TRA'`: Khoản thù lao chưa từng được kết chuyển hoặc chi trả ở bất kỳ kỳ lương nào trước đó.
+- `danh_gia IN ('HOAN_THANH', 'XUAT_SAC')`: Nhân viên đã hoàn thành nhiệm vụ trong sự kiện và được Quản lý sự kiện / Trưởng bộ phận phụ trách xác nhận đánh giá đạt chuẩn.
+- **Ràng buộc loại trừ:** Các phân công mang trạng thái `danh_gia = 'CHUA_DANH_GIA'` hoặc `danh_gia = 'KHONG_DAT'` **tuyệt đối không được kết chuyển chi trả**.
+
+#### 2. Công Thức Tính Thù Lao Phân Công & Hệ Số Đánh Giá Thưởng
+Với mỗi bản ghi phân công dự án hợp lệ thỏa mãn điều kiện quét, số tiền thù lao thực tế được tính theo công thức:
+
+$$\text{Tiền Phụ Cấp Phân Công} = \text{Mức Thù Lao Định Mức} \times \text{Hệ Số Đánh Giá}$$
+
+Trong đó:
+- **Mức Thù Lao Định Mức (`thu_lao`):** Mức thù lao cơ bản cho vai trò của nhân sự trong sự kiện (ví dụ: Phục vụ bàn tiệc cưới 350.000 VNĐ/buổi, Lễ tân VIP 400.000 VNĐ/buổi, Kỹ thuật âm thanh ánh sáng 500.000 VNĐ/buổi).
+- **Hệ Số Đánh Giá (`he_so_danh_gia`):**
+  - Đánh giá `'HOAN_THANH'`: Hệ số = **1.0** (100% mức thù lao định mức).
+  - Đánh giá `'XUAT_SAC'`: Nhân thêm **hệ số thưởng** theo quyết định của Quản lý sự kiện (ví dụ: **+10%** $\rightarrow$ Hệ số = **1.10m**, hoặc **+20%** $\rightarrow$ Hệ số = **1.20m**).
+  - Mọi phép tính đều thực hiện trên kiểu `decimal` và áp dụng làm tròn `Math.Round(AwayFromZero)` ở từng dòng phân công.
+
+$$\text{Tổng Phụ Cấp Dự Án / Sự Kiện} = \sum_{k=1}^{n} \text{Tiền Phụ Cấp Phân Công}_k$$
+
+#### 3. Cơ Chế Snapshot Bất Biến & Chốt Trạng Thái (Financial Immutability)
+Để đảm bảo nguyên tắc bất biến lịch sử tài chính doanh nghiệp và ngăn chặn triệt để gian lận hoặc chi trả trùng lặp (double payout):
+1. **Tạo dòng Snapshot trong `chi_tiet_phieu_luong`:**
+   Với mỗi phân công sự kiện được duyệt chi trả, hệ thống tự động sinh một dòng chi tiết phiếu lương tương ứng:
+   - `ma_phieu_luong`: Mã phiếu lương tháng của nhân viên.
+   - `ten_khoan_luu`: Ghi rõ ngữ cảnh gồm **Tên sự kiện** và **Vai trò** đảm nhiệm (ví dụ: *"Phụ cấp sự kiện: Tiệc cưới Hoàng Gia - Phục vụ bàn"* hoặc *"Phụ cấp sự kiện: Hội nghị Quốc tế MICE - Kỹ thuật âm thanh"*).
+   - `loai_khoan_luu`: `'PHU_CAP'`.
+   - `so_tien`: Tiền phụ cấp phân công thực tế sau khi đã nhân hệ số đánh giá (nếu xuất sắc).
+   - `ghi_chu`: Ghi rõ đánh giá và hệ số thưởng nếu có (ví dụ: *"Đánh giá: XUAT_SAC (+10% thưởng). Mã phân công: #PC1024"*).
+2. **Cập nhật ngược lại trạng thái phân công dự án:**
+   Ngay trong cùng transaction cơ sở dữ liệu khi tạo dòng chi tiết phiếu lương, hệ thống cập nhật bản ghi tương ứng trong `phan_cong_du_an`:
+   - `phan_cong_du_an.trang_thai_chi_tra = 'DA_KET_CHUYEN_LUONG'`.
+   - `phan_cong_du_an.ma_chi_tiet = chi_tiet_phieu_luong.ma_chi_tiet` (Lưu khóa ngoại để liên kết truy vết hai chiều).
+3. **Cơ chế Hoàn Tác (Rollback / Recalculate):**
+   Nếu kỳ lương chưa khóa sổ (`da_khoa_so = FALSE`) mà Quản trị viên/HR thực hiện xóa tính lại lương:
+   - Hệ thống xóa các dòng tương ứng trong `chi_tiet_phieu_luong`.
+   - Đồng thời khôi phục trạng thái bản ghi `phan_cong_du_an`: gán lại `trang_thai_chi_tra = 'CHUA_CHI_TRA'` và `ma_chi_tiet = NULL` để sẵn sàng cho lần quét tính toán tiếp theo.
+
+#### 4. Tính Chất Thuế Thu Nhập Cá Nhân (TNCN)
+- Căn cứ quy định của Luật Thuế TNCN: Các khoản thu nhập dưới dạng thù lao, tiền công từ công việc, dự án hoặc dịch vụ nội bộ phát sinh trong quan hệ lao động đều là thu nhập chịu thuế.
+- Khoản **Phụ Cấp Dự Án / Thù Lao Sự Kiện Khách Sạn** mang bản chất thù lao công việc tăng cường, **BẮT BUỘC CHỊU THUẾ TNCN** (`chiu_thue_tncn = TRUE`).
+- Do đó: Khoản này được **cộng toàn bộ vào Thu Nhập Chịu Thuế** của nhân viên trong kỳ tính lương (không được trừ ra khỏi Gross như khoản phụ cấp ăn ca miễn thuế).
 
 ---
 
@@ -61,6 +118,7 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 
 - Nếu $\text{Thu nhập tính thuế} \leq 0$ → **Tiền thuế = 0** (không phát sinh nghĩa vụ nộp, không cấp âm).
 - **Phụ cấp ăn ca (30.000đ/ngày) là khoản không chịu thuế** — đã được cờ `chiu_thue_tncn = FALSE` trong bảng `CAU_HINH_PHU_CAP`. Vì vậy khoản này **vẫn cộng vào Gross** (mục 4 Tầng 1) nhưng **không đưa vào Thu nhập chịu thuế**. Đây là lý do dòng "Phụ cấp ăn ca" phải in trên phiếu lương ở bảng Thu Nhập chứ không nằm ở bảng Khấu Trừ.
+- **Phụ cấp Dự án / Thù Lao Sự Kiện Khách Sạn là khoản thu nhập chịu thuế TNCN 100%:** Khoản thù lao này phát sinh từ việc nhân viên tham gia phục vụ sự kiện, tiệc cưới, hội nghị của khách sạn, mang tính chất tiền công / tiền thù lao trực tiếp nên **bắt buộc chịu thuế TNCN** (`chiu_thue_tncn = TRUE`). Do đó, khoản phụ cấp này **thuộc Thu nhập chịu thuế** và không được trừ ra khỏi Gross khi tính toán thu nhập chịu thuế.
 - Các khoản cộng/trừ vào thu nhập chịu thuế ngoài các bảo hiểm bắt buộc (vd: phụ cấp trách nhiệm quản lý, phụ cấp điện thoại — cờ `chiu_thue_tncn = TRUE`) **chưa chốt cụ thể, cần xác minh**.
 
 #### 3.2. Bảng thuế suất TNCN lũy tiến từng phần
@@ -122,18 +180,20 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 
 1. **Mẫu Phiếu Lương Chuẩn (QuestPDF Template):**
    - **Header:** Logo The OverTime Hotel, Tên kỳ lương, Mã NV, Họ tên, Phòng ban, Chức vụ.
-   - **Bảng Thu Nhập (Gross)** — phải khớp đủ 5 khoản với công thức Tầng 1:
+   - **Bảng Thu Nhập (Gross)** — phải khớp đủ các khoản với công thức Tầng 1:
 
      | # | Khoản mục | Công thức hiển thị |
      |:---:|---|---|
      | 1 | Lương công thực tế | `(Lương CB / 26) × Số ngày công thực tế` |
      | 2 | Tiền OT | `(Lương CB / 26 / 8) × Số giờ OT × Hệ số` — tách dòng theo hệ số 1.5 / 2.0 / 3.0 nếu kỳ lương có cả 3 loại |
      | 3 | Phụ cấp ca đêm 30% | `(Lương CB / 26 / 8) × Số giờ ca đêm × 0.30` |
-     | 4 | **Phụ cấp ăn ca** | `30.000đ × Số ngày công thực tế` |
-     | 5 | Thưởng | Thưởng doanh thu buồng phòng / sự kiện / KPI |
-     | | **TỔNG GROSS** | **= Tổng 5 dòng trên** |
+     | 4 | **Phụ cấp ăn ca** | `30.000đ × Số ngày công thực tế` (khoản miễn thuế TNCN) |
+     | 5 | Phụ cấp khác | Phụ cấp trách nhiệm / điện thoại / độc hại theo HĐLĐ hoặc cấu hình (nếu có) |
+     | 6 | **Phụ cấp Dự án / Sự kiện** | Thù lao sự kiện từ `phan_cong_du_an` (tách từng dòng sự kiện: *Tên sự kiện - Vai trò*, hoặc dòng gộp tổng có diễn giải chi tiết kèm thưởng xuất sắc nếu có) |
+     | 7 | Tiền thưởng | Thưởng doanh thu buồng phòng / sự kiện / KPI |
+     | | **TỔNG GROSS** | **= Tổng các dòng thu nhập trên** |
 
-   - **Bảng Khấu Trừ** — phải khớp đủ 5 khoản với công thức Tầng 2:
+   - **Bảng Khấu Trừ** — phải khớp đủ các khoản với công thức Tầng 2:
 
      | # | Khoản mục | Công thức hiển thị |
      |:---:|---|---|
@@ -142,14 +202,16 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
      | 3 | BHTN | `1% × Lương cơ bản` |
      | 4 | **Thuế TNCN** | Khấu trừ theo biểu lũy tiến từng phần — xem mục *3.1 & 3.2* |
      | 5 | Phạt vi phạm | Gom từ các khoản phạt đi trễ / về sớm / bỏ ca trong kỳ |
-     | | **TỔNG KHẤU TRỪ** | **= Tổng 5 dòng trên** |
+     | 6 | Tạm ứng lương | Gom từ khoản tạm ứng trong kỳ (nếu phát sinh `loai_khoan_tru = 'TAM_UNG'`) |
+     | | **TỔNG KHẤU TRỪ** | **= Tổng các dòng khấu trừ trên** |
 
-   - **Điều kiện cân bằng (bắt buộc kiểm chứng trước khi sinh PDF):**
-     $$\text{Tổng Gross in} = \text{Lương công thực tế} + \text{Tiền OT} + \text{Phụ cấp ca đêm} + \text{Phụ cấp ăn ca} + \text{Thưởng}$$
-     $$\text{Tổng Khấu Trừ in} = \text{BHXH} + \text{BHYT} + \text{BHTN} + \text{Thuế TNCN} + \text{Phạt vi phạm}$$
-     $$\text{Lương Net} = \text{Tổng Gross in} - \text{Tổng Khấu Trừ in}$$
-     - Thiếu dòng **Phụ cấp ăn ca** (thuộc Gross) hoặc dòng **Thuế TNCN** (thuộc khấu trừ) sẽ làm phiếu lương **không cân bằng** — hai dòng này bắt buộc phải có trên mẫu, kể cả khi giá trị bằng 0.
-     - *Ngoại lệ:* nếu bật tính năng **Tạm ứng lương** (`loai_khoan_tru = 'TAM_UNG'`, có sẵn trong bảng `CAU_HINH_KHAU_TRU`), dòng này trở thành dòng thứ 6 của bảng Khấu Trừ và **phải được bổ sung vào công thức Tầng 2** ở mục 1 để bảng cân bằng.
+   - **Điều kiện cân bằng (Bất biến toàn vẹn bắt buộc kiểm chứng trước khi sinh PDF):**
+     $$\text{Tổng Gross in} = \text{Lương công thực tế} + \text{Tiền OT} + \text{Phụ cấp ca đêm} + \text{Phụ cấp ăn ca} + \text{Phụ cấp khác} + \text{Phụ cấp Dự án / Sự kiện} + \text{Tiền thưởng}$$
+     $$\text{Tổng Khấu Trừ in} = \text{BHXH} + \text{BHYT} + \text{BHTN} + \text{Thuế TNCN} + \text{Phạt vi phạm} \ (+ \text{Tạm ứng nếu có})$$
+     $$\text{Lương Net in} = \text{Tổng Gross in} - \text{Tổng Khấu Trừ in}$$
+     - **Bất biến cân bằng bắt buộc:** $\text{Lương Net in} = \text{Tổng Gross in} - \text{Tổng Khấu Trừ in}$. Số tiền Net in đậm cuối phiếu lương **bắt buộc phải bằng đúng phép trừ số học** giữa hai tổng hiển thị trên phiếu lương. Bất kỳ sai lệch nào (dù chỉ 1 đồng) cũng sẽ khiến trình tạo file QuestPDF ném ngoại lệ (`InvalidOperationException`) và từ chối phát hành phiếu lương.
+     - Thiếu dòng **Phụ cấp ăn ca**, dòng **Phụ cấp Dự án / Sự kiện** (thuộc Gross) hoặc dòng **Thuế TNCN** (thuộc khấu trừ) sẽ làm phiếu lương **không cân bằng** — các dòng này bắt buộc phải có trên mẫu phiếu lương nếu phát sinh (hoặc hiển thị 0đ nếu không phát sinh).
+     - *Ngoại lệ:* nếu bật tính năng **Tạm ứng lương** (`loai_khoan_tru = 'TAM_UNG'`, có sẵn trong bảng `CAU_HINH_KHAU_TRU`), dòng này là dòng thứ 6 của bảng Khấu Trừ và **được tính vào Tổng Khấu Trừ in** để bảo đảm tính cân bằng.
    - **Dòng tổng kết:** Lương Net in đậm kèm số tiền viết bằng chữ.
 
 ---
@@ -157,9 +219,9 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 ## 3. Quy Tắc Làm Tròn & Kiểu Dữ Liệu Tiền Tệ
 
 1. **Kiểu dữ liệu bắt buộc:**
-   - Toàn bộ tiền lương, phụ cấp, phạt, bảo hiểm và thuế tính bằng kiểu **`decimal`** (C#) và cột `DECIMAL(15,2)` (PostgreSQL).
-   - **Tuyệt đối không dùng `float` / `double`** ở bất kỳ bước trung gian nào. Sai số dấu phẩy động sẽ tích luỹ qua nhiều phép nhân/chia với hệ số 1.5 / 2.0 / 3.0 và 0.30, gây lệch tiền thật.
-   - Hệ số OT (1.5, 2.0, 3.0) và ca đêm (0.30) khai báo dạng `decimal` có hậu tố `m` trong `SalaryConstants.cs` (vd: `0.30m`), đúng theo quy chuẩn viết code của dự án.
+   - Toàn bộ tiền lương, phụ cấp, thù lao sự kiện, phạt, bảo hiểm và thuế tính bằng kiểu **`decimal`** (C#) và cột `DECIMAL(15,2)` (PostgreSQL).
+   - **Tuyệt đối không dùng `float` / `double`** ở bất kỳ bước trung gian nào. Sai số dấu phẩy động sẽ tích luỹ qua nhiều phép nhân/chia với hệ số 1.5 / 2.0 / 3.0, tỷ lệ ca đêm 0.30 và hệ số thưởng đánh giá sự kiện (1.10m, 1.20m), gây lệch tiền thật.
+   - Hệ số OT (1.5, 2.0, 3.0), ca đêm (0.30m), bảo hiểm xã hội 10.5% (BHXH 0.08m, BHYT 0.015m, BHTN 0.01m), hệ số thưởng xuất sắc dự án (+10% / +20%) khai báo dạng `decimal` có hậu tố `m` trong `SalaryConstants.cs`, đúng theo quy chuẩn viết code của dự án.
 
 2. **Chỉ làm tròn MỘT LẦN duy nhất — tại bước hiển thị:**
    - Mọi phép tính giữa chừng **giữ nguyên độ chính xác `decimal`**, không làm tròn về 0 hay 2 chữ số ở các bước trung gian.
@@ -171,9 +233,9 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 
 4. **Làm tròn ở đâu — mỗi dòng chi tiết hay chỉ dòng tổng:**
    - **Quy ước đã chọn: làm tròn ở TỪNG DÒNG CHI TIẾT khi hiển thị**, không chỉ ở dòng tổng.
-   - *Lý do:* nhân viên đối chiếu từng khoản trên phiếu lương với bảng lương nội bộ. Nếu chỉ làm tròn ở dòng tổng thì tổng các dòng in có thể lệch khỏi tổng in, và không một dòng nào giải thích được phần chênh đó.
+   - *Lý do:* nhân viên đối chiếu từng khoản trên phiếu lương (lương công, OT, ca đêm, phụ cấp ăn ca, phụ cấp sự kiện từng tiệc cưới/hội nghị...) với bảng lương nội bộ. Nếu chỉ làm tròn ở dòng tổng thì tổng các dòng in có thể lệch khỏi tổng in, và không một dòng nào giải thích được phần chênh đó.
    - Áp dụng **cả hai chiều** để bảo đảm bất biến cân bằng nêu ở mục 2:
-     - Tổng Gross in = tổng các dòng thu nhập **đã làm tròn**.
+     - Tổng Gross in = tổng các dòng thu nhập **đã làm tròn** (bao gồm cả các dòng phụ cấp dự án/sự kiện đã làm tròn).
      - Tổng Khấu Trừ in = tổng các dòng khấu trừ **đã làm tròn**.
      - Lương Net in = Tổng Gross in − Tổng Khấu Trừ in, lấy **đúng từ hai tổng đã in**, tuyệt đối không tính lại từ giá trị thô chưa làm tròn.
    - Sai lệch tối đa giữa Net tính từ giá trị thô và Net in từ giá trị đã làm tròn là `±(số dòng chi tiết × 0.5đ)`. **Ngưỡng cảnh báo đề xuất: 5.000đ — chưa chốt, cần xác minh** theo quy chế kế toán của khách sạn.

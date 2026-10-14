@@ -1,0 +1,229 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.HopDongIndexViewModel
+@{
+    Func<int, string> pageUrl = page => Url.Action("Index", new
+    {
+        keyword = Model.Keyword,
+        status = Model.Status,
+        contractFilter = Model.ContractFilter,
+        page,
+        pageSize = Model.PageSize
+    }) ?? "#";
+
+    var startItem = Model.TotalFilteredContracts == 0 ? 0 : (Model.PageNumber - 1) * Model.PageSize + 1;
+    var endItem = Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredContracts);
+    var firstPage = Math.Max(1, Model.PageNumber - 2);
+    var lastPage = Math.Min(Model.TotalPages, Model.PageNumber + 2);
+}
+
+<div data-catalog-results id="contractTableContainer" class="contract-table-container">
+    <!-- HIDDEN BADGE VALUE ĐỂ CATALOG.JS TỰ ĐỒNG BỘ SỐ LƯỢNG TRÊN TOOLBAR -->
+    <span class="d-none" data-catalog-count>
+        <i class="bi bi-file-earmark-text-fill me-1"></i> @Model.TotalFilteredContracts hợp đồng
+    </span>
+
+    <!-- BẢNG DANH SÁCH HỢP ĐỒNG LAO ĐỘNG -->
+    <div class="table-responsive">
+        <table class="table catalog-table table-hover align-middle mb-0" data-export-table="Danh_Sach_Hop_Dong">
+            <thead>
+                <tr>
+                    <th style="width: 180px">Số hợp đồng</th>
+                    <th>Nhân sự đại diện</th>
+                    <th>Loại hợp đồng</th>
+                    <th>Thời hạn thực hiện</th>
+                    <th>Lương cơ bản</th>
+                    <th style="width: 140px">Trạng thái</th>
+                    <th class="text-end" style="width: 140px">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Contracts.Count == 0)
+            {
+                <tr>
+                    <td colspan="7" class="catalog-empty">
+                        <div class="catalog-empty-state py-5 text-center">
+                            <div class="catalog-empty-icon mb-3">
+                                <i class="bi bi-file-earmark-slash text-muted opacity-50" style="font-size: 3rem;"></i>
+                            </div>
+                            <h4 class="fw-bold font-serif text-dark">Không tìm thấy hợp đồng lao động phù hợp</h4>
+                            <p class="text-muted small">Không có hợp đồng nào khớp với từ khóa tìm kiếm hoặc bộ lọc thời hạn hiện tại.</p>
+                            <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                                <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="resetContractFilters()">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại bộ lọc
+                                </button>
+                                <button type="button" class="btn btn-hotel-primary btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#createContractModal">
+                                    <i class="bi bi-plus-lg me-1"></i> Lập hợp đồng mới
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var item in Model.Contracts)
+                {
+                    var contract = item.Contract;
+                    var badgeClass = item.State == "DA_HET_HAN" ? "bg-danger" : item.State == "SAP_HET_HAN" ? "bg-warning text-dark" : item.State == "HIEU_LUC" ? "bg-success" : "bg-secondary";
+                    <tr class="contract-row">
+                        <td>
+                            <strong class="text-dark font-monospace fs-6">@contract.SoHopDong</strong>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark font-serif">@item.EmployeeName</div>
+                            <small class="text-muted font-monospace"><span class="badge bg-light text-secondary border px-2 py-0">NV-@contract.MaNhanVien</span></small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border px-2 py-1 rounded-pill small">@contract.LoaiHopDong</span>
+                        </td>
+                        <td>
+                            <div class="small text-dark font-monospace">@contract.NgayBatDau.ToString("dd/MM/yyyy") &rarr; @(contract.NgayKetThuc?.ToString("dd/MM/yyyy") ?? "Không thời hạn")</div>
+                            @if (item.DaysRemaining.HasValue)
+                            {
+                                <span class="badge @badgeClass rounded-pill mt-1" style="font-size: 0.72rem;">
+                                    @(item.DaysRemaining < 0 ? $"Quá hạn {-item.DaysRemaining} ngày" : item.DaysRemaining == 0 ? "Hết hạn hôm nay" : $"Còn {item.DaysRemaining} ngày")
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            <strong class="text-primary font-monospace fs-6">@contract.LuongCoBan.ToString("N0") đ</strong>
+                        </td>
+                        <td>
+                            @switch (contract.TrangThai)
+                            {
+                                case "HIEU_LUC":
+                                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle rounded-pill px-3 py-1">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Hiệu lực
+                                    </span>
+                                    break;
+                                case "HET_HAN":
+                                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle rounded-pill px-3 py-1">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Hết hạn
+                                    </span>
+                                    break;
+                                default:
+                                    <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle rounded-pill px-3 py-1">
+                                        <i class="bi bi-archive-fill me-1"></i>Thanh lý
+                                    </span>
+                                    break;
+                            }
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a asp-action="Edit" asp-route-id="@contract.MaHopDong" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hợp đồng">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form asp-action="Delete" asp-route-id="@contract.MaHopDong" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hợp đồng @contract.SoHopDong?');">
+                                <button type="submit" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Xóa hợp đồng">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 5-STAR EXECUTIVE LUXURY FOOTER & IN-PLACE PAGINATION -->
+    <div class="catalog-table-footer d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-top bg-white">
+        <!-- 1. RECORD RANGE COUNTER -->
+        <div class="d-flex align-items-center gap-2">
+            <span class="catalog-badge py-1 px-3 d-inline-flex align-items-center" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 999px; font-size: 0.82rem; color: #475569;">
+                <i class="bi bi-file-earmark-text-fill text-primary me-2"></i>
+                <span>Hiển thị <strong class="text-dark">@startItem – @endItem</strong> trong tổng số <strong class="text-dark">@Model.TotalFilteredContracts</strong> hợp đồng</span>
+                @if (Model.TotalFilteredContracts < Model.TotalContracts)
+                {
+                    <span class="text-muted ms-1">(Lọc từ @Model.TotalContracts)</span>
+                }
+            </span>
+        </div>
+
+        <!-- 2. PAGE SIZE SELECTOR & PAGINATION CONTROLS -->
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small fw-semibold text-nowrap"><i class="bi bi-list-ol me-1"></i>Hiển thị:</span>
+                <select class="form-select form-select-sm rounded-pill px-3 py-1 fw-semibold text-dark shadow-none"
+                        style="width: auto; border: 1.5px solid #cbd5e1; font-size: 0.82rem; cursor: pointer; background-color: #f8fafc;"
+                        onchange="changeContractPageSize(this.value)" aria-label="Số bản ghi mỗi trang">
+                    <option value="10" selected="@(Model.PageSize == 10)">10 / trang</option>
+                    <option value="20" selected="@(Model.PageSize == 20)">20 / trang</option>
+                    <option value="50" selected="@(Model.PageSize == 50)">50 / trang</option>
+                </select>
+            </div>
+
+            <!-- PAGINATION PILLS -->
+            @if (Model.TotalPages > 1)
+            {
+                <nav aria-label="Phân trang hợp đồng">
+                    <ul class="pagination pagination-sm mb-0 align-items-center gap-1">
+                        <!-- PREV BUTTON -->
+                        <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                            <a class="page-link rounded-pill px-3 py-1 fw-semibold border text-decoration-none d-flex align-items-center gap-1 shadow-sm"
+                               href="@pageUrl(Math.Max(1, Model.PageNumber - 1))"
+                               onclick="goToContractPage(@Math.Max(1, Model.PageNumber - 1), event)"
+                               style="font-size: 0.82rem; color: @(Model.PageNumber <= 1 ? "#94a3b8" : "#1e3a8a"); background: @(Model.PageNumber <= 1 ? "#f8fafc" : "#ffffff"); border-color: #e2e8f0 !important;"
+                               aria-label="Trang trước">
+                                <i class="bi bi-chevron-left"></i>
+                                <span class="d-none d-sm-inline">Trước</span>
+                            </a>
+                        </li>
+
+                        @if (firstPage > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link rounded-circle d-flex align-items-center justify-content-center border fw-semibold shadow-sm"
+                                   style="width: 32px; height: 32px; font-size: 0.82rem; color: #334155; background: #ffffff; border-color: #e2e8f0 !important;"
+                                   href="@pageUrl(1)"
+                                   onclick="goToContractPage(1, event)">1</a>
+                            </li>
+                            @if (firstPage > 2)
+                            {
+                                <li class="page-item disabled"><span class="page-link border-0 text-muted px-1">…</span></li>
+                            }
+                        }
+
+                        @for (var pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
+                        {
+                            var isCurrent = pageIndex == Model.PageNumber;
+                            <li class="page-item @(isCurrent ? "active" : "")">
+                                <a class="page-link rounded-circle d-flex align-items-center justify-content-center fw-bold border shadow-sm"
+                                   style="width: 32px; height: 32px; font-size: 0.82rem;
+                                          @(isCurrent ? "background: linear-gradient(135deg, #0f172a, #1e3a8a) !important; color: #ffffff !important; border-color: #d4af37 !important; box-shadow: 0 4px 10px rgba(30, 58, 138, 0.25);" : "background: #ffffff; color: #334155; border-color: #e2e8f0 !important;")"
+                                   href="@pageUrl(pageIndex)"
+                                   onclick="goToContractPage(@pageIndex, event)">
+                                    @pageIndex
+                                </a>
+                            </li>
+                        }
+
+                        @if (lastPage < Model.TotalPages)
+                        {
+                            @if (lastPage < Model.TotalPages - 1)
+                            {
+                                <li class="page-item disabled"><span class="page-link border-0 text-muted px-1">…</span></li>
+                            }
+                            <li class="page-item">
+                                <a class="page-link rounded-circle d-flex align-items-center justify-content-center border fw-semibold shadow-sm"
+                                   style="width: 32px; height: 32px; font-size: 0.82rem; color: #334155; background: #ffffff; border-color: #e2e8f0 !important;"
+                                   href="@pageUrl(Model.TotalPages)"
+                                   onclick="goToContractPage(@Model.TotalPages, event)">@Model.TotalPages</a>
+                            </li>
+                        }
+
+                        <!-- NEXT BUTTON -->
+                        <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link rounded-pill px-3 py-1 fw-semibold border text-decoration-none d-flex align-items-center gap-1 shadow-sm"
+                               href="@pageUrl(Math.Min(Model.TotalPages, Model.PageNumber + 1))"
+                               onclick="goToContractPage(@Math.Min(Model.TotalPages, Model.PageNumber + 1), event)"
+                               style="font-size: 0.82rem; color: @(Model.PageNumber >= Model.TotalPages ? "#94a3b8" : "#1e3a8a"); background: @(Model.PageNumber >= Model.TotalPages ? "#f8fafc" : "#ffffff"); border-color: #e2e8f0 !important;"
+                               aria-label="Trang sau">
+                                <span class="d-none d-sm-inline">Sau</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
+    </div>
+</div>

@@ -14,9 +14,6 @@
 }
 
 <div class="catalog-page">
-    <!-- 6 TABS LIÊN THÔNG ĐIỀU HÀNH -->
-    <partial name="_PageTabs" model="@("people")" />
-
     <partial name="_CatalogAlerts" />
 
     <!-- 3 MINI KPI SUMMARY STATS -->
@@ -104,123 +101,8 @@
             </div>
         </div>
 
-        <div class="table-responsive" data-catalog-results>
-            <table class="table catalog-table" data-export-table="Danh_Sach_Hop_Dong">
-                <thead>
-                    <tr>
-                        <th style="width: 180px">Số hợp đồng</th>
-                        <th>Nhân sự đại diện</th>
-                        <th>Loại hợp đồng</th>
-                        <th>Thời hạn thực hiện</th>
-                        <th>Lương cơ bản</th>
-                        <th style="width: 130px">Trạng thái</th>
-                        <th class="text-end" style="width: 120px">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @if (Model.Contracts.Count == 0)
-                {
-                    <tr>
-                        <td colspan="7" class="catalog-empty">
-                            <div class="catalog-empty-state">
-                                <div class="catalog-empty-icon"><i class="bi bi-file-earmark-slash"></i></div>
-                                <h4>Không tìm thấy hợp đồng lao động phù hợp</h4>
-                                <p class="text-muted">Không có hợp đồng nào khớp với từ khóa tìm kiếm hoặc bộ lọc thời hạn.</p>
-                                <button type="button" class="btn btn-hotel-primary btn-sm px-3 mt-2" data-bs-toggle="modal" data-bs-target="#createContractModal">
-                                    <i class="bi bi-plus-lg me-1"></i> Lập hợp đồng mới
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                }
-                else
-                {
-                    @foreach (var item in Model.Contracts)
-                    {
-                        var contract = item.Contract;
-                        var badgeClass = item.State == "DA_HET_HAN" ? "bg-danger" : item.State == "SAP_HET_HAN" ? "bg-warning text-dark" : item.State == "HIEU_LUC" ? "bg-success" : "bg-secondary";
-                        <tr>
-                            <td>
-                                <strong class="text-dark font-monospace">@contract.SoHopDong</strong>
-                            </td>
-                            <td>
-                                <div class="fw-semibold text-dark font-serif">@item.EmployeeName</div>
-                                <small class="text-muted">Mã: NV-@contract.MaNhanVien</small>
-                            </td>
-                            <td>
-                                <span class="badge bg-light text-dark border">@contract.LoaiHopDong</span>
-                            </td>
-                            <td>
-                                <div>@contract.NgayBatDau.ToString("dd/MM/yyyy") &rarr; @(contract.NgayKetThuc?.ToString("dd/MM/yyyy") ?? "Không thời hạn")</div>
-                                @if (item.DaysRemaining.HasValue)
-                                {
-                                    <span class="badge @badgeClass rounded-pill" style="font-size: 0.72rem;">
-                                        @(item.DaysRemaining < 0 ? $"Quá hạn {-item.DaysRemaining} ngày" : item.DaysRemaining == 0 ? "Hết hạn hôm nay" : $"Còn {item.DaysRemaining} ngày")
-                                    </span>
-                                }
-                            </td>
-                            <td>
-                                <strong class="text-primary font-monospace">@contract.LuongCoBan.ToString("N0") đ</strong>
-                            </td>
-                            <td>
-                                <span class="badge @badgeClass rounded-pill px-3 py-1">@contract.TrangThai</span>
-                            </td>
-                            <td class="text-end text-nowrap">
-                                <a asp-action="Edit" asp-route-id="@contract.MaHopDong" class="btn btn-sm btn-outline-primary rounded-3" title="Sửa hợp đồng">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form asp-action="Delete" asp-route-id="@contract.MaHopDong" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hợp đồng @contract.SoHopDong?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-3" title="Xóa hợp đồng">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                }
-                </tbody>
-            </table>
-        </div>
-
-        @if (Model.TotalPages > 1)
-        {
-            <div class="d-flex justify-content-start align-items-center mt-3 gap-2 flex-wrap">
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item @(Model.PageNumber == 1 ? "disabled" : "")">
-                        <a class="page-link" href="@pageUrl(Math.Max(1, Model.PageNumber - 1))" aria-label="Trang trước">
-                            <i class="bi bi-chevron-left"></i>
-                        </a>
-                    </li>
-                    @if (firstPage > 1)
-                    {
-                        <li class="page-item"><a class="page-link" href="@pageUrl(1)">1</a></li>
-                        @if (firstPage > 2)
-                        {
-                            <li class="page-item disabled"><span class="page-link">…</span></li>
-                        }
-                    }
-                    @for (var pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
-                    {
-                        <li class="page-item @(pageIndex == Model.PageNumber ? "active" : "")">
-                            <a class="page-link" href="@pageUrl(pageIndex)">@pageIndex</a>
-                        </li>
-                    }
-                    @if (lastPage < Model.TotalPages)
-                    {
-                        @if (lastPage < Model.TotalPages - 1)
-                        {
-                            <li class="page-item disabled"><span class="page-link">…</span></li>
-                        }
-                        <li class="page-item"><a class="page-link" href="@pageUrl(Model.TotalPages)">@Model.TotalPages</a></li>
-                    }
-                    <li class="page-item @(Model.PageNumber == Model.TotalPages ? "disabled" : "")">
-                        <a class="page-link" href="@pageUrl(Math.Min(Model.TotalPages, Model.PageNumber + 1))" aria-label="Trang sau">
-                            <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        }
+        <!-- CONTRACT DATA TABLE & IN-PLACE PAGINATION PARTIAL -->
+        <partial name="_ContractTablePartial" model="Model" />
     </section>
 </div>
 
@@ -252,5 +134,123 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    // =========================================================================
+    // ZERO FULL-PAGE RELOAD IN-PLACE PAGINATION & FILTERING (TARGETED ISOLATION)
+    // =========================================================================
+    function loadContractTable(params = {}, shouldPushState = true) {
+        const container = document.getElementById('contractTableContainer');
+        if (!container) return;
+
+        const url = new URL(window.location.href);
+        const form = document.querySelector('.catalog-toolbar form[method="get"]');
+        if (form) {
+            const formData = new FormData(form);
+            for (const [key, val] of formData.entries()) {
+                const trimmed = (val || '').toString().trim();
+                if (trimmed) {
+                    url.searchParams.set(key, trimmed);
+                } else {
+                    url.searchParams.delete(key);
+                }
+            }
+        }
+
+        for (const [k, v] of Object.entries(params)) {
+            if (v !== null && v !== undefined && v !== '') {
+                url.searchParams.set(k, v);
+            } else {
+                url.searchParams.delete(k);
+            }
+        }
+
+        container.style.transition = 'opacity 0.2s ease';
+        container.style.opacity = '0.45';
+        container.style.pointerEvents = 'none';
+
+        const fetchUrl = new URL(url.toString());
+        fetchUrl.searchParams.set('isPartial', 'true');
+
+        fetch(fetchUrl.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Lỗi cập nhật danh sách hợp đồng (Mã lỗi ' + res.status + ')');
+            return res.text();
+        })
+        .then(html => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            const newContainer = tempDiv.querySelector('#contractTableContainer') || tempDiv.firstElementChild;
+            if (newContainer && container) {
+                container.outerHTML = newContainer.outerHTML;
+            }
+
+            if (shouldPushState) {
+                window.history.pushState({ path: url.toString() }, '', url.toString());
+            }
+
+            const toolbarCount = document.querySelector('.catalog-toolbar [data-catalog-count]');
+            const newBadge = document.querySelector('#contractTableContainer [data-catalog-count]');
+            if (toolbarCount && newBadge) {
+                toolbarCount.innerHTML = newBadge.innerHTML;
+            }
+
+            if (window.HotelMotion && window.HotelMotion.applyEntrance) {
+                const updatedContainer = document.getElementById('contractTableContainer');
+                if (updatedContainer) window.HotelMotion.applyEntrance(updatedContainer);
+            }
+        })
+        .catch(err => {
+            console.error('Lỗi nạp bảng hợp đồng:', err);
+            const currentContainer = document.getElementById('contractTableContainer');
+            if (currentContainer) {
+                currentContainer.style.opacity = '1';
+                currentContainer.style.pointerEvents = 'auto';
+            }
+        });
+    }
+
+    function goToContractPage(page, event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        loadContractTable({ page: page });
+    }
+
+    function changeContractPageSize(pageSize) {
+        loadContractTable({ page: 1, pageSize: pageSize });
+    }
+
+    function resetContractFilters() {
+        const form = document.querySelector('.catalog-toolbar form[method="get"]');
+        if (form) {
+            form.reset();
+            form.querySelectorAll('input, select').forEach(c => c.value = '');
+        }
+        loadContractTable({ keyword: '', status: '', contractFilter: '', page: 1 });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.querySelector('.catalog-toolbar form[method="get"]');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                loadContractTable({ page: 1 });
+            });
+        }
+
+        window.addEventListener('popstate', () => {
+            loadContractTable({}, false);
+        });
+    });
+</script>
+}
 
 

@@ -24,7 +24,7 @@ public class PhanCaController : Controller
     /// Màn hình Ma trận Lịch phân ca 24/7 và Danh sách phân ca (Task 16)
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> Index(string? week, int? phongBanId, int? caId, string viewMode = "matrix")
+    public async Task<IActionResult> Index(string? week, int? phongBanId, int? caId, string viewMode = "matrix", bool openShiftModal = false)
     {
         // 1. Tính toán ngày Thứ 2 đầu tuần và Chủ nhật cuối tuần
         DateOnly targetDate;
@@ -47,6 +47,7 @@ public class PhanCaController : Controller
         ViewBag.NextWeek = weekStart.AddDays(7).ToString("yyyy-MM-dd");
         ViewBag.TodayWeek = DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
         ViewBag.ViewMode = viewMode;
+        ViewBag.OpenShiftModal = openShiftModal;
 
         var model = new PhanCaIndexViewModel
         {
@@ -193,16 +194,65 @@ public class PhanCaController : Controller
     }
 
     /// <summary>
-    /// Phân ca mới cho nhân viên
+    /// Phân ca mới cho nhân viên (Hỗ trợ phân ca đồng thời cho nhiều nhân sự)
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreatePhanCaInputModel input)
     {
-        if (input.MaNhanVien <= 0 || input.MaCa <= 0)
+        var empIds = (input.DanhSachMaNhanVien ?? new List<int>())
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+
+        if (empIds.Count == 0 && input.MaNhanVien > 0)
         {
-            TempData["ErrorMessage"] = "Vui lòng chọn nhân viên và ca làm việc hợp lệ.";
-            return RedirectToAction(nameof(Index), new { week = input.NgayLamViec.ToString("yyyy-MM-dd") });
+            empIds.Add(input.MaNhanVien);
+        }
+
+        if (empIds.Count == 0 && Request.HasFormContentType && Request.Form.TryGetValue("DanhSachMaNhanVien", out var formEmpValues))
+        {
+            foreach (var val in formEmpValues)
+            {
+                if (int.TryParse(val, out var parsedId) && parsedId > 0)
+                {
+                    empIds.Add(parsedId);
+                }
+            }
+            empIds = empIds.Distinct().ToList();
+        }
+
+        var targetDates = (input.DanhSachNgayLamViec ?? new List<DateOnly>())
+            .Where(d => d != default)
+            .Distinct()
+            .ToList();
+
+        if (targetDates.Count == 0 && input.NgayLamViec != default)
+        {
+            targetDates.Add(input.NgayLamViec);
+        }
+
+        if (targetDates.Count == 0 && Request.HasFormContentType && Request.Form.TryGetValue("DanhSachNgayLamViec", out var formDateValues))
+        {
+            foreach (var val in formDateValues)
+            {
+                if (DateOnly.TryParse(val, out var parsedDate) && parsedDate != default)
+                {
+                    targetDates.Add(parsedDate);
+                }
+            }
+            targetDates = targetDates.Distinct().ToList();
+        }
+
+        if (targetDates.Count == 0)
+        {
+            targetDates.Add(DateOnly.FromDateTime(DateTime.Today));
+        }
+
+        if (empIds.Count == 0 || input.MaCa <= 0)
+        {
+            TempData["Error"] = TempData["ErrorMessage"] = "Vui lòng chọn ít nhất một nhân viên và ca làm việc hợp lệ.";
+            return RedirectToAction(nameof(Index), new { week = targetDates.First().ToString("yyyy-MM-dd") });
         }
 
         try
@@ -210,27 +260,9 @@ public class PhanCaController : Controller
             var ca = await _context.CaLamViecs.FindAsync(input.MaCa);
             if (ca == null)
             {
-                TempData["ErrorMessage"] = "Không tìm thấy ca làm việc đã chọn.";
-                return RedirectToAction(nameof(Index), new { week = input.NgayLamViec.ToString("yyyy-MM-dd") });
+                TempData["Error"] = TempData["ErrorMessage"] = "Không tìm thấy ca làm việc đã chọn.";
+                return RedirectToAction(nameof(Index), new { week = targetDates.First().ToString("yyyy-MM-dd") });
             }
-
-            // Kiểm tra trùng ca
-            var exist = await _context.PhanCas.AnyAsync(p =>
-                p.MaNhanVien == input.MaNhanVien &&
-                p.NgayLamViec == input.NgayLamViec &&
-                p.MaCa == input.MaCa);
-
-            if (exist)
-            {
-                TempData["WarningMessage"] = "Nhân viên đã được xếp ca này trong ngày được chọn!";
-                return RedirectToAction(nameof(Index), new { week = input.NgayLamViec.ToString("yyyy-MM-dd") });
-            }
-
-            // Tính thời gian dự kiến
-            var startDateTime = input.NgayLamViec.ToDateTime(ca.GioBatDau);
-            var endDateTime = ca.QuaDem
-                ? input.NgayLamViec.AddDays(1).ToDateTime(ca.GioKetThuc)
-                : input.NgayLamViec.ToDateTime(ca.GioKetThuc);
 
             // Whitelist trạng thái theo CHECK constraint của CSDL (DA_PHAN / HOAN_THANH / VANG_MAT)
             var allowedStatuses = new[] { "DA_PHAN", "HOAN_THANH", "VANG_MAT" };
@@ -238,25 +270,72 @@ public class PhanCaController : Controller
                 ? input.TrangThai!
                 : "DA_PHAN";
 
-            var phanCa = new PhanCa
+            int successCount = 0;
+            int skippedCount = 0;
+
+            foreach (var targetDate in targetDates)
             {
-                MaNhanVien = input.MaNhanVien,
-                MaCa = input.MaCa,
-                NgayLamViec = input.NgayLamViec,
-                BatDauDuKien = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)),
-                KetThucDuKien = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)),
-                TrangThai = safeStatus
-            };
+                var startDateTime = targetDate.ToDateTime(ca.GioBatDau);
+                var endDateTime = ca.QuaDem
+                    ? targetDate.AddDays(1).ToDateTime(ca.GioKetThuc)
+                    : targetDate.ToDateTime(ca.GioKetThuc);
 
-            _context.PhanCas.Add(phanCa);
-            await _context.SaveChangesAsync();
+                foreach (var empId in empIds)
+                {
+                    // Kiểm tra trùng ca trong ngày
+                    var exist = await _context.PhanCas.AnyAsync(p =>
+                        p.MaNhanVien == empId &&
+                        p.NgayLamViec == targetDate &&
+                        p.MaCa == input.MaCa);
 
-            TempData["SuccessMessage"] = "Phân ca làm việc 24/7 thành công!";
+                    if (exist)
+                    {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    var phanCa = new PhanCa
+                    {
+                        MaNhanVien = empId,
+                        MaCa = input.MaCa,
+                        NgayLamViec = targetDate,
+                        BatDauDuKien = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
+                        KetThucDuKien = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
+                        TrangThai = safeStatus
+                    };
+
+                    _context.PhanCas.Add(phanCa);
+                    successCount++;
+                }
+            }
+
+            if (successCount > 0)
+            {
+                await _context.SaveChangesAsync();
+                var datesDesc = targetDates.Count == 1
+                    ? $"ngày {targetDates[0]:dd/MM/yyyy}"
+                    : $"{targetDates.Count} ngày ({targetDates.Min():dd/MM} - {targetDates.Max():dd/MM})";
+                var msg = $"Phân ca {ca.TenCa} ({ca.GioBatDau:HH:mm} - {ca.GioKetThuc:HH:mm}) {datesDesc} thành công cho {empIds.Count} nhân sự ({successCount} lượt)!";
+                if (skippedCount > 0)
+                {
+                    msg += $" (Bỏ qua {skippedCount} lượt đã có ca trùng trước đó).";
+                }
+                TempData["Success"] = TempData["SuccessMessage"] = msg;
+            }
+            else if (skippedCount > 0)
+            {
+                TempData["Warning"] = TempData["WarningMessage"] = $"Tất cả các ca phân công cho {empIds.Count} nhân sự đều đã được xếp trước đó!";
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi khi tạo phân ca.");
-            TempData["ErrorMessage"] = "Lỗi khi lưu dữ liệu phân ca vào Supabase: " + ex.Message;
+            TempData["Error"] = TempData["ErrorMessage"] = "Lỗi khi lưu dữ liệu phân ca vào Supabase: " + ex.Message;
+        }
+
+        if (!string.IsNullOrWhiteSpace(input.ReturnUrl) && Url.IsLocalUrl(input.ReturnUrl))
+        {
+            return Redirect(input.ReturnUrl);
         }
 
         return RedirectToAction(nameof(Index), new { week = input.NgayLamViec.ToString("yyyy-MM-dd") });
@@ -271,7 +350,7 @@ public class PhanCaController : Controller
     {
         if (maNhanVien <= 0 || maCa <= 0 || !DateOnly.TryParse(weekStartStr, out var weekStart))
         {
-            TempData["ErrorMessage"] = "Thông tin xếp ca nhanh không hợp lệ.";
+            TempData["Error"] = TempData["ErrorMessage"] = "Thông tin xếp ca nhanh không hợp lệ.";
             return RedirectToAction(nameof(Index), new { week = weekStartStr });
         }
 
@@ -280,7 +359,7 @@ public class PhanCaController : Controller
             var ca = await _context.CaLamViecs.FindAsync(maCa);
             if (ca == null)
             {
-                TempData["ErrorMessage"] = "Không tìm thấy ca làm việc.";
+                TempData["Error"] = TempData["ErrorMessage"] = "Không tìm thấy ca làm việc.";
                 return RedirectToAction(nameof(Index), new { week = weekStartStr });
             }
 
@@ -306,8 +385,8 @@ public class PhanCaController : Controller
                         MaNhanVien = maNhanVien,
                         MaCa = maCa,
                         NgayLamViec = workDate,
-                        BatDauDuKien = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)),
-                        KetThucDuKien = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)),
+                        BatDauDuKien = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
+                        KetThucDuKien = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
                         TrangThai = "DA_PHAN"
                     });
                     addedCount++;
@@ -315,12 +394,12 @@ public class PhanCaController : Controller
             }
 
             await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = $"Đã xếp ca nhanh thành công {addedCount} ngày trong tuần!";
+            TempData["Success"] = TempData["SuccessMessage"] = $"Đã xếp ca nhanh thành công {addedCount} ngày trong tuần!";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi xếp ca nhanh.");
-            TempData["ErrorMessage"] = "Lỗi khi xếp ca nhanh: " + ex.Message;
+            TempData["Error"] = TempData["ErrorMessage"] = "Lỗi khi xếp ca nhanh: " + ex.Message;
         }
 
         return RedirectToAction(nameof(Index), new { week = weekStartStr });
@@ -340,13 +419,13 @@ public class PhanCaController : Controller
             {
                 _context.PhanCas.Remove(phanCa);
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "Đã hủy lượt phân ca thành công!";
+                TempData["Success"] = TempData["SuccessMessage"] = "Đã hủy lượt phân ca thành công!";
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi khi xóa phân ca.");
-            TempData["ErrorMessage"] = "Không thể xóa phân ca: " + ex.Message;
+            TempData["Error"] = TempData["ErrorMessage"] = "Không thể xóa phân ca: " + ex.Message;
         }
 
         return RedirectToAction(nameof(Index), new { week = returnWeek });

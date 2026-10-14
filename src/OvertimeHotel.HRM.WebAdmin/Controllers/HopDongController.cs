@@ -22,7 +22,7 @@ public class HopDongController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, string? status, string? contractFilter, int page = 1, int pageSize = 10)
+    public async Task<IActionResult> Index(string? keyword, string? status, string? contractFilter, int page = 1, int pageSize = 10, bool isPartial = false)
     {
         keyword = keyword?.Trim();
         status = string.IsNullOrWhiteSpace(status) ? null : status;
@@ -91,7 +91,7 @@ public class HopDongController : Controller
             var pageNumber = Math.Clamp(page, 1, totalPages);
             var pagedContracts = orderedContracts.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
             ViewBag.EmployeeOptions = employeeOptions;
-            return View(new HopDongIndexViewModel
+            var model = new HopDongIndexViewModel
             {
                 CreateContractForm = new HopDongFormViewModel
                 {
@@ -114,14 +114,21 @@ public class HopDongController : Controller
                 ActiveContracts = allContracts.Count(contract => contract.TrangThai == "HIEU_LUC"),
                 ExpiringContracts = allDays.Count(days => days is >= 0 and <= 30),
                 ExpiredContracts = allDays.Count(days => days < 0)
-            });
+            };
+
+            if (isPartial || Request.Headers.XRequestedWith == "XMLHttpRequest")
+            {
+                return PartialView("_ContractTablePartial", model);
+            }
+
+            return View(model);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi khi truy vấn danh sách hợp đồng từ CSDL Supabase.");
             TempData["Error"] = "Lỗi kết nối CSDL Supabase: " + ex.Message;
             ViewBag.EmployeeOptions = new List<SelectListItem>();
-            return View(new HopDongIndexViewModel
+            var errorModel = new HopDongIndexViewModel
             {
                 CreateContractForm = new HopDongFormViewModel
                 {
@@ -136,7 +143,14 @@ public class HopDongController : Controller
                 ContractFilter = contractFilter,
                 Contracts = new List<HopDongListItemViewModel>(),
                 EmployeeOptions = new List<SelectListItem>()
-            });
+            };
+
+            if (isPartial || Request.Headers.XRequestedWith == "XMLHttpRequest")
+            {
+                return PartialView("_ContractTablePartial", errorModel);
+            }
+
+            return View(errorModel);
         }
     }
 
