@@ -30,10 +30,6 @@
 
     var hasAnyGroup = canViewPeople || canViewShift || canViewPayroll || canViewApproval
                       || canViewAccounts || canViewSystem;
-
-    var topRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "User";
-    var topName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Quản trị viên";
-    var initial = !string.IsNullOrEmpty(topName) ? topName.Substring(0, 1).ToUpperInvariant() : "A";
 }
 
 <aside class="app-sidebar">
@@ -142,33 +138,4 @@
             }
         }
     </nav>
-
-    <!-- THẺ TRẠNG THÁI VẬN HÀNH KHÁCH SẠN GÓC DƯỚI -->
-    <div class="app-sidebar-presence-card">
-        <div class="app-presence-header">
-            <span>Hôm nay, @DateTime.Today.ToString("dd/MM/yyyy")</span>
-            <span class="app-presence-pulse" title="Hệ thống 24/7 đang hoạt động"></span>
-        </div>
-        <div class="app-presence-stat">
-            <span>24/7 Vận hành</span>
-        </div>
-        <div class="app-presence-sub">The OverTime Hotel 5★</div>
-    </div>
-
-    <!-- THẺ USER FOOTER SIDEBAR -->
-    <div class="app-sidebar-footer">
-        <div class="app-sidebar-user-card">
-            <span class="app-sidebar-user-avatar">@initial</span>
-            <div class="app-sidebar-user-info">
-                <div class="app-sidebar-user-name" title="@topName">@topName</div>
-                <div class="app-sidebar-user-role">@topRole</div>
-            </div>
-            @if (User.Identity?.IsAuthenticated == true)
-            {
-                <a class="app-sidebar-logout-btn" asp-controller="Account" asp-action="Logout" title="Đăng xuất">
-                    <i class="bi bi-box-arrow-right"></i>
-                </a>
-            }
-        </div>
-    </div>
 </aside>

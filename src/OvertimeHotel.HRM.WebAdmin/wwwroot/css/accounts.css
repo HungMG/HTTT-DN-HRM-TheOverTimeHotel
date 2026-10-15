@@ -827,24 +827,44 @@
 .state-chip i { box-shadow: none; }
 
 .role-chip--admin {
-  color: #fde047;
-  border-color: #d4af37;
-  background: #0f172a;
+  color: #854d0e;
+  border-color: #fde047;
+  background: #fefce8;
+}
+.role-chip--admin i {
+  background: #d97706;
+}
+.role-chip--it {
+  color: #3730a3;
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+.role-chip--it i {
+  background: #4f46e5;
 }
 .role-chip--hr {
-  color: #7c3aed;
-  border-color: rgba(124, 58, 237, .3);
-  background: rgba(124, 58, 237, .08);
+  color: #6b21a8;
+  border-color: #e9d5ff;
+  background: #faf5ff;
+}
+.role-chip--hr i {
+  background: #9333ea;
 }
 .role-chip--manager {
-  color: #0284c7;
-  border-color: rgba(2, 132, 199, .3);
-  background: rgba(2, 132, 199, .08);
+  color: #0369a1;
+  border-color: #bae6fd;
+  background: #f0f9ff;
+}
+.role-chip--manager i {
+  background: #0284c7;
 }
 .role-chip--employee {
-  color: #059669;
-  border-color: rgba(5, 150, 105, .3);
-  background: rgba(5, 150, 105, .08);
+  color: #166534;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+.role-chip--employee i {
+  background: #16a34a;
 }
 .state-chip--active {
   color: #059669;
@@ -1397,6 +1417,154 @@
   background: #eff6ff;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   BẢNG DỮ LIỆU & NÚT BẤM CHUẨN KHÁCH SẠN 5 SAO (CUSTOM LUXURY TABLE)
+   ────────────────────────────────────────────────────────────────────────── */
+.custom-luxury-table {
+  font-size: 0.85rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.custom-luxury-table thead th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.custom-luxury-table tbody td {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.15s ease;
+}
+
+.custom-luxury-table tbody tr:hover td {
+  background-color: #f8fafc;
+}
+
+.btn-hotel-gold {
+  color: #0f172a;
+  background: linear-gradient(135deg, #fde047 0%, #d4af37 100%);
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  font-weight: 700;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.btn-hotel-gold:hover {
+  color: #0f172a;
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.35);
+}
+
+.bg-purple-subtle {
+  background-color: #f3e8ff !important;
+}
+
+.text-purple {
+  color: #7e22ce !important;
+}
+
+.border-purple-subtle {
+  border-color: #e9d5ff !important;
+}
+
+.hover-lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-1.5px);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LUXURY ROLE BADGES 5★ & AVATAR NÂNG CẤP
+   ────────────────────────────────────────────────────────────────────────── */
+.role-badge-luxury {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.role-badge-luxury:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
+}
+
+.role-badge-luxury i {
+  font-size: 0.95rem;
+  margin-right: 6px;
+}
+
+.role-badge-luxury--admin {
+  background: #fefce8;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+.role-badge-luxury--admin i {
+  color: #d97706;
+}
+
+.role-badge-luxury--it {
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+.role-badge-luxury--it i {
+  color: #4f46e5;
+}
+
+.role-badge-luxury--hr {
+  background: #faf5ff;
+  color: #6b21a8;
+  border: 1px solid #e9d5ff;
+}
+.role-badge-luxury--hr i {
+  color: #9333ea;
+}
+
+.role-badge-luxury--manager {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+.role-badge-luxury--manager i {
+  color: #0284c7;
+}
+
+.role-badge-luxury--employee {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.role-badge-luxury--employee i {
+  color: #16a34a;
+}
+
+.account-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  color: #ffffff;
+  border: 1.5px solid rgba(212, 175, 55, 0.7);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: var(--font-serif);
+}
+
+
 /* Typography trang Tạo tài khoản đồng bộ với tiêu đề của nhật ký quản trị. */
 .account-form-workspace .inspector-card-heading small {
   display: block;
@@ -1774,26 +1942,27 @@
 }
 
 .account-audit-dialog {
-  width: min(820px, calc(100vw - 24px));
-  max-width: none;
-  max-height: min(82vh, 760px);
+  width: min(1140px, calc(100vw - 32px));
+  max-width: 1180px;
+  max-height: min(90vh, 880px);
   padding: 0;
   overflow: visible;
   border: 0;
-  border-radius: 14px;
+  border-radius: 20px;
   background: transparent;
-  box-shadow: 0 28px 90px rgba(2, 6, 23, .32);
+  box-shadow: 0 32px 100px rgba(2, 6, 23, .4);
 }
 .account-audit-dialog::backdrop {
-  background: rgba(15, 23, 42, .56);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, .65);
+  backdrop-filter: blur(6px);
 }
-.account-audit-dialog[open] { animation: accountAuditDialogIn .22s ease-out both; }
+.account-audit-dialog[open] { animation: accountAuditDialogIn .22s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .account-audit-dialog-panel {
   display: flex;
   flex-direction: column;
-  max-height: min(82vh, 760px);
+  max-height: min(90vh, 880px);
   margin: 0;
+  border-radius: 20px;
 }
 .account-audit-dialog .account-audit-heading { flex: 0 0 auto; }
 .account-audit-dialog [data-account-audit-content] {
@@ -1853,3 +2022,98 @@
     width: min(372px, calc(100vw - 54px));
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   TIỆN ÍCH KHOẢNG ĐỆM & THANH TIÊU ĐỀ LUXURY (BÙ TRỪ CÁC CLASS PHÂN SỐ)
+   ────────────────────────────────────────────────────────────────────────── */
+.p-3\.5, .p-3\.5 {
+  padding: 22px 26px !important;
+}
+
+.p-2\.5 {
+  padding: 14px 18px !important;
+}
+
+.px-2\.5 {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+.py-2\.5 {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+.px-3\.5 {
+  padding-left: 18px !important;
+  padding-right: 18px !important;
+}
+
+.py-1\.5 {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+.gap-2\.5 {
+  gap: 14px !important;
+}
+
+.gap-1\.5 {
+  gap: 8px !important;
+}
+
+.me-1\.5 {
+  margin-right: 8px !important;
+}
+
+.me-2\.5 {
+  margin-right: 12px !important;
+}
+
+.ms-1\.5 {
+  margin-left: 8px !important;
+}
+
+.mb-1\.5 {
+  margin-bottom: 8px !important;
+}
+
+.mt-2\.5 {
+  margin-top: 12px !important;
+}
+
+.mx-1\.5 {
+  margin-left: 8px !important;
+  margin-right: 8px !important;
+}
+
+/* Header khối thẻ thông tin chuẩn khách sạn 5 sao */
+.luxury-card-header {
+  padding-top: 24px !important;
+  padding-bottom: 20px !important;
+  padding-left: 28px !important;
+  padding-right: 28px !important;
+}
+
+/* Header thẻ xem trước màu navy hoàng gia */
+.luxury-preview-header {
+  min-height: 68px !important;
+  padding-top: 24px !important;
+  padding-bottom: 20px !important;
+  padding-left: 26px !important;
+  padding-right: 26px !important;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
+}
+
+/* Khoảng cách ô nhập liệu trong form đảm bảo icon không bao giờ dính chữ */
+.card-body .input-group-text {
+  padding-left: 14px;
+  padding-right: 14px;
+  font-size: 0.95rem;
+}
+
+.card-body .input-group > .form-control,
+.card-body .input-group > .form-select {
+  padding-left: 14px;
+}
+

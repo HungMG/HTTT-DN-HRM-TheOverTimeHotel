@@ -12,70 +12,73 @@
     var lastPage = Math.Min(Model.TotalPages, Model.PageNumber + 2);
     var vietnamOffset = TimeSpan.FromHours(7);
 
-    string StatusChipClass(string status) => status switch
+    string StatusBadge(string status) => status switch
     {
-        "CHO_IT" => "state-chip--active",
-        "DANG_XU_LY" => "role-chip--manager",
-        "DA_CAP" => "role-chip--employee",
-        _ => "state-chip--locked"
+        "CHO_IT" => "bg-warning-subtle text-warning-emphasis border-warning-subtle",
+        "DANG_XU_LY" => "bg-purple-subtle text-purple border-purple-subtle",
+        "DA_CAP" => "bg-success-subtle text-success border-success-subtle",
+        _ => "bg-danger-subtle text-danger border-danger-subtle"
     };
 
-    string RoleChipClass(string roleCode) => roleCode switch
+    (string RoleClass, string RoleIcon, string RoleName) GetRoleBadgeInfo(string roleCode) => roleCode switch
     {
-        "Admin" => "role-chip--admin",
-        "HR" => "role-chip--hr",
-        "Manager" => "role-chip--manager",
-        "IT" => "role-chip--admin",
-        _ => "role-chip--employee"
-    };
-
-    string VietnameseRoleName(string roleCode) => roleCode switch
-    {
-        "Admin" => "Quản trị viên",
-        "HR" => "Nhân sự",
-        "Manager" => "Quản lý",
-        "Employee" => "Nhân viên",
-        "IT" => "Công nghệ thông tin",
-        _ => roleCode
+        "Admin" => ("role-badge-luxury--admin", "bi-shield-fill-check", "Quản trị viên"),
+        "IT" => ("role-badge-luxury--it", "bi-terminal-fill", "Công nghệ thông tin"),
+        "HR" => ("role-badge-luxury--hr", "bi-person-badge-fill", "Nhân sự"),
+        "Manager" => ("role-badge-luxury--manager", "bi-star-fill", "Quản lý"),
+        "Employee" => ("role-badge-luxury--employee", "bi-person-vcard-fill", "Nhân viên"),
+        _ => ("role-badge-luxury--employee", "bi-person-fill", roleCode)
     };
 }
 
-<div class="account-sequence-toolbar">
-    <div class="sequence-title">
-        <span class="sequence-play"><i class="bi bi-play-fill"></i></span>
+<!-- TIÊU ĐỀ BẢNG DỮ LIỆU & BADGE ĐẾM SỐ LƯỢNG -->
+<div class="p-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3 bg-white">
+    <div class="d-flex align-items-center gap-2">
+        <span class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+            <i class="bi bi-inbox-fill" style="font-size: 0.95rem;"></i>
+        </span>
         <div>
-            <small>@(canProcess ? "Hộp thư bộ phận CNTT" : "Yêu cầu của bạn")</small>
-            <div class="sequence-title-line">
-                <strong>Danh sách yêu cầu cấp tài khoản</strong>
-                <span class="sequence-result-badge"><i class="bi bi-record-circle"></i> <b data-request-result-count>@Model.TotalFilteredRequests</b> kết quả</span>
-            </div>
+            <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.95rem;">@(canProcess ? "Hộp Thư Tiếp Nhận Bộ Phận CNTT" : "Danh Sách Yêu Cầu Cấp Tài Khoản Của Bạn")</h6>
+            <small class="text-muted" style="font-size: 0.72rem;">Kiểm soát quy trình cấp quyền &amp; tạo tài khoản người dùng Supabase</small>
         </div>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 ms-2" style="font-size: 0.72rem;">
+            <i class="bi bi-record-circle me-1"></i><b data-request-result-count>@Model.TotalFilteredRequests</b> yêu cầu
+        </span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
+            <i class="bi bi-clock-history me-1 text-primary"></i> Tự động đồng bộ
+        </span>
     </div>
 </div>
 
-<div class="account-table-wrap">
-    <table class="account-table">
-        <thead>
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 custom-luxury-table">
+        <thead class="table-light text-uppercase text-secondary" style="font-size: 0.7rem; letter-spacing: 0.5px;">
             <tr>
-                <th>Nhân viên</th>
-                <th>Tên đăng nhập</th>
-                <th>Vai trò</th>
-                <th>Căn cứ</th>
-                <th>Trạng thái</th>
-                <th><span class="visually-hidden">Thao tác</span></th>
+                <th class="ps-3 py-3">Nhân sự liên kết</th>
+                <th class="py-3">Tài khoản &amp; Người gửi</th>
+                <th class="py-3">Vai trò đề xuất</th>
+                <th class="py-3">HĐLĐ &amp; Phòng ban</th>
+                <th class="py-3">Trạng thái xử lý</th>
+                <th class="pe-3 py-3 text-end">Thao tác nghiệp vụ</th>
             </tr>
         </thead>
         <tbody>
             @if (Model.Requests.Count == 0)
             {
                 <tr data-request-empty-row>
-                    <td colspan="6">
-                        <div class="account-empty-state">
-                            <div><i class="bi bi-inbox"></i></div>
-                            <strong>Không có yêu cầu phù hợp</strong>
-                            <span>@(canProcess
-                                ? "Thử đổi bộ lọc trạng thái hoặc từ khoá tìm kiếm."
-                                : "Bạn chưa gửi yêu cầu nào, hoặc yêu cầu của bạn không khớp bộ lọc hiện tại.")</span>
+                    <td colspan="6" class="text-center py-5">
+                        <div class="d-flex flex-column align-items-center justify-content-center py-4">
+                            <div class="rounded-circle bg-light p-3 text-muted mb-2">
+                                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                            </div>
+                            <strong class="text-dark">Không có yêu cầu cấp tài khoản nào phù hợp</strong>
+                            <span class="text-muted small mt-1">
+                                @(canProcess
+                                    ? "Thử thay đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm."
+                                    : "Bạn chưa gửi yêu cầu nào hoặc yêu cầu của bạn không khớp bộ lọc hiện tại.")
+                            </span>
                         </div>
                     </td>
                 </tr>
@@ -87,75 +90,114 @@
                 {
                     rowIndex++;
                     var sentAt = item.SentAt.ToOffset(vietnamOffset);
-                    <tr class="@(item.Status is "DA_CAP" or "TU_CHOI" ? "is-locked" : null)"
-                        style="--row-delay: @(rowIndex * 35)ms"
-                        data-request-row="@item.RequestId">
-                        <td>
-                            <div class="account-identity">
-                                <div class="account-avatar">@(item.EmployeeName.Length > 0 ? item.EmployeeName[..1].ToUpperInvariant() : "N")</div>
+                    var isFinished = item.Status is "DA_CAP" or "TU_CHOI";
+                    <tr class="@(isFinished ? "table-light" : null)" style="--row-delay: @(rowIndex * 30)ms" data-request-row="@item.RequestId">
+                        <!-- CỘT NHÂN VIÊN -->
+                        <td class="ps-3 py-2.5">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="account-avatar flex-shrink-0">@(item.EmployeeName.Length > 0 ? item.EmployeeName[..1].ToUpperInvariant() : "N")</div>
                                 <div>
-                                    <strong>@item.EmployeeName</strong>
-                                    <span>@(string.IsNullOrWhiteSpace(item.EmployeeEmail) ? "Chưa có email công vụ" : item.EmployeeEmail)</span>
+                                    <div class="fw-bold text-dark font-serif" style="font-size: 0.88rem;">@item.EmployeeName</div>
+                                    <div class="small text-muted font-sans" style="font-size: 0.75rem;">
+                                        @(string.IsNullOrWhiteSpace(item.EmployeeEmail) ? "Chưa có email công vụ" : item.EmployeeEmail)
+                                    </div>
                                 </div>
                             </div>
                         </td>
-                        <td>
-                            <div class="account-username"><i class="bi bi-code-slash"></i>@item.Username</div>
-                            <small class="account-inline-note"><i class="bi bi-send"></i>@item.SenderName gửi</small>
-                        </td>
-                        <td><span class="role-chip @RoleChipClass(item.RoleName)"><i></i>@VietnameseRoleName(item.RoleName)</span></td>
-                        <td>
-                            <div class="account-work-unit">
-                                <strong>@(string.IsNullOrWhiteSpace(item.ContractNo) ? "Không gắn hợp đồng" : item.ContractNo)</strong>
-                                <span>@(string.IsNullOrWhiteSpace(item.Department) ? "—" : item.Department)</span>
+
+                        <!-- CỘT TÀI KHOẢN & NGƯỜI GỬI -->
+                        <td class="py-2.5">
+                            <div class="d-flex align-items-center gap-1 font-monospace small fw-semibold text-dark">
+                                <code class="text-primary bg-primary bg-opacity-10 px-2 py-0.5 rounded-2" style="font-size: 0.78rem;">@@@item.Username</code>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.72rem;">
+                                <i class="bi bi-send text-primary me-1"></i><b>@item.SenderName</b> lúc @sentAt.ToString("HH:mm · dd/MM")
                             </div>
                         </td>
-                        <td>
-                            <span class="state-chip @StatusChipClass(item.Status)"><i></i>@item.StatusLabel</span>
+
+                        <!-- CỘT VAI TRÒ -->
+                        <td class="py-2.5">
+                            @{
+                                var (roleClass, roleIcon, roleDisplayName) = GetRoleBadgeInfo(item.RoleName);
+                            }
+                            <span class="role-badge-luxury @roleClass">
+                                <i class="bi @roleIcon"></i>@roleDisplayName
+                            </span>
+                        </td>
+
+                        <!-- CỘT CĂN CỨ HỢP ĐỒNG & PHÒNG BAN -->
+                        <td class="py-2.5">
+                            <div class="fw-semibold text-dark small">
+                                <i class="bi bi-file-earmark-text text-secondary me-1"></i>@(string.IsNullOrWhiteSpace(item.ContractNo) ? "Không gắn hợp đồng" : item.ContractNo)
+                            </div>
+                            <div class="text-muted" style="font-size: 0.72rem;">
+                                <i class="bi bi-building me-1"></i>@(string.IsNullOrWhiteSpace(item.Department) ? "—" : item.Department)
+                            </div>
+                        </td>
+
+                        <!-- CỘT TRẠNG THÁI -->
+                        <td class="py-2.5">
+                            <div>
+                                <span class="badge @StatusBadge(item.Status) border rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
+                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.45rem;"></i>@item.StatusLabel
+                                </span>
+                            </div>
                             @if (item.Status == "TU_CHOI" && !string.IsNullOrWhiteSpace(item.RejectionNote))
                             {
-                                <small class="account-inline-note" title="@item.RejectionNote"><i class="bi bi-info-circle"></i>@item.RejectionNote</small>
+                                <div class="text-danger mt-1 small" style="font-size: 0.72rem;" title="@item.RejectionNote">
+                                    <i class="bi bi-exclamation-circle me-1"></i>@item.RejectionNote
+                                </div>
                             }
                             else if (item.Status == "DA_CAP" && !string.IsNullOrWhiteSpace(item.GrantedUsername))
                             {
-                                <small class="account-inline-note"><i class="bi bi-check2"></i>Tài khoản #@item.GrantedUsername</small>
+                                <div class="text-success mt-1 small" style="font-size: 0.72rem;">
+                                    <i class="bi bi-check2 me-1"></i>Tài khoản #@item.GrantedUsername
+                                </div>
                             }
                             else if (!string.IsNullOrWhiteSpace(item.HandlerUsername))
                             {
-                                <small class="account-inline-note"><i class="bi bi-person-check"></i>@item.HandlerUsername</small>
+                                <div class="text-muted mt-1 small" style="font-size: 0.72rem;">
+                                    <i class="bi bi-person-check text-primary me-1"></i>Xử lý: @item.HandlerUsername
+                                </div>
                             }
                         </td>
-                        <td>
-                            @* Nút nhận / cấp / từ chối là hành động MỞ CỬA Supabase
-                               Auth nên chỉ hiện với vai trò có CAP_TAI_KHOAN_MOBILE,
-                               đúng như [Authorize] ở tầng controller. *@
+
+                        <!-- CỘT THAO TÁC -->
+                        <td class="pe-3 py-2.5 text-end">
                             @if (canProcess)
                             {
-                                <div class="account-row-actions">
+                                <div class="d-inline-flex align-items-center gap-2">
                                     @if (item.Status == "CHO_IT")
                                     {
-                                        <form asp-action="Claim" asp-route-id="@item.RequestId" method="post" class="account-toggle-form" data-request-action-form>
+                                        <form asp-action="Claim" asp-route-id="@item.RequestId" method="post" class="d-inline" data-request-action-form>
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" title="Nhận việc này"><i class="bi bi-hand-index-thumb"></i></button>
+                                            <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold hover-lift shadow-sm" title="Nhận xử lý yêu cầu này" style="font-size: 0.78rem;">
+                                                <i class="bi bi-hand-index-thumb me-1"></i>Nhận việc
+                                            </button>
                                         </form>
                                     }
                                     else if (item.Status == "DANG_XU_LY")
                                     {
-                                        <form asp-action="Complete" asp-route-id="@item.RequestId" method="post" class="account-toggle-form" data-request-action-form>
+                                        <form asp-action="Complete" asp-route-id="@item.RequestId" method="post" class="d-inline" data-request-action-form>
                                             @Html.AntiForgeryToken()
-                                            <button type="submit" title="Cấp tài khoản đăng nhập"><i class="bi bi-key"></i></button>
+                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm" title="Kích hoạt &amp; cấp tài khoản Supabase" style="font-size: 0.78rem;">
+                                                <i class="bi bi-key-fill me-1"></i>Cấp tài khoản
+                                            </button>
                                         </form>
-                                        <button type="button" title="Từ chối yêu cầu"
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold hover-lift" title="Từ chối yêu cầu"
                                                 data-request-reject="@item.RequestId"
-                                                data-request-reject-username="@item.Username">
-                                            <i class="bi bi-x-circle"></i>
+                                                data-request-reject-username="@item.Username"
+                                                style="font-size: 0.78rem;">
+                                            <i class="bi bi-x-circle me-1"></i>Từ chối
                                         </button>
                                     }
                                 </div>
                             }
                             else
                             {
-                                <small class="account-inline-note"><i class="bi bi-clock-history"></i>@sentAt.ToString("dd/MM/yyyy · HH:mm")</small>
+                                <span class="badge bg-light text-muted border rounded-pill px-2.5 py-1 font-monospace" style="font-size: 0.72rem;">
+                                    <i class="bi bi-clock me-1"></i>@sentAt.ToString("dd/MM/yyyy")
+                                </span>
                             }
                         </td>
                     </tr>
@@ -167,31 +209,37 @@
 
 @if (Model.TotalPages > 1)
 {
-    <nav class="account-pagination" aria-label="Phân trang danh sách yêu cầu">
-        <span class="account-pagination-summary">Hiển thị @firstItem–@lastItem / @Model.TotalFilteredRequests yêu cầu</span>
-        <div class="account-pagination-actions">
-            <button type="button" data-request-page="@(Model.PageNumber - 1)" disabled="@(Model.PageNumber == 1)" aria-label="Trang trước"><i class="bi bi-chevron-left"></i></button>
+    <div class="p-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-2 bg-light bg-opacity-50">
+        <span class="small text-muted font-sans" style="font-size: 0.78rem;">
+            Hiển thị <b>@firstItem–@lastItem</b> trên tổng số <b>@Model.TotalFilteredRequests</b> yêu cầu
+        </span>
+        <div class="d-flex align-items-center gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2.5 py-1" data-request-page="@(Model.PageNumber - 1)" disabled="@(Model.PageNumber == 1)" aria-label="Trang trước">
+                <i class="bi bi-chevron-left"></i>
+            </button>
             @if (firstPage > 1)
             {
-                <button type="button" data-request-page="1">1</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2.5 py-1" data-request-page="1">1</button>
                 @if (firstPage > 2)
                 {
-                    <span aria-hidden="true">…</span>
+                    <span class="px-1 text-muted">…</span>
                 }
             }
-            @for (var pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
+            @for (var p = firstPage; p <= lastPage; p++)
             {
-                <button type="button" data-request-page="@pageIndex" class="@(pageIndex == Model.PageNumber ? "is-current" : null)" aria-current="@(pageIndex == Model.PageNumber ? "page" : null)">@pageIndex</button>
+                <button type="button" class="btn btn-sm @(p == Model.PageNumber ? "btn-hotel-primary fw-bold" : "btn-outline-secondary") rounded-2 px-2.5 py-1" data-request-page="@p">@p</button>
             }
             @if (lastPage < Model.TotalPages)
             {
                 @if (lastPage < Model.TotalPages - 1)
                 {
-                    <span aria-hidden="true">…</span>
+                    <span class="px-1 text-muted">…</span>
                 }
-                <button type="button" data-request-page="@Model.TotalPages">@Model.TotalPages</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2.5 py-1" data-request-page="@Model.TotalPages">@Model.TotalPages</button>
             }
-            <button type="button" data-request-page="@(Model.PageNumber + 1)" disabled="@(Model.PageNumber == Model.TotalPages)" aria-label="Trang sau"><i class="bi bi-chevron-right"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2.5 py-1" data-request-page="@(Model.PageNumber + 1)" disabled="@(Model.PageNumber == Model.TotalPages)" aria-label="Trang sau">
+                <i class="bi bi-chevron-right"></i>
+            </button>
         </div>
-    </nav>
+    </div>
 }

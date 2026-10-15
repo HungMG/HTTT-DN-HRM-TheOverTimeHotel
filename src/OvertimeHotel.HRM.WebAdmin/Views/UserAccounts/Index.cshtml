@@ -2,31 +2,32 @@
 @using System.Security.Claims
 @using OvertimeHotel.HRM.WebAdmin.Security
 @{
-    ViewData["Title"] = "Quản trị tài khoản";
+    ViewData["Title"] = "Quản trị tài khoản & RBAC";
 }
 
-<div class="account-workspace account-workspace--bleed" data-account-workspace data-status-filter="@(Model.IsActive.HasValue ? Model.IsActive.Value.ToString().ToLowerInvariant() : string.Empty)" data-audit-from="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" data-audit-to="@(Model.AuditTo?.ToString("yyyy-MM-dd"))">
-    <!-- Tiêu đề đã nằm ở .app-topbar nên trang này không lặp lại banner.
-         Thanh công cụ chỉ giữ thao tác, đặt ngay trên lưới dữ liệu. -->
-    <div class="account-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div class="account-environment-pill" title="Môi trường quản trị">
-            <i class="bi bi-shield-check"></i>
-            <span>RBAC</span>
-            <strong>Trực tuyến</strong>
-        </div>
-        <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
-            @* Cấp phát tài khoản là việc của Admin và bộ phận CNTT. Người chỉ có
-               QL_TAI_KHOAN (HR) vẫn xem và sửa được hồ sơ tài khoản, nhưng không
-               mở được cửa này — cùng rào chắn với [Authorize] ở action Create. *@
-            @if (User.HasPermission(PermissionCodes.ProvisionMobileAccount))
-            {
-                <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn">
-                    <i class="bi bi-plus-lg me-1"></i> Tạo tài khoản
-                </a>
-            }
-        </div>
+<div class="container-fluid px-3 px-md-4 py-3 account-workspace" data-account-workspace data-status-filter="@(Model.IsActive.HasValue ? Model.IsActive.Value.ToString().ToLowerInvariant() : string.Empty)" data-audit-from="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" data-audit-to="@(Model.AuditTo?.ToString("yyyy-MM-dd"))">
+
+    <!-- THANH THAO TÁC HỆ THỐNG -->
+    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-4">
+        @if (User.IsInRole("Admin") || User.HasClaim("Permission", "QL_PHAN_QUYEN"))
+        {
+            <a asp-action="RolePermissions" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-semibold hover-lift" style="font-size: 0.82rem;">
+                <i class="bi bi-shield-check me-1"></i> Phân Quyền RBAC
+            </a>
+        }
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold hover-lift" style="font-size: 0.82rem;" data-account-audit-open aria-haspopup="dialog" aria-controls="accountAuditDialog" aria-label="Mở nhật ký quản trị">
+            <i class="bi bi-clock-history me-1 text-primary"></i> Nhật Ký Quản Trị
+            <span class="badge bg-primary text-white rounded-pill ms-1" data-account-audit-trigger-count>@Model.TotalAuditLogs</span>
+        </button>
+        @if (User.HasPermission(PermissionCodes.ProvisionMobileAccount))
+        {
+            <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-pill px-3.5 py-1.5 fw-bold shadow-sm hover-lift" style="font-size: 0.82rem;">
+                <i class="bi bi-plus-lg me-1"></i> Tạo Tài Khoản
+            </a>
+        }
     </div>
 
+    <!-- TOAST POPUP STACK -->
     <div class="account-popup-stack" aria-live="polite" aria-atomic="true">
         @if (TempData["Success"] is string successMessage)
         {
@@ -57,144 +58,215 @@
         }
     </div>
 
-    <section class="account-stat-grid account-reveal" aria-label="Tổng quan tài khoản">
-        <article class="motion-stat motion-stat--violet">
-            <div class="motion-stat-top"><span>01 / Tổng tài khoản</span><i class="bi bi-people"></i></div>
-            <div class="motion-stat-value" data-account-total>@Model.TotalAccounts</div>
-            <div class="motion-stat-label">Tổng tài khoản</div>
-            <div class="motion-stat-track"><span style="width: 100%"></span></div>
-        </article>
-        <article class="motion-stat motion-stat--green">
-            <div class="motion-stat-top"><span>02 / Đang hoạt động</span><i class="bi bi-play-fill"></i></div>
-            <div class="motion-stat-value" data-account-active>@Model.ActiveAccounts</div>
-            <div class="motion-stat-label">Đang hoạt động</div>
-            <div class="motion-stat-track"><span data-account-active-track style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.ActiveAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
-        </article>
-        <article class="motion-stat motion-stat--red">
-            <div class="motion-stat-top"><span>03 / Đang bị khóa</span><i class="bi bi-pause-fill"></i></div>
-            <div class="motion-stat-value" data-account-locked>@Model.LockedAccounts</div>
-            <div class="motion-stat-label">Đang bị khóa</div>
-            <div class="motion-stat-track"><span data-account-locked-track style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.LockedAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
-        </article>
-        <article class="motion-stat motion-stat--amber">
-            <div class="motion-stat-top"><span>04 / Quyền quản trị</span><i class="bi bi-key"></i></div>
-            <div class="motion-stat-value">@Model.AdminAccounts</div>
-            <div class="motion-stat-label">Quản trị viên</div>
-            <div class="motion-stat-track"><span style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.AdminAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
-        </article>
-    </section>
-
-    <section class="account-editor-grid account-reveal">
-        <aside class="account-outline-panel">
-            <div class="account-panel-heading">
-                <div><span>Bộ lọc</span><strong>Bộ lọc truy cập</strong></div>
-                <i class="bi bi-sliders2"></i>
-            </div>
-            <form method="get" asp-action="Index" class="account-filter-form" data-account-filter-form>
-                <input type="hidden" name="auditFrom" value="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" />
-                <input type="hidden" name="auditTo" value="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" />
-                <input type="hidden" name="page" value="@Model.PageNumber" data-account-page-input />
-                <div class="account-field">
-                    <label asp-for="Keyword"><span>Tìm kiếm</span><small>⌘ K</small></label>
-                    <div class="account-input-wrap">
-                        <i class="bi bi-search"></i>
-                        <input asp-for="Keyword" placeholder="Tên, email, tài khoản..." autocomplete="off" data-account-search-input />
+    <!-- 3. BENTO GRID: 4 CHỈ SỐ KPI TÀI KHOẢN HOÀNG GIA -->
+    <div class="row g-3 mb-4 account-reveal" aria-label="Tổng quan tài khoản">
+        <!-- KPI 1: Tổng tài khoản -->
+        <div class="col-6 col-md-3">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item motion-stat" style="border-top: 3px solid #1e3a8a !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Tổng tài khoản</span>
+                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                        <i class="bi bi-people-fill" style="font-size: 1rem;"></i>
                     </div>
                 </div>
-                <div class="account-field">
-                    <label asp-for="RoleId"><span>Vai trò</span><small>RBAC</small></label>
-                    <div class="account-select-wrap">
-                        <select asp-for="RoleId" asp-items="Model.RoleOptions" data-account-role-select>
-                            <option value="">Tất cả vai trò</option>
-                        </select>
-                        <i class="bi bi-chevron-expand"></i>
-                    </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h3 class="h3 mb-0 fw-bold text-dark font-serif kpi-count-up" data-account-total>@Model.TotalAccounts</h3>
+                    <span class="small text-muted font-sans">tài khoản</span>
                 </div>
-                <div class="account-field">
-                    <label asp-for="IsActive"><span>Trạng thái</span><small>Trạng thái</small></label>
-                    <div class="account-select-wrap">
-                        <select asp-for="IsActive" data-account-status-select>
-                            <option value="">Tất cả trạng thái</option>
-                            <option value="true">Đang hoạt động</option>
-                            <option value="false">Đã khóa</option>
-                        </select>
-                        <i class="bi bi-chevron-expand"></i>
-                    </div>
+                <div class="small text-muted mt-2 d-flex align-items-center gap-1" style="font-size: 0.72rem;">
+                    <i class="bi bi-check-circle text-success"></i> Đã cấp phát hệ thống
                 </div>
-                <div class="account-filter-actions">
-                    <button type="submit"><i class="bi bi-funnel-fill"></i> Áp dụng</button>
-                    <a asp-action="Index" title="Đặt lại bộ lọc" data-account-filter-reset><i class="bi bi-arrow-counterclockwise"></i></a>
-                </div>
-            </form>
-
-            <section class="account-role-legend" role="list" aria-labelledby="roleAccessTitle">
-                <div class="account-panel-heading account-panel-heading--compact">
-                    <div><span>RBAC</span><strong id="roleAccessTitle">Phạm vi quyền truy cập</strong></div>
-                </div>
-                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--admin"></span><span>Quản trị viên</span><small>Toàn quyền hệ thống</small></div>
-                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Hồ sơ &amp; chính sách</small></div>
-                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--manager"></span><span>Quản lý</span><small>Phê duyệt vận hành</small></div>
-                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--employee"></span><span>Nhân viên</span><small>Tự phục vụ cá nhân</small></div>
-        <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--it"></span><span>Công nghệ thông tin</span><small>Cấp phát tài khoản</small></div>
-                @if (User.IsInRole("Admin") || User.HasClaim("Permission", "QL_PHAN_QUYEN"))
-                {
-                    <a asp-action="RolePermissions" class="account-role-legend-action"><i class="bi bi-shield-check"></i><span>Phân quyền vai trò</span><i class="bi bi-arrow-right"></i></a>
-                }
-            </section>
-        </aside>
-
-        <div class="account-sequence-panel position-relative" id="accountSequenceWrapper">
-            <!-- Loading overlay cục bộ đồng bộ chuẩn từ trang Phân Ca -->
-            <div id="accountLoadingOverlay" class="in-place-loading-overlay d-none">
-                <div class="spinner-border text-primary mb-2" role="status" style="width: 2.3rem; height: 2.3rem;">
-                    <span class="visually-hidden">Đang tải...</span>
-                </div>
-                <div class="fw-bold text-dark small font-serif">Đang cập nhật danh sách tài khoản...</div>
-                <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
-            </div>
-
-            <div id="accountTableContainer" class="in-place-enter in-place-container">
-                <partial name="_AccountTable" model="Model" />
             </div>
         </div>
-    </section>
 
-    <dialog id="accountAuditDialog" class="account-audit-dialog" data-account-audit-dialog aria-labelledby="auditLogTitle">
-    <section class="account-audit-panel account-audit-dialog-panel position-relative" aria-labelledby="auditLogTitle">
-        <!-- Loading overlay cho khung nhật ký quản trị -->
-        <div id="auditLoadingOverlay" class="in-place-loading-overlay d-none">
-            <div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem;">
+        <!-- KPI 2: Đang hoạt động -->
+        <div class="col-6 col-md-3">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item motion-stat motion-stat--green" style="border-top: 3px solid #059669 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đang hoạt động</span>
+                    <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                        <i class="bi bi-check2-circle" style="font-size: 1rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h3 class="h3 mb-0 fw-bold text-success font-serif kpi-count-up" data-account-active>@Model.ActiveAccounts</h3>
+                    <span class="small text-muted font-sans">active</span>
+                </div>
+                <div class="motion-stat-track mt-2"><span data-account-active-track style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.ActiveAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
+            </div>
+        </div>
+
+        <!-- KPI 3: Đang bị khóa -->
+        <div class="col-6 col-md-3">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item motion-stat motion-stat--red" style="border-top: 3px solid #dc2626 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đang bị khóa</span>
+                    <div class="rounded-circle bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                        <i class="bi bi-lock-fill" style="font-size: 1rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h3 class="h3 mb-0 fw-bold text-danger font-serif kpi-count-up" data-account-locked>@Model.LockedAccounts</h3>
+                    <span class="small text-muted font-sans">tài khoản</span>
+                </div>
+                <div class="motion-stat-track mt-2"><span data-account-locked-track style="width: @(Model.TotalAccounts > 0 ? Math.Round(Model.LockedAccounts * 100d / Model.TotalAccounts) : 0)%"></span></div>
+            </div>
+        </div>
+
+        <!-- KPI 4: Quản trị viên -->
+        <div class="col-6 col-md-3">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item motion-stat motion-stat--amber" style="border-top: 3px solid #d97706 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Quản trị viên (Admin)</span>
+                    <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                        <i class="bi bi-shield-shaded" style="font-size: 1rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h3 class="h3 mb-0 fw-bold text-warning-emphasis font-serif kpi-count-up">@Model.AdminAccounts</h3>
+                    <span class="small text-muted font-sans">toàn quyền</span>
+                </div>
+                <div class="small text-muted mt-2 d-flex align-items-center gap-1" style="font-size: 0.72rem;">
+                    <i class="bi bi-key-fill text-warning"></i> Quản trị cấp cao
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. THANH CÔNG CỤ & BỘ LỌC TOÀN DIỆN (FULL-WIDTH FILTER CARD) -->
+    <div class="card border-0 rounded-4 shadow-sm p-3 p-md-4 mb-4 bg-white account-reveal">
+        <form method="get" asp-action="Index" class="row g-3 align-items-end" data-account-filter-form>
+            <input type="hidden" name="auditFrom" value="@(Model.AuditFrom?.ToString("yyyy-MM-dd"))" />
+            <input type="hidden" name="auditTo" value="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" />
+            <input type="hidden" name="page" value="@Model.PageNumber" data-account-page-input />
+
+            <div class="col-12 col-md-5 col-lg-5">
+                <label asp-for="Keyword" class="form-label small fw-bold text-secondary mb-1">
+                    <i class="bi bi-search me-1 text-primary"></i>Tìm kiếm tài khoản
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input asp-for="Keyword" class="form-control border-start-0 ps-0" placeholder="Tên nhân viên, email, tên đăng nhập... (Ctrl + K)" autocomplete="off" data-account-search-input />
+                </div>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg-3">
+                <label asp-for="RoleId" class="form-label small fw-bold text-secondary mb-1">
+                    <i class="bi bi-person-badge me-1 text-primary"></i>Vai trò (RBAC)
+                </label>
+                <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select" data-account-role-select>
+                    <option value="">-- Tất cả vai trò --</option>
+                </select>
+            </div>
+
+            <div class="col-6 col-md-2 col-lg-2">
+                <label asp-for="IsActive" class="form-label small fw-bold text-secondary mb-1">
+                    <i class="bi bi-toggles me-1 text-primary"></i>Trạng thái
+                </label>
+                <select asp-for="IsActive" class="form-select" data-account-status-select>
+                    <option value="">-- Tất cả --</option>
+                    <option value="true">Đang hoạt động</option>
+                    <option value="false">Đã khóa</option>
+                </select>
+            </div>
+
+            <div class="col-12 col-md-2 col-lg-2 d-flex gap-2">
+                <button type="submit" class="btn btn-hotel-primary w-100 py-2 fw-semibold shadow-sm hover-lift">
+                    <i class="bi bi-funnel-fill me-1"></i> Lọc
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary py-2 px-3 hover-lift" title="Đặt lại bộ lọc" data-account-filter-reset>
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+        </form>
+
+        <!-- Dải tóm tắt phạm vi quyền hạn RBAC -->
+        <hr class="my-3 opacity-25" />
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pt-1">
+            <div class="d-flex flex-wrap align-items-center gap-3 small text-muted">
+                <span class="fw-bold text-dark"><i class="bi bi-shield-lock me-1 text-primary"></i>Phạm vi vai trò:</span>
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-shield-fill-check" style="color: #d97706;"></i> <b>Quản trị viên:</b> Toàn quyền hệ thống</span>
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-person-badge-fill" style="color: #9333ea;"></i> <b>Nhân sự:</b> Hồ sơ &amp; HĐLĐ</span>
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-star-fill" style="color: #0284c7;"></i> <b>Quản lý:</b> Phê duyệt vận hành</span>
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-person-vcard-fill" style="color: #16a34a;"></i> <b>Nhân viên:</b> Tự phục vụ cá nhân</span>
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-terminal-fill" style="color: #4f46e5;"></i> <b>CNTT:</b> Cấp phát tài khoản</span>
+            </div>
+            @if (User.IsInRole("Admin") || User.HasClaim("Permission", "QL_PHAN_QUYEN"))
+            {
+                <a asp-action="RolePermissions" class="small fw-semibold text-primary text-decoration-none hover-lift d-inline-flex align-items-center gap-1">
+                    Cấu hình chi tiết vai trò <i class="bi bi-arrow-right"></i>
+                </a>
+            }
+        </div>
+    </div>
+
+    <!-- 5. BẢNG DỮ LIỆU TÀI KHOẢN (FULL-WIDTH DATA TABLE CARD) -->
+    <div class="card border-0 rounded-4 shadow-sm overflow-hidden bg-white mb-4 position-relative" id="accountSequenceWrapper">
+        <!-- Loading overlay cục bộ -->
+        <div id="accountLoadingOverlay" class="in-place-loading-overlay d-none">
+            <div class="spinner-border text-primary mb-2" role="status" style="width: 2.3rem; height: 2.3rem;">
                 <span class="visually-hidden">Đang tải...</span>
             </div>
-            <div class="fw-bold text-dark small font-serif">Đang lọc nhật ký quản trị...</div>
+            <div class="fw-bold text-dark small font-serif">Đang cập nhật danh sách tài khoản...</div>
             <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
         </div>
 
-        <div class="account-audit-heading">
-            <div class="account-audit-title">
-                <span class="account-audit-mark"><i class="bi bi-journal-check"></i></span>
-                    <div>
-                        <small>Nhật ký thao tác</small>
-                        <div class="account-audit-title-line">
-                            <h2 id="auditLogTitle">Nhật ký quản trị gần đây</h2>
-                            <span class="account-audit-count account-audit-count--badge"><i class="bi bi-clock-history"></i><b data-account-audit-count>@Model.TotalAuditLogs</b> hoạt động</span>
-                            <button type="button" class="account-audit-dialog-close" data-account-audit-close aria-label="Đóng nhật ký"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
-                        </div>
-                    </div>
+        <div id="accountTableContainer" class="in-place-enter in-place-container">
+            <partial name="_AccountTable" model="Model" />
+        </div>
+    </div>
+
+    <!-- 6. DIALOG NHẬT KÝ QUẢN TRỊ (AUDIT LOG DIALOG) -->
+    <dialog id="accountAuditDialog" class="account-audit-dialog shadow-lg" data-account-audit-dialog aria-labelledby="auditLogTitle">
+        <section class="account-audit-panel account-audit-dialog-panel position-relative border-0 rounded-4 overflow-hidden bg-white" aria-labelledby="auditLogTitle">
+            <div id="auditLoadingOverlay" class="in-place-loading-overlay d-none">
+                <div class="spinner-border text-primary mb-2" role="status" style="width: 2rem; height: 2rem;">
+                    <span class="visually-hidden">Đang tải...</span>
+                </div>
+                <div class="fw-bold text-dark small font-serif">Đang lọc nhật ký quản trị...</div>
+                <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
             </div>
-            <div class="account-audit-tools">
-                <form method="get" asp-action="Index" class="account-audit-filter" data-account-audit-filter data-audit-endpoint="@Url.Action("AuditLogs")" aria-label="Lọc nhật ký theo ngày">
+
+            <!-- HEADER POPUP NHẬT KÝ QUẢN TRỊ -->
+            <div class="px-4 py-3 bg-white border-bottom d-flex align-items-center justify-content-between" style="padding-top: 24px !important; padding-bottom: 20px !important; padding-left: 28px !important; padding-right: 28px !important;">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.25rem;">
+                        <i class="bi bi-journal-check"></i>
+                    </span>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h5 id="auditLogTitle" class="mb-0 fw-bold text-dark font-serif" style="font-size: 1.12rem;">Nhật Ký Quản Trị Hệ Thống</h5>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle rounded-pill px-2.5 py-1" style="font-size: 0.74rem;">
+                                <i class="bi bi-clock-history me-1.5"></i><b data-account-audit-count>@Model.TotalAuditLogs</b> hoạt động
+                            </span>
+                        </div>
+                        <small class="text-muted" style="font-size: 0.8rem;">Theo dõi chi tiết các thao tác phân quyền, cấp phát và bảo mật tài khoản</small>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center hover-lift p-0" style="width: 36px; height: 36px;" data-account-audit-close aria-label="Đóng nhật ký">
+                    <i class="bi bi-x-lg text-secondary" style="font-size: 0.88rem;"></i>
+                </button>
+            </div>
+
+            <!-- THANH LỌC THỜI GIAN NHẬT KÝ -->
+            <div class="px-4 py-3 bg-light bg-opacity-50 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3" style="padding-left: 28px !important; padding-right: 28px !important;">
+                <form method="get" asp-action="Index" class="account-audit-filter d-flex align-items-center gap-2" data-account-audit-filter data-audit-endpoint="@Url.Action("AuditLogs")" aria-label="Lọc nhật ký theo ngày">
                     <input type="hidden" name="keyword" value="@Model.Keyword" />
                     <input type="hidden" name="roleId" value="@Model.RoleId" />
                     <input type="hidden" name="isActive" value="@Model.IsActive" />
                     <input type="hidden" name="auditPage" value="@Model.AuditPageNumber" data-account-audit-page-input />
+
+                    <span class="small fw-semibold text-secondary d-flex align-items-center gap-1" style="font-size: 0.78rem;">
+                        <i class="bi bi-calendar-range text-primary"></i> Lọc thời gian:
+                    </span>
+
                     <div class="account-range-picker" data-account-range-picker>
                         <button type="button" class="account-range-trigger" data-account-range-trigger aria-expanded="false" aria-controls="auditRangePopover">
                             <i class="bi bi-calendar3"></i>
                             <span data-account-range-label>Chọn khoảng ngày</span>
                             <i class="bi bi-chevron-down account-range-chevron"></i>
                         </button>
-                        <div id="auditRangePopover" class="account-range-popover" data-account-range-popover role="dialog" aria-label="Chọn khoảng ngày nhật ký">
+                        <div id="auditRangePopover" class="account-range-popover shadow-lg" data-account-range-popover role="dialog" aria-label="Chọn khoảng ngày nhật ký">
                             <div class="account-range-popover-heading">
                                 <span>Thời gian</span>
                                 <small>Chọn nhanh hoặc khoảng tùy chỉnh</small>
@@ -212,18 +284,25 @@
                             <button type="submit" class="account-range-apply"><i class="bi bi-check2"></i><span>Áp dụng</span></button>
                         </div>
                     </div>
-                    <button type="button" data-account-audit-clear class="@(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "is-disabled" : null)" aria-disabled="@(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "true" : "false")" title="Xóa lọc ngày"><i class="bi bi-x-lg"></i><span>Xóa ngày</span></button>
+                    <button type="button" data-account-audit-clear class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 py-1 @(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "is-disabled" : null)" aria-disabled="@(!(Model.AuditFrom.HasValue || Model.AuditTo.HasValue) ? "true" : "false")" title="Xóa lọc ngày" style="font-size: 0.75rem;">
+                        <i class="bi bi-x-circle me-1"></i> Xóa ngày
+                    </button>
                 </form>
-            </div>
-        </div>
 
-        <div data-account-audit-content class="in-place-enter in-place-container">
-            <partial name="_AuditLogList" model="Model" />
-        </div>
-    </section>
+                <div class="small text-muted font-monospace d-none d-sm-inline-block" style="font-size: 0.72rem;">
+                    <i class="bi bi-shield-lock me-1 text-success"></i>Kiểm toán Supabase
+                </div>
+            </div>
+
+            <!-- VÙNG DANH SÁCH NHẬT KÝ QUẢN TRỊ -->
+            <div data-account-audit-content class="in-place-enter in-place-container p-3 p-md-4" style="background: #f8fafc; max-height: min(72vh, 660px); overflow-y: auto;">
+                <partial name="_AuditLogList" model="Model" />
+            </div>
+        </section>
     </dialog>
 </div>
 
+<!-- 7. DIALOG XÁC NHẬN KHÓA / MỞ KHÓA TÀI KHOẢN -->
 <dialog class="account-confirm-dialog" data-account-confirm>
     <div class="account-confirm-card">
         <button type="button" class="account-confirm-close" data-account-confirm-cancel aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
@@ -234,7 +313,7 @@
         <div class="account-confirm-target"><i class="bi bi-person"></i><span data-account-confirm-name>Tài khoản</span></div>
         <label class="account-confirm-reason">
             <span>Lý do thực hiện <b>*</b></span>
-            <textarea rows="3" maxlength="500" data-account-confirm-reason placeholder="Nhập lý do để lưu vào nhật ký quản trị"></textarea>
+            <textarea rows="3" maxlength="500" data-account-confirm-reason placeholder="Nhập lý do để lưu vào nhật ký quản trị an ninh"></textarea>
             <small data-account-confirm-reason-error>Vui lòng nhập lý do trước khi xác nhận.</small>
         </label>
         <div class="account-confirm-actions">

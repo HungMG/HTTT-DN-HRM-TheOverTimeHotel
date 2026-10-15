@@ -3,30 +3,26 @@
 @using OvertimeHotel.HRM.Core.Policies
 @using OvertimeHotel.HRM.WebAdmin.Security
 @{
-    ViewData["Title"] = "Yêu cầu cấp tài khoản";
+    ViewData["Title"] = "Hàng đợi cấp tài khoản";
     var currentRole = User.FindFirstValue(ClaimTypes.Role);
     var canProcess = LeaveApprovalPolicy.CanProcessAccountRequest(currentRole);
 }
 
 <div class="account-workspace account-workspace--bleed" data-request-workspace>
-    <div class="account-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div class="account-environment-pill" title="Phạm vi truy cập của bạn">
-            <i class="bi bi-shield-check"></i>
-            <span>RBAC</span>
-            <strong>@(canProcess ? "Toàn bộ yêu cầu" : "Yêu cầu của bạn")</strong>
-        </div>
-        <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
-            @* Nút gửi yêu cầu thuộc về người quản lý hồ sơ nhân sự (Admin/HR),
-               khác hẳn nhóm nút nhận/cấp/từ chối bên dưới vốn là việc của CNTT. *@
-            @if (Model.CanSubmitRequest)
-            {
-                <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn">
-                    <i class="bi bi-plus-lg me-1"></i> Gửi yêu cầu
-                </a>
-            }
-        </div>
+    <!-- THANH THAO TÁC HỆ THỐNG -->
+    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-4">
+        <a asp-controller="UserAccounts" asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold hover-lift" style="font-size: 0.82rem;">
+            <i class="bi bi-people me-1"></i> Danh Sách Tài Khoản
+        </a>
+        @if (Model.CanSubmitRequest)
+        {
+            <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-pill px-3.5 py-1.5 fw-bold hover-lift shadow-sm text-white" style="font-size: 0.82rem;">
+                <i class="bi bi-plus-circle-fill me-1"></i> Gửi Yêu Cầu Cấp Tài Khoản
+            </a>
+        }
     </div>
 
+    <!-- TOAST NOTIFICATION STACK -->
     <div class="account-popup-stack" aria-live="polite" aria-atomic="true">
         @if (TempData["Success"] is string successMessage)
         {
@@ -48,107 +44,213 @@
         }
     </div>
 
-    <section class="account-stat-grid account-reveal" aria-label="Tổng quan yêu cầu cấp tài khoản">
-        <article class="motion-stat motion-stat--violet">
-            <div class="motion-stat-top"><span>01 / Tổng yêu cầu</span><i class="bi bi-inboxes"></i></div>
-            <div class="motion-stat-value" data-request-total>@Model.TotalRequests</div>
-            <div class="motion-stat-label">Tổng yêu cầu</div>
-            <div class="motion-stat-track"><span style="width: 100%"></span></div>
-        </article>
-        <article class="motion-stat motion-stat--amber">
-            <div class="motion-stat-top"><span>02 / Chờ CNTT</span><i class="bi bi-hourglass-split"></i></div>
-            <div class="motion-stat-value" data-request-pending>@Model.PendingRequests</div>
-            <div class="motion-stat-label">Chờ CNTT</div>
-            <div class="motion-stat-track"><span data-request-pending-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.PendingRequests * 100d / Model.TotalRequests) : 0)%"></span></div>
-        </article>
-        <article class="motion-stat motion-stat--violet">
-            <div class="motion-stat-top"><span>03 / Đang xử lý</span><i class="bi bi-person-workspace"></i></div>
-            <div class="motion-stat-value" data-request-processing>@Model.ProcessingRequests</div>
-            <div class="motion-stat-label">Đang xử lý</div>
-            <div class="motion-stat-track"><span data-request-processing-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.ProcessingRequests * 100d / Model.TotalRequests) : 0)%"></span></div>
-        </article>
-        <article class="motion-stat motion-stat--green">
-            <div class="motion-stat-top"><span>04 / Đã cấp</span><i class="bi bi-person-check"></i></div>
-            <div class="motion-stat-value" data-request-granted>@Model.GrantedRequests</div>
-            <div class="motion-stat-label">Đã cấp tài khoản</div>
-            <div class="motion-stat-track"><span data-request-granted-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.GrantedRequests * 100d / Model.TotalRequests) : 0)%"></span></div>
-        </article>
-        <article class="motion-stat motion-stat--red">
-            <div class="motion-stat-top"><span>05 / Từ chối</span><i class="bi bi-slash-circle"></i></div>
-            <div class="motion-stat-value" data-request-rejected>@Model.RejectedRequests</div>
-            <div class="motion-stat-label">Đã từ chối</div>
-            <div class="motion-stat-track"><span data-request-rejected-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.RejectedRequests * 100d / Model.TotalRequests) : 0)%"></span></div>
-        </article>
-    </section>
-
-    <section class="account-editor-grid account-reveal">
-        <aside class="account-outline-panel">
-            <div class="account-panel-heading">
-                <div><span>Bộ lọc</span><strong>Lọc yêu cầu</strong></div>
-                <i class="bi bi-sliders2"></i>
-            </div>
-            <form method="get" asp-action="Index" class="account-filter-form" data-request-filter-form>
-                <input type="hidden" name="page" value="@Model.PageNumber" data-request-page-input />
-                <div class="account-field">
-                    <label asp-for="Keyword"><span>Tìm kiếm</span><small>⌘ K</small></label>
-                    <div class="account-input-wrap">
-                        <i class="bi bi-search"></i>
-                        <input asp-for="Keyword" placeholder="Tên đăng nhập, tên nhân viên..." autocomplete="off" data-request-search-input />
-                    </div>
+    <!-- WORKFLOW STEPPER BANNER: QUY TRÌNH PHỐI HỢP HR - CNTT - NHÂN VIÊN -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
+                        <i class="bi bi-diagram-3-fill me-1"></i> Quy trình 4 bước
+                    </span>
+                    <span class="fw-bold text-dark font-serif" style="font-size: 0.88rem;">Phối Hợp Nghiệp Vụ Cấp Tài Khoản</span>
                 </div>
-                <div class="account-field">
-                    <label asp-for="TrangThai"><span>Trạng thái</span><small>Tiến trình</small></label>
-                    <div class="account-select-wrap">
-                        <select asp-for="TrangThai" asp-items="Model.StatusOptions" data-request-status-select></select>
-                        <i class="bi bi-chevron-expand"></i>
-                    </div>
-                </div>
-                <div class="account-filter-actions">
-                    <button type="submit"><i class="bi bi-funnel-fill"></i> Áp dụng</button>
-                    <a asp-action="Index" title="Đặt lại bộ lọc" data-request-filter-reset><i class="bi bi-arrow-counterclockwise"></i></a>
-                </div>
-            </form>
-
-            <section class="account-role-legend" role="list" aria-labelledby="requestAccessTitle">
-                <div class="account-panel-heading account-panel-heading--compact">
-                    <div><span>Quy trình</span><strong id="requestAccessTitle">Ai làm gì</strong></div>
-                </div>
-                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--hr"></span><span>Nhân sự</span><small>Duyệt hồ sơ &amp; gửi yêu cầu</small></div>
-                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--it"></span><span>Công nghệ thông tin</span><small>Nhận việc &amp; cấp tài khoản</small></div>
-                <div class="role-legend-item" role="listitem"><span class="role-swatch role-swatch--admin"></span><span>Quản trị viên</span><small>Gửi &amp; xử lý được</small></div>
-                <div class="preview-note"><i class="bi bi-lightning-charge-fill"></i><span>Chỉ bộ phận CNTT và Quản trị viên có quyền <b>CAP_TAI_KHOAN_MOBILE</b> mới mở được tài khoản trên Supabase Auth.</span></div>
-            </section>
-        </aside>
-
-        <div class="account-sequence-panel position-relative">
-            <div id="requestLoadingOverlay" class="in-place-loading-overlay d-none">
-                <div class="spinner-border text-primary mb-2" role="status" style="width: 2.3rem; height: 2.3rem;">
-                    <span class="visually-hidden">Đang tải...</span>
-                </div>
-                <div class="fw-bold text-dark small font-serif">Đang cập nhật danh sách yêu cầu...</div>
-                <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
+                <small class="text-muted d-none d-md-inline" style="font-size: 0.72rem;">
+                    <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Chỉ CNTT/Admin có quyền <b>CAP_TAI_KHOAN_MOBILE</b> mới mở được tài khoản Supabase Auth
+                </small>
             </div>
 
-            <div id="requestTableContainer" class="in-place-enter in-place-container">
-                <partial name="_YeuCauTaiKhoanTable" model="Model" />
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3 col-6">
+                    <div class="p-2.5 rounded-3 bg-light border border-light-subtle d-flex align-items-center gap-2">
+                        <span class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 28px; height: 28px; font-size: 0.75rem;">1</span>
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.78rem;">Nhân Sự (HR)</div>
+                            <small class="text-muted d-block" style="font-size: 0.68rem; line-height: 1.2;">Duyệt HĐLĐ &amp; tạo yêu cầu</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="p-2.5 rounded-3 bg-light border border-light-subtle d-flex align-items-center gap-2">
+                        <span class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 28px; height: 28px; font-size: 0.75rem;">2</span>
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.78rem;">Hàng Đợi Tiếp Nhận</div>
+                            <small class="text-muted d-block" style="font-size: 0.68rem; line-height: 1.2;">Đưa vào hàng chờ xử lý</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="p-2.5 rounded-3 bg-light border border-light-subtle d-flex align-items-center gap-2">
+                        <span class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 28px; height: 28px; font-size: 0.75rem;">3</span>
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.78rem;">Bộ Phận CNTT</div>
+                            <small class="text-muted d-block" style="font-size: 0.68rem; line-height: 1.2;">Nhận việc &amp; kích hoạt Auth</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="p-2.5 rounded-3 bg-light border border-light-subtle d-flex align-items-center gap-2">
+                        <span class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 28px; height: 28px; font-size: 0.75rem;">4</span>
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.78rem;">Nhân Viên</div>
+                            <small class="text-muted d-block" style="font-size: 0.68rem; line-height: 1.2;">Đăng nhập Mobile App</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </section>
+    </div>
+
+    <!-- BENTO 5 THẺ KPI DÀN ĐỀU TRÊN 1 HÀNG -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-3 mb-4">
+        <!-- 01: TỔNG YÊU CẦU -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-4 h-100 motion-stat position-relative overflow-hidden p-3" style="border-left: 4px solid #1e3a8a !important;">
+                <div class="d-flex align-items-center justify-content-between text-muted mb-1">
+                    <span class="text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.8px;">01 / Tổng Yêu Cầu</span>
+                    <i class="bi bi-inboxes text-primary" style="font-size: 1.1rem;"></i>
+                </div>
+                <div class="h2 fw-bold text-dark mb-1 font-serif" data-request-total>@Model.TotalRequests</div>
+                <div class="text-muted small" style="font-size: 0.72rem;">Tổng lượt phát sinh</div>
+                <div class="motion-stat-track mt-2"><span style="width: 100%; background: #1e3a8a;"></span></div>
+            </div>
+        </div>
+
+        <!-- 02: CHỜ CNTT -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-4 h-100 motion-stat motion-stat--amber position-relative overflow-hidden p-3" style="border-left: 4px solid #d4af37 !important;">
+                <div class="d-flex align-items-center justify-content-between text-muted mb-1">
+                    <span class="text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.8px;">02 / Chờ CNTT</span>
+                    <i class="bi bi-hourglass-split" style="color: #d4af37; font-size: 1.1rem;"></i>
+                </div>
+                <div class="h2 fw-bold text-dark mb-1 font-serif" style="color: #b45309 !important;" data-request-pending>@Model.PendingRequests</div>
+                <div class="text-muted small" style="font-size: 0.72rem;">Đang chờ nhận việc</div>
+                <div class="motion-stat-track mt-2">
+                    <span data-request-pending-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.PendingRequests * 100d / Model.TotalRequests) : 0)%; background: #d4af37;"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 03: ĐANG XỬ LÝ -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-4 h-100 motion-stat position-relative overflow-hidden p-3" style="border-left: 4px solid #8b5cf6 !important;">
+                <div class="d-flex align-items-center justify-content-between text-muted mb-1">
+                    <span class="text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.8px;">03 / Đang Xử Lý</span>
+                    <i class="bi bi-person-workspace text-purple" style="font-size: 1.1rem; color: #8b5cf6;"></i>
+                </div>
+                <div class="h2 fw-bold text-dark mb-1 font-serif" style="color: #7c3aed !important;" data-request-processing>@Model.ProcessingRequests</div>
+                <div class="text-muted small" style="font-size: 0.72rem;">CNTT đã nhận việc</div>
+                <div class="motion-stat-track mt-2">
+                    <span data-request-processing-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.ProcessingRequests * 100d / Model.TotalRequests) : 0)%; background: #8b5cf6;"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 04: ĐÃ CẤP -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-4 h-100 motion-stat motion-stat--green position-relative overflow-hidden p-3" style="border-left: 4px solid #10b981 !important;">
+                <div class="d-flex align-items-center justify-content-between text-muted mb-1">
+                    <span class="text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.8px;">04 / Đã Cấp</span>
+                    <i class="bi bi-person-check text-success" style="font-size: 1.1rem;"></i>
+                </div>
+                <div class="h2 fw-bold text-success mb-1 font-serif" data-request-granted>@Model.GrantedRequests</div>
+                <div class="text-muted small" style="font-size: 0.72rem;">Đã mở Auth thành công</div>
+                <div class="motion-stat-track mt-2">
+                    <span data-request-granted-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.GrantedRequests * 100d / Model.TotalRequests) : 0)%; background: #10b981;"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 05: TỪ CHỐI -->
+        <div class="col">
+            <div class="card border-0 shadow-sm rounded-4 h-100 motion-stat motion-stat--red position-relative overflow-hidden p-3" style="border-left: 4px solid #ef4444 !important;">
+                <div class="d-flex align-items-center justify-content-between text-muted mb-1">
+                    <span class="text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.8px;">05 / Từ Chối</span>
+                    <i class="bi bi-slash-circle text-danger" style="font-size: 1.1rem;"></i>
+                </div>
+                <div class="h2 fw-bold text-danger mb-1 font-serif" data-request-rejected>@Model.RejectedRequests</div>
+                <div class="text-muted small" style="font-size: 0.72rem;">Không hợp lệ / Trả lại</div>
+                <div class="motion-stat-track mt-2">
+                    <span data-request-rejected-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.RejectedRequests * 100d / Model.TotalRequests) : 0)%; background: #ef4444;"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- THANH BỘ LỌC TOÀN DIỆN (FULL-WIDTH FILTER CARD) -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3.5">
+            <form method="get" asp-action="Index" class="row g-3 align-items-center" data-request-filter-form>
+                <input type="hidden" name="page" value="@Model.PageNumber" data-request-page-input />
+
+                <!-- TÌM KIẾM NHANH -->
+                <div class="col-lg-5 col-md-6 col-12">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input asp-for="Keyword" class="form-control border-start-0 bg-light"
+                               placeholder="Tìm tên đăng nhập, họ tên nhân viên, hợp đồng..."
+                               autocomplete="off" data-request-search-input />
+                    </div>
+                </div>
+
+                <!-- LỌC THEO TRẠNG THÁI -->
+                <div class="col-lg-4 col-md-4 col-12">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3">
+                            <i class="bi bi-funnel"></i>
+                        </span>
+                        <select asp-for="TrangThai" asp-items="Model.StatusOptions"
+                                class="form-select border-start-0 bg-light text-dark fw-semibold"
+                                data-request-status-select>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- CÁC NÚT THAO TÁC BỘ LỌC -->
+                <div class="col-lg-3 col-md-2 col-12 d-flex align-items-center justify-content-end gap-2">
+                    <button type="submit" class="btn btn-hotel-primary rounded-3 px-3 py-2 fw-bold text-nowrap hover-lift">
+                        <i class="bi bi-funnel-fill me-1"></i> Áp dụng
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary rounded-3 px-3 py-2 text-nowrap hover-lift" title="Đặt lại bộ lọc" data-request-filter-reset>
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- KHUNG BẢNG DỮ LIỆU HÀNG ĐỢI (IN-PLACE TARGETED CONTAINER) -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden position-relative">
+        <!-- OVERLAY LOADING TẠI CHỖ (ZERO FULL-PAGE RELOAD) -->
+        <div id="requestLoadingOverlay" class="in-place-loading-overlay d-none">
+            <div class="spinner-border text-primary mb-2" role="status" style="width: 2.3rem; height: 2.3rem;">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+            <div class="fw-bold text-dark small font-serif">Đang cập nhật danh sách yêu cầu...</div>
+            <span class="text-muted small" style="font-size: 0.72rem;">Cập nhật cục bộ không chớp giật (In-Place Transition)</span>
+        </div>
+
+        <div id="requestTableContainer" class="in-place-enter in-place-container">
+            <partial name="_YeuCauTaiKhoanTable" model="Model" />
+        </div>
+    </div>
 </div>
 
+<!-- MODAL XÁC NHẬN TỪ CHỐI YÊU CẦU -->
 <dialog class="account-confirm-dialog" data-request-reject-dialog>
     <div class="account-confirm-card">
         <button type="button" class="account-confirm-close" data-request-reject-cancel aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
         <div class="account-confirm-icon"><i class="bi bi-slash-circle"></i></div>
         <small>Xác nhận từ chối</small>
         <h2 data-request-reject-title>Từ chối yêu cầu?</h2>
-        <p>Nhân sự sẽ thấy lý do này và có thể sửa rồi gửi lại. Từ chối mà không giải thích thì người lao động không biết cần sửa gì.</p>
+        <p>Nhân sự sẽ thấy lý do này và có thể sửa rồi gửi lại. Vui lòng nêu rõ lý do để bộ phận nhân sự điều chỉnh hồ sơ.</p>
         <form asp-action="Reject" method="post" data-request-reject-form>
             @Html.AntiForgeryToken()
             <input type="hidden" name="id" value="" data-request-reject-id />
             <label class="account-confirm-reason">
                 <span>Lý do từ chối <b>*</b></span>
-                <textarea rows="3" maxlength="500" name="lyDo" data-request-reject-reason placeholder="Nhập lý do từ chối yêu cầu"></textarea>
+                <textarea rows="3" maxlength="500" name="lyDo" data-request-reject-reason placeholder="Nhập lý do từ chối yêu cầu (ví dụ: Thiếu thông tin số điện thoại, email trùng lặp...)"></textarea>
                 <small data-request-reject-reason-error>Vui lòng nhập lý do trước khi xác nhận.</small>
             </label>
             <div class="account-confirm-actions">
@@ -177,14 +279,6 @@
             const rejectReason = document.querySelector("[data-request-reject-reason]");
             const rejectReasonError = document.querySelector("[data-request-reject-reason-error]");
             const rejectTitle = document.querySelector("[data-request-reject-title]");
-
-            // Số KPI đang hiển thị, dùng làm điểm xuất cho countUp. Nếu không nhớ
-            // giá trị cũ thì hiệu ứng đếm số sẽ nhảy từ 0 mỗi lần — thấy giống
-            // đổi số đột ngột, đúng thứ mục 5 của coding-style cấm.
-            const readCurrent = (selector) => {
-                const node = document.querySelector(selector);
-                return node ? Number(node.textContent || 0) : 0;
-            };
 
             const animateCountUp = (element, startValue, targetValue, duration = 450) => {
                 if (!element) return;
@@ -243,8 +337,6 @@
                 setTimeout(closeToast, 5200);
             };
 
-            // Đếm số KPI bằng đúng phép tính của server, không tự cộng ở client:
-            // số liệu phải khớp phân tát quyền, mà phân tát quyền chỉ server mới biết.
             const updateStatistics = (data) => {
                 const pairs = [
                     ["[data-request-total]", data.totalRequests],
@@ -277,14 +369,12 @@
                     resultCount.textContent = String(data.totalFilteredRequests);
                 }
 
-                // Hào quang vàng kim gợi ý dữ liệu vừa được tính lại (mục 5).
                 document.querySelectorAll(".motion-stat").forEach((card, index) => {
                     card.classList.add("kpi-pulse-active");
                     setTimeout(() => card.classList.remove("kpi-pulse-active"), 520 + index * 70);
                 });
             };
 
-            // Lọc / phân trang: chỉ nạp lại đúng khung bảng, không reload trang.
             const loadRequests = async (overrideUrl = null) => {
                 if (!tableContainer) return;
 
@@ -331,7 +421,6 @@
                         totalFilteredRequests: Number(headers.get("X-Result-Count") || 0)
                     });
 
-                    // Đồng bộ URL để link vẫn copy được mà không reload trang.
                     window.history.replaceState({}, "", requestUrl.toString());
 
                     window.HotelMotion?.applyEntrance?.(tableContainer);
@@ -360,9 +449,6 @@
                 void loadRequests();
             });
 
-            // ── Hành động nhận việc / cấp tài khoản ──────────────────────────
-            // Gửi qua fetch kèm anti-forgery token để không reload toàn trang;
-            // server trả về số đếm mới để KPI đếm lại ngay.
             const submitActionForm = async (form) => {
                 const button = form.querySelector("button[type='submit']");
                 if (button) button.disabled = true;
@@ -389,7 +475,6 @@
                 }
             };
 
-            // Bảng được nạp lại bằng fetch nên phải gắn lại sự kiện sau mỗi lần.
             const bindActionForms = () => {
                 tableContainer?.querySelectorAll("[data-request-action-form]").forEach((form) => {
                     form.addEventListener("submit", (event) => {
@@ -397,11 +482,21 @@
                         void submitActionForm(form);
                     });
                 });
+
+                tableContainer?.querySelectorAll("[data-request-page]").forEach((button) => {
+                    button.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        const page = button.dataset.requestPage;
+                        if (!page) return;
+                        const pageInput = filterForm?.querySelector("[data-request-page-input]");
+                        if (pageInput) pageInput.value = page;
+                        void loadRequests();
+                    });
+                });
             };
 
             bindActionForms();
 
-            // ── Từ chối: bắt buộc có lý do ──────────────────────────────────
             const closeRejectDialog = () => {
                 if (rejectDialog?.open) rejectDialog.close();
                 if (rejectReasonError) rejectReasonError.hidden = true;

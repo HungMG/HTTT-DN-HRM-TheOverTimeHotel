@@ -4,13 +4,14 @@
     var currentAccountId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedId)
         ? parsedId
         : 0;
-    string VietnameseRoleName(string roleName) => roleName switch
+    (string RoleClass, string RoleIcon, string RoleName) GetRoleBadgeInfo(string roleName) => roleName switch
     {
-        "Admin" => "Quản trị viên",
-        "HR" => "Nhân sự",
-        "Manager" => "Quản lý",
-        "Employee" => "Nhân viên",
-        _ => roleName
+        "Admin" => ("role-badge-luxury--admin", "bi-shield-fill-check", "Quản trị viên"),
+        "IT" => ("role-badge-luxury--it", "bi-terminal-fill", "Công nghệ thông tin"),
+        "HR" => ("role-badge-luxury--hr", "bi-person-badge-fill", "Nhân sự"),
+        "Manager" => ("role-badge-luxury--manager", "bi-star-fill", "Quản lý"),
+        "Employee" => ("role-badge-luxury--employee", "bi-person-vcard-fill", "Nhân viên"),
+        _ => ("role-badge-luxury--employee", "bi-person-fill", roleName)
     };
     var firstAccount = Model.TotalFilteredAccounts == 0 ? 0 : ((Model.PageNumber - 1) * Model.PageSize) + 1;
     var lastAccount = Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredAccounts);
@@ -18,45 +19,50 @@
     var lastPage = Math.Min(Model.TotalPages, Model.PageNumber + 2);
 }
 
-<div class="account-sequence-toolbar">
-    <div class="sequence-title">
-        <span class="sequence-play"><i class="bi bi-play-fill"></i></span>
+<!-- TIÊU ĐỀ BẢNG DỮ LIỆU & BADGE ĐẾM SỐ LƯỢNG -->
+<div class="p-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3 bg-white">
+    <div class="d-flex align-items-center gap-2">
+        <span class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+            <i class="bi bi-people" style="font-size: 0.95rem;"></i>
+        </span>
         <div>
-            <small>Luồng quản lý truy cập</small>
-            <div class="sequence-title-line">
-                <strong>Danh sách tài khoản</strong>
-                <span class="sequence-result-badge"><i class="bi bi-record-circle"></i> <b data-account-result-count>@Model.TotalFilteredAccounts</b> kết quả</span>
-            </div>
+            <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.95rem;">Danh Sách Tài Khoản Người Dùng</h6>
+            <small class="text-muted" style="font-size: 0.72rem;">Phân quyền tập trung &amp; giám sát bảo mật hệ thống</small>
         </div>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 ms-2" style="font-size: 0.72rem;">
+            <i class="bi bi-record-circle me-1"></i><b data-account-result-count>@Model.TotalFilteredAccounts</b> kết quả
+        </span>
     </div>
-    <div class="account-sequence-actions">
-        <button type="button" class="account-audit-open account-audit-open--table" data-account-audit-open aria-haspopup="dialog" aria-controls="accountAuditDialog" aria-label="Mở nhật ký quản trị">
-            <i class="bi bi-journal-text" aria-hidden="true"></i><span>Nhật ký</span><b data-account-audit-trigger-count>@Model.TotalAuditLogs</b>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fw-semibold hover-lift" data-account-audit-open aria-haspopup="dialog" aria-controls="accountAuditDialog" aria-label="Mở nhật ký quản trị">
+            <i class="bi bi-journal-text me-1 text-primary"></i>Nhật ký <span class="badge bg-secondary text-white rounded-pill ms-1" data-account-audit-trigger-count>@Model.TotalAuditLogs</span>
         </button>
     </div>
 </div>
 
-<div class="account-table-wrap">
-    <table class="account-table">
-        <thead>
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 custom-luxury-table">
+        <thead class="table-light text-uppercase text-secondary" style="font-size: 0.7rem; letter-spacing: 0.5px;">
             <tr>
-                <th>Tài khoản</th>
-                <th>Tên đăng nhập</th>
-                <th>Đơn vị công tác</th>
-                <th>Vai trò</th>
-                <th>Trạng thái</th>
-                <th><span class="visually-hidden">Thao tác</span></th>
+                <th class="ps-3 py-3">Nhân sự &amp; Email</th>
+                <th class="py-3">Tên đăng nhập</th>
+                <th class="py-3">Đơn vị công tác</th>
+                <th class="py-3">Vai trò (RBAC)</th>
+                <th class="py-3">Trạng thái</th>
+                <th class="pe-3 py-3 text-end">Thao tác</th>
             </tr>
         </thead>
         <tbody>
             @if (Model.Accounts.Count == 0)
             {
                 <tr data-account-empty-row>
-                    <td colspan="6">
-                        <div class="account-empty-state">
-                            <div><i class="bi bi-person-x"></i></div>
-                            <strong>Không có tài khoản phù hợp</strong>
-                            <span>Thử thay đổi bộ lọc hoặc tạo một tài khoản mới.</span>
+                    <td colspan="6" class="text-center py-5">
+                        <div class="d-flex flex-column align-items-center justify-content-center py-4">
+                            <div class="rounded-circle bg-light p-3 text-muted mb-2">
+                                <i class="bi bi-person-x" style="font-size: 2rem;"></i>
+                            </div>
+                            <strong class="text-dark">Không tìm thấy tài khoản phù hợp</strong>
+                            <span class="text-muted small mt-1">Thử thay đổi bộ lọc tìm kiếm hoặc tạo thêm tài khoản mới.</span>
                         </div>
                     </td>
                 </tr>
@@ -67,53 +73,55 @@
                 @foreach (var account in Model.Accounts)
                 {
                     rowIndex++;
-                    var roleClass = account.RoleName switch
-                    {
-                        "Admin" => "role-chip--admin",
-                        "HR" => "role-chip--hr",
-                        "Manager" => "role-chip--manager",
-                        _ => "role-chip--employee"
-                    };
-                    var roleDisplayName = VietnameseRoleName(account.RoleName);
+                    var (roleClass, roleIcon, roleDisplayName) = GetRoleBadgeInfo(account.RoleName);
                     var isCurrentAccount = account.AccountId == currentAccountId;
-                    <tr class="@(!account.IsActive ? "is-locked" : null)" style="--row-delay: @(rowIndex * 35)ms" data-account-row="@account.AccountId">
-                        <td>
-                            <div class="account-identity">
-                                <div class="account-avatar">@(account.EmployeeName.Length > 0 ? account.EmployeeName[..1].ToUpperInvariant() : "N")</div>
+                    <tr class="@(!account.IsActive ? "is-locked table-light" : null)" style="--row-delay: @(rowIndex * 30)ms" data-account-row="@account.AccountId">
+                        <td class="ps-3 py-2.5">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="account-avatar flex-shrink-0">@(account.EmployeeName.Length > 0 ? account.EmployeeName[..1].ToUpperInvariant() : "N")</div>
                                 <div>
-                                    <strong>@account.EmployeeName</strong>
-                                    <span>@account.Email</span>
+                                    <div class="fw-bold text-dark font-serif" style="font-size: 0.88rem;">@account.EmployeeName</div>
+                                    <div class="small text-muted font-sans" style="font-size: 0.75rem;">@account.Email</div>
                                 </div>
                             </div>
                         </td>
-                        <td>
-                            <div class="account-username"><i class="bi bi-code-slash"></i>@account.Username</div>
-                            @if (isCurrentAccount)
-                            {
-                                <span class="account-you-chip">Hiện tại</span>
-                            }
+                        <td class="py-2.5">
+                            <div class="d-flex align-items-center gap-2 font-monospace small fw-semibold text-dark">
+                                <code class="text-primary bg-primary bg-opacity-10 px-2 py-0.5 rounded-2" style="font-size: 0.78rem;">@@@account.Username</code>
+                                @if (isCurrentAccount)
+                                {
+                                    <span class="badge bg-primary text-white rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">Hiện tại</span>
+                                }
+                            </div>
                         </td>
-                        <td>
-                            <div class="account-work-unit"><strong>@account.Position</strong><span>@account.Department</span></div>
+                        <td class="py-2.5">
+                            <div class="fw-semibold text-dark small">@account.Position</div>
+                            <div class="text-muted" style="font-size: 0.72rem;">@account.Department</div>
                         </td>
-                        <td><span class="role-chip @roleClass"><i></i>@roleDisplayName</span></td>
-                        <td>
-                            <span class="state-chip @(account.IsActive ? "state-chip--active" : "state-chip--locked")" data-account-state>
-                                <i></i>@(account.IsActive ? "Hoạt động" : "Đã khóa")
+                        <td class="py-2.5">
+                            <span class="role-badge-luxury @roleClass">
+                                <i class="bi @roleIcon"></i>@roleDisplayName
                             </span>
                         </td>
-                        <td>
-                            <div class="account-row-actions">
-                                <a asp-action="Edit" asp-route-id="@account.AccountId" title="Chỉnh sửa"><i class="bi bi-sliders"></i></a>
+                        <td class="py-2.5">
+                            <span class="state-chip @(account.IsActive ? "state-chip--active" : "state-chip--locked")" data-account-state>
+                                <i></i>@(account.IsActive ? "Đang hoạt động" : "Đã khóa")
+                            </span>
+                        </td>
+                        <td class="pe-3 py-2.5 text-end">
+                            <div class="d-inline-flex align-items-center gap-2">
+                                <a asp-action="Edit" asp-route-id="@account.AccountId" class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1 hover-lift" title="Chỉnh sửa tài khoản" style="font-size: 0.78rem;">
+                                    <i class="bi bi-pencil-square text-primary"></i> Sửa
+                                </a>
                                 <form asp-action="ToggleStatus" asp-route-id="@account.AccountId" method="post"
-                                      class="account-toggle-form"
+                                      class="account-toggle-form d-inline"
                                       data-account-id="@account.AccountId"
                                       data-account-name="@account.EmployeeName"
                                       data-account-mode="@(account.IsActive ? "lock" : "unlock")">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="reason" value="" data-account-reason-value />
-                                    <button type="submit" title="@(account.IsActive ? "Khóa tài khoản" : "Mở khóa tài khoản")" disabled="@isCurrentAccount">
-                                        <i class="bi @(account.IsActive ? "bi-pause-fill" : "bi-play-fill")"></i>
+                                    <button type="submit" class="btn btn-sm @(account.IsActive ? "btn-outline-danger" : "btn-outline-success") rounded-3 px-2 py-1 hover-lift" title="@(account.IsActive ? "Khóa tài khoản" : "Mở khóa tài khoản")" disabled="@isCurrentAccount" style="font-size: 0.78rem;">
+                                        <i class="bi @(account.IsActive ? "bi-lock-fill" : "bi-unlock-fill") me-1"></i>@(account.IsActive ? "Khóa" : "Mở")
                                     </button>
                                 </form>
                             </div>
@@ -127,31 +135,37 @@
 
 @if (Model.TotalPages > 1)
 {
-    <nav class="account-pagination" aria-label="Phân trang danh sách tài khoản">
-        <span class="account-pagination-summary">Hiển thị @firstAccount–@lastAccount / @Model.TotalFilteredAccounts tài khoản</span>
-        <div class="account-pagination-actions">
-            <button type="button" data-account-page="@(Model.PageNumber - 1)" disabled="@(Model.PageNumber == 1)" aria-label="Trang trước"><i class="bi bi-chevron-left"></i></button>
+    <div class="p-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-2 bg-light bg-opacity-50">
+        <span class="small text-muted font-sans" style="font-size: 0.78rem;">
+            Hiển thị <b>@firstAccount–@lastAccount</b> trên tổng số <b>@Model.TotalFilteredAccounts</b> tài khoản
+        </span>
+        <div class="d-flex align-items-center gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2.5 py-1" data-account-page="@(Model.PageNumber - 1)" disabled="@(Model.PageNumber == 1)" aria-label="Trang trước">
+                <i class="bi bi-chevron-left"></i>
+            </button>
             @if (firstPage > 1)
             {
-                <button type="button" data-account-page="1">1</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2.5 py-1" data-account-page="1">1</button>
                 @if (firstPage > 2)
                 {
-                    <span aria-hidden="true">…</span>
+                    <span class="px-1 text-muted">…</span>
                 }
             }
-            @for (var pageIndex = firstPage; pageIndex <= lastPage; pageIndex++)
+            @for (var p = firstPage; p <= lastPage; p++)
             {
-                <button type="button" data-account-page="@pageIndex" class="@(pageIndex == Model.PageNumber ? "is-current" : null)" aria-current="@(pageIndex == Model.PageNumber ? "page" : null)">@pageIndex</button>
+                <button type="button" class="btn btn-sm @(p == Model.PageNumber ? "btn-hotel-primary fw-bold" : "btn-outline-secondary") rounded-2 px-2.5 py-1" data-account-page="@p">@p</button>
             }
             @if (lastPage < Model.TotalPages)
             {
                 @if (lastPage < Model.TotalPages - 1)
                 {
-                    <span aria-hidden="true">…</span>
+                    <span class="px-1 text-muted">…</span>
                 }
-                <button type="button" data-account-page="@Model.TotalPages">@Model.TotalPages</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2.5 py-1" data-account-page="@Model.TotalPages">@Model.TotalPages</button>
             }
-            <button type="button" data-account-page="@(Model.PageNumber + 1)" disabled="@(Model.PageNumber == Model.TotalPages)" aria-label="Trang sau"><i class="bi bi-chevron-right"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2.5 py-1" data-account-page="@(Model.PageNumber + 1)" disabled="@(Model.PageNumber == Model.TotalPages)" aria-label="Trang sau">
+                <i class="bi bi-chevron-right"></i>
+            </button>
         </div>
-    </nav>
+    </div>
 }

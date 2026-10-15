@@ -3,180 +3,320 @@
     ViewData["Title"] = "Tạo tài khoản";
 }
 
-<div class="account-workspace account-workspace--bleed account-form-workspace">
-    <div class="account-toolbar account-reveal">
-        <a asp-action="Index" class="account-icon-action" aria-label="Quay lại danh sách"><i class="bi bi-arrow-left"></i></a>
-        <div class="account-toolbar-note">
-            <i class="bi bi-person-plus"></i>
-            <span>Liên kết nhân viên với một tài khoản và thiết lập quyền truy cập.</span>
-        </div>
-        <div class="account-step-indicator" aria-label="Tiến trình cấu hình">
-            <span class="is-active">1</span><i></i><span class="is-active">2</span><i></i><span>3</span>
+<div class="account-workspace account-workspace--bleed py-2">
+    <!-- THANH ĐIỀU HƯỚNG & TIÊU ĐỀ TRANG -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3.5 py-2 fw-semibold hover-lift d-flex align-items-center gap-2" style="font-size: 0.82rem;">
+                <i class="bi bi-arrow-left fs-6"></i> Quay lại danh sách
+            </a>
+            <div>
+                <h4 class="mb-0 fw-bold font-serif text-dark" style="font-size: 1.15rem;">Cấp Phát Tài Khoản Người Dùng</h4>
+                <small class="text-muted" style="font-size: 0.75rem;">Thiết lập tài khoản đăng nhập hệ thống, liên kết nhân sự và gán vai trò RBAC</small>
+            </div>
         </div>
     </div>
 
     @if (!ViewData.ModelState.IsValid)
     {
-        <div class="account-popup-stack" aria-live="assertive">
-            <div class="account-popup account-popup--danger" data-account-toast role="alert">
-                <div class="account-popup-icon"><i class="bi bi-exclamation-lg"></i></div>
-                <div class="account-popup-copy"><small>Chưa thể tạo tài khoản</small><strong>Vui lòng kiểm tra và sửa các trường được đánh dấu bên dưới.</strong></div>
-                <button type="button" data-account-toast-close aria-label="Đóng thông báo"><i class="bi bi-x-lg"></i></button>
-                <span class="account-popup-progress"></span>
+        <div class="alert alert-danger border-0 shadow-sm rounded-4 d-flex align-items-start gap-3 p-3 mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-5 text-danger flex-shrink-0 mt-0.5"></i>
+            <div class="flex-grow-1">
+                <div class="fw-bold text-dark small mb-1">Chưa thể tạo tài khoản</div>
+                <div asp-validation-summary="ModelOnly" class="small text-danger"></div>
             </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
 
-    <form asp-action="Create" method="post" class="account-inspector-layout account-reveal">
+    <form asp-action="Create" method="post" id="createAccountForm">
         @Html.AntiForgeryToken()
-        <div class="account-form-main">
-            <div asp-validation-summary="ModelOnly" class="account-validation" role="alert"></div>
 
-            <section class="inspector-card">
-                <div class="inspector-card-heading">
-                    <span class="inspector-index">01</span>
-                    <div><small>Thông tin nguồn</small><h2>Nhân viên &amp; vai trò</h2></div>
-                    <i class="bi bi-person-badge"></i>
-                </div>
-                <div class="inspector-card-body">
-                    <div class="account-form-grid account-form-grid--7-5">
-                        <div class="account-field">
-                            <label asp-for="EmployeeId"><span>Nhân viên liên kết</span><small>Bắt buộc</small></label>
-                            <div class="account-select-wrap">
-                                <select asp-for="EmployeeId" asp-items="Model.EmployeeOptions">
-                                    <option value="">Chọn nhân viên chưa có tài khoản</option>
-                                </select>
-                                <i class="bi bi-chevron-expand"></i>
+        <div class="row g-4">
+            <!-- CỘT CHÍNH: FORM NHẬP LIỆU -->
+            <div class="col-lg-8 col-md-12">
+                <!-- KHỐI 1: NHÂN SỰ & VAI TRÒ -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom luxury-card-header d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0 me-1" style="width: 42px; height: 42px; font-size: 1.2rem;">
+                                <i class="bi bi-person-badge-fill"></i>
+                            </span>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.96rem;">01. Nhân Sự Liên Kết &amp; Vai Trò Hệ Thống</h6>
+                                <small class="text-muted" style="font-size: 0.74rem;">Chỉ định nhân viên được cấp quyền truy cập và phân cấp vai trò</small>
                             </div>
-                            <span asp-validation-for="EmployeeId" class="account-field-error"></span>
-                            @if (Model.EmployeeOptions.Count == 0)
-                            {
-                                <div class="account-field-hint account-field-hint--warning"><i class="bi bi-info-circle"></i>Tất cả nhân viên đã có tài khoản.</div>
-                            }
                         </div>
-                        <div class="account-field">
-                            <label asp-for="RoleId"><span>Vai trò</span><small>RBAC</small></label>
-                            <div class="account-select-wrap">
-                                <select asp-for="RoleId" asp-items="Model.RoleOptions">
-                                    <option value="">Chọn vai trò</option>
-                                </select>
-                                <i class="bi bi-chevron-expand"></i>
+                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5" style="font-size: 0.72rem;">Bước 1/2</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-7 col-12">
+                                <label asp-for="EmployeeId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Nhân viên liên kết <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
+                                        <i class="bi bi-person-fill"></i>
+                                    </span>
+                                    <select asp-for="EmployeeId" asp-items="Model.EmployeeOptions" class="form-select border-start-0 py-2 ps-3 rounded-end-3" id="EmployeeId">
+                                        <option value="">-- Chọn nhân viên chưa có tài khoản --</option>
+                                    </select>
+                                </div>
+                                <span asp-validation-for="EmployeeId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                                @if (Model.EmployeeOptions.Count == 0)
+                                {
+                                    <div class="p-2.5 mt-2 rounded-3 bg-warning bg-opacity-10 border border-warning-subtle text-warning-emphasis small d-flex align-items-center gap-2" style="font-size: 0.75rem;">
+                                        <i class="bi bi-info-circle-fill flex-shrink-0 me-1"></i>
+                                        <span>Tất cả nhân viên trong khách sạn hiện đã được cấp tài khoản hệ thống.</span>
+                                    </div>
+                                }
                             </div>
-                            <span asp-validation-for="RoleId" class="account-field-error"></span>
+                            <div class="col-md-5 col-12">
+                                <label asp-for="RoleId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Vai trò (RBAC) <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
+                                        <i class="bi bi-shield-check"></i>
+                                    </span>
+                                    <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select border-start-0 py-2 ps-3 rounded-end-3" id="RoleId">
+                                        <option value="">-- Chọn vai trò --</option>
+                                    </select>
+                                </div>
+                                <span asp-validation-for="RoleId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <section class="inspector-card">
-                <div class="inspector-card-heading">
-                    <span class="inspector-index">02</span>
-                    <div><small>Thông tin xác thực</small><h2>Thông tin đăng nhập</h2></div>
-                    <i class="bi bi-key"></i>
-                </div>
-                <div class="inspector-card-body">
-                    <div class="account-form-grid">
-                        <div class="account-field account-field--full">
-                            <label asp-for="Username"><span>Tên đăng nhập</span><small>Duy nhất</small></label>
-                            <div class="account-input-wrap">
-                                <i class="bi bi-at"></i>
-                                <input asp-for="Username" autocomplete="off" placeholder="Ví dụ: nv.nguyenvana" />
+                <!-- KHỐI 2: THÔNG TIN ĐĂNG NHẬP -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom luxury-card-header d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="rounded-circle bg-warning bg-opacity-10 text-warning-emphasis d-flex align-items-center justify-content-center flex-shrink-0 me-1" style="width: 42px; height: 42px; font-size: 1.2rem;">
+                                <i class="bi bi-key-fill" style="color: #b45309;"></i>
+                            </span>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.96rem;">02. Thông Tin Đăng Nhập &amp; Mật Khẩu Khởi Tạo</h6>
+                                <small class="text-muted" style="font-size: 0.74rem;">Thiết lập thông tin xác thực an toàn chuẩn mã hóa Argon2id</small>
                             </div>
-                            <span asp-validation-for="Username" class="account-field-error"></span>
                         </div>
-                        <div class="account-field">
-                            <label asp-for="Password"><span>Mật khẩu</span><small>Tối thiểu 8 ký tự</small></label>
-                            <div class="account-input-wrap account-password-wrap">
-                                <i class="bi bi-lock"></i>
-                                <input asp-for="Password" autocomplete="new-password" />
-                                <button type="button" class="password-visibility" aria-label="Hiện hoặc ẩn mật khẩu"><i class="bi bi-eye"></i></button>
+                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5" style="font-size: 0.72rem;">Bước 2/2</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label asp-for="Username" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                Tên đăng nhập <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 font-monospace fw-bold px-3">@@</span>
+                                <input asp-for="Username" class="form-control border-start-0 py-2 ps-3 rounded-end-3" placeholder="Ví dụ: nv.nguyenvana" autocomplete="off" id="Username" />
                             </div>
-                            <span asp-validation-for="Password" class="account-field-error"></span>
+                            <span asp-validation-for="Username" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
                         </div>
-                        <div class="account-field">
-                            <label asp-for="ConfirmPassword"><span>Xác nhận mật khẩu</span><small>Trùng khớp</small></label>
-                            <div class="account-input-wrap account-password-wrap">
-                                <i class="bi bi-shield-lock"></i>
-                                <input asp-for="ConfirmPassword" autocomplete="new-password" />
-                                <button type="button" class="password-visibility" aria-label="Hiện hoặc ẩn mật khẩu"><i class="bi bi-eye"></i></button>
+
+                        <div class="row g-3">
+                            <div class="col-md-6 col-12">
+                                <label asp-for="Password" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Mật khẩu khởi tạo <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </span>
+                                    <input asp-for="Password" type="password" class="form-control border-start-0 border-end-0 py-2 ps-3 password-field" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự..." />
+                                    <button type="button" class="btn btn-outline-secondary border-start-0 rounded-end-3 password-toggle" aria-label="Hiện/ẩn mật khẩu">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                <span asp-validation-for="Password" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
                             </div>
-                            <span asp-validation-for="ConfirmPassword" class="account-field-error"></span>
+                            <div class="col-md-6 col-12">
+                                <label asp-for="ConfirmPassword" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Xác nhận mật khẩu <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
+                                        <i class="bi bi-shield-lock-fill"></i>
+                                    </span>
+                                    <input asp-for="ConfirmPassword" type="password" class="form-control border-start-0 border-end-0 py-2 ps-3 password-field" autocomplete="new-password" placeholder="Nhập lại mật khẩu..." />
+                                    <button type="button" class="btn btn-outline-secondary border-start-0 rounded-end-3 password-toggle" aria-label="Hiện/ẩn mật khẩu">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                <span asp-validation-for="ConfirmPassword" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <section class="inspector-card inspector-card--compact">
-                <div class="inspector-card-body">
-                    <div class="account-switch-row">
-                        <div>
-                            <span class="state-chip state-chip--active"><i></i> Trạng thái hoạt động</span>
-                            <strong>Kích hoạt ngay sau khi tạo</strong>
-                            <small>Tài khoản có thể đăng nhập ngay khi được lưu.</small>
+                <!-- KHỐI 3: TRẠNG THÁI HOẠT ĐỘNG -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center justify-content-between p-3 rounded-3 bg-light bg-opacity-75 border">
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                    <i class="bi bi-check-circle-fill fs-5"></i>
+                                </span>
+                                <div>
+                                    <div class="fw-bold text-dark small">Kích hoạt tài khoản ngay sau khi tạo</div>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Tài khoản có thể đăng nhập vào Web Quản Trị &amp; Mobile App ngay khi bấm Lưu.</small>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch m-0">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" role="switch" style="width: 2.8rem; height: 1.4rem; cursor: pointer;" checked>
+                            </div>
                         </div>
-                        <label class="account-switch">
-                            <input asp-for="IsActive" />
-                            <span></span>
-                        </label>
                     </div>
                 </div>
-            </section>
 
-            <div class="account-form-actions">
-                <a asp-action="Index">Hủy</a>
-                <button type="submit" disabled="@(Model.EmployeeOptions.Count == 0)"><i class="bi bi-plus-lg"></i>Tạo tài khoản</button>
+                <!-- CỤM NÚT THAO TÁC CUỐI FORM -->
+                <div class="d-flex align-items-center justify-content-between gap-3 pt-2">
+                    <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 py-2.5 fw-semibold hover-lift d-inline-flex align-items-center gap-2" style="font-size: 0.85rem;">
+                        <i class="bi bi-x-circle fs-6"></i> Hủy bỏ
+                    </a>
+                    <button type="submit" class="btn btn-hotel-primary rounded-pill px-4 py-2.5 fw-bold shadow-sm hover-lift d-flex align-items-center gap-2" disabled="@(Model.EmployeeOptions.Count == 0)" style="font-size: 0.85rem;">
+                        <i class="bi bi-plus-lg fs-6"></i> Tạo Tài Khoản
+                    </button>
+                </div>
+            </div>
+
+            <!-- CỘT PHỤ: THẺ XEM TRƯỚC HỒ SƠ 5★ -->
+            <div class="col-lg-4 col-md-12">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden position-sticky" style="top: 20px;">
+                    <!-- HEADER CARD XEM TRƯỚC -->
+                    <div class="luxury-preview-header text-white d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-stars fs-6 me-1" style="color: #fde047;"></i>
+                            <span class="small fw-bold font-serif text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Xem Trước Hồ Sơ</span>
+                        </div>
+                        <span class="badge rounded-pill px-3 py-1.5" style="background: rgba(255,255,255,0.18); color: #ffffff !important; font-size: 0.72rem; font-weight: 600;">Tài khoản mới</span>
+                    </div>
+
+                    <!-- THÂN THẺ XEM TRƯỚC -->
+                    <div class="card-body p-4 text-center">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-4 shadow-sm mb-3"
+                             style="width: 64px; height: 64px; background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); color: #ffffff; border: 2px solid rgba(212,175,55,0.8); font-size: 1.5rem; font-weight: 700; font-family: var(--font-serif);"
+                             id="identityAvatarPreview">
+                            N
+                        </div>
+                        <h5 class="fw-bold text-dark font-serif mb-1" id="identityNamePreview" style="font-size: 1rem;">Chưa chọn nhân viên</h5>
+                        <div class="small text-muted font-monospace mb-2" id="identityUsernamePreview">@@chua_dat_ten</div>
+
+                        <div class="d-flex justify-content-center mb-3">
+                            <span class="role-badge-luxury role-badge-luxury--employee" id="rolePreview">
+                                <i class="bi bi-person-fill me-2"></i> Chưa cấp vai trò
+                            </span>
+                        </div>
+
+                        <hr class="opacity-10 my-3" />
+
+                        <!-- CHECKLIST ĐẶC QUYỀN HỆ THỐNG -->
+                        <div class="text-start small">
+                            <div class="d-flex align-items-center justify-content-between py-1.5 border-bottom border-light">
+                                <span class="text-muted d-flex align-items-center"><i class="bi bi-check2-circle text-success me-2 fs-6"></i> Đăng nhập hệ thống:</span>
+                                <span class="fw-bold text-success">Đã kích hoạt</span>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between py-1.5 border-bottom border-light">
+                                <span class="text-muted d-flex align-items-center"><i class="bi bi-clock-history text-primary me-2 fs-6"></i> Thời hạn phiên:</span>
+                                <span class="fw-semibold text-dark">8 giờ làm việc</span>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between py-1.5 border-bottom border-light">
+                                <span class="text-muted d-flex align-items-center"><i class="bi bi-diagram-3 text-warning me-2 fs-6"></i> Phân quyền:</span>
+                                <span class="fw-semibold text-dark">Theo vai trò RBAC</span>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between py-1.5">
+                                <span class="text-muted d-flex align-items-center"><i class="bi bi-database-check text-info me-2 fs-6"></i> Supabase Cloud:</span>
+                                <span class="fw-semibold text-dark">Đồng bộ tự động</span>
+                            </div>
+                        </div>
+
+                        <!-- GHI CHÚ BẢO MẬT -->
+                        <div class="p-3 rounded-3 bg-light mt-3 text-start text-muted d-flex align-items-start gap-2" style="font-size: 0.72rem; line-height: 1.4;">
+                            <i class="bi bi-info-circle-fill text-primary flex-shrink-0 mt-0.5 me-1"></i>
+                            <span>Quyền hạn và tài khoản được cấp phát có hiệu lực ngay lập tức sau khi nhấn tạo.</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <aside class="account-preview-panel">
-            <div class="account-panel-heading">
-                <div><span>Xem trước</span><strong>Xem trước quyền truy cập</strong></div>
-                <i class="bi bi-stars"></i>
-            </div>
-            <div class="identity-preview">
-                <div class="identity-preview-orbit"><span><i class="bi bi-person"></i></span></div>
-                <small>Tài khoản mới</small>
-                <strong id="identityNamePreview">Chưa chọn nhân viên</strong>
-                <span id="rolePreview" class="role-chip role-chip--employee"><i></i>Chưa cấp vai trò</span>
-            </div>
-            <div class="permission-stack">
-                <div><i class="bi bi-check2"></i><span>Đăng nhập hệ thống</span><small>Đã bật</small></div>
-                <div><i class="bi bi-check2"></i><span>Cookie bảo mật</span><small>8 giờ</small></div>
-                <div><i class="bi bi-diagram-3"></i><span>Phạm vi quyền</span><small>Theo vai trò</small></div>
-            </div>
-            <div class="preview-note"><i class="bi bi-lightning-charge-fill"></i><span>Quyền truy cập được áp dụng ngay khi tài khoản được tạo.</span></div>
-        </aside>
     </form>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        (() => {
-            const employee = document.getElementById('EmployeeId');
-            const role = document.getElementById('RoleId');
-            const namePreview = document.getElementById('identityNamePreview');
-            const rolePreview = document.getElementById('rolePreview');
+        document.addEventListener("DOMContentLoaded", () => {
+            const employeeSelect = document.getElementById("EmployeeId");
+            const roleSelect = document.getElementById("RoleId");
+            const usernameInput = document.getElementById("Username");
 
-            const syncPreview = () => {
-                namePreview.textContent = employee?.selectedOptions[0]?.text || 'Chưa chọn nhân viên';
-                const roleName = role?.selectedOptions[0]?.text || 'Chưa cấp vai trò';
-                const normalizedRoleName = roleName.toLocaleLowerCase('vi-VN');
-                rolePreview.className = `role-chip role-chip--${normalizedRoleName === 'quản trị viên' ? 'admin' : normalizedRoleName === 'nhân sự' ? 'hr' : normalizedRoleName === 'quản lý' ? 'manager' : 'employee'}`;
-                rolePreview.innerHTML = `<i></i>${roleName}`;
+            const namePreview = document.getElementById("identityNamePreview");
+            const usernamePreview = document.getElementById("identityUsernamePreview");
+            const rolePreview = document.getElementById("rolePreview");
+            const avatarPreview = document.getElementById("identityAvatarPreview");
+
+            const roleBadges = {
+                "admin": { cls: "role-badge-luxury--admin", icon: "bi-shield-fill-check", name: "Quản trị viên" },
+                "it": { cls: "role-badge-luxury--it", icon: "bi-terminal-fill", name: "Công nghệ thông tin" },
+                "hr": { cls: "role-badge-luxury--hr", icon: "bi-person-badge-fill", name: "Nhân sự" },
+                "manager": { cls: "role-badge-luxury--manager", icon: "bi-star-fill", name: "Quản lý" },
+                "employee": { cls: "role-badge-luxury--employee", icon: "bi-person-vcard-fill", name: "Nhân viên" }
             };
 
-            employee?.addEventListener('change', syncPreview);
-            role?.addEventListener('change', syncPreview);
+            const syncPreview = () => {
+                const selectedEmpText = employeeSelect?.options[employeeSelect.selectedIndex]?.text || "";
+                if (employeeSelect && employeeSelect.value && selectedEmpText) {
+                    namePreview.textContent = selectedEmpText;
+                    avatarPreview.textContent = selectedEmpText.trim().charAt(0).toUpperCase();
+                } else {
+                    namePreview.textContent = "Chưa chọn nhân viên";
+                    avatarPreview.textContent = "N";
+                }
+
+                const usernameVal = usernameInput?.value?.trim();
+                usernamePreview.textContent = usernameVal ? `@@${usernameVal}` : "@@chua_dat_ten";
+
+                const selectedRoleText = roleSelect?.options[roleSelect.selectedIndex]?.text?.toLowerCase() || "";
+                let matched = null;
+                if (selectedRoleText.includes("quản trị") || selectedRoleText.includes("admin")) matched = roleBadges.admin;
+                else if (selectedRoleText.includes("công nghệ") || selectedRoleText.includes("it")) matched = roleBadges.it;
+                else if (selectedRoleText.includes("nhân sự") || selectedRoleText.includes("hr")) matched = roleBadges.hr;
+                else if (selectedRoleText.includes("quản lý") || selectedRoleText.includes("manager")) matched = roleBadges.manager;
+                else if (selectedRoleText.includes("nhân viên") || selectedRoleText.includes("employee")) matched = roleBadges.employee;
+
+                if (matched && roleSelect.value) {
+                    rolePreview.className = `role-badge-luxury ${matched.cls}`;
+                    rolePreview.innerHTML = `<i class="bi ${matched.icon} me-2"></i> ${roleSelect.options[roleSelect.selectedIndex].text}`;
+                } else {
+                    rolePreview.className = "role-badge-luxury role-badge-luxury--employee";
+                    rolePreview.innerHTML = `<i class="bi bi-person-fill me-2"></i> Chưa cấp vai trò`;
+                }
+            };
+
+            employeeSelect?.addEventListener("change", syncPreview);
+            roleSelect?.addEventListener("change", syncPreview);
+            usernameInput?.addEventListener("input", syncPreview);
             syncPreview();
 
-            document.querySelectorAll('.password-visibility').forEach(button => {
-                button.addEventListener('click', () => {
-                    const input = button.parentElement.querySelector('input');
-                    input.type = input.type === 'password' ? 'text' : 'password';
-                    button.querySelector('i').className = input.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+            // Toggle show/hide password
+            document.querySelectorAll(".password-toggle").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const group = btn.closest(".input-group");
+                    const input = group?.querySelector(".password-field");
+                    const icon = btn.querySelector("i");
+                    if (!input || !icon) return;
+
+                    if (input.type === "password") {
+                        input.type = "text";
+                        icon.className = "bi bi-eye-slash";
+                    } else {
+                        input.type = "password";
+                        icon.className = "bi bi-eye";
+                    }
                 });
             });
-        })();
+        });
     </script>
 }

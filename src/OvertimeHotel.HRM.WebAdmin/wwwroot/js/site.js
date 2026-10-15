@@ -369,6 +369,58 @@
   });
 
   // -------------------------------------------------------------
+  // 5.5. DUY TRÌ VỊ TRÍ CUỘN THANH ĐIỀU HƯỚNG SIDEBAR KHI PHÓNG TO / ĐỔI TRANG
+  // -------------------------------------------------------------
+  function initSidebarScrollPersistence() {
+    const sidebar = document.querySelector('.app-sidebar');
+    if (!sidebar) return;
+
+    const STORAGE_KEY = 'hotel_sidebar_scroll_top';
+
+    // 1. Khôi phục vị trí cuộn đã lưu
+    const savedTop = sessionStorage.getItem(STORAGE_KEY);
+    if (savedTop !== null) {
+      const parsed = parseInt(savedTop, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        sidebar.scrollTop = parsed;
+      }
+    }
+
+    // 2. Đảm bảo mục đang kích hoạt (is-active) luôn nằm trọn trong tầm nhìn
+    const activeItem = sidebar.querySelector('.app-nav-item.is-active');
+    if (activeItem) {
+      const rect = activeItem.getBoundingClientRect();
+      const sRect = sidebar.getBoundingClientRect();
+      if (rect.top < sRect.top || rect.bottom > sRect.bottom) {
+        activeItem.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+        sessionStorage.setItem(STORAGE_KEY, String(sidebar.scrollTop));
+      }
+    }
+
+    // 3. Lắng nghe sự kiện scroll để lưu lại
+    let scrollTimer = null;
+    sidebar.addEventListener('scroll', function () {
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(function () {
+        sessionStorage.setItem(STORAGE_KEY, String(sidebar.scrollTop));
+      }, 50);
+    }, { passive: true });
+
+    // 4. Khi click vào bất kỳ mục nav nào: lưu ngay vị trí cuộn trước khi chuyển trang
+    sidebar.querySelectorAll('.app-nav-item').forEach(function (navLink) {
+      navLink.addEventListener('click', function () {
+        sessionStorage.setItem(STORAGE_KEY, String(sidebar.scrollTop));
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSidebarScrollPersistence);
+  } else {
+    initSidebarScrollPersistence();
+  }
+
+  // -------------------------------------------------------------
   // 6. XUẤT API GLOBAL CHO CÁC MODULE KHÁC DÙNG CHUNG (TSK-13, TSK-16...)
   // -------------------------------------------------------------
   window.HotelMotion = {
