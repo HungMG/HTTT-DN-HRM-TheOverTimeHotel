@@ -58,26 +58,94 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
+            if (hinhThucSelect) {
+                hinhThucSelect.addEventListener('change', onHinhThucHopDongChange);
+            }
+
             const loaiHdSelect = document.getElementById('contractLoaiHopDong');
+            if (loaiHdSelect) {
+                loaiHdSelect.addEventListener('change', autoCalculateContractEndDate);
+            }
 
-            if (hinhThucSelect && loaiHdSelect) {
-                hinhThucSelect.addEventListener('change', function () {
-                    if (this.value === 'THU_VIEC') {
-                        loaiHdSelect.value = 'THU_VIEC';
-                    } else if (this.value === 'CHINH_THUC' && loaiHdSelect.value === 'THU_VIEC') {
-                        loaiHdSelect.value = 'XAC_DINH_THOI_HAN_1_NAM';
-                    }
-                });
-
-                loaiHdSelect.addEventListener('change', function () {
-                    if (this.value === 'THU_VIEC') {
-                        hinhThucSelect.value = 'THU_VIEC';
-                    } else if (hinhThucSelect.value === 'THU_VIEC') {
-                        hinhThucSelect.value = 'CHINH_THUC';
-                    }
-                });
+            const startInput = document.getElementById('contractNgayBatDau');
+            if (startInput) {
+                startInput.addEventListener('change', autoCalculateContractEndDate);
+                startInput.addEventListener('input', autoCalculateContractEndDate);
             }
         });
+
+        // 1. Tự động sinh mã hợp đồng ngẫu nhiên
+        function generateRandomContractNumber(force = false) {
+            const soHopDongInput = document.getElementById('contractSoHopDong');
+            if (!soHopDongInput) return;
+
+            if (soHopDongInput.value.trim() && !force) return;
+
+            const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
+            const isThuViec = hinhThucSelect && hinhThucSelect.value === 'THU_VIEC';
+            const prefix = isThuViec ? 'HDTV' : 'HDLD';
+            const year = new Date().getFullYear();
+            
+            const randomNum = Math.floor(Math.random() * 99) + 1;
+            const formattedNum = String(randomNum).padStart(2, '0');
+            
+            soHopDongInput.value = `${prefix}-${year}/${formattedNum}/OTH`;
+        }
+
+        // Đổi tiền tố khi đổi Hình thức (HDLD <-> HDTV)
+        function onHinhThucHopDongChange() {
+            const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
+            const soHopDongInput = document.getElementById('contractSoHopDong');
+            if (!hinhThucSelect || !soHopDongInput) return;
+
+            const isThuViec = hinhThucSelect.value === 'THU_VIEC';
+            const newPrefix = isThuViec ? 'HDTV' : 'HDLD';
+            const oldPrefix = isThuViec ? 'HDLD' : 'HDTV';
+
+            const currentVal = soHopDongInput.value.trim().toUpperCase();
+            if (currentVal.length > 0) {
+                if (currentVal.startsWith(oldPrefix)) {
+                    soHopDongInput.value = newPrefix + currentVal.substring(oldPrefix.length);
+                } else if (!currentVal.startsWith(newPrefix)) {
+                    const parts = currentVal.split('-');
+                    if (parts.length >= 2) {
+                        soHopDongInput.value = `${newPrefix}-${parts.slice(1).join('-')}`;
+                    } else {
+                        generateRandomContractNumber(true);
+                    }
+                }
+            } else {
+                generateRandomContractNumber(true);
+            }
+        }
+
+        // 2. Tự động tính ngày kết thúc
+        function autoCalculateContractEndDate() {
+            const startInput = document.getElementById('contractNgayBatDau');
+            const endInput = document.getElementById('contractNgayKetThuc');
+            const loaiHdSelect = document.getElementById('contractLoaiHopDong');
+            
+            if (!startInput || !endInput || !loaiHdSelect) return;
+            
+            const startDateVal = startInput.value;
+            if (!startDateVal) return;
+            
+            const loaiHd = loaiHdSelect.value;
+            const startDate = new Date(startDateVal);
+            if (isNaN(startDate.getTime())) return;
+            
+            if (loaiHd === 'XAC_DINH_THOI_HAN_1_NAM' || loaiHd.includes('1_NAM') || loaiHd.includes('1 năm')) {
+                const endDate = new Date(startDate);
+                endDate.setFullYear(endDate.getFullYear() + 1);
+                endInput.value = endDate.toISOString().split('T')[0];
+            } else if (loaiHd === 'XAC_DINH_THOI_HAN_3_NAM' || loaiHd.includes('3_NAM') || loaiHd.includes('3 năm')) {
+                const endDate = new Date(startDate);
+                endDate.setFullYear(endDate.getFullYear() + 3);
+                endInput.value = endDate.toISOString().split('T')[0];
+            } else if (loaiHd === 'KHONG_XAC_DINH_THOI_HAN' || loaiHd.includes('KHONG_XAC_DINH') || loaiHd.includes('không')) {
+                endInput.value = '';
+            }
+        }
 
         function printContractDocument() {
             const soHopDong = (document.getElementById('contractSoHopDong')?.value || '@Model.Contract.SoHopDong').trim();

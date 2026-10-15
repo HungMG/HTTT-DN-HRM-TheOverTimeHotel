@@ -147,7 +147,7 @@
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-calendar-check"></i></span>
             <input asp-for="Contract.NgayKetThuc" id="contractNgayKetThuc" type="date" class="form-control border-start-0" placeholder="Ngày kết thúc, không bắt buộc" />
         </div>
-        <div class="form-text small text-muted">Để trống nếu là hợp đồng vô thời hạn.</div>
+        <div class="form-text small text-muted">Tự động tính theo Loại hợp đồng (1 năm, 3 năm) hoặc để trống nếu vô thời hạn.</div>
         <span asp-validation-for="Contract.NgayKetThuc" class="text-danger small"></span>
     </div>
 </div>
@@ -157,13 +157,22 @@
 <!-- ========================================================================= -->
 <div class="row g-3 mb-3">
     <div class="col-md-6">
-        <label asp-for="Contract.SoHopDong" class="form-label fw-semibold text-dark">
-            Mã hợp đồng <span class="text-danger">*</span>
-        </label>
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <label asp-for="Contract.SoHopDong" class="form-label fw-semibold text-dark mb-0">
+                Mã hợp đồng <span class="text-danger">*</span>
+            </label>
+            <button type="button" class="btn btn-link p-0 text-decoration-none small text-primary fw-semibold" onclick="generateRandomContractNumber(true)" title="Tạo mã hợp đồng ngẫu nhiên mới">
+                <i class="bi bi-arrow-clockwise me-1"></i>Tạo mã mới
+            </button>
+        </div>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-file-earmark-code"></i></span>
-            <input asp-for="Contract.SoHopDong" id="contractSoHopDong" class="form-control border-start-0 font-monospace text-uppercase" placeholder="Mã hợp đồng (VD: HDLD-2026/01)" required />
+            <input asp-for="Contract.SoHopDong" id="contractSoHopDong" class="form-control border-start-0 border-end-0 font-monospace text-uppercase fw-bold text-primary" placeholder="HDLD-@DateTime.Now.Year/01/OTH" required />
+            <button type="button" class="btn btn-light border border-start-0 text-primary" onclick="generateRandomContractNumber(true)" title="Sinh số ngẫu nhiên mới">
+                <i class="bi bi-shuffle"></i>
+            </button>
         </div>
+        <div class="form-text small text-muted">Tự động sinh: HDLD (chính thức) hoặc HDTV (thử việc)-@DateTime.Now.Year/Số ngẫu nhiên/OTH.</div>
         <span asp-validation-for="Contract.SoHopDong" class="text-danger small"></span>
     </div>
 

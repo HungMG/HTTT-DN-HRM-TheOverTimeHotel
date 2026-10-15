@@ -128,13 +128,16 @@ public class HopDongController : Controller
             var pageNumber = Math.Clamp(page, 1, totalPages);
             var pagedContracts = orderedContracts.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
+            var initialSoHopDong = await GenerateUniqueContractNumberAsync("CHINH_THUC");
             var model = new HopDongIndexViewModel
             {
                 CreateContractForm = new HopDongFormViewModel
                 {
                     Contract = new HopDong
                     {
+                        SoHopDong = initialSoHopDong,
                         NgayBatDau = today,
+                        NgayKetThuc = today.AddYears(1),
                         TrangThai = "HIEU_LUC",
                         LoaiHopDong = "XAC_DINH_THOI_HAN_1_NAM",
                         HinhThucHopDong = "CHINH_THUC"
@@ -177,7 +180,9 @@ public class HopDongController : Controller
                 {
                     Contract = new HopDong
                     {
+                        SoHopDong = $"HDLD-{today.Year}/01/OTH",
                         NgayBatDau = today,
+                        NgayKetThuc = today.AddYears(1),
                         TrangThai = "HIEU_LUC",
                         LoaiHopDong = "XAC_DINH_THOI_HAN_1_NAM",
                         HinhThucHopDong = "CHINH_THUC"
@@ -288,6 +293,25 @@ public class HopDongController : Controller
             model.EmployeeId = employee.MaNhanVien;
             model.EmployeeName = employee.HoTen;
             model.DepartmentName = employee.PhongBan?.TenPhongBan ?? string.Empty;
+        }
+
+        // Tự động sinh mã hợp đồng nếu để trống theo hình thức hợp đồng
+        if (string.IsNullOrWhiteSpace(model.Contract.SoHopDong))
+        {
+            model.Contract.SoHopDong = await GenerateUniqueContractNumberAsync(model.Contract.HinhThucHopDong);
+        }
+
+        // Tự động tính ngày kết thúc nếu để trống theo loại hợp đồng
+        if (!model.Contract.NgayKetThuc.HasValue)
+        {
+            if (model.Contract.LoaiHopDong == "XAC_DINH_THOI_HAN_1_NAM")
+            {
+                model.Contract.NgayKetThuc = model.Contract.NgayBatDau.AddYears(1);
+            }
+            else if (model.Contract.LoaiHopDong == "XAC_DINH_THOI_HAN_3_NAM")
+            {
+                model.Contract.NgayKetThuc = model.Contract.NgayBatDau.AddYears(3);
+            }
         }
 
         await ValidateContractAsync(model.Contract);
@@ -438,14 +462,44 @@ public class HopDongController : Controller
 
     private async Task ValidateContractAsync(HopDong model, int? currentId = null)
     {
-        model.SoHopDong = model.SoHopDong?.Trim() ?? string.Empty;
         model.LoaiHopDong = model.LoaiHopDong?.Trim() ?? string.Empty;
         model.HinhThucHopDong = model.HinhThucHopDong?.Trim() ?? "CHINH_THUC";
-        if (string.IsNullOrWhiteSpace(model.SoHopDong)) ModelState.AddModelError("Contract.SoHopDong", "Vui lòng nhập mã / số hợp đồng.");
+        
+        // Tự động sinh mã hợp đồng nếu để trống
+        if (string.IsNullOrWhiteSpace(model.SoHopDong))
+        {
+            model.SoHopDong = await GenerateUniqueContractNumberAsync(model.HinhThucHopDong);
+        }
+        else
+        {
+            model.SoHopDong = model.SoHopDong.Trim().ToUpper();
+        }
+
         if (string.IsNullOrWhiteSpace(model.LoaiHopDong)) ModelState.AddModelError("Contract.LoaiHopDong", "Vui lòng nhập loại hợp đồng.");
         if (model.NgayKetThuc.HasValue && model.NgayKetThuc < model.NgayBatDau) ModelState.AddModelError("Contract.NgayKetThuc", "Ngày kết thúc phải sau ngày bắt đầu.");
         if (model.LuongCoBan < 0) ModelState.AddModelError("Contract.LuongCoBan", "Lương cơ bản không được âm.");
         if (await _context.HopDongs.AnyAsync(item => item.MaHopDong != currentId && item.SoHopDong.ToLower() == model.SoHopDong.ToLower())) ModelState.AddModelError("Contract.SoHopDong", "Mã / Số hợp đồng đã tồn tại.");
+    }
+
+    private async Task<string> GenerateUniqueContractNumberAsync(string? hinhThucHopDong)
+    {
+        var prefix = hinhThucHopDong == "THU_VIEC" ? "HDTV" : "HDLD";
+        var year = DateTime.Now.Year;
+        var random = new Random();
+
+        for (int i = 0; i < 50; i++)
+        {
+            var randomNum = random.Next(1, 100);
+            var candidate = $"{prefix}-{year}/{randomNum:D2}/OTH";
+            var exists = await _context.HopDongs.AnyAsync(h => h.SoHopDong.ToLower() == candidate.ToLower());
+            if (!exists)
+            {
+                return candidate;
+            }
+        }
+
+        var fallbackNum = random.Next(100, 999);
+        return $"{prefix}-{year}/{fallbackNum:D3}/OTH";
     }
 
     private async Task<IReadOnlyList<SelectListItem>> GetEmployeeOptionsAsync() =>
