@@ -87,10 +87,13 @@
 
             @if (canViewApproval)
             {
-                <span class="app-nav-item is-disabled d-flex align-items-center justify-content-between" aria-disabled="true" title="Đang đồng bộ với Mobile App">
-                    <span class="d-flex align-items-center gap-2"><i class="bi bi-file-earmark-check"></i><span>Đơn từ trực tuyến</span></span>
-                    <span class="app-nav-badge">7</span>
-                </span>
+                <a class="app-nav-item@(IsCurrent("DonTu") ? " is-active" : "") d-flex align-items-center justify-content-between"
+                   asp-controller="DonTu" asp-action="Index">
+                    <span class="d-flex align-items-center gap-2">
+                        <i class="bi bi-file-earmark-check-fill"></i><span>Đơn từ trực tuyến</span>
+                    </span>
+                    <span class="app-nav-badge badge-gold" id="sidebarPendingDonTuBadge"></span>
+                </a>
             }
 
             <!-- 4. LƯƠNG & BÁO CÁO -->

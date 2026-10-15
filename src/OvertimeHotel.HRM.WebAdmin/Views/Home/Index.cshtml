@@ -81,7 +81,7 @@
         </div>
 
         <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
+            <a class="stat-card" asp-controller="DonTu" asp-action="Index">
                 <div>
                     <div class="stat-label">Đơn từ chờ duyệt</div>
                     <div class="stat-figure">@Model.DonTuChoDuyet<span class="stat-figure-unit">đơn</span></div>
@@ -96,7 +96,7 @@
                         <span class="stat-delta-up">Đã xử lý hết</span>
                     }
                 </div>
-            </div>
+            </a>
         </div>
 
         <div class="col-sm-6 col-xl-3">

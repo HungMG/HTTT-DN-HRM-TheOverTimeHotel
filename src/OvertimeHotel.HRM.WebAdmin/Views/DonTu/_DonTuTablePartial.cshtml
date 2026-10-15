@@ -1,0 +1,224 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.DonTuIndexViewModel
+
+<div class="card border-0 rounded-4 shadow-sm bg-white overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 custom-catalog-table">
+            <thead class="bg-light-subtle text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                <tr>
+                    <th class="ps-4 py-3" style="width: 70px;">Mã Đơn</th>
+                    <th class="py-3">Nhân Viên Nộp</th>
+                    <th class="py-3">Loại Đơn</th>
+                    <th class="py-3">Thời Gian Nghỉ</th>
+                    <th class="py-3">Lý Do Đơn Từ</th>
+                    <th class="py-3">Ngày Gửi (App)</th>
+                    <th class="py-3 text-center">Trạng Thái</th>
+                    <th class="pe-4 py-3 text-end" style="min-width: 170px;">Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <div class="py-4">
+                                <i class="bi bi-inbox text-secondary opacity-50" style="font-size: 3rem;"></i>
+                                <h6 class="mt-3 fw-bold text-dark">Không có đơn từ nào phù hợp</h6>
+                                <p class="small text-muted mb-0">Thử thay đổi bộ lọc hoặc góc nhìn để xem thêm danh sách.</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model.Items)
+                    {
+                        var rowClass = item.TrangThai == "CHO_DUYET" ? "table-warning-subtle" : "";
+                        var typeBadgeClass = item.MaLoaiDon switch
+                        {
+                            1 => "bg-success-subtle text-success border-success-subtle",
+                            2 => "bg-primary-subtle text-primary border-primary-subtle",
+                            3 => "bg-info-subtle text-info-emphasis border-info-subtle",
+                            4 => "bg-warning-subtle text-warning-emphasis border-warning-subtle",
+                            5 => "bg-danger-subtle text-danger border-danger-subtle",
+                            _ => "bg-secondary-subtle text-secondary border-secondary-subtle"
+                        };
+                        var typeIcon = item.MaLoaiDon switch
+                        {
+                            1 => "bi-calendar-check",
+                            2 => "bi-heart-pulse",
+                            3 => "bi-gender-female",
+                            4 => "bi-person-slash",
+                            5 => "bi-box-arrow-right",
+                            _ => "bi-file-earmark-text"
+                        };
+                        var statusBadgeClass = item.TrangThai switch
+                        {
+                            "CHO_DUYET" => "bg-warning text-dark border-warning",
+                            "DA_DUYET" => "bg-success text-white border-success",
+                            "TU_CHOI" => "bg-danger text-white border-danger",
+                            _ => "bg-secondary text-white"
+                        };
+
+                        <tr class="@rowClass">
+                            <td class="ps-4 fw-bold font-monospace text-muted" style="font-size: 0.85rem;">
+                                #@item.MaDon
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center fw-bold"
+                                         style="width: 36px; height: 36px; font-size: 0.85rem; flex-shrink: 0;">
+                                        @item.AvatarInitial
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark" style="font-size: 0.9rem;">
+                                            @item.HoTenNhanVien
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 small text-muted" style="font-size: 0.75rem;">
+                                            <span class="badge bg-light text-dark border">@item.MaNhanVienCode</span>
+                                            <span>@item.TenPhongBan</span>
+                                            @if (!string.IsNullOrEmpty(item.ChucVu))
+                                            {
+                                                <span>· @item.ChucVu</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge border rounded-pill px-2 py-1 @typeBadgeClass" style="font-size: 0.78rem;">
+                                    <i class="bi @typeIcon me-1"></i>@item.TenLoaiDon
+                                </span>
+                                <div class="small text-muted mt-1" style="font-size: 0.7rem;">
+                                    @(item.CoHuongLuong ? "Có hưởng lương" : "Không hưởng lương")
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark" style="font-size: 0.85rem;">
+                                    @item.TuNgay.ToString("dd/MM/yyyy")
+                                    <i class="bi bi-arrow-right text-muted mx-1" style="font-size: 0.75rem;"></i>
+                                    @item.DenNgay.ToString("dd/MM/yyyy")
+                                </div>
+                                <div class="small text-muted" style="font-size: 0.75rem;">
+                                    <strong class="text-primary">@item.SoNgayNghi</strong> ngày nghỉ
+                                </div>
+                            </td>
+                            <td style="max-width: 220px;">
+                                <div class="text-truncate text-secondary" title="@item.LyDo" style="font-size: 0.85rem;">
+                                    @item.LyDo
+                                </div>
+                                @if (item.MaLoaiDon == 1 && item.PhepNamConLai.HasValue)
+                                {
+                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">
+                                        Quỹ phép: còn <strong>@item.PhepNamConLai</strong>/12 ngày
+                                    </div>
+                                }
+                                else if (item.MaLoaiDon == 5 && item.SoNgayBaoTruocThucTe.HasValue)
+                                {
+                                    var duHan = item.SoNgayBaoTruocThucTe >= item.SoNgayBaoTruocYeuCau;
+                                    <div class="small mt-1 @(duHan ? "text-success" : "text-danger")" style="font-size: 0.7rem;">
+                                        Báo trước: @item.SoNgayBaoTruocThucTe ngày (Quy định: @item.SoNgayBaoTruocYeuCau d)
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                <div class="text-dark small" style="font-size: 0.82rem;">
+                                    @item.NgayGui.ToLocalTime().ToString("HH:mm")
+                                </div>
+                                <div class="text-muted small" style="font-size: 0.72rem;">
+                                    @item.NgayGui.ToLocalTime().ToString("dd/MM/yyyy")
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge rounded-pill px-3 py-1 @statusBadgeClass" style="font-size: 0.75rem;">
+                                    @item.TrangThaiLabel
+                                </span>
+                                @if (item.TrangThai != "CHO_DUYET" && !string.IsNullOrEmpty(item.HoTenNguoiDuyet))
+                                {
+                                    <div class="small text-muted mt-1" style="font-size: 0.7rem;" title="@item.PhanHoiDuyet">
+                                        Bởi: @item.HoTenNguoiDuyet
+                                    </div>
+                                }
+                            </td>
+                            <td class="pe-4 text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <!-- Nút Xem lại / Chi tiết luôn hiển thị -->
+                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-2 py-1 me-1"
+                                            onclick="openDetailModal(@item.MaDon)"
+                                            title="Xem lại chi tiết đơn từ">
+                                        <i class="bi bi-eye"></i> 
+                                    </button>
+
+                                    @if (item.TrangThai == "CHO_DUYET")
+                                    {
+                                        if (item.CanCurrentUserReview)
+                                        {
+                                            <!-- Nút Phê duyệt nhanh -->
+                                            <button type="button" class="btn btn-success rounded-pill px-2 py-1 me-1"
+                                                    onclick="openReviewModal(@item.MaDon, true, '@item.HoTenNhanVien', '@item.TenLoaiDon')"
+                                                    title="Phê duyệt đơn này">
+                                                <i class="bi bi-check-lg"></i> 
+                                            </button>
+
+                                            <!-- Nút Từ chối -->
+                                            <button type="button" class="btn btn-outline-danger rounded-pill px-2 py-1"
+                                                    onclick="openReviewModal(@item.MaDon, false, '@item.HoTenNhanVien', '@item.TenLoaiDon')"
+                                                    title="Từ chối đơn">
+                                                <i class="bi bi-x-lg"></i> 
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-light text-muted border py-1 px-2"
+                                                  title="@(item.CannotReviewReason ?? "Bạn không có thẩm quyền duyệt đơn này")">
+                                                <i class="bi bi-lock me-1"></i>Cấp trên duyệt
+                                            </span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-light border rounded-pill px-2 py-1"
+                                                onclick="openDetailModal(@item.MaDon)"
+                                                title="Xem lại phản hồi xét duyệt">
+                                            <i class="bi bi-chat-left-text"></i> Kết quả
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Phân trang -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="d-flex flex-wrap align-items-center justify-content-between p-3 border-top bg-light-subtle">
+            <div class="small text-muted">
+                Hiển thị <strong>@Model.Items.Count</strong> trên tổng số <strong>@Model.TotalFiltered</strong> đơn từ
+            </div>
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="javascript:void(0)" onclick="goToPage(@(Model.PageNumber - 1))">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    @for (int p = 1; p <= Model.TotalPages; p++)
+                    {
+                        var active = p == Model.PageNumber;
+                        <li class="page-item @(active ? "active" : "")">
+                            <a class="page-link" href="javascript:void(0)" onclick="goToPage(@p)">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" href="javascript:void(0)" onclick="goToPage(@(Model.PageNumber + 1))">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>

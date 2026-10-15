@@ -219,7 +219,8 @@ public class HomeController : Controller
             Title = d.HoTen,
             Subtitle = $"{d.TuNgay:dd/MM} → {d.DenNgay:dd/MM} · chờ {WaitingDays(d.NgayGui, now)} ngày",
             WaitingDays = WaitingDays(d.NgayGui, now),
-            Severity = "danger"
+            Severity = "danger",
+            ActionUrl = Url.Action("Index", "DonTu", new { view = "pending" })
         }));
 
         // Hợp đồng sắp hết hạn trong 30 ngày.

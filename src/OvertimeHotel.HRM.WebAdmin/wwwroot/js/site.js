@@ -421,12 +421,36 @@
   }
 
   // -------------------------------------------------------------
+  // 5.6. TỰ ĐỘNG CẬP NHẬT BADGE ĐƠN TỪ CHỜ DUYỆT TRÊN SIDEBAR
+  // -------------------------------------------------------------
+  function refreshSidebarDonTuBadge() {
+    const badge = document.getElementById('sidebarPendingDonTuBadge');
+    if (!badge) return;
+    fetch('/DonTu/PendingCount')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && typeof data.count === 'number') {
+          badge.textContent = data.count;
+          badge.style.display = data.count > 0 ? '' : 'none';
+        }
+      })
+      .catch(function () { /* ignore when unauthenticated */ });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', refreshSidebarDonTuBadge);
+  } else {
+    refreshSidebarDonTuBadge();
+  }
+
+  // -------------------------------------------------------------
   // 6. XUẤT API GLOBAL CHO CÁC MODULE KHÁC DÙNG CHUNG (TSK-13, TSK-16...)
   // -------------------------------------------------------------
   window.HotelMotion = {
     applyEntrance: applyPowerPointEntrance,
     applyBlurText: applyBlurTextEffect,
-    triggerRipple: triggerSlowMoRipple
+    triggerRipple: triggerSlowMoRipple,
+    refreshDonTuBadge: refreshSidebarDonTuBadge
   };
 
 })();
