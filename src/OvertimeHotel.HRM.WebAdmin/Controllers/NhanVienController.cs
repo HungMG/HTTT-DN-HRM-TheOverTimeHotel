@@ -209,11 +209,14 @@ public class NhanVienController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(NhanVienFormViewModel model)
     {
+        model.Employee.TrangThai = "DANG_LAM";
+        model.Employee.NgayThoiViec = null;
         Normalize(model.Employee);
         NormalizeEmployeeStatus(model.Employee);
 
         // Bỏ qua lỗi bắt buộc mặc định của ModelBinder với EmailCongVu vì trường này không còn trên form thêm mới
         ModelState.Remove("Employee.EmailCongVu");
+        ModelState.Remove("Employee.NgayThoiViec");
 
         if (string.IsNullOrWhiteSpace(model.Employee.TrinhDo) || model.Employee.TrinhDo == "Chưa cập nhật")
         {
@@ -264,6 +267,11 @@ public class NhanVienController : Controller
 
         Normalize(model.Employee);
         NormalizeEmployeeStatus(model.Employee);
+
+        if (model.Employee.TrangThai != "DA_THOI_VIEC")
+        {
+            model.Employee.NgayThoiViec = null;
+        }
 
         ModelState.Remove("Employee.EmailCongVu");
 

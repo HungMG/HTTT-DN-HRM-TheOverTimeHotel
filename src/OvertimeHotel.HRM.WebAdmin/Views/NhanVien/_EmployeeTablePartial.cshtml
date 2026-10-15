@@ -96,9 +96,18 @@
                             @switch (employee.TrangThai)
                             {
                                 case "DANG_LAM":
-                                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle rounded-pill px-3 py-1">
-                                        <i class="bi bi-check-circle-fill me-1"></i>Đang làm
-                                    </span>
+                                    @if (item.ContractState == "DA_HET_HAN")
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1" title="Hợp đồng lao động đã hết hạn - Cần gia hạn HĐ hoặc làm thủ tục thôi việc">
+                                            <i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>Chờ gia hạn
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle rounded-pill px-3 py-1">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Đang làm
+                                        </span>
+                                    }
                                     break;
                                 case "NGHI_PHEP":
                                     <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1">

@@ -17,18 +17,23 @@
     border-radius: 16px;
     padding: 5px;
     gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    max-width: 100%;
 }
 .profile-tab-item {
-    flex: 1;
+    flex: 1 1 0px;
+    min-width: fit-content;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 10px 12px;
+    padding: 9px 12px;
     border: 0;
     background: transparent;
     border-radius: 12px;
-    font-size: 0.85rem;
+    font-size: 0.83rem;
     font-weight: 600;
     color: #475569;
     transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
@@ -36,6 +41,7 @@
     cursor: pointer;
     white-space: nowrap;
     text-decoration: none;
+    flex-shrink: 0;
 }
 .profile-tab-item:hover {
     color: #0f172a;
@@ -132,9 +138,18 @@
                 @switch (emp.TrangThai)
                 {
                     case "DANG_LAM":
-                        <span class="badge bg-success bg-opacity-75 text-white rounded-pill px-3 py-1">
-                            <i class="bi bi-check-circle-fill me-1"></i>Đang làm việc
-                        </span>
+                        @if (Model.ContractState == "DA_HET_HAN")
+                        {
+                            <span class="badge bg-warning text-dark rounded-pill px-3 py-1 shadow-sm" title="Hợp đồng lao động đã hết hạn - Cần gia hạn hoặc làm thủ tục thôi việc">
+                                <i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>Chờ gia hạn HĐ
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success bg-opacity-75 text-white rounded-pill px-3 py-1">
+                                <i class="bi bi-check-circle-fill me-1"></i>Đang làm việc
+                            </span>
+                        }
                         break;
                     case "NGHI_PHEP":
                         <span class="badge bg-warning text-dark rounded-pill px-3 py-1">
@@ -164,6 +179,29 @@
         </div>
     </div>
 </div>
+
+@if (Model.ContractState == "DA_HET_HAN")
+{
+    <div class="alert alert-warning border border-warning rounded-4 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-sm bg-warning bg-opacity-10">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-warning bg-opacity-25 text-warning d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px;">
+                <i class="bi bi-exclamation-triangle-fill fs-5 text-dark"></i>
+            </div>
+            <div>
+                <strong class="text-dark d-block">Hợp đồng lao động đã hết hạn &bull; Tài khoản đã tạm khóa</strong>
+                <span class="text-muted small">Tài khoản Mobile App/Web đã tự động khóa để bảo vệ dữ liệu. Nhân sự đang ở trạng thái <strong>Chờ gia hạn HĐ</strong>. Vui lòng tạo HĐ mới hoặc hoàn tất thủ tục thôi việc.</span>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a asp-controller="HopDong" asp-action="Index" asp-route-keyword="@emp.HoTen" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
+                <i class="bi bi-file-earmark-plus me-1"></i>Gia hạn HĐ
+            </a>
+            <a asp-controller="NhanVien" asp-action="Edit" asp-route-id="@emp.MaNhanVien" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold">
+                <i class="bi bi-person-x me-1"></i>Xác nhận thôi việc
+            </a>
+        </div>
+    </div>
+}
 
 <!-- 5-STAR EXECUTIVE SEGMENTED TAB CONTROL BAR -->
 <div class="profile-segmented-nav mb-4" role="tablist" id="profileTabs">
@@ -196,7 +234,7 @@
     </button>
     <button class="profile-tab-item" id="tab-account-btn" data-bs-toggle="pill" data-bs-target="#tab-account-pane" type="button" role="tab" aria-controls="tab-account-pane" aria-selected="false">
         <i class="bi bi-shield-check tab-icon"></i>
-        <span class="tab-label">Tài Khoản &amp; RBAC</span>
+        <span class="tab-label">Tài Khoản &amp; Quyền</span>
         @if (account != null)
         {
             @if (!account.TrangThai || Model.ContractState == "DA_HET_HAN")
