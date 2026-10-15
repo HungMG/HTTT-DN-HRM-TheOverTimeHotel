@@ -4,6 +4,8 @@
 @using OvertimeHotel.HRM.WebAdmin.Security
 @{
     var currentRole = User.FindFirstValue(ClaimTypes.Role);
+    var currentUsername = User.Identity?.Name;
+    var isAdmin = LeaveApprovalPolicy.IsAdmin(currentRole);
     var canProcess = LeaveApprovalPolicy.CanProcessAccountRequest(currentRole)
                      && User.HasPermission(PermissionCodes.ProvisionMobileAccount);
     var firstItem = Model.TotalFilteredRequests == 0 ? 0 : ((Model.PageNumber - 1) * Model.PageSize) + 1;
@@ -76,7 +78,7 @@
                             <strong class="text-dark">Không có yêu cầu cấp tài khoản nào phù hợp</strong>
                             <span class="text-muted small mt-1">
                                 @(canProcess
-                                    ? "Thử thay đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm."
+                                    ? "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."
                                     : "Bạn chưa gửi yêu cầu nào hoặc yêu cầu của bạn không khớp bộ lọc hiện tại.")
                             </span>
                         </div>
@@ -139,7 +141,7 @@
                         <td class="py-2.5">
                             <div>
                                 <span class="badge @StatusBadge(item.Status) border rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
-                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.45rem;"></i>@item.StatusLabel
+                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.45rem;"></i>@(item.Status == "CHO_IT" ? "Chờ bộ phận IT xử lí" : item.StatusLabel)
                                 </span>
                             </div>
                             @if (item.Status == "TU_CHOI" && !string.IsNullOrWhiteSpace(item.RejectionNote))
@@ -178,18 +180,28 @@
                                     }
                                     else if (item.Status == "DANG_XU_LY")
                                     {
-                                        <form asp-action="Complete" asp-route-id="@item.RequestId" method="post" class="d-inline" data-request-action-form>
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm" title="Kích hoạt &amp; cấp tài khoản Supabase" style="font-size: 0.78rem;">
-                                                <i class="bi bi-key-fill me-1"></i>Cấp tài khoản
+                                        var isHandler = isAdmin || (item.HandlerUsername != null && string.Equals(item.HandlerUsername, currentUsername, StringComparison.OrdinalIgnoreCase));
+                                        if (isHandler)
+                                        {
+                                            <form asp-action="Complete" asp-route-id="@item.RequestId" method="post" class="d-inline" data-request-action-form>
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm" title="Kích hoạt &amp; cấp tài khoản Supabase" style="font-size: 0.78rem;">
+                                                    <i class="bi bi-key-fill me-1"></i>Cấp tài khoản
+                                                </button>
+                                            </form>
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold hover-lift" title="Từ chối yêu cầu"
+                                                    data-request-reject="@item.RequestId"
+                                                    data-request-reject-username="@item.Username"
+                                                    style="font-size: 0.78rem;">
+                                                <i class="bi bi-x-circle me-1"></i>Từ chối
                                             </button>
-                                        </form>
-                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold hover-lift" title="Từ chối yêu cầu"
-                                                data-request-reject="@item.RequestId"
-                                                data-request-reject-username="@item.Username"
-                                                style="font-size: 0.78rem;">
-                                            <i class="bi bi-x-circle me-1"></i>Từ chối
-                                        </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
+                                                <i class="bi bi-person-fill-gear me-1"></i>Đang được @item.HandlerUsername xử lý
+                                            </span>
+                                        }
                                     }
                                 </div>
                             }

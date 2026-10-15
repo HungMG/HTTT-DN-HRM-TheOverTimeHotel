@@ -65,8 +65,7 @@ public class YeuCauTaiKhoanListItemViewModel
 }
 
 /// <summary>
-/// Form gửi yêu cầu cấp tài khoản. <see cref="ContractId"/> null nghĩa là gửi
-/// không gắn hợp đồng — CSDL cho phép (ma_hop_dong NULL).
+/// Form gửi yêu cầu cấp tài khoản. Bắt buộc gắn hợp đồng lao động hợp lệ.
 /// </summary>
 public class CreateYeuCauTaiKhoanViewModel
 {
@@ -75,6 +74,8 @@ public class CreateYeuCauTaiKhoanViewModel
     public int EmployeeId { get; set; }
 
     [Display(Name = "Hợp đồng")]
+    [Required(ErrorMessage = "Vui lòng chọn hợp đồng lao động làm căn cứ cấp tài khoản.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn hợp đồng lao động hợp lệ.")]
     public int? ContractId { get; set; }
 
     [Display(Name = "Tên đăng nhập")]
@@ -91,10 +92,8 @@ public class CreateYeuCauTaiKhoanViewModel
     public IReadOnlyList<SelectListItem> RoleOptions { get; set; } = [];
 
     /// <summary>
-    /// Toàn bộ hợp đồng HIỆU LỰC của khách sạn, kèm mã nhân viên để trình duyệt
-    /// lọc theo người đã chọn. Nạp sẵn thay vì gọi API riêng: danh sách này
-    /// nhỏ (một dòng mỗi hợp đồng của cả khách sạn) và nạp sẵn giúp trang mở
-    /// ra là có ngay, không phải chờ một vòng gọi mạng mỗi lần đổi nhân viên.
+    /// Toàn bộ hợp đồng HIỆU LỰC (đã bắt đầu và chưa hết hạn) của khách sạn, kèm mã nhân viên
+    /// để trình duyệt lọc theo người đã chọn.
     /// </summary>
     public IReadOnlyList<ActiveContractOptionViewModel> ActiveContracts { get; set; } = [];
 }
@@ -103,5 +102,6 @@ public class ActiveContractOptionViewModel
 {
     public int ContractId { get; set; }
     public int EmployeeId { get; set; }
+    public string ContractNo { get; set; } = string.Empty;
     public string Label { get; set; } = string.Empty;
 }

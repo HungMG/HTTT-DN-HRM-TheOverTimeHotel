@@ -95,14 +95,14 @@
 
                             <div class="col-12 mt-3">
                                 <label asp-for="ContractId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
-                                    Hợp đồng làm căn cứ pháp lý <small class="text-muted fw-normal">(Không bắt buộc)</small>
+                                    Hợp đồng làm căn cứ pháp lý <span class="text-danger">*</span>
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
                                         <i class="bi bi-file-earmark-text-fill"></i>
                                     </span>
                                     <select asp-for="ContractId" data-contract-select class="form-select border-start-0 py-2 ps-3 rounded-end-3" disabled>
-                                        <option value="">-- Gửi yêu cầu không gắn hợp đồng --</option>
+                                        <option value="">-- Chọn hợp đồng lao động làm căn cứ --</option>
                                         @foreach (var contract in Model.ActiveContracts)
                                         {
                                             <option value="@contract.ContractId"
@@ -112,8 +112,12 @@
                                     </select>
                                 </div>
                                 <span asp-validation-for="ContractId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
-                                <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
-                                    <i class="bi bi-info-circle text-primary me-2"></i> Hệ thống tự động lọc hợp đồng còn hiệu lực của nhân viên được chọn ở trên.
+                                <div id="noContractAlert" class="p-2.5 mt-2 rounded-3 bg-danger bg-opacity-10 border border-danger-subtle text-danger small d-none align-items-center gap-2" style="font-size: 0.75rem;">
+                                    <i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-1"></i>
+                                    <span>Nhân viên này không có hợp đồng lao động hợp lệ (chưa bắt đầu, đã hết hạn hoặc không tồn tại). Không thể gửi yêu cầu cấp tài khoản.</span>
+                                </div>
+                                <small class="text-muted d-block mt-1" id="contractHelpText" style="font-size: 0.72rem;">
+                                    <i class="bi bi-info-circle text-primary me-2"></i> Bắt buộc chọn hợp đồng của đúng nhân viên, trạng thái Hiệu lực, đã bắt đầu và chưa hết hạn.
                                 </small>
                             </div>
                         </div>
@@ -156,7 +160,7 @@
                     <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 py-2.5 fw-semibold hover-lift d-inline-flex align-items-center gap-2" style="font-size: 0.85rem;">
                         <i class="bi bi-x-circle fs-6"></i> Hủy bỏ
                     </a>
-                    <button type="submit" class="btn btn-hotel-primary rounded-pill px-4 py-2.5 fw-bold shadow-sm hover-lift d-flex align-items-center gap-2" disabled="@(Model.EmployeeOptions.Count == 0)" style="font-size: 0.85rem;">
+                    <button type="submit" id="btnSubmitRequest" class="btn btn-hotel-primary rounded-pill px-4 py-2.5 fw-bold shadow-sm hover-lift d-flex align-items-center gap-2" disabled="@(Model.EmployeeOptions.Count == 0)" style="font-size: 0.85rem;">
                         <i class="bi bi-send-fill fs-6"></i> Gửi Yêu Cầu Cấp Tài Khoản
                     </button>
                 </div>
@@ -231,6 +235,9 @@
             const employee = document.getElementById("EmployeeId");
             const username = document.getElementById("Username");
             const contractSelect = document.querySelector("[data-contract-select]");
+            const submitBtn = document.getElementById("btnSubmitRequest") || document.querySelector("button[type='submit']");
+            const noContractAlert = document.getElementById("noContractAlert");
+            const contractHelpText = document.getElementById("contractHelpText");
 
             const stripDiacritics = (value) =>
                 value
@@ -256,33 +263,78 @@
             const filterContracts = () => {
                 if (!contractSelect) return;
                 const employeeId = employee?.value || "";
-                const placeholder = contractSelect.querySelector("option[value='']");
                 let visibleCount = 0;
+                let firstValidOption = null;
 
                 Array.from(contractSelect.options).forEach((option) => {
                     if (!option.value) return;
                     const matches = !!employeeId && option.dataset.employeeId === employeeId;
                     option.hidden = !matches;
                     option.disabled = !matches;
-                    if (matches) visibleCount++;
+                    if (matches) {
+                        visibleCount++;
+                        if (!firstValidOption) firstValidOption = option;
+                    }
                 });
 
-                if (placeholder) placeholder.hidden = false;
-                contractSelect.disabled = !employeeId || visibleCount === 0;
-
-                if (employeeId && visibleCount > 0) {
-                    const selected = contractSelect.querySelector("option[value='']:not([disabled])");
-                    const chosenForOtherEmployee = contractSelect.selectedOptions[0]
-                        && contractSelect.selectedOptions[0].dataset.employeeId !== employeeId;
-                    if (!selected || chosenForOtherEmployee) contractSelect.selectedIndex = 0;
-                } else {
+                if (!employeeId) {
+                    contractSelect.disabled = true;
                     contractSelect.selectedIndex = 0;
+                    if (noContractAlert) {
+                        noContractAlert.classList.add("d-none");
+                        noContractAlert.classList.remove("d-flex");
+                    }
+                    if (contractHelpText) contractHelpText.classList.remove("d-none");
+                    if (submitBtn) submitBtn.disabled = true;
+                    return;
+                }
+
+                if (visibleCount === 0) {
+                    // Không có hợp đồng phù hợp -> hiện lý do và khóa nút gửi
+                    contractSelect.disabled = true;
+                    contractSelect.selectedIndex = 0;
+                    if (noContractAlert) {
+                        noContractAlert.classList.remove("d-none");
+                        noContractAlert.classList.add("d-flex");
+                    }
+                    if (contractHelpText) contractHelpText.classList.add("d-none");
+                    if (submitBtn) submitBtn.disabled = true;
+                } else {
+                    contractSelect.disabled = false;
+                    if (noContractAlert) {
+                        noContractAlert.classList.add("d-none");
+                        noContractAlert.classList.remove("d-flex");
+                    }
+                    if (contractHelpText) contractHelpText.classList.remove("d-none");
+
+                    if (visibleCount === 1) {
+                        // Có một hợp đồng hợp lệ thì tự chọn
+                        if (firstValidOption) {
+                            contractSelect.value = firstValidOption.value;
+                        }
+                        if (submitBtn) submitBtn.disabled = false;
+                    } else {
+                        // Có nhiều thì người gửi chọn
+                        const currentlySelected = contractSelect.selectedOptions[0];
+                        if (!currentlySelected || currentlySelected.dataset.employeeId !== employeeId) {
+                            contractSelect.selectedIndex = 0;
+                        }
+                        if (submitBtn) {
+                            submitBtn.disabled = !contractSelect.value;
+                        }
+                    }
                 }
             };
 
             employee?.addEventListener("change", () => {
                 suggestUsername();
                 filterContracts();
+            });
+
+            contractSelect?.addEventListener("change", () => {
+                if (submitBtn && employee?.value) {
+                    submitBtn.disabled = !contractSelect.value;
+                }
             });
 
             suggestUsername();

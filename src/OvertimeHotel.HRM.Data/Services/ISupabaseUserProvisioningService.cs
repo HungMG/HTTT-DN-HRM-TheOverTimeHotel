@@ -69,8 +69,16 @@ public enum SupabaseUserProvisionError
 public interface ISupabaseUserProvisioningService
 {
     /// <summary>
+    /// Cho biết khoá ServiceRoleKey đã được cấu hình hợp lệ để gọi Supabase Admin API hay chưa.
+    /// </summary>
+    bool IsConfigured { get; }
+
+    /// <summary>
     /// Tạo user trên Supabase Auth với email và mật khẩu đã băm sẵn ở phía Web.
     /// Không ném exception ra ngoài — mọi lỗi đều được gói vào kết quả trả về.
     /// </summary>
     Task<SupabaseUserProvisionResult> CreateUserAsync(string email, string password, CancellationToken cancellationToken = default);
+
+    /// <summary>Gỡ đúng user vừa tạo nếu lưu tài khoản nội bộ thất bại.</summary>
+    Task<bool> DeleteUserAsync(string userId, CancellationToken cancellationToken = default);
 }

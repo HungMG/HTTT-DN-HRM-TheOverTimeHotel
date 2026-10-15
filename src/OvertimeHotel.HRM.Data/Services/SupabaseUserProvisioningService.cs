@@ -116,6 +116,21 @@ public sealed class SupabaseUserProvisioningService : ISupabaseUserProvisioningS
         }
     }
 
+    public async Task<bool> DeleteUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured || !Guid.TryParse(userId, out var id)) return false;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Delete, $"{_supabaseUrl}/auth/v1/admin/users/{id}");
+            request.Headers.TryAddWithoutValidation("apikey", _serviceRoleKey);
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_serviceRoleKey}");
+            using var response = await SharedClient.SendAsync(request, cancellationToken);
+            return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound;
+        }
+        catch (HttpRequestException) { return false; }
+        catch (TaskCanceledException) { return false; }
+    }
+
     /// <summary>
     /// Dịch mã lỗi của GoTrue sang thông báo tiếng Việt. Cố tình KHÔNG đính kèm
     /// nội dung response: nó có thể chứa chi tiết cấu hình dự án, không nên đưa

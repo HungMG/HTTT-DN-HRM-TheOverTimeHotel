@@ -133,6 +133,47 @@ public static class LeaveApprovalPolicy
         => NormalizeRole(role) is RoleType.Admin or RoleType.IT;
 
     /// <summary>
+    /// Kiểm tra người gửi có quyền đề xuất vai trò mục tiêu:
+    /// Chỉ Quản trị viên (Admin) mới được đề xuất cấp vai trò Admin.
+    /// </summary>
+    public static bool CanProposeRole(string? senderRole, string? targetRole)
+    {
+        var normalizedSender = NormalizeRole(senderRole);
+        var normalizedTarget = NormalizeRole(targetRole);
+
+        if (normalizedTarget == RoleType.Admin)
+        {
+            return normalizedSender == RoleType.Admin;
+        }
+
+        return normalizedSender is RoleType.Admin or RoleType.HR;
+    }
+
+    /// <summary>
+    /// Kiểm tra tính hợp lệ của hợp đồng lao động làm căn cứ cấp tài khoản:
+    /// - Trạng thái: "HIEU_LUC"
+    /// - Đã bắt đầu: ngay_bat_dau &lt;= today
+    /// - Chưa hết hạn: ngay_ket_thuc == null (không xác định thời hạn) HOẶC ngay_ket_thuc &gt;= today (chấp nhận hết hạn trong hôm nay).
+    /// </summary>
+    public static bool IsValidContractForAccountRequest(
+        string? trangThai,
+        DateOnly ngayBatDau,
+        DateOnly? ngayKetThuc,
+        DateOnly today)
+    {
+        if (!string.Equals(trangThai, "HIEU_LUC", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (ngayBatDau > today)
+            return false;
+
+        if (ngayKetThuc.HasValue && ngayKetThuc.Value < today)
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
     /// Liệt kê các mã loại đơn mà vai trò được phép tiếp nhận và duyệt.
     /// Dùng để lọc danh sách đơn ngay ở tầng truy vấn (ví dụ khối "Cần bạn xử lý"
     /// trên bảng điều khiển) thay vì tải toàn bộ đơn rồi mới lọc trong bộ nhớ.

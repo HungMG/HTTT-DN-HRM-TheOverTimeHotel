@@ -661,9 +661,11 @@
     // =========================================================================
     const filterForm = document.querySelector("[data-account-filter-form]");
     const tableContainer = document.getElementById("accountTableContainer");
+    let accountRequestVersion = 0;
 
     const loadAccountsTable = async (overrideUrl = null, replaceHistory = true) => {
         if (!tableContainer) return;
+        const requestVersion = ++accountRequestVersion;
 
         let requestUrl;
         if (overrideUrl) {
@@ -699,6 +701,7 @@
             }
 
             const html = await response.text();
+            if (requestVersion !== accountRequestVersion) return;
             tableContainer.innerHTML = html;
 
             // Kích hoạt hiệu ứng chuyển động mượt mà In-Place
@@ -729,17 +732,44 @@
             window.HotelMotion?.applyBlurText?.(tableContainer);
 
         } catch (error) {
+            if (requestVersion !== accountRequestVersion) return;
             showToast(error instanceof Error ? error.message : "Lỗi khi lọc tài khoản.", "danger");
         } finally {
-            if (overlay) overlay.classList.add("d-none");
+            if (overlay && requestVersion === accountRequestVersion) overlay.classList.add("d-none");
         }
     };
 
+    let searchDebounceTimer;
+    filterForm?.querySelector("[data-account-search-input]")?.addEventListener("input", () => {
+        window.clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = window.setTimeout(() => {
+            const pageInput = filterForm.querySelector("[data-account-page-input]");
+            if (pageInput) pageInput.value = "1";
+            void loadAccountsTable();
+        }, 250);
+    });
+
     filterForm?.addEventListener("submit", (e) => {
         e.preventDefault();
+        window.clearTimeout(searchDebounceTimer);
         const pageInput = filterForm.querySelector("[data-account-page-input]");
         if (pageInput) pageInput.value = "1";
         void loadAccountsTable();
+    });
+
+    filterForm?.querySelectorAll("select").forEach((select) => {
+        select.addEventListener("change", () => filterForm.requestSubmit());
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+            const searchInput = filterForm?.querySelector("[data-account-search-input]");
+            if (searchInput) {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
     });
 
     document.addEventListener("click", (event) => {
@@ -757,6 +787,7 @@
 
     document.querySelector("[data-account-filter-reset]")?.addEventListener("click", (e) => {
         e.preventDefault();
+        window.clearTimeout(searchDebounceTimer);
         if (filterForm) {
             filterForm.querySelectorAll("input[type='text'], select").forEach((control) => {
                 if (control.name !== "auditFrom" && control.name !== "auditTo") {

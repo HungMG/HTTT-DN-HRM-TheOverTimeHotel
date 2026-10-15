@@ -81,7 +81,8 @@ public class YeuCauTaiKhoanController : Controller
         var role = GetCurrentRoleName();
         var canProcess = LeaveApprovalPolicy.CanProcessAccountRequest(role);
 
-        var query = BuildVisibleQuery(canProcess, employeeId);
+        var baseQuery = BuildVisibleQuery(canProcess, employeeId);
+        var query = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -143,11 +144,11 @@ public class YeuCauTaiKhoanController : Controller
             TrangThai = trangThai,
             StatusOptions = BuildStatusOptions(trangThai),
             Requests = requests,
-            TotalRequests = await query.CountAsync(),
-            PendingRequests = await query.CountAsync(item => item.TrangThai == STATUS_CHO_IT),
-            ProcessingRequests = await query.CountAsync(item => item.TrangThai == STATUS_DANG_XU_LY),
-            GrantedRequests = await query.CountAsync(item => item.TrangThai == STATUS_DA_CAP),
-            RejectedRequests = await query.CountAsync(item => item.TrangThai == STATUS_TU_CHOI),
+            TotalRequests = await baseQuery.CountAsync(),
+            PendingRequests = await baseQuery.CountAsync(item => item.TrangThai == STATUS_CHO_IT),
+            ProcessingRequests = await baseQuery.CountAsync(item => item.TrangThai == STATUS_DANG_XU_LY),
+            GrantedRequests = await baseQuery.CountAsync(item => item.TrangThai == STATUS_DA_CAP),
+            RejectedRequests = await baseQuery.CountAsync(item => item.TrangThai == STATUS_TU_CHOI),
             TotalFilteredRequests = totalFiltered,
             PageNumber = pageNumber,
             PageSize = PageSize,
@@ -250,10 +251,8 @@ public class YeuCauTaiKhoanController : Controller
             return View(model);
         }
 
-        // Ba kiểm tra này lặp lại đúng điều kiện của LoadCreateOptionsAsync,
-        // nhưng phải chạy LẠI lúc POST: người dùng có thể mở form rồi để mở,
-        // hoặc gửi thẳng giá trị đã sửa trong devtools. Lọc ở dropdown chỉ cho
-        // trải nghiệm đẹp, còn đây mới là chốt chặn.
+        // Kiểm tra nhân viên: đang làm việc, có email công vụ, chưa có tài khoản,
+        // và KHÔNG có yêu cầu nào đang chờ hoặc đang xử lý.
         var employee = await _context.NhanViens
             .AsNoTracking()
             .Where(item => item.MaNhanVien == model.EmployeeId)
@@ -274,14 +273,16 @@ public class YeuCauTaiKhoanController : Controller
         }
         else if (string.IsNullOrWhiteSpace(employee.EmailCongVu))
         {
-            // Không có email công vụ thì hook không cấp claim: nhân viên đăng
-            // nhập được app nhưng vào trong không có quyền nào. Chặn ngay tại
-            // đây để không tạo một yêu cầu chắc chắn sẽ cấp không xong.
             ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên chưa có email công vụ nên không thể đăng nhập Mobile App.");
         }
+        else if (await _context.YeuCauTaiKhoans.AnyAsync(req =>
+                     req.MaNhanVien == model.EmployeeId &&
+                     (req.TrangThai == STATUS_CHO_IT || req.TrangThai == STATUS_DANG_XU_LY)))
+        {
+            ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên này đang có yêu cầu cấp tài khoản chờ hoặc đang được xử lý.");
+        }
 
-        // Tên đăng nhập phải trùng khai báo với yêu cầu đang mở, vì index
-        // uq_yeu_cau_ten_dang_nhap_dang_mo khoá đúng hai trạng thái này.
+        // Tên đăng nhập phải duy nhất trong hệ thống và trong các yêu cầu đang mở.
         if (await _context.TaiKhoans.AnyAsync(account => account.TenDangNhap.ToLower() == model.Username))
         {
             ModelState.AddModelError(nameof(model.Username), "Tên đăng nhập này đã thuộc về một tài khoản đang tồn tại.");
@@ -306,18 +307,27 @@ public class YeuCauTaiKhoanController : Controller
         else if (string.Equals(roleName, "Admin", StringComparison.Ordinal) &&
                  !LeaveApprovalPolicy.IsAdmin(GetCurrentRoleName()))
         {
-            // Tự ghi yêu cầu cấp tài khoản quản trị là leo quyền: HR có thể
-            // gửi yêu cầu, nhưng quyền "gửi" không được kéo theo quyền "tạo Admin".
-            ModelState.AddModelError(nameof(model.RoleId), "Chỉ Quản trị viên mới được gán vai trò quản trị cho tài khoản mới.");
+            ModelState.AddModelError(nameof(model.RoleId), "Chỉ Quản trị viên mới được đề xuất cấp vai trò Quản trị viên.");
         }
 
-        if (model.ContractId.HasValue &&
-            !await _context.HopDongs.AnyAsync(contract =>
-                contract.MaHopDong == model.ContractId.Value &&
-                contract.MaNhanVien == model.EmployeeId &&
-                contract.TrangThai == "HIEU_LUC"))
+        // Kiểm tra hợp đồng: bắt buộc, của đúng nhân viên, trạng thái Hiệu lực, đã bắt đầu và chưa hết hạn.
+        if (!model.ContractId.HasValue || model.ContractId.Value <= 0)
         {
-            ModelState.AddModelError(nameof(model.ContractId), "Hợp đồng không hợp lệ với nhân viên đã chọn.");
+            ModelState.AddModelError(nameof(model.ContractId), "Vui lòng chọn hợp đồng lao động làm căn cứ cấp tài khoản.");
+        }
+        else
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var contract = await _context.HopDongs
+                .AsNoTracking()
+                .Where(c => c.MaHopDong == model.ContractId.Value && c.MaNhanVien == model.EmployeeId)
+                .Select(c => new { c.TrangThai, c.NgayBatDau, c.NgayKetThuc })
+                .SingleOrDefaultAsync();
+
+            if (contract == null || !LeaveApprovalPolicy.IsValidContractForAccountRequest(contract.TrangThai, contract.NgayBatDau, contract.NgayKetThuc, today))
+            {
+                ModelState.AddModelError(nameof(model.ContractId), "Hợp đồng không hợp lệ hoặc đã hết hạn (chỉ chấp nhận HĐ đang hiệu lực, đã bắt đầu và chưa hết hạn).");
+            }
         }
 
         if (!ModelState.IsValid)
@@ -337,43 +347,58 @@ public class YeuCauTaiKhoanController : Controller
             MaNguoiGui = senderEmployeeId.Value
         };
 
-        _context.YeuCauTaiKhoans.Add(request);
-        _context.NhatKyQuanTris.Add(CreateAuditLog(
-            targetAccountId: GetCurrentAccountId(),
-            targetUsername: model.Username,
-            action: "CREATE_ACCOUNT_REQUEST",
-            description: "Gửi yêu cầu cấp tài khoản đăng nhập cho nhân viên.",
-            oldValue: null,
-            newValue: $"Nhân viên #{model.EmployeeId}; Vai trò: {GetVietnameseRoleName(roleName)}; Tên đăng nhập: {model.Username}",
-            reason: "Nhân sự duyệt hợp đồng và gửi yêu cầu cấp tài khoản."));
+        var created = await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            _context.ChangeTracker.Clear();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            // Serialize submissions for this employee, including requests with different usernames.
+            await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(2026101601, {model.EmployeeId})");
+            if (await _context.YeuCauTaiKhoans.AnyAsync(item => item.MaNhanVien == model.EmployeeId &&
+                (item.TrangThai == STATUS_CHO_IT || item.TrangThai == STATUS_DANG_XU_LY))) return false;
 
-        await _context.SaveChangesAsync();
+            _context.YeuCauTaiKhoans.Add(request);
+            _context.NhatKyQuanTris.Add(CreateAuditLog(
+                targetAccountId: null,
+                targetUsername: model.Username,
+                action: "CREATE_ACCOUNT_REQUEST",
+                description: "Gửi yêu cầu cấp tài khoản đăng nhập cho nhân viên.",
+                oldValue: null,
+                newValue: $"Nhân viên #{model.EmployeeId}; Hợp đồng #{model.ContractId}; Vai trò: {GetVietnameseRoleName(roleName)}; Tên đăng nhập: {model.Username}",
+                reason: "Nhân sự duyệt hợp đồng và gửi yêu cầu cấp tài khoản."));
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return true;
+        });
+        if (!created)
+        {
+            ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên này đang có yêu cầu cấp tài khoản chờ hoặc đang được xử lý.");
+            await LoadCreateOptionsAsync(model);
+            return View(model);
+        }
 
-        TempData["Success"] = $"Đã gửi yêu cầu cấp tài khoản '{model.Username}'. Bộ phận Công nghệ Thông tin sẽ xử lý.";
+        TempData["Success"] = $"Đã gửi yêu cầu cấp tài khoản '{model.Username}'. Bộ phận Công nghệ Thông tin hoặc Quản trị viên sẽ xử lý.";
         return RedirectToAction(nameof(Index));
     }
 
     /// <summary>
-    /// Nạp hai danh sách cho form gửi yêu cầu.
-    ///
-    /// <para>
-    /// Điều kiện lọc nhân viên CỐ TÝ giống hệt trigger <c>chan_yeu_cau_tai_khoan_trung</c>
-    /// ở CSDL: chưa có tài khoản, đang làm việc, và có email công vụ. Ba điều kiện
-    /// đó chính là thứ trigger chặn — lọt một điều kiện nào thì người dùng thấy
-    /// lỗi 23000 của PostgreSQL thay vì thông báo tiếng Việt. Lọc ở tầng Web để
-    /// không tạo ra trải nghiệm lỗi kỹ thuật; trigger vẫn giữ làm lướp an toàn
-    /// cho mọi đường ghi khác.
-    /// </para>
+    /// Nạp danh sách nhân viên, vai trò và hợp đồng còn hiệu lực cho form gửi yêu cầu.
     /// </summary>
     private async Task LoadCreateOptionsAsync(CreateYeuCauTaiKhoanViewModel model)
     {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        // 1. Chỉ hiện nhân viên đang làm việc, có email công vụ, chưa có tài khoản,
+        // và KHÔNG có yêu cầu nào đang chờ hoặc đang xử lý.
         model.EmployeeOptions = await _context.NhanViens
             .AsNoTracking()
             .Where(employee =>
                 employee.TrangThai == "DANG_LAM" &&
                 employee.EmailCongVu != null &&
                 employee.EmailCongVu != string.Empty &&
-                !_context.TaiKhoans.Any(account => account.MaNhanVien == employee.MaNhanVien))
+                !_context.TaiKhoans.Any(account => account.MaNhanVien == employee.MaNhanVien) &&
+                !_context.YeuCauTaiKhoans.Any(req =>
+                    req.MaNhanVien == employee.MaNhanVien &&
+                    (req.TrangThai == STATUS_CHO_IT || req.TrangThai == STATUS_DANG_XU_LY)))
             .OrderBy(employee => employee.Ho)
             .ThenBy(employee => employee.Ten)
             .Select(employee => new SelectListItem
@@ -384,8 +409,7 @@ public class YeuCauTaiKhoanController : Controller
             })
             .ToListAsync();
 
-        // Admin chỉ hiện trong danh sách khi chính người gửi là Admin — xem
-        // kiểm tra ở action Create.
+        // 2. Danh sách vai trò: Admin chỉ hiện khi người gửi là Admin.
         var senderIsAdmin = LeaveApprovalPolicy.IsAdmin(GetCurrentRoleName());
         var roleNames = SupportedRoles
             .Where(roleName => senderIsAdmin || !string.Equals(roleName, "Admin", StringComparison.Ordinal))
@@ -408,26 +432,26 @@ public class YeuCauTaiKhoanController : Controller
             roleOption.Text = GetVietnameseRoleName(roleOption.Text);
         }
 
-        // Mặc định Employee: đây là vai trò phổ biến nhất và cũng là vai trò
-        // ít quyền nhất, nên "quên chọn" cũng không dẫn tới leo quyền.
         if (model.RoleId == 0)
         {
             var defaultRole = model.RoleOptions.FirstOrDefault(option => option.Text == GetVietnameseRoleName("Employee"));
             model.RoleId = defaultRole == null ? 0 : int.Parse(defaultRole.Value!);
         }
 
-        // Chỉ hợp đồng HIỆU_LỰC mới là căn cứ hợp lệ — hợp đồng đã hết hạn thì
-        // nhân viên không còn đủ tư cách đi làm, cấp tài khoản cho họ là cấp
-        // quyền vào hệ thống không có việc làm.
+        // 3. Chỉ hợp đồng HIỆU LỰC, ĐÃ BẮT ĐẦU và CHƯA HẾT HẠN (chấp nhận hết hạn hôm nay hoặc không thời hạn)
         model.ActiveContracts = await _context.HopDongs
             .AsNoTracking()
-            .Where(contract => contract.TrangThai == "HIEU_LUC")
+            .Where(contract =>
+                contract.TrangThai == "HIEU_LUC" &&
+                contract.NgayBatDau <= today &&
+                (contract.NgayKetThuc == null || contract.NgayKetThuc.Value >= today))
             .OrderBy(contract => contract.NgayKetThuc ?? DateOnly.MaxValue)
             .ThenBy(contract => contract.SoHopDong)
             .Select(contract => new ActiveContractOptionViewModel
             {
                 ContractId = contract.MaHopDong,
                 EmployeeId = contract.MaNhanVien,
+                ContractNo = contract.SoHopDong,
                 Label = contract.SoHopDong + " · " +
                         (contract.LoaiHopDong ?? string.Empty) + " · " +
                         (contract.NgayKetThuc == null
@@ -438,13 +462,19 @@ public class YeuCauTaiKhoanController : Controller
     }
 
     // =====================================================================
-    //  CLAIM — IT NHẬN VIỆC
+    //  CLAIM — IT HOẶC ADMIN NHẬN VIỆC
     // =====================================================================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PermissionCodes.ProvisionMobileAccount)]
     public async Task<IActionResult> Claim(int id)
     {
+        var role = GetCurrentRoleName();
+        if (!LeaveApprovalPolicy.CanProcessAccountRequest(role))
+        {
+            return ProcessingFailure("Chỉ Quản trị viên và bộ phận Công nghệ Thông tin mới có quyền nhận xử lý yêu cầu.", StatusCodes.Status403Forbidden);
+        }
+
         var accountId = GetCurrentAccountId();
         if (!accountId.HasValue)
         {
@@ -464,36 +494,42 @@ public class YeuCauTaiKhoanController : Controller
 
         if (affected == 0)
         {
-            _logger.LogWarning("Xung đột nhận việc yêu cầu #{RequestId}: yêu cầu đã chuyển trạng thái.", id);
+            _logger.LogWarning("Xung đột nhận việc yêu cầu #{RequestId}: yêu cầu đã chuyển trạng thái hoặc đã được người khác nhận.", id);
             return ProcessingFailure(
                 "Yêu cầu này vừa được người khác nhận hoặc đã chuyển trạng thái. Vui lòng tải lại danh sách.",
                 StatusCodes.Status409Conflict);
         }
 
         _context.NhatKyQuanTris.Add(CreateAuditLog(
-            accountId,
-            $"YEU_CAU_#{id}",
-            "CLAIM_ACCOUNT_REQUEST",
-            "Bộ phận CNTT nhận xử lý yêu cầu cấp tài khoản.",
+            targetAccountId: null,
+            targetUsername: $"YEU_CAU_#{id}",
+            action: "CLAIM_ACCOUNT_REQUEST",
+            description: "Nhận xử lý yêu cầu cấp tài khoản từ hàng đợi.",
             oldValue: $"Trạng thái: {STATUS_CHO_IT}",
-            newValue: $"Trạng thái: {STATUS_DANG_XU_LY}",
+            newValue: $"Trạng thái: {STATUS_DANG_XU_LY}; Người xử lý: {accountId.Value}",
             reason: "Nhận việc để cấp tài khoản đăng nhập Mobile App."));
 
         await _context.SaveChangesAsync();
 
         return ProcessingSuccess(
             $"Đã nhận yêu cầu #{id}. Bạn có thể cấp tài khoản hoặc từ chối.",
-            await GetStatusOptionsForRefresh(GetCurrentRoleName()));
+            await GetStatusOptionsForRefresh(role));
     }
 
     // =====================================================================
-    //  COMPLETE — IT CẤP TÀI KHOẢN
+    //  COMPLETE — IT HOẶC ADMIN CẤP TÀI KHOẢN
     // =====================================================================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PermissionCodes.ProvisionMobileAccount)]
     public async Task<IActionResult> Complete(int id)
     {
+        var role = GetCurrentRoleName();
+        if (!LeaveApprovalPolicy.CanProcessAccountRequest(role))
+        {
+            return ProcessingFailure("Chỉ Quản trị viên và bộ phận Công nghệ Thông tin mới có quyền cấp tài khoản.", StatusCodes.Status403Forbidden);
+        }
+
         var accountId = GetCurrentAccountId();
         if (!accountId.HasValue)
         {
@@ -515,8 +551,31 @@ public class YeuCauTaiKhoanController : Controller
         // đang xử lý thật — hậu quả là không truy được ai đã cấp.
         if (!string.Equals(request.TrangThai, STATUS_DANG_XU_LY, StringComparison.Ordinal))
         {
+            if (string.Equals(request.TrangThai, STATUS_DA_CAP, StringComparison.Ordinal))
+            {
+                return ProcessingSuccess(
+                    $"Yêu cầu này đã được cấp tài khoản thành công ({request.TenDangNhap}).",
+                    await GetStatusOptionsForRefresh(role));
+            }
+
+            if (string.Equals(request.TrangThai, STATUS_CHO_IT, StringComparison.Ordinal))
+            {
+                return ProcessingFailure(
+                    "Yêu cầu này đang ở trạng thái 'Chờ xử lý'. Vui lòng bấm 'Nhận việc' trước khi cấp tài khoản.",
+                    StatusCodes.Status409Conflict);
+            }
+
             return ProcessingFailure(
                 "Chỉ cấp được tài khoản cho yêu cầu đã nhận việc (trạng thái Đang xử lý).",
+                StatusCodes.Status409Conflict);
+        }
+
+        // Chặn hai người xử lý trùng: nếu yêu cầu đã được một chuyên viên khác nhận,
+        // người khác không được tự ý cấp (trừ Quản trị viên can thiệp).
+        if (!LeaveApprovalPolicy.IsAdmin(role) && request.MaNguoiXuLy.HasValue && request.MaNguoiXuLy.Value != accountId.Value)
+        {
+            return ProcessingFailure(
+                "Yêu cầu này đang được một chuyên viên khác xử lý.",
                 StatusCodes.Status409Conflict);
         }
 
@@ -533,6 +592,16 @@ public class YeuCauTaiKhoanController : Controller
         }
 
         var username = request.TenDangNhap;
+
+        var provisionResult = await _supabaseUserProvisioning.CreateUserAsync(
+            workEmail, InitialPassword, HttpContext.RequestAborted);
+        if (!provisionResult.Success)
+        {
+            _logger.LogWarning("Không cấp được Supabase Auth cho yêu cầu #{RequestId}: {ErrorCode}", id, provisionResult.ErrorCode);
+            return ProcessingFailure(provisionResult.ErrorMessage ?? "Không tạo được tài khoản đăng nhập trên Mobile App.", StatusCodes.Status502BadGateway);
+        }
+        var supabaseUserId = provisionResult.SupabaseUserId!;
+
         var account = new TaiKhoan
         {
             MaNhanVien = request.MaNhanVien,
@@ -555,13 +624,25 @@ public class YeuCauTaiKhoanController : Controller
                 await _context.SaveChangesAsync();
 
                 _context.NhatKyQuanTris.Add(CreateAuditLog(
-                    accountId,
-                    username,
-                    "CREATE_ACCOUNT",
-                    "Tạo tài khoản từ yêu cầu cấp tài khoản do Nhân sự gửi.",
+                    targetAccountId: account.MaTaiKhoan,
+                    targetUsername: username,
+                    action: "CREATE_ACCOUNT",
+                    description: "Tạo tài khoản từ yêu cầu cấp tài khoản do Nhân sự gửi.",
                     oldValue: $"Yêu cầu #{request.MaYeuCau} · trạng thái {STATUS_DANG_XU_LY}",
                     newValue: $"Tài khoản #{account.MaTaiKhoan} · trạng thái Hoạt động",
-                    reason: "Bộ phận CNTT cấp tài khoản theo yêu cầu đã duyệt."));
+                    reason: "Cấp tài khoản theo yêu cầu đã duyệt."));
+
+                if (!string.IsNullOrWhiteSpace(supabaseUserId))
+                {
+                    _context.NhatKyQuanTris.Add(CreateAuditLog(
+                        targetAccountId: account.MaTaiKhoan,
+                        targetUsername: username,
+                        action: "CREATE_ACCOUNT_AUTH",
+                        description: "Cấp tài khoản Supabase Auth để nhân viên đăng nhập Mobile App bằng email công vụ.",
+                        oldValue: null,
+                        newValue: $"Email công vụ: {workEmail}; Supabase User ID: {supabaseUserId}",
+                        reason: "Hoàn tất bước cấp quyền đăng nhập cho yêu cầu đã nhận việc."));
+                }
 
                 await _context.SaveChangesAsync();
 
@@ -573,6 +654,7 @@ public class YeuCauTaiKhoanController : Controller
                     .ExecuteUpdateAsync(setters => setters
                         .SetProperty(item => item.TrangThai, STATUS_DA_CAP)
                         .SetProperty(item => item.MaTaiKhoan, account.MaTaiKhoan)
+                        .SetProperty(item => item.MaNguoiXuLy, accountId.Value)
                         .SetProperty(item => item.NgayXuLy, DateTimeOffset.UtcNow));
 
                 if (completed == 0)
@@ -586,110 +668,53 @@ public class YeuCauTaiKhoanController : Controller
         }
         catch (Exception ex)
         {
-            // Bỏ dòng tai_khoan đã Add vào change tracker: giữ lại thì lần
-            // SaveChanges kế tiếp sẽ thử ghi lại nó và chết theo.
-            _context.Entry(account).State = EntityState.Detached;
-            _logger.LogError(ex, "Không thể tạo tài khoản cho yêu cầu #{RequestId}.", id);
+            _context.ChangeTracker.Clear();
+            _logger.LogError(ex, "Không thể lưu tài khoản cho yêu cầu #{RequestId}.", id);
+            try
+            {
+                // A lost commit response does not prove the transaction rolled back.
+                var committed = account.MaTaiKhoan > 0 && await _context.YeuCauTaiKhoans.AsNoTracking().AnyAsync(item =>
+                    item.MaYeuCau == id && item.TrangThai == STATUS_DA_CAP && item.MaTaiKhoan == account.MaTaiKhoan);
+                if (committed)
+                    return ProcessingSuccess($"Đã cấp tài khoản '{username}' và quyền đăng nhập Mobile App.", await GetStatusOptionsForRefresh(role));
+
+                if (!await _supabaseUserProvisioning.DeleteUserAsync(supabaseUserId, CancellationToken.None))
+                {
+                    _logger.LogError("Cần kiểm tra Supabase user {SupabaseUserId} của yêu cầu #{RequestId}: không gỡ được sau lỗi lưu CSDL.", supabaseUserId, id);
+                    return ProcessingFailure("Không lưu được tài khoản. Quản trị viên cần kiểm tra tài khoản Supabase trước khi thử lại.", StatusCodes.Status502BadGateway);
+                }
+            }
+            catch (Exception verificationError)
+            {
+                _logger.LogError(verificationError, "Chưa xác định kết quả cấp yêu cầu #{RequestId}, Supabase user {SupabaseUserId}.", id, supabaseUserId);
+                return ProcessingFailure("Chưa xác định được kết quả cấp tài khoản. Vui lòng liên hệ quản trị viên để kiểm tra trước khi thử lại.", StatusCodes.Status503ServiceUnavailable);
+            }
             return ProcessingFailure(
                 "Không thể tạo tài khoản do dữ liệu bị trùng hoặc kết nối CSDL gặp lỗi.",
                 StatusCodes.Status500InternalServerError);
         }
 
-        // Cấp user Supabase Auth SAU KHI transaction đã commit. Gọi HTTP bên
-        // trong transaction PostgreSQL đang mở là sai: giữ connection lâu, và
-        // nếu HTTP thành công nhưng commit hỏng thì tài khoản app đã có mà
-        // tài khoản CSDL thì không — đúng trạng thái "đăng được app nhưng không
-        // có quyền nào" mà kế hoạch đã cảnh báo.
-        var provisionResult = await _supabaseUserProvisioning.CreateUserAsync(
-            workEmail,
-            InitialPassword,
-            HttpContext.RequestAborted);
-
-        if (!provisionResult.Success)
-        {
-            _logger.LogWarning(
-                "Cấp tài khoản Supabase thất bại cho yêu cầu #{RequestId} ({Username}): {ErrorCode}",
-                id,
-                username,
-                provisionResult.ErrorCode);
-
-            await RollBackGrantedAccountAsync(account, id);
-
-            return ProcessingFailure(
-                provisionResult.ErrorMessage
-                ?? "Không tạo được tài khoản đăng nhập trên Mobile App.",
-                StatusCodes.Status502BadGateway);
-        }
-
-        _context.NhatKyQuanTris.Add(CreateAuditLog(
-            accountId,
-            username,
-            "CREATE_ACCOUNT_AUTH",
-            "Cấp tài khoản Supabase Auth để nhân viên đăng nhập Mobile App bằng email công vụ.",
-            oldValue: null,
-            newValue: $"Email công vụ: {workEmail}; Supabase User ID: {provisionResult.SupabaseUserId}",
-            reason: "Hoàn tất bước cấp quyền đăng nhập cho yêu cầu đã nhận việc."));
-
-        await _context.SaveChangesAsync();
+        var successMessage = $"Đã cấp tài khoản '{username}' và quyền đăng nhập Mobile App bằng email công vụ '{workEmail}'.";
 
         return ProcessingSuccess(
-            $"Đã cấp tài khoản '{username}' và quyền đăng nhập Mobile App bằng email công vụ '{workEmail}'.",
+            successMessage,
             await GetStatusOptionsForRefresh(GetCurrentRoleName()));
     }
 
-    /// <summary>
-    /// Gỡ dòng <c>tai_khoan</c> vừa tạo khi cấp user Supabase Auth thất bại, và
-    /// trả yêu cầu về trạng thái <c>DANG_XU_LY</c> kèm lý do HTTP.
-    ///
-    /// <para>
-    /// <b>Vì sao KHÔNG xoá yêu cầu.</b> Yêu cầu đã tồn tại từ trước, do Nhân
-    /// sự gửi và là dấu vết tiến trình mà CSDL phải truy được. Xoá nó là mất
-    /// dấu vết ai đã gửi, và nhân viên sẽ không bao giờ biết vì sao mình chưa
-    /// được cấp tài khoản. Giữ nguyên yêu cầu ở DANG_XU_LY còn đúng nghĩa
-    /// "IT đang xử lý, nhưng chưa xong" — và người xử lý thấy ngay lý do để làm
-    /// lại.
-    /// </para>
-    ///
-    /// <para>
-    /// <b>Vì sao gỡ dòng tai_khoan.</b> Trigger <c>chan_yeu_cau_tai_khoan_trung</c>
-    /// chặn đúng cái trạng thái để lại: một dòng <c>tai_khoan</c> mà không có
-    /// user trong <c>auth.users</c> là tài khoản đăng nhập được Web nhưng không
-    /// đăng nhập được app, và lần sau gửi lại sẽ bị trigger chặn với thông báo
-    /// "đã có tài khoản" — nhân viên không tự khắc phục được.
-    /// </para>
-    /// </summary>
-    private async Task RollBackGrantedAccountAsync(TaiKhoan account, int requestId)
-    {
-        var failureNote = "Cấp tài khoản Supabase Auth thất bại. Yêu cầu được giữ ở trạng thái Đang xử lý để bộ phận CNTT thử lại.";
-
-        // Trả yêu cầu về DANG_XU_LY TRƯỚC, để nó không còn giữ ma_tai_khoan
-        // trỏ tới tài khoản sắp bị xoá — nếu làm ngược thì CHECK
-        // chk_yeu_cau_da_cap_can_co_tai_khoan và ON DELETE SET NULL của cột
-        // ma_tai_khoan sẽ kéo trạng thái về một giá trị không hợp lệ.
-        // Ngày xử lý đặt lại null vì yêu cầu chưa kết thúc; thời điểm thất bại
-        // nằm ở nhật ký quản trị chứ không nằm ở cột này.
-        await _context.YeuCauTaiKhoans
-            .Where(item => item.MaYeuCau == requestId && item.MaTaiKhoan == account.MaTaiKhoan)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(item => item.TrangThai, STATUS_DANG_XU_LY)
-                .SetProperty(item => item.MaTaiKhoan, (int?)null)
-                .SetProperty(item => item.GhiChuTuChoi, failureNote)
-                .SetProperty(item => item.NgayXuLy, (DateTimeOffset?)null));
-
-        _context.NhatKyQuanTris.RemoveRange(
-            _context.NhatKyQuanTris.Where(log => log.MaTaiKhoanBiTacDong == account.MaTaiKhoan));
-        _context.TaiKhoans.Remove(account);
-        await _context.SaveChangesAsync();
-    }
-
     // =====================================================================
-    //  REJECT — IT TỪ CHỐI
+    //  REJECT — IT HOẶC ADMIN TỪ CHỐI
     // =====================================================================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PermissionCodes.ProvisionMobileAccount)]
     public async Task<IActionResult> Reject(int id, string? lyDo)
     {
+        var role = GetCurrentRoleName();
+        if (!LeaveApprovalPolicy.CanProcessAccountRequest(role))
+        {
+            return ProcessingFailure("Chỉ Quản trị viên và bộ phận Công nghệ Thông tin mới có quyền từ chối yêu cầu.", StatusCodes.Status403Forbidden);
+        }
+
         lyDo = lyDo?.Trim();
 
         // CHECK chk_yeu_cau_tu_choi_can_co_ghi_chu ở CSDL sẽ ném 23514 nếu để
@@ -705,16 +730,39 @@ public class YeuCauTaiKhoanController : Controller
         }
 
         var accountId = GetCurrentAccountId();
+        if (!accountId.HasValue)
+        {
+            return ProcessingFailure("Không xác định được tài khoản đang đăng nhập.", StatusCodes.Status401Unauthorized);
+        }
 
-        // Cột ma_nguoi_xu_ly CỐ Ý không được chạm vào ở đây: nó đã được Claim
-        // ghi khi nhận việc, và CHECK chk_yeu_cau_da_xu_ly_can_co_nguoi bảo đảm
-        // nó luôn khác NULL ở mọi trạng thái ngoài CHO_IT. Ghi đè lại chỉ để
-        // "ghi cho có" mà là mất dấu vết người thực sự nhận việc.
+        var request = await _context.YeuCauTaiKhoans
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.MaYeuCau == id);
+
+        if (request == null)
+        {
+            return ProcessingFailure("Không tìm thấy yêu cầu cần từ chối.", StatusCodes.Status404NotFound);
+        }
+
+        if (!string.Equals(request.TrangThai, STATUS_DANG_XU_LY, StringComparison.Ordinal))
+        {
+            return ProcessingFailure("Chỉ từ chối được yêu cầu đang ở trạng thái Đang xử lý.", StatusCodes.Status409Conflict);
+        }
+
+        // Chặn hai người xử lý trùng: người khác không được tự ý từ chối yêu cầu đã do chuyên viên khác nhận (trừ Quản trị viên)
+        if (!LeaveApprovalPolicy.IsAdmin(role) && request.MaNguoiXuLy.HasValue && request.MaNguoiXuLy.Value != accountId.Value)
+        {
+            return ProcessingFailure(
+                "Yêu cầu này đang được một chuyên viên khác xử lý.",
+                StatusCodes.Status409Conflict);
+        }
+
         var affected = await _context.YeuCauTaiKhoans
             .Where(item => item.MaYeuCau == id && item.TrangThai == STATUS_DANG_XU_LY)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(item => item.TrangThai, STATUS_TU_CHOI)
                 .SetProperty(item => item.GhiChuTuChoi, lyDo)
+                .SetProperty(item => item.MaNguoiXuLy, accountId.Value)
                 .SetProperty(item => item.NgayXuLy, DateTimeOffset.UtcNow));
 
         if (affected == 0)
@@ -726,19 +774,19 @@ public class YeuCauTaiKhoanController : Controller
         }
 
         _context.NhatKyQuanTris.Add(CreateAuditLog(
-            accountId,
-            $"YEU_CAU_#{id}",
-            "REJECT_ACCOUNT_REQUEST",
-            "Bộ phận CNTT từ chối cấp tài khoản đăng nhập.",
+            targetAccountId: null,
+            targetUsername: $"YEU_CAU_#{id}",
+            action: "REJECT_ACCOUNT_REQUEST",
+            description: "Từ chối cấp tài khoản đăng nhập.",
             oldValue: $"Trạng thái: {STATUS_DANG_XU_LY}",
-            newValue: $"Trạng thái: {STATUS_TU_CHOI}",
+            newValue: $"Trạng thái: {STATUS_TU_CHOI}; Người xử lý: {accountId.Value}",
             reason: lyDo));
 
         await _context.SaveChangesAsync();
 
         return ProcessingSuccess(
-            $"Đã từ chối yêu cầu #{id}. Nhân sự có thể sửa và gửi lại.",
-            await GetStatusOptionsForRefresh(GetCurrentRoleName()));
+            $"Đã từ chối yêu cầu #{id}. Người gửi có thể chỉnh sửa và gửi lại.",
+            await GetStatusOptionsForRefresh(role));
     }
 
     // =====================================================================
@@ -789,8 +837,8 @@ public class YeuCauTaiKhoanController : Controller
     {
         return
         [
-            new SelectListItem { Value = string.Empty, Text = "Tất cả trạng thái", Selected = string.IsNullOrWhiteSpace(selectedStatus) },
-            new SelectListItem { Value = STATUS_CHO_IT, Text = "Chờ CNTT", Selected = selectedStatus == STATUS_CHO_IT },
+            new SelectListItem { Value = string.Empty, Text = "-- Tất cả trạng thái --", Selected = string.IsNullOrWhiteSpace(selectedStatus) },
+            new SelectListItem { Value = STATUS_CHO_IT, Text = "Chờ bộ phận IT xử lí", Selected = selectedStatus == STATUS_CHO_IT },
             new SelectListItem { Value = STATUS_DANG_XU_LY, Text = "Đang xử lý", Selected = selectedStatus == STATUS_DANG_XU_LY },
             new SelectListItem { Value = STATUS_DA_CAP, Text = "Đã cấp", Selected = selectedStatus == STATUS_DA_CAP },
             new SelectListItem { Value = STATUS_TU_CHOI, Text = "Từ chối", Selected = selectedStatus == STATUS_TU_CHOI }
@@ -821,7 +869,7 @@ public class YeuCauTaiKhoanController : Controller
     {
         return status switch
         {
-            STATUS_CHO_IT => "Chờ CNTT",
+            STATUS_CHO_IT => "Chờ bộ phận IT xử lí",
             STATUS_DANG_XU_LY => "Đang xử lý",
             STATUS_DA_CAP => "Đã cấp",
             STATUS_TU_CHOI => "Từ chối",
