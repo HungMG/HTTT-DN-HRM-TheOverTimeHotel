@@ -127,6 +127,19 @@ public class AttendanceController : ControllerBase
                 return UnauthorizedError("Tài khoản không hợp lệ hoặc đã bị khóa.");
             }
 
+            // Kiểm tra hợp đồng lao động còn hiệu lực mới cho quẹt thẻ
+            var activeContract = await _context.HopDongs
+                .AsNoTracking()
+                .Where(h => h.MaNhanVien == maNhanVien.Value)
+                .OrderByDescending(h => h.NgayBatDau)
+                .FirstOrDefaultAsync();
+
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            if (activeContract != null && activeContract.NgayKetThuc.HasValue && activeContract.NgayKetThuc.Value < today)
+            {
+                return BadRequestError($"Hợp đồng lao động của bạn đã hết hạn vào ngày {activeContract.NgayKetThuc.Value:dd/MM/yyyy}. Hệ thống tạm khóa tính năng chấm công cho đến khi hợp đồng mới được kích hoạt.");
+            }
+
             // Zero Trust: phương thức quẹt thẻ phải nằm trong danh sách cho phép.
             var phuongThuc = AttendanceCalculator.NormalizeMethod(request.PhuongThuc);
             if (phuongThuc is null)
@@ -204,6 +217,19 @@ public class AttendanceController : ControllerBase
             if (maNhanVien is null)
             {
                 return UnauthorizedError("Tài khoản không hợp lệ hoặc đã bị khóa.");
+            }
+
+            // Kiểm tra hợp đồng lao động còn hiệu lực mới cho quẹt thẻ
+            var activeContract = await _context.HopDongs
+                .AsNoTracking()
+                .Where(h => h.MaNhanVien == maNhanVien.Value)
+                .OrderByDescending(h => h.NgayBatDau)
+                .FirstOrDefaultAsync();
+
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            if (activeContract != null && activeContract.NgayKetThuc.HasValue && activeContract.NgayKetThuc.Value < today)
+            {
+                return BadRequestError($"Hợp đồng lao động của bạn đã hết hạn vào ngày {activeContract.NgayKetThuc.Value:dd/MM/yyyy}. Hệ thống tạm khóa tính năng chấm công cho đến khi hợp đồng mới được kích hoạt.");
             }
 
             var phuongThuc = AttendanceCalculator.NormalizeMethod(request.PhuongThuc);

@@ -74,6 +74,16 @@
                         </td>
                         <td>
                             <span class="badge bg-light text-dark border px-2 py-1 rounded-pill small">@contract.LoaiHopDong</span>
+                            @if (item.State == "DA_HET_HAN" || (item.DaysRemaining.HasValue && item.DaysRemaining.Value <= 30))
+                            {
+                                <div class="mt-1">
+                                    <a href="javascript:void(0)" 
+                                       class="text-primary fw-semibold small text-decoration-none d-inline-flex align-items-center gap-1 hover-underline"
+                                       onclick="openRenewContractModal(@contract.MaNhanVien, '@(item.EmployeeName.Replace("'", "\\'"))', '@contract.LoaiHopDong', @contract.LuongCoBan, '@(contract.NgayKetThuc?.ToString("yyyy-MM-dd") ?? "")')">
+                                        <i class="bi bi-arrow-repeat text-warning"></i> Gia hạn hợp đồng
+                                    </a>
+                                </div>
+                            }
                         </td>
                         <td>
                             <div class="small text-dark font-monospace">@contract.NgayBatDau.ToString("dd/MM/yyyy") &rarr; @(contract.NgayKetThuc?.ToString("dd/MM/yyyy") ?? "Không thời hạn")</div>

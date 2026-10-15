@@ -1,4 +1,6 @@
 using System.Text;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -122,6 +124,39 @@ builder.Services.AddAuthentication(options =>
         options.Cookie.Name = "OverTimeHotel_HRM_Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = async context =>
+            {
+                var userIdStr = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdStr, out var userId))
+                {
+                    var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                    var account = await dbContext.TaiKhoans.AsNoTracking().FirstOrDefaultAsync(t => t.MaTaiKhoan == userId);
+                    if (account == null || !account.TrangThai)
+                    {
+                        context.RejectPrincipal();
+                        await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                        return;
+                    }
+
+                    // Thu hồi phiên làm việc tức thì nếu hợp đồng lao động đã hết hạn
+                    var latestContract = await dbContext.HopDongs
+                        .AsNoTracking()
+                        .Where(h => h.MaNhanVien == account.MaNhanVien)
+                        .OrderByDescending(h => h.NgayBatDau)
+                        .FirstOrDefaultAsync();
+
+                    var today = DateOnly.FromDateTime(DateTime.Today);
+                    if (latestContract != null && latestContract.NgayKetThuc.HasValue && latestContract.NgayKetThuc.Value < today)
+                    {
+                        context.RejectPrincipal();
+                        await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                        return;
+                    }
+                }
+            }
+        };
     })
     .AddJwtBearer("MobileBearer", options =>
     {
@@ -153,7 +188,35 @@ builder.Services.AddAuthentication(options =>
 
         options.Events = new JwtBearerEvents
         {
-            OnTokenValidated = SupabaseClaims.FlattenAppMetadataAsync
+            OnTokenValidated = async context =>
+            {
+                await SupabaseClaims.FlattenAppMetadataAsync(context);
+
+                var maNhanVien = SupabaseClaims.GetMaNhanVien(context.Principal);
+                if (maNhanVien is > 0)
+                {
+                    var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                    var account = await dbContext.TaiKhoans.AsNoTracking().FirstOrDefaultAsync(t => t.MaNhanVien == maNhanVien.Value);
+                    if (account != null && !account.TrangThai)
+                    {
+                        context.Fail("Tài khoản của bạn đã bị khóa bởi Quản trị viên.");
+                        return;
+                    }
+
+                    var latestContract = await dbContext.HopDongs
+                        .AsNoTracking()
+                        .Where(h => h.MaNhanVien == maNhanVien.Value)
+                        .OrderByDescending(h => h.NgayBatDau)
+                        .FirstOrDefaultAsync();
+
+                    var today = DateOnly.FromDateTime(DateTime.Today);
+                    if (latestContract != null && latestContract.NgayKetThuc.HasValue && latestContract.NgayKetThuc.Value < today)
+                    {
+                        context.Fail($"Hợp đồng lao động của bạn đã hết hạn vào ngày {latestContract.NgayKetThuc.Value:dd/MM/yyyy}. Tài khoản đã tạm khóa truy cập.");
+                        return;
+                    }
+                }
+            }
         };
     });
 

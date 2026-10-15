@@ -84,6 +84,20 @@ public class AccountController : Controller
             return View(model);
         }
 
+        // Kiểm tra hiệu lực hợp đồng lao động của nhân viên
+        var latestContract = await _context.HopDongs
+            .AsNoTracking()
+            .Where(h => h.MaNhanVien == account.MaNhanVien)
+            .OrderByDescending(h => h.NgayBatDau)
+            .FirstOrDefaultAsync();
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (latestContract != null && latestContract.NgayKetThuc.HasValue && latestContract.NgayKetThuc.Value < today)
+        {
+            ModelState.AddModelError(string.Empty, $"Hợp đồng lao động của bạn đã hết hạn vào ngày {latestContract.NgayKetThuc.Value:dd/MM/yyyy}. Tài khoản đã tạm khóa truy cập, vui lòng liên hệ phòng Nhân sự để gia hạn.");
+            return View(model);
+        }
+
         var roleName = account.VaiTro?.TenVaiTro ?? "Employee";
 
         // Kiểm tra phân quyền cổng Web: Admin, HR, Manager và IT đều được truy cập.

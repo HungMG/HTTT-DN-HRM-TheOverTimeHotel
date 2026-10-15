@@ -81,6 +81,19 @@ public class MobileAuthController : ControllerBase
             return Unauthorized(new LoginResponse(false, "Tên đăng nhập hoặc mật khẩu không chính xác."));
         }
 
+        // Kiểm tra hiệu lực hợp đồng lao động của nhân viên
+        var latestContract = await _context.HopDongs
+            .AsNoTracking()
+            .Where(h => h.MaNhanVien == account.MaNhanVien)
+            .OrderByDescending(h => h.NgayBatDau)
+            .FirstOrDefaultAsync();
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (latestContract != null && latestContract.NgayKetThuc.HasValue && latestContract.NgayKetThuc.Value < today)
+        {
+            return Unauthorized(new LoginResponse(false, $"Hợp đồng lao động của bạn đã hết hạn ngày {latestContract.NgayKetThuc.Value:dd/MM/yyyy}. Vui lòng liên hệ phòng Nhân sự để gia hạn trước khi tiếp tục sử dụng app."));
+        }
+
         var roleName = account.VaiTro?.TenVaiTro ?? "Employee";
         var hoTen = account.NhanVien != null ? $"{account.NhanVien.Ho} {account.NhanVien.Ten}".Trim() : account.TenDangNhap;
         var deptId = account.NhanVien?.MaPhongBan;

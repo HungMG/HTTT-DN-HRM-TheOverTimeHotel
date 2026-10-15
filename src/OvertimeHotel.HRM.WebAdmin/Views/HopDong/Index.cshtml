@@ -71,10 +71,11 @@
 
                 <div style="min-width: 170px; flex: 1;">
                     <select name="contractFilter" class="form-select">
-                        <option value="">-- Theo dõi thời hạn --</option>
-                        <option value="HIEU_LUC" selected="@(Model.ContractFilter == "HIEU_LUC")">Còn hiệu lực</option>
-                        <option value="SAP_HET_HAN" selected="@(Model.ContractFilter == "SAP_HET_HAN")">Sắp hết hạn (&le; 30 ngày)</option>
+                        <option value="" selected="@(string.IsNullOrWhiteSpace(Model.ContractFilter))">-- Đang hiệu lực (Ẩn hết hạn) --</option>
                         <option value="DA_HET_HAN" selected="@(Model.ContractFilter == "DA_HET_HAN")">Đã hết hạn</option>
+                        <option value="SAP_HET_HAN" selected="@(Model.ContractFilter == "SAP_HET_HAN")">Sắp hết hạn (&le; 30 ngày)</option>
+                        <option value="HIEU_LUC" selected="@(Model.ContractFilter == "HIEU_LUC")">Còn hiệu lực</option>
+                        <option value="TAT_CA" selected="@(Model.ContractFilter == "TAT_CA")">Tất cả hợp đồng</option>
                     </select>
                 </div>
 
@@ -249,6 +250,67 @@
         window.addEventListener('popstate', () => {
             loadContractTable({}, false);
         });
+    });
+
+    function openRenewContractModal(maNhanVien, tenNhanVien, loaiHopDongCu, luongCoBanCu, ngayKetThucCu) {
+        const modalEl = document.getElementById('createContractModal');
+        if (!modalEl) return;
+
+        // 1. Cập nhật tiêu đề modal
+        const titleEl = document.getElementById('createContractModalLabel');
+        if (titleEl) {
+            titleEl.innerHTML = `<span class="text-primary">Gia Hạn Hợp Đồng:</span> ${tenNhanVien}`;
+        }
+
+        // 2. Chọn sẵn nhân viên trong select
+        const empSelect = modalEl.querySelector('select[name="EmployeeId"]') || modalEl.querySelector('#EmployeeId');
+        if (empSelect) {
+            empSelect.value = maNhanVien;
+        }
+
+        // 3. Chọn loại hợp đồng cũ nếu khớp
+        const loaiHdSelect = modalEl.querySelector('select[name="Contract.LoaiHopDong"]') || modalEl.querySelector('#Contract_LoaiHopDong');
+        if (loaiHdSelect && loaiHopDongCu) {
+            for (let i = 0; i < loaiHdSelect.options.length; i++) {
+                if (loaiHdSelect.options[i].value === loaiHopDongCu || loaiHdSelect.options[i].text.includes(loaiHopDongCu)) {
+                    loaiHdSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        // 4. Tự động đề xuất ngày bắt đầu mới = ngày kết thúc cũ + 1 ngày
+        const startInput = modalEl.querySelector('input[name="Contract.NgayBatDau"]') || modalEl.querySelector('#Contract_NgayBatDau');
+        if (startInput && ngayKetThucCu) {
+            const oldEnd = new Date(ngayKetThucCu);
+            oldEnd.setDate(oldEnd.getDate() + 1);
+            startInput.value = oldEnd.toISOString().split('T')[0];
+        }
+
+        // 5. Điền sẵn mức lương cơ bản
+        const salaryInput = modalEl.querySelector('input[name="Contract.LuongCoBan"]') || modalEl.querySelector('#Contract_LuongCoBan');
+        if (salaryInput && luongCoBanCu) {
+            salaryInput.value = luongCoBanCu;
+        }
+
+        // 6. Đổi text nút Submit thành "Lưu gia hạn hợp đồng"
+        const submitBtn = modalEl.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i>Lưu gia hạn hợp đồng';
+        }
+
+        // 7. Mở Modal
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    }
+
+    // Khôi phục lại trạng thái modal ban đầu khi đóng
+    document.getElementById('createContractModal')?.addEventListener('hidden.bs.modal', function () {
+        const titleEl = document.getElementById('createContractModalLabel');
+        if (titleEl) titleEl.innerText = 'Lập Hợp Đồng Lao Động Mới';
+        const submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i>Lưu hợp đồng';
+        this.querySelector('form')?.reset();
     });
 </script>
 }

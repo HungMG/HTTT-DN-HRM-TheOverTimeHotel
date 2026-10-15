@@ -76,12 +76,24 @@ public class HopDongController : Controller
                 };
             });
 
-            if (contractFilter == "SAP_HET_HAN")
-                items = items.Where(item => item.DaysRemaining is >= 0 and <= 30);
+            if (string.IsNullOrWhiteSpace(contractFilter))
+            {
+                // Mặc định ẩn hợp đồng đã hết hạn hoặc đã chấm dứt
+                items = items.Where(item => item.State != "DA_HET_HAN" && item.State != "DA_CHAM_DUT");
+            }
             else if (contractFilter == "DA_HET_HAN")
-                items = items.Where(item => item.DaysRemaining < 0);
+            {
+                items = items.Where(item => item.DaysRemaining < 0 || item.State == "DA_HET_HAN");
+            }
+            else if (contractFilter == "SAP_HET_HAN")
+            {
+                items = items.Where(item => item.DaysRemaining is >= 0 and <= 30);
+            }
             else if (contractFilter == "HIEU_LUC")
+            {
                 items = items.Where(item => item.State == "HIEU_LUC");
+            }
+            // contractFilter == "TAT_CA" -> hiển thị toàn bộ không lọc trạng thái
 
             var allDays = allContracts.Select(contract => contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null).ToList();
             var employeeOptions = allEmployees.Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien}", item.MaNhanVien.ToString())).ToList();

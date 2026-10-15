@@ -199,7 +199,14 @@
         <span class="tab-label">Tài Khoản &amp; RBAC</span>
         @if (account != null)
         {
-            <span class="tab-chip tab-chip--primary">Đã cấp</span>
+            @if (!account.TrangThai || Model.ContractState == "DA_HET_HAN")
+            {
+                <span class="tab-chip tab-chip--danger">Đã khóa</span>
+            }
+            else
+            {
+                <span class="tab-chip tab-chip--primary">Đã cấp</span>
+            }
         }
         else
         {
@@ -291,7 +298,20 @@
                         </div>
                         <div class="profile-prop-row">
                             <span class="text-muted">Ngày thôi việc:</span>
-                            <span class="text-muted">@(emp.NgayThoiViec.HasValue ? emp.NgayThoiViec.Value.ToString("dd/MM/yyyy") : "Đang công tác")</span>
+                            @if (emp.NgayThoiViec.HasValue)
+                            {
+                                <span class="text-danger fw-semibold">@emp.NgayThoiViec.Value.ToString("dd/MM/yyyy")</span>
+                            }
+                            else if (Model.ContractState == "DA_HET_HAN" && contract?.NgayKetThuc != null)
+                            {
+                                <span class="text-danger fw-bold">
+                                    @contract.NgayKetThuc.Value.ToString("dd/MM/yyyy") <span class="fw-normal text-muted">(hết hạn hợp đồng)</span>
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-success fw-semibold">Đang công tác</span>
+                            }
                         </div>
                     </div>
                 </div>
@@ -415,16 +435,16 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        @if (account.TrangThai)
+                        @if (!account.TrangThai || Model.ContractState == "DA_HET_HAN")
                         {
-                            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle rounded-pill px-3 py-2">
-                                <i class="bi bi-check-circle me-1"></i>Đang hoạt động
+                            <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle rounded-pill px-3 py-2">
+                                <i class="bi bi-lock-fill me-1"></i>Đã khóa
                             </span>
                         }
                         else
                         {
-                            <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle rounded-pill px-3 py-2">
-                                <i class="bi bi-lock me-1"></i>Đang bị khóa
+                            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle rounded-pill px-3 py-2">
+                                <i class="bi bi-check-circle me-1"></i>Đang hoạt động
                             </span>
                         }
                     </div>
