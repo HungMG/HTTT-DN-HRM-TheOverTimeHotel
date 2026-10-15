@@ -1,0 +1,141 @@
+@{
+    ViewData["Title"] = "Trợ lý AI Khách sạn";
+    var chatbotUrl = (string)(ViewBag.ChatbotUrl ?? "http://localhost:3000");
+}
+
+<div class="container-fluid px-3 px-md-4 py-3">
+    <!-- Header Banner -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden"
+         style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #1e293b 100%); border-bottom: 2px solid #d4af37 !important;">
+        <div class="card-body p-4 text-white">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-3 shadow"
+                         style="width: 54px; height: 54px; background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%); color: #0f172a;">
+                        <i class="bi bi-stars fs-2"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h2 class="fs-4 fw-bold mb-0 text-white">Trợ lý AI Quản lý Nhân sự &amp; Văn bản</h2>
+                            <span class="badge rounded-pill" style="background: rgba(212, 175, 55, 0.2); color: #fde047; border: 1px solid rgba(212, 175, 55, 0.4); font-size: 0.72rem;">
+                                <i class="bi bi-stars me-1"></i>LangGraph RAG &amp; Gemini Flash
+                            </span>
+                        </div>
+                        <p class="small text-white-50 mb-0">
+                            Hỏi đáp thông minh về quy chế khách sạn 5★, phân ca trực 24/7, chính sách tiền lương và đọc hiểu - trích xuất dữ liệu từ các tệp PDF hợp đồng, quy chế.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <a href="@chatbotUrl" target="_blank" rel="noopener noreferrer"
+                       class="btn btn-outline-light btn-sm rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm"
+                       style="border-color: rgba(212, 175, 55, 0.5); color: #fef08a;">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                        <span>Mở tab riêng</span>
+                    </a>
+                    <button type="button" class="btn btn-sm rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm"
+                            style="background: #d4af37; color: #0f172a;"
+                            onclick="reloadChatbotIframe()">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        <span>Làm mới</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Guide Bento Grid -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 rounded-4 shadow-sm h-100 p-3" style="background: #ffffff; border-left: 4px solid #1e3a8a !important;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-2 rounded-3 bg-primary-subtle text-primary">
+                        <i class="bi bi-file-earmark-pdf fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark small">1. Đính kèm File PDF</div>
+                        <div class="text-muted" style="font-size: 0.78rem;">Bấm biểu tượng kẹp ghim trong khung chat để nạp Hợp đồng, Sổ tay nhân viên hoặc Quy chế.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 rounded-4 shadow-sm h-100 p-3" style="background: #ffffff; border-left: 4px solid #d4af37 !important;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-2 rounded-3" style="background: #fef9c3; color: #a16207;">
+                        <i class="bi bi-shield-lock-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark small">2. Ràng buộc Phạm vi 5★</div>
+                        <div class="text-muted" style="font-size: 0.78rem;">Hệ thống bảo vệ từ chối câu hỏi ngoài lề (nấu ăn, giải trí...), chỉ hỗ trợ nghiệp vụ HRM &amp; tài liệu khách sạn.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 rounded-4 shadow-sm h-100 p-3" style="background: #ffffff; border-left: 4px solid #059669 !important;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-2 rounded-3 bg-success-subtle text-success">
+                        <i class="bi bi-lightning-charge-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark small">3. Trích xuất &amp; Trả lời tức thì</div>
+                        <div class="text-muted" style="font-size: 0.78rem;">LangGraph tự động tìm kiếm đoạn văn liên quan trong PDF (RAG) và trả lời có trích dẫn nguồn cụ thể.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chatbot Frame Container -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="border: 1px solid #e2e8f0 !important;">
+        <div class="card-header bg-white py-2 px-3 border-bottom d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <span class="d-inline-block rounded-circle bg-success" style="width: 8px; height: 8px;"></span>
+                <span class="small fw-semibold text-secondary">Không gian Trò chuyện Trực tuyến</span>
+            </div>
+            <div class="small text-muted" style="font-size: 0.75rem;">
+                <i class="bi bi-hdd-network me-1"></i>Kết nối: <code>@chatbotUrl</code>
+            </div>
+        </div>
+        <div class="card-body p-0" style="position: relative; height: 750px; background: #f8fafc;">
+            <iframe id="chatbotIframe"
+                    src="@chatbotUrl"
+                    title="The OverTime Hotel AI Assistant"
+                    style="width: 100%; height: 100%; border: none;"
+                    allow="clipboard-write">
+            </iframe>
+
+            <!-- Fallback alert if iframe fails or is loading -->
+            <div id="iframeFallbackNotice" class="d-none position-absolute top-50 start-50 translate-middle text-center p-4 bg-white rounded-4 shadow-sm" style="max-width: 480px; border: 1px solid #e2e8f0;">
+                <div class="p-3 bg-warning-subtle text-warning rounded-circle d-inline-flex mb-3">
+                    <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+                </div>
+                <h5 class="fw-bold mb-2">Không thể nạp cửa sổ Chatbot</h5>
+                <p class="small text-muted mb-3">
+                    Dịch vụ Chatbot tại <code>@chatbotUrl</code> chưa phản hồi hoặc đang trong quá trình khởi động.
+                </p>
+                <div class="d-flex justify-content-center gap-2">
+                    <button class="btn btn-primary btn-sm rounded-pill px-3" onclick="reloadChatbotIframe()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Thử lại
+                    </button>
+                    <a href="@chatbotUrl" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                        Mở trực tiếp
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function reloadChatbotIframe() {
+        const iframe = document.getElementById('chatbotIframe');
+        if (iframe) {
+            iframe.src = iframe.src;
+        }
+    }
+</script>
