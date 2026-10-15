@@ -10,7 +10,14 @@
     <div class="col-md-4"><label asp-for="Employee.TrinhDo" class="form-label">Trình độ</label><input asp-for="Employee.TrinhDo" class="form-control" placeholder="Đại học, Cao đẳng..." /></div>
     <div class="col-md-6"><label asp-for="Employee.MaPhongBan" class="form-label">Phòng ban *</label><select asp-for="Employee.MaPhongBan" asp-items="Model.DepartmentOptions" class="form-select" id="Employee_MaPhongBan"><option value="">Chọn phòng ban</option></select><span asp-validation-for="Employee.MaPhongBan" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.MaChucVu" class="form-label">Chức vụ *</label><select asp-for="Employee.MaChucVu" asp-items="Model.PositionOptions" class="form-select" id="Employee_MaChucVu"><option value="">Chọn chức vụ</option></select><span asp-validation-for="Employee.MaChucVu" class="text-danger small"></span></div>
-    <div class="col-md-6"><label asp-for="Employee.EmailCongVu" class="form-label">Email công vụ *</label><input asp-for="Employee.EmailCongVu" type="email" class="form-control" placeholder="vidu: nguyen.vana@overtimehotel.com" /><span class="form-text">Dùng để đăng nhập Mobile App.</span><span asp-validation-for="Employee.EmailCongVu" class="text-danger small"></span></div>
+    @if (Model.Employee.MaNhanVien > 0)
+    {
+        <div class="col-md-6">
+            <label asp-for="Employee.EmailCongVu" class="form-label">Email công vụ</label>
+            <input asp-for="Employee.EmailCongVu" type="email" class="form-control bg-light text-muted" readonly />
+            <span class="form-text text-muted">Email công vụ do bộ phận IT cấp cùng tài khoản hệ thống.</span>
+        </div>
+    }
     <div class="col-md-6"><label asp-for="Employee.EmailCaNhan" class="form-label">Email cá nhân</label><input asp-for="Employee.EmailCaNhan" type="email" class="form-control" placeholder="Không bắt buộc" /><span class="form-text">Chỉ lưu hồ sơ, không dùng đăng nhập.</span><span asp-validation-for="Employee.EmailCaNhan" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.DienThoai" class="form-label">Điện thoại *</label><input asp-for="Employee.DienThoai" class="form-control" /><span asp-validation-for="Employee.DienThoai" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.NgayVaoLam" class="form-label">Ngày vào làm *</label><input asp-for="Employee.NgayVaoLam" type="date" class="form-control" /></div>

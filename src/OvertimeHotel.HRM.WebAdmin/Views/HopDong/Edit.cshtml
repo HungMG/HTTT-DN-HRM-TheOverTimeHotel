@@ -150,7 +150,10 @@
         function printContractDocument() {
             const soHopDong = (document.getElementById('contractSoHopDong')?.value || '@Model.Contract.SoHopDong').trim();
             const hoTen = '@Model.EmployeeName';
-            const phongBan = '@Model.DepartmentName';
+            const deptSelect = document.getElementById('contractDepartmentSelect');
+            const phongBan = (deptSelect && deptSelect.selectedIndex > 0 ? deptSelect.options[deptSelect.selectedIndex].text : '@Model.DepartmentName').trim();
+            const posSelect = document.getElementById('contractPositionSelect');
+            const chucVu = (posSelect && posSelect.selectedIndex > 0 ? posSelect.options[posSelect.selectedIndex].text : '@Model.PositionName').trim();
             const loaiHdSelect = document.getElementById('contractLoaiHopDong');
             const loaiHd = loaiHdSelect ? loaiHdSelect.options[loaiHdSelect.selectedIndex].text : '@Model.Contract.LoaiHopDong';
             const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
@@ -223,6 +226,7 @@
     <table class="info-table">
         <tr><td style="width: 220px;"><strong>Họ và tên người lao động:</strong></td><td><strong style="text-transform: uppercase;">${hoTen}</strong></td></tr>
         <tr><td><strong>Phòng ban / Bộ phận:</strong></td><td>${phongBan}</td></tr>
+        <tr><td><strong>Chức vụ / Vị trí:</strong></td><td>${chucVu}</td></tr>
         <tr><td><strong>Email cá nhân nhận HĐ:</strong></td><td>${email || 'Chưa cập nhật'}</td></tr>
     </table>
 

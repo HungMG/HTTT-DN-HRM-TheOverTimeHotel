@@ -279,10 +279,30 @@
                 if (matched) {
                     const empId = matched.getAttribute('data-id');
                     const deptId = matched.getAttribute('data-dept-id');
+                    const posId = matched.getAttribute('data-pos-id');
                     const email = matched.getAttribute('data-email');
 
                     if (empHidden && empId) empHidden.value = empId;
-                    if (deptSelect && deptId) deptSelect.value = deptId;
+                    if (deptSelect && deptId) {
+                        deptSelect.value = deptId;
+                        const posSelect = document.getElementById('contractPositionSelect');
+                        if (posSelect) {
+                            fetch('/ChucVu/GetByDepartment?departmentId=' + encodeURIComponent(deptId))
+                                .then(res => res.json())
+                                .then(data => {
+                                    posSelect.innerHTML = '<option value="">-- Chọn chức vụ --</option>';
+                                    data.forEach(item => {
+                                        const opt = document.createElement('option');
+                                        opt.value = item.maChucVu;
+                                        opt.textContent = item.tenChucVu + (item.tenPhongBan ? ' (' + item.tenPhongBan + ')' : ' (Chung)');
+                                        if (String(item.maChucVu) === String(posId)) opt.selected = true;
+                                        posSelect.appendChild(opt);
+                                    });
+                                    if (posId) posSelect.value = posId;
+                                })
+                                .catch(() => {});
+                        }
+                    }
 
                     // Nếu nhân viên đó đã có email cá nhân từ hồ sơ: Tự động điền
                     if (emailInput) {
@@ -292,7 +312,7 @@
                     }
                 } else {
                     // Nếu là nhân sự mới gõ tay chưa có trong danh sách
-                    if (empHidden) empHidden.value = '';
+                    if (empHidden) empHidden.value = '0';
                 }
             });
         }
@@ -401,7 +421,7 @@
     // =========================================================================
     // MODAL GIA HẠN HỢP ĐỒNG (TRẠNG THÁI HẾT HẠN, ĐIỀN CỐ ĐỊNH NHÂN SỰ & EMAIL)
     // =========================================================================
-    function openRenewContractModal(maNhanVien, tenNhanVien, tenPhongBan, loaiHopDongCu, hinhThucHopDongCu, luongCoBanCu, ngayKetThucCu, emailCaNhan) {
+    function openRenewContractModal(maNhanVien, tenNhanVien, tenPhongBan, tenChucVu, loaiHopDongCu, hinhThucHopDongCu, luongCoBanCu, ngayKetThucCu, emailCaNhan, maPhongBan, maChucVu) {
         const modalEl = document.getElementById('createContractModal');
         if (!modalEl) return;
 
@@ -415,22 +435,42 @@
         const createEmpWrapper = modalEl.querySelector('#createEmployeeWrapper');
         const renewEmpWrapper = modalEl.querySelector('#renewEmployeeDisplayWrapper');
         const renewEmpDisplay = modalEl.querySelector('#renewEmployeeNameDisplay');
+        const empInput = modalEl.querySelector('#contractEmployeeInput');
         const empHidden = modalEl.querySelector('#contractEmployeeIdHidden');
         if (createEmpWrapper) createEmpWrapper.classList.add('d-none');
         if (renewEmpWrapper && renewEmpDisplay) {
             renewEmpWrapper.classList.remove('d-none');
             renewEmpDisplay.value = `${tenNhanVien} (NV-${String(maNhanVien).padStart(3, '0')})`;
         }
+        if (empInput) empInput.value = tenNhanVien;
         if (empHidden) empHidden.value = maNhanVien;
 
         // 3. Khóa cố định Phòng ban của nhân viên
         const createDeptWrapper = modalEl.querySelector('#createDepartmentWrapper');
         const renewDeptWrapper = modalEl.querySelector('#renewDepartmentWrapper');
         const renewDeptDisplay = modalEl.querySelector('#renewDepartmentDisplay');
+        const deptSelect = modalEl.querySelector('#contractDepartmentSelect');
         if (createDeptWrapper) createDeptWrapper.classList.add('d-none');
         if (renewDeptWrapper && renewDeptDisplay) {
             renewDeptWrapper.classList.remove('d-none');
             renewDeptDisplay.value = tenPhongBan || 'Khách sạn The OverTime';
+        }
+        if (deptSelect && maPhongBan) {
+            deptSelect.value = maPhongBan;
+        }
+
+        // 3.5 Khóa cố định Chức vụ của nhân viên
+        const createPosWrapper = modalEl.querySelector('#createPositionWrapper');
+        const renewPosWrapper = modalEl.querySelector('#renewPositionWrapper');
+        const renewPosDisplay = modalEl.querySelector('#renewPositionDisplay');
+        const posSelect = modalEl.querySelector('#contractPositionSelect');
+        if (createPosWrapper) createPosWrapper.classList.add('d-none');
+        if (renewPosWrapper && renewPosDisplay) {
+            renewPosWrapper.classList.remove('d-none');
+            renewPosDisplay.value = tenChucVu || 'Chưa phân bổ';
+        }
+        if (posSelect && maChucVu) {
+            posSelect.value = maChucVu;
         }
 
         // 4. Trạng thái trong modal gia hạn: Hiển thị HẾT HẠN (đúng thực trạng hợp đồng cần gia hạn)
@@ -524,6 +564,11 @@
         if (createDeptWrapper) createDeptWrapper.classList.remove('d-none');
         if (renewDeptWrapper) renewDeptWrapper.classList.add('d-none');
 
+        const createPosWrapper = this.querySelector('#createPositionWrapper');
+        const renewPosWrapper = this.querySelector('#renewPositionWrapper');
+        if (createPosWrapper) createPosWrapper.classList.remove('d-none');
+        if (renewPosWrapper) renewPosWrapper.classList.add('d-none');
+
         const statusSelect = this.querySelector('#contractTrangThai');
         if (statusSelect) statusSelect.value = 'HIEU_LUC';
 
@@ -551,6 +596,12 @@
                           (deptSelect && deptSelect.selectedIndex > 0 ? deptSelect.options[deptSelect.selectedIndex].text : '') || 
                           'Khách sạn The OverTime').trim();
         
+        const posSelect = document.getElementById('contractPositionSelect');
+        const chucVu = (document.getElementById('renewPositionDisplay')?.value || 
+                        document.getElementById('contractPositionDisplay')?.value ||
+                        (posSelect && posSelect.selectedIndex > 0 ? posSelect.options[posSelect.selectedIndex].text : '') || 
+                        'Nhân viên').trim();
+
         const loaiHdSelect = document.getElementById('contractLoaiHopDong');
         const loaiHd = loaiHdSelect ? loaiHdSelect.options[loaiHdSelect.selectedIndex].text : 'Hợp đồng lao động';
         
@@ -626,6 +677,7 @@
     <table class="info-table">
         <tr><td style="width: 220px;"><strong>Họ và tên người lao động:</strong></td><td><strong style="text-transform: uppercase;">${hoTen}</strong></td></tr>
         <tr><td><strong>Phòng ban / Bộ phận:</strong></td><td>${phongBan}</td></tr>
+        <tr><td><strong>Chức vụ / Vị trí:</strong></td><td>${chucVu}</td></tr>
         <tr><td><strong>Email cá nhân nhận HĐ:</strong></td><td>${email || 'Chưa cập nhật'}</td></tr>
     </table>
 

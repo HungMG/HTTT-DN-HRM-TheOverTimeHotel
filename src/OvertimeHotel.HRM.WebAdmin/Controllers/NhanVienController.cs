@@ -1,4 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -46,6 +49,7 @@ public class NhanVienController : Controller
             query = query.Where(employee =>
                 employee.Ho.ToLower().Contains(value) ||
                 employee.Ten.ToLower().Contains(value) ||
+                (employee.Ho + " " + employee.Ten).ToLower().Contains(value) ||
                 employee.EmailCongVu.ToLower().Contains(value) ||
                 (employee.EmailCaNhan != null && employee.EmailCaNhan.ToLower().Contains(value)) ||
                 employee.DienThoai.Contains(value));
@@ -207,6 +211,21 @@ public class NhanVienController : Controller
     {
         Normalize(model.Employee);
         NormalizeEmployeeStatus(model.Employee);
+
+        // Bỏ qua lỗi bắt buộc mặc định của ModelBinder với EmailCongVu vì trường này không còn trên form thêm mới
+        ModelState.Remove("Employee.EmailCongVu");
+
+        if (string.IsNullOrWhiteSpace(model.Employee.TrinhDo) || model.Employee.TrinhDo == "Chưa cập nhật")
+        {
+            ModelState.Remove("Employee.TrinhDo");
+        }
+
+        // Tự động sinh Email công vụ nếu chưa có (do form thêm mới đã bỏ trường này theo nghiệp vụ IT cấp tài khoản)
+        if (string.IsNullOrWhiteSpace(model.Employee.EmailCongVu))
+        {
+            model.Employee.EmailCongVu = await GenerateUniqueWorkEmailAsync(model.Employee.Ho, model.Employee.Ten);
+        }
+
         await ValidateEmployeeAsync(model.Employee);
         if (!ModelState.IsValid)
         {
@@ -245,6 +264,21 @@ public class NhanVienController : Controller
 
         Normalize(model.Employee);
         NormalizeEmployeeStatus(model.Employee);
+
+        ModelState.Remove("Employee.EmailCongVu");
+
+        if (string.IsNullOrWhiteSpace(model.Employee.TrinhDo) || model.Employee.TrinhDo == "Chưa cập nhật")
+        {
+            ModelState.Remove("Employee.TrinhDo");
+        }
+
+        // Nếu form không gửi Email công vụ (do readonly), nạp lại email công vụ hiện tại
+        if (string.IsNullOrWhiteSpace(model.Employee.EmailCongVu))
+        {
+            var existingEmail = await _context.NhanViens.Where(e => e.MaNhanVien == id).Select(e => e.EmailCongVu).FirstOrDefaultAsync();
+            model.Employee.EmailCongVu = existingEmail ?? await GenerateUniqueWorkEmailAsync(model.Employee.Ho, model.Employee.Ten);
+        }
+
         await ValidateEmployeeAsync(model.Employee, id);
         if (!ModelState.IsValid)
             return View(await BuildEmployeeFormAsync(model));
@@ -260,7 +294,10 @@ public class NhanVienController : Controller
         employee.NgaySinh = model.Employee.NgaySinh;
         employee.GioiTinh = model.Employee.GioiTinh;
         employee.DienThoai = model.Employee.DienThoai;
-        employee.EmailCongVu = model.Employee.EmailCongVu;
+        if (!string.IsNullOrWhiteSpace(model.Employee.EmailCongVu))
+        {
+            employee.EmailCongVu = model.Employee.EmailCongVu;
+        }
         employee.EmailCaNhan = model.Employee.EmailCaNhan;
         employee.DiaChi = model.Employee.DiaChi;
         employee.TrinhDo = model.Employee.TrinhDo;
@@ -347,17 +384,16 @@ public class NhanVienController : Controller
         if (model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today)) ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
         if (model.NgayThoiViec.HasValue && model.NgayThoiViec < model.NgayVaoLam) ModelState.AddModelError("Employee.NgayThoiViec", "Ngày thôi việc không được trước ngày vào làm.");
         if (!SupportedEmployeeStatuses.Contains(model.TrangThai)) ModelState.AddModelError("Employee.TrangThai", "Trạng thái nhân viên không hợp lệ.");
-        if (string.IsNullOrWhiteSpace(model.EmailCongVu))
+        if (!string.IsNullOrWhiteSpace(model.EmailCongVu))
         {
-            ModelState.AddModelError("Employee.EmailCongVu", "Vui lòng nhập email công vụ — đây là email dùng để đăng nhập Mobile App.");
-        }
-        else if (!emailFormat.IsValid(model.EmailCongVu))
-        {
-            ModelState.AddModelError("Employee.EmailCongVu", "Email công vụ không đúng định dạng.");
-        }
-        else if (await _context.NhanViens.AnyAsync(item => item.MaNhanVien != currentId && item.EmailCongVu.ToLower() == model.EmailCongVu.ToLower()))
-        {
-            ModelState.AddModelError("Employee.EmailCongVu", "Email công vụ đã được dùng cho nhân viên khác.");
+            if (!emailFormat.IsValid(model.EmailCongVu))
+            {
+                ModelState.AddModelError("Employee.EmailCongVu", "Email công vụ không đúng định dạng.");
+            }
+            else if (await _context.NhanViens.AnyAsync(item => item.MaNhanVien != currentId && item.EmailCongVu.ToLower() == model.EmailCongVu.ToLower()))
+            {
+                ModelState.AddModelError("Employee.EmailCongVu", "Email công vụ đã được dùng cho nhân viên khác.");
+            }
         }
 
         // Email cá nhân là tuỳ chọn: để trống cũng được, nhưng đã nhập thì phải
@@ -386,7 +422,7 @@ public class NhanVienController : Controller
         model.EmailCaNhan = string.IsNullOrWhiteSpace(model.EmailCaNhan) ? null : model.EmailCaNhan.Trim();
         model.DienThoai = model.DienThoai?.Trim() ?? string.Empty;
         model.DiaChi = string.IsNullOrWhiteSpace(model.DiaChi) ? null : model.DiaChi.Trim();
-        model.TrinhDo = model.TrinhDo?.Trim() ?? string.Empty;
+        model.TrinhDo = string.IsNullOrWhiteSpace(model.TrinhDo) ? "Chưa cập nhật" : model.TrinhDo.Trim();
     }
 
     [HttpGet]
@@ -436,4 +472,50 @@ public class NhanVienController : Controller
         return contract.TrangThai;
     }
 
+    private static string RemoveDiacritics(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+        var normalizedString = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+        foreach (var c in normalizedString)
+        {
+            var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(c);
+            }
+        }
+        return sb.ToString().Normalize(NormalizationForm.FormC).Replace('đ', 'd').Replace('Đ', 'D');
+    }
+
+    private async Task<string> GenerateUniqueWorkEmailAsync(string ho, string ten)
+    {
+        var cleanTen = RemoveDiacritics(ten).Trim().ToLowerInvariant();
+        var cleanHo = RemoveDiacritics(ho).Trim().ToLowerInvariant().Replace(" ", "");
+        cleanTen = Regex.Replace(cleanTen, @"[^a-z0-9]", "");
+        cleanHo = Regex.Replace(cleanHo, @"[^a-z0-9]", "");
+        if (string.IsNullOrEmpty(cleanTen)) cleanTen = "nhanvien";
+
+        var baseEmail = string.IsNullOrEmpty(cleanHo)
+            ? $"{cleanTen}@overtimehotel.com"
+            : $"{cleanTen}.{cleanHo}@overtimehotel.com";
+
+        if (!await _context.NhanViens.AnyAsync(e => e.EmailCongVu.ToLower() == baseEmail.ToLower()))
+        {
+            return baseEmail;
+        }
+
+        int counter = 1;
+        while (true)
+        {
+            var candidate = string.IsNullOrEmpty(cleanHo)
+                ? $"{cleanTen}{counter}@overtimehotel.com"
+                : $"{cleanTen}.{cleanHo}{counter}@overtimehotel.com";
+            if (!await _context.NhanViens.AnyAsync(e => e.EmailCongVu.ToLower() == candidate.ToLower()))
+            {
+                return candidate;
+            }
+            counter++;
+        }
+    }
 }

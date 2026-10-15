@@ -58,11 +58,15 @@ public class HopDongFormViewModel
     public string EmployeeName { get; set; } = string.Empty;
 
     [Display(Name = "Nhân viên")]
-    public int EmployeeId { get; set; }
+    public int? EmployeeId { get; set; }
 
     [Display(Name = "Phòng ban")]
     public int? DepartmentId { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
+
+    [Display(Name = "Chức vụ")]
+    public int? PositionId { get; set; }
+    public string PositionName { get; set; } = string.Empty;
 
     [Display(Name = "Email cá nhân")]
     public string? PersonalEmail { get; set; }
@@ -71,5 +75,19 @@ public class HopDongFormViewModel
     public string EmailNotificationOption { get; set; } = "KHONG_GUI";
 
     public IReadOnlyList<SelectListItem> DepartmentOptions { get; set; } = [];
+    public IReadOnlyList<SelectListItem> PositionOptions { get; set; } = [];
     public IReadOnlyList<SelectListItem> EmployeeOptions { get; set; } = [];
+    public IReadOnlyList<HopDongEmployeeOptionItem> EmployeeList { get; set; } = [];
+}
+
+public class HopDongEmployeeOptionItem
+{
+    public int Id { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public int? DepartmentId { get; set; }
+    public string DepartmentName { get; set; } = string.Empty;
+    public int? PositionId { get; set; }
+    public string PositionName { get; set; } = string.Empty;
+    public string PersonalEmail { get; set; } = string.Empty;
 }

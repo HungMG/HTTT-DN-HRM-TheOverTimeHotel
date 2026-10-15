@@ -1,18 +1,20 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.HopDongFormViewModel
 @{
     var isEditMode = Model.Contract.MaHopDong > 0;
-    var employeeList = ViewBag.EmployeeList as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var employeeList = (ViewBag.EmployeeList as IEnumerable<HopDongEmployeeOptionItem>) ?? Model.EmployeeList ?? Enumerable.Empty<HopDongEmployeeOptionItem>();
     var departmentOptions = ViewBag.DepartmentOptions as IEnumerable<SelectListItem> ?? Enumerable.Empty<SelectListItem>();
+    var positionOptions = ViewBag.PositionOptions as IEnumerable<SelectListItem> ?? Model.PositionOptions ?? Enumerable.Empty<SelectListItem>();
 }
 
 @Html.AntiForgeryToken()
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
 <!-- ========================================================================= -->
-<!-- HÀNG 1: NHÂN SỰ * (NHẬP TAY / GỢI Ý) | PHÒNG BAN (CHỌN PHÒNG BAN)         -->
+<!-- HÀNG 1: NHÂN SỰ * | PHÒNG BAN * | CHỨC VỤ *                               -->
 <!-- ========================================================================= -->
 <div class="row g-3 mb-3">
-    <div class="col-md-6">
+    <!-- CỘT 1: NHÂN SỰ -->
+    <div class="col-md-4">
         <label asp-for="EmployeeName" class="form-label fw-semibold text-dark">
             Nhân sự <span class="text-danger">*</span>
         </label>
@@ -31,18 +33,18 @@
             <div id="createEmployeeWrapper">
                 <div class="input-group">
                     <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-person-fill text-primary"></i></span>
-                    <input asp-for="EmployeeName" id="contractEmployeeInput" list="employeeDatalist" class="form-control border-start-0" placeholder="Nhập họ và tên nhân viên..." autocomplete="off" required />
+                    <input asp-for="EmployeeName" id="contractEmployeeInput" list="employeeDatalist" class="form-control border-start-0" placeholder="Nhập họ và tên..." autocomplete="off" />
                     <input type="hidden" asp-for="EmployeeId" id="contractEmployeeIdHidden" value="@Model.EmployeeId" />
                 </div>
                 <datalist id="employeeDatalist">
                     @foreach (var emp in employeeList)
                     {
-                        <option value="@emp.FullName" data-id="@emp.Id" data-dept-id="@emp.DepartmentId" data-dept-name="@emp.DepartmentName" data-email="@emp.PersonalEmail">
-                            @emp.FullName (@emp.Code - @emp.DepartmentName)
+                        <option value="@emp.FullName" data-id="@emp.Id" data-dept-id="@emp.DepartmentId" data-dept-name="@emp.DepartmentName" data-pos-id="@emp.PositionId" data-pos-name="@emp.PositionName" data-email="@emp.PersonalEmail">
+                            @emp.FullName (@emp.Code - @emp.DepartmentName - @emp.PositionName)
                         </option>
                     }
                 </datalist>
-                <div class="form-text small text-muted">Nhập tay tên nhân viên mới hoặc chọn từ danh sách đã tạo.</div>
+                <div class="form-text small text-muted">Nhập tay hoặc chọn từ danh sách.</div>
             </div>
 
             <!-- Chế độ Gia hạn: Hiển thị cố định thông tin nhân viên -->
@@ -56,42 +58,60 @@
         <span asp-validation-for="EmployeeName" class="text-danger small"></span>
     </div>
 
-    <div class="col-md-6">
-        <label class="form-label fw-semibold text-dark">Phòng ban</label>
-        @if (isEditMode)
-        {
+    <!-- CỘT 2: PHÒNG BAN -->
+    <div class="col-md-4">
+        <label class="form-label fw-semibold text-dark">
+            Phòng ban <span class="text-danger">*</span>
+        </label>
+        <div id="createDepartmentWrapper">
             <div class="input-group">
-                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-building text-secondary"></i></span>
-                <input type="text" class="form-control bg-light border-start-0 text-secondary" id="contractDepartmentDisplay" value="@(string.IsNullOrEmpty(Model.DepartmentName) ? "Chưa phân bổ" : Model.DepartmentName)" readonly />
-                <input type="hidden" asp-for="DepartmentId" />
-                <input type="hidden" asp-for="DepartmentName" />
+                <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-building text-secondary"></i></span>
+                <select asp-for="DepartmentId" id="contractDepartmentSelect" class="form-select border-start-0">
+                    <option value="">-- Chọn phòng ban --</option>
+                    @foreach (var dept in departmentOptions)
+                    {
+                        <option value="@dept.Value" selected="@(Model.DepartmentId?.ToString() == dept.Value)">@dept.Text</option>
+                    }
+                </select>
             </div>
-        }
-        else
-        {
-            <!-- Chế độ Lập mới: Dropdown chọn phòng ban công tác -->
-            <div id="createDepartmentWrapper">
-                <div class="input-group">
-                    <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-building text-secondary"></i></span>
-                    <select asp-for="DepartmentId" id="contractDepartmentSelect" class="form-select border-start-0">
-                        <option value="">-- Chọn phòng ban công tác --</option>
-                        @foreach (var dept in departmentOptions)
-                        {
-                            <option value="@dept.Value" selected="@(Model.DepartmentId?.ToString() == dept.Value)">@dept.Text</option>
-                        }
-                    </select>
-                </div>
-                <div class="form-text small text-muted">Chọn phòng ban phân công cho nhân viên mới.</div>
-            </div>
+            <div class="form-text small text-muted">Phòng ban công tác của nhân sự.</div>
+        </div>
 
-            <!-- Chế độ Gia hạn: Hiển thị phòng ban dạng readonly đã có sẵn -->
-            <div id="renewDepartmentWrapper" class="d-none">
-                <div class="input-group">
-                    <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-building-check text-success"></i></span>
-                    <input type="text" id="renewDepartmentDisplay" class="form-control bg-light border-start-0 text-dark fw-semibold" readonly />
-                </div>
+        <div id="renewDepartmentWrapper" class="d-none">
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-building-check text-success"></i></span>
+                <input type="text" id="renewDepartmentDisplay" class="form-control bg-light border-start-0 text-dark fw-semibold" readonly />
             </div>
-        }
+        </div>
+        <span asp-validation-for="DepartmentId" class="text-danger small"></span>
+    </div>
+
+    <!-- CỘT 3: CHỨC VỤ -->
+    <div class="col-md-4">
+        <label class="form-label fw-semibold text-dark">
+            Chức vụ <span class="text-danger">*</span>
+        </label>
+        <div id="createPositionWrapper">
+            <div class="input-group">
+                <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-person-badge text-secondary"></i></span>
+                <select asp-for="PositionId" id="contractPositionSelect" class="form-select border-start-0">
+                    <option value="">-- Chọn chức vụ --</option>
+                    @foreach (var pos in positionOptions)
+                    {
+                        <option value="@pos.Value" selected="@(Model.PositionId?.ToString() == pos.Value)">@pos.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="form-text small text-muted">Vị trí việc làm tương ứng với phòng ban.</div>
+        </div>
+
+        <div id="renewPositionWrapper" class="d-none">
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person-badge-fill text-success"></i></span>
+                <input type="text" id="renewPositionDisplay" class="form-control bg-light border-start-0 text-dark fw-semibold" readonly />
+            </div>
+        </div>
+        <span asp-validation-for="PositionId" class="text-danger small"></span>
     </div>
 </div>
 
@@ -182,7 +202,7 @@
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-cash-stack text-success"></i></span>
-            <input asp-for="Contract.LuongCoBan" id="contractLuongCoBan" type="number" min="0" step="100000" class="form-control border-start-0 font-monospace fw-bold text-success" placeholder="Nhập mức lương (VD: 10000000)" required />
+            <input asp-for="Contract.LuongCoBan" id="contractLuongCoBan" type="number" min="0" step="any" class="form-control border-start-0 font-monospace fw-bold text-success" placeholder="Nhập mức lương (VD: 10000000)" required />
             <span class="input-group-text bg-light text-muted">₫</span>
         </div>
         <div class="form-text small text-muted">Căn cứ pháp lý tính đơn giá ngày công và bảo hiểm bắt buộc.</div>
@@ -259,3 +279,53 @@
         </button>
     </div>
 </div>
+
+<script>
+    (function () {
+        function bindContractDeptAndPos() {
+            var deptSelect = document.getElementById("contractDepartmentSelect");
+            var posSelect = document.getElementById("contractPositionSelect");
+
+            if (!deptSelect || !posSelect || deptSelect.dataset.cascadingBound) return;
+            deptSelect.dataset.cascadingBound = "true";
+
+            deptSelect.addEventListener("change", async function () {
+                var deptId = this.value;
+                var currentPosId = posSelect.value;
+                posSelect.innerHTML = '<option value="">Đang tải danh sách chức vụ...</option>';
+
+                try {
+                    var res = await fetch('/ChucVu/GetByDepartment?departmentId=' + encodeURIComponent(deptId));
+                    if (!res.ok) throw new Error("Fetch failed");
+                    var data = await res.json();
+
+                    posSelect.innerHTML = '<option value="">-- Chọn chức vụ --</option>';
+                    var matched = false;
+                    data.forEach(function (item) {
+                        var opt = document.createElement("option");
+                        opt.value = item.maChucVu;
+                        opt.textContent = item.tenChucVu + (item.tenPhongBan ? ' (' + item.tenPhongBan + ')' : ' (Chung)');
+                        if (String(item.maChucVu) === String(currentPosId)) {
+                            opt.selected = true;
+                            matched = true;
+                        }
+                        posSelect.appendChild(opt);
+                    });
+
+                    if (!matched && currentPosId && deptId) {
+                        posSelect.value = "";
+                    }
+                } catch (e) {
+                    posSelect.innerHTML = '<option value="">Không thể tải danh sách chức vụ</option>';
+                }
+            });
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", bindContractDeptAndPos);
+        } else {
+            bindContractDeptAndPos();
+        }
+        window.bindContractDeptAndPos = bindContractDeptAndPos;
+    })();
+</script>

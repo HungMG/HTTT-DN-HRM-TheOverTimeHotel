@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -37,7 +40,10 @@ public class HopDongController : Controller
             query = query.Where(contract =>
                 contract.SoHopDong.ToLower().Contains(value) ||
                 contract.LoaiHopDong.ToLower().Contains(value) ||
-                (contract.NhanVien != null && (contract.NhanVien.Ho.ToLower().Contains(value) || contract.NhanVien.Ten.ToLower().Contains(value))));
+                (contract.NhanVien != null && (
+                    contract.NhanVien.Ho.ToLower().Contains(value) ||
+                    contract.NhanVien.Ten.ToLower().Contains(value) ||
+                    (contract.NhanVien.Ho + " " + contract.NhanVien.Ten).ToLower().Contains(value))));
         }
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -50,13 +56,19 @@ public class HopDongController : Controller
             var allContracts = await _context.HopDongs.AsNoTracking()
                 .Include(c => c.NhanVien)
                     .ThenInclude(nv => nv!.PhongBan)
+                .Include(c => c.NhanVien)
+                    .ThenInclude(nv => nv!.ChucVu)
                 .ToListAsync();
             var allEmployees = await _context.NhanViens.AsNoTracking()
                 .Include(nv => nv.PhongBan)
+                .Include(nv => nv.ChucVu)
                 .OrderBy(item => item.Ten).ThenBy(item => item.Ho)
                 .ToListAsync();
             var allDepartments = await _context.PhongBans.AsNoTracking()
                 .OrderBy(p => p.TenPhongBan)
+                .ToListAsync();
+            var allPositions = await _context.ChucVus.AsNoTracking()
+                .OrderBy(cv => cv.TenChucVu)
                 .ToListAsync();
 
             // Tự động đồng bộ các hợp đồng đã qua ngày kết thúc sang trạng thái HET_HAN trong CSDL
@@ -100,6 +112,7 @@ public class HopDongController : Controller
                     Contract = contract,
                     EmployeeName = contract.NhanVien?.HoTen ?? "Nhân viên không tồn tại",
                     DepartmentName = contract.NhanVien?.PhongBan?.TenPhongBan ?? "Khách sạn",
+                    PositionName = contract.NhanVien?.ChucVu?.TenChucVu ?? "Chưa phân bổ",
                     PersonalEmail = contract.NhanVien?.EmailCaNhan,
                     DaysRemaining = days,
                     State = GetState(contract, days)
@@ -128,18 +141,23 @@ public class HopDongController : Controller
             var allDays = allContracts.Select(contract => contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null).ToList();
             var employeeOptions = allEmployees.Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien:D3}", item.MaNhanVien.ToString())).ToList();
             var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
+            var positionOptions = allPositions.Select(cv => new SelectListItem(cv.TenChucVu + (cv.MaPhongBan == null ? " (Chung)" : ""), cv.MaChucVu.ToString())).ToList();
             
             ViewBag.EmployeeOptions = employeeOptions;
             ViewBag.DepartmentOptions = departmentOptions;
-            ViewBag.EmployeeList = allEmployees.Select(e => new
+            ViewBag.PositionOptions = positionOptions;
+            var employeeItems = allEmployees.Select(e => new HopDongEmployeeOptionItem
             {
                 Id = e.MaNhanVien,
                 Code = $"NV-{e.MaNhanVien:D3}",
                 FullName = e.HoTen,
                 DepartmentId = e.MaPhongBan,
                 DepartmentName = e.PhongBan?.TenPhongBan ?? "Chưa phân bổ",
+                PositionId = e.MaChucVu,
+                PositionName = e.ChucVu?.TenChucVu ?? "Chưa phân bổ",
                 PersonalEmail = e.EmailCaNhan ?? "Chưa cập nhật email cá nhân"
             }).ToList();
+            ViewBag.EmployeeList = employeeItems;
 
             var orderedContracts = items.OrderByDescending(i => i.Contract.NgayBatDau).ToList();
             var totalFiltered = orderedContracts.Count;
@@ -162,7 +180,9 @@ public class HopDongController : Controller
                         HinhThucHopDong = "CHINH_THUC"
                     },
                     DepartmentOptions = departmentOptions,
-                    EmployeeOptions = employeeOptions
+                    PositionOptions = positionOptions,
+                    EmployeeOptions = employeeOptions,
+                    EmployeeList = employeeItems
                 },
                 Keyword = keyword,
                 Status = status,
@@ -228,6 +248,8 @@ public class HopDongController : Controller
     public async Task<IActionResult> Create(HopDongFormViewModel model)
     {
         ViewBag.EmployeeOptions = await GetEmployeeOptionsAsync();
+        ModelState.Remove("EmployeeId");
+        ModelState.Remove("Contract.MaNhanVien");
 
         if (string.IsNullOrWhiteSpace(model.Contract.HinhThucHopDong))
         {
@@ -239,7 +261,10 @@ public class HopDongController : Controller
         // 1. Nếu có EmployeeId hợp lệ thì tìm nhân viên đó
         if (model.EmployeeId > 0)
         {
-            employee = await _context.NhanViens.Include(nv => nv.PhongBan).FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
+            employee = await _context.NhanViens
+                .Include(nv => nv.PhongBan)
+                .Include(nv => nv.ChucVu)
+                .FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
         }
 
         // 2. Nếu chưa có EmployeeId, thử tìm theo tên nhân sự nhập tay
@@ -248,6 +273,7 @@ public class HopDongController : Controller
             var trimmedName = model.EmployeeName.Trim();
             employee = await _context.NhanViens
                 .Include(nv => nv.PhongBan)
+                .Include(nv => nv.ChucVu)
                 .FirstOrDefaultAsync(item => (item.Ho + " " + item.Ten).ToLower() == trimmedName.ToLower() || item.Ten.ToLower() == trimmedName.ToLower());
         }
 
@@ -264,17 +290,40 @@ public class HopDongController : Controller
                 var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 var ho = parts.Length > 1 ? string.Join(" ", parts.Take(parts.Length - 1)) : "Nhân viên";
                 var ten = parts.Last();
-                var empCount = await _context.NhanViens.CountAsync() + 1;
                 
-                var cleanTen = ten.ToLower();
-                var cleanHo = ho.ToLower().Replace(" ", "");
-                var emailCongVu = $"{cleanTen}.{cleanHo}{empCount}@overtimehotel.com";
+                var emailCongVu = await GenerateUniqueWorkEmailAsync(ho, ten);
+
+                // Xác định phòng ban hợp lệ
+                int? targetDeptId = model.DepartmentId;
+                if (!targetDeptId.HasValue || targetDeptId.Value <= 0)
+                {
+                    var firstDept = await _context.PhongBans.OrderBy(p => p.MaPhongBan).FirstOrDefaultAsync();
+                    targetDeptId = firstDept?.MaPhongBan ?? 1;
+                }
+
+                // Xác định chức vụ hợp lệ thuộc phòng ban (hoặc chức danh chung)
+                int targetPosId = model.PositionId ?? 0;
+                if (targetPosId <= 0)
+                {
+                    var defaultPos = await _context.ChucVus
+                        .Where(cv => cv.MaPhongBan == targetDeptId.Value || cv.MaPhongBan == null)
+                        .OrderBy(cv => cv.MaPhongBan == null ? 1 : 0)
+                        .ThenBy(cv => cv.MaChucVu)
+                        .FirstOrDefaultAsync();
+                    targetPosId = defaultPos?.MaChucVu ?? 0;
+                }
+                if (targetPosId <= 0)
+                {
+                    var anyPos = await _context.ChucVus.OrderBy(cv => cv.MaChucVu).FirstOrDefaultAsync();
+                    targetPosId = anyPos?.MaChucVu ?? 1;
+                }
 
                 employee = new NhanVien
                 {
                     Ho = ho,
                     Ten = ten,
-                    MaPhongBan = model.DepartmentId,
+                    MaPhongBan = targetDeptId,
+                    MaChucVu = targetPosId,
                     EmailCongVu = emailCongVu,
                     EmailCaNhan = string.IsNullOrWhiteSpace(model.PersonalEmail) ? null : model.PersonalEmail.Trim(),
                     DienThoai = "0900000000",
@@ -291,19 +340,34 @@ public class HopDongController : Controller
         }
         else
         {
-            // Nếu nhân viên đã có và người dùng nhập thêm / sửa email cá nhân trên form thì cập nhật vào hồ sơ
+            // Cập nhật email cá nhân nếu có thay đổi
             if (!string.IsNullOrWhiteSpace(model.PersonalEmail) && employee.EmailCaNhan != model.PersonalEmail.Trim())
             {
                 employee.EmailCaNhan = model.PersonalEmail.Trim();
-                await _context.SaveChangesAsync();
             }
 
-            // Cập nhật phòng ban nếu nhân viên chưa có phòng ban
-            if (model.DepartmentId.HasValue && employee.MaPhongBan == null)
+            // Cập nhật phòng ban nếu được chọn trên form
+            if (model.DepartmentId.HasValue && model.DepartmentId.Value > 0)
             {
                 employee.MaPhongBan = model.DepartmentId.Value;
-                await _context.SaveChangesAsync();
             }
+
+            // Cập nhật chức vụ nếu được chọn trên form
+            if (model.PositionId.HasValue && model.PositionId.Value > 0)
+            {
+                employee.MaChucVu = model.PositionId.Value;
+            }
+            else if (!employee.MaChucVu.HasValue || employee.MaChucVu.Value <= 0)
+            {
+                var defPos = await _context.ChucVus
+                    .Where(cv => cv.MaPhongBan == employee.MaPhongBan || cv.MaPhongBan == null)
+                    .OrderBy(cv => cv.MaPhongBan == null ? 1 : 0)
+                    .ThenBy(cv => cv.MaChucVu)
+                    .FirstOrDefaultAsync();
+                if (defPos != null) employee.MaChucVu = defPos.MaChucVu;
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         if (employee != null)
@@ -312,6 +376,7 @@ public class HopDongController : Controller
             model.EmployeeId = employee.MaNhanVien;
             model.EmployeeName = employee.HoTen;
             model.DepartmentName = employee.PhongBan?.TenPhongBan ?? string.Empty;
+            model.PositionName = employee.ChucVu?.TenChucVu ?? string.Empty;
         }
 
         // Tự động sinh mã hợp đồng nếu để trống theo hình thức hợp đồng
@@ -379,13 +444,29 @@ public class HopDongController : Controller
         var contract = await _context.HopDongs
             .Include(item => item.NhanVien)
                 .ThenInclude(nv => nv!.PhongBan)
+            .Include(item => item.NhanVien)
+                .ThenInclude(nv => nv!.ChucVu)
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.MaHopDong == id);
 
         if (contract == null) return NotFound();
 
+        var empDeptId = contract.NhanVien?.MaPhongBan;
+        var empPosId = contract.NhanVien?.MaChucVu;
+
         var allDepartments = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
-        ViewBag.DepartmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
+        var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString(), d.MaPhongBan == empDeptId)).ToList();
+        ViewBag.DepartmentOptions = departmentOptions;
+
+        var cvQuery = _context.ChucVus.AsNoTracking().AsQueryable();
+        if (empDeptId.HasValue && empDeptId.Value > 0)
+        {
+            cvQuery = cvQuery.Where(x => x.MaPhongBan == empDeptId.Value || x.MaPhongBan == null);
+        }
+        var positionOptions = await cvQuery.OrderBy(x => x.TenChucVu)
+            .Select(x => new SelectListItem(x.TenChucVu + (x.MaPhongBan == null ? " (Chung)" : ""), x.MaChucVu.ToString(), x.MaChucVu == empPosId))
+            .ToListAsync();
+        ViewBag.PositionOptions = positionOptions;
 
         return View(new HopDongFormViewModel
         {
@@ -393,7 +474,11 @@ public class HopDongController : Controller
             EmployeeName = contract.NhanVien?.HoTen ?? "Nhân viên",
             DepartmentId = contract.NhanVien?.MaPhongBan,
             DepartmentName = contract.NhanVien?.PhongBan?.TenPhongBan ?? "Chưa phân bổ",
+            PositionId = contract.NhanVien?.MaChucVu,
+            PositionName = contract.NhanVien?.ChucVu?.TenChucVu ?? "Chưa phân bổ",
             PersonalEmail = contract.NhanVien?.EmailCaNhan,
+            DepartmentOptions = departmentOptions,
+            PositionOptions = positionOptions,
             Contract = contract
         });
     }
@@ -406,33 +491,64 @@ public class HopDongController : Controller
         if (id != model.Contract.MaHopDong)
             return BadRequest();
 
-        model.Contract.MaNhanVien = model.EmployeeId;
+        model.Contract.MaNhanVien = model.EmployeeId ?? 0;
         if (string.IsNullOrWhiteSpace(model.Contract.HinhThucHopDong))
         {
             model.Contract.HinhThucHopDong = "CHINH_THUC";
         }
 
         await ValidateContractAsync(model.Contract, id);
-        var employee = await _context.NhanViens.Include(nv => nv.PhongBan).FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
-        if (employee == null)
-            ModelState.AddModelError(nameof(model.EmployeeId), "Vui lòng chọn nhân viên.");
-        model.EmployeeName = employee?.HoTen ?? string.Empty;
-        model.DepartmentName = employee?.PhongBan?.TenPhongBan ?? string.Empty;
+        var employee = await _context.NhanViens
+            .Include(nv => nv.PhongBan)
+            .Include(nv => nv.ChucVu)
+            .FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
 
-        // Cập nhật email cá nhân nếu người dùng nhập mới / chỉnh sửa
-        if (employee != null && !string.IsNullOrWhiteSpace(model.PersonalEmail) && employee.EmailCaNhan != model.PersonalEmail.Trim())
+        if (employee == null)
         {
-            employee.EmailCaNhan = model.PersonalEmail.Trim();
+            ModelState.AddModelError(nameof(model.EmployeeId), "Vui lòng chọn nhân viên.");
+        }
+        else
+        {
+            model.EmployeeName = employee.HoTen;
+            model.DepartmentName = employee.PhongBan?.TenPhongBan ?? string.Empty;
+            model.PositionName = employee.ChucVu?.TenChucVu ?? string.Empty;
+
+            // Cập nhật email cá nhân nếu người dùng nhập mới / chỉnh sửa
+            if (!string.IsNullOrWhiteSpace(model.PersonalEmail) && employee.EmailCaNhan != model.PersonalEmail.Trim())
+            {
+                employee.EmailCaNhan = model.PersonalEmail.Trim();
+            }
+
+            // Cập nhật phòng ban nếu người dùng thay đổi trên form
+            if (model.DepartmentId.HasValue && model.DepartmentId.Value > 0)
+            {
+                employee.MaPhongBan = model.DepartmentId.Value;
+            }
+
+            // Cập nhật chức vụ nếu người dùng thay đổi trên form
+            if (model.PositionId.HasValue && model.PositionId.Value > 0)
+            {
+                employee.MaChucVu = model.PositionId.Value;
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         if (!ModelState.IsValid)
+        {
+            var allDepts = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
+            ViewBag.DepartmentOptions = allDepts.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
+            var cvQuery = _context.ChucVus.AsNoTracking().AsQueryable();
+            if (model.DepartmentId > 0) cvQuery = cvQuery.Where(x => x.MaPhongBan == model.DepartmentId || x.MaPhongBan == null);
+            ViewBag.PositionOptions = await cvQuery.OrderBy(x => x.TenChucVu).Select(x => new SelectListItem(x.TenChucVu, x.MaChucVu.ToString())).ToListAsync();
             return View(model);
+        }
 
         var contract = await _context.HopDongs.FindAsync(id);
         if (contract == null)
             return NotFound();
 
-        contract.MaNhanVien = model.EmployeeId;
+        contract.MaNhanVien = model.EmployeeId ?? contract.MaNhanVien;
         contract.SoHopDong = model.Contract.SoHopDong.Trim();
         contract.LoaiHopDong = model.Contract.LoaiHopDong.Trim();
         contract.HinhThucHopDong = model.Contract.HinhThucHopDong.Trim();
@@ -461,6 +577,11 @@ public class HopDongController : Controller
         {
             _logger.LogError(ex, "Không thể cập nhật hợp đồng {ContractId}.", id);
             ModelState.AddModelError(string.Empty, "Không thể cập nhật hợp đồng. Vui lòng kiểm tra dữ liệu.");
+            var allDepts = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
+            ViewBag.DepartmentOptions = allDepts.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
+            var cvQuery = _context.ChucVus.AsNoTracking().AsQueryable();
+            if (model.DepartmentId > 0) cvQuery = cvQuery.Where(x => x.MaPhongBan == model.DepartmentId || x.MaPhongBan == null);
+            ViewBag.PositionOptions = await cvQuery.OrderBy(x => x.TenChucVu).Select(x => new SelectListItem(x.TenChucVu, x.MaChucVu.ToString())).ToListAsync();
             return View(model);
         }
     }
@@ -526,9 +647,57 @@ public class HopDongController : Controller
 
     private static string GetState(HopDong contract, int? daysRemaining)
     {
+        if (contract == null) return "CHUA_CO";
         if (contract.TrangThai == "DA_CHAM_DUT") return "DA_CHAM_DUT";
         if (contract.TrangThai == "HET_HAN" || (daysRemaining.HasValue && daysRemaining.Value < 0)) return "DA_HET_HAN";
         if (daysRemaining is >= 0 and <= 30) return "SAP_HET_HAN";
         return "HIEU_LUC";
+    }
+
+    private static string RemoveDiacritics(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+        var normalizedString = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+        foreach (var c in normalizedString)
+        {
+            var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(c);
+            }
+        }
+        return sb.ToString().Normalize(NormalizationForm.FormC).Replace('đ', 'd').Replace('Đ', 'D');
+    }
+
+    private async Task<string> GenerateUniqueWorkEmailAsync(string ho, string ten)
+    {
+        var cleanTen = RemoveDiacritics(ten).Trim().ToLowerInvariant();
+        var cleanHo = RemoveDiacritics(ho).Trim().ToLowerInvariant().Replace(" ", "");
+        cleanTen = Regex.Replace(cleanTen, @"[^a-z0-9]", "");
+        cleanHo = Regex.Replace(cleanHo, @"[^a-z0-9]", "");
+        if (string.IsNullOrEmpty(cleanTen)) cleanTen = "nhanvien";
+
+        var baseEmail = string.IsNullOrEmpty(cleanHo)
+            ? $"{cleanTen}@overtimehotel.com"
+            : $"{cleanTen}.{cleanHo}@overtimehotel.com";
+
+        if (!await _context.NhanViens.AnyAsync(e => e.EmailCongVu.ToLower() == baseEmail.ToLower()))
+        {
+            return baseEmail;
+        }
+
+        int counter = 1;
+        while (true)
+        {
+            var candidate = string.IsNullOrEmpty(cleanHo)
+                ? $"{cleanTen}{counter}@overtimehotel.com"
+                : $"{cleanTen}.{cleanHo}{counter}@overtimehotel.com";
+            if (!await _context.NhanViens.AnyAsync(e => e.EmailCongVu.ToLower() == candidate.ToLower()))
+            {
+                return candidate;
+            }
+            counter++;
+        }
     }
 }

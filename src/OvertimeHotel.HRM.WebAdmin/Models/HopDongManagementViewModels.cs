@@ -26,6 +26,7 @@ public class HopDongListItemViewModel
     public HopDong Contract { get; init; } = new();
     public string EmployeeName { get; init; } = string.Empty;
     public string DepartmentName { get; init; } = string.Empty;
+    public string PositionName { get; init; } = string.Empty;
     public string? PersonalEmail { get; init; }
     public int? DaysRemaining { get; init; }
     public string State { get; init; } = string.Empty;
