@@ -6,6 +6,7 @@
 [Ll]og/
 [Ll]ogs/
 .vs/
+.vscode/
 .nuget-packages/
 local-packages/
 .npm-cache/
@@ -38,15 +39,19 @@ _pkginfo.txt
 *.msixbundle
 
 ## ==============================================================================
-## Node.js dependencies
+## Node.js & AI Chatbot Artifacts
 ## ==============================================================================
 node_modules/
+.next/
+.langgraph_api/
+*.tsbuildinfo
 
 ## ==============================================================================
 ## Sensitive & Local Environment Configuration
 ## ==============================================================================
 .env
 .env.*
+!.env.example
 *.local.json
 appsettings.Development.json
 **/App_Data/DataProtection-Keys/

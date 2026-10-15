@@ -97,11 +97,129 @@
         </div>
     </div>
 
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <!-- NÚT NỔI TRỢ LÝ AI 5★ (FLOATING WIDGET) -->
+        <div id="aiFloatingWidget" style="position: fixed; bottom: 28px; right: 28px; z-index: 1050;">
+            <button type="button"
+                    class="btn rounded-circle shadow-lg d-flex align-items-center justify-content-center position-relative"
+                    style="width: 58px; height: 58px; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); border: 2px solid #d4af37; color: #fde047; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#aiAssistantOffcanvas"
+                    aria-controls="aiAssistantOffcanvas"
+                    title="Trợ lý AI Khách sạn · Hỏi đáp quy chế &amp; PDF"
+                    onmouseenter="this.style.transform='scale(1.08) translateY(-2px)'"
+                    onmouseleave="this.style.transform='scale(1) translateY(0)'">
+                <i class="bi bi-stars fs-4"></i>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem; border: 1.5px solid #ffffff;">
+                    5★
+                </span>
+            </button>
+        </div>
+
+        <!-- OFFCANVAS DRAWER TRỢ LÝ AI SANG TRỌNG (KHÔNG LÀM MỜ NỀN ĐẰNG SAU, TÙY BIẾN CHIỀU RỘNG RỘNG RÃI) -->
+        <div class="offcanvas offcanvas-end border-0"
+             tabindex="-1"
+             id="aiAssistantOffcanvas"
+             data-bs-backdrop="false"
+             data-bs-scroll="true"
+             aria-labelledby="aiAssistantOffcanvasLabel"
+             style="width: 580px; max-width: 96vw; background: #f8fafc; border-left: 2px solid #d4af37 !important; box-shadow: -12px 0 40px rgba(15, 23, 42, 0.28) !important; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1);">
+            <div class="offcanvas-header text-white px-4 py-3"
+                 style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); border-bottom: 2px solid #d4af37;">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle shadow-xs"
+                         style="width: 38px; height: 38px; background: #d4af37; color: #0f172a;">
+                        <i class="bi bi-stars fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="offcanvas-title fw-bold text-white fs-6 mb-0" id="aiAssistantOffcanvasLabel">
+                            Trợ lý AI Khách sạn 5★
+                        </h5>
+                        <span class="text-white-50" style="font-size: 0.72rem;">The OverTime Hotel HRM Concierge</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-light rounded-pill px-2.5 py-1"
+                            id="btnToggleAiWidth"
+                            style="font-size: 0.72rem; border-color: rgba(212,175,55,0.4); color: #fde047;"
+                            title="Mở rộng / Thu gọn khung chat (580px 🔁 820px)"
+                            onclick="toggleAiAssistantWidth()">
+                        <i class="bi bi-arrows-angle-expand" id="iconToggleAiWidth"></i>
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-light rounded-pill px-2.5 py-1"
+                            style="font-size: 0.72rem; border-color: rgba(212,175,55,0.4); color: #fde047;"
+                            title="Làm mới chat"
+                            onclick="reloadDrawerChatbotIframe()">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <a asp-controller="AiAssistant" asp-action="Index" target="_blank"
+                       class="btn btn-sm btn-outline-light rounded-pill px-2.5 py-1"
+                       style="font-size: 0.72rem; border-color: rgba(212,175,55,0.4); color: #fde047;"
+                       title="Mở tab riêng toàn màn hình">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
+                </div>
+            </div>
+            <div class="offcanvas-body p-0 d-flex flex-column" style="height: calc(100vh - 65px);">
+                <iframe src="http://localhost:3000?embed=true"
+                        id="drawerChatbotIframe"
+                        title="The OverTime Hotel AI Chatbot"
+                        style="width: 100%; height: 100%; border: none;"
+                        allow="clipboard-write">
+                </iframe>
+            </div>
+        </div>
+    }
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/accounts.js" asp-append-version="true"></script>
     <script src="~/js/catalog.js" asp-append-version="true"></script>
+
+    <script>
+        function reloadDrawerChatbotIframe() {
+            var iframe = document.getElementById('drawerChatbotIframe');
+            if (iframe) iframe.src = iframe.src;
+        }
+
+        function toggleAiAssistantWidth() {
+            var offcanvas = document.getElementById('aiAssistantOffcanvas');
+            var icon = document.getElementById('iconToggleAiWidth');
+            if (!offcanvas) return;
+
+            var isExpanded = offcanvas.getAttribute('data-expanded') === 'true';
+            if (isExpanded) {
+                offcanvas.style.width = '580px';
+                offcanvas.setAttribute('data-expanded', 'false');
+                if (icon) icon.className = 'bi bi-arrows-angle-expand';
+            } else {
+                offcanvas.style.width = '820px';
+                offcanvas.setAttribute('data-expanded', 'true');
+                if (icon) icon.className = 'bi bi-arrows-angle-contract';
+            }
+        }
+
+        // Tự động ẩn nút tròn góc phải khi mở khung chat để không bị đè lên ô nhập liệu
+        document.addEventListener('DOMContentLoaded', function () {
+            var offcanvasEl = document.getElementById('aiAssistantOffcanvas');
+            var floatBtn = document.getElementById('aiFloatingWidget');
+            if (offcanvasEl && floatBtn) {
+                offcanvasEl.addEventListener('show.bs.offcanvas', function () {
+                    floatBtn.style.opacity = '0';
+                    floatBtn.style.pointerEvents = 'none';
+                });
+                offcanvasEl.addEventListener('hidden.bs.offcanvas', function () {
+                    floatBtn.style.opacity = '1';
+                    floatBtn.style.pointerEvents = 'auto';
+                });
+            }
+        });
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
