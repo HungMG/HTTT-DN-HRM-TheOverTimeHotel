@@ -1,0 +1,487 @@
+@model EventDetailsViewModel
+@using OvertimeHotel.HRM.Core.Policies
+@using System.Globalization
+@{
+    var item = Model.Event;
+    ViewData["Title"] = item.TenDuAn;
+    var start = HotelEventRules.Local(item.NgayBatDau);
+    var end = HotelEventRules.Local(item.NgayKetThuc);
+    var planned = item.PhanCongs.Sum(x => x.PhuCapDuKien);
+    var actual = item.PhanCongs.Sum(x => x.SoTienPhuCap);
+    var reviewed = item.PhanCongs.Count(x => x.NgayDanhGia.HasValue);
+    var canStaff = Model.CanManage && item.TrangThai is "LEN_KE_HOACH" or "DANG_DIEN_RA";
+    var canReview = Model.CanManage && item.TrangThai == "CHO_NGHIEM_THU";
+    string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
+}
+<link rel="stylesheet" href="~/css/events.css" asp-append-version="true" />
+<div class="events-page">
+    <a class="event-back-link" asp-action="Index" asp-route-year="@Model.ReturnYear" asp-route-month="@Model.ReturnMonth" asp-route-date="@Model.ReturnDate.ToString("yyyy-MM-dd")"><i class="bi bi-arrow-left" aria-hidden="true"></i> Trở về lịch sự kiện</a>
+    <div class="event-page-heading">
+        <div>
+            <span class="event-eyebrow">SK-@item.MaDuAn.ToString("D4") · @HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn)</span>
+            <h2>@item.TenDuAn</h2>
+            <p><i class="bi bi-geo-alt" aria-hidden="true"></i> @item.DiaDiem <span class="mx-2">·</span> @start.ToString("dd/MM/yyyy HH:mm") – @end.ToString("dd/MM/yyyy HH:mm")</p>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="event-status event-status-@item.TrangThai">@HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai)</span>
+            @if (Model.CanEdit)
+            {
+                <a class="event-secondary-button" asp-action="Edit" asp-route-id="@item.MaDuAn" asp-route-returnYear="@Model.ReturnYear" asp-route-returnMonth="@Model.ReturnMonth" asp-route-returnDate="@Model.ReturnDate.ToString("yyyy-MM-dd")"><i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa</a>
+            }
+        </div>
+    </div>
+    @if (TempData["Success"] is string message)
+    {
+        <div class="alert alert-success" role="status">@message</div>
+    }
+    <div asp-validation-summary="All" class="text-danger event-validation" role="alert"></div>
+    @if (item.TrangThai == "HUY")
+    {
+        <div class="alert alert-secondary"><strong>Sự kiện đã hủy.</strong> @item.LyDoHuy</div>
+    }
+    @if (item.TrangThai == "HOAN_THANH")
+    {
+        <div class="event-info-note mb-4"><i class="bi bi-shield-check" aria-hidden="true"></i> Sự kiện đã nghiệm thu. Thông tin và phụ cấp đã được khóa.</div>
+    }
+    <nav class="event-tabs nav" role="tablist" aria-label="Chi tiết sự kiện">
+        <button class="nav-link @(Model.Tab == "overview" ? "active" : "")" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="@(Model.Tab == "overview" ? "true" : "false")"><i class="bi bi-journal-text" aria-hidden="true"></i> Tổng quan</button>
+        <button class="nav-link @(Model.Tab == "staff" ? "active" : "")" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" role="tab" aria-controls="staff" aria-selected="@(Model.Tab == "staff" ? "true" : "false")"><i class="bi bi-people" aria-hidden="true"></i> Nhân sự <span>@item.PhanCongs.Count</span></button>
+        <button class="nav-link @(Model.Tab == "acceptance" ? "active" : "")" id="acceptance-tab" data-bs-toggle="tab" data-bs-target="#acceptance" type="button" role="tab" aria-controls="acceptance" aria-selected="@(Model.Tab == "acceptance" ? "true" : "false")"><i class="bi bi-patch-check" aria-hidden="true"></i> Đánh giá &amp; nghiệm thu</button>
+    </nav>
+    <div class="tab-content">
+        <section class="tab-pane fade @(Model.Tab == "overview" ? "show active" : "")" id="overview" role="tabpanel" aria-labelledby="overview-tab" tabindex="0">
+            <div class="event-form-grid">
+                <div class="event-panel">
+                    <span class="event-eyebrow">THÔNG TIN CHUNG</span>
+                    <h3>Bức tranh tổng thể</h3>
+                    <dl class="event-description-list">
+                        <div><dt>Người quản lý</dt><dd>@(item.NguoiQuanLy?.HoTen ?? "Chưa cập nhật")</dd></div>
+                        <div><dt>Khách dự kiến</dt><dd>@item.SoKhachDuKien người</dd></div>
+                        <div><dt>Ngân sách phụ cấp</dt><dd>@Money(item.NganSachPhuCap)</dd></div>
+                        <div><dt>Thời gian</dt><dd>@start.ToString("dd/MM/yyyy HH:mm")<br />@end.ToString("dd/MM/yyyy HH:mm") <small>(UTC+7)</small></dd></div>
+                    </dl>
+                    <hr />
+                    <h4 class="h6">Mô tả &amp; ghi chú</h4>
+                    <p class="event-preserve-lines">@(string.IsNullOrWhiteSpace(item.MoTa) ? "Chưa có ghi chú cho sự kiện này." : item.MoTa)</p>
+                </div>
+                <div class="event-panel">
+                    <span class="event-eyebrow">ĐIỀU PHỐI SỰ KIỆN</span>
+                    <h3>Theo sát từng chặng</h3>
+                    <ol class="event-progress-list">
+                        <li class="@(item.TrangThai == "LEN_KE_HOACH" ? "is-current" : "")">Lên kế hoạch <small>Chuẩn bị và phân công đội ngũ</small></li>
+                        <li class="@(item.TrangThai == "DANG_DIEN_RA" ? "is-current" : "")">Đang diễn ra <small>Điều phối hoạt động tại sự kiện</small></li>
+                        <li class="@(item.TrangThai == "CHO_NGHIEM_THU" ? "is-current" : "")">Chờ nghiệm thu <small>Đánh giá nhân sự, xác nhận phụ cấp</small></li>
+                        <li class="@(item.TrangThai == "HOAN_THANH" ? "is-current" : "")">Hoàn thành <small>HR/Admin nghiệm thu và khóa dữ liệu</small></li>
+                    </ol>
+                    @if (Model.CanManage && item.TrangThai is "LEN_KE_HOACH" or "DANG_DIEN_RA")
+                    {
+                        var summary = Model.StaffingSummary;
+                        <form asp-action="Status" asp-route-id="@item.MaDuAn" method="post">
+                            <partial name="_EventContext" model="Model" />
+                            <input name="version" type="hidden" value="@item.Version" />
+                            <input name="status" type="hidden" value="@(item.TrangThai == "LEN_KE_HOACH" ? "DANG_DIEN_RA" : "CHO_NGHIEM_THU")" />
+                            @if (item.TrangThai == "LEN_KE_HOACH" && !summary.IsFullyStaffed)
+                            {
+                                <div class="alert alert-warning mb-3">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <strong>Chưa thể bắt đầu sự kiện.</strong> @summary.SummaryText
+                                </div>
+                                <button class="event-primary-button opacity-50" type="submit" disabled title="Chưa đủ nhân sự tất cả phòng ban bắt buộc">
+                                    Bắt đầu sự kiện <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="event-primary-button" type="submit">
+                                    @(item.TrangThai == "LEN_KE_HOACH" ? "Bắt đầu sự kiện" : "Chuyển chờ nghiệm thu") <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                                </button>
+                            }
+                            <p class="form-text">Chuyển trạng thái sau khi đến giờ @(item.TrangThai == "LEN_KE_HOACH" ? "bắt đầu" : "kết thúc") dự kiến.</p>
+                        </form>
+                    }
+                </div>
+            </div>
+            <div class="event-panel mt-4">
+                <span class="event-eyebrow">NHẬT KÝ SỰ KIỆN</span>
+                <h3>Lịch sử thay đổi</h3>
+                @if (Model.History.Count == 0)
+                {
+                    <p class="event-muted">Chưa có thay đổi được ghi nhận.</p>
+                }
+                else
+                {
+                    <ul class="event-history">
+                        @foreach (var entry in Model.History)
+                        {
+                            <li>
+                                <time>@HotelEventRules.Local(entry.ThoiGian).ToString("dd/MM/yyyy HH:mm")</time>
+                                <div>
+                                    <strong>@entry.TenNguoiThucHien</strong> · @entry.HanhDong
+                                    <p>@entry.NoiDung</p>
+                                    @if (!string.IsNullOrWhiteSpace(entry.LyDo))
+                                    {
+                                        <small>Lý do: @entry.LyDo</small>
+                                    }
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+            @if (Model.CanManage)
+            {
+                <details class="event-cancel-panel">
+                    <summary>Hủy sự kiện</summary>
+                    <p class="event-muted">Lịch địa điểm và nhân sự sẽ được giải phóng. Vui lòng ghi rõ lý do.</p>
+                    <form asp-action="Status" asp-route-id="@item.MaDuAn" method="post">
+                        <partial name="_EventContext" model="Model" />
+                        <input name="version" type="hidden" value="@item.Version" />
+                        <input name="status" type="hidden" value="HUY" />
+                        <label for="cancellationReason" class="form-label">Lý do hủy <span aria-hidden="true">*</span></label>
+                        <textarea id="cancellationReason" name="reason" class="form-control mb-3" rows="2" required maxlength="500">@ViewData.ModelState["reason"]?.AttemptedValue</textarea>
+                        <span class="text-danger">@Html.ValidationMessage("reason")</span>
+                        <button type="submit" class="btn btn-outline-danger">Xác nhận hủy sự kiện</button>
+                    </form>
+                </details>
+            }
+        </section>
+        <section class="tab-pane fade @(Model.Tab == "staff" ? "show active" : "")" id="staff" role="tabpanel" aria-labelledby="staff-tab" tabindex="0">
+            <div class="event-panel">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                    <div>
+                        <span class="event-eyebrow">ĐỘI NGŨ SỰ KIỆN · @HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn)</span>
+                        <h3>@item.PhanCongs.Count nhân sự đồng hành</h3>
+                    </div>
+                    <span class="event-muted">Phụ cấp dự kiến: <strong>@Money(planned)</strong></span>
+                </div>
+
+                @{ var staffSummary = Model.StaffingSummary; }
+                <div class="alert @(staffSummary.IsFullyStaffed ? "alert-success" : "alert-warning") d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+                    <div>
+                        <i class="bi @(staffSummary.IsFullyStaffed ? "bi-check-circle-fill text-success" : "bi-exclamation-triangle-fill text-warning") fs-5 me-2 align-middle"></i>
+                        <strong class="align-middle">@staffSummary.SummaryText</strong>
+                    </div>
+                    <div>
+                        <span class="badge @(staffSummary.IsFullyStaffed ? "bg-success" : "bg-warning text-dark")">
+                            @(staffSummary.IsFullyStaffed ? "Đã đủ điều kiện bắt đầu" : "Chưa đủ điều kiện bắt đầu")
+                        </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    @foreach (var dept in staffSummary.Departments)
+                    {
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 border @(dept.IsSufficient ? "border-success-subtle bg-light" : "border-warning-subtle bg-warning-subtle bg-opacity-10") p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h4 class="h6 mb-0 fw-bold">@dept.Name</h4>
+                                    <span class="badge @(dept.IsSufficient ? "bg-success" : "bg-danger")">
+                                        @(dept.IsSufficient ? "Đã đủ" : "Còn thiếu") (@dept.AssignedCount)
+                                    </span>
+                                </div>
+                                <div class="small">
+                                    @if (dept.Assignments.Count > 0)
+                                    {
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var a in dept.Assignments)
+                                            {
+                                                <span class="badge bg-secondary-subtle text-dark border">
+                                                    @a.NhanVien?.HoTen (@a.VaiTroDuAn)
+                                                </span>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted fst-italic">Chưa có nhân viên nào</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (item.PhanCongs.Count == 0)
+                {
+                    <p class="event-empty">Chưa có nhân sự được phân công. Vui lòng phân công thành viên theo từng phòng ban bắt buộc bên dưới.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table event-table">
+                            <thead>
+                                <tr>
+                                    <th>Nhân viên</th>
+                                    <th>Vai trò &amp; nhiệm vụ</th>
+                                    <th>Thời gian tham gia</th>
+                                    <th>Phụ cấp dự kiến</th>
+                                    <th><span class="visually-hidden">Thao tác</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var dept in staffSummary.Departments)
+                                {
+                                    @if (dept.Assignments.Count > 0)
+                                    {
+                                        <tr class="table-light">
+                                            <th colspan="5" class="py-2 text-primary fw-semibold">
+                                                <i class="bi bi-diagram-3 me-2"></i>@dept.Name
+                                                <span class="badge bg-secondary ms-2">@dept.AssignedCount người</span>
+                                            </th>
+                                        </tr>
+                                        @foreach (var assignment in dept.Assignments.OrderBy(x => x.NhanVien?.HoTen))
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@assignment.NhanVien?.HoTen</strong>
+                                                    <small>@assignment.NhanVien?.PhongBan?.TenPhongBan</small>
+                                                    <small>@(assignment.NhanVien != null && HotelEventRules.ContractCovers(assignment.NhanVien, assignment.BatDau, assignment.KetThuc) ? "Hợp đồng bao phủ thời gian tham gia" : "Kiểm tra hiệu lực hợp đồng")</small>
+                                                </td>
+                                                <td>
+                                                    @assignment.VaiTroDuAn
+                                                    <small>@assignment.NhiemVuCuThe</small>
+                                                </td>
+                                                <td>
+                                                    @HotelEventRules.Local(assignment.BatDau).ToString("dd/MM HH:mm")
+                                                    <small>đến @HotelEventRules.Local(assignment.KetThuc).ToString("dd/MM HH:mm")</small>
+                                                </td>
+                                                <td>@Money(assignment.PhuCapDuKien)</td>
+                                                <td>
+                                                    @if (canStaff)
+                                                    {
+                                                        var isLastInOngoing = item.TrangThai == "DANG_DIEN_RA" && dept.AssignedCount <= 1;
+                                                        if (isLastInOngoing)
+                                                        {
+                                                            <span class="badge bg-warning text-dark" title="Không thể gỡ nhân viên cuối cùng của phòng ban bắt buộc khi sự kiện đang diễn ra. Phải thêm người thay thế trước.">
+                                                                Nhân sự duy nhất
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <form asp-action="RemoveAssignment" asp-route-id="@item.MaDuAn" method="post">
+                                                                <partial name="_EventContext" model="Model" />
+                                                                <input name="version" value="@item.Version" type="hidden" />
+                                                                <input name="assignmentId" value="@assignment.MaPhanCong" type="hidden" />
+                                                                <button type="submit" class="event-remove-button" aria-label="Gỡ phân công @assignment.NhanVien?.HoTen">
+                                                                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                                                                </button>
+                                                            </form>
+                                                        }
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                }
+                                @{
+                                    var unassignedToDept = item.PhanCongs
+                                        .Where(p => !staffSummary.Departments.Any(d => d.Assignments.Any(a => a.MaPhanCong == p.MaPhanCong)))
+                                        .ToList();
+                                }
+                                @if (unassignedToDept.Count > 0)
+                                {
+                                    <tr class="table-light">
+                                        <th colspan="5" class="py-2 text-muted fw-semibold">
+                                            <i class="bi bi-question-circle me-2"></i>Khác / Ngoài phòng ban bắt buộc
+                                            <span class="badge bg-secondary ms-2">@unassignedToDept.Count người</span>
+                                        </th>
+                                    </tr>
+                                    @foreach (var assignment in unassignedToDept.OrderBy(x => x.NhanVien?.HoTen))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@assignment.NhanVien?.HoTen</strong>
+                                                <small>@assignment.NhanVien?.PhongBan?.TenPhongBan</small>
+                                                <small>@(assignment.NhanVien != null && HotelEventRules.ContractCovers(assignment.NhanVien, assignment.BatDau, assignment.KetThuc) ? "Hợp đồng bao phủ thời gian tham gia" : "Kiểm tra hiệu lực hợp đồng")</small>
+                                            </td>
+                                            <td>@assignment.VaiTroDuAn<small>@assignment.NhiemVuCuThe</small></td>
+                                            <td>@HotelEventRules.Local(assignment.BatDau).ToString("dd/MM HH:mm")<small>đến @HotelEventRules.Local(assignment.KetThuc).ToString("dd/MM HH:mm")</small></td>
+                                            <td>@Money(assignment.PhuCapDuKien)</td>
+                                            <td>
+                                                @if (canStaff)
+                                                {
+                                                    <form asp-action="RemoveAssignment" asp-route-id="@item.MaDuAn" method="post">
+                                                        <partial name="_EventContext" model="Model" />
+                                                        <input name="version" value="@item.Version" type="hidden" />
+                                                        <input name="assignmentId" value="@assignment.MaPhanCong" type="hidden" />
+                                                        <button type="submit" class="event-remove-button" aria-label="Gỡ phân công @assignment.NhanVien?.HoTen">
+                                                            <i class="bi bi-x-lg" aria-hidden="true"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            @if (canStaff)
+            {
+                <form asp-action="Assign" asp-route-id="@item.MaDuAn" method="post" class="event-panel mt-4" data-event-time-form data-staff-assignment-form>
+                    <partial name="_EventContext" model="Model" />
+                    <input name="Assignment.Version" type="hidden" value="@item.Version" />
+                    <span class="event-eyebrow">PHÂN CÔNG THEO PHÒNG BAN BẮT BUỘC</span>
+                    <h3>Thêm thành viên</h3>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="assignment-department" class="form-label">Phòng ban bắt buộc <span aria-hidden="true">*</span></label>
+                            <select id="assignment-department" name="SelectedDepartment" class="form-select" data-department-select required>
+                                <option value="">-- Chọn phòng ban --</option>
+                                @foreach (var dept in staffSummary.Departments)
+                                {
+                                    <option value="@dept.Code" selected="@(Model.SelectedDepartment == dept.Code)">
+                                        @dept.Name (@(dept.IsSufficient ? $"Đã đủ: {dept.AssignedCount} người" : "Còn thiếu"))
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Assignment.EmployeeId" class="form-label">Nhân viên <span aria-hidden="true">*</span></label>
+                            <select asp-for="Assignment.EmployeeId" id="assignment-employee" class="form-select" data-employee-select required>
+                                <option value="">-- Chọn nhân viên --</option>
+                                @foreach (var employee in Model.Employees)
+                                {
+                                    var deptCode = HotelEventRules.ResolveDepartmentCode(employee);
+                                    <option value="@employee.MaNhanVien" data-department="@deptCode" selected="@(Model.Assignment.EmployeeId == employee.MaNhanVien)">
+                                        @employee.HoTen · @(employee.PhongBan?.TenPhongBan ?? "Chưa có phòng ban")
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="Assignment.EmployeeId" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Assignment.Role" class="form-label">Vai trò trong sự kiện <span aria-hidden="true">*</span></label>
+                            <input asp-for="Assignment.Role" class="form-control" required maxlength="100" placeholder="Điều phối, lễ tân, phục vụ, kỹ thuật…" />
+                            <span asp-validation-for="Assignment.Role" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Assignment.Allowance" class="form-label">Phụ cấp dự kiến (đ) <span aria-hidden="true">*</span></label>
+                            <input asp-for="Assignment.Allowance" class="form-control" type="number" min="0" step="0.01" required />
+                            <span asp-validation-for="Assignment.Allowance" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Assignment.Start" class="form-label">Bắt đầu tham gia (UTC+7)</label>
+                            <input asp-for="Assignment.Start" data-event-start asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" class="form-control" required />
+                            <span asp-validation-for="Assignment.Start" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Assignment.End" class="form-label">Kết thúc tham gia (UTC+7)</label>
+                            <input asp-for="Assignment.End" data-event-end asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" class="form-control" required />
+                            <span asp-validation-for="Assignment.End" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-12">
+                            <label asp-for="Assignment.Task" class="form-label">Nhiệm vụ cụ thể</label>
+                            <input asp-for="Assignment.Task" class="form-control" maxlength="255" placeholder="Ghi chú chi tiết công việc được giao…" />
+                            <span asp-validation-for="Assignment.Task" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap justify-content-between gap-3 align-items-center mt-4">
+                        <p class="form-text mb-0">Hệ thống tự động kiểm tra hợp đồng hiệu lực và trùng lịch khi lưu phân công.</p>
+                        <button class="event-primary-button" type="submit">
+                            <i class="bi bi-person-plus" aria-hidden="true"></i> Thêm nhân sự
+                        </button>
+                    </div>
+                </form>
+                <details class="event-panel mt-4"><summary class="fw-semibold">Hợp đồng nhân viên đang làm việc</summary><div class="table-responsive mt-3"><table class="table event-table"><thead><tr><th>Nhân viên</th><th>Phòng ban</th><th>Hợp đồng</th></tr></thead><tbody>@foreach (var employee in Model.Employees) { <tr><td>@employee.HoTen</td><td>@employee.PhongBan?.TenPhongBan</td><td>@if (!employee.HopDongs.Any(x => x.TrangThai == "HIEU_LUC")) { <span>Chưa có hợp đồng hiệu lực</span> } @foreach (var contract in employee.HopDongs.Where(x => x.TrangThai == "HIEU_LUC")) { <small>@contract.SoHopDong · @contract.NgayBatDau.ToString("dd/MM/yyyy") – @(contract.NgayKetThuc?.ToString("dd/MM/yyyy") ?? "Không thời hạn")</small> }</td></tr> }</tbody></table></div></details>
+            }
+            <div class="event-panel mt-4"><span class="event-eyebrow">LỊCH CA LIÊN QUAN · CHỈ XEM</span><h3>Phối hợp cùng lịch trực</h3>@if (Model.Shifts.Count == 0) { <p class="event-muted">Không có ca làm việc liên quan trong khung giờ sự kiện.</p> } else { <div class="table-responsive"><table class="table event-table"><thead><tr><th>Nhân viên</th><th>Ca làm việc</th><th>Khung giờ (UTC+7)</th></tr></thead><tbody>@foreach (var shift in Model.Shifts.OrderBy(x => x.BatDauDuKien)) { <tr><td>@shift.NhanVien?.HoTen</td><td>@shift.CaLamViec?.TenCa</td><td>@HotelEventRules.Local(shift.BatDauDuKien).ToString("dd/MM HH:mm") – @HotelEventRules.Local(shift.KetThucDuKien).ToString("dd/MM HH:mm")</td></tr> }</tbody></table></div> }</div>
+        </section>
+        <section class="tab-pane fade @(Model.Tab == "acceptance" ? "show active" : "")" id="acceptance" role="tabpanel" aria-labelledby="acceptance-tab" tabindex="0">
+            <div class="event-budget-grid">
+                <div class="event-budget-card"><span>Ngân sách phụ cấp</span><strong>@Money(item.NganSachPhuCap)</strong></div>
+                <div class="event-budget-card"><span>Phụ cấp dự kiến</span><strong>@Money(planned)</strong></div>
+                <div class="event-budget-card"><span>Phụ cấp thực tế</span><strong>@Money(actual)</strong></div>
+                <div class="event-budget-card"><span>Còn lại</span><strong class="@(actual > item.NganSachPhuCap ? "text-danger" : "")">@Money(item.NganSachPhuCap - actual)</strong></div>
+            </div>
+            <div class="event-panel mt-4">
+                <span class="event-eyebrow">GHI NHẬN ĐÓNG GÓP</span>
+                <h3>Đánh giá nhân sự <small class="event-muted">@reviewed/@item.PhanCongs.Count</small></h3>
+                <p class="event-muted">Đánh giá khi sự kiện đã chuyển chờ nghiệm thu. Nhân sự không tham gia có phụ cấp thực tế bằng 0.</p>
+                @if (item.PhanCongs.Count == 0)
+                {
+                    <p class="event-empty">Chưa có nhân sự để đánh giá.</p>
+                }
+                @foreach (var assignment in item.PhanCongs.OrderBy(x => x.NhanVien?.HoTen))
+                {
+                    var preserveReview = Model.Review.AssignmentId == assignment.MaPhanCong;
+                    var rating = preserveReview ? Model.Review.Rating : assignment.DanhGia;
+                    var amount = preserveReview && ViewData.ModelState.TryGetValue("Review.ActualAllowance", out var attempted) ? attempted.AttemptedValue : (preserveReview ? Model.Review.ActualAllowance : assignment.SoTienPhuCap).ToString(CultureInfo.InvariantCulture);
+                    <div class="event-review-row">
+                        <div>
+                            <strong>@assignment.NhanVien?.HoTen</strong>
+                            <small>@assignment.VaiTroDuAn · Dự kiến @Money(assignment.PhuCapDuKien)</small>
+                            @if (assignment.NgayDanhGia.HasValue)
+                            {
+                                <small>Đánh giá @HotelEventRules.Local(assignment.NgayDanhGia.Value).ToString("dd/MM/yyyy HH:mm")</small>
+                            }
+                        </div>
+                        @if (canReview)
+                        {
+                            <form asp-action="Review" asp-route-id="@item.MaDuAn" method="post" class="event-review-form">
+                                <partial name="_EventContext" model="Model" />
+                                <input name="Review.Version" value="@item.Version" type="hidden" />
+                                <input name="Review.AssignmentId" value="@assignment.MaPhanCong" type="hidden" />
+                                <div>
+                                    <label for="rating-@assignment.MaPhanCong" class="form-label">Kết quả</label>
+                                    <select name="Review.Rating" id="rating-@assignment.MaPhanCong" class="form-select" required>
+                                        <option value="">Chọn đánh giá</option>
+                                        @foreach (var option in HotelEventRules.RatingLabels.Where(x => x.Key != "CHUA_DANH_GIA"))
+                                        {
+                                            <option value="@option.Key" selected="@(rating == option.Key)">@option.Value</option>
+                                        }
+                                    </select>
+                                    @if (preserveReview)
+                                    {
+                                        <span class="text-danger">@Html.ValidationMessage("Review.Rating")</span>
+                                    }
+                                </div>
+                                <div>
+                                    <label for="allowance-@assignment.MaPhanCong" class="form-label">Phụ cấp thực tế (đ)</label>
+                                    <input name="Review.ActualAllowance" id="allowance-@assignment.MaPhanCong" value="@amount" type="number" class="form-control" min="0" step="0.01" required />
+                                    @if (preserveReview)
+                                    {
+                                        <span class="text-danger">@Html.ValidationMessage("Review.ActualAllowance")</span>
+                                    }
+                                </div>
+                                <button type="submit" class="event-secondary-button">Lưu đánh giá</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <div>
+                                <span class="event-status">@HotelEventRules.RatingLabels.GetValueOrDefault(assignment.DanhGia, assignment.DanhGia)</span>
+                                <strong class="ms-3">@Money(assignment.SoTienPhuCap)</strong>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="event-panel event-acceptance-panel mt-4">
+                <div>
+                    <span class="event-eyebrow">XÁC NHẬN CUỐI CÙNG</span>
+                    <h3>Nghiệm thu sự kiện</h3>
+                    <p>Hoàn tất đánh giá tất cả nhân sự và bảo đảm tổng phụ cấp thực tế trong ngân sách. Nghiệm thu sẽ khóa thông tin sự kiện và các phân công.</p>
+                </div>
+                @if (Model.CanAccept)
+                {
+                    <form asp-action="Accept" asp-route-id="@item.MaDuAn" method="post">
+                        <partial name="_EventContext" model="Model" />
+                        <input name="version" value="@item.Version" type="hidden" />
+                        <button class="event-primary-button" type="submit"><i class="bi bi-patch-check" aria-hidden="true"></i> Nghiệm thu &amp; khóa</button>
+                    </form>
+                }
+                else
+                {
+                    <span class="event-muted">@(item.TrangThai == "HOAN_THANH" ? "Đã nghiệm thu" : "HR/Admin nghiệm thu khi sự kiện ở trạng thái chờ nghiệm thu.")</span>
+                }
+            </div>
+        </section>
+    </div>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/events.js" asp-append-version="true"></script>
+}

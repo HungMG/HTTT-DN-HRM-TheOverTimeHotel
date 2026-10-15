@@ -51,6 +51,14 @@
             <i class="bi bi-speedometer2"></i><span>Bàn làm việc</span>
         </a>
 
+        @if (User.IsInRole("Admin") || User.IsInRole("HR") || User.IsInRole("Manager"))
+        {
+            <a class="app-nav-item@(IsCurrent("SuKien") ? " is-active" : "")"
+               asp-controller="SuKien" asp-action="Index">
+                <i class="bi bi-calendar-event"></i><span>Sự kiện khách sạn</span>
+            </a>
+        }
+
         @if (hasAnyGroup)
         {
             <!-- 2. NHÂN SỰ & HỢP ĐỒNG -->

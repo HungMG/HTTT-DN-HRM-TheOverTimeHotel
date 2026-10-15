@@ -1,0 +1,5 @@
+@model EventFormViewModel
+@{ ViewData["Title"] = "Chỉnh sửa sự kiện"; }
+<link rel="stylesheet" href="~/css/events.css" asp-append-version="true" />
+<div class="events-page"><a class="event-back-link" asp-action="Details" asp-route-id="@Model.Input.Id" asp-route-returnYear="@Model.ReturnYear" asp-route-returnMonth="@Model.ReturnMonth" asp-route-returnDate="@Model.ReturnDate.ToString("yyyy-MM-dd")"><i class="bi bi-arrow-left" aria-hidden="true"></i> Trở về chi tiết sự kiện</a><div class="event-page-heading"><div><span class="event-eyebrow">CHĂM CHÚT TỪNG CHI TIẾT</span><h2>Chỉnh sửa sự kiện</h2><p>@Model.Input.Name</p></div></div><form asp-action="Edit" asp-route-id="@Model.Input.Id" method="post" data-event-time-form><partial name="_EventForm" model="Model" /></form></div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /><script src="~/js/events.js" asp-append-version="true"></script> }

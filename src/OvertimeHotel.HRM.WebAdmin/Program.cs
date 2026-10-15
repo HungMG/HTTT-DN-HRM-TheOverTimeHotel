@@ -273,6 +273,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Đăng ký dịch vụ sao lưu & phục hồi CSDL
 builder.Services.AddScoped<IBackupService, BackupService>();
 builder.Services.AddScoped<IAttendanceSummaryService, AttendanceSummaryService>();
+builder.Services.AddScoped<IHotelEventService, HotelEventService>();
 
 // Cấp phát user Supabase Auth khi tạo tài khoản trên Web.
 // Đăng ký Singleton vì cấu hình là bất biến trong suốt vòng đời ứng dụng — đọc

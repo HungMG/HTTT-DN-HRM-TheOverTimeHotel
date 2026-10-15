@@ -1,0 +1,5 @@
+@model EventFormViewModel
+<p class="event-muted">Sự kiện kéo dài liên tục từ ngày bắt đầu đến ngày kết thúc. Bạn có thể chỉnh lại thời gian bên dưới.</p>
+<form asp-action="Create" method="post" data-event-time-form data-event-popup-form>
+    <partial name="_EventForm" model="Model" />
+</form>

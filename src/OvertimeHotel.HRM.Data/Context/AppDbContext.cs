@@ -35,10 +35,14 @@ public class AppDbContext : DbContext
     public DbSet<ChiTietTruViPhamTamUng> ChiTietTruViPhamTamUngs => Set<ChiTietTruViPhamTamUng>();
     public DbSet<NhatKyQuanTri> NhatKyQuanTris => Set<NhatKyQuanTri>();
     public DbSet<YeuCauTaiKhoan> YeuCauTaiKhoans => Set<YeuCauTaiKhoan>();
+    public DbSet<DuAn> DuAns => Set<DuAn>();
+    public DbSet<PhanCongDuAn> PhanCongDuAns => Set<PhanCongDuAn>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfiguration(new HotelEventConfiguration());
+        modelBuilder.ApplyConfiguration(new HotelEventAssignmentConfiguration());
 
         // 1. PHONG_BAN
         modelBuilder.Entity<PhongBan>(entity =>

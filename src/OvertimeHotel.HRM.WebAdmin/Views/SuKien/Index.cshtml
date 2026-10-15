@@ -1,0 +1,96 @@
+@model EventCalendarViewModel
+@using OvertimeHotel.HRM.Core.Policies
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Sự kiện khách sạn";
+    var first = new DateOnly(Model.Year, Model.Month, 1);
+    var gridStart = first.AddDays(-(((int)first.DayOfWeek + 6) % 7));
+    var previous = first.AddMonths(-1);
+    var next = first.AddMonths(1);
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+    var days = Enumerable.Range(0, 42).Select(i => gridStart.AddDays(i)).ToArray();
+    bool Intersects(OvertimeHotel.HRM.Core.Models.DuAn item, DateOnly day) => item.NgayBatDau < HotelEventRules.ToUtc(day.AddDays(1).ToDateTime(TimeOnly.MinValue)) && item.NgayKetThuc > HotelEventRules.ToUtc(day.ToDateTime(TimeOnly.MinValue));
+    var cardData = Model.Events.Select(item => new {
+        name = item.TenDuAn, venue = item.DiaDiem,
+        type = HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn),
+        status = item.TrangThai, statusLabel = HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai),
+        count = item.PhanCongs.Count, time = HotelEventRules.Local(item.NgayBatDau).ToString("HH:mm"),
+        days = days.Where(day => Intersects(item, day)).Select(day => day.ToString("yyyy-MM-dd")),
+        url = Url.Action("Details", new { id = item.MaDuAn, returnYear = Model.Year, returnMonth = Model.Month })
+    });
+}
+<link rel="stylesheet" href="~/css/events.css" asp-append-version="true" />
+<div class="events-page event-calendar-page">
+    <div class="event-page-heading">
+        <div><h2>Lịch sự kiện khách sạn</h2><p>Theo dõi lịch tổ chức và phân công nhân sự trên cùng một trang.</p></div>
+    </div>
+    @if (TempData["Success"] is string message) { <div class="alert alert-success" role="status">@message</div> }
+    @if (TempData["Error"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+    @if (!Model.DatabaseReady) { <div class="alert alert-warning" role="alert">Dữ liệu sự kiện chưa sẵn sàng. Vui lòng liên hệ quản trị viên để cập nhật cơ sở dữ liệu.</div> }
+    <div class="event-workspace">
+        <section class="event-notebook" aria-label="Lịch sự kiện tháng @Model.Month năm @Model.Year">
+            <div class="event-notebook-inner">
+                <header class="event-calendar-toolbar">
+                    <div><span class="event-eyebrow">LỊCH SỰ KIỆN</span><h3>Tháng @Model.Month <span>@Model.Year</span></h3></div>
+                    <div class="event-month-controls">
+                        @if (Model.CanCreate && Model.DatabaseReady) { <a class="event-primary-button event-toolbar-create" data-create-event aria-disabled="@(Model.SelectedDate < today ? "true" : "false")" tabindex="@(Model.SelectedDate < today ? -1 : 0)" asp-action="Create" asp-route-date="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-returnYear="@Model.Year" asp-route-returnMonth="@Model.Month" asp-route-returnDate="@Model.SelectedDate.ToString("yyyy-MM-dd")"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo sự kiện</a> }
+                        <a class="event-icon-button" asp-action="Index" asp-route-year="@previous.Year" asp-route-month="@previous.Month" asp-route-date="@previous.ToString("yyyy-MM-dd")" aria-label="Tháng trước"><i class="bi bi-chevron-left"></i></a>
+                        <a class="event-today-button" asp-action="Index" asp-route-year="@today.Year" asp-route-month="@today.Month" asp-route-date="@today.ToString("yyyy-MM-dd")">Hôm nay</a>
+                        <a class="event-icon-button" asp-action="Index" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-date="@next.ToString("yyyy-MM-dd")" aria-label="Tháng sau"><i class="bi bi-chevron-right"></i></a>
+                    </div>
+                </header>
+                <form method="get" asp-action="Index" class="event-month-picker">
+                    <label class="visually-hidden" for="calendarMonth">Tháng</label><select id="calendarMonth" name="month" aria-label="Chọn tháng">@for (var i = 1; i <= 12; i++) { <option value="@i" selected="@(i == Model.Month)">Tháng @i</option> }</select>
+                    <label class="visually-hidden" for="calendarYear">Năm</label><input id="calendarYear" type="number" name="year" value="@Model.Year" min="1900" max="2100" aria-label="Chọn năm" />
+                    <button type="submit">Xem lịch <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+                    <span>@Model.Events.Count sự kiện · giờ Việt Nam</span>
+                </form>
+                <div class="event-calendar" role="grid" aria-label="Lịch tháng" aria-multiselectable="true" data-event-calendar data-year="@Model.Year" data-month="@Model.Month" data-selected="@Model.SelectedDate.ToString("yyyy-MM-dd")" data-index-url="@Url.Action("Index")" data-create-url="@Url.Action("Create")" data-today="@today.ToString("yyyy-MM-dd")">
+                    <div class="event-weekdays visually-hidden" role="row">@foreach (var label in new[] { "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật" }) { <span role="columnheader">@label</span> }</div>
+                    @for (var week = 0; week < 6; week++)
+                    {
+                        <div class="event-week" role="row">
+                        @foreach (var day in days.Skip(week * 7).Take(7))
+                        {
+                            var events = Model.Events.Where(item => Intersects(item, day)).OrderBy(item => item.NgayBatDau).ToList();
+                            <div role="gridcell" aria-selected="@(day == Model.SelectedDate ? "true" : "false")" aria-current="@(day == today ? "date" : null)" tabindex="@(day == Model.SelectedDate ? 0 : -1)" aria-label="@day.ToString("dd/MM/yyyy"), @events.Count sự kiện@(day < today ? ", chỉ xem sự kiện" : "")" data-calendar-day data-date="@day.ToString("yyyy-MM-dd")" class="event-day @(day.Month != Model.Month ? "is-other-month" : "") @(day < today ? "is-past" : "") @(day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "is-weekend" : "") @(day == today ? "is-today" : "") @(day == Model.SelectedDate ? "is-selected" : "")">
+                                <span class="event-day-number"><span class="event-day-weekday">@(day.DayOfWeek == DayOfWeek.Sunday ? "CN" : "T" + ((int)day.DayOfWeek + 1))</span> @day.Day</span>
+                                @foreach (var item in events.Take(2))
+                                {
+                                    <a data-event-link class="event-calendar-chip event-chip-@item.TrangThai" asp-action="Details" asp-route-id="@item.MaDuAn" asp-route-returnYear="@Model.Year" asp-route-returnMonth="@Model.Month" asp-route-returnDate="@Model.SelectedDate.ToString("yyyy-MM-dd")" title="@item.TenDuAn · @HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai)">
+                                        <span class="event-chip-time">@HotelEventRules.Local(item.NgayBatDau).ToString("HH:mm")</span><strong>@item.TenDuAn</strong><span class="event-chip-meta">@HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai) · @item.PhanCongs.Count người</span>
+                                    </a>
+                                }
+                                @if (events.Count > 2) { <span class="event-day-more">+@(events.Count - 2) sự kiện</span> }
+                            </div>
+                        }
+                        </div>
+                    }
+                </div>
+                <div class="event-calendar-foot"><span><i class="bi bi-circle-fill text-primary" aria-hidden="true"></i> Kế hoạch</span><span><i class="bi bi-circle-fill text-success" aria-hidden="true"></i> Đang chạy</span><span><i class="bi bi-circle-fill text-warning" aria-hidden="true"></i> Chờ nghiệm thu</span><small>Ngày cũ chỉ xem · Nhấp đúp ngày từ hôm nay để tạo sự kiện</small></div>
+            </div>
+        </section>
+        <aside class="event-agenda" aria-label="Sự kiện các ngày đã chọn">
+            <span class="event-eyebrow">CÁC NGÀY ĐÃ CHỌN</span><h3 data-selected-title>@Model.SelectedDate.ToString("dd/MM/yyyy")</h3><p class="event-muted" data-selected-count></p>
+            @if (Model.CanCreate && Model.DatabaseReady)
+            {
+                <a class="event-primary-button w-100" data-create-event aria-disabled="@(Model.SelectedDate < today ? "true" : "false")" tabindex="@(Model.SelectedDate < today ? -1 : 0)" asp-action="Create" asp-route-date="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-returnYear="@Model.Year" asp-route-returnMonth="@Model.Month" asp-route-returnDate="@Model.SelectedDate.ToString("yyyy-MM-dd")"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo sự kiện</a>
+                <p class="event-muted" data-create-date-note role="status" hidden="@(Model.SelectedDate >= today)">Ngày trước hôm nay chỉ xem chi tiết sự kiện. Chọn ngày từ hôm nay trở đi để tạo mới.</p>
+            }
+            <div data-selected-events class="event-agenda-list" aria-live="polite"></div>
+        </aside>
+    </div>
+</div>
+@if (Model.CanCreate && Model.DatabaseReady)
+{
+    <div class="modal fade event-create-dialog" tabindex="-1" aria-labelledby="eventCreateTitle" data-event-create-dialog>
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header"><h2 class="modal-title h5" id="eventCreateTitle">Tạo sự kiện</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+                <div class="modal-body"><div class="events-page p-0" data-event-create-body aria-live="polite"></div></div>
+            </div>
+        </div>
+    </div>
+}
+<script id="event-calendar-data" type="application/json">@Html.Raw(JsonSerializer.Serialize(cardData))</script>
+@section Scripts { <script src="~/js/events.js" asp-append-version="true"></script> }
