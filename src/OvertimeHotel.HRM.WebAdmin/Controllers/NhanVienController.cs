@@ -312,7 +312,14 @@ public class NhanVienController : Controller
     private async Task<NhanVienFormViewModel> BuildEmployeeFormAsync(NhanVienFormViewModel model)
     {
         model.DepartmentOptions = await _context.PhongBans.AsNoTracking().OrderBy(item => item.TenPhongBan).Select(item => new SelectListItem(item.TenPhongBan, item.MaPhongBan.ToString(), item.MaPhongBan == model.Employee.MaPhongBan)).ToListAsync();
-        model.PositionOptions = await _context.ChucVus.AsNoTracking().OrderBy(item => item.TenChucVu).Select(item => new SelectListItem(item.TenChucVu, item.MaChucVu.ToString(), item.MaChucVu == model.Employee.MaChucVu)).ToListAsync();
+
+        var cvQuery = _context.ChucVus.AsNoTracking().AsQueryable();
+        if (model.Employee.MaPhongBan > 0)
+        {
+            cvQuery = cvQuery.Where(item => item.MaPhongBan == model.Employee.MaPhongBan || item.MaPhongBan == null);
+        }
+
+        model.PositionOptions = await cvQuery.OrderBy(item => item.TenChucVu).Select(item => new SelectListItem(item.TenChucVu, item.MaChucVu.ToString(), item.MaChucVu == model.Employee.MaChucVu)).ToListAsync();
         return model;
     }
 
@@ -325,7 +332,18 @@ public class NhanVienController : Controller
         if (string.IsNullOrWhiteSpace(model.Ho)) ModelState.AddModelError("Employee.Ho", "Vui lòng nhập họ.");
         if (string.IsNullOrWhiteSpace(model.Ten)) ModelState.AddModelError("Employee.Ten", "Vui lòng nhập tên.");
         if (model.MaPhongBan <= 0 || !await _context.PhongBans.AnyAsync(item => item.MaPhongBan == model.MaPhongBan)) ModelState.AddModelError("Employee.MaPhongBan", "Vui lòng chọn phòng ban hợp lệ.");
-        if (model.MaChucVu <= 0 || !await _context.ChucVus.AnyAsync(item => item.MaChucVu == model.MaChucVu)) ModelState.AddModelError("Employee.MaChucVu", "Vui lòng chọn chức vụ hợp lệ.");
+        if (model.MaChucVu <= 0 || !await _context.ChucVus.AnyAsync(item => item.MaChucVu == model.MaChucVu))
+        {
+            ModelState.AddModelError("Employee.MaChucVu", "Vui lòng chọn chức vụ hợp lệ.");
+        }
+        else if (model.MaPhongBan > 0)
+        {
+            var cv = await _context.ChucVus.AsNoTracking().FirstOrDefaultAsync(item => item.MaChucVu == model.MaChucVu);
+            if (cv != null && cv.MaPhongBan.HasValue && cv.MaPhongBan.Value != model.MaPhongBan)
+            {
+                ModelState.AddModelError("Employee.MaChucVu", "Chức vụ này không thuộc phòng ban đã chọn.");
+            }
+        }
         if (model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today)) ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
         if (model.NgayThoiViec.HasValue && model.NgayThoiViec < model.NgayVaoLam) ModelState.AddModelError("Employee.NgayThoiViec", "Ngày thôi việc không được trước ngày vào làm.");
         if (!SupportedEmployeeStatuses.Contains(model.TrangThai)) ModelState.AddModelError("Employee.TrangThai", "Trạng thái nhân viên không hợp lệ.");

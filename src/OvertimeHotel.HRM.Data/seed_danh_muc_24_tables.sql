@@ -22,18 +22,18 @@ ON CONFLICT (ma_phong_ban) DO UPDATE SET ten_phong_ban = EXCLUDED.ten_phong_ban;
 SELECT setval('phong_ban_ma_phong_ban_seq', (SELECT MAX(ma_phong_ban) FROM PHONG_BAN));
 
 -- 2. NẠP CHUC_VU
-INSERT INTO CHUC_VU (ma_chuc_vu, ten_chuc_vu, mo_ta) VALUES
-(1, 'Tổng Giám Đốc (General Manager)', 'Lãnh đạo tối cao, phê duyệt ngân sách và chính sách nhân sự'),
-(2, 'Trưởng Bộ Phận (Department Head)', 'Quản lý vận hành phòng ban, duyệt lịch ca và duyệt phép'),
-(3, 'Giám Sát Ca (Shift Supervisor)', 'Giám sát ca trực 24/7, phân chia công việc tại chỗ'),
-(4, 'Nhân Viên Lễ Tân (Receptionist)', 'Tiếp đón khách, làm thủ tục buồng phòng, xử lý giao dịch'),
-(5, 'Nhân Viên Buồng Phòng (Room Attendant)', 'Làm vệ sinh phòng khách, thay drap giường, bổ sung minibar'),
-(6, 'Đầu Bếp Chính (Chef de Partie)', 'Chế biến món ăn theo thực đơn, bảo đảm vệ sinh ATTP'),
-(7, 'Nhân Viên Kỹ Thuật (Technician)', 'Trực kỹ thuật 24/7, khắc phục sự cố thiết bị khách sạn'),
-(8, 'Nhân Viên An Ninh (Security Officer)', 'Trực sảnh, bãi xe, tuần tra đêm và bảo đảm an toàn khách sạn'),
-(9, 'Chuyên Viên Nhân Sự (HR Specialist)', 'Quản trị hồ sơ nhân sự, lập bảng lương, bảo hiểm xã hội'),
-(10, 'Kế Toán Tiền Lương (Payroll Accountant)', 'Đối soát công, thẩm định phiếu lương, chi trả lương qua ngân hàng')
-ON CONFLICT (ma_chuc_vu) DO UPDATE SET ten_chuc_vu = EXCLUDED.ten_chuc_vu;
+INSERT INTO CHUC_VU (ma_chuc_vu, ma_phong_ban, ten_chuc_vu, mo_ta) VALUES
+(1, 1, 'Tổng Giám Đốc (General Manager)', 'Lãnh đạo tối cao, phê duyệt ngân sách và chính sách nhân sự'),
+(2, NULL, 'Trưởng Bộ Phận (Department Head)', 'Quản lý vận hành phòng ban, duyệt lịch ca và duyệt phép'),
+(3, 2, 'Giám Sát Ca (Shift Supervisor)', 'Giám sát ca trực 24/7, phân chia công việc tại chỗ'),
+(4, 2, 'Nhân Viên Lễ Tân (Receptionist)', 'Tiếp đón khách, làm thủ tục buồng phòng, xử lý giao dịch'),
+(5, 3, 'Nhân Viên Buồng Phòng (Room Attendant)', 'Làm vệ sinh phòng khách, thay drap giường, bổ sung minibar'),
+(6, 4, 'Đầu Bếp Chính (Chef de Partie)', 'Chế biến món ăn theo thực đơn, bảo đảm vệ sinh ATTP'),
+(7, 5, 'Nhân Viên Kỹ Thuật (Technician)', 'Trực kỹ thuật 24/7, khắc phục sự cố thiết bị khách sạn'),
+(8, 6, 'Nhân Viên An Ninh (Security Officer)', 'Trực sảnh, bãi xe, tuần tra đêm và bảo đảm an toàn khách sạn'),
+(9, 7, 'Chuyên Viên Nhân Sự (HR Specialist)', 'Quản trị hồ sơ nhân sự, lập bảng lương, bảo hiểm xã hội'),
+(10, 8, 'Kế Toán Tiền Lương (Payroll Accountant)', 'Đối soát công, thẩm định phiếu lương, chi trả lương qua ngân hàng')
+ON CONFLICT (ma_chuc_vu) DO UPDATE SET ten_chuc_vu = EXCLUDED.ten_chuc_vu, ma_phong_ban = EXCLUDED.ma_phong_ban;
 
 SELECT setval('chuc_vu_ma_chuc_vu_seq', (SELECT MAX(ma_chuc_vu) FROM CHUC_VU));
 

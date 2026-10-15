@@ -7,4 +7,5 @@ public class PhongBan
     public string? MoTa { get; set; }
 
     public virtual ICollection<NhanVien> NhanViens { get; set; } = new List<NhanVien>();
+    public virtual ICollection<ChucVu> ChucVus { get; set; } = new List<ChucVu>();
 }

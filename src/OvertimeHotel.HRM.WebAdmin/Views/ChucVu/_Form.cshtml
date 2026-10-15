@@ -5,6 +5,22 @@
     <label asp-for="TenChucVu">Tên chức vụ <span class="text-danger">*</span></label>
     <span asp-validation-for="TenChucVu" class="text-danger small"></span>
 </div>
+<div class="form-floating mb-3">
+    <select asp-for="MaPhongBan" class="form-select" id="MaPhongBan">
+        <option value="">-- Thuộc tất cả phòng ban / Chức danh chung --</option>
+        @if (ViewBag.PhongBans is IEnumerable<OvertimeHotel.HRM.Core.Models.PhongBan> phongBans)
+        {
+            foreach (var pb in phongBans)
+            {
+                <option value="@pb.MaPhongBan" selected="@(Model.MaPhongBan == pb.MaPhongBan ? "selected" : null)">
+                    @pb.TenPhongBan
+                </option>
+            }
+        }
+    </select>
+    <label asp-for="MaPhongBan">Trực thuộc Phòng ban / Bộ phận</label>
+    <span asp-validation-for="MaPhongBan" class="text-danger small"></span>
+</div>
 <div class="form-floating mb-4">
     <textarea asp-for="MoTa" class="form-control" placeholder="Mô tả" maxlength="255" style="height:120px"></textarea>
     <label asp-for="MoTa">Mô tả nhiệm vụ</label>

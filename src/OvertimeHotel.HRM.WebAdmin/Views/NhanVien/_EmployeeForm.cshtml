@@ -8,8 +8,8 @@
     <div class="col-md-4"><label asp-for="Employee.NgaySinh" class="form-label">Ngày sinh *</label><input asp-for="Employee.NgaySinh" type="date" class="form-control" /><span asp-validation-for="Employee.NgaySinh" class="text-danger small"></span></div>
     <div class="col-md-4"><label asp-for="Employee.GioiTinh" class="form-label">Giới tính</label><select asp-for="Employee.GioiTinh" class="form-select"><option value="NAM">Nam</option><option value="NU">Nữ</option><option value="KHAC">Khác</option></select></div>
     <div class="col-md-4"><label asp-for="Employee.TrinhDo" class="form-label">Trình độ</label><input asp-for="Employee.TrinhDo" class="form-control" placeholder="Đại học, Cao đẳng..." /></div>
-    <div class="col-md-6"><label asp-for="Employee.MaPhongBan" class="form-label">Phòng ban *</label><select asp-for="Employee.MaPhongBan" asp-items="Model.DepartmentOptions" class="form-select"><option value="">Chọn phòng ban</option></select><span asp-validation-for="Employee.MaPhongBan" class="text-danger small"></span></div>
-    <div class="col-md-6"><label asp-for="Employee.MaChucVu" class="form-label">Chức vụ *</label><select asp-for="Employee.MaChucVu" asp-items="Model.PositionOptions" class="form-select"><option value="">Chọn chức vụ</option></select><span asp-validation-for="Employee.MaChucVu" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.MaPhongBan" class="form-label">Phòng ban *</label><select asp-for="Employee.MaPhongBan" asp-items="Model.DepartmentOptions" class="form-select" id="Employee_MaPhongBan"><option value="">Chọn phòng ban</option></select><span asp-validation-for="Employee.MaPhongBan" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.MaChucVu" class="form-label">Chức vụ *</label><select asp-for="Employee.MaChucVu" asp-items="Model.PositionOptions" class="form-select" id="Employee_MaChucVu"><option value="">Chọn chức vụ</option></select><span asp-validation-for="Employee.MaChucVu" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.EmailCongVu" class="form-label">Email công vụ *</label><input asp-for="Employee.EmailCongVu" type="email" class="form-control" placeholder="vidu: nguyen.vana@overtimehotel.com" /><span class="form-text">Dùng để đăng nhập Mobile App.</span><span asp-validation-for="Employee.EmailCongVu" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.EmailCaNhan" class="form-label">Email cá nhân</label><input asp-for="Employee.EmailCaNhan" type="email" class="form-control" placeholder="Không bắt buộc" /><span class="form-text">Chỉ lưu hồ sơ, không dùng đăng nhập.</span><span asp-validation-for="Employee.EmailCaNhan" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.DienThoai" class="form-label">Điện thoại *</label><input asp-for="Employee.DienThoai" class="form-control" /><span asp-validation-for="Employee.DienThoai" class="text-danger small"></span></div>
@@ -18,3 +18,51 @@
     <div class="col-md-6"><label asp-for="Employee.TrangThai" class="form-label">Trạng thái</label><select asp-for="Employee.TrangThai" class="form-select"><option value="DANG_LAM">Đang làm</option><option value="DA_THOI_VIEC">Nghỉ việc</option><option value="NGHI_PHEP">Tạm nghỉ</option></select></div>
     <div class="col-12"><label asp-for="Employee.DiaChi" class="form-label">Địa chỉ</label><textarea asp-for="Employee.DiaChi" rows="2" class="form-control"></textarea></div>
 </div>
+<script>
+    (function () {
+        function bindDepartmentChange() {
+            var deptSelect = document.getElementById("Employee_MaPhongBan") || document.querySelector("select[name='Employee.MaPhongBan']");
+            var posSelect = document.getElementById("Employee_MaChucVu") || document.querySelector("select[name='Employee.MaChucVu']");
+
+            if (!deptSelect || !posSelect || deptSelect.dataset.cascadingBound) return;
+            deptSelect.dataset.cascadingBound = "true";
+
+            deptSelect.addEventListener("change", async function () {
+                var deptId = this.value;
+                var currentPosId = posSelect.value;
+                posSelect.innerHTML = '<option value="">Đang tải danh sách chức vụ...</option>';
+
+                try {
+                    var res = await fetch('/ChucVu/GetByDepartment?departmentId=' + encodeURIComponent(deptId));
+                    if (!res.ok) throw new Error("Fetch failed");
+                    var data = await res.json();
+
+                    posSelect.innerHTML = '<option value="">Chọn chức vụ</option>';
+                    var matched = false;
+                    data.forEach(function (item) {
+                        var opt = document.createElement("option");
+                        opt.value = item.maChucVu;
+                        opt.textContent = item.tenChucVu + (item.tenPhongBan ? ' (' + item.tenPhongBan + ')' : ' (Chung)');
+                        if (String(item.maChucVu) === String(currentPosId)) {
+                            opt.selected = true;
+                            matched = true;
+                        }
+                        posSelect.appendChild(opt);
+                    });
+
+                    if (!matched && currentPosId && deptId) {
+                        posSelect.value = "";
+                    }
+                } catch (e) {
+                    posSelect.innerHTML = '<option value="">Không thể tải danh sách chức vụ</option>';
+                }
+            });
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", bindDepartmentChange);
+        } else {
+            bindDepartmentChange();
+        }
+    })();
+</script>

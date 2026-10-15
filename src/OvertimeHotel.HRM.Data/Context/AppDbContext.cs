@@ -57,9 +57,14 @@ public class AppDbContext : DbContext
             entity.ToTable("chuc_vu");
             entity.HasKey(e => e.MaChucVu);
             entity.Property(e => e.MaChucVu).HasColumnName("ma_chuc_vu");
+            entity.Property(e => e.MaPhongBan).HasColumnName("ma_phong_ban");
             entity.Property(e => e.TenChucVu).HasColumnName("ten_chuc_vu").HasMaxLength(100).IsRequired();
             entity.Property(e => e.MoTa).HasColumnName("mo_ta").HasMaxLength(255);
-            entity.HasIndex(e => e.TenChucVu).IsUnique();
+
+            entity.HasOne(e => e.PhongBan)
+                .WithMany(p => p.ChucVus)
+                .HasForeignKey(e => e.MaPhongBan)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // 3. NHAN_VIEN

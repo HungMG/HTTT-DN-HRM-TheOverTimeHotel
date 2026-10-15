@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS PHONG_BAN (
 -- 2. BẢNG CHUC_VU (Chức vụ / Vị trí)
 CREATE TABLE IF NOT EXISTS CHUC_VU (
     ma_chuc_vu SERIAL PRIMARY KEY,
-    ten_chuc_vu VARCHAR(100) NOT NULL UNIQUE,
+    ma_phong_ban INT REFERENCES PHONG_BAN(ma_phong_ban) ON DELETE RESTRICT,
+    ten_chuc_vu VARCHAR(100) NOT NULL,
     mo_ta VARCHAR(255)
 );
 
