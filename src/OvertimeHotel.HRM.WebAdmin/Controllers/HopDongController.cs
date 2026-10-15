@@ -59,6 +59,25 @@ public class HopDongController : Controller
                 .OrderBy(p => p.TenPhongBan)
                 .ToListAsync();
 
+            // Tự động đồng bộ các hợp đồng đã qua ngày kết thúc sang trạng thái HET_HAN trong CSDL
+            var expiredToUpdate = await _context.HopDongs
+                .Where(c => c.TrangThai == "HIEU_LUC" && c.NgayKetThuc != null && c.NgayKetThuc < today)
+                .ToListAsync();
+
+            if (expiredToUpdate.Any())
+            {
+                foreach (var c in expiredToUpdate)
+                {
+                    c.TrangThai = "HET_HAN";
+                }
+                await _context.SaveChangesAsync();
+
+                foreach (var contract in allContracts.Where(c => c.NgayKetThuc.HasValue && c.NgayKetThuc.Value < today && c.TrangThai == "HIEU_LUC"))
+                {
+                    contract.TrangThai = "HET_HAN";
+                }
+            }
+
             // Lọc trên bộ nhớ máy chủ (0ms)
             var filtered = allContracts.AsEnumerable();
             if (!string.IsNullOrWhiteSpace(keyword))
@@ -94,15 +113,15 @@ public class HopDongController : Controller
             }
             else if (contractFilter == "DA_HET_HAN")
             {
-                items = items.Where(item => item.DaysRemaining < 0 || item.State == "DA_HET_HAN");
+                items = items.Where(item => item.State == "DA_HET_HAN" || item.Contract.TrangThai == "HET_HAN" || (item.DaysRemaining.HasValue && item.DaysRemaining.Value < 0));
             }
             else if (contractFilter == "SAP_HET_HAN")
             {
-                items = items.Where(item => item.DaysRemaining is >= 0 and <= 30);
+                items = items.Where(item => item.DaysRemaining is >= 0 and <= 30 && item.State != "DA_HET_HAN" && item.State != "DA_CHAM_DUT");
             }
             else if (contractFilter == "HIEU_LUC")
             {
-                items = items.Where(item => item.State == "HIEU_LUC");
+                items = items.Where(item => item.State == "HIEU_LUC" && (!item.DaysRemaining.HasValue || item.DaysRemaining.Value > 30));
             }
             // contractFilter == "TAT_CA" -> hiển thị toàn bộ không lọc trạng thái
 
@@ -155,9 +174,9 @@ public class HopDongController : Controller
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalPages = totalPages,
-                ActiveContracts = allContracts.Count(contract => contract.TrangThai == "HIEU_LUC"),
+                ActiveContracts = allContracts.Count(contract => (contract.TrangThai == "HIEU_LUC" || string.IsNullOrEmpty(contract.TrangThai)) && (!contract.NgayKetThuc.HasValue || contract.NgayKetThuc.Value >= today)),
                 ExpiringContracts = allDays.Count(days => days is >= 0 and <= 30),
-                ExpiredContracts = allDays.Count(days => days < 0)
+                ExpiredContracts = allContracts.Count(contract => contract.TrangThai == "HET_HAN" || (contract.NgayKetThuc.HasValue && contract.NgayKetThuc.Value < today))
             };
 
             if (isPartial || Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -507,8 +526,9 @@ public class HopDongController : Controller
 
     private static string GetState(HopDong contract, int? daysRemaining)
     {
-        if (daysRemaining < 0) return "DA_HET_HAN";
+        if (contract.TrangThai == "DA_CHAM_DUT") return "DA_CHAM_DUT";
+        if (contract.TrangThai == "HET_HAN" || (daysRemaining.HasValue && daysRemaining.Value < 0)) return "DA_HET_HAN";
         if (daysRemaining is >= 0 and <= 30) return "SAP_HET_HAN";
-        return contract.TrangThai;
+        return "HIEU_LUC";
     }
 }
