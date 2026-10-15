@@ -70,16 +70,33 @@
                         </td>
                         <td>
                             <div class="fw-semibold text-dark font-serif">@item.EmployeeName</div>
-                            <small class="text-muted font-monospace"><span class="badge bg-light text-secondary border px-2 py-0">NV-@contract.MaNhanVien</span></small>
+                            <div class="text-muted small d-flex flex-wrap align-items-center gap-1 mt-1">
+                                <span class="badge bg-light text-secondary border px-2 py-0 font-monospace">NV-@contract.MaNhanVien.ToString("D3")</span>
+                                <span class="badge bg-light text-dark border px-2 py-0"><i class="bi bi-building me-1 text-muted"></i>@item.DepartmentName</span>
+                            </div>
                         </td>
                         <td>
-                            <span class="badge bg-light text-dark border px-2 py-1 rounded-pill small">@contract.LoaiHopDong</span>
+                            <div class="d-flex flex-column gap-1">
+                                <span class="badge bg-light text-dark border px-2 py-1 rounded-pill small">@contract.LoaiHopDong</span>
+                                @if (contract.HinhThucHopDong == "THU_VIEC")
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0" style="font-size: 0.72rem; width: fit-content;">
+                                        <i class="bi bi-hourglass-split me-1"></i>Thử việc
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-2 py-0" style="font-size: 0.72rem; width: fit-content;">
+                                        <i class="bi bi-shield-check me-1"></i>Chính thức
+                                    </span>
+                                }
+                            </div>
                             @if (item.State == "DA_HET_HAN" || (item.DaysRemaining.HasValue && item.DaysRemaining.Value <= 30))
                             {
                                 <div class="mt-1">
                                     <a href="javascript:void(0)" 
                                        class="text-primary fw-semibold small text-decoration-none d-inline-flex align-items-center gap-1 hover-underline"
-                                       onclick="openRenewContractModal(@contract.MaNhanVien, '@(item.EmployeeName.Replace("'", "\\'"))', '@contract.LoaiHopDong', @contract.LuongCoBan, '@(contract.NgayKetThuc?.ToString("yyyy-MM-dd") ?? "")')">
+                                       onclick="openRenewContractModal(@contract.MaNhanVien, '@(item.EmployeeName.Replace("'", "\\'"))', '@(item.DepartmentName.Replace("'", "\\'"))', '@contract.LoaiHopDong', '@contract.HinhThucHopDong', @contract.LuongCoBan, '@(contract.NgayKetThuc?.ToString("yyyy-MM-dd") ?? "")', '@(item.PersonalEmail?.Replace("'", "\\'") ?? "")')">
                                         <i class="bi bi-arrow-repeat text-warning"></i> Gia hạn hợp đồng
                                     </a>
                                 </div>

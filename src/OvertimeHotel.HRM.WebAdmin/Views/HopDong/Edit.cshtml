@@ -1,6 +1,82 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.HopDongFormViewModel
 @{
-    ViewData["Title"] = "Sửa hợp đồng lao động";
+    ViewData["Title"] = $"Chỉnh sửa hợp đồng · {Model.Contract.SoHopDong}";
 }
-<div class="container py-4"><div class="mb-4"><a asp-action="Index" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Danh sách hợp đồng</a><h1 class="h2 fw-bold mt-3">Sửa hợp đồng lao động</h1></div><form asp-action="Edit" asp-route-id="@Model.Contract.MaHopDong" method="post" class="card border-0 shadow-sm"><div class="card-body p-4"><input type="hidden" asp-for="Contract.MaHopDong" /><partial name="_Form" model="Model" /></div><div class="card-footer bg-white border-0 p-4 pt-0"><button class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Lưu thay đổi</button> <a asp-action="Index" class="btn btn-outline-secondary">Hủy</a></div></form><form asp-action="Delete" asp-route-id="@Model.Contract.MaHopDong" method="post" class="mt-3" onsubmit="return confirm('Xóa hợp đồng này?');"><button class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Xóa hợp đồng</button></form></div>
-@section Scripts { <partial name="_ValidationScriptsPartial" /> }
+
+<div class="container py-4" style="max-width: 960px;">
+    <div class="mb-4">
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-pill px-3 mb-3">
+            <i class="bi bi-arrow-left me-1"></i>Trở lại danh sách hợp đồng
+        </a>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <span class="text-uppercase small text-muted fw-bold">Hồ sơ pháp lý lao động</span>
+                <h1 class="h3 fw-bold font-serif mb-0">Chỉnh sửa hợp đồng lao động: <span class="text-primary font-monospace">@Model.Contract.SoHopDong</span></h1>
+            </div>
+            <div>
+                <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill font-monospace fs-6">
+                    Mã HĐ: #@Model.Contract.MaHopDong
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <form asp-action="Edit" asp-route-id="@Model.Contract.MaHopDong" method="post" class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        @Html.AntiForgeryToken()
+        <div class="card-body p-4">
+            <input type="hidden" asp-for="Contract.MaHopDong" />
+            <partial name="_Form" model="Model" />
+        </div>
+        <div class="card-footer bg-light border-top p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="bi bi-x-lg me-1"></i>Hủy bỏ
+            </a>
+            <div class="d-flex align-items-center gap-2">
+                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                    <i class="bi bi-check2 me-1"></i>Lưu thay đổi
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <div class="card border-danger-subtle bg-danger-subtle bg-opacity-10 rounded-4 p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h6 class="text-danger fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i>Khu vực nguy hiểm</h6>
+            <p class="text-muted small mb-0">Xóa hợp đồng lao động sẽ loại bỏ dữ liệu pháp lý của nhân viên này khỏi hệ thống.</p>
+        </div>
+        <form asp-action="Delete" asp-route-id="@Model.Contract.MaHopDong" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa vĩnh viễn hợp đồng @Model.Contract.SoHopDong?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-danger rounded-pill px-4 btn-sm fw-semibold">
+                <i class="bi bi-trash me-1"></i>Xóa hợp đồng này
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
+            const loaiHdSelect = document.getElementById('contractLoaiHopDong');
+
+            if (hinhThucSelect && loaiHdSelect) {
+                hinhThucSelect.addEventListener('change', function () {
+                    if (this.value === 'THU_VIEC') {
+                        loaiHdSelect.value = 'THU_VIEC';
+                    } else if (this.value === 'CHINH_THUC' && loaiHdSelect.value === 'THU_VIEC') {
+                        loaiHdSelect.value = 'XAC_DINH_THOI_HAN_1_NAM';
+                    }
+                });
+
+                loaiHdSelect.addEventListener('change', function () {
+                    if (this.value === 'THU_VIEC') {
+                        hinhThucSelect.value = 'THU_VIEC';
+                    } else if (hinhThucSelect.value === 'THU_VIEC') {
+                        hinhThucSelect.value = 'CHINH_THUC';
+                    }
+                });
+            }
+        });
+    </script>
+}

@@ -1,12 +1,232 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.HopDongFormViewModel
+@{
+    var isEditMode = Model.Contract.MaHopDong > 0;
+    var employeeList = ViewBag.EmployeeList as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var departmentOptions = ViewBag.DepartmentOptions as IEnumerable<SelectListItem> ?? Enumerable.Empty<SelectListItem>();
+}
+
 @Html.AntiForgeryToken()
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-<div class="row g-3">
-    <div class="col-md-6"><label asp-for="EmployeeId" class="form-label">Nhân viên *</label><select asp-for="EmployeeId" asp-items="ViewBag.EmployeeOptions" class="form-select"><option value="">Chọn nhân viên</option></select><span asp-validation-for="EmployeeId" class="text-danger small"></span></div>
-    <div class="col-md-6"><label asp-for="Contract.SoHopDong" class="form-label">Số hợp đồng *</label><input asp-for="Contract.SoHopDong" class="form-control" placeholder="HĐ-2026-001" /><span asp-validation-for="Contract.SoHopDong" class="text-danger small"></span></div>
-    <div class="col-md-6"><label asp-for="Contract.LoaiHopDong" class="form-label">Loại hợp đồng *</label><select asp-for="Contract.LoaiHopDong" class="form-select"><option value="THU_VIEC">Thử việc</option><option value="XAC_DINH_THOI_HAN_1_NAM">HĐLĐ Xác định thời hạn (1 năm)</option><option value="XAC_DINH_THOI_HAN_3_NAM">HĐLĐ Xác định thời hạn (3 năm)</option><option value="KHONG_XAC_DINH_THOI_HAN">HĐLĐ Không xác định thời hạn</option></select><span asp-validation-for="Contract.LoaiHopDong" class="text-danger small"></span></div>
-    <div class="col-md-4"><label asp-for="Contract.NgayBatDau" class="form-label">Ngày bắt đầu *</label><input asp-for="Contract.NgayBatDau" type="date" class="form-control" /></div>
-    <div class="col-md-4"><label asp-for="Contract.NgayKetThuc" class="form-label">Ngày kết thúc</label><input asp-for="Contract.NgayKetThuc" type="date" class="form-control" /><span asp-validation-for="Contract.NgayKetThuc" class="text-danger small"></span></div>
-    <div class="col-md-4"><label asp-for="Contract.LuongCoBan" class="form-label">Lương cơ bản</label><input asp-for="Contract.LuongCoBan" type="number" min="0" step="1000" class="form-control" /></div>
-    <div class="col-md-4"><label asp-for="Contract.TrangThai" class="form-label">Trạng thái</label><select asp-for="Contract.TrangThai" class="form-select"><option value="HIEU_LUC">Hiệu lực</option><option value="HET_HAN">Hết hạn</option><option value="DA_CHAM_DUT">Thanh lý</option></select></div>
+
+<!-- ========================================================================= -->
+<!-- HÀNG 1: NHÂN SỰ * (TRÁI) | PHÒNG BAN (PHẢI)                              -->
+<!-- ========================================================================= -->
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <label asp-for="EmployeeId" class="form-label fw-semibold text-dark">
+            Nhân sự <span class="text-danger">*</span>
+        </label>
+        @if (isEditMode)
+        {
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person-badge-fill text-primary"></i></span>
+                <input type="text" class="form-control bg-light border-start-0 fw-semibold text-dark" value="@Model.EmployeeName" readonly />
+                <input type="hidden" asp-for="EmployeeId" />
+            </div>
+        }
+        else
+        {
+            <div class="input-group">
+                <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-person-fill text-primary"></i></span>
+                <select asp-for="EmployeeId" id="contractEmployeeSelect" class="form-select border-start-0" required>
+                    <option value="">-- Chọn nhân viên --</option>
+                    @foreach (var emp in employeeList)
+                    {
+                        <option value="@emp.Id" 
+                                data-dept-id="@emp.DepartmentId" 
+                                data-dept-name="@emp.DepartmentName" 
+                                data-email="@emp.PersonalEmail">
+                            @emp.FullName (@emp.Code)
+                        </option>
+                    }
+                </select>
+            </div>
+            <!-- Container hiển thị cố định khi mở chế độ gia hạn hợp đồng bằng JS -->
+            <div id="renewEmployeeDisplayWrapper" class="d-none">
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person-check-fill text-success"></i></span>
+                    <input type="text" id="renewEmployeeNameDisplay" class="form-control bg-light border-start-0 fw-semibold text-dark" readonly />
+                </div>
+            </div>
+        }
+        <span asp-validation-for="EmployeeId" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label fw-semibold text-dark">Phòng ban</label>
+        @if (isEditMode)
+        {
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-building text-secondary"></i></span>
+                <input type="text" class="form-control bg-light border-start-0 text-secondary" id="contractDepartmentDisplay" value="@(string.IsNullOrEmpty(Model.DepartmentName) ? "Chưa phân bổ" : Model.DepartmentName)" readonly />
+            </div>
+        }
+        else
+        {
+            <!-- Chế độ Lập mới: Dropdown chọn phòng ban để lọc nhanh nhân sự -->
+            <div id="createDepartmentWrapper">
+                <div class="input-group">
+                    <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-funnel-fill text-secondary"></i></span>
+                    <select id="contractDepartmentFilter" class="form-select border-start-0">
+                        <option value="">-- Tất cả phòng ban (Chọn để lọc) --</option>
+                        @foreach (var dept in departmentOptions)
+                        {
+                            <option value="@dept.Value">@dept.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-text small text-muted">Chọn phòng ban để lọc nhanh nhân sự hoặc chọn trực tiếp bên trái.</div>
+            </div>
+
+            <!-- Chế độ Gia hạn: Hiển thị phòng ban dạng readonly đã có sẵn -->
+            <div id="renewDepartmentWrapper" class="d-none">
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-building-check text-success"></i></span>
+                    <input type="text" id="renewDepartmentDisplay" class="form-control bg-light border-start-0 text-dark fw-semibold" readonly />
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- HÀNG 2: LOẠI HỢP ĐỒNG * (TRÁI) | HÌNH THỨC HỢP ĐỒNG * (PHẢI)              -->
+<!-- ========================================================================= -->
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <label asp-for="Contract.LoaiHopDong" class="form-label fw-semibold text-dark">
+            Loại hợp đồng <span class="text-danger">*</span>
+        </label>
+        <select asp-for="Contract.LoaiHopDong" id="contractLoaiHopDong" class="form-select" required>
+            <option value="XAC_DINH_THOI_HAN_1_NAM">HĐ lao động 01 năm</option>
+            <option value="XAC_DINH_THOI_HAN_3_NAM">HĐ lao động 03 năm</option>
+            <option value="KHONG_XAC_DINH_THOI_HAN">HĐ lao động không xác định thời hạn</option>
+            <option value="THU_VIEC">Hợp đồng thử việc</option>
+        </select>
+        <span asp-validation-for="Contract.LoaiHopDong" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Contract.HinhThucHopDong" class="form-label fw-semibold text-dark">
+            Hình thức hợp đồng <span class="text-danger">*</span>
+        </label>
+        <select asp-for="Contract.HinhThucHopDong" id="contractHinhThucHopDong" class="form-select" required>
+            <option value="CHINH_THUC">Chính thức (Hợp đồng tiêu chuẩn)</option>
+            <option value="THU_VIEC">Thử việc (Hợp đồng thử việc)</option>
+        </select>
+        <div class="form-text small text-muted">Dễ dàng nâng hình thức từ Thử việc lên Chính thức khi gia hạn.</div>
+        <span asp-validation-for="Contract.HinhThucHopDong" class="text-danger small"></span>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- HÀNG 3: NGÀY BẮT ĐẦU * (TRÁI) | NGÀY KẾT THÚC (PHẢI)                     -->
+<!-- ========================================================================= -->
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <label asp-for="Contract.NgayBatDau" class="form-label fw-semibold text-dark">
+            Ngày bắt đầu <span class="text-danger">*</span>
+        </label>
+        <div class="input-group">
+            <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-calendar-event"></i></span>
+            <input asp-for="Contract.NgayBatDau" type="date" class="form-control border-start-0" required />
+        </div>
+        <span asp-validation-for="Contract.NgayBatDau" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Contract.NgayKetThuc" class="form-label fw-semibold text-dark">
+            Ngày kết thúc
+        </label>
+        <div class="input-group">
+            <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-calendar-check"></i></span>
+            <input asp-for="Contract.NgayKetThuc" type="date" class="form-control border-start-0" placeholder="Ngày kết thúc, không bắt buộc" />
+        </div>
+        <div class="form-text small text-muted">Để trống nếu là hợp đồng vô thời hạn.</div>
+        <span asp-validation-for="Contract.NgayKetThuc" class="text-danger small"></span>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- HÀNG 4: MÃ HỢP ĐỒNG * (TRÁI) | LƯƠNG CƠ BẢN * (PHẢI)                     -->
+<!-- ========================================================================= -->
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <label asp-for="Contract.SoHopDong" class="form-label fw-semibold text-dark">
+            Mã hợp đồng <span class="text-danger">*</span>
+        </label>
+        <div class="input-group">
+            <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-file-earmark-code"></i></span>
+            <input asp-for="Contract.SoHopDong" class="form-control border-start-0 font-monospace text-uppercase" placeholder="Mã hợp đồng (VD: HDLD-2026/01)" required />
+        </div>
+        <span asp-validation-for="Contract.SoHopDong" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Contract.LuongCoBan" class="form-label fw-semibold text-dark">
+            Lương cơ bản (VNĐ) <span class="text-danger">*</span>
+        </label>
+        <div class="input-group">
+            <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-cash-stack text-success"></i></span>
+            <input asp-for="Contract.LuongCoBan" type="number" min="0" step="100000" class="form-control border-start-0 font-monospace fw-bold text-success" placeholder="Nhập mức lương (VD: 10000000)" required />
+            <span class="input-group-text bg-light text-muted">₫</span>
+        </div>
+        <div class="form-text small text-muted">Căn cứ pháp lý tính đơn giá ngày công và bảo hiểm bắt buộc.</div>
+        <span asp-validation-for="Contract.LuongCoBan" class="text-danger small"></span>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- HÀNG 5: TRẠNG THÁI HỢP ĐỒNG (TRÁI) | GỬI EMAIL THÔNG BÁO (PHẢI)           -->
+<!-- ========================================================================= -->
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <label asp-for="Contract.TrangThai" class="form-label fw-semibold text-dark">
+            Trạng thái hợp đồng
+        </label>
+        <div class="input-group">
+            <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-check2-circle text-primary"></i></span>
+            <select asp-for="Contract.TrangThai" class="form-select border-start-0">
+                <option value="HIEU_LUC">Đã ký / Đang hiệu lực</option>
+                <option value="HET_HAN">Hết hạn</option>
+                <option value="DA_CHAM_DUT">Thanh lý / Chấm dứt</option>
+            </select>
+        </div>
+        <span asp-validation-for="Contract.TrangThai" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="EmailNotificationOption" class="form-label fw-semibold text-dark">
+            Gửi thông báo cho nhân viên qua email
+        </label>
+        <div class="input-group">
+            <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-envelope-at text-info"></i></span>
+            <select asp-for="EmailNotificationOption" id="contractEmailOption" class="form-select border-start-0">
+                <option value="KHONG_GUI">Không gửi email</option>
+                <option value="GUI_EMAIL">Gửi email thông báo cho nhân viên</option>
+            </select>
+        </div>
+        <div id="contractPersonalEmailHint" class="form-text small text-muted mt-1">
+            <i class="bi bi-envelope-check text-primary me-1"></i>Email cá nhân nhận: 
+            <strong id="personalEmailDisplay" class="text-dark font-monospace">@(string.IsNullOrEmpty(Model.PersonalEmail) ? "Chưa cập nhật email cá nhân" : Model.PersonalEmail)</strong>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- HÀNG 6: THANH TIỆN ÍCH (THAY THẾ TÍNH NĂNG FILE ĐÍNH KÈM)                 -->
+<!-- ========================================================================= -->
+<div class="p-3 bg-light rounded-3 border d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+    <div class="d-flex align-items-center text-secondary small">
+        <i class="bi bi-printer-fill text-primary me-2 fs-6"></i>
+        <span>Tiện ích biểu mẫu & trích xuất:</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold shadow-none" data-catalog-print title="In danh sách hợp đồng chuẩn A4">
+            <i class="bi bi-printer text-primary me-1"></i> In danh sách
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold shadow-none" data-catalog-export="HopDong" title="Xuất dữ liệu hợp đồng ra file CSV mở bằng Excel">
+            <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất Excel
+        </button>
+    </div>
 </div>

@@ -10,6 +10,7 @@ public class HopDong
     public DateOnly? NgayKetThuc { get; set; }
     public decimal LuongCoBan { get; set; }
     public string TrangThai { get; set; } = "HIEU_LUC";
+    public string HinhThucHopDong { get; set; } = "CHINH_THUC";
 
     public virtual NhanVien? NhanVien { get; set; }
 

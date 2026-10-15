@@ -250,36 +250,148 @@
         window.addEventListener('popstate', () => {
             loadContractTable({}, false);
         });
+
+        initContractFormInteractivity();
     });
 
-    function openRenewContractModal(maNhanVien, tenNhanVien, loaiHopDongCu, luongCoBanCu, ngayKetThucCu) {
+    // =========================================================================
+    // TƯƠNG TÁC FORM HỢP ĐỒNG: LỌC PHÒNG BAN, TỰ ĐIỀN EMAIL & ĐỒNG BỘ HÌNH THỨC
+    // =========================================================================
+    function initContractFormInteractivity() {
+        const deptFilter = document.getElementById('contractDepartmentFilter');
+        const empSelect = document.getElementById('contractEmployeeSelect');
+        const emailDisplay = document.getElementById('personalEmailDisplay');
+        const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
+        const loaiHdSelect = document.getElementById('contractLoaiHopDong');
+
+        if (deptFilter && empSelect) {
+            deptFilter.addEventListener('change', function () {
+                const selectedDeptId = this.value;
+                const options = empSelect.querySelectorAll('option');
+
+                options.forEach(opt => {
+                    if (!opt.value) return; // Bỏ qua option placeholder
+                    const optDeptId = opt.getAttribute('data-dept-id');
+                    if (!selectedDeptId || optDeptId === selectedDeptId) {
+                        opt.hidden = false;
+                        opt.disabled = false;
+                    } else {
+                        opt.hidden = true;
+                        opt.disabled = true;
+                    }
+                });
+
+                // Nếu nhân viên đang chọn không thuộc phòng ban mới, reset lựa chọn
+                const currentSelectedOpt = empSelect.selectedOptions[0];
+                if (currentSelectedOpt && currentSelectedOpt.value && selectedDeptId && currentSelectedOpt.getAttribute('data-dept-id') !== selectedDeptId) {
+                    empSelect.value = '';
+                    if (emailDisplay) emailDisplay.innerText = 'Chưa chọn nhân sự';
+                }
+            });
+
+            empSelect.addEventListener('change', function () {
+                const selectedOpt = this.selectedOptions[0];
+                if (!selectedOpt || !selectedOpt.value) {
+                    if (emailDisplay) emailDisplay.innerText = 'Chưa chọn nhân sự';
+                    return;
+                }
+
+                // Tự động đồng bộ sang ô chọn phòng ban nếu chưa chọn
+                const deptId = selectedOpt.getAttribute('data-dept-id');
+                if (deptId && deptFilter && !deptFilter.value) {
+                    deptFilter.value = deptId;
+                }
+
+                // Cập nhật hiển thị email cá nhân
+                const personalEmail = selectedOpt.getAttribute('data-email');
+                if (emailDisplay) {
+                    emailDisplay.innerText = personalEmail || 'Chưa cập nhật email cá nhân';
+                }
+            });
+        }
+
+        // Tự động đồng bộ Loại hợp đồng khi chọn Hình thức Thử việc / Chính thức
+        if (hinhThucSelect && loaiHdSelect) {
+            hinhThucSelect.addEventListener('change', function () {
+                if (this.value === 'THU_VIEC') {
+                    loaiHdSelect.value = 'THU_VIEC';
+                } else if (this.value === 'CHINH_THUC' && loaiHdSelect.value === 'THU_VIEC') {
+                    loaiHdSelect.value = 'XAC_DINH_THOI_HAN_1_NAM';
+                }
+            });
+
+            loaiHdSelect.addEventListener('change', function () {
+                if (this.value === 'THU_VIEC') {
+                    hinhThucSelect.value = 'THU_VIEC';
+                } else if (hinhThucSelect.value === 'THU_VIEC') {
+                    hinhThucSelect.value = 'CHINH_THUC';
+                }
+            });
+        }
+    }
+
+    // =========================================================================
+    // MODAL GIA HẠN HỢP ĐỒNG (TỰ ĐỘNG ĐIỀN NHÂN SỰ, PHÒNG BAN, NGÀY BẮT ĐẦU MỚI)
+    // =========================================================================
+    function openRenewContractModal(maNhanVien, tenNhanVien, tenPhongBan, loaiHopDongCu, hinhThucHopDongCu, luongCoBanCu, ngayKetThucCu, emailCaNhan) {
         const modalEl = document.getElementById('createContractModal');
         if (!modalEl) return;
 
         // 1. Cập nhật tiêu đề modal
         const titleEl = document.getElementById('createContractModalLabel');
         if (titleEl) {
-            titleEl.innerHTML = `<span class="text-primary">Gia Hạn Hợp Đồng:</span> ${tenNhanVien}`;
+            titleEl.innerHTML = `<span class="text-primary"><i class="bi bi-arrow-repeat me-1"></i>Gia Hạn Hợp Đồng:</span> ${tenNhanVien}`;
         }
 
-        // 2. Chọn sẵn nhân viên trong select
-        const empSelect = modalEl.querySelector('select[name="EmployeeId"]') || modalEl.querySelector('#EmployeeId');
+        // 2. Chế độ gia hạn: Khóa cố định Nhân sự & hiển thị tên rõ ràng
+        const empSelect = modalEl.querySelector('#contractEmployeeSelect');
+        const renewEmpWrapper = modalEl.querySelector('#renewEmployeeDisplayWrapper');
+        const renewEmpDisplay = modalEl.querySelector('#renewEmployeeNameDisplay');
         if (empSelect) {
             empSelect.value = maNhanVien;
+            empSelect.closest('.input-group')?.classList.add('d-none');
+        }
+        if (renewEmpWrapper && renewEmpDisplay) {
+            renewEmpWrapper.classList.remove('d-none');
+            renewEmpDisplay.value = `${tenNhanVien} (NV-${String(maNhanVien).padStart(3, '0')})`;
         }
 
-        // 3. Chọn loại hợp đồng cũ nếu khớp
-        const loaiHdSelect = modalEl.querySelector('select[name="Contract.LoaiHopDong"]') || modalEl.querySelector('#Contract_LoaiHopDong');
-        if (loaiHdSelect && loaiHopDongCu) {
-            for (let i = 0; i < loaiHdSelect.options.length; i++) {
-                if (loaiHdSelect.options[i].value === loaiHopDongCu || loaiHdSelect.options[i].text.includes(loaiHopDongCu)) {
-                    loaiHdSelect.selectedIndex = i;
-                    break;
+        // 3. Khóa cố định Phòng ban của nhân viên
+        const createDeptWrapper = modalEl.querySelector('#createDepartmentWrapper');
+        const renewDeptWrapper = modalEl.querySelector('#renewDepartmentWrapper');
+        const renewDeptDisplay = modalEl.querySelector('#renewDepartmentDisplay');
+        if (createDeptWrapper) createDeptWrapper.classList.add('d-none');
+        if (renewDeptWrapper && renewDeptDisplay) {
+            renewDeptWrapper.classList.remove('d-none');
+            renewDeptDisplay.value = tenPhongBan || 'Khách sạn';
+        }
+
+        // 4. Cập nhật email cá nhân nhận thông báo
+        const emailDisplay = modalEl.querySelector('#personalEmailDisplay');
+        if (emailDisplay) {
+            emailDisplay.innerText = emailCaNhan || 'Chưa cập nhật email cá nhân';
+        }
+
+        // 5. Chọn loại hợp đồng cũ hoặc đề xuất nâng cấp nếu từ thử việc sang chính thức
+        const loaiHdSelect = modalEl.querySelector('#contractLoaiHopDong');
+        const hinhThucSelect = modalEl.querySelector('#contractHinhThucHopDong');
+        if (hinhThucHopDongCu === 'THU_VIEC') {
+            // Gia hạn sau thử việc: ưu tiên đề xuất HĐ Chính thức 1 năm
+            if (hinhThucSelect) hinhThucSelect.value = 'CHINH_THUC';
+            if (loaiHdSelect) loaiHdSelect.value = 'XAC_DINH_THOI_HAN_1_NAM';
+        } else {
+            if (hinhThucSelect && hinhThucHopDongCu) hinhThucSelect.value = hinhThucHopDongCu;
+            if (loaiHdSelect && loaiHopDongCu) {
+                for (let i = 0; i < loaiHdSelect.options.length; i++) {
+                    if (loaiHdSelect.options[i].value === loaiHopDongCu || loaiHdSelect.options[i].text.includes(loaiHopDongCu)) {
+                        loaiHdSelect.selectedIndex = i;
+                        break;
+                    }
                 }
             }
         }
 
-        // 4. Tự động đề xuất ngày bắt đầu mới = ngày kết thúc cũ + 1 ngày
+        // 6. Tự động đề xuất ngày bắt đầu mới = ngày kết thúc cũ + 1 ngày
         const startInput = modalEl.querySelector('input[name="Contract.NgayBatDau"]') || modalEl.querySelector('#Contract_NgayBatDau');
         if (startInput && ngayKetThucCu) {
             const oldEnd = new Date(ngayKetThucCu);
@@ -287,30 +399,53 @@
             startInput.value = oldEnd.toISOString().split('T')[0];
         }
 
-        // 5. Điền sẵn mức lương cơ bản
+        // 7. Điền sẵn mức lương cơ bản cũ để tham khảo/chỉnh sửa
         const salaryInput = modalEl.querySelector('input[name="Contract.LuongCoBan"]') || modalEl.querySelector('#Contract_LuongCoBan');
         if (salaryInput && luongCoBanCu) {
             salaryInput.value = luongCoBanCu;
         }
 
-        // 6. Đổi text nút Submit thành "Lưu gia hạn hợp đồng"
+        // 8. Đổi text nút Submit thành "Lưu gia hạn hợp đồng"
         const submitBtn = modalEl.querySelector('button[type="submit"]');
         if (submitBtn) {
             submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i>Lưu gia hạn hợp đồng';
         }
 
-        // 7. Mở Modal
+        // 9. Mở Modal
         const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
         bsModal.show();
     }
 
-    // Khôi phục lại trạng thái modal ban đầu khi đóng
+    // Khôi phục lại trạng thái form Lập hợp đồng mới ban đầu khi đóng modal
     document.getElementById('createContractModal')?.addEventListener('hidden.bs.modal', function () {
         const titleEl = document.getElementById('createContractModalLabel');
         if (titleEl) titleEl.innerText = 'Lập Hợp Đồng Lao Động Mới';
+
+        const empSelect = this.querySelector('#contractEmployeeSelect');
+        const renewEmpWrapper = this.querySelector('#renewEmployeeDisplayWrapper');
+        if (empSelect) empSelect.closest('.input-group')?.classList.remove('d-none');
+        if (renewEmpWrapper) renewEmpWrapper.classList.add('d-none');
+
+        const createDeptWrapper = this.querySelector('#createDepartmentWrapper');
+        const renewDeptWrapper = this.querySelector('#renewDepartmentWrapper');
+        if (createDeptWrapper) createDeptWrapper.classList.remove('d-none');
+        if (renewDeptWrapper) renewDeptWrapper.classList.add('d-none');
+
+        const emailDisplay = this.querySelector('#personalEmailDisplay');
+        if (emailDisplay) emailDisplay.innerText = 'Chưa chọn nhân sự';
+
         const submitBtn = this.querySelector('button[type="submit"]');
         if (submitBtn) submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i>Lưu hợp đồng';
+
         this.querySelector('form')?.reset();
+
+        // Hiển thị lại tất cả các option nhân viên
+        if (empSelect) {
+            empSelect.querySelectorAll('option').forEach(opt => {
+                opt.hidden = false;
+                opt.disabled = false;
+            });
+        }
     });
 </script>
 }
