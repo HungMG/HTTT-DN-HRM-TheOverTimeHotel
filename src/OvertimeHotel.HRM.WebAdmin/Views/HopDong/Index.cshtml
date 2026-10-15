@@ -255,83 +255,51 @@
     });
 
     // =========================================================================
-    // TƯƠNG TÁC FORM HỢP ĐỒNG: LỌC PHÒNG BAN, TỰ ĐIỀN EMAIL & ĐỒNG BỘ HÌNH THỨC
+    // TƯƠNG TÁC FORM HỢP ĐỒNG: GỢI Ý NHÂN SỰ, TỰ ĐIỀN EMAIL / NHẬP TAY LINH HOẠT
     // =========================================================================
     function initContractFormInteractivity() {
-        const deptFilter = document.getElementById('contractDepartmentFilter');
-        const empSelect = document.getElementById('contractEmployeeSelect');
-        const emailDisplay = document.getElementById('personalEmailDisplay');
-        const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
-        const loaiHdSelect = document.getElementById('contractLoaiHopDong');
+        const empInput = document.getElementById('contractEmployeeInput');
+        const empHidden = document.getElementById('contractEmployeeIdHidden');
+        const deptSelect = document.getElementById('contractDepartmentSelect');
+        const emailInput = document.getElementById('contractPersonalEmailInput');
+        const datalist = document.getElementById('employeeDatalist');
 
-        if (deptFilter && empSelect) {
-            deptFilter.addEventListener('change', function () {
-                const selectedDeptId = this.value;
-                const options = empSelect.querySelectorAll('option');
-
-                options.forEach(opt => {
-                    if (!opt.value) return; // Bỏ qua option placeholder
-                    const optDeptId = opt.getAttribute('data-dept-id');
-                    if (!selectedDeptId || optDeptId === selectedDeptId) {
-                        opt.hidden = false;
-                        opt.disabled = false;
-                    } else {
-                        opt.hidden = true;
-                        opt.disabled = true;
-                    }
+        if (empInput && datalist) {
+            empInput.addEventListener('input', function () {
+                const val = this.value.trim().toLowerCase();
+                const options = Array.from(datalist.querySelectorAll('option'));
+                
+                // Tìm xem tên gõ vào có khớp với nhân viên nào đã có hồ sơ trong datalist không
+                const matched = options.find(opt => {
+                    const optVal = opt.value.trim().toLowerCase();
+                    const optText = opt.innerText.trim().toLowerCase();
+                    return optVal === val || optText.includes(val);
                 });
 
-                // Nếu nhân viên đang chọn không thuộc phòng ban mới, reset lựa chọn
-                const currentSelectedOpt = empSelect.selectedOptions[0];
-                if (currentSelectedOpt && currentSelectedOpt.value && selectedDeptId && currentSelectedOpt.getAttribute('data-dept-id') !== selectedDeptId) {
-                    empSelect.value = '';
-                    if (emailDisplay) emailDisplay.innerText = 'Chưa chọn nhân sự';
-                }
-            });
+                if (matched) {
+                    const empId = matched.getAttribute('data-id');
+                    const deptId = matched.getAttribute('data-dept-id');
+                    const email = matched.getAttribute('data-email');
 
-            empSelect.addEventListener('change', function () {
-                const selectedOpt = this.selectedOptions[0];
-                if (!selectedOpt || !selectedOpt.value) {
-                    if (emailDisplay) emailDisplay.innerText = 'Chưa chọn nhân sự';
-                    return;
-                }
+                    if (empHidden && empId) empHidden.value = empId;
+                    if (deptSelect && deptId) deptSelect.value = deptId;
 
-                // Tự động đồng bộ sang ô chọn phòng ban nếu chưa chọn
-                const deptId = selectedOpt.getAttribute('data-dept-id');
-                if (deptId && deptFilter && !deptFilter.value) {
-                    deptFilter.value = deptId;
-                }
-
-                // Cập nhật hiển thị email cá nhân
-                const personalEmail = selectedOpt.getAttribute('data-email');
-                if (emailDisplay) {
-                    emailDisplay.innerText = personalEmail || 'Chưa cập nhật email cá nhân';
-                }
-            });
-        }
-
-        // Tự động đồng bộ Loại hợp đồng khi chọn Hình thức Thử việc / Chính thức
-        if (hinhThucSelect && loaiHdSelect) {
-            hinhThucSelect.addEventListener('change', function () {
-                if (this.value === 'THU_VIEC') {
-                    loaiHdSelect.value = 'THU_VIEC';
-                } else if (this.value === 'CHINH_THUC' && loaiHdSelect.value === 'THU_VIEC') {
-                    loaiHdSelect.value = 'XAC_DINH_THOI_HAN_1_NAM';
-                }
-            });
-
-            loaiHdSelect.addEventListener('change', function () {
-                if (this.value === 'THU_VIEC') {
-                    hinhThucSelect.value = 'THU_VIEC';
-                } else if (hinhThucSelect.value === 'THU_VIEC') {
-                    hinhThucSelect.value = 'CHINH_THUC';
+                    // Nếu nhân viên đó đã có email cá nhân từ hồ sơ: Tự động điền
+                    if (emailInput) {
+                        if (email && email !== 'Chưa cập nhật email cá nhân') {
+                            emailInput.value = email;
+                        }
+                    }
+                } else {
+                    // Nếu là nhân sự mới gõ tay chưa có trong danh sách
+                    if (empHidden) empHidden.value = '';
                 }
             });
         }
     }
 
     // =========================================================================
-    // MODAL GIA HẠN HỢP ĐỒNG (TỰ ĐỘNG ĐIỀN NHÂN SỰ, PHÒNG BAN, NGÀY BẮT ĐẦU MỚI)
+    // MODAL GIA HẠN HỢP ĐỒNG (TRẠNG THÁI HẾT HẠN, ĐIỀN CỐ ĐỊNH NHÂN SỰ & EMAIL)
     // =========================================================================
     function openRenewContractModal(maNhanVien, tenNhanVien, tenPhongBan, loaiHopDongCu, hinhThucHopDongCu, luongCoBanCu, ngayKetThucCu, emailCaNhan) {
         const modalEl = document.getElementById('createContractModal');
@@ -344,17 +312,16 @@
         }
 
         // 2. Chế độ gia hạn: Khóa cố định Nhân sự & hiển thị tên rõ ràng
-        const empSelect = modalEl.querySelector('#contractEmployeeSelect');
+        const createEmpWrapper = modalEl.querySelector('#createEmployeeWrapper');
         const renewEmpWrapper = modalEl.querySelector('#renewEmployeeDisplayWrapper');
         const renewEmpDisplay = modalEl.querySelector('#renewEmployeeNameDisplay');
-        if (empSelect) {
-            empSelect.value = maNhanVien;
-            empSelect.closest('.input-group')?.classList.add('d-none');
-        }
+        const empHidden = modalEl.querySelector('#contractEmployeeIdHidden');
+        if (createEmpWrapper) createEmpWrapper.classList.add('d-none');
         if (renewEmpWrapper && renewEmpDisplay) {
             renewEmpWrapper.classList.remove('d-none');
             renewEmpDisplay.value = `${tenNhanVien} (NV-${String(maNhanVien).padStart(3, '0')})`;
         }
+        if (empHidden) empHidden.value = maNhanVien;
 
         // 3. Khóa cố định Phòng ban của nhân viên
         const createDeptWrapper = modalEl.querySelector('#createDepartmentWrapper');
@@ -363,20 +330,25 @@
         if (createDeptWrapper) createDeptWrapper.classList.add('d-none');
         if (renewDeptWrapper && renewDeptDisplay) {
             renewDeptWrapper.classList.remove('d-none');
-            renewDeptDisplay.value = tenPhongBan || 'Khách sạn';
+            renewDeptDisplay.value = tenPhongBan || 'Khách sạn The OverTime';
         }
 
-        // 4. Cập nhật email cá nhân nhận thông báo
-        const emailDisplay = modalEl.querySelector('#personalEmailDisplay');
-        if (emailDisplay) {
-            emailDisplay.innerText = emailCaNhan || 'Chưa cập nhật email cá nhân';
+        // 4. Trạng thái trong modal gia hạn: Hiển thị HẾT HẠN (đúng thực trạng hợp đồng cần gia hạn)
+        const statusSelect = modalEl.querySelector('#contractTrangThai');
+        if (statusSelect) {
+            statusSelect.value = 'HET_HAN';
         }
 
-        // 5. Chọn loại hợp đồng cũ hoặc đề xuất nâng cấp nếu từ thử việc sang chính thức
+        // 5. Cập nhật email cá nhân nhận thông báo
+        const emailInput = modalEl.querySelector('#contractPersonalEmailInput');
+        if (emailInput) {
+            emailInput.value = (emailCaNhan && emailCaNhan !== 'Chưa cập nhật email cá nhân') ? emailCaNhan : '';
+        }
+
+        // 6. Hình thức & loại hợp đồng khi gia hạn: Tự động nâng từ Thử việc ➔ Chính thức 1 năm nếu trước đó là thử việc
         const loaiHdSelect = modalEl.querySelector('#contractLoaiHopDong');
         const hinhThucSelect = modalEl.querySelector('#contractHinhThucHopDong');
         if (hinhThucHopDongCu === 'THU_VIEC') {
-            // Gia hạn sau thử việc: ưu tiên đề xuất HĐ Chính thức 1 năm
             if (hinhThucSelect) hinhThucSelect.value = 'CHINH_THUC';
             if (loaiHdSelect) loaiHdSelect.value = 'XAC_DINH_THOI_HAN_1_NAM';
         } else {
@@ -391,27 +363,27 @@
             }
         }
 
-        // 6. Tự động đề xuất ngày bắt đầu mới = ngày kết thúc cũ + 1 ngày
-        const startInput = modalEl.querySelector('input[name="Contract.NgayBatDau"]') || modalEl.querySelector('#Contract_NgayBatDau');
+        // 7. Tự động đề xuất ngày bắt đầu mới = ngày kết thúc cũ + 1 ngày
+        const startInput = modalEl.querySelector('#contractNgayBatDau');
         if (startInput && ngayKetThucCu) {
             const oldEnd = new Date(ngayKetThucCu);
             oldEnd.setDate(oldEnd.getDate() + 1);
             startInput.value = oldEnd.toISOString().split('T')[0];
         }
 
-        // 7. Điền sẵn mức lương cơ bản cũ để tham khảo/chỉnh sửa
-        const salaryInput = modalEl.querySelector('input[name="Contract.LuongCoBan"]') || modalEl.querySelector('#Contract_LuongCoBan');
+        // 8. Điền sẵn mức lương cơ bản cũ để tham khảo/chỉnh sửa
+        const salaryInput = modalEl.querySelector('#contractLuongCoBan');
         if (salaryInput && luongCoBanCu) {
             salaryInput.value = luongCoBanCu;
         }
 
-        // 8. Đổi text nút Submit thành "Lưu gia hạn hợp đồng"
+        // 9. Đổi text nút Submit thành "Lưu gia hạn hợp đồng"
         const submitBtn = modalEl.querySelector('button[type="submit"]');
         if (submitBtn) {
             submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i>Lưu gia hạn hợp đồng';
         }
 
-        // 9. Mở Modal
+        // 10. Mở Modal
         const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
         bsModal.show();
     }
@@ -421,9 +393,9 @@
         const titleEl = document.getElementById('createContractModalLabel');
         if (titleEl) titleEl.innerText = 'Lập Hợp Đồng Lao Động Mới';
 
-        const empSelect = this.querySelector('#contractEmployeeSelect');
+        const createEmpWrapper = this.querySelector('#createEmployeeWrapper');
         const renewEmpWrapper = this.querySelector('#renewEmployeeDisplayWrapper');
-        if (empSelect) empSelect.closest('.input-group')?.classList.remove('d-none');
+        if (createEmpWrapper) createEmpWrapper.classList.remove('d-none');
         if (renewEmpWrapper) renewEmpWrapper.classList.add('d-none');
 
         const createDeptWrapper = this.querySelector('#createDepartmentWrapper');
@@ -431,22 +403,150 @@
         if (createDeptWrapper) createDeptWrapper.classList.remove('d-none');
         if (renewDeptWrapper) renewDeptWrapper.classList.add('d-none');
 
-        const emailDisplay = this.querySelector('#personalEmailDisplay');
-        if (emailDisplay) emailDisplay.innerText = 'Chưa chọn nhân sự';
+        const statusSelect = this.querySelector('#contractTrangThai');
+        if (statusSelect) statusSelect.value = 'HIEU_LUC';
 
         const submitBtn = this.querySelector('button[type="submit"]');
         if (submitBtn) submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i>Lưu hợp đồng';
 
         this.querySelector('form')?.reset();
-
-        // Hiển thị lại tất cả các option nhân viên
-        if (empSelect) {
-            empSelect.querySelectorAll('option').forEach(opt => {
-                opt.hidden = false;
-                opt.disabled = false;
-            });
-        }
     });
+
+    // =========================================================================
+    // IN HỢP ĐỒNG LAO ĐỘNG (CHUẨN FORM A4 PHÁP LÝ THE OVERTIME HOTEL)
+    // =========================================================================
+    function printContractDocument() {
+        const soHopDong = (document.getElementById('contractSoHopDong')?.value || 'HDLD-2026/MAU').trim();
+        const hoTen = (document.getElementById('renewEmployeeNameDisplay')?.value || 
+                       document.getElementById('contractEmployeeInput')?.value || 
+                       '..................................................').trim();
+        const deptSelect = document.getElementById('contractDepartmentSelect');
+        const phongBan = (document.getElementById('renewDepartmentDisplay')?.value || 
+                          document.getElementById('contractDepartmentDisplay')?.value || 
+                          (deptSelect && deptSelect.selectedIndex > 0 ? deptSelect.options[deptSelect.selectedIndex].text : '') || 
+                          'Khách sạn The OverTime').trim();
+        
+        const loaiHdSelect = document.getElementById('contractLoaiHopDong');
+        const loaiHd = loaiHdSelect ? loaiHdSelect.options[loaiHdSelect.selectedIndex].text : 'Hợp đồng lao động';
+        
+        const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
+        const hinhThuc = hinhThucSelect ? hinhThucSelect.options[hinhThucSelect.selectedIndex].text : 'Chính thức';
+        
+        const ngayBatDauRaw = document.getElementById('contractNgayBatDau')?.value;
+        const ngayKetThucRaw = document.getElementById('contractNgayKetThuc')?.value;
+        const ngayBatDau = ngayBatDauRaw ? new Date(ngayBatDauRaw).toLocaleDateString('vi-VN') : '..../..../2026';
+        const ngayKetThuc = ngayKetThucRaw ? new Date(ngayKetThucRaw).toLocaleDateString('vi-VN') : 'Không xác định thời hạn';
+        
+        const luongRaw = document.getElementById('contractLuongCoBan')?.value;
+        const luong = luongRaw && Number(luongRaw) > 0 ? Number(luongRaw).toLocaleString('vi-VN') + ' VNĐ/tháng' : '...................... VNĐ/tháng';
+        const email = (document.getElementById('contractPersonalEmailInput')?.value || '').trim();
+
+        const printWin = window.open('', '_blank', 'width=860,height=960');
+        if (!printWin) {
+            alert('Trình duyệt đang chặn cửa sổ pop-up. Vui lòng cấp quyền để in hợp đồng.');
+            return;
+        }
+
+        printWin.document.write(`<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>In Hợp Đồng Lao Động - ${soHopDong}</title>
+    <style>
+        @@page { size: A4; margin: 20mm 15mm 20mm 15mm; }
+        body { font-family: 'Times New Roman', Times, serif; font-size: 13.5pt; line-height: 1.5; color: #000; margin: 0; padding: 25px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h3 { margin: 0; font-size: 12pt; text-transform: uppercase; font-weight: bold; }
+        .header p { margin: 4px 0 0; font-size: 13pt; }
+        .line { width: 40%; margin: 8px auto 20px; border-bottom: 1.5px solid #000; }
+        .title { text-align: center; margin: 20px 0; }
+        .title h1 { margin: 0; font-size: 17pt; text-transform: uppercase; font-weight: bold; }
+        .title p { margin: 4px 0 0; font-style: italic; font-size: 12pt; }
+        .section-title { font-weight: bold; margin-top: 15px; margin-bottom: 5px; text-decoration: underline; font-size: 14pt; }
+        table.info-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        table.info-table td { padding: 4px 0; vertical-align: top; }
+        .signature-block { width: 100%; margin-top: 35px; page-break-inside: avoid; }
+        .signature-block td { width: 50%; text-align: center; vertical-align: top; padding: 10px; }
+        .btn-print-bar { background: #f8fafc; padding: 12px; text-align: center; border-bottom: 1px solid #e2e8f0; margin-bottom: 25px; border-radius: 8px; }
+        .btn-print-bar button { background: #0f172a; color: #fff; border: none; padding: 10px 28px; border-radius: 999px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        @@media print {
+            .btn-print-bar { display: none !important; }
+            body { padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="btn-print-bar">
+        <button onclick="window.print()">🖨️ Bấm Vào Đây Để In Hợp Đồng Này (Chuẩn A4)</button>
+    </div>
+    <div class="header">
+        <h3>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h3>
+        <p><strong>Độc lập - Tự do - Hạnh phúc</strong></p>
+        <div class="line"></div>
+    </div>
+    <div class="title">
+        <h1>HỢP ĐỒNG LAO ĐỘNG</h1>
+        <p>Số hiệu văn bản: <strong>${soHopDong}</strong></p>
+    </div>
+    <p>Hôm nay, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}, tại Khách sạn The OverTime Hotel, chúng tôi gồm các bên:</p>
+    
+    <div class="section-title">BÊN A: NGƯỜI SỬ DỤNG LAO ĐỘNG</div>
+    <table class="info-table">
+        <tr><td style="width: 220px;"><strong>Doanh nghiệp:</strong></td><td><strong>KHÁCH SẠN THE OVERTIME HOTEL</strong></td></tr>
+        <tr><td><strong>Địa chỉ:</strong></td><td>Khu Du Lịch & Nghỉ Dưỡng Quốc Tế The OverTime Hotel</td></tr>
+        <tr><td><strong>Đại diện pháp luật:</strong></td><td>Ông Nguyễn Đình Cường &nbsp;&nbsp;&nbsp;&nbsp; <strong>Chức danh:</strong> Tổng Giám Đốc</td></tr>
+    </table>
+
+    <div class="section-title">BÊN B: NGƯỜI LAO ĐỘNG</div>
+    <table class="info-table">
+        <tr><td style="width: 220px;"><strong>Họ và tên người lao động:</strong></td><td><strong style="text-transform: uppercase;">${hoTen}</strong></td></tr>
+        <tr><td><strong>Phòng ban / Bộ phận:</strong></td><td>${phongBan}</td></tr>
+        <tr><td><strong>Email cá nhân nhận HĐ:</strong></td><td>${email || 'Chưa cập nhật'}</td></tr>
+    </table>
+
+    <p>Hai bên tự nguyện thỏa thuận ký kết hợp đồng lao động với các điều khoản cụ thể sau đây:</p>
+    
+    <div class="section-title">ĐIỀU 1: THỜI HẠN & HÌNH THỨC HỢP ĐỒNG</div>
+    <table class="info-table">
+        <tr><td style="width: 220px;">- Thời hạn hợp đồng:</td><td><strong>${loaiHd}</strong></td></tr>
+        <tr><td>- Hình thức hợp đồng:</td><td><strong>${hinhThuc}</strong></td></tr>
+        <tr><td>- Ngày bắt đầu có hiệu lực:</td><td>${ngayBatDau}</td></tr>
+        <tr><td>- Ngày kết thúc hợp đồng:</td><td>${ngayKetThuc}</td></tr>
+    </table>
+
+    <div class="section-title">ĐIỀU 2: TIỀN LƯƠNG & CHẾ ĐỘ PHÚC LỢI NGHỈ DƯỠNG</div>
+    <table class="info-table">
+        <tr><td style="width: 220px;">- Mức lương cơ bản:</td><td><strong style="font-size: 14.5pt; color: #0f172a;">${luong}</strong></td></tr>
+        <tr><td>- Phụ cấp ca đêm (nếu có):</td><td>Hưởng thêm 30% tiền lương theo quy định tại Điều 98 Bộ Luật Lao Động.</td></tr>
+        <tr><td>- Khấu trừ bảo hiểm:</td><td>Trích nộp BHXH, BHYT, BHTN 10.5% theo đúng quy định pháp luật.</td></tr>
+        <tr><td>- Phương thức thanh toán:</td><td>Chuyển khoản định kỳ vào tài khoản cá nhân của người lao động.</td></tr>
+    </table>
+
+    <div class="section-title">ĐIỀU 3: ĐIỀU KHOẢN THI HÀNH</div>
+    <p>- Hợp đồng được lập thành 02 bản có giá trị pháp lý như nhau, Bên A giữ 01 bản, Bên B giữ 01 bản.<br />
+       - Sau khi hai bên ký kết, văn bản hợp đồng được số hóa và chuyển phát thông báo tới email cá nhân của Bên B.</p>
+
+    <table class="signature-block">
+        <tr>
+            <td>
+                <strong>ĐẠI DIỆN NGƯỜI LAO ĐỘNG (BÊN B)</strong><br />
+                <em>(Ký, ghi rõ họ tên)</em>
+                <br /><br /><br /><br /><br />
+                <strong>${hoTen}</strong>
+            </td>
+            <td>
+                <strong>ĐẠI DIỆN KHÁCH SẠN THE OVERTIME (BÊN A)</strong><br />
+                <em>(Ký tên, đóng dấu pháp nhân)</em>
+                <br /><br /><br /><br /><br />
+                <strong>Nguyễn Đình Cường</strong>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`);
+        printWin.document.close();
+        printWin.focus();
+    }
 </script>
 }
 

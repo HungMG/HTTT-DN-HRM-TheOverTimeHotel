@@ -78,5 +78,128 @@
                 });
             }
         });
+
+        function printContractDocument() {
+            const soHopDong = (document.getElementById('contractSoHopDong')?.value || '@Model.Contract.SoHopDong').trim();
+            const hoTen = '@Model.EmployeeName';
+            const phongBan = '@Model.DepartmentName';
+            const loaiHdSelect = document.getElementById('contractLoaiHopDong');
+            const loaiHd = loaiHdSelect ? loaiHdSelect.options[loaiHdSelect.selectedIndex].text : '@Model.Contract.LoaiHopDong';
+            const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
+            const hinhThuc = hinhThucSelect ? hinhThucSelect.options[hinhThucSelect.selectedIndex].text : '@Model.Contract.HinhThucHopDong';
+            const ngayBatDauRaw = document.getElementById('contractNgayBatDau')?.value;
+            const ngayKetThucRaw = document.getElementById('contractNgayKetThuc')?.value;
+            const ngayBatDau = ngayBatDauRaw ? new Date(ngayBatDauRaw).toLocaleDateString('vi-VN') : '@Model.Contract.NgayBatDau.ToString("dd/MM/yyyy")';
+            const ngayKetThuc = ngayKetThucRaw ? new Date(ngayKetThucRaw).toLocaleDateString('vi-VN') : '@(Model.Contract.NgayKetThuc?.ToString("dd/MM/yyyy") ?? "Không xác định thời hạn")';
+            const luongRaw = document.getElementById('contractLuongCoBan')?.value;
+            const luong = luongRaw && Number(luongRaw) > 0 ? Number(luongRaw).toLocaleString('vi-VN') + ' VNĐ/tháng' : '@Model.Contract.LuongCoBan.ToString("N0") VNĐ/tháng';
+            const email = (document.getElementById('contractPersonalEmailInput')?.value || '@Model.PersonalEmail').trim();
+
+            const printWin = window.open('', '_blank', 'width=860,height=960');
+            if (!printWin) {
+                alert('Trình duyệt đang chặn cửa sổ pop-up. Vui lòng cấp quyền để in hợp đồng.');
+                return;
+            }
+
+            printWin.document.write(`<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>In Hợp Đồng Lao Động - ${soHopDong}</title>
+    <style>
+        @@page { size: A4; margin: 20mm 15mm 20mm 15mm; }
+        body { font-family: 'Times New Roman', Times, serif; font-size: 13.5pt; line-height: 1.5; color: #000; margin: 0; padding: 25px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h3 { margin: 0; font-size: 12pt; text-transform: uppercase; font-weight: bold; }
+        .header p { margin: 4px 0 0; font-size: 13pt; }
+        .line { width: 40%; margin: 8px auto 20px; border-bottom: 1.5px solid #000; }
+        .title { text-align: center; margin: 20px 0; }
+        .title h1 { margin: 0; font-size: 17pt; text-transform: uppercase; font-weight: bold; }
+        .title p { margin: 4px 0 0; font-style: italic; font-size: 12pt; }
+        .section-title { font-weight: bold; margin-top: 15px; margin-bottom: 5px; text-decoration: underline; font-size: 14pt; }
+        table.info-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        table.info-table td { padding: 4px 0; vertical-align: top; }
+        .signature-block { width: 100%; margin-top: 35px; page-break-inside: avoid; }
+        .signature-block td { width: 50%; text-align: center; vertical-align: top; padding: 10px; }
+        .btn-print-bar { background: #f8fafc; padding: 12px; text-align: center; border-bottom: 1px solid #e2e8f0; margin-bottom: 25px; border-radius: 8px; }
+        .btn-print-bar button { background: #0f172a; color: #fff; border: none; padding: 10px 28px; border-radius: 999px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        @@media print {
+            .btn-print-bar { display: none !important; }
+            body { padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="btn-print-bar">
+        <button onclick="window.print()">🖨️ Bấm Vào Đây Để In Hợp Đồng Này (Chuẩn A4)</button>
+    </div>
+    <div class="header">
+        <h3>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h3>
+        <p><strong>Độc lập - Tự do - Hạnh phúc</strong></p>
+        <div class="line"></div>
+    </div>
+    <div class="title">
+        <h1>HỢP ĐỒNG LAO ĐỘNG</h1>
+        <p>Số hiệu văn bản: <strong>${soHopDong}</strong></p>
+    </div>
+    <p>Hôm nay, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}, tại Khách sạn The OverTime Hotel, chúng tôi gồm các bên:</p>
+    
+    <div class="section-title">BÊN A: NGƯỜI SỬ DỤNG LAO ĐỘNG</div>
+    <table class="info-table">
+        <tr><td style="width: 220px;"><strong>Doanh nghiệp:</strong></td><td><strong>KHÁCH SẠN THE OVERTIME HOTEL</strong></td></tr>
+        <tr><td><strong>Địa chỉ:</strong></td><td>Khu Du Lịch & Nghỉ Dưỡng Quốc Tế The OverTime Hotel</td></tr>
+        <tr><td><strong>Đại diện pháp luật:</strong></td><td>Ông Nguyễn Đình Cường &nbsp;&nbsp;&nbsp;&nbsp; <strong>Chức danh:</strong> Tổng Giám Đốc</td></tr>
+    </table>
+
+    <div class="section-title">BÊN B: NGƯỜI LAO ĐỘNG</div>
+    <table class="info-table">
+        <tr><td style="width: 220px;"><strong>Họ và tên người lao động:</strong></td><td><strong style="text-transform: uppercase;">${hoTen}</strong></td></tr>
+        <tr><td><strong>Phòng ban / Bộ phận:</strong></td><td>${phongBan}</td></tr>
+        <tr><td><strong>Email cá nhân nhận HĐ:</strong></td><td>${email || 'Chưa cập nhật'}</td></tr>
+    </table>
+
+    <p>Hai bên tự nguyện thỏa thuận ký kết hợp đồng lao động với các điều khoản cụ thể sau đây:</p>
+    
+    <div class="section-title">ĐIỀU 1: THỜI HẠN & HÌNH THỨC HỢP ĐỒNG</div>
+    <table class="info-table">
+        <tr><td style="width: 220px;">- Thời hạn hợp đồng:</td><td><strong>${loaiHd}</strong></td></tr>
+        <tr><td>- Hình thức hợp đồng:</td><td><strong>${hinhThuc}</strong></td></tr>
+        <tr><td>- Ngày bắt đầu có hiệu lực:</td><td>${ngayBatDau}</td></tr>
+        <tr><td>- Ngày kết thúc hợp đồng:</td><td>${ngayKetThuc}</td></tr>
+    </table>
+
+    <div class="section-title">ĐIỀU 2: TIỀN LƯƠNG & CHẾ ĐỘ PHÚC LỢI NGHỈ DƯỠNG</div>
+    <table class="info-table">
+        <tr><td style="width: 220px;">- Mức lương cơ bản:</td><td><strong style="font-size: 14.5pt; color: #0f172a;">${luong}</strong></td></tr>
+        <tr><td>- Phụ cấp ca đêm (nếu có):</td><td>Hưởng thêm 30% tiền lương theo quy định tại Điều 98 Bộ Luật Lao Động.</td></tr>
+        <tr><td>- Khấu trừ bảo hiểm:</td><td>Trích nộp BHXH, BHYT, BHTN 10.5% theo đúng quy định pháp luật.</td></tr>
+        <tr><td>- Phương thức thanh toán:</td><td>Chuyển khoản định kỳ vào tài khoản cá nhân của người lao động.</td></tr>
+    </table>
+
+    <div class="section-title">ĐIỀU 3: ĐIỀU KHOẢN THI HÀNH</div>
+    <p>- Hợp đồng được lập thành 02 bản có giá trị pháp lý như nhau, Bên A giữ 01 bản, Bên B giữ 01 bản.<br />
+       - Sau khi hai bên ký kết, văn bản hợp đồng được số hóa và chuyển phát thông báo tới email cá nhân của Bên B.</p>
+
+    <table class="signature-block">
+        <tr>
+            <td>
+                <strong>ĐẠI DIỆN NGƯỜI LAO ĐỘNG (BÊN B)</strong><br />
+                <em>(Ký, ghi rõ họ tên)</em>
+                <br /><br /><br /><br /><br />
+                <strong>${hoTen}</strong>
+            </td>
+            <td>
+                <strong>ĐẠI DIỆN KHÁCH SẠN THE OVERTIME (BÊN A)</strong><br />
+                <em>(Ký tên, đóng dấu pháp nhân)</em>
+                <br /><br /><br /><br /><br />
+                <strong>Nguyễn Đình Cường</strong>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`);
+            printWin.document.close();
+            printWin.focus();
+        }
     </script>
 }

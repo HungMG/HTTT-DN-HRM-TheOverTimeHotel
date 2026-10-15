@@ -204,19 +204,93 @@ public class HopDongController : Controller
     public async Task<IActionResult> Create(HopDongFormViewModel model)
     {
         ViewBag.EmployeeOptions = await GetEmployeeOptionsAsync();
-        model.Contract.MaNhanVien = model.EmployeeId;
+
         if (string.IsNullOrWhiteSpace(model.Contract.HinhThucHopDong))
         {
             model.Contract.HinhThucHopDong = "CHINH_THUC";
         }
 
-        await ValidateContractAsync(model.Contract);
-        var employee = await _context.NhanViens.Include(nv => nv.PhongBan).AsNoTracking().FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
+        NhanVien? employee = null;
+
+        // 1. Nếu có EmployeeId hợp lệ thì tìm nhân viên đó
+        if (model.EmployeeId > 0)
+        {
+            employee = await _context.NhanViens.Include(nv => nv.PhongBan).FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
+        }
+
+        // 2. Nếu chưa có EmployeeId, thử tìm theo tên nhân sự nhập tay
+        if (employee == null && !string.IsNullOrWhiteSpace(model.EmployeeName))
+        {
+            var trimmedName = model.EmployeeName.Trim();
+            employee = await _context.NhanViens
+                .Include(nv => nv.PhongBan)
+                .FirstOrDefaultAsync(item => (item.Ho + " " + item.Ten).ToLower() == trimmedName.ToLower() || item.Ten.ToLower() == trimmedName.ToLower());
+        }
+
+        // 3. Nếu vẫn chưa có nhân viên trong CSDL (nhân viên mới nhập tay hoàn toàn) ➔ Tự động tạo hồ sơ nhân viên mới
         if (employee == null)
-            ModelState.AddModelError(nameof(model.EmployeeId), "Vui lòng chọn nhân viên.");
-        model.EmployeeName = employee?.HoTen ?? string.Empty;
-        model.DepartmentName = employee?.PhongBan?.TenPhongBan ?? string.Empty;
-        model.PersonalEmail = employee?.EmailCaNhan;
+        {
+            if (string.IsNullOrWhiteSpace(model.EmployeeName))
+            {
+                ModelState.AddModelError("EmployeeName", "Vui lòng nhập họ và tên nhân viên.");
+            }
+            else
+            {
+                var fullName = model.EmployeeName.Trim();
+                var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var ho = parts.Length > 1 ? string.Join(" ", parts.Take(parts.Length - 1)) : "Nhân viên";
+                var ten = parts.Last();
+                var empCount = await _context.NhanViens.CountAsync() + 1;
+                
+                var cleanTen = ten.ToLower();
+                var cleanHo = ho.ToLower().Replace(" ", "");
+                var emailCongVu = $"{cleanTen}.{cleanHo}{empCount}@overtimehotel.com";
+
+                employee = new NhanVien
+                {
+                    Ho = ho,
+                    Ten = ten,
+                    MaPhongBan = model.DepartmentId,
+                    EmailCongVu = emailCongVu,
+                    EmailCaNhan = string.IsNullOrWhiteSpace(model.PersonalEmail) ? null : model.PersonalEmail.Trim(),
+                    DienThoai = "0900000000",
+                    GioiTinh = "NAM",
+                    NgaySinh = new DateOnly(2000, 1, 1),
+                    NgayVaoLam = model.Contract.NgayBatDau,
+                    TrinhDo = "Lao động phổ thông",
+                    TrangThai = "DANG_LAM"
+                };
+
+                _context.NhanViens.Add(employee);
+                await _context.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            // Nếu nhân viên đã có và người dùng nhập thêm / sửa email cá nhân trên form thì cập nhật vào hồ sơ
+            if (!string.IsNullOrWhiteSpace(model.PersonalEmail) && employee.EmailCaNhan != model.PersonalEmail.Trim())
+            {
+                employee.EmailCaNhan = model.PersonalEmail.Trim();
+                await _context.SaveChangesAsync();
+            }
+
+            // Cập nhật phòng ban nếu nhân viên chưa có phòng ban
+            if (model.DepartmentId.HasValue && employee.MaPhongBan == null)
+            {
+                employee.MaPhongBan = model.DepartmentId.Value;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        if (employee != null)
+        {
+            model.Contract.MaNhanVien = employee.MaNhanVien;
+            model.EmployeeId = employee.MaNhanVien;
+            model.EmployeeName = employee.HoTen;
+            model.DepartmentName = employee.PhongBan?.TenPhongBan ?? string.Empty;
+        }
+
+        await ValidateContractAsync(model.Contract);
 
         if (!ModelState.IsValid)
         {
@@ -230,16 +304,17 @@ public class HopDongController : Controller
             await _context.SaveChangesAsync();
 
             string emailNotice = "";
+            var finalEmail = !string.IsNullOrWhiteSpace(model.PersonalEmail) ? model.PersonalEmail.Trim() : employee?.EmailCaNhan;
             if (model.EmailNotificationOption == "GUI_EMAIL")
             {
-                if (!string.IsNullOrWhiteSpace(employee?.EmailCaNhan))
+                if (!string.IsNullOrWhiteSpace(finalEmail))
                 {
-                    _logger.LogInformation("Gửi thông báo hợp đồng mới '{ContractNumber}' tới email cá nhân: {Email}", model.Contract.SoHopDong, employee.EmailCaNhan);
-                    emailNotice = $" (Đã gửi thông báo tới email cá nhân: {employee.EmailCaNhan})";
+                    _logger.LogInformation("Đã gửi bản hợp đồng '{ContractNumber}' tới email cá nhân: {Email}", model.Contract.SoHopDong, finalEmail);
+                    emailNotice = $" (Đã gửi văn bản hợp đồng tới email cá nhân: {finalEmail})";
                 }
                 else
                 {
-                    emailNotice = " (Nhân viên chưa cập nhật email cá nhân để gửi thông báo)";
+                    emailNotice = " (Chưa có email cá nhân để gửi thông báo hợp đồng)";
                 }
             }
 
@@ -295,12 +370,17 @@ public class HopDongController : Controller
         }
 
         await ValidateContractAsync(model.Contract, id);
-        var employee = await _context.NhanViens.Include(nv => nv.PhongBan).AsNoTracking().FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
+        var employee = await _context.NhanViens.Include(nv => nv.PhongBan).FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
         if (employee == null)
             ModelState.AddModelError(nameof(model.EmployeeId), "Vui lòng chọn nhân viên.");
         model.EmployeeName = employee?.HoTen ?? string.Empty;
         model.DepartmentName = employee?.PhongBan?.TenPhongBan ?? string.Empty;
-        model.PersonalEmail = employee?.EmailCaNhan;
+
+        // Cập nhật email cá nhân nếu người dùng nhập mới / chỉnh sửa
+        if (employee != null && !string.IsNullOrWhiteSpace(model.PersonalEmail) && employee.EmailCaNhan != model.PersonalEmail.Trim())
+        {
+            employee.EmailCaNhan = model.PersonalEmail.Trim();
+        }
 
         if (!ModelState.IsValid)
             return View(model);
@@ -322,12 +402,13 @@ public class HopDongController : Controller
         {
             await _context.SaveChangesAsync();
             string emailNotice = "";
+            var finalEmail = !string.IsNullOrWhiteSpace(model.PersonalEmail) ? model.PersonalEmail.Trim() : employee?.EmailCaNhan;
             if (model.EmailNotificationOption == "GUI_EMAIL")
             {
-                if (!string.IsNullOrWhiteSpace(employee?.EmailCaNhan))
+                if (!string.IsNullOrWhiteSpace(finalEmail))
                 {
-                    _logger.LogInformation("Gửi thông báo cập nhật hợp đồng '{ContractNumber}' tới email cá nhân: {Email}", contract.SoHopDong, employee.EmailCaNhan);
-                    emailNotice = $" (Đã gửi thông báo tới email cá nhân: {employee.EmailCaNhan})";
+                    _logger.LogInformation("Gửi thông báo cập nhật hợp đồng '{ContractNumber}' tới email cá nhân: {Email}", contract.SoHopDong, finalEmail);
+                    emailNotice = $" (Đã gửi thông báo tới email cá nhân: {finalEmail})";
                 }
             }
             TempData["Success"] = $"Đã cập nhật hợp đồng “{contract.SoHopDong}”.{emailNotice}";
