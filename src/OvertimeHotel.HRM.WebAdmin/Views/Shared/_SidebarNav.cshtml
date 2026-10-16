@@ -108,13 +108,13 @@
             @if (canViewPayroll)
             {
                 <div class="app-sidebar-section-label">Lương &amp; Báo cáo</div>
-                <a class="app-nav-item@(IsCurrent("CauHinhLuong") ? " is-active" : "")"
-                   asp-controller="CauHinhLuong" asp-action="Index">
+                <a class="app-nav-item@(IsCurrent("BangLuong") ? " is-active" : "")"
+                   asp-controller="BangLuong" asp-action="Index">
                     <i class="bi bi-wallet2"></i><span>Bảng tính lương</span>
                 </a>
-                <a class="app-nav-item@(IsCurrent("CauHinhKhoanLuong") ? " is-active" : "")"
-                   asp-controller="CauHinhKhoanLuong" asp-action="Index">
-                    <i class="bi bi-sliders"></i><span>Khoản lương &amp; Phụ cấp</span>
+                <a class="app-nav-item@(IsCurrent("CauHinhLuong") || IsCurrent("CauHinhKhoanLuong") ? " is-active" : "")"
+                   asp-controller="CauHinhLuong" asp-action="Index">
+                    <i class="bi bi-sliders"></i><span>Cấu hình lương &amp; Phụ cấp</span>
                 </a>
             }
 

@@ -316,6 +316,13 @@ public class AppDbContext : DbContext
             entity.Property(e => e.TuNgay).HasColumnName("tu_ngay").IsRequired();
             entity.Property(e => e.DenNgay).HasColumnName("den_ngay").IsRequired();
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("MO").IsRequired();
+            entity.Property(e => e.NgayGuiDuyet).HasColumnName("ngay_gui_duyet");
+            entity.Property(e => e.NguoiGuiDuyet).HasColumnName("nguoi_gui_duyet").HasMaxLength(100);
+            entity.Property(e => e.NgayDuyet).HasColumnName("ngay_duyet");
+            entity.Property(e => e.NguoiDuyet).HasColumnName("nguoi_duyet").HasMaxLength(100);
+            entity.Property(e => e.LyDoTuChoi).HasColumnName("ly_do_tu_choi");
+            entity.Property(e => e.NgayKhoaSo).HasColumnName("ngay_khoa_so");
+            entity.Property(e => e.NguoiKhoaSo).HasColumnName("nguoi_khoa_so").HasMaxLength(100);
 
             entity.HasIndex(e => new { e.Thang, e.Nam }).IsUnique();
         });

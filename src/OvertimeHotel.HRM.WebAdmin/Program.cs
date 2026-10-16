@@ -274,6 +274,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IBackupService, BackupService>();
 builder.Services.AddScoped<IAttendanceSummaryService, AttendanceSummaryService>();
 builder.Services.AddScoped<IHotelEventService, HotelEventService>();
+builder.Services.AddScoped<IPayrollCalculationService, PayrollCalculationService>();
 
 // Cấp phát user Supabase Auth khi tạo tài khoản trên Web.
 // Đăng ký Singleton vì cấu hình là bất biến trong suốt vòng đời ứng dụng — đọc

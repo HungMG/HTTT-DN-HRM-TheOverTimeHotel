@@ -31,4 +31,29 @@ public static class DatabaseSchemaInitializer
 
         return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
+
+    public static Task EnsurePayrollWorkflowSchemaAsync(AppDbContext context, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            ALTER TABLE ky_luong 
+                ADD COLUMN IF NOT EXISTS ngay_gui_duyet TIMESTAMPTZ NULL,
+                ADD COLUMN IF NOT EXISTS nguoi_gui_duyet VARCHAR(100) NULL,
+                ADD COLUMN IF NOT EXISTS ngay_duyet TIMESTAMPTZ NULL,
+                ADD COLUMN IF NOT EXISTS nguoi_duyet VARCHAR(100) NULL,
+                ADD COLUMN IF NOT EXISTS ly_do_tu_choi TEXT NULL,
+                ADD COLUMN IF NOT EXISTS ngay_khoa_so TIMESTAMPTZ NULL,
+                ADD COLUMN IF NOT EXISTS nguoi_khoa_so VARCHAR(100) NULL;
+
+            ALTER TABLE ky_luong DROP CONSTRAINT IF EXISTS ky_luong_trang_thai_check;
+            ALTER TABLE ky_luong DROP CONSTRAINT IF EXISTS uq_ky_luong_trang_thai;
+            ALTER TABLE ky_luong ADD CONSTRAINT ky_luong_trang_thai_check 
+                CHECK (trang_thai IN ('MO', 'NHAP', 'CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'KHOA_SO'));
+
+            ALTER TABLE phieu_luong DROP CONSTRAINT IF EXISTS phieu_luong_trang_thai_check;
+            ALTER TABLE phieu_luong ADD CONSTRAINT phieu_luong_trang_thai_check 
+                CHECK (trang_thai IN ('NHAP', 'CHO_DUYET', 'DA_DUYET', 'DA_THANH_TOAN'));
+            """;
+
+        return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+    }
 }
