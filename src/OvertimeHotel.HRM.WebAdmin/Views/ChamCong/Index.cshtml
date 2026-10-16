@@ -6,34 +6,14 @@
 
 <div class="container-fluid px-3 px-md-4 py-3 schedule-page-container">
 
-    <!-- 1. THANH TIÊU ĐỀ & ĐIỀU HƯỚNG TỔNG QUAN -->
-    <div class="card border-0 rounded-4 shadow-sm p-3 p-md-4 mb-4 bg-white catalog-hero-card" style="border-left: 5px solid #1e3a8a !important;">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div>
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 font-monospace" style="font-size: 0.75rem;">
-                        <i class="bi bi-shield-check me-1"></i>HỆ THỐNG VẬN HÀNH 24/7
-                    </span>
-                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1 font-monospace" style="font-size: 0.75rem;">
-                        <i class="bi bi-clock-history me-1"></i>REAL-TIME ATTENDANCE
-                    </span>
-                </div>
-                <h2 class="h4 mb-1 font-serif fw-bold text-dark hotel-blur-text">
-                    Nhật Ký Chấm Công 24/7 &amp; Quẹt Thẻ Ra Vào
-                </h2>
-                <p class="text-muted small mb-0 font-sans">
-                    Theo dõi thời gian làm việc thực tế, giao nhận ca và ghi nhận chính xác giờ check-in, check-out, đi trễ, về sớm.
-                </p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <a asp-controller="PhanCa" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-semibold hover-lift" style="font-size: 0.85rem;">
-                    <i class="bi bi-calendar-week me-1"></i> Lưới Phân Ca 24/7
-                </a>
-                <button type="button" class="btn btn-hotel-primary rounded-pill px-4 py-2 fw-bold shadow-sm hover-lift" onclick="window.print()" style="font-size: 0.85rem;">
-                    <i class="bi bi-printer me-1"></i> In Nhật Ký
-                </button>
-            </div>
-        </div>
+    <!-- 1. CỤM NÚT THAO TÁC TRÊN CÙNG -->
+    <div class="d-flex align-items-center justify-content-end gap-2 mb-3">
+        <a asp-controller="PhanCa" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-semibold hover-lift" style="font-size: 0.85rem;">
+            <i class="bi bi-calendar-week me-1"></i> Lưới Phân Ca 24/7
+        </a>
+        <button type="button" class="btn btn-hotel-primary rounded-pill px-4 py-2 fw-bold shadow-sm hover-lift" onclick="window.print()" style="font-size: 0.85rem;">
+            <i class="bi bi-printer me-1"></i> In Nhật Ký
+        </button>
     </div>
 
     <!-- 2. BENTO GRID: 5 CHỈ SỐ KPI CHẤM CÔNG VÀNG KIM -->
@@ -210,11 +190,8 @@
                     </select>
                 </div>
 
-                <div class="col-6 col-md-3 d-flex align-items-center justify-content-end gap-2">
-                    <button type="submit" class="btn btn-sm btn-hotel-primary rounded-pill px-3 py-1 fw-bold shadow-sm">
-                        <i class="bi bi-funnel-fill me-1"></i> Lọc
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1" onclick="resetAttendanceFilters()">
+                <div class="col-6 col-md-3 d-flex align-items-center justify-content-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 hover-lift" onclick="resetAttendanceFilters()" title="Đặt lại bộ lọc về mặc định">
                         <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại
                     </button>
                 </div>
@@ -613,6 +590,18 @@
 
     // 6. Kích hoạt hiệu ứng CountUp & Pulse khi tải trang
     document.addEventListener('DOMContentLoaded', function () {
+        // Tự động lọc khi gõ từ khóa tìm kiếm (Debounced 350ms)
+        const kwInput = document.getElementById('attendanceFilterKeyword');
+        if (kwInput) {
+            let kwTimer;
+            kwInput.addEventListener('input', function () {
+                clearTimeout(kwTimer);
+                kwTimer = setTimeout(() => {
+                    applyAttendanceFilters(1);
+                }, 350);
+            });
+        }
+
         document.querySelectorAll('.kpi-count-up').forEach(el => {
             const target = parseInt(el.getAttribute('data-target')) || 0;
             if (typeof animateCountUp === 'function') {

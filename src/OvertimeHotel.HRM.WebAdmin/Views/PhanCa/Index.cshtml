@@ -25,6 +25,8 @@
     int totalCalCells = (calGridStart.AddDays(34) < calMonthEnd) ? 42 : 35;
 }
 
+<link rel="stylesheet" href="~/css/phanca-calendar.css" asp-append-version="true" />
+
 <style>
     /* ==========================================================================
        ENTERPRISE SHIFT SCHEDULER & 24H TIMELINE STYLES (THE OVERTIME HOTEL)
@@ -577,6 +579,46 @@
         transform: scale(1.025);
         transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
+    /* ==========================================================================
+       QUICK SHIFT PALETTE STYLES (CỤM NÚT THÊM NHANH CA & Ô MA TRẬN TƯƠNG TÁC)
+       ========================================================================== */
+    .quick-palette-btn {
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        border: 1px solid transparent;
+        font-size: 0.78rem;
+    }
+    .quick-palette-btn.active-palette-btn {
+        background: #1e3a8a !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 8px rgba(30, 58, 138, 0.35) !important;
+        border-color: #d4af37 !important;
+    }
+    .quick-palette-btn:hover:not(.active-palette-btn) {
+        background: #e2e8f0;
+    }
+
+    .matrix-day-cell {
+        transition: background-color 0.15s ease, box-shadow 0.15s ease;
+        position: relative;
+    }
+    .matrix-day-cell:hover {
+        background-color: #eff6ff !important;
+        box-shadow: inset 0 0 0 1.5px #3b82f6;
+    }
+
+    .shift-delete-btn {
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        transition: transform 0.15s ease;
+    }
+    .shift-delete-btn:hover i {
+        color: #dc2626 !important;
+        transform: scale(1.2);
+    }
 </style>
 
 <!-- Bỏ px-* của Bootstrap: .app-content đã có lề 24px. Giữ lề riêng ở đây
@@ -584,127 +626,128 @@
 <div class="catalog-page phanca-page py-3">
     <partial name="_CatalogAlerts" />
 
-    <!-- BỐ CỤC ĐIỀU HÀNH 24/7: CỘT LỊCH PHÂN CA CHÍNH + CỘT MINI CALENDAR (CUỐN LỊCH NHỎ) -->
+    <!-- BỐ CỤC ĐIỀU HÀNH 24/7: CỘT LỊCH PHÂN CA CHÍNH -->
     <div class="row g-3">
-        <!-- CỘT TRÁI / TRUNG TÂM (LƯỚI MA TRẬN PHÂN CA RỘNG RÃI) -->
-        <div class="col-12 col-xl-9 col-xxl-10">
-        <!-- 1. KHỐI ĐIỀU HƯỚNG TUẦN & TÁC VỤ ĐIỀU HÀNH 24/7 -->
-        <div class="shift-workspace-card shadow-sm p-3 mb-3">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                <div class="d-flex flex-wrap align-items-center gap-2" id="weekNavigationWrapper">
-                    <button type="button" onclick="loadWeekInPlace('@prevWeek')"
-                            class="btn btn-outline-secondary btn-sm rounded-pill px-2 hover-lift" title="Tuần trước (In-Place)">
+        <!-- CỘT CHÍNH (CUỐN LỊCH PHÂN CA 24/7 & NHẬT KÝ CA TRỰC RỘNG RÃI) -->
+        <div class="col-12">
+        <!-- 1. THANH ĐIỀU HƯỚNG CUỐN LỊCH THÁNG & CHẾ ĐỘ XEM 5★ -->
+        <div class="shift-workspace-card shadow-sm p-3 mb-3" id="mainShiftCalendarToolbar">
+            <!-- HÀNG 1: ĐIỀU HƯỚNG THÁNG (BÊN TRÁI) + TABS CHẾ ĐỘ XEM & CÔNG CỤ (BÊN PHẢI) -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-2 pb-2 border-bottom">
+                <!-- CỤM TRÁI: ĐIỀU HƯỚNG THÁNG (CUỐN LỊCH) -->
+                <div class="d-flex flex-wrap align-items-center gap-2" id="monthNavigationWrapper">
+                    <button type="button" id="btnCalPrevMonth" data-year="@(ViewBag.PrevMonth != null ? ((DateOnly)ViewBag.PrevMonth).Year : (Model.Month == 1 ? Model.Year - 1 : Model.Year))" data-month="@(ViewBag.PrevMonth != null ? ((DateOnly)ViewBag.PrevMonth).Month : (Model.Month == 1 ? 12 : Model.Month - 1))"
+                            class="btn btn-outline-secondary btn-sm rounded-pill px-2 hover-lift" title="Tháng trước (In-Place)">
                         <i class="bi bi-chevron-left"></i>
                     </button>
 
-                    <button type="button" onclick="loadWeekInPlace('@todayWeek')"
-                            class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold hover-lift" title="Quay về tuần hiện tại (In-Place)">
-                        <i class="bi bi-calendar-event me-1"></i> Hôm nay
+                    <button type="button" id="btnCalToday"
+                            class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold hover-lift" title="Quay về tháng và ngày hôm nay (In-Place)">
+                        <i class="bi bi-calendar-check me-1"></i> Hôm nay
                     </button>
 
-                    <button type="button" onclick="loadWeekInPlace('@nextWeek')"
-                            class="btn btn-outline-secondary btn-sm rounded-pill px-2 hover-lift" title="Tuần sau (In-Place)">
+                    <button type="button" id="btnCalNextMonth" data-year="@(ViewBag.NextMonth != null ? ((DateOnly)ViewBag.NextMonth).Year : (Model.Month == 12 ? Model.Year + 1 : Model.Year))" data-month="@(ViewBag.NextMonth != null ? ((DateOnly)ViewBag.NextMonth).Month : (Model.Month == 12 ? 1 : Model.Month + 1))"
+                            class="btn btn-outline-secondary btn-sm rounded-pill px-2 hover-lift" title="Tháng sau (In-Place)">
                         <i class="bi bi-chevron-right"></i>
                     </button>
 
                     <div class="ms-2">
-                        <span class="fw-bold text-dark font-serif" style="font-size: 1.05rem;">
-                            <i class="bi bi-calendar-week text-primary me-1"></i>
-                            @Model.WeekStart.ToString("dd/MM") &mdash; @Model.WeekEnd.ToString("dd/MM/yyyy")
+                        <span class="fw-bold text-dark font-serif" style="font-size: 1.15rem;">
+                            <i class="bi bi-calendar-month text-primary me-1"></i>
+                            <span id="calMonthLabel">Tháng @Model.Month / @Model.Year</span>
                         </span>
-                        <span class="badge bg-light text-secondary border ms-1" style="font-size: 0.68rem;">
-                            Tuần @(System.Globalization.ISOWeek.GetWeekOfYear(Model.WeekStart.ToDateTime(TimeOnly.MinValue))) năm @Model.WeekStart.Year
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 px-2 py-1" style="font-size: 0.72rem;">
+                            Lịch phân ca 24/7 &bull; @Model.TongNhanVien nhân sự
                         </span>
-                    </div>
-
-                    @{
-                        int soChuaXep = (Model.TongNhanVien * 7) - Model.TongSoCa;
-                        if (soChuaXep < 0) soChuaXep = 0;
-                    }
-                    <div id="unassignedWarningBadge" class="ms-2">
-                        @if (soChuaXep > 0)
-                        {
-                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 rounded-pill fw-semibold">
-                                <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> @soChuaXep vị trí chưa xếp ca
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-semibold">
-                                <i class="bi bi-check-circle-fill text-success me-1"></i> Đã phủ kín ca trực 100%
-                            </span>
-                        }
                     </div>
                 </div>
 
+                <!-- CỤM PHẢI: 3 TABS CHẾ ĐỘ XEM + NÚT MỞ MODAL PHÂN CA -->
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <button type="button" class="btn btn-hotel-primary rounded-pill px-3 py-2 fw-bold shadow-sm catalog-action-btn"
+                    <div class="phanca-view-tabs" role="group">
+                        <button type="button" id="tabViewCalendar" onclick="switchCalendarViewTab('calendar')" class="phanca-view-tab-btn active">
+                            <i class="bi bi-book-half text-primary"></i> 1. Cuốn Lịch Tháng
+                        </button>
+                        <button type="button" id="tabViewMatrix" onclick="switchCalendarViewTab('matrix')" class="phanca-view-tab-btn">
+                            <i class="bi bi-grid-3x3 text-secondary"></i> 2. Ma Trận Tuần
+                        </button>
+                        <button type="button" id="tabViewList" onclick="switchCalendarViewTab('list')" class="phanca-view-tab-btn">
+                            <i class="bi bi-list-check text-secondary"></i> 3. Danh Sách
+                        </button>
+                    </div>
+
+                    <button type="button" class="btn btn-hotel-primary btn-sm rounded-pill px-3 py-1 fw-bold shadow-xs catalog-action-btn"
                             data-bs-toggle="modal" data-bs-target="#modalCreatePhanCa" title="Mở lưới phân ca chi tiết đa nhân sự kèm bộ lịch">
                         <i class="bi bi-calendar-plus-fill me-1"></i> + Mở Lưới Phân Ca Chi Tiết
                     </button>
 
-                    <button type="button" class="btn btn-hotel-secondary rounded-pill px-3 py-2 fw-semibold shadow-sm hover-lift"
+                    <button type="button" class="btn btn-hotel-secondary btn-sm rounded-pill px-3 py-1 fw-semibold shadow-xs hover-lift"
                             data-bs-toggle="modal" data-bs-target="#modalShiftTemplates" title="Quản lý danh mục 3 mẫu ca chuẩn">
                         <i class="bi bi-clock-history text-primary me-1"></i> Mẫu Ca Trực 24/7
                     </button>
                 </div>
             </div>
+
+            <!-- HÀNG 2: CỤM CÔNG CỤ THÊM NHANH CÁC CA (CLICK & GÁN CA TRỰC TIẾP) + BỘ LỌC TÌM KIẾM NHỎ GỌN -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pt-1">
+                <!-- CỤM CHỌN CA NHANH (QUICK SHIFT PALETTE) -->
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="small fw-bold text-dark font-serif d-inline-flex align-items-center" style="font-size: 0.82rem;">
+                        <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Thêm Nhanh Các Ca:
+                    </span>
+
+                    <div class="btn-group btn-group-sm rounded-pill p-1 bg-light border shadow-xs" id="quickShiftPalette" role="group">
+                        <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold quick-palette-btn active-palette-btn"
+                                id="btnQuickModeSafe" data-ca-id="" onclick="setQuickShiftMode(null, this)" title="Chế độ chỉ xem lịch an toàn (không sợ bấm nhầm vào ô)">
+                            <i class="bi bi-shield-check text-success me-1"></i> Chế Độ Xem (An Toàn)
+                        </button>
+                        <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold quick-palette-btn btn-light"
+                                data-ca-id="1" data-ten-ca="Ca Sáng" data-gio="06:00 - 14:00" onclick="setQuickShiftMode(1, this)">
+                            <i class="bi bi-brightness-high-fill text-primary me-1"></i> Ca Sáng (06h-14h)
+                        </button>
+                        <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold quick-palette-btn btn-light"
+                                data-ca-id="2" data-ten-ca="Ca Chiều" data-gio="14:00 - 22:00" onclick="setQuickShiftMode(2, this)">
+                            <i class="bi bi-cloud-sun-fill text-warning me-1"></i> Ca Chiều (14h-22h)
+                        </button>
+                        <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold quick-palette-btn btn-light"
+                                data-ca-id="3" data-ten-ca="Ca Đêm" data-gio="22:00 - 06:00" onclick="setQuickShiftMode(3, this)">
+                            <i class="bi bi-moon-stars-fill text-warning me-1"></i> Ca Đêm (+30%)
+                        </button>
+                        <button type="button" class="btn btn-sm rounded-pill px-2 py-1 fw-bold quick-palette-btn btn-light text-danger"
+                                data-ca-id="0" data-ten-ca="Xóa ca" data-gio="" onclick="setQuickShiftMode(0, this)" title="Chọn chế độ xóa/tẩy ca">
+                            <i class="bi bi-eraser-fill me-1"></i> Xóa ca
+                        </button>
+                    </div>
+
+                    <span class="badge bg-light text-secondary border rounded-pill px-3 py-1 small" id="quickModeStatusBadge" style="font-size: 0.72rem;">
+                        <i class="bi bi-shield-check text-success me-1"></i> Đang ở Chế độ xem &bull; Chọn một ca nếu muốn gán nhanh
+                    </span>
+                </div>
+
+                <!-- BỘ LỌC TÌM KIẾM NHỎ GỌN (THAY CHO KHUNG BỘ LỌC TO RỜI RẠC) -->
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-group input-group-sm" style="width: 200px;">
+                        <span class="input-group-text bg-white border-end-0 py-0"><i class="bi bi-search text-muted small"></i></span>
+                        <input type="text" id="filterKeyword" class="form-control border-start-0 py-1" style="font-size: 0.76rem;"
+                               placeholder="Tìm nhân viên..." oninput="applyFiltersInPlace()" />
+                    </div>
+                    <select id="filterPhongBan" class="form-select form-select-sm py-1" style="width: 145px; font-size: 0.76rem;" onchange="applyFiltersInPlace()">
+                        <option value="">Tất cả bộ phận</option>
+                        @foreach (var pb in Model.DanhSachPhongBan)
+                        {
+                            <option value="@pb.MaPhongBan" selected="@(Model.SelectedPhongBanId == pb.MaPhongBan)">@pb.TenPhongBan</option>
+                        }
+                    </select>
+                    <select id="filterCa" class="form-select form-select-sm py-1" style="width: 120px; font-size: 0.76rem;" onchange="applyFiltersInPlace()">
+                        <option value="">Tất cả ca</option>
+                        @foreach (var ca in Model.DanhSachCa)
+                        {
+                            <option value="@ca.MaCa" selected="@(Model.SelectedCaId == ca.MaCa)">@ca.TenCa</option>
+                        }
+                    </select>
+                </div>
+            </div>
         </div>
-
-            <!-- 2. DẢI TAB CHUYỂN ĐỔI CHẾ ĐỘ XEM ĐẶT RIÊNG BIỆT -->
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 p-2 view-switcher-card">
-                <div class="d-flex align-items-center gap-2 ps-2">
-                    <i class="bi bi-display text-primary fs-5"></i>
-                    <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Chế Độ Xem:</span>
-                </div>
-
-                <div class="btn-group btn-group-sm rounded-pill shadow-sm overflow-hidden p-1 bg-light border" role="group">
-                    <button type="button" id="btnViewMatrix" onclick="switchViewMode('matrix')" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 py-1 view-switcher-btn">
-                        <i class="bi bi-grid-3x3 me-1"></i> 1. Ma Trận Tuần
-                    </button>
-                    <button type="button" id="btnViewToday" onclick="switchViewMode('today')" class="btn btn-light btn-sm rounded-pill fw-bold px-3 py-1 text-dark view-switcher-btn">
-                        <i class="bi bi-sun-fill me-1 text-warning"></i> 2. Ca Trực Hôm Nay
-                    </button>
-                    <button type="button" id="btnViewList" onclick="switchViewMode('list')" class="btn btn-light btn-sm rounded-pill fw-bold px-3 py-1 text-secondary view-switcher-btn">
-                        <i class="bi bi-list-check me-1"></i> 3. Danh Sách Chi Tiết
-                    </button>
-                </div>
-            </div>
-
-            <!-- 5. BỘ LỌC TÌM KIẾM NHANH TẠI CHỖ -->
-            <div class="shift-workspace-card shadow-sm p-3 mb-3">
-                <div class="row align-items-center g-2">
-                    <div class="col-12 col-md-6">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
-                            <input type="text" id="filterKeyword" class="form-control border-start-0"
-                                   placeholder="Tìm tên hoặc mã nhân viên..." oninput="applyFiltersInPlace()" />
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <select id="filterPhongBan" class="form-select form-select-sm rounded-3" onchange="applyFiltersInPlace()">
-                            <option value="">-- Bộ phận (@Model.DanhSachPhongBan.Count) --</option>
-                            @foreach (var pb in Model.DanhSachPhongBan)
-                            {
-                                <option value="@pb.MaPhongBan" selected="@(Model.SelectedPhongBanId == pb.MaPhongBan)">
-                                    @pb.TenPhongBan
-                                </option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <select id="filterCa" class="form-select form-select-sm rounded-3" onchange="applyFiltersInPlace()">
-                            <option value="">-- Ca trực (@Model.DanhSachCa.Count) --</option>
-                            @foreach (var ca in Model.DanhSachCa)
-                            {
-                                <option value="@ca.MaCa" selected="@(Model.SelectedCaId == ca.MaCa)">
-                                    @ca.TenCa
-                                </option>
-                            }
-                        </select>
-                    </div>
-                </div>
-            </div>
 
             <!-- 6. KHUNG CHỨA DỮ LIỆU LỊCH VỚI VÙNG NẠP CỤC BỘ (TARGETED LOADING ISOLATION) -->
             <div id="scheduleContentWrapper" class="position-relative">
@@ -717,8 +760,202 @@
                     <span class="text-muted small" style="font-size: 0.72rem;">Không tải lại toàn trang (In-Place Transition)</span>
                 </div>
 
-                <!-- CHẾ ĐỘ 1: MA TRẬN PHÂN CA TUẦN -->
-                <div id="viewMatrixContainer" class="shift-workspace-card shadow-sm overflow-hidden mb-4 in-place-enter">
+                <!-- CHẾ ĐỘ 0: CUỐN LỊCH THÁNG & AGENDA CA TRỰC (MẶC ĐỊNH 5★) -->
+                <div id="viewCalendarContainer" class="mb-4 in-place-enter">
+                    <div class="phanca-workspace">
+                        <!-- BÊN TRÁI: CUỐN LỊCH THÁNG 42 NGÀY -->
+                        <div class="phanca-notebook">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-calendar3 text-primary fs-5"></i>
+                                    <h5 class="mb-0 fw-bold text-dark font-serif" style="font-size: 1.05rem;">Cuốn Lịch Tháng @Model.Month / @Model.Year</h5>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-2 small text-muted">
+                                    <span><span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2">☀️ Sáng</span> 06h-14h</span>
+                                    <span><span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle px-2">🌇 Chiều</span> 14h-22h</span>
+                                    <span><span class="badge bg-indigo bg-opacity-10 text-indigo border border-indigo-subtle px-2" style="background:#e0e7ff;color:#4338ca;">🌙 Đêm</span> 22h-06h (+30%)</span>
+                                    <span title="Số lượt phân ca thuộc nhân sự hết hạn / chưa hiệu lực hợp đồng lao động trong ngày">
+                                        <span class="badge border px-2" style="background:#fff7ed;border-color:#fed7aa;color:#b45309;">⚠ n HĐ</span>
+                                        <span class="text-muted" style="font-size:0.7rem;">hợp đồng hết hạn</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- LƯỚI THỨ TRONG TUẦN (7 CỘT) -->
+                            <div class="row g-2 text-center fw-bold text-muted small mb-2" style="font-size:0.75rem;">
+                                <div class="col">THỨ 2</div>
+                                <div class="col">THỨ 3</div>
+                                <div class="col">THỨ 4</div>
+                                <div class="col">THỨ 5</div>
+                                <div class="col">THỨ 6</div>
+                                <div class="col text-danger">THỨ 7</div>
+                                <div class="col text-danger">CHỦ NHẬT</div>
+                            </div>
+
+                            <!-- LƯỚI 6 TUẦN × 7 NGÀY (42 Ô) -->
+                            @for (int w = 0; w < 6; w++)
+                            {
+                                <div class="row g-2 mb-2">
+                                    @for (int d = 0; d < 7; d++)
+                                    {
+                                        var dayIndex = w * 7 + d;
+                                        if (dayIndex < Model.CalendarDays.Count)
+                                        {
+                                            var day = Model.CalendarDays[dayIndex];
+                                            var cellClasses = new List<string> { "phanca-day-cell" };
+                                            if (day.IsSelected) cellClasses.Add("is-selected");
+                                            if (day.IsToday) cellClasses.Add("is-today");
+                                            if (day.IsOtherMonth) cellClasses.Add("is-other-month");
+                                            if (day.IsPast) cellClasses.Add("is-past");
+                                            if (day.IsWeekend) cellClasses.Add("is-weekend");
+                                            if (day.ExpiredContractCount > 0)
+                                            {
+                                                cellClasses.Add("has-contract-issue");
+                                                // Mức độ nặng: từ một nửa số lượt trực trong ngày trở lên thuộc nhân sự hết hạn HĐ
+                                                if (day.Tong > 0 && day.ExpiredContractCount * 2 >= day.Tong) cellClasses.Add("contract-issue-high");
+                                            }
+
+                                            <div class="col">
+                                                <div class="@string.Join(" ", cellClasses)" data-date="@day.Date.ToString("yyyy-MM-dd")">
+                                                    <div class="phanca-day-header">
+                                                        <span class="phanca-day-num">@day.Date.Day</span>
+                                                        @if (day.Tong > 0)
+                                                        {
+                                                            <span class="phanca-day-badge-total" title="@day.Tong lượt nhân sự được phân trực trong ngày">@day.Tong lượt</span>
+                                                        }
+                                                    </div>
+                                                    <div class="phanca-day-chips">
+                                                        @if (day.Sang > 0)
+                                                        {
+                                                            <div class="phanca-mini-chip phanca-mini-chip-morning">
+                                                                <span>☀️ Sáng</span>
+                                                                <span>@day.Sang</span>
+                                                            </div>
+                                                        }
+                                                        @if (day.Chieu > 0)
+                                                        {
+                                                            <div class="phanca-mini-chip phanca-mini-chip-afternoon">
+                                                                <span>🌇 Chiều</span>
+                                                                <span>@day.Chieu</span>
+                                                            </div>
+                                                        }
+                                                        @if (day.Dem > 0)
+                                                        {
+                                                            <div class="phanca-mini-chip phanca-mini-chip-night">
+                                                                <span>🌙 Đêm</span>
+                                                                <span>@day.Dem</span>
+                                                            </div>
+                                                        }
+                                                        @if (day.ExpiredContractCount > 0 && !day.IsOtherMonth)
+                                                        {
+                                                            <div class="phanca-chip-warning-icon small" title="@day.ExpiredContractCount lượt phân ca thuộc nhân sự hết hạn / chưa hiệu lực hợp đồng trong ngày này">
+                                                                <i class="bi bi-exclamation-triangle-fill"></i> @day.ExpiredContractCount HĐ
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <!-- BÊN PHẢI: NHẬT KÝ CA TRỰC THEO NGÀY ĐANG CHỌN (AGENDA) -->
+                        <aside class="phanca-agenda-panel" id="phancaAgendaPanel">
+                            <div class="phanca-agenda-header">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="event-eyebrow text-uppercase text-secondary fw-bold" style="font-size:0.68rem;letter-spacing:1px;">NHẬT KÝ PHÂN CA TRỰC</span>
+                                        <h4 class="phanca-agenda-date-title font-serif" id="agendaDateTitle">
+                                            @Model.SelectedDate.ToString("dddd, dd/MM/yyyy", new System.Globalization.CultureInfo("vi-VN"))
+                                        </h4>
+                                        <p class="phanca-agenda-date-subtitle" id="agendaDateSubtitle">
+                                            Tổng số: @Model.SelectedAgenda.TongNhanSu lượt nhân sự trực trong ngày
+                                        </p>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm hover-lift"
+                                            onclick="openAddShiftModalForDate('@Model.SelectedDate.ToString("yyyy-MM-dd")', 1)">
+                                        <i class="bi bi-plus-lg me-1"></i>+ Thêm Ca Trực
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="agendaShiftsContainer">
+                                @foreach (var shift in Model.SelectedAgenda.Shifts)
+                                {
+                                    // Suy ra lớp chấm màu trực tiếp từ tên ca. Trước đây ghép
+                                    // "phanca-shift-dot-" với shift.BadgeClass (vốn đã là
+                                    // "badge-morning") nên thành "phanca-shift-dot-badge-morning",
+                                    // không khớp CSS nào và chấm màu bị co về 0×0 (vô hình).
+                                    var dotKind = shift.TenCa.Contains("Đêm", StringComparison.OrdinalIgnoreCase)
+                                        ? "night"
+                                        : (shift.TenCa.Contains("Chiều", StringComparison.OrdinalIgnoreCase) ? "afternoon" : "morning");
+                                    var dotClass = "phanca-shift-dot-" + dotKind;
+                                    // Mặc định chỉ mở Ca Sáng (MaCa = 1); các ca còn lại thu gọn
+                                    // để nhật ký bên phải không kéo dài xuống dưới màn hình.
+                                    var startCollapsed = shift.MaCa != 1;
+                                    <div class="phanca-agenda-shift-card @(startCollapsed ? "is-collapsed" : "")" data-ma-ca="@shift.MaCa">
+                                        <div class="phanca-agenda-shift-header">
+                                            <div class="phanca-agenda-shift-title phanca-agenda-shift-toggle" onclick="toggleAgendaShiftCard(this)" title="Bấm để thu gọn / mở rộng nhóm ca này">
+                                                <span class="@dotClass"></span>
+                                                <span>@shift.TenCa</span>
+                                                <span class="badge bg-light text-dark border ms-1" style="font-size:10px;">@shift.Employees.Count NV</span>
+                                            </div>
+                                            <div class="phanca-agenda-shift-actions">
+                                                <button type="button" class="phanca-btn-add-to-shift"
+                                                        onclick="openAddShiftModalForDate('@Model.SelectedDate.ToString("yyyy-MM-dd")', @shift.MaCa)">
+                                                    <i class="bi bi-plus-lg me-1"></i>Thêm NV
+                                                </button>
+                                                <button type="button" class="phanca-agenda-collapse-btn" onclick="toggleAgendaShiftCard(this)"
+                                                        title="@(startCollapsed ? "Mở rộng" : "Thu gọn") nhóm ca này" aria-expanded="@(startCollapsed ? "false" : "true")">
+                                                    <i class="bi bi-chevron-@(startCollapsed ? "down" : "up")"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="phanca-agenda-emp-list">
+                                            @if (shift.Employees.Count == 0)
+                                            {
+                                                <div class="phanca-agenda-empty-shift">Chưa có nhân sự được phân ca này.</div>
+                                            }
+                                            else
+                                            {
+                                                @foreach (var emp in shift.Employees)
+                                                {
+                                                    var itemClass = "phanca-agenda-emp-item" + (!emp.HasActiveContract ? " has-issue" : "");
+                                                    <div class="@itemClass" id="agenda-item-@emp.MaPhanCa">
+                                                        <div class="phanca-agenda-emp-info">
+                                                            <div class="phanca-agenda-avatar" style="background-color: @emp.AvatarColor;">
+                                                                @(emp.HoTen.Length > 0 ? emp.HoTen.Substring(emp.HoTen.Length - 1) : "N")
+                                                            </div>
+                                                            <div>
+                                                                <div class="phanca-agenda-emp-name">
+                                                                    @emp.HoTen
+                                                                    @if (!emp.HasActiveContract)
+                                                                    {
+                                                                        <span class="badge bg-danger ms-1" style="font-size:9px;" title="@emp.DisabledReason">Hết hạn HĐ</span>
+                                                                    }
+                                                                </div>
+                                                                <div class="phanca-agenda-emp-role">@emp.TenChucVu &bull; @emp.TenPhongBan</div>
+                                                            </div>
+                                                        </div>
+                                                        <button type="button" class="phanca-agenda-btn-remove" title="Hủy ca trực của nhân viên này"
+                                                                onclick="removeShiftFromAgenda(@emp.MaPhanCa, @emp.MaNhanVien, '@Model.SelectedDate.ToString("yyyy-MM-dd")')">
+                                                            <i class="bi bi-x-lg"></i>
+                                                        </button>
+                                                    </div>
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+
+                <!-- CHẾ ĐỘ 1: MA TRẬN PHÂN CA TUẦN (PHỤ) -->
+                <div id="viewMatrixContainer" class="shift-workspace-card shadow-sm overflow-hidden mb-4 d-none">
                     <div class="p-3 phanca-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <div class="d-flex align-items-center gap-2">
                             <i class="bi bi-calendar3-range text-primary fs-5"></i>
@@ -813,6 +1050,12 @@
                                                                     <i class="bi bi-building me-1"></i>@row.TenPhongBan
                                                                 </span>
                                                                 <span class="badge bg-light text-secondary border" style="font-size: 0.6rem;">NV-@row.MaNhanVien</span>
+                                                                @if (!row.HasActiveContract)
+                                                                {
+                                                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.58rem;" title="Hợp đồng lao động đã hết hạn hoặc chưa ký">
+                                                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Hết hạn HĐ
+                                                                    </span>
+                                                                }
                                                             </div>
                                                         </div>
                                                     </div>
@@ -820,7 +1063,26 @@
 
                                                 @foreach (var cell in row.Days)
                                                 {
-                                                    <td class="p-1 text-center align-top @(cell.IsToday ? "bg-warning bg-opacity-10" : "")" style="min-height: 75px;">
+                                                    var cellId = $"cell-{row.MaNhanVien}-{cell.Date:yyyyMMdd}";
+                                                    var isPast = cell.Date < todayDate;
+                                                    var isDisabled = !cell.CanAssign;
+                                                    var cellClass = isPast
+                                                        ? "past-day-cell bg-light bg-opacity-50"
+                                                        : (!cell.CanAssign
+                                                            ? "bg-secondary bg-opacity-10 opacity-75"
+                                                            : (cell.IsToday ? "bg-warning bg-opacity-10" : ""));
+                                                    var cellStyle = isDisabled ? "min-height: 75px; cursor: not-allowed;" : "min-height: 75px; cursor: pointer;";
+                                                    var cellTitle = cell.DisabledReason ?? $"Nhấp để gán ca đang chọn cho {row.HoTen} ({cell.Date:dd/MM})";
+
+                                                    <td id="@cellId" class="p-1 text-center align-top matrix-day-cell @cellClass"
+                                                        style="@cellStyle"
+                                                        onclick="handleCellClick(event, @row.MaNhanVien, '@cell.Date.ToString("yyyy-MM-dd")', '@row.HoTen', '@cellId')"
+                                                        data-emp-id="@row.MaNhanVien"
+                                                        data-date="@cell.Date.ToString("yyyy-MM-dd")"
+                                                        data-is-past="@(isPast ? "true" : "false")"
+                                                        data-can-assign="@(cell.CanAssign ? "true" : "false")"
+                                                        data-disabled-reason="@cell.DisabledReason"
+                                                        title="@cellTitle">
                                                         @if (cell.Shifts.Any())
                                                         {
                                                             @foreach (var shift in cell.Shifts)
@@ -828,34 +1090,49 @@
                                                                 var isNight = shift.QuaDem || shift.TenCa.Contains("Đêm");
                                                                 var isAfternoon = shift.TenCa.Contains("Chiều");
                                                                 var pillClass = isNight ? "shift-pill-night" : (isAfternoon ? "shift-pill-afternoon" : "shift-pill-morning");
+                                                                var fullTenCa = shift.TenCa;
+                                                                var shortTenCa = fullTenCa.Contains("(") ? fullTenCa.Substring(0, fullTenCa.IndexOf("(")).Trim() : fullTenCa;
 
                                                                 <div class="shift-pill @pillClass mb-1 position-relative text-start shadow-sm"
                                                                      data-ca-id="@shift.MaCa">
-                                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                                        <strong class="d-inline-flex align-items-center gap-1">
+                                                                    <div class="d-flex align-items-center justify-content-between mb-1 gap-1">
+                                                                        <strong class="d-inline-flex align-items-center gap-1 text-truncate" style="min-width: 0; font-size: 0.72rem;" title="@fullTenCa">
                                                                             @if (isNight)
                                                                             {
-                                                                                <i class="bi bi-moon-stars-fill text-warning"></i>
+                                                                                <i class="bi bi-moon-stars-fill text-warning flex-shrink-0"></i>
                                                                             }
                                                                             else if (isAfternoon)
                                                                             {
-                                                                                <i class="bi bi-cloud-sun-fill text-warning"></i>
+                                                                                <i class="bi bi-cloud-sun-fill text-warning flex-shrink-0"></i>
                                                                             }
                                                                             else
                                                                             {
-                                                                                <i class="bi bi-brightness-high-fill text-primary"></i>
+                                                                                <i class="bi bi-brightness-high-fill text-primary flex-shrink-0"></i>
                                                                             }
-                                                                            @shift.TenCa
+                                                                            <span class="text-truncate">@shortTenCa</span>
                                                                         </strong>
 
-                                                                        <form method="post" asp-action="Delete" onsubmit="return confirm('Bạn có chắc muốn hủy ca trực này?');" class="d-inline">
-                                                                            @Html.AntiForgeryToken()
-                                                                            <input type="hidden" name="id" value="@shift.MaPhanCa" />
-                                                                            <input type="hidden" name="returnWeek" value="@currentWeek" />
-                                                                            <button type="submit" class="btn btn-link text-muted p-0 border-0" style="font-size: 0.65rem;" title="Hủy ca này">
+                                                                        @if (!isPast && !shift.IsCheckedIn)
+                                                                        {
+                                                                            <button type="button" class="btn btn-link text-muted p-0 border-0 flex-shrink-0 shift-delete-btn"
+                                                                                    onclick="event.stopPropagation(); executeQuickAssign(@row.MaNhanVien, '@cell.Date.ToString("yyyy-MM-dd")', 0, '@cellId', '@row.HoTen');"
+                                                                                    title="Xóa ca này ngay lập tức">
                                                                                 <i class="bi bi-x-circle-fill text-danger text-opacity-75"></i>
                                                                             </button>
-                                                                        </form>
+                                                                        }
+                                                                        else if (shift.IsCheckedIn)
+                                                                        {
+                                                                            <span class="badge bg-success-subtle text-success border border-success border-opacity-25 p-1 flex-shrink-0 rounded-circle"
+                                                                                  title="Đã quẹt thẻ chấm công thực tế (Khóa không thể xóa)">
+                                                                                <i class="bi bi-fingerprint" style="font-size: 0.7rem;"></i>
+                                                                            </span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="text-muted p-0 flex-shrink-0" title="Ca quá khứ (Đã khóa)">
+                                                                                <i class="bi bi-lock-fill text-secondary opacity-50" style="font-size: 0.7rem;"></i>
+                                                                            </span>
+                                                                        }
                                                                     </div>
 
                                                                     <div class="small opacity-85 font-monospace" style="font-size: 0.65rem;">
@@ -871,11 +1148,18 @@
                                                         }
                                                         else
                                                         {
-                                                            <button type="button" class="btn-quick-slot"
-                                                                    onclick="openQuickAssignModal(@row.MaNhanVien, '@cell.Date.ToString("yyyy-MM-dd")')"
-                                                                    title="Bấm để xếp ca cho @row.HoTen ngày @cell.Date.ToString("dd/MM")">
-                                                                <i class="bi bi-plus-lg"></i>
-                                                            </button>
+                                                            @if (!isPast)
+                                                            {
+                                                                <button type="button" class="btn-quick-slot"
+                                                                        onclick="event.stopPropagation(); handleCellClick(event, @row.MaNhanVien, '@cell.Date.ToString("yyyy-MM-dd")', '@row.HoTen', '@cellId')"
+                                                                        title="Bấm để gán ca nhanh cho @row.HoTen ngày @cell.Date.ToString("dd/MM")">
+                                                                    <i class="bi bi-plus-lg"></i>
+                                                                </button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted opacity-25" style="font-size: 0.7rem;">—</span>
+                                                            }
                                                         }
                                                     </td>
                                                 }
@@ -1154,70 +1438,7 @@
             </div>
             <!-- Kết thúc scheduleContentWrapper -->
         </div>
-        <!-- Kết thúc col-12 col-xl-9 col-xxl-10 -->
-
-        <!-- =========================================================================
-             CỘT PHẢI: MINI-CALENDAR WIDGET (CUỐN LỊCH NHỎ THÁNG ĐIỀU HƯỚNG NHANH)
-             ========================================================================= -->
-        <div class="col-12 col-xl-3 col-xxl-2">
-            <!-- Khối Mini-Calendar Widget tương tác 7 ngày trong tháng -->
-            <div class="mini-cal-card mb-3" id="miniCalendarWrapper" style="position: sticky; top: 1rem;">
-                <div class="mini-cal-header">
-                    <button type="button" class="btn btn-sm btn-link text-secondary p-0 text-decoration-none hover-lift"
-                            onclick="loadWeekInPlace('@prevMonthDate.ToString("yyyy-MM-dd")')" title="Tháng trước">
-                        <i class="bi bi-chevron-left"></i>
-                    </button>
-                    <span class="mini-cal-month-title font-serif">Tháng @calMonthStart.ToString("MM - yyyy")</span>
-                    <button type="button" class="btn btn-sm btn-link text-secondary p-0 text-decoration-none hover-lift"
-                            onclick="loadWeekInPlace('@nextMonthDate.ToString("yyyy-MM-dd")')" title="Tháng sau">
-                        <i class="bi bi-chevron-right"></i>
-                    </button>
-                </div>
-                <div class="mini-cal-grid">
-                    <div class="mini-cal-day-header">T2</div>
-                    <div class="mini-cal-day-header">T3</div>
-                    <div class="mini-cal-day-header">T4</div>
-                    <div class="mini-cal-day-header">T5</div>
-                    <div class="mini-cal-day-header">T6</div>
-                    <div class="mini-cal-day-header">T7</div>
-                    <div class="mini-cal-day-header">CN</div>
-
-                    @for (int c = 0; c < totalCalCells; c++)
-                    {
-                        var cellDay = calGridStart.AddDays(c);
-                        bool isInCurrentMonth = cellDay.Month == calMonthStart.Month;
-                        bool isInWeek = cellDay >= Model.WeekStart && cellDay <= Model.WeekEnd;
-                        bool isWeekStart = cellDay == Model.WeekStart;
-                        bool isWeekEnd = cellDay == Model.WeekEnd;
-                        bool isTodayCal = cellDay == todayDate;
-
-                        var cellClasses = new List<string> { "mini-cal-day-cell" };
-                        if (!isInCurrentMonth) cellClasses.Add("out-month");
-                        if (isInWeek) cellClasses.Add("is-in-selected-week");
-                        if (isWeekStart) cellClasses.Add("week-start-cell");
-                        if (isWeekEnd) cellClasses.Add("week-end-cell");
-                        if (isTodayCal) cellClasses.Add("is-today-marker");
-
-                        <div class="@string.Join(" ", cellClasses)"
-                             onclick="loadWeekInPlace('@cellDay.ToString("yyyy-MM-dd")')"
-                             title="@cellDay.ToString("dd/MM/yyyy") (Nhấn để nạp tuần này)">
-                            @cellDay.Day
-                        </div>
-                    }
-                </div>
-                <div class="mini-cal-stats">
-                    <div class="mini-cal-stat-item border-end">
-                        <div class="mini-cal-stat-num text-primary fw-bold font-serif">@Model.TongNhanVien</div>
-                        <div class="mini-cal-stat-label">nhân sự</div>
-                    </div>
-                    <div class="mini-cal-stat-item">
-                        <div class="mini-cal-stat-num text-success fw-bold font-serif">@Model.DanhSachCa.Count</div>
-                        <div class="mini-cal-stat-label">loại ca</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Kết thúc col-12 col-xl-3 col-xxl-2 -->
+        <!-- Kết thúc col-12 -->
     </div>
     <!-- Kết thúc row g-3 -->
 </div>
@@ -1253,33 +1474,120 @@
                 <input type="hidden" name="NgayLamViec" id="inputNgayLamViecModal" value="@Model.WeekStart.ToString("yyyy-MM-dd")" required />
                 <div id="modalHiddenDatesContainer"></div>
 
-                <div class="modal-body p-4 bg-light bg-opacity-50">
-                    <div class="row g-3">
-                        <!-- =========================================================================
-                             CỘT TRÁI (COL-LG-5): BỘ LỊCH THÁNG TƯƠNG TÁC + KHUNG CHỌN CA TRỰC 24/7
-                             ========================================================================= -->
-                        <div class="col-12 col-lg-5">
-                            <!-- 1. BỘ LỊCH THÁNG TƯƠNG TÁC TRỰC QUAN -->
-                            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white mb-3" style="border: 1px solid #e2e8f0 !important;">
-                                <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <span class="small fw-bold text-uppercase text-muted" style="font-size: 0.75rem; letter-spacing: 0.5px;">
-                                        <i class="bi bi-calendar3 text-primary me-1"></i> Bộ Lịch Chọn Ngày Phân Ca
-                                    </span>
+                <div class="modal-body p-3 p-lg-4 bg-light bg-opacity-50">
+                    <!-- =====================================================================
+                         THANH CẤU HÌNH NGANG (CONFIG STRIP): NGÀY · CA · TRẠNG THÁI
+                         ===================================================================== -->
+                    <div class="phanca-config-strip">
+                        <!-- NHÓM 1: NGÀY LÀM VIỆC -->
+                        <div class="phanca-config-group phanca-config-group-dates">
+                            <span class="phanca-config-label"><i class="bi bi-calendar3"></i> Ngày làm việc</span>
+                            <div id="modalSelectedDateChips" class="phanca-chip-row">
+                                <!-- Rendered dynamically via JS -->
+                            </div>
+                            <div class="phanca-quick-row">
+                                <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0"
+                                        onclick="selectModalDateSingle('@todayDate.ToString("yyyy-MM-dd")')" title="Chọn ngày hôm nay">
+                                    <i class="bi bi-calendar-event me-1"></i>Hôm nay
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0"
+                                        onclick="selectModalWeekdaysRange()" title="Chọn Thứ 2 đến Thứ 6 của tuần này">
+                                    <i class="bi bi-calendar-range me-1"></i>T2 - T6
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0"
+                                        onclick="selectModalFullWeekRange()" title="Chọn cả 7 ngày trong tuần">
+                                    <i class="bi bi-calendar-week me-1"></i>Cả tuần
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0"
+                                        onclick="clearModalSelectedDates()" title="Bỏ chọn tất cả các ngày">
+                                    <i class="bi bi-x-circle me-1"></i>Bỏ ngày
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="phanca-config-divider"></div>
+
+                        <!-- NHÓM 2: KHUNG CA LÀM VIỆC -->
+                        <div class="phanca-config-group phanca-config-group-shifts">
+                            <span class="phanca-config-label">
+                                <i class="bi bi-clock-history"></i> Khung ca <span class="text-danger">*</span>
+                                <span class="badge bg-warning-subtle text-warning-emphasis border ms-1" style="font-size: 0.6rem;">Đêm +30%</span>
+                            </span>
+                            <div class="phanca-shift-seg">
+                                @foreach (var ca in Model.DanhSachCa)
+                                {
+                                    var isNight = ca.QuaDem || ca.TenCa.Contains("Đêm", StringComparison.OrdinalIgnoreCase);
+                                    var isAfternoon = ca.TenCa.Contains("Chiều", StringComparison.OrdinalIgnoreCase);
+                                    var shiftIcon = isNight ? "bi-moon-stars-fill text-warning" : isAfternoon ? "bi-cloud-sun-fill text-warning" : "bi-brightness-high-fill text-primary";
+                                    var isDefaultFirst = ca == Model.DanhSachCa.FirstOrDefault();
+                                    // Sắc thái ca để CSS tô vạch màu + icon riêng, tránh Sáng/Chiều lẫn màu nhau.
+                                    var shiftKind = isNight ? "night" : (isAfternoon ? "afternoon" : "morning");
+                                    // Nhãn ngắn gọn cho thẻ ca: "Ca Sáng (Morning Shift)" -> "Ca Sáng".
+                                    // Tên đầy đủ vẫn nằm trong thuộc tính title của thẻ.
+                                    var tenCaNgan = ca.TenCa.Contains('(')
+                                        ? ca.TenCa[..ca.TenCa.IndexOf('(')].Trim()
+                                        : ca.TenCa;
+
+                                    <div class="modal-shift-option-card phanca-shift-seg-item @(isDefaultFirst ? "active-shift-card" : "")"
+                                         data-ca-id="@ca.MaCa" data-shift-kind="@shiftKind"
+                                         onclick="selectModalShift(@ca.MaCa)" title="@ca.TenCa: @ca.GioBatDau.ToString("HH:mm") - @ca.GioKetThuc.ToString("HH:mm")">
+                                        <span class="phanca-shift-head">
+                                            <i class="bi @shiftIcon"></i>
+                                            <span class="phanca-shift-name">@tenCaNgan</span>
+                                            @if (isNight)
+                                            {
+                                                <span class="badge bg-danger text-white rounded-pill phanca-shift-rate">+30%</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-light text-muted border rounded-pill phanca-shift-rate">1.0x</span>
+                                            }
+                                        </span>
+                                        <span class="phanca-shift-time font-monospace">@ca.GioBatDau.ToString("HH:mm")–@ca.GioKetThuc.ToString("HH:mm")</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="phanca-config-divider"></div>
+
+                        <!-- NHÓM 3: TRẠNG THÁI & TỔNG KẾT -->
+                        <div class="phanca-config-group phanca-config-group-status">
+                            <span class="phanca-config-label"><i class="bi bi-tag"></i> Trạng thái</span>
+                            <select name="TrangThai" class="form-select form-select-sm rounded-3" id="modalShiftStatusSelect" style="min-width: 170px;">
+                                <option value="DA_PHAN" selected>Đã phân (Kế hoạch)</option>
+                                <option value="HOAN_THANH">Đã hoàn thành</option>
+                                <option value="VANG_MAT">Vắng mặt</option>
+                            </select>
+                            <span class="phanca-summary-line" id="modalSchedulingSummaryBadge">
+                                <i class="bi bi-check2-all"></i> Chưa chọn nhân sự
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- =====================================================================
+                         HAI CỘT CÂN ĐỐI: BỘ LỊCH THÁNG (TRÁI) · NHÂN SỰ & ROSTER (PHẢI)
+                         ===================================================================== -->
+                    <div class="phanca-grid-cols">
+                        <!-- CỘT TRÁI: BỘ LỊCH THÁNG TƯƠNG TÁC -->
+                        <div class="phanca-col-left">
+                            <div class="phanca-panel">
+                                <div class="phanca-panel-head">
+                                    <span class="phanca-config-label mb-0"><i class="bi bi-calendar3"></i> Bộ lịch chọn ngày</span>
                                     <div class="d-flex align-items-center gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle p-0" style="width: 26px; height: 26px;"
+                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle p-0 phanca-cal-nav"
                                                 onclick="changeModalCalMonth(-1)" title="Tháng trước">
-                                            <i class="bi bi-chevron-left" style="font-size: 0.7rem;"></i>
+                                            <i class="bi bi-chevron-left"></i>
                                         </button>
                                         <span id="modalCalMonthLabel" class="fw-bold text-dark small px-2 font-serif">Tháng @calMonthStart.ToString("MM / yyyy")</span>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle p-0" style="width: 26px; height: 26px;"
+                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle p-0 phanca-cal-nav"
                                                 onclick="changeModalCalMonth(1)" title="Tháng sau">
-                                            <i class="bi bi-chevron-right" style="font-size: 0.7rem;"></i>
+                                            <i class="bi bi-chevron-right"></i>
                                         </button>
                                     </div>
                                 </div>
 
-                                <!-- LƯỚI NGÀY TRONG LỊCH -->
-                                <div class="modal-cal-grid-wrapper mb-2">
+                                <div class="phanca-cal-scroll">
                                     <div class="modal-cal-header-row">
                                         <div>T2</div><div>T3</div><div>T4</div><div>T5</div><div>T6</div><div>T7</div><div>CN</div>
                                     </div>
@@ -1288,132 +1596,38 @@
                                     </div>
                                 </div>
 
-                                <!-- THÔNG TIN NGÀY ĐANG CHỌN & PHÍM CHỌN NHANH -->
-                                <div class="p-2 rounded-3 bg-light border d-flex align-items-center justify-content-between mb-2">
-                                    <div class="small">
-                                        <span class="text-muted" style="font-size: 0.75rem;">Đang chọn ngày:</span>
-                                        <strong class="text-primary font-serif d-block" id="modalSelectedDateText">Thứ Tư, 14/10/2026</strong>
-                                    </div>
-                                    <span class="badge bg-primary-subtle text-primary border" id="modalDateCountBadge">1 ngày</span>
-                                </div>
-
-                                <div class="d-flex gap-1">
-                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill flex-fill py-1" style="font-size: 0.72rem;"
-                                            onclick="selectModalDateSingle('@todayDate.ToString("yyyy-MM-dd")')">
-                                        <i class="bi bi-calendar-event me-1"></i>Hôm nay
-                                    </button>
-                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill flex-fill py-1" style="font-size: 0.72rem;"
-                                            onclick="selectModalWeekdaysRange()">
-                                        <i class="bi bi-calendar-range me-1"></i>T2 - T6
-                                    </button>
-                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill flex-fill py-1" style="font-size: 0.72rem;"
-                                            onclick="selectModalFullWeekRange()">
-                                        <i class="bi bi-calendar-week me-1"></i>Cả tuần
-                                    </button>
-                                    <button type="button" class="btn btn-xs btn-outline-danger rounded-pill flex-fill py-1" style="font-size: 0.72rem;"
-                                            onclick="clearModalSelectedDates()" title="Bỏ chọn tất cả các ngày">
-                                        <i class="bi bi-x-circle me-1"></i>Bỏ ngày
-                                    </button>
+                                <div class="phanca-cal-legend">
+                                    <span><i class="phanca-legend-dot phanca-legend-shift"></i>Có ca trực</span>
+                                    <span><i class="phanca-legend-dot phanca-legend-today"></i>Hôm nay</span>
+                                    <span><i class="phanca-legend-dot phanca-legend-selected"></i>Đang chọn</span>
+                                    <span class="ms-auto text-muted" id="modalSelectedDateText">Chưa chọn ngày nào</span>
                                 </div>
                             </div>
 
-                            <!-- 1b. THÔNG TIN NHÂN SỰ ĐANG TRỰC NGÀY ĐÃ CHỌN -->
-                            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white mb-3" style="border: 1px solid #e2e8f0 !important;">
-                                <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom">
-                                    <span class="small fw-bold text-uppercase text-muted" style="font-size: 0.72rem; letter-spacing: 0.5px;">
-                                        <i class="bi bi-people-fill text-primary me-1"></i> Nhân sự trực ngày đã chọn
-                                    </span>
+                            <!-- NHÓM 4: NHÂN SỰ ĐANG TRỰC NGÀY ĐÃ CHỌN -->
+                            <div class="phanca-panel phanca-roster-panel">
+                                <div class="phanca-panel-head">
+                                    <span class="phanca-config-label mb-0"><i class="bi bi-people-fill"></i> Nhân sự trực ngày đã chọn</span>
                                     <span class="badge bg-primary-subtle text-primary border" id="modalDayRosterTotalBadge" style="font-size: 0.7rem;">0 người trực</span>
                                 </div>
-                                <div id="modalDayRosterContent" style="max-height: 140px; overflow-y: auto;">
+                                <div id="modalDayRosterContent" class="phanca-roster-list">
                                     <!-- Rendered dynamically via JS -->
-                                </div>
-                            </div>
-
-                            <!-- 2. KHUNG CHỌN MẪU CA 24/7 -->
-                            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white" style="border: 1px solid #e2e8f0 !important;">
-                                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
-                                    <span class="small fw-bold text-uppercase text-muted" style="font-size: 0.75rem; letter-spacing: 0.5px;">
-                                        <i class="bi bi-clock-history text-primary me-1"></i> Chọn Khung Ca Làm Việc <span class="text-danger">*</span>
-                                    </span>
-                                    <span class="badge bg-warning-subtle text-warning-emphasis border small">Đêm +30%</span>
-                                </div>
-
-                                <div class="d-flex flex-column gap-2 mb-3">
-                                    @foreach (var ca in Model.DanhSachCa)
-                                    {
-                                        var isNight = ca.QuaDem || ca.TenCa.Contains("Đêm", StringComparison.OrdinalIgnoreCase);
-                                        var isAfternoon = ca.TenCa.Contains("Chiều", StringComparison.OrdinalIgnoreCase);
-                                        var shiftIcon = isNight ? "bi-moon-stars-fill text-warning" : isAfternoon ? "bi-cloud-sun-fill text-warning" : "bi-brightness-high-fill text-primary";
-                                        var isDefaultFirst = ca == Model.DanhSachCa.FirstOrDefault();
-
-                                        double dur;
-                                        if (ca.QuaDem || ca.GioKetThuc < ca.GioBatDau)
-                                        {
-                                            dur = (24 - ca.GioBatDau.Hour - ca.GioBatDau.Minute / 60.0) + (ca.GioKetThuc.Hour + ca.GioKetThuc.Minute / 60.0);
-                                        }
-                                        else
-                                        {
-                                            dur = (ca.GioKetThuc.Hour + ca.GioKetThuc.Minute / 60.0) - (ca.GioBatDau.Hour + ca.GioBatDau.Minute / 60.0);
-                                        }
-
-                                        <div class="modal-shift-option-card p-2 px-3 rounded-3 border cursor-pointer @(isDefaultFirst ? "active-shift-card" : "")"
-                                             data-ca-id="@ca.MaCa"
-                                             onclick="selectModalShift(@ca.MaCa)"
-                                             style="cursor: pointer; transition: all 0.2s ease;">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <i class="bi @shiftIcon"></i>
-                                                    <span class="fw-bold text-dark font-serif small">@ca.TenCa</span>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <span class="font-monospace text-muted small" style="font-size: 0.72rem;">@ca.GioBatDau.ToString("HH:mm") - @ca.GioKetThuc.ToString("HH:mm")</span>
-                                                    @if (isNight)
-                                                    {
-                                                        <span class="badge bg-danger text-white rounded-pill" style="font-size: 0.62rem;">+30%</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-light text-muted border rounded-pill" style="font-size: 0.62rem;">1.0x</span>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-
-                                <div class="row g-2 align-items-center">
-                                    <div class="col-6">
-                                        <label class="form-label text-muted small mb-1" style="font-size: 0.72rem;">Trạng thái:</label>
-                                        <select name="TrangThai" class="form-select form-select-sm rounded-3">
-                                            <option value="DA_PHAN" selected>Đã phân (Kế hoạch)</option>
-                                            <option value="HOAN_THANH">Đã hoàn thành</option>
-                                            <option value="VANG_MAT">Vắng mặt</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-6 text-end">
-                                        <span class="badge bg-primary-subtle text-primary border px-2 py-2 rounded-pill small d-block mt-3" id="modalSelectedCountBadge">
-                                            <i class="bi bi-check2-all me-1"></i>0 NV đã chọn
-                                        </span>
-                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- =========================================================================
-                             CỘT PHẢI (COL-LG-7): BẢNG CHỌN ĐA NHÂN SỰ & KIỂM TRA TRÙNG CA TRỰC TIẾP
-                             ========================================================================= -->
-                        <div class="col-12 col-lg-7">
-                            <div class="card border-0 rounded-4 shadow-sm bg-white overflow-hidden h-100" style="border: 1px solid #e2e8f0 !important;">
-                                <!-- THANH TÌM KIẾM & BỘ LỌC BỘ PHẬN -->
-                                <div class="card-header bg-white py-2 px-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                    <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 250px;">
+                        <!-- CỘT PHẢI: BẢNG CHỌN ĐA NHÂN SỰ & KIỂM TRA TRÙNG CA -->
+                        <div class="phanca-col-right">
+                            <div class="phanca-panel phanca-panel-grow">
+                                <!-- THANH TÌM KIẾM & BỘ LỌC -->
+                                <div class="phanca-emp-toolbar">
+                                    <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 220px;">
                                         <div class="input-group input-group-sm">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
                                             <input type="text" id="modalEmpSearchInput" class="form-control border-start-0"
                                                    placeholder="Tìm theo tên hoặc mã nhân sự..." oninput="filterModalEmployees()" />
                                         </div>
-                                        <select id="modalDeptFilter" class="form-select form-select-sm" style="max-width: 170px;" onchange="filterModalEmployees()">
+                                        <select id="modalDeptFilter" class="form-select form-select-sm" style="max-width: 165px;" onchange="filterModalEmployees()">
                                             <option value="">Tất cả phòng ban</option>
                                             @foreach (var dept in Model.DanhSachNhanVien.Where(e => e.PhongBan != null).Select(e => e.PhongBan!).DistinctBy(p => p.MaPhongBan))
                                             {
@@ -1421,42 +1635,36 @@
                                             }
                                         </select>
                                     </div>
-
-                                    <div class="d-flex align-items-center gap-2">
-                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="selectAllModalEmployees(true)">
-                                            <i class="bi bi-check-square me-1"></i> Chọn hết
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="selectAllModalEmployees(false)">
-                                            <i class="bi bi-square me-1"></i> Bỏ chọn
-                                        </button>
-                                        <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-sm" id="btnQuickSubmitPhanCa" title="Xác nhận lưu phân ca cho các nhân sự đã chọn">
-                                            <i class="bi bi-check2-circle me-1"></i> Xác Nhận (<span class="quick-submit-count">0</span> NV)
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- DẢI LỌC NHANH THEO TRẠNG THÁI CA CỦA NGÀY ĐANG CHỌN -->
-                                <div class="px-3 py-1 bg-light border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2" style="font-size: 0.75rem;">
                                     <div class="d-flex align-items-center gap-1">
-                                        <span class="text-muted fw-bold me-1">Lọc ca ngày chọn:</span>
-                                        <button type="button" class="btn btn-xs rounded-pill px-2 py-0 fw-semibold modal-filter-shift-btn active-filter-pill"
-                                                id="btnFilterAll" onclick="filterModalEmpByShiftStatus('all')">
-                                            Tất cả (<span id="countFilterAll">@Model.DanhSachNhanVien.Count</span>)
+                                        <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-1" onclick="selectAllModalEmployees(true)" title="Chọn toàn bộ nhân sự đang hiển thị">
+                                            <i class="bi bi-check-square me-1"></i>Chọn hết
                                         </button>
-                                        <button type="button" class="btn btn-xs rounded-pill px-2 py-0 fw-semibold modal-filter-shift-btn btn-light border text-dark"
-                                                id="btnFilterFree" onclick="filterModalEmpByShiftStatus('free')">
-                                            <i class="bi bi-check-circle-fill text-success me-1"></i>Chưa có ca (<span id="countFilterFree">0</span>)
-                                        </button>
-                                        <button type="button" class="btn btn-xs rounded-pill px-2 py-0 fw-semibold modal-filter-shift-btn btn-light border text-dark"
-                                                id="btnFilterBusy" onclick="filterModalEmpByShiftStatus('busy')">
-                                            <i class="bi bi-clock-fill text-warning me-1"></i>Đã có ca (<span id="countFilterBusy">0</span>)
+                                        <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" onclick="selectAllModalEmployees(false)" title="Bỏ chọn toàn bộ">
+                                            <i class="bi bi-square me-1"></i>Bỏ chọn
                                         </button>
                                     </div>
-                                    <span class="text-muted small" id="modalFilterHintText">Đang hiển thị tất cả</span>
                                 </div>
 
-                                <!-- DANH SÁCH CUỘN NHÂN SỰ ĐỂ PHÂN CA -->
-                                <div class="table-responsive flex-grow-1" style="max-height: 480px; overflow-y: auto;">
+                                <!-- DẢI LỌC NHANH THEO TÌNH TRẠNG CA CỦA NGÀY ĐANG CHỌN -->
+                                <div class="phanca-emp-filterbar">
+                                    <span class="text-muted fw-bold">Tình trạng ca:</span>
+                                    <button type="button" class="btn btn-xs rounded-pill px-2 py-0 fw-semibold modal-filter-shift-btn active-filter-pill"
+                                            id="btnFilterAll" onclick="filterModalEmpByShiftStatus('all')">
+                                        Tất cả (<span id="countFilterAll">@Model.DanhSachNhanVien.Count</span>)
+                                    </button>
+                                    <button type="button" class="btn btn-xs rounded-pill px-2 py-0 fw-semibold modal-filter-shift-btn btn-light border text-dark"
+                                            id="btnFilterFree" onclick="filterModalEmpByShiftStatus('free')">
+                                        <i class="bi bi-check-circle-fill text-success me-1"></i>Chưa có ca (<span id="countFilterFree">0</span>)
+                                    </button>
+                                    <button type="button" class="btn btn-xs rounded-pill px-2 py-0 fw-semibold modal-filter-shift-btn btn-light border text-dark"
+                                            id="btnFilterBusy" onclick="filterModalEmpByShiftStatus('busy')">
+                                        <i class="bi bi-clock-fill text-warning me-1"></i>Đã có ca (<span id="countFilterBusy">0</span>)
+                                    </button>
+                                    <span class="text-muted small ms-auto" id="modalFilterHintText">Đang hiển thị tất cả</span>
+                                </div>
+
+                                <!-- DANH SÁCH NHÂN SỰ (VÙNG CUỘN DUY NHẤT) -->
+                                <div class="phanca-emp-scroll">
                                     <table class="table table-hover align-middle mb-0" id="modalEmpTable">
                                         <thead class="bg-light sticky-top" style="z-index: 1;">
                                             <tr style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">
@@ -1516,7 +1724,7 @@
                     </div>
                 </div>
 
-                <!-- MODAL FOOTER -->
+                <!-- MODAL FOOTER: MỘT NÚT XÁC NHẬN DUY NHẤT -->
                 <div class="modal-footer bg-light border-top py-3 px-4 d-flex justify-content-between align-items-center">
                     <span class="text-muted small" id="modalSchedulingSummaryText">
                         <i class="bi bi-info-circle me-1 text-primary"></i> Hệ thống tự động quét trùng ca trong ngày để tránh phân ca xung đột.
@@ -1669,10 +1877,13 @@
     min-height: 0;
     overflow: hidden;
 }
+/* Thân modal KHÔNG cuộn — mỗi cột tự cuộn riêng, tránh 3 thanh cuộn lồng nhau */
 #formCreatePhanCa .modal-body {
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 #formCreatePhanCa .modal-footer {
     flex-shrink: 0;
@@ -1680,6 +1891,268 @@
     border-top: 1px solid #e2e8f0;
     z-index: 10;
 }
+
+/* =============================================================================
+   THANH CẤU HÌNH NGANG (CONFIG STRIP) — NGÀY · CA · TRẠNG THÁI
+   ============================================================================= */
+.phanca-config-strip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.875rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.phanca-config-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+}
+.phanca-config-group-dates { flex: 1 1 34%; }
+.phanca-config-group-shifts { flex: 1 1 40%; }
+.phanca-config-group-status { flex: 0 0 auto; }
+.phanca-config-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 0.15rem;
+}
+.phanca-config-label i { color: #1e3a8a; }
+.phanca-config-divider {
+    width: 1px;
+    background: #e2e8f0;
+    margin: 0 1rem;
+    flex-shrink: 0;
+}
+.phanca-summary-line {
+    font-size: 0.7rem;
+    color: #1e3a8a;
+    font-weight: 600;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Chip ngày đã chọn + nút bỏ ngày nhanh */
+.phanca-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    min-height: 26px;
+    align-content: flex-start;
+}
+.phanca-date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e3a8a;
+    border-radius: 999px;
+    padding: 0.15rem 0.3rem 0.15rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.phanca-date-chip:hover { background: #dbeafe; border-color: #93c5fd; }
+.phanca-date-chip-remove {
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    line-height: 1;
+    padding: 0 0.15rem;
+    font-size: 0.8rem;
+    border-radius: 999px;
+    cursor: pointer;
+}
+.phanca-date-chip-remove:hover { color: #dc2626; }
+.phanca-date-chip-empty {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-style: italic;
+    padding: 0.2rem 0;
+}
+.phanca-quick-row { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+
+/* Segmented control chọn ca (thay cho 3 thẻ xếp dọc) */
+.phanca-shift-seg {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.375rem;
+}
+.phanca-shift-seg-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 0.4rem 0.55rem;
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 0;
+    overflow: hidden;
+}
+.phanca-shift-seg-item .bi { font-size: 0.85rem; flex-shrink: 0; }
+.phanca-shift-head {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+}
+.phanca-shift-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.phanca-shift-time {
+    font-size: 0.68rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.phanca-shift-rate {
+    font-size: 0.6rem;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.modal-shift-option-card:hover {
+    border-color: #1e3a8a;
+    background-color: #f1f5f9;
+    transform: translateY(-1px);
+}
+.modal-shift-option-card.active-shift-card {
+    border-color: #d4af37 !important;
+    background-color: #fefce8 !important;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.28) !important;
+}
+
+/* =============================================================================
+   HAI CỘT CÂN ĐỐI — BỘ LỊCH (TRÁI) · NHÂN SỰ (PHẢI)
+   ============================================================================= */
+.phanca-grid-cols {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0.875rem;
+}
+.phanca-col-left,
+.phanca-col-right {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+/* Cột trái là VÙNG CUỘN DUY NHẤT bên trái: bộ lịch và danh sách nhân sự trực
+   giữ nguyên chiều cao tự nhiên, cả cột cuộn liền mạch.
+   Danh sách roster KHÔNG cuộn nội bộ để tránh hai thanh cuộn lồng nhau. */
+.phanca-col-left { overflow-y: auto; padding-right: 2px; }
+.phanca-col-left > .phanca-panel { flex: 0 0 auto; }
+.phanca-panel {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 0.875rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.phanca-panel-grow {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+}
+.phanca-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.phanca-panel-grow .phanca-panel-head { padding: 0.875rem 0.875rem 0; margin-bottom: 0.5rem; border-bottom: 0; }
+
+/* Bộ lịch giữ kích thước cố định, không bị co lại khi cửa sổ thấp */
+.phanca-cal-scroll { overflow: visible; }
+.phanca-cal-nav { width: 26px; height: 26px; font-size: 0.7rem; }
+.phanca-cal-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.6rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f1f5f9;
+    font-size: 0.68rem;
+    color: #64748b;
+}
+.phanca-legend-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+}
+.phanca-legend-shift { background: #3b82f6; }
+.phanca-legend-today { background: #ef4444; }
+.phanca-legend-selected { background: #1e3a8a; }
+
+/* Roster: chiều cao tự nhiên, cuộn chung với cột trái (một vùng cuộn duy nhất) */
+.phanca-roster-panel { display: flex; flex-direction: column; }
+.phanca-roster-list { overflow: visible; }
+
+/* Thanh công cụ nhân sự + dải lọc */
+.phanca-emp-toolbar {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem 0.875rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.phanca-emp-filterbar {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4rem 0.875rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.72rem;
+}
+.phanca-emp-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+/* Bảng nhân sự: ép vừa khung, không phát sinh cuộn ngang */
+#modalEmpTable { table-layout: fixed; width: 100%; }
+#modalEmpTable th:nth-child(1), #modalEmpTable td:nth-child(1) { width: 45px; }
+#modalEmpTable th:nth-child(2), #modalEmpTable td:nth-child(2) { width: 36%; }
+#modalEmpTable th:nth-child(3), #modalEmpTable td:nth-child(3) { width: 30%; }
+#modalEmpTable td { overflow-wrap: anywhere; }
+#modalEmpTable .badge { white-space: normal; text-align: left; }
 .modal-filter-shift-btn.active-filter-pill {
     background-color: #1e3a8a !important;
     color: #ffffff !important;
@@ -1687,43 +2160,37 @@
     box-shadow: 0 2px 6px rgba(30, 58, 138, 0.25) !important;
 }
 
-.modal-shift-option-card:hover {
-    border-color: #1e3a8a !important;
-    background-color: #f8fafc;
-}
-.modal-shift-option-card.active-shift-card {
-    border-color: #d4af37 !important;
-    background-color: #fefce8 !important;
-    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25) !important;
-}
-
-/* MODAL INTERACTIVE CALENDAR STYLES */
+/* =============================================================================
+   BỘ LỊCH THÁNG TƯƠNG TÁC
+   ============================================================================= */
 .modal-cal-header-row {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     text-align: center;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    color: #64748b;
+    color: #94a3b8;
     margin-bottom: 6px;
+    letter-spacing: 0.4px;
 }
 .modal-cal-days-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    gap: 3px;
 }
 .modal-cal-day-cell {
-    aspect-ratio: 1.1;
+    aspect-ratio: 1.3;
+    min-height: 34px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
-    font-size: 0.75rem;
+    border-radius: 9px;
+    font-size: 0.76rem;
     font-weight: 500;
     color: #334155;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -1732,9 +2199,10 @@
 .modal-cal-day-cell:hover {
     background: #e2e8f0;
     border-color: #cbd5e1;
+    transform: scale(1.04);
 }
 .modal-cal-day-cell.is-other-month {
-    opacity: 0.35;
+    opacity: 0.3;
     color: #94a3b8;
     background: #f1f5f9;
 }
@@ -1767,8 +2235,17 @@
     position: absolute;
     bottom: 3px;
 }
-.modal-cal-day-cell.is-selected .cal-dot {
-    background: #fde047;
+.modal-cal-day-cell.is-selected .cal-dot { background: #fde047; }
+
+/* Responsive: xếp dọc khi hẹp */
+@@media (max-width: 991.98px) {
+    .phanca-config-strip { flex-direction: column; }
+    .phanca-config-divider { width: auto; height: 1px; margin: 0.6rem 0; }
+    .phanca-config-group-status { flex: 1 1 auto; }
+    .phanca-grid-cols { grid-template-columns: minmax(0, 1fr); }
+    .phanca-shift-seg { grid-template-columns: minmax(0, 1fr); }
+    .phanca-col-left { overflow-y: visible; }
+    #formCreatePhanCa .modal-body { overflow-y: auto; }
 }
 </style>
 
@@ -1821,38 +2298,37 @@
         });
     }
 
-    // 3. Chuyển đổi giữa 3 chế độ xem với hiệu ứng In-Place Cross-Fade
+    // 3. Chuyển đổi giữa các chế độ xem với hiệu ứng In-Place Cross-Fade (Mặc định: Cuốn Lịch Tháng 5★)
     function switchViewMode(mode) {
-        if (mode === 'timeline') mode = 'matrix';
+        if (!mode || mode === 'timeline') mode = 'calendar';
 
+        const calendarContainer = document.getElementById('viewCalendarContainer');
         const matrixContainer = document.getElementById('viewMatrixContainer');
         const todayContainer = document.getElementById('viewTodayContainer');
         const listContainer = document.getElementById('viewListContainer');
 
         const containers = {
+            calendar: calendarContainer,
             matrix: matrixContainer,
             today: todayContainer,
             list: listContainer
         };
 
-        const buttons = {
-            matrix: document.getElementById('btnViewMatrix'),
-            today: document.getElementById('btnViewToday'),
-            list: document.getElementById('btnViewList')
+        const tabCalendar = document.getElementById('tabViewCalendar');
+        const tabMatrix = document.getElementById('tabViewMatrix');
+        const tabList = document.getElementById('tabViewList');
+
+        const tabs = {
+            calendar: tabCalendar,
+            matrix: tabMatrix,
+            list: tabList
         };
 
-        // Cập nhật trạng thái nút bấm
-        Object.keys(buttons).forEach(key => {
-            const btn = buttons[key];
-            if (!btn) return;
-            if (key === mode) {
-                if (key === 'today') {
-                    btn.className = 'btn btn-warning btn-sm rounded-pill fw-bold text-dark px-3 py-1 view-switcher-btn shadow-sm';
-                } else {
-                    btn.className = 'btn btn-primary btn-sm rounded-pill fw-bold px-3 py-1 view-switcher-btn shadow-sm';
-                }
-            } else {
-                btn.className = 'btn btn-light btn-sm rounded-pill fw-bold px-3 py-1 view-switcher-btn';
+        Object.keys(tabs).forEach(key => {
+            const tab = tabs[key];
+            if (tab) {
+                if (key === mode) tab.classList.add('active');
+                else tab.classList.remove('active');
             }
         });
 
@@ -1870,8 +2346,10 @@
             }
         });
 
+        localStorage.setItem('overtime_phanca_active_tab', mode);
         localStorage.setItem('overtime_phanca_view_mode', mode);
     }
+    window.switchCalendarViewTab = switchViewMode;
 
     // 4. Nạp tuần tại chỗ qua AJAX - TUYỆT ĐỐI KHÔNG RELOAD TOÀN TRANG
     function loadWeekInPlace(targetWeekDate) {
@@ -2193,25 +2671,45 @@
         if (dateStr === TODAY_STR) cell.classList.add('is-today');
         if (modalSelectedDates.has(dateStr)) cell.classList.add('is-selected');
 
-        const hasShift = WEEK_SHIFTS_DATA.some(s => s.date === dateStr);
-        if (hasShift) {
+        const isPast = dateStr < TODAY_STR;
+        if (isPast) {
+            cell.classList.add('is-past');
+            cell.style.opacity = '0.35';
+            cell.style.cursor = 'not-allowed';
+            cell.title = 'Ngày quá khứ (không thể chọn)';
+        }
+
+        // Đèn báo ca: tra theo lưới 42 ngày (phancaCalendarData.shifts), không dùng
+        // WEEK_SHIFTS_DATA vì dữ liệu đó chỉ chứa 1 tuần.
+        const monthShifts = getModalMonthShifts(dateStr);
+        if (monthShifts.length > 0) {
             const dot = document.createElement('span');
             dot.className = 'cal-dot';
             cell.appendChild(dot);
+            if (!isPast) {
+                cell.title = `${monthShifts.length} ca trực ngày ${dateStr}`;
+            }
         }
 
         const text = document.createElement('span');
         text.textContent = dayNum;
         cell.appendChild(text);
 
-        cell.onclick = function () {
-            toggleModalDate(dateStr);
-        };
+        if (!isPast) {
+            cell.onclick = function () {
+                toggleModalDate(dateStr);
+            };
+        }
 
         return cell;
     }
 
     function toggleModalDate(dateStr) {
+        if (dateStr < TODAY_STR) {
+            showQuickToast('⚠️ Không thể chọn ngày trong quá khứ (' + dateStr + ').');
+            return;
+        }
+
         if (modalSelectedDates.has(dateStr)) {
             modalSelectedDates.delete(dateStr);
         } else {
@@ -2235,6 +2733,11 @@
     }
 
     function selectModalDateSingle(dateStr) {
+        if (dateStr < TODAY_STR) {
+            showQuickToast('⚠️ Không thể chọn ngày trong quá khứ (' + dateStr + ').');
+            return;
+        }
+
         modalSelectedDates.clear();
         modalSelectedDates.add(dateStr);
         document.getElementById('inputNgayLamViecModal').value = dateStr;
@@ -2254,9 +2757,12 @@
             const cur = new Date(start);
             cur.setDate(start.getDate() + i);
             const dStr = formatDateStr(cur.getFullYear(), cur.getMonth() + 1, cur.getDate());
-            modalSelectedDates.add(dStr);
+            if (dStr >= TODAY_STR) {
+                modalSelectedDates.add(dStr);
+            }
         }
-        document.getElementById('inputNgayLamViecModal').value = WEEK_START_STR;
+        const first = Array.from(modalSelectedDates)[0] || '';
+        document.getElementById('inputNgayLamViecModal').value = first;
         renderModalCalendar();
         onModalDateChanged();
     }
@@ -2268,11 +2774,61 @@
             const cur = new Date(start);
             cur.setDate(start.getDate() + i);
             const dStr = formatDateStr(cur.getFullYear(), cur.getMonth() + 1, cur.getDate());
-            modalSelectedDates.add(dStr);
+            if (dStr >= TODAY_STR) {
+                modalSelectedDates.add(dStr);
+            }
         }
-        document.getElementById('inputNgayLamViecModal').value = WEEK_START_STR;
+        const first = Array.from(modalSelectedDates)[0] || '';
+        document.getElementById('inputNgayLamViecModal').value = first;
         renderModalCalendar();
         onModalDateChanged();
+    }
+
+    // Tra ca trực của 1 ngày theo lưới 42 ngày (không giới hạn ở tuần hiện tại)
+    function getModalMonthShifts(dateStr) {
+        const all = (window.phancaCalendarData && window.phancaCalendarData.shifts) || [];
+        return all.filter(s => s.ngayLamViec === dateStr);
+    }
+
+    // "Ca Sáng (Morning Shift)" -> "Ca Sáng" cho gọn badge trong bảng nhân sự
+    function shortShiftName(tenCa) {
+        if (!tenCa) return '';
+        return tenCa.includes('(') ? tenCa.split('(')[0].trim() : tenCa;
+    }
+
+    // Phân loại ca theo tên: 'morning' | 'afternoon' | 'night'.
+    // Dùng chung cho mọi chỗ hiển thị ca để Sáng / Chiều / Đêm luôn khác màu nhau.
+    function getShiftKind(tenCa, quaDem) {
+        const name = (tenCa || '').toLowerCase();
+        if (quaDem || name.includes('đêm')) return 'night';
+        if (name.includes('chiều')) return 'afternoon';
+        return 'morning';
+    }
+
+    // Lớp badge tương ứng, khớp với .phanca-shift-badge-{sang|chieu|dem} trong
+    // phanca-calendar.css (hậu tố tiếng Việt, không phải morning/afternoon/night).
+    function getShiftBadgeClass(tenCa, quaDem) {
+        const kind = getShiftKind(tenCa, quaDem);
+        if (kind === 'night') return 'phanca-shift-badge-dem';
+        if (kind === 'afternoon') return 'phanca-shift-badge-chieu';
+        return 'phanca-shift-badge-sang';
+    }
+
+    // Icon đặc trưng của từng ca, tô đúng sắc thái thay vì dùng chung text-primary
+    function getShiftIconClass(tenCa, quaDem) {
+        const kind = getShiftKind(tenCa, quaDem);
+        if (kind === 'night') return 'bi-moon-stars-fill text-warning';
+        if (kind === 'afternoon') return 'bi-cloud-sun-fill text-warning';
+        return 'bi-brightness-high-fill text-primary';
+    }
+
+    const MODAL_DAY_NAMES = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
+    function formatModalDateLabel(dateStr, short) {
+        const parts = dateStr.split('-').map(Number);
+        const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+        const dmy = `${parts[2] < 10 ? '0' + parts[2] : parts[2]}/${parts[1] < 10 ? '0' + parts[1] : parts[1]}`;
+        return short ? `${MODAL_DAY_NAMES[dt.getDay()]} ${dmy}` : `${MODAL_DAY_NAMES[dt.getDay()]}, ${dmy}/${parts[0]}`;
     }
 
     function syncModalSelectedDatesUI() {
@@ -2288,25 +2844,54 @@
             });
         }
 
-        const badge = document.getElementById('modalDateCountBadge');
-        if (badge) {
-            badge.textContent = modalSelectedDates.size + ' ngày';
+        const datesArr = Array.from(modalSelectedDates).sort();
+
+        // Chip ngày đã chọn — hiển thị trực tiếp nơi chọn, có nút bỏ ngày
+        const chips = document.getElementById('modalSelectedDateChips');
+        if (chips) {
+            chips.innerHTML = '';
+            if (datesArr.length === 0) {
+                const empty = document.createElement('span');
+                empty.className = 'phanca-date-chip-empty';
+                empty.textContent = 'Chưa chọn ngày nào — bấm vào lịch để chọn';
+                chips.appendChild(empty);
+            } else {
+                datesArr.forEach(d => {
+                    const chip = document.createElement('span');
+                    chip.className = 'phanca-date-chip';
+                    chip.title = formatModalDateLabel(d, false);
+
+                    const label = document.createElement('span');
+                    label.textContent = formatModalDateLabel(d, true);
+                    chip.appendChild(label);
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'phanca-date-chip-remove';
+                    removeBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
+                    removeBtn.title = 'Bỏ ngày ' + formatModalDateLabel(d, false);
+                    removeBtn.onclick = function (ev) {
+                        ev.stopPropagation();
+                        toggleModalDate(d);
+                    };
+                    chip.appendChild(removeBtn);
+
+                    chips.appendChild(chip);
+                });
+            }
         }
 
+        // Tóm tắt ngày ngay trên thanh cấu hình
         const dateText = document.getElementById('modalSelectedDateText');
         if (dateText) {
-            const datesArr = Array.from(modalSelectedDates).sort();
-            if (datesArr.length === 1) {
-                const parts = datesArr[0].split('-').map(Number);
-                const dt = new Date(parts[0], parts[1] - 1, parts[2]);
-                const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-                dateText.textContent = `${days[dt.getDay()]}, ${parts[2] < 10 ? '0' + parts[2] : parts[2]}/${parts[1] < 10 ? '0' + parts[1] : parts[1]}/${parts[0]}`;
-            } else if (datesArr.length > 1) {
+            if (datesArr.length === 0) {
+                dateText.textContent = 'Chưa chọn ngày nào';
+            } else if (datesArr.length === 1) {
+                dateText.textContent = 'Đang chọn: ' + formatModalDateLabel(datesArr[0], false);
+            } else {
                 const first = datesArr[0].split('-').slice(1).reverse().join('/');
                 const last = datesArr[datesArr.length - 1].split('-').slice(1).reverse().join('/');
                 dateText.textContent = `${datesArr.length} ngày (${first} → ${last})`;
-            } else {
-                dateText.textContent = 'Chưa chọn ngày nào';
             }
         }
     }
@@ -2343,14 +2928,14 @@
                     const dt = new Date(parts[0], parts[1] - 1, parts[2]);
                     const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
                     const dayName = days[dt.getDay()];
-                    const isNight = s.tenCa.toLowerCase().includes('đêm');
+                    const isNight = getShiftKind(s.tenCa, s.quaDem) === 'night';
 
                     const item = document.createElement('div');
                     item.className = 'p-3 rounded-3 border bg-light d-flex align-items-center justify-content-between';
                     item.innerHTML = `
                         <div class="d-flex align-items-center gap-3">
-                            <div class="badge ${isNight ? 'bg-danger text-white' : 'bg-primary text-white'} rounded-pill px-3 py-2">
-                                <i class="bi ${isNight ? 'bi-moon-stars-fill' : 'bi-sun-fill'} me-1"></i> ${dayName}
+                            <div class="badge ${getShiftBadgeClass(s.tenCa, s.quaDem)} rounded-pill px-3 py-2">
+                                <i class="bi ${getShiftIconClass(s.tenCa, s.quaDem)} me-1"></i> ${dayName}
                             </div>
                             <div>
                                 <div class="fw-bold text-dark font-serif">${s.tenCa}</div>
@@ -2414,6 +2999,42 @@
         filterModalEmployees();
     }
 
+    // Ca trực của 1 nhân sự trong 1 ngày — tra theo lưới 42 ngày
+    function findModalEmpShift(empId, dateStr) {
+        return getModalMonthShifts(dateStr).find(s => s.maNhanVien === empId) || null;
+    }
+
+    // Đồng bộ cache lưới 42 ngày sau thao tác gán/xóa ca nhanh trên ma trận,
+    // để lịch tháng + roster trong modal phản ánh đúng dữ liệu.
+    function syncModalShiftCache(empId, dateStr, shiftObj) {
+        if (!window.phancaCalendarData || !Array.isArray(window.phancaCalendarData.shifts)) return;
+
+        const list = window.phancaCalendarData.shifts;
+        const idx = list.findIndex(s => s.maNhanVien === empId && s.ngayLamViec === dateStr);
+
+        if (shiftObj) {
+            const entry = {
+                maPhanCa: 0,
+                maNhanVien: empId,
+                hoTen: shiftObj.empName || ('NV #' + empId),
+                maNhanVienHienThi: shiftObj.empCode || ('NV-' + empId),
+                tenChucVu: '',
+                tenPhongBan: '',
+                maCa: shiftObj.maCa,
+                tenCa: shiftObj.tenCa,
+                gioBatDau: shiftObj.gioBatDau || '',
+                gioKetThuc: shiftObj.gioKetThuc || '',
+                quaDem: !!shiftObj.quaDem,
+                ngayLamViec: dateStr,
+                avatarColor: '#1e3a8a'
+            };
+            if (idx >= 0) list[idx] = entry;
+            else list.push(entry);
+        } else if (idx >= 0) {
+            list.splice(idx, 1);
+        }
+    }
+
     function renderModalDayRoster(chosenDate) {
         const container = document.getElementById('modalDayRosterContent');
         const badge = document.getElementById('modalDayRosterTotalBadge');
@@ -2425,7 +3046,7 @@
             return;
         }
 
-        const shiftsOnDate = WEEK_SHIFTS_DATA.filter(s => s.date === chosenDate);
+        const shiftsOnDate = getModalMonthShifts(chosenDate);
         if (badge) badge.textContent = shiftsOnDate.length + ' người trực';
 
         if (shiftsOnDate.length === 0) {
@@ -2438,17 +3059,18 @@
 
         let html = '<div class="d-flex flex-column gap-1">';
         shiftsOnDate.forEach(s => {
-            const isNight = s.tenCa.toLowerCase().includes('đêm');
+            const badgeClass = getShiftBadgeClass(s.tenCa, s.quaDem);
+            const iconClass = getShiftIconClass(s.tenCa, s.quaDem);
             html += `
                 <div class="p-2 rounded-2 border d-flex align-items-center justify-content-between bg-light" style="font-size: 0.78rem;">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge ${isNight ? 'bg-danger text-white' : 'bg-primary text-white'} rounded-pill px-2 py-1" style="font-size: 0.68rem;">
-                            <i class="bi ${isNight ? 'bi-moon-stars-fill' : 'bi-sun-fill'} me-1"></i>${s.tenCa}
+                        <span class="badge ${badgeClass} rounded-pill px-2 py-1" style="font-size: 0.68rem;">
+                            <i class="bi ${iconClass} me-1"></i>${shortShiftName(s.tenCa)}
                         </span>
-                        <strong class="text-dark">${s.empName || ('NV #' + s.empId)}</strong>
-                        <span class="text-muted small">(${s.empCode || s.deptName || ''})</span>
+                        <strong class="text-dark">${s.hoTen}</strong>
+                        <span class="text-muted small">(${s.maNhanVienHienThi || s.tenPhongBan || ''})</span>
                     </div>
-                    <span class="text-muted font-monospace small">${s.time}</span>
+                    <span class="text-muted font-monospace small">${s.gioBatDau} - ${s.gioKetThuc}</span>
                 </div>
             `;
         });
@@ -2467,10 +3089,12 @@
             const empId = parseInt(row.getAttribute('data-emp-id'));
             const statusEl = document.getElementById('shiftStatus-' + empId);
 
-            const existingShift = chosenDate ? WEEK_SHIFTS_DATA.find(s => s.empId === empId && s.date === chosenDate) : null;
+            const existingShift = chosenDate ? findModalEmpShift(empId, chosenDate) : null;
             if (existingShift) {
                 busyCount++;
-                if (statusEl) statusEl.innerHTML = '<span class="badge bg-warning-subtle text-warning-emphasis border"><i class="bi bi-clock-fill me-1"></i>' + existingShift.tenCa + ' (' + existingShift.time + ')</span>';
+                if (statusEl) statusEl.innerHTML = '<span class="badge bg-warning-subtle text-warning-emphasis border" title="' + existingShift.tenCa + '">'
+                    + '<i class="bi bi-clock-fill me-1"></i>' + shortShiftName(existingShift.tenCa)
+                    + ' (' + existingShift.gioBatDau + '-' + existingShift.gioKetThuc + ')</span>';
             } else {
                 freeCount++;
                 if (statusEl) statusEl.innerHTML = '<span class="badge bg-light text-muted border"><i class="bi bi-dash-circle me-1"></i>Trống ca</span>';
@@ -2505,7 +3129,7 @@
 
             let matchStatus = true;
             if (chosenDate && currentModalShiftFilter !== 'all') {
-                const hasShift = WEEK_SHIFTS_DATA.some(s => s.empId === empId && s.date === chosenDate);
+                const hasShift = !!findModalEmpShift(empId, chosenDate);
                 if (currentModalShiftFilter === 'free' && hasShift) matchStatus = false;
                 if (currentModalShiftFilter === 'busy' && !hasShift) matchStatus = false;
             }
@@ -2537,33 +3161,37 @@
 
     function updateModalSelectedCount() {
         const count = document.querySelectorAll('.modal-emp-chk:checked').length;
-        const badge = document.getElementById('modalSelectedCountBadge');
-        if (badge) badge.innerHTML = '<i class="bi bi-check2-all me-1"></i>Đã chọn: ' + count + ' nhân sự';
-
         const submitLabel = document.getElementById('submitCountLabel');
         if (submitLabel) submitLabel.textContent = count;
 
-        document.querySelectorAll('.quick-submit-count').forEach(el => {
-            el.textContent = count;
-        });
+        // Tóm tắt ngay trên thanh cấu hình (thay cho badge rời rạc trước đây)
+        const summary = document.getElementById('modalSchedulingSummaryBadge');
+        if (summary) {
+            const soNgay = modalSelectedDates.size;
+            if (count === 0) {
+                summary.innerHTML = '<i class="bi bi-check2-all"></i> Chưa chọn nhân sự';
+            } else {
+                summary.innerHTML = '<i class="bi bi-check2-all"></i> ' + count + ' nhân sự × ' + soNgay + ' ngày';
+            }
+        }
     }
 
     function validatePhanCaSubmit(e) {
-        if (modalSelectedDates.size === 0) {
+        const huy = () => {
             if (e) {
                 e.preventDefault();
                 e.stopPropagation();
             }
-            alert('Vui lòng chọn ít nhất một ngày làm việc trên lịch trước khi lưu phân ca.');
+        };
+
+        if (modalSelectedDates.size === 0) {
+            huy();
+            showQuickToast('⚠️ Vui lòng chọn ít nhất một ngày làm việc trên lịch trước khi lưu phân ca.');
             return false;
         }
-        const count = document.querySelectorAll('.modal-emp-chk:checked').length;
-        if (count === 0) {
-            if (e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-            alert('Vui lòng chọn ít nhất một nhân viên trong danh sách trước khi lưu phân ca.');
+        if (document.querySelectorAll('.modal-emp-chk:checked').length === 0) {
+            huy();
+            showQuickToast('⚠️ Vui lòng chọn ít nhất một nhân viên trong danh sách trước khi lưu phân ca.');
             return false;
         }
         return true;
@@ -2633,17 +3261,21 @@
 
                 let html = '';
                 Object.values(groups).forEach(g => {
-                    const isNight = g.tenCa.toLowerCase().includes('đêm');
+                    // Mỗi ca một sắc thái riêng để Sáng / Chiều / Đêm không lẫn màu nhau.
+                    const kind = getShiftKind(g.tenCa, g.items.some(i => i.quaDem));
+                    const badgeClass = getShiftBadgeClass(g.tenCa);
+                    const iconClass = getShiftIconClass(g.tenCa);
+                    const headBg = kind === 'night' ? 'background:#0f172a;' : (kind === 'afternoon' ? 'background:#fffbeb;' : 'background:#eff6ff;');
                     html += `
                         <div class="card border-0 rounded-4 shadow-sm overflow-hidden bg-white">
-                            <div class="card-header py-2 px-3 border-bottom d-flex align-items-center justify-content-between ${isNight ? 'bg-danger bg-opacity-10 text-danger' : 'bg-primary bg-opacity-10 text-primary'}">
+                            <div class="card-header py-2 px-3 border-bottom d-flex align-items-center justify-content-between" style="${headBg}">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="badge ${isNight ? 'bg-danger text-white' : 'bg-primary text-white'} rounded-pill px-3 py-1 fw-bold">
-                                        <i class="bi ${isNight ? 'bi-moon-stars-fill' : 'bi-sun-fill'} me-1"></i>${g.tenCa}
+                                    <span class="badge ${badgeClass} rounded-pill px-3 py-1 fw-bold">
+                                        <i class="bi ${iconClass} me-1"></i>${g.tenCa}
                                     </span>
                                     <span class="font-monospace small fw-bold">${g.time}</span>
                                 </div>
-                                <span class="badge ${isNight ? 'bg-danger text-white' : 'bg-primary text-white'} rounded-pill">${g.items.length} nhân sự</span>
+                                <span class="badge ${badgeClass} rounded-pill">${g.items.length} nhân sự</span>
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
@@ -2724,22 +3356,264 @@
     }
 
     // Mở modal xếp ca nhanh khi click vào ô trống trong Ma trận
-    function openQuickAssignModal(maNhanVien, dateStr) {
+    function openQuickAssignModal(maNhanVien, dateStr, maCa) {
         selectModalDateSingle(dateStr);
 
+        if (maCa) {
+            selectModalShift(maCa);
+        }
+
         document.querySelectorAll('.modal-emp-chk').forEach(chk => chk.checked = false);
-        const targetChk = document.querySelector('.modal-emp-chk[value="' + maNhanVien + '"]');
-        if (targetChk) targetChk.checked = true;
+        if (maNhanVien) {
+            const targetChk = document.querySelector('.modal-emp-chk[value="' + maNhanVien + '"]');
+            if (targetChk) targetChk.checked = true;
+        }
 
         updateModalSelectedCount();
 
-        const modal = new bootstrap.Modal(document.getElementById('modalCreatePhanCa'));
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalCreatePhanCa'))
+            || new bootstrap.Modal(document.getElementById('modalCreatePhanCa'));
         modal.show();
+    }
+
+    // =========================================================================
+    // ⚡ CỤM CÔNG CỤ THÊM NHANH CÁC CA TRỰC TIẾP TRÊN LỊCH MA TRẬN (IN-PLACE AJAX)
+    // =========================================================================
+    let currentQuickShiftId = null; // null: Chế độ xem an toàn, 1: Sáng, 2: Chiều, 3: Đêm, 0: Xóa ca
+    let currentQuickShiftName = '';
+    let currentQuickShiftHours = '';
+
+    function setQuickShiftMode(caId, btnElement) {
+        // Cơ chế Toggle: nếu bấm lại vào chính ca đang chọn thì tắt về Chế độ Xem An Toàn (null)
+        if (caId !== null && currentQuickShiftId === caId) {
+            caId = null;
+            btnElement = document.getElementById('btnQuickModeSafe');
+        }
+
+        currentQuickShiftId = caId;
+
+        document.querySelectorAll('.quick-palette-btn').forEach(btn => {
+            btn.classList.remove('active-palette-btn', 'btn-primary');
+            btn.classList.add('btn-light');
+        });
+
+        if (btnElement) {
+            btnElement.classList.remove('btn-light');
+            btnElement.classList.add('active-palette-btn');
+            currentQuickShiftName = btnElement.getAttribute('data-ten-ca') || '';
+            currentQuickShiftHours = btnElement.getAttribute('data-gio') || '';
+        } else if (caId === null) {
+            const safeBtn = document.getElementById('btnQuickModeSafe');
+            if (safeBtn) {
+                safeBtn.classList.remove('btn-light');
+                safeBtn.classList.add('active-palette-btn');
+            }
+        }
+
+        const badge = document.getElementById('quickModeStatusBadge');
+        if (badge) {
+            if (caId === null) {
+                badge.className = 'badge bg-light text-secondary border rounded-pill px-3 py-1 small';
+                badge.innerHTML = '<i class="bi bi-shield-check text-success me-1"></i> Đang ở Chế độ xem &bull; Chọn một ca nếu muốn gán nhanh';
+            } else if (caId === 0) {
+                badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 small';
+                badge.innerHTML = '<i class="bi bi-eraser-fill me-1"></i> Chế độ: <strong>Xóa ca</strong> &bull; Nhấp vào ô ngày để hủy ca (Bấm lại để tắt)';
+            } else {
+                badge.className = 'badge bg-primary-subtle text-primary border rounded-pill px-3 py-1 small';
+                badge.innerHTML = `<i class="bi bi-lightning-charge-fill text-warning me-1"></i> Đang chọn: <strong>${currentQuickShiftName}</strong> &bull; Nhấp vào ô lịch để gán (Bấm lại để tắt)`;
+            }
+        }
+    }
+
+    function handleCellClick(e, maNhanVien, ngayLamViec, hoTen, cellId) {
+        if (e) {
+            e.stopPropagation();
+        }
+
+        const cellEl = document.getElementById(cellId);
+        if (cellEl && cellEl.getAttribute('data-can-assign') === 'false') {
+            const reason = cellEl.getAttribute('data-disabled-reason') || 'Nhân viên không có hợp đồng lao động có hiệu lực vào ngày này.';
+            showQuickToast('⚠️ ' + reason);
+            return;
+        }
+
+        if (ngayLamViec < TODAY_STR) {
+            showQuickToast('⚠️ Không thể phân ca hoặc sửa ca cho ngày trong quá khứ (' + ngayLamViec + ').');
+            return;
+        }
+
+        // Chống bấm nhầm: Nếu đang ở Chế độ xem an toàn (chưa kích hoạt ca nào)
+        if (currentQuickShiftId === null) {
+            showQuickToast(`💡 Đang ở Chế độ xem an toàn. Vui lòng chọn Ca Sáng/Chiều/Đêm ở thanh trên nếu muốn gán nhanh.`);
+            return;
+        }
+
+        executeQuickAssign(maNhanVien, ngayLamViec, currentQuickShiftId, cellId, hoTen);
+    }
+
+    function executeQuickAssign(maNhanVien, ngayLamViec, maCa, cellId, hoTen) {
+        if (ngayLamViec < TODAY_STR) {
+            showQuickToast('⚠️ Không thể phân ca hoặc sửa ca cho ngày trong quá khứ (' + ngayLamViec + ').');
+            return;
+        }
+
+        const targetCell = document.getElementById(cellId);
+        if (!targetCell) return;
+
+        const originalContent = targetCell.innerHTML;
+        targetCell.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center py-3">
+                <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+            </div>`;
+
+        fetch('/PhanCa/QuickAssignAjax', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                maNhanVien: maNhanVien,
+                ngayLamViec: ngayLamViec,
+                maCa: maCa
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                showQuickToast('⚠️ ' + (data.message || 'Lỗi khi cập nhật ca trực.'));
+                targetCell.innerHTML = originalContent;
+                return;
+            }
+
+            if (data.action === 'removed') {
+                targetCell.innerHTML = `
+                    <button type="button" class="btn-quick-slot"
+                            onclick="event.stopPropagation(); handleCellClick(event, ${maNhanVien}, '${ngayLamViec}', '${hoTen}', '${cellId}')"
+                            title="Bấm để gán ca nhanh cho ${hoTen}">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>`;
+
+                const idx = WEEK_SHIFTS_DATA.findIndex(s => s.empId === maNhanVien && s.date === ngayLamViec);
+                if (idx >= 0) WEEK_SHIFTS_DATA.splice(idx, 1);
+                syncModalShiftCache(maNhanVien, ngayLamViec, null);
+                showQuickToast(`Đã xóa ca trực của ${hoTen} ngày ${ngayLamViec}`);
+            } else {
+                const isNight = data.quaDem || data.tenCa.includes('Đêm');
+                const isAfternoon = data.tenCa.includes('Chiều');
+                const pillClass = isNight ? 'shift-pill-night' : (isAfternoon ? 'shift-pill-afternoon' : 'shift-pill-morning');
+                const iconClass = isNight ? 'bi-moon-stars-fill text-warning' : (isAfternoon ? 'bi-cloud-sun-fill text-warning' : 'bi-brightness-high-fill text-primary');
+                const shortTenCa = (data.tenCa && data.tenCa.includes('(')) ? data.tenCa.split('(')[0].trim() : data.tenCa;
+
+                targetCell.innerHTML = `
+                    <div class="shift-pill ${pillClass} mb-1 position-relative text-start shadow-sm in-place-enter kpi-pulse-active"
+                         data-ca-id="${data.maCa}">
+                        <div class="d-flex align-items-center justify-content-between mb-1 gap-1">
+                            <strong class="d-inline-flex align-items-center gap-1 text-truncate" style="min-width: 0; font-size: 0.72rem;" title="${data.tenCa}">
+                                <i class="bi ${iconClass} flex-shrink-0"></i>
+                                <span class="text-truncate">${shortTenCa}</span>
+                            </strong>
+                            <button type="button" class="btn btn-link text-muted p-0 border-0 flex-shrink-0 shift-delete-btn"
+                                    onclick="event.stopPropagation(); executeQuickAssign(${maNhanVien}, '${ngayLamViec}', 0, '${cellId}', '${hoTen}')"
+                                    title="Xóa ca này">
+                                <i class="bi bi-x-circle-fill text-danger text-opacity-75"></i>
+                            </button>
+                        </div>
+                        <div class="small opacity-85 font-monospace" style="font-size: 0.65rem;">
+                            ${data.gioBatDau} - ${data.gioKetThuc}
+                        </div>
+                        ${isNight ? '<span class="badge bg-warning text-dark px-1 mt-1" style="font-size: 0.55rem;">+30% đêm</span>' : ''}
+                    </div>`;
+
+                const existingIdx = WEEK_SHIFTS_DATA.findIndex(s => s.empId === maNhanVien && s.date === ngayLamViec);
+                const shiftObj = {
+                    empId: maNhanVien,
+                    date: ngayLamViec,
+                    maCa: data.maCa,
+                    tenCa: data.tenCa,
+                    time: `${data.gioBatDau} - ${data.gioKetThuc}`,
+                    gioBatDau: data.gioBatDau,
+                    gioKetThuc: data.gioKetThuc,
+                    quaDem: isNight,
+                    empName: hoTen,
+                    empCode: 'NV-' + maNhanVien
+                };
+                if (existingIdx >= 0) {
+                    WEEK_SHIFTS_DATA[existingIdx] = shiftObj;
+                } else {
+                    WEEK_SHIFTS_DATA.push(shiftObj);
+                }
+                syncModalShiftCache(maNhanVien, ngayLamViec, shiftObj);
+
+                setTimeout(() => {
+                    const p = targetCell.querySelector('.kpi-pulse-active');
+                    if (p) p.classList.remove('kpi-pulse-active');
+                }, 600);
+
+                showQuickToast(`✓ Đã gán ${shortTenCa} cho ${hoTen} ngày ${ngayLamViec}`);
+            }
+
+            updateUnassignedCountBadge();
+        })
+        .catch(err => {
+            console.error('Lỗi khi gán ca trực tiếp:', err);
+            targetCell.innerHTML = originalContent;
+            alert('Lỗi kết nối khi gán ca: ' + err.message);
+        });
+    }
+
+    function updateUnassignedCountBadge() {
+        const badge = document.getElementById('unassignedWarningBadge');
+        if (!badge) return;
+
+        const totalEmp = @Model.TongNhanVien;
+        const totalRequiredSlots = totalEmp * 7;
+        const currentAssigned = WEEK_SHIFTS_DATA.length;
+        const remaining = totalRequiredSlots - currentAssigned;
+
+        if (remaining > 0) {
+            badge.innerHTML = `
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1 rounded-pill fw-semibold" style="font-size: 0.72rem;">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> ${remaining} vị trí chưa xếp
+                </span>`;
+        } else {
+            badge.innerHTML = `
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill fw-semibold" style="font-size: 0.72rem;">
+                    <i class="bi bi-check-circle-fill text-success me-1"></i> Đã phủ kín 100%
+                </span>`;
+        }
+    }
+
+    function showQuickToast(msg) {
+        let toast = document.getElementById('quickShiftToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'quickShiftToast';
+            toast.className = 'position-fixed bottom-0 end-0 p-3';
+            toast.style.zIndex = '1090';
+            toast.innerHTML = `
+                <div id="quickToastCard" class="toast align-items-center text-white bg-dark border-0 shadow-lg rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body small fw-semibold d-flex align-items-center gap-2">
+                            <i class="bi bi-check2-circle text-warning fs-6"></i>
+                            <span id="quickToastMsg"></span>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>`;
+            document.body.appendChild(toast);
+        }
+        document.getElementById('quickToastMsg').textContent = msg;
+        const toastEl = document.getElementById('quickToastCard');
+        if (window.bootstrap && bootstrap.Toast) {
+            const bsToast = new bootstrap.Toast(toastEl, { delay: 2500 });
+            bsToast.show();
+        }
     }
 
     // Khởi tạo & Kích hoạt lần đầu tải trang
     document.addEventListener('DOMContentLoaded', function () {
-        const savedMode = localStorage.getItem('overtime_phanca_view_mode') || 'matrix';
+        const savedMode = localStorage.getItem('overtime_phanca_active_tab') || 'calendar';
         switchViewMode(savedMode);
 
         // Render bộ lịch tháng tương tác trong modal
@@ -2760,4 +3634,47 @@
         updateModalSelectedCount();
     });
 </script>
+
+<script id="phancaCalendarDataScript">
+    window.phancaCalendarData = {
+        year: @Model.Year,
+        month: @Model.Month,
+        selectedDate: '@Model.SelectedDate.ToString("yyyy-MM-dd")',
+        days: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CalendarDays.Select(d => new {
+            date = d.Date.ToString("yyyy-MM-dd"),
+            sang = d.Sang,
+            chieu = d.Chieu,
+            dem = d.Dem,
+            tong = d.Tong,
+            isOtherMonth = d.IsOtherMonth,
+            isToday = d.IsToday,
+            isWeekend = d.IsWeekend,
+            isPast = d.IsPast,
+            isSelected = d.IsSelected,
+            hasContractIssue = d.HasContractIssue,
+            expiredContractCount = d.ExpiredContractCount
+        }))),
+        shifts: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AllGridPhanCa.Select(p => new {
+            maPhanCa = p.MaPhanCa,
+            maNhanVien = p.MaNhanVien,
+            hoTen = p.NhanVien?.HoTen ?? ("NV #" + p.MaNhanVien),
+            maNhanVienHienThi = "NV-" + p.MaNhanVien,
+            tenChucVu = p.NhanVien?.ChucVu?.TenChucVu ?? "",
+            tenPhongBan = p.NhanVien?.PhongBan?.TenPhongBan ?? "",
+            maCa = p.MaCa,
+            tenCa = p.CaLamViec?.TenCa ?? ("Ca " + p.MaCa),
+            gioBatDau = p.CaLamViec != null ? p.CaLamViec.GioBatDau.ToString("HH:mm") : "",
+            gioKetThuc = p.CaLamViec != null ? p.CaLamViec.GioKetThuc.ToString("HH:mm") : "",
+            quaDem = p.CaLamViec != null && p.CaLamViec.QuaDem,
+            ngayLamViec = p.NgayLamViec.ToString("yyyy-MM-dd"),
+            avatarColor = "#1e3a8a"
+        }))),
+        caList: [
+            { maCa: 1, tenCa: "Ca Sáng (06:00 - 14:00)", gio: "06:00 - 14:00", badgeClass: "morning" },
+            { maCa: 2, tenCa: "Ca Chiều (14:00 - 22:00)", gio: "14:00 - 22:00", badgeClass: "afternoon" },
+            { maCa: 3, tenCa: "Ca Đêm (22:00 - 06:00)", gio: "22:00 - 06:00", badgeClass: "night" }
+        ]
+    };
+</script>
+<script src="~/js/phanca-calendar.js" asp-append-version="true"></script>
 }
