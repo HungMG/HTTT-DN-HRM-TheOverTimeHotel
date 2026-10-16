@@ -9,9 +9,11 @@ public class NhanVienIndexViewModel
     public NhanVienFormViewModel CreateEmployeeForm { get; set; } = new();
     public string? Keyword { get; set; }
     public int? DepartmentId { get; set; }
+    public int? PositionId { get; set; }
     public string? Status { get; set; }
     public string? ContractFilter { get; set; }
     public IReadOnlyList<SelectListItem> DepartmentOptions { get; set; } = [];
+    public IReadOnlyList<SelectListItem> PositionOptions { get; set; } = [];
     public IReadOnlyList<EmployeeListItemViewModel> Employees { get; set; } = [];
     public int TotalEmployees { get; set; }
     public int TotalFilteredEmployees { get; set; }

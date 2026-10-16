@@ -28,7 +28,7 @@ public class NhanVienController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, int? departmentId, string? status, string? contractFilter, int page = 1, int pageSize = 10, bool isPartial = false)
+    public async Task<IActionResult> Index(string? keyword, int? departmentId, int? positionId, string? status, string? contractFilter, int page = 1, int pageSize = 10, bool isPartial = false)
     {
         keyword = keyword?.Trim();
         status = string.IsNullOrWhiteSpace(status) ? null : status;
@@ -56,7 +56,16 @@ public class NhanVienController : Controller
         }
 
         if (departmentId is > 0)
+        {
             query = query.Where(employee => employee.MaPhongBan == departmentId.Value);
+
+            if (positionId is > 0)
+                query = query.Where(employee => employee.MaChucVu == positionId.Value);
+        }
+        else
+        {
+            positionId = null; // Bắt buộc chọn phòng ban trước mới được lọc theo chức vụ
+        }
 
         if (!string.IsNullOrWhiteSpace(status))
             query = query.Where(employee => employee.TrangThai == status);
@@ -89,7 +98,12 @@ public class NhanVienController : Controller
             }
 
             if (departmentId is > 0)
+            {
                 filtered = filtered.Where(employee => employee.MaPhongBan == departmentId.Value);
+
+                if (positionId is > 0)
+                    filtered = filtered.Where(employee => employee.MaChucVu == positionId.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(status))
                 filtered = filtered.Where(employee => employee.TrangThai == status);
@@ -135,7 +149,11 @@ public class NhanVienController : Controller
             }).ToList();
 
             var deptOptions = depts.Select(item => new SelectListItem(item.TenPhongBan, item.MaPhongBan.ToString(), item.MaPhongBan == departmentId)).ToList();
-            var posOptions = poss.Select(item => new SelectListItem(item.TenChucVu, item.MaChucVu.ToString())).ToList();
+            var posOptions = departmentId is > 0
+                ? poss.Where(x => x.MaPhongBan == departmentId.Value || x.MaPhongBan == null)
+                      .Select(item => new SelectListItem(item.TenChucVu, item.MaChucVu.ToString(), item.MaChucVu == positionId))
+                      .ToList()
+                : new List<SelectListItem>();
 
             var model = new NhanVienIndexViewModel
             {
@@ -148,13 +166,15 @@ public class NhanVienController : Controller
                         TrangThai = "DANG_LAM"
                     },
                     DepartmentOptions = deptOptions,
-                    PositionOptions = posOptions
+                    PositionOptions = poss.Select(item => new SelectListItem(item.TenChucVu, item.MaChucVu.ToString())).ToList()
                 },
                 Keyword = keyword,
                 DepartmentId = departmentId,
+                PositionId = positionId,
                 Status = status,
                 ContractFilter = contractFilter,
                 DepartmentOptions = deptOptions,
+                PositionOptions = posOptions,
                 Employees = pagedEmployees,
                 TotalEmployees = allEmployees.Count,
                 TotalFilteredEmployees = totalFiltered,
@@ -181,9 +201,11 @@ public class NhanVienController : Controller
             {
                 Keyword = keyword,
                 DepartmentId = departmentId,
+                PositionId = positionId,
                 Status = status,
                 ContractFilter = contractFilter,
                 DepartmentOptions = new List<SelectListItem>(),
+                PositionOptions = new List<SelectListItem>(),
                 Employees = new List<EmployeeListItemViewModel>(),
                 CreateEmployeeForm = new NhanVienFormViewModel
                 {

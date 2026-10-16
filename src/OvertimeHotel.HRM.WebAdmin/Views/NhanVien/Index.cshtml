@@ -5,6 +5,7 @@
     {
         keyword = Model.Keyword,
         departmentId = Model.DepartmentId,
+        positionId = Model.PositionId,
         status = Model.Status,
         contractFilter = Model.ContractFilter,
         page,
@@ -64,9 +65,24 @@
                 </div>
                 
                 <div style="min-width: 170px; flex: 1;">
-                    <select name="departmentId" asp-items="Model.DepartmentOptions" class="form-select">
+                    <select name="departmentId" id="employeeFilterDepartment" asp-items="Model.DepartmentOptions" class="form-select">
                         <option value="">-- Tất cả phòng ban --</option>
                     </select>
+                </div>
+
+                <div style="min-width: 170px; flex: 1;">
+                    @if (Model.DepartmentId.HasValue && Model.DepartmentId.Value > 0)
+                    {
+                        <select name="positionId" id="employeeFilterPosition" asp-items="Model.PositionOptions" class="form-select">
+                            <option value="">-- Tất cả chức vụ --</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <select name="positionId" id="employeeFilterPosition" class="form-select" disabled>
+                            <option value="">-- Chọn phòng ban trước --</option>
+                        </select>
+                    }
                 </div>
 
                 <div style="min-width: 140px;">
@@ -78,7 +94,7 @@
                     </select>
                 </div>
 
-                @if (!string.IsNullOrWhiteSpace(Model.Keyword) || Model.DepartmentId.HasValue || !string.IsNullOrWhiteSpace(Model.Status))
+                @if (!string.IsNullOrWhiteSpace(Model.Keyword) || Model.DepartmentId.HasValue || Model.PositionId.HasValue || !string.IsNullOrWhiteSpace(Model.Status))
                 {
                     <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
                 }
@@ -236,11 +252,12 @@
         // Đọc giá trị từ form lọc hiện tại nếu có
         const form = document.querySelector('.catalog-toolbar form[method="get"]');
         if (form) {
+            const formKeys = ['keyword', 'departmentId', 'positionId', 'status'];
             const formData = new FormData(form);
-            for (const [key, val] of formData.entries()) {
-                const trimmed = (val || '').toString().trim();
-                if (trimmed) {
-                    url.searchParams.set(key, trimmed);
+            for (const key of formKeys) {
+                const val = (formData.get(key) || '').toString().trim();
+                if (val) {
+                    url.searchParams.set(key, val);
                 } else {
                     url.searchParams.delete(key);
                 }
@@ -328,7 +345,59 @@
             form.reset();
             form.querySelectorAll('input, select').forEach(c => c.value = '');
         }
-        loadEmployeeTable({ keyword: '', departmentId: '', status: '', page: 1 });
+        const posFilter = document.getElementById('employeeFilterPosition');
+        if (posFilter) {
+            posFilter.innerHTML = '<option value="">-- Chọn phòng ban trước --</option>';
+            posFilter.value = '';
+            posFilter.disabled = true;
+        }
+        loadEmployeeTable({ keyword: '', departmentId: '', positionId: '', status: '', page: 1 });
+    }
+
+    async function updatePositionFilterOptions() {
+        const deptFilter = document.getElementById('employeeFilterDepartment');
+        const posFilter = document.getElementById('employeeFilterPosition');
+        if (!deptFilter || !posFilter) return;
+
+        const deptId = deptFilter.value;
+        const currentPosId = posFilter.value;
+
+        // Nếu chưa chọn phòng ban -> Khóa dropdown chức vụ lại và yêu cầu chọn phòng ban trước
+        if (!deptId) {
+            posFilter.innerHTML = '<option value="">-- Chọn phòng ban trước --</option>';
+            posFilter.value = '';
+            posFilter.disabled = true;
+            return;
+        }
+
+        // Đã chọn phòng ban -> Mở khóa và nạp danh sách chức vụ thuộc phòng ban đó
+        posFilter.disabled = false;
+        posFilter.innerHTML = '<option value="">Đang tải chức vụ...</option>';
+
+        try {
+            const res = await fetch('/ChucVu/GetByDepartment?departmentId=' + encodeURIComponent(deptId));
+            if (res.ok) {
+                const list = await res.json();
+                posFilter.innerHTML = '<option value="">-- Tất cả chức vụ --</option>';
+                let matched = false;
+                list.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.maChucVu;
+                    opt.textContent = item.tenChucVu;
+                    if (String(item.maChucVu) === String(currentPosId)) {
+                        opt.selected = true;
+                        matched = true;
+                    }
+                    posFilter.appendChild(opt);
+                });
+                if (!matched) {
+                    posFilter.value = '';
+                }
+            }
+        } catch (e) {
+            console.error('Lỗi nạp danh sách chức vụ theo phòng ban:', e);
+            posFilter.innerHTML = '<option value="">-- Lỗi tải chức vụ --</option>';
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -340,7 +409,10 @@
                 loadEmployeeTable({ page: 1 });
             });
             form.querySelectorAll('select').forEach(sel => {
-                sel.addEventListener('change', () => {
+                sel.addEventListener('change', async () => {
+                    if (sel.id === 'employeeFilterDepartment') {
+                        await updatePositionFilterOptions();
+                    }
                     loadEmployeeTable({ page: 1 });
                 });
             });
