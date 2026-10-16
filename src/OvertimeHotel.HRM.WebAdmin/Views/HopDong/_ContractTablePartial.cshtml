@@ -64,12 +64,18 @@
                 {
                     var contract = item.Contract;
                     var badgeClass = item.State == "DA_HET_HAN" ? "bg-danger" : item.State == "SAP_HET_HAN" ? "bg-warning text-dark" : item.State == "HIEU_LUC" ? "bg-success" : "bg-secondary";
-                    <tr class="contract-row">
+                    <tr class="contract-row" style="cursor: pointer;" onclick="if (!event.target.closest('a, button, form, select, input')) openContractDetails(@contract.MaHopDong)">
                         <td>
-                            <strong class="text-dark font-monospace fs-6">@contract.SoHopDong</strong>
+                            <a href="javascript:void(0)" onclick="openContractDetails(@contract.MaHopDong); event.stopPropagation();"
+                               class="text-primary font-monospace fs-6 fw-bold text-decoration-none hover-underline" title="Xem chi tiết hợp đồng">
+                                @contract.SoHopDong
+                            </a>
                         </td>
                         <td>
-                            <div class="fw-semibold text-dark font-serif">@item.EmployeeName</div>
+                            <a href="javascript:void(0)" onclick="openContractDetails(@contract.MaHopDong); event.stopPropagation();"
+                               class="fw-semibold text-dark font-serif text-decoration-none hover-underline d-block" title="Xem chi tiết hợp đồng">
+                                @item.EmployeeName
+                            </a>
                             <div class="text-muted small d-flex flex-wrap align-items-center gap-1 mt-1">
                                 <span class="badge bg-light text-secondary border px-2 py-0 font-monospace">NV-@contract.MaNhanVien.ToString("D3")</span>
                                 <span class="badge bg-light text-dark border px-2 py-0"><i class="bi bi-building me-1 text-muted"></i>@item.DepartmentName</span>
@@ -95,7 +101,15 @@
                                     </span>
                                 }
                             </div>
-                            @if (item.State == "DA_HET_HAN" || (item.DaysRemaining.HasValue && item.DaysRemaining.Value <= 30))
+                            @if (item.IsRenewed)
+                            {
+                                <div class="mt-1">
+                                    <span class="badge bg-light text-success border border-success-subtle rounded-pill px-2 py-1" style="font-size: 0.75rem;" title="Nhân viên đã được ký hợp đồng mới tiếp nối">
+                                        <i class="bi bi-check2-all me-1"></i>Đã gia hạn
+                                    </span>
+                                </div>
+                            }
+                            else if (item.State == "DA_HET_HAN" || (item.DaysRemaining.HasValue && item.DaysRemaining.Value <= 30))
                             {
                                 <div class="mt-1">
                                     <a href="javascript:void(0)" 
@@ -145,6 +159,9 @@
                             }
                         </td>
                         <td class="text-end text-nowrap">
+                            <a href="javascript:void(0)" onclick="printContractA4(@contract.MaHopDong); event.stopPropagation();" class="btn btn-sm btn-light border rounded-circle me-1 text-primary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="In mẫu hợp đồng A4">
+                                <i class="bi bi-printer"></i>
+                            </a>
                             <a asp-action="Edit" asp-route-id="@contract.MaHopDong" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hợp đồng">
                                 <i class="bi bi-pencil"></i>
                             </a>

@@ -90,6 +90,25 @@ public class HopDongController : Controller
                 }
             }
 
+            // Tự động khôi phục các hợp đồng còn hạn nhưng bị lưu nhầm trạng thái HET_HAN sang HIEU_LUC
+            var validToRestore = await _context.HopDongs
+                .Where(c => c.TrangThai == "HET_HAN" && (c.NgayKetThuc == null || c.NgayKetThuc >= today))
+                .ToListAsync();
+
+            if (validToRestore.Any())
+            {
+                foreach (var c in validToRestore)
+                {
+                    c.TrangThai = "HIEU_LUC";
+                }
+                await _context.SaveChangesAsync();
+
+                foreach (var contract in allContracts.Where(c => (!c.NgayKetThuc.HasValue || c.NgayKetThuc.Value >= today) && c.TrangThai == "HET_HAN"))
+                {
+                    contract.TrangThai = "HIEU_LUC";
+                }
+            }
+
             // Lọc trên bộ nhớ máy chủ (0ms)
             var filtered = allContracts.AsEnumerable();
             if (!string.IsNullOrWhiteSpace(keyword))
@@ -107,6 +126,10 @@ public class HopDongController : Controller
             var items = filtered.Select(contract =>
             {
                 var days = contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null;
+                var isRenewed = allContracts.Any(other => other.MaNhanVien == contract.MaNhanVien &&
+                                                          other.MaHopDong != contract.MaHopDong &&
+                                                          other.NgayBatDau >= (contract.NgayKetThuc ?? contract.NgayBatDau) &&
+                                                          (other.TrangThai == "HIEU_LUC" || !other.NgayKetThuc.HasValue || other.NgayKetThuc.Value >= today));
                 return new HopDongListItemViewModel
                 {
                     Contract = contract,
@@ -115,7 +138,8 @@ public class HopDongController : Controller
                     PositionName = contract.NhanVien?.ChucVu?.TenChucVu ?? "Chưa phân bổ",
                     PersonalEmail = contract.NhanVien?.EmailCaNhan,
                     DaysRemaining = days,
-                    State = GetState(contract, days)
+                    State = GetState(contract, days),
+                    IsRenewed = isRenewed
                 };
             });
 
@@ -398,6 +422,14 @@ public class HopDongController : Controller
             }
         }
 
+        // Đảm bảo trạng thái hợp đồng mới tạo luôn là HIEU_LUC nếu chưa quá hạn kết thúc
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (string.IsNullOrWhiteSpace(model.Contract.TrangThai) ||
+            (model.Contract.TrangThai == "HET_HAN" && (!model.Contract.NgayKetThuc.HasValue || model.Contract.NgayKetThuc.Value >= today)))
+        {
+            model.Contract.TrangThai = "HIEU_LUC";
+        }
+
         await ValidateContractAsync(model.Contract);
 
         if (!ModelState.IsValid)
@@ -600,6 +632,106 @@ public class HopDongController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GenerateContractNumber(string? hinhThuc)
+    {
+        var contractNumber = await GenerateUniqueContractNumberAsync(hinhThuc);
+        return Json(new { success = true, contractNumber });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DetailsModal(int id)
+    {
+        var contract = await _context.HopDongs
+            .AsNoTracking()
+            .Include(c => c.NhanVien)
+                .ThenInclude(nv => nv!.PhongBan)
+            .Include(c => c.NhanVien)
+                .ThenInclude(nv => nv!.ChucVu)
+            .FirstOrDefaultAsync(c => c.MaHopDong == id);
+
+        if (contract == null || contract.NhanVien == null)
+            return NotFound("Không tìm thấy thông tin hợp đồng.");
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var daysRemaining = contract.NgayKetThuc.HasValue
+            ? (contract.NgayKetThuc.Value.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days
+            : (int?)null;
+
+        var state = contract.TrangThai == "DA_CHAM_DUT"
+            ? "DA_CHAM_DUT"
+            : !contract.NgayKetThuc.HasValue
+                ? "HIEU_LUC"
+                : daysRemaining < 0
+                    ? "DA_HET_HAN"
+                    : daysRemaining <= 30
+                        ? "SAP_HET_HAN"
+                        : "HIEU_LUC";
+
+        var isRenewed = await _context.HopDongs
+            .AsNoTracking()
+            .AnyAsync(c => c.MaNhanVien == contract.MaNhanVien && c.MaHopDong != contract.MaHopDong && c.NgayBatDau >= (contract.NgayKetThuc ?? contract.NgayBatDau));
+
+        var previousContract = await _context.HopDongs
+            .AsNoTracking()
+            .Where(c => c.MaNhanVien == contract.MaNhanVien && c.MaHopDong != contract.MaHopDong && c.NgayBatDau < contract.NgayBatDau)
+            .OrderByDescending(c => c.NgayBatDau)
+            .FirstOrDefaultAsync();
+
+        var nextContract = await _context.HopDongs
+            .AsNoTracking()
+            .Where(c => c.MaNhanVien == contract.MaNhanVien && c.MaHopDong != contract.MaHopDong && c.NgayBatDau > contract.NgayBatDau)
+            .OrderBy(c => c.NgayBatDau)
+            .FirstOrDefaultAsync();
+
+        var model = new HopDongDetailsModalViewModel
+        {
+            Contract = contract,
+            Employee = contract.NhanVien,
+            DepartmentName = contract.NhanVien.PhongBan?.TenPhongBan ?? "Chưa phân bổ",
+            PositionName = contract.NhanVien.ChucVu?.TenChucVu ?? "Chưa phân bổ",
+            DaysRemaining = daysRemaining,
+            State = state,
+            IsRenewed = isRenewed,
+            PreviousContract = previousContract,
+            NextContract = nextContract
+        };
+
+        return PartialView("_ContractDetailsModalContent", model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Print(int id)
+    {
+        var contract = await _context.HopDongs
+            .AsNoTracking()
+            .Include(c => c.NhanVien)
+                .ThenInclude(nv => nv!.PhongBan)
+            .Include(c => c.NhanVien)
+                .ThenInclude(nv => nv!.ChucVu)
+            .FirstOrDefaultAsync(c => c.MaHopDong == id);
+
+        if (contract == null || contract.NhanVien == null)
+            return NotFound("Không tìm thấy thông tin hợp đồng để in.");
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var daysRemaining = contract.NgayKetThuc.HasValue
+            ? (contract.NgayKetThuc.Value.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days
+            : (int?)null;
+
+        var model = new HopDongDetailsModalViewModel
+        {
+            Contract = contract,
+            Employee = contract.NhanVien,
+            DepartmentName = contract.NhanVien.PhongBan?.TenPhongBan ?? "Khách sạn The OverTime",
+            PositionName = contract.NhanVien.ChucVu?.TenChucVu ?? "Nhân viên",
+            DaysRemaining = daysRemaining
+        };
+
+        return View("Print", model);
+    }
+
+
     private async Task ValidateContractAsync(HopDong model, int? currentId = null)
     {
         model.LoaiHopDong = model.LoaiHopDong?.Trim() ?? string.Empty;
@@ -618,7 +750,53 @@ public class HopDongController : Controller
         if (string.IsNullOrWhiteSpace(model.LoaiHopDong)) ModelState.AddModelError("Contract.LoaiHopDong", "Vui lòng nhập loại hợp đồng.");
         if (model.NgayKetThuc.HasValue && model.NgayKetThuc < model.NgayBatDau) ModelState.AddModelError("Contract.NgayKetThuc", "Ngày kết thúc phải sau ngày bắt đầu.");
         if (model.LuongCoBan < 0) ModelState.AddModelError("Contract.LuongCoBan", "Lương cơ bản không được âm.");
-        if (await _context.HopDongs.AnyAsync(item => item.MaHopDong != currentId && item.SoHopDong.ToLower() == model.SoHopDong.ToLower())) ModelState.AddModelError("Contract.SoHopDong", "Mã / Số hợp đồng đã tồn tại.");
+        if (await _context.HopDongs.AnyAsync(item => item.MaHopDong != currentId && item.SoHopDong.ToLower() == model.SoHopDong.ToLower()))
+        {
+            ModelState.AddModelError("Contract.SoHopDong", $"Mã / Số hợp đồng '{model.SoHopDong}' đã tồn tại trong hệ thống. Vui lòng bấm 'Tạo mã mới' để nhận mã ngẫu nhiên duy nhất.");
+        }
+
+        // Chặn trùng lặp / chồng chéo thời gian hợp đồng cho cùng 1 nhân sự
+        if (model.MaNhanVien > 0)
+        {
+            var otherContracts = await _context.HopDongs
+                .AsNoTracking()
+                .Where(item => item.MaNhanVien == model.MaNhanVien && item.MaHopDong != currentId && item.TrangThai != "DA_CHAM_DUT")
+                .ToListAsync();
+
+            foreach (var other in otherContracts)
+            {
+                bool overlap = false;
+                var mStart = model.NgayBatDau;
+                var mEnd = model.NgayKetThuc;
+                var oStart = other.NgayBatDau;
+                var oEnd = other.NgayKetThuc;
+
+                if (!mEnd.HasValue && !oEnd.HasValue)
+                {
+                    overlap = true;
+                }
+                else if (!mEnd.HasValue)
+                {
+                    overlap = oEnd >= mStart;
+                }
+                else if (!oEnd.HasValue)
+                {
+                    overlap = mEnd >= oStart;
+                }
+                else
+                {
+                    overlap = (mStart <= oEnd.Value) && (oStart <= mEnd.Value);
+                }
+
+                if (overlap)
+                {
+                    var oEndStr = other.NgayKetThuc.HasValue ? other.NgayKetThuc.Value.ToString("dd/MM/yyyy") : "Không thời hạn";
+                    ModelState.AddModelError("Contract.NgayBatDau",
+                        $"Nhân sự này đã có hợp đồng '{other.SoHopDong}' ({other.NgayBatDau:dd/MM/yyyy} - {oEndStr}) đang có hiệu lực. Một nhân sự không thể có 2 hợp đồng trùng lặp thời gian.");
+                    break;
+                }
+            }
+        }
     }
 
     private async Task<string> GenerateUniqueContractNumberAsync(string? hinhThucHopDong)
@@ -627,6 +805,7 @@ public class HopDongController : Controller
         var year = DateTime.Now.Year;
         var random = new Random();
 
+        // 1. Thử sinh số ngẫu nhiên 2 chữ số (01-99) có kiểm tra tồn tại
         for (int i = 0; i < 50; i++)
         {
             var randomNum = random.Next(1, 100);
@@ -638,8 +817,30 @@ public class HopDongController : Controller
             }
         }
 
-        var fallbackNum = random.Next(100, 999);
-        return $"{prefix}-{year}/{fallbackNum:D3}/OTH";
+        // 2. Thử sinh số ngẫu nhiên 3 chữ số (100-999) có kiểm tra tồn tại
+        for (int i = 0; i < 50; i++)
+        {
+            var randomNum = random.Next(100, 1000);
+            var candidate = $"{prefix}-{year}/{randomNum:D3}/OTH";
+            var exists = await _context.HopDongs.AnyAsync(h => h.SoHopDong.ToLower() == candidate.ToLower());
+            if (!exists)
+            {
+                return candidate;
+            }
+        }
+
+        // 3. Fallback an toàn tuyệt đối: quét tuần tự đảm bảo luôn tìm được mã duy nhất không trùng lặp
+        int seq = 1;
+        while (true)
+        {
+            var candidate = $"{prefix}-{year}/{seq:D3}/OTH";
+            var exists = await _context.HopDongs.AnyAsync(h => h.SoHopDong.ToLower() == candidate.ToLower());
+            if (!exists)
+            {
+                return candidate;
+            }
+            seq++;
+        }
     }
 
     private async Task<IReadOnlyList<SelectListItem>> GetEmployeeOptionsAsync() =>
@@ -649,7 +850,8 @@ public class HopDongController : Controller
     {
         if (contract == null) return "CHUA_CO";
         if (contract.TrangThai == "DA_CHAM_DUT") return "DA_CHAM_DUT";
-        if (contract.TrangThai == "HET_HAN" || (daysRemaining.HasValue && daysRemaining.Value < 0)) return "DA_HET_HAN";
+        if (daysRemaining.HasValue && daysRemaining.Value < 0) return "DA_HET_HAN";
+        if (contract.TrangThai == "HET_HAN" && (!daysRemaining.HasValue || daysRemaining.Value <= 0)) return "DA_HET_HAN";
         if (daysRemaining is >= 0 and <= 30) return "SAP_HET_HAN";
         return "HIEU_LUC";
     }
