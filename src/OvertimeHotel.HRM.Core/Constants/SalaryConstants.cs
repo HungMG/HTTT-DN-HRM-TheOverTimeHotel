@@ -15,4 +15,33 @@ public static class SalaryConstants
     public const decimal BHYT_RATE = 0.015m;                 // BHYT 1.5%
     public const decimal BHTN_RATE = 0.01m;                  // BHTN 1.0%
     public const decimal TOTAL_INSURANCE_RATE = 0.105m;      // Tổng cộng 10.5%
+
+    // Định mức phụ cấp ăn ca miễn thuế TNCN
+    public const decimal MEAL_ALLOWANCE_PER_DAY = 30000m;    // 30.000 VNĐ / ngày công thực tế
+
+    // Giảm trừ gia cảnh thuế TNCN
+    public const decimal PERSONAL_TAX_DEDUCTION = 11000000m; // 11.000.000 VNĐ/tháng
+    public const decimal DEPENDENT_TAX_DEDUCTION = 4400000m; // 4.400.000 VNĐ/tháng/người
+
+    // Phạt vi phạm kỷ luật chấm công
+    public const decimal FINE_LATE_1_TO_15_MINS = 50000m;    // Đi trễ 1-15 phút: 50.000 VNĐ/lần
+    public const decimal FINE_LATE_16_TO_30_MINS = 100000m;  // Đi trễ 16-30 phút: 100.000 VNĐ/lần
+    public const decimal FINE_ABSENCE_PENALTY = 200000m;     // Phạt bổ sung bỏ ca: 200.000 VNĐ/lần
+
+    // Hệ số thù lao sự kiện khách sạn
+    public const decimal EVENT_EXCELLENT_BONUS_RATE = 0.10m; // Thưởng đánh giá xuất sắc +10%
+
+    // Trạng thái kỳ lương
+    public const string PERIOD_OPEN = "MO";
+    public const string PERIOD_DRAFT = "NHAP";
+    public const string PERIOD_PENDING_APPROVAL = "CHO_DUYET";
+    public const string PERIOD_APPROVED = "DA_DUYET";
+    public const string PERIOD_REJECTED = "TU_CHOI";
+    public const string PERIOD_LOCKED = "KHOA_SO";
+
+    // Trạng thái phiếu lương
+    public const string PAYSLIP_DRAFT = "NHAP";
+    public const string PAYSLIP_PENDING = "CHO_DUYET";
+    public const string PAYSLIP_APPROVED = "DA_DUYET";
+    public const string PAYSLIP_PAID = "DA_THANH_TOAN";
 }

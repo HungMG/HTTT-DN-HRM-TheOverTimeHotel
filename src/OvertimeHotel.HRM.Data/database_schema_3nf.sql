@@ -161,7 +161,14 @@ CREATE TABLE IF NOT EXISTS KY_LUONG (
     nam INT NOT NULL CHECK (nam >= 2000),
     tu_ngay DATE NOT NULL,
     den_ngay DATE NOT NULL,
-    trang_thai VARCHAR(30) NOT NULL DEFAULT 'MO' CHECK (trang_thai IN ('MO', 'DANG_TINH', 'KHOA_SO')),
+    trang_thai VARCHAR(30) NOT NULL DEFAULT 'MO' CHECK (trang_thai IN ('MO', 'NHAP', 'CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'KHOA_SO')),
+    ngay_gui_duyet TIMESTAMPTZ NULL,
+    nguoi_gui_duyet VARCHAR(100) NULL,
+    ngay_duyet TIMESTAMPTZ NULL,
+    nguoi_duyet VARCHAR(100) NULL,
+    ly_do_tu_choi TEXT NULL,
+    ngay_khoa_so TIMESTAMPTZ NULL,
+    nguoi_khoa_so VARCHAR(100) NULL,
     CONSTRAINT uq_ky_luong_thang_nam UNIQUE (thang, nam)
 );
 
@@ -178,7 +185,7 @@ CREATE TABLE IF NOT EXISTS PHIEU_LUONG (
     tong_thuong DECIMAL(15,2) NOT NULL DEFAULT 0.00,
     tong_khau_tru DECIMAL(15,2) NOT NULL DEFAULT 0.00,
     thuc_nhan DECIMAL(15,2) NOT NULL,
-    trang_thai VARCHAR(30) NOT NULL DEFAULT 'NHAP' CHECK (trang_thai IN ('NHAP', 'DA_DUYET', 'DA_THANH_TOAN')),
+    trang_thai VARCHAR(30) NOT NULL DEFAULT 'NHAP' CHECK (trang_thai IN ('NHAP', 'CHO_DUYET', 'DA_DUYET', 'DA_THANH_TOAN')),
     CONSTRAINT uq_phieu_luong_nv_ky UNIQUE (ma_nhan_vien, ma_ky_luong)
 );
 

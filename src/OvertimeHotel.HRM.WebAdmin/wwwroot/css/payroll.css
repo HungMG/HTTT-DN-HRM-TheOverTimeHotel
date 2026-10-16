@@ -31,3 +31,157 @@
   .payroll-action-button { min-width: 44px; min-height: 44px; }
   .payroll-workspace .catalog-toolbar > a { width: 100%; }
 }
+
+/* --- WORKFLOW STEPPER --- */
+.payroll-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem 1.75rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+.payroll-step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+  flex: 1;
+}
+.payroll-step-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 2px solid #cbd5e1;
+  transition: all 0.2s ease;
+}
+.payroll-step.active .payroll-step-circle {
+  background: #1e3a8a;
+  color: #ffffff;
+  border-color: #d4af37;
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2);
+}
+.payroll-step.completed .payroll-step-circle {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+}
+.payroll-step.rejected .payroll-step-circle {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+.payroll-step-info {
+  display: flex;
+  flex-direction: column;
+}
+.payroll-step-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+.payroll-step-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.payroll-step-line {
+  flex: 1;
+  height: 3px;
+  background: #e2e8f0;
+  margin: 0 1rem;
+}
+.payroll-step-line.completed {
+  background: #10b981;
+}
+
+/* --- STATS KPI CARDS --- */
+.payroll-kpi-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.payroll-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+}
+.payroll-kpi-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 0.35rem;
+}
+.payroll-kpi-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-family: 'Fraunces', serif;
+  color: #0f172a;
+}
+.payroll-kpi-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+}
+
+/* --- DETAIL 2-COLUMN VIEW --- */
+.payroll-payslip-card {
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+.payroll-tier-header {
+  padding: 1rem 1.25rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.payroll-tier-income {
+  background: #f0fdf4;
+  border-bottom: 2px solid #22c55e;
+  color: #166534;
+}
+.payroll-tier-deduction {
+  background: #fef2f2;
+  border-bottom: 2px solid #ef4444;
+  color: #991b1b;
+}
+
+/* --- PRINT PAYSLIP STYLES --- */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-payslip, .printable-payslip * {
+    visibility: visible;
+  }
+  .printable-payslip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: #ffffff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
