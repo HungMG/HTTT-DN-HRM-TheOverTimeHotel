@@ -135,8 +135,86 @@
     </div>
 </div>
 
+<!-- MODAL XEM CHI TIẾT HỢP ĐỒNG LAO ĐỘNG -->
+<div class="modal fade" id="contractDetailsModal" tabindex="-1" aria-labelledby="contractDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 24px; overflow: hidden;">
+            <div class="modal-body p-0" id="contractDetailsModalBody">
+                <!-- Nội dung được nạp động qua AJAX từ /HopDong/DetailsModal/{id} -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
 @section Scripts {
 <script>
+    // =========================================================================
+    // XEM CHI TIẾT HỢP ĐỒNG (MODAL AJAX) & IN MẪU HỢP ĐỒNG A4
+    // =========================================================================
+    function openContractDetails(id) {
+        const modalEl = document.getElementById('contractDetailsModal');
+        const modalBody = document.getElementById('contractDetailsModalBody');
+        if (!modalEl || !modalBody) return;
+
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+
+        // Hiệu ứng Shimmer Skeleton sang trọng
+        modalBody.innerHTML = `
+            <div class="p-4">
+                <div class="d-flex align-items-center gap-3 p-4 rounded-4 mb-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);">
+                    <div class="rounded-circle bg-white bg-opacity-25" style="width: 70px; height: 70px; animation: hotelContractPulse 1.2s infinite ease-in-out;"></div>
+                    <div class="flex-grow-1">
+                        <div class="rounded-pill bg-white bg-opacity-25 mb-2" style="width: 35%; height: 20px; animation: hotelContractPulse 1.2s infinite ease-in-out;"></div>
+                        <div class="rounded-pill bg-white bg-opacity-15" style="width: 60%; height: 26px; animation: hotelContractPulse 1.2s infinite ease-in-out;"></div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6"><div class="rounded-4 bg-light border p-4" style="height: 220px; animation: hotelContractPulse 1.2s infinite ease-in-out;"></div></div>
+                    <div class="col-md-6"><div class="rounded-4 bg-light border p-4" style="height: 220px; animation: hotelContractPulse 1.2s infinite ease-in-out;"></div></div>
+                    <div class="col-12"><div class="rounded-4 bg-light border p-4" style="height: 140px; animation: hotelContractPulse 1.2s infinite ease-in-out;"></div></div>
+                </div>
+            </div>
+            <style>
+                @@keyframes hotelContractPulse {
+                    0%, 100% { opacity: 0.45; }
+                    50% { opacity: 0.9; }
+                }
+            </style>
+        `;
+
+        fetch('/HopDong/DetailsModal/' + id)
+            .then(res => {
+                if (!res.ok) throw new Error('Không thể tải chi tiết hợp đồng (Mã lỗi ' + res.status + ')');
+                return res.text();
+            })
+            .then(html => {
+                modalBody.innerHTML = html;
+            })
+            .catch(err => {
+                modalBody.innerHTML = `
+                    <div class="p-5 text-center">
+                        <i class="bi bi-exclamation-triangle text-danger display-4 mb-3"></i>
+                        <h5 class="fw-bold">Lỗi nạp thông tin hợp đồng</h5>
+                        <p class="text-muted small">${err.message || 'Vui lòng thử lại sau.'}</p>
+                        <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3 mt-2" data-bs-dismiss="modal">Đóng</button>
+                    </div>
+                `;
+            });
+    }
+
+    function printContractA4(id) {
+        const printWin = window.open('/HopDong/Print/' + id, '_blank', 'width=920,height=980');
+        if (!printWin) {
+            alert('Trình duyệt đang chặn cửa sổ pop-up. Vui lòng cấp quyền để mở bản in hợp đồng.');
+            return;
+        }
+    }
+
+    window.openContractDetails = openContractDetails;
+    window.printContractA4 = printContractA4;
+
     // =========================================================================
     // ZERO FULL-PAGE RELOAD IN-PLACE PAGINATION & FILTERING (TARGETED ISOLATION)
     // =========================================================================

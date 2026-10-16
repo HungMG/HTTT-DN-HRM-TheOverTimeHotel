@@ -32,3 +32,17 @@ public class HopDongListItemViewModel
     public string State { get; init; } = string.Empty;
     public bool IsRenewed { get; init; }
 }
+
+public class HopDongDetailsModalViewModel
+{
+    public HopDong Contract { get; init; } = new();
+    public NhanVien Employee { get; init; } = new();
+    public string DepartmentName { get; init; } = string.Empty;
+    public string PositionName { get; init; } = string.Empty;
+    public int? DaysRemaining { get; init; }
+    public string State { get; init; } = string.Empty;
+    public bool IsRenewed { get; init; }
+    public HopDong? PreviousContract { get; init; }
+    public HopDong? NextContract { get; init; }
+}
+

@@ -1,0 +1,313 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.HopDongDetailsModalViewModel
+@{
+    Layout = null;
+    var contract = Model.Contract;
+    var emp = Model.Employee;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>In Hợp Đồng Lao Động - @contract.SoHopDong - The OverTime Hotel</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        @@page {
+            size: A4;
+            margin: 20mm 15mm 20mm 15mm;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 13pt;
+            line-height: 1.45;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 20px 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 18px;
+        }
+        .header h3 {
+            margin: 0;
+            font-size: 12pt;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 4px 0 0;
+            font-size: 13pt;
+        }
+        .line {
+            width: 35%;
+            margin: 6px auto 16px;
+            border-bottom: 1.5px solid #000;
+        }
+        .title {
+            text-align: center;
+            margin: 15px 0 20px;
+        }
+        .title h1 {
+            margin: 0;
+            font-size: 17pt;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .title p {
+            margin: 4px 0 0;
+            font-size: 12pt;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-top: 14px;
+            margin-bottom: 4px;
+            text-decoration: underline;
+            font-size: 13.5pt;
+        }
+        table.info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 6px;
+        }
+        table.info-table td {
+            padding: 3px 0;
+            vertical-align: top;
+        }
+        .signature-block {
+            width: 100%;
+            margin-top: 35px;
+            page-break-inside: avoid;
+        }
+        .signature-block td {
+            width: 50%;
+            text-align: center;
+            vertical-align: top;
+            padding: 10px;
+        }
+        .no-print {
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            background: #0f172a;
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: -20px -40px 25px -40px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .no-print button {
+            cursor: pointer;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 14px;
+            padding: 8px 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-print {
+            background: #d4af37;
+            color: #0f172a;
+        }
+        .btn-print:hover {
+            background: #fde047;
+        }
+        .btn-close-win {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+        .btn-close-win:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        @@media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- THANH CÔNG CỤ IN BẢN A4 -->
+    <div class="no-print">
+        <div style="font-weight: 600; font-size: 15px;">
+            <i class="bi bi-file-earmark-pdf-fill" style="color: #d4af37; margin-right: 6px;"></i>
+            Bản In Hợp Đồng Chuẩn A4 &bull; @contract.SoHopDong
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn-print" onclick="window.print()">
+                <i class="bi bi-printer-fill"></i> In Hợp Đồng Này (A4)
+            </button>
+            <button type="button" class="btn-close-win" onclick="window.close()">
+                <i class="bi bi-x-lg"></i> Đóng Cửa Sổ
+            </button>
+        </div>
+    </div>
+
+    <!-- QUỐC HIỆU TIÊU NGỮ -->
+    <div class="header">
+        <h3>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h3>
+        <p><strong>Độc lập - Tự do - Hạnh phúc</strong></p>
+        <div class="line"></div>
+    </div>
+
+    <!-- TIÊU ĐỀ HỢP ĐỒNG -->
+    <div class="title">
+        <h1>HỢP ĐỒNG LAO ĐỘNG</h1>
+        <p>Số hiệu văn bản: <strong>@contract.SoHopDong</strong></p>
+    </div>
+
+    <p style="text-align: justify;">
+        Hôm nay, ngày @DateTime.Today.Day tháng @DateTime.Today.Month năm @DateTime.Today.Year, tại Văn phòng Ban Quản Lý Khách sạn The OverTime Hotel, chúng tôi gồm các bên dưới đây cùng thỏa thuận ký kết hợp đồng lao động:
+    </p>
+
+    <!-- BÊN A -->
+    <div class="section-title">BÊN A: NGƯỜI SỬ DỤNG LAO ĐỘNG</div>
+    <table class="info-table">
+        <tr>
+            <td style="width: 220px;"><strong>Đơn vị sử dụng LĐ:</strong></td>
+            <td><strong>KHÁCH SẠN THE OVERTIME HOTEL</strong></td>
+        </tr>
+        <tr>
+            <td><strong>Địa chỉ trụ sở:</strong></td>
+            <td>Khu Du Lịch & Nghỉ Dưỡng Quốc Tế The OverTime Hotel</td>
+        </tr>
+        <tr>
+            <td><strong>Đại diện pháp luật:</strong></td>
+            <td><strong>Ông Nguyễn Đình Cường</strong> &nbsp;&nbsp;&nbsp;&nbsp; <strong>Chức vụ:</strong> Tổng Giám Đốc</td>
+        </tr>
+    </table>
+
+    <!-- BÊN B -->
+    <div class="section-title">BÊN B: NGƯỜI LAO ĐỘNG</div>
+    <table class="info-table">
+        <tr>
+            <td style="width: 220px;"><strong>Họ và tên người lao động:</strong></td>
+            <td><strong style="text-transform: uppercase;">@emp.HoTen</strong></td>
+        </tr>
+        <tr>
+            <td><strong>Mã số nhân sự:</strong></td>
+            <td><strong>NV-@emp.MaNhanVien.ToString("D3")</strong></td>
+        </tr>
+        <tr>
+            <td><strong>Ngày tháng năm sinh:</strong></td>
+            <td>@emp.NgaySinh.ToString("dd/MM/yyyy") &nbsp;&nbsp;&nbsp;&nbsp; <strong>Giới tính:</strong> @(emp.GioiTinh == "NAM" ? "Nam" : "Nữ")</td>
+        </tr>
+        <tr>
+            <td><strong>Điện thoại liên hệ:</strong></td>
+            <td>@emp.DienThoai</td>
+        </tr>
+        <tr>
+            <td><strong>Email cá nhân nhận HĐ:</strong></td>
+            <td>@(emp.EmailCaNhan ?? "Chưa cung cấp")</td>
+        </tr>
+        <tr>
+            <td><strong>Bộ phận / Phòng ban:</strong></td>
+            <td>@Model.DepartmentName</td>
+        </tr>
+        <tr>
+            <td><strong>Chức danh / Vị trí:</strong></td>
+            <td><strong>@Model.PositionName</strong></td>
+        </tr>
+    </table>
+
+    <p style="text-align: justify; margin-top: 10px;">
+        Hai bên cùng tự nguyện thỏa thuận ký kết Hợp đồng lao động và cam kết chấp hành nghiêm túc các điều khoản sau đây:
+    </p>
+
+    <!-- ĐIỀU 1 -->
+    <div class="section-title">ĐIỀU 1: THỜI HẠN & HÌNH THỨC HỢP ĐỒNG</div>
+    <table class="info-table">
+        <tr>
+            <td style="width: 220px;">- Loại hợp đồng:</td>
+            <td><strong>@contract.LoaiHopDong</strong></td>
+        </tr>
+        <tr>
+            <td>- Hình thức hợp đồng:</td>
+            <td><strong>@(contract.HinhThucHopDong == "THU_VIEC" ? "Hợp đồng thử việc" : "Hợp đồng chính thức")</strong></td>
+        </tr>
+        <tr>
+            <td>- Ngày bắt đầu có hiệu lực:</td>
+            <td><strong>@contract.NgayBatDau.ToString("dd/MM/yyyy")</strong></td>
+        </tr>
+        <tr>
+            <td>- Ngày kết thúc hợp đồng:</td>
+            <td><strong>@(contract.NgayKetThuc?.ToString("dd/MM/yyyy") ?? "Hợp đồng không xác định thời hạn")</strong></td>
+        </tr>
+        <tr>
+            <td>- Địa điểm làm việc:</td>
+            <td>Toàn bộ khuôn viên và các khu vực dịch vụ của Khách sạn The OverTime Hotel.</td>
+        </tr>
+    </table>
+
+    <!-- ĐIỀU 2 -->
+    <div class="section-title">ĐIỀU 2: TIỀN LƯƠNG & CHẾ ĐỘ PHÚC LỢI NGHỈ DƯỠNG</div>
+    <table class="info-table">
+        <tr>
+            <td style="width: 220px;">- Mức lương cơ bản:</td>
+            <td><strong style="font-size: 14pt;">@contract.LuongCoBan.ToString("N0") VNĐ/tháng</strong></td>
+        </tr>
+        <tr>
+            <td>- Phụ cấp làm ca đêm (nếu có):</td>
+            <td>Được trả thêm ít nhất bằng 30% tiền lương tính theo đơn giá tiền lương hoặc tiền lương thực trả theo công việc của ngày làm việc bình thường theo Điều 98 Bộ Luật Lao Động 2019.</td>
+        </tr>
+        <tr>
+            <td>- Trích nộp bảo hiểm:</td>
+            <td>Khấu trừ và trích nộp Bảo hiểm xã hội, BHYT, BHTN 10.5% theo đúng quy định hiện hành của Nhà nước.</td>
+        </tr>
+        <tr>
+            <td>- Phương thức thanh toán:</td>
+            <td>Chuyển khoản trực tiếp vào tài khoản ngân hàng của Người lao động định kỳ hàng tháng.</td>
+        </tr>
+    </table>
+
+    <!-- ĐIỀU 3 -->
+    <div class="section-title">ĐIỀU 3: QUYỀN VÀ NGHĨA VỤ CỦA CÁC BÊN</div>
+    <p style="text-align: justify; margin: 4px 0;">
+        1. <strong>Người lao động:</strong> Được đảm bảo các quyền lợi về an toàn, vệ sinh lao động, trang bị đồng phục khách sạn tiêu chuẩn 5 sao; có nghĩa vụ hoàn thành tốt nhiệm vụ được giao, chấp hành nghiêm chỉnh nội quy lao động và quy tắc văn hóa ứng xử của The OverTime Hotel.
+    </p>
+    <p style="text-align: justify; margin: 4px 0;">
+        2. <strong>Người sử dụng lao động:</strong> Đảm bảo việc làm và thực hiện đầy đủ các chế độ tiền lương, đãi ngộ đã cam kết; có quyền điều động, bố trí công việc phù hợp với năng lực và nhu cầu vận hành thực tế của khách sạn.
+    </p>
+
+    <!-- ĐIỀU 4 -->
+    <div class="section-title">ĐIỀU 4: ĐIỀU KHOẢN THI HÀNH</div>
+    <p style="text-align: justify; margin: 4px 0;">
+        - Hợp đồng này có hiệu lực kể từ ngày @contract.NgayBatDau.ToString("dd/MM/yyyy").<br />
+        - Hợp đồng được lập thành 02 (hai) bản có giá trị pháp lý như nhau; Bên A giữ 01 bản, Bên B giữ 01 bản.<br />
+        - Văn bản hợp đồng được số hóa, lưu trữ trên Hệ thống Quản trị Nhân sự Khách sạn The OverTime và gửi thông báo tới email cá nhân của Bên B.
+    </p>
+
+    <!-- CHỮ KÝ -->
+    <table class="signature-block">
+        <tr>
+            <td>
+                <strong>ĐẠI DIỆN NGƯỜI LAO ĐỘNG (BÊN B)</strong><br />
+                <em>(Ký, ghi rõ họ tên)</em>
+                <br /><br /><br /><br /><br />
+                <strong style="text-transform: uppercase;">@emp.HoTen</strong>
+            </td>
+            <td>
+                <strong>ĐẠI DIỆN KHÁCH SẠN THE OVERTIME (BÊN A)</strong><br />
+                <em>(Ký tên, đóng dấu pháp nhân)</em>
+                <br /><br /><br /><br /><br />
+                <strong>Nguyễn Đình Cường</strong><br />
+                <em>Tổng Giám Đốc</em>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
