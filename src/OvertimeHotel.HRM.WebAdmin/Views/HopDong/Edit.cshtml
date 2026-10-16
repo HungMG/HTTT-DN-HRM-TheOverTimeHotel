@@ -74,22 +74,34 @@
             }
         });
 
-        // 1. Tự động sinh mã hợp đồng ngẫu nhiên
-        function generateRandomContractNumber(force = false) {
+        // 1. Tự động sinh mã hợp đồng ngẫu nhiên duy nhất từ CSDL
+        async function generateRandomContractNumber(force = false) {
             const soHopDongInput = document.getElementById('contractSoHopDong');
             if (!soHopDongInput) return;
 
             if (soHopDongInput.value.trim() && !force) return;
 
             const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
-            const isThuViec = hinhThucSelect && hinhThucSelect.value === 'THU_VIEC';
+            const hinhThuc = hinhThucSelect ? hinhThucSelect.value : 'CHINH_THUC';
+
+            try {
+                const res = await fetch('/HopDong/GenerateContractNumber?hinhThuc=' + encodeURIComponent(hinhThuc));
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.contractNumber) {
+                        soHopDongInput.value = data.contractNumber;
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('Lỗi lấy mã hợp đồng từ máy chủ, dùng mã ngẫu nhiên dự phòng:', e);
+            }
+
+            const isThuViec = hinhThuc === 'THU_VIEC';
             const prefix = isThuViec ? 'HDTV' : 'HDLD';
             const year = new Date().getFullYear();
-            
-            const randomNum = Math.floor(Math.random() * 99) + 1;
-            const formattedNum = String(randomNum).padStart(2, '0');
-            
-            soHopDongInput.value = `${prefix}-${year}/${formattedNum}/OTH`;
+            const randomNum = Math.floor(Math.random() * 899) + 100;
+            soHopDongInput.value = `${prefix}-${year}/${randomNum}/OTH`;
         }
 
         // Đổi tiền tố khi đổi Hình thức (HDLD <-> HDTV)
@@ -98,25 +110,7 @@
             const soHopDongInput = document.getElementById('contractSoHopDong');
             if (!hinhThucSelect || !soHopDongInput) return;
 
-            const isThuViec = hinhThucSelect.value === 'THU_VIEC';
-            const newPrefix = isThuViec ? 'HDTV' : 'HDLD';
-            const oldPrefix = isThuViec ? 'HDLD' : 'HDTV';
-
-            const currentVal = soHopDongInput.value.trim().toUpperCase();
-            if (currentVal.length > 0) {
-                if (currentVal.startsWith(oldPrefix)) {
-                    soHopDongInput.value = newPrefix + currentVal.substring(oldPrefix.length);
-                } else if (!currentVal.startsWith(newPrefix)) {
-                    const parts = currentVal.split('-');
-                    if (parts.length >= 2) {
-                        soHopDongInput.value = `${newPrefix}-${parts.slice(1).join('-')}`;
-                    } else {
-                        generateRandomContractNumber(true);
-                    }
-                }
-            } else {
-                generateRandomContractNumber(true);
-            }
+            generateRandomContractNumber(true);
         }
 
         // 2. Tự động tính ngày kết thúc

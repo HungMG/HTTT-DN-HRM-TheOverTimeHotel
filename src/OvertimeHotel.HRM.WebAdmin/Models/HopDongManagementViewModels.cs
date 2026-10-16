@@ -30,4 +30,5 @@ public class HopDongListItemViewModel
     public string? PersonalEmail { get; init; }
     public int? DaysRemaining { get; init; }
     public string State { get; init; } = string.Empty;
+    public bool IsRenewed { get; init; }
 }

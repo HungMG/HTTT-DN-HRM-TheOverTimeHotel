@@ -78,7 +78,6 @@
                     </select>
                 </div>
 
-                <button type="submit" class="btn btn-hotel-primary text-nowrap"><i class="bi bi-search me-1"></i>Lọc hồ sơ</button>
                 @if (!string.IsNullOrWhiteSpace(Model.Keyword) || Model.DepartmentId.HasValue || !string.IsNullOrWhiteSpace(Model.Status))
                 {
                     <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
@@ -339,6 +338,11 @@
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 loadEmployeeTable({ page: 1 });
+            });
+            form.querySelectorAll('select').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    loadEmployeeTable({ page: 1 });
+                });
             });
         }
 

@@ -95,7 +95,15 @@
                                     </span>
                                 }
                             </div>
-                            @if (item.State == "DA_HET_HAN" || (item.DaysRemaining.HasValue && item.DaysRemaining.Value <= 30))
+                            @if (item.IsRenewed)
+                            {
+                                <div class="mt-1">
+                                    <span class="badge bg-light text-success border border-success-subtle rounded-pill px-2 py-1" style="font-size: 0.75rem;" title="Nhân viên đã được ký hợp đồng mới tiếp nối">
+                                        <i class="bi bi-check2-all me-1"></i>Đã gia hạn
+                                    </span>
+                                </div>
+                            }
+                            else if (item.State == "DA_HET_HAN" || (item.DaysRemaining.HasValue && item.DaysRemaining.Value <= 30))
                             {
                                 <div class="mt-1">
                                     <a href="javascript:void(0)" 

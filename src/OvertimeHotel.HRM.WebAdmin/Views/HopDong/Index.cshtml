@@ -79,7 +79,6 @@
                     </select>
                 </div>
 
-                <button type="submit" class="btn btn-hotel-primary text-nowrap"><i class="bi bi-search me-1"></i>Lọc HĐ</button>
                 @if (!string.IsNullOrWhiteSpace(Model.Keyword) || !string.IsNullOrWhiteSpace(Model.Status) || !string.IsNullOrWhiteSpace(Model.ContractFilter))
                 {
                     <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
@@ -245,6 +244,11 @@
                 e.preventDefault();
                 loadContractTable({ page: 1 });
             });
+            form.querySelectorAll('select').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    loadContractTable({ page: 1 });
+                });
+            });
         }
 
         window.addEventListener('popstate', () => {
@@ -340,9 +344,9 @@
     }
 
     // =========================================================================
-    // 1. TỰ ĐỘNG SINH MÃ HỢP ĐỒNG: HDLD / HDTV - NĂM / SỐ NGẪU NHIÊN / OTH
+    // 1. TỰ ĐỘNG SINH MÃ HỢP ĐỒNG DUY NHẤT TỪ CSDL: HDLD / HDTV - NĂM / SỐ / OTH
     // =========================================================================
-    function generateRandomContractNumber(force = false) {
+    async function generateRandomContractNumber(force = false) {
         const soHopDongInput = document.getElementById('contractSoHopDong');
         if (!soHopDongInput) return;
 
@@ -350,15 +354,26 @@
         if (soHopDongInput.value.trim() && !force) return;
 
         const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
-        const isThuViec = hinhThucSelect && hinhThucSelect.value === 'THU_VIEC';
+        const hinhThuc = hinhThucSelect ? hinhThucSelect.value : 'CHINH_THUC';
+
+        try {
+            const res = await fetch('/HopDong/GenerateContractNumber?hinhThuc=' + encodeURIComponent(hinhThuc));
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.contractNumber) {
+                    soHopDongInput.value = data.contractNumber;
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('Lỗi lấy mã hợp đồng từ máy chủ, dùng mã ngẫu nhiên dự phòng:', e);
+        }
+
+        const isThuViec = hinhThuc === 'THU_VIEC';
         const prefix = isThuViec ? 'HDTV' : 'HDLD';
         const year = new Date().getFullYear();
-        
-        // Sinh số ngẫu nhiên 2 chữ số (từ 01 đến 99)
-        const randomNum = Math.floor(Math.random() * 99) + 1;
-        const formattedNum = String(randomNum).padStart(2, '0');
-        
-        soHopDongInput.value = `${prefix}-${year}/${formattedNum}/OTH`;
+        const randomNum = Math.floor(Math.random() * 899) + 100;
+        soHopDongInput.value = `${prefix}-${year}/${randomNum}/OTH`;
     }
 
     // Khi thay đổi Hình thức hợp đồng (Chính thức <-> Thử việc)
@@ -367,25 +382,7 @@
         const soHopDongInput = document.getElementById('contractSoHopDong');
         if (!hinhThucSelect || !soHopDongInput) return;
 
-        const isThuViec = hinhThucSelect.value === 'THU_VIEC';
-        const newPrefix = isThuViec ? 'HDTV' : 'HDLD';
-        const oldPrefix = isThuViec ? 'HDLD' : 'HDTV';
-
-        const currentVal = soHopDongInput.value.trim().toUpperCase();
-        if (currentVal.length > 0) {
-            if (currentVal.startsWith(oldPrefix)) {
-                soHopDongInput.value = newPrefix + currentVal.substring(oldPrefix.length);
-            } else if (!currentVal.startsWith(newPrefix)) {
-                const parts = currentVal.split('-');
-                if (parts.length >= 2) {
-                    soHopDongInput.value = `${newPrefix}-${parts.slice(1).join('-')}`;
-                } else {
-                    generateRandomContractNumber(true);
-                }
-            }
-        } else {
-            generateRandomContractNumber(true);
-        }
+        generateRandomContractNumber(true);
     }
 
     // =========================================================================
@@ -473,10 +470,10 @@
             posSelect.value = maChucVu;
         }
 
-        // 4. Trạng thái trong modal gia hạn: Hiển thị HẾT HẠN (đúng thực trạng hợp đồng cần gia hạn)
+        // 4. Trạng thái trong modal gia hạn: Hợp đồng mới gia hạn sẽ có trạng thái HIỆU LỰC
         const statusSelect = modalEl.querySelector('#contractTrangThai');
         if (statusSelect) {
-            statusSelect.value = 'HET_HAN';
+            statusSelect.value = 'HIEU_LUC';
         }
 
         // 5. Cập nhật email cá nhân nhận thông báo
