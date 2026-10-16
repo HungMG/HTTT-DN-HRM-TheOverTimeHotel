@@ -20,6 +20,8 @@ public class AttendanceViewModel : INotifyPropertyChanged
 
     // Trạng thái ca làm việc hôm nay
     private int _maPhanCa;
+    private DateTimeOffset _gioBatDau;
+    private DateTimeOffset _gioKetThuc;
     private bool _hasShiftToday;
     private string _shiftName = string.Empty;
     private string _shiftTimeText = string.Empty;
@@ -209,8 +211,27 @@ public class AttendanceViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Chỉ cho phép quẹt thẻ khi có ca hôm nay và không đang bận xử lý yêu cầu.</summary>
-    public bool CanPunchCard => HasShiftToday && !IsBusy;
+    /// <summary>
+    /// Kiểm tra điều kiện quẹt thẻ: có ca, không bận, chưa hoàn thành đủ 2 lượt quẹt,
+    /// và thời điểm hiện tại phải nằm trong khung giờ cho phép của ca theo AttendanceCalculator.
+    /// </summary>
+    public bool CanPunchCard
+    {
+        get
+        {
+            if (!HasShiftToday || IsBusy) return false;
+            if (DaCheckOut) return false;
+
+            var now = AttendanceCalculator.ToUtc(DateTimeOffset.UtcNow);
+            if (!DaCheckIn)
+            {
+                var validation = AttendanceCalculator.ValidateCheckInWindow(_gioBatDau, _gioKetThuc, now);
+                return validation.IsValid;
+            }
+
+            return true;
+        }
+    }
 
     public string ActionButtonText
     {
@@ -354,6 +375,8 @@ public class AttendanceViewModel : INotifyPropertyChanged
             return;
         }
 
+        _gioBatDau = shift.GioBatDau;
+        _gioKetThuc = shift.GioKetThuc;
         ShiftName = string.IsNullOrWhiteSpace(shift.TenCa) ? "Ca Làm Việc" : shift.TenCa;
         ShiftTimeText = $"{FormatTime(shift.GioBatDau)} – {FormatTime(shift.GioKetThuc)}";
 
@@ -522,6 +545,8 @@ public class AttendanceViewModel : INotifyPropertyChanged
             ActionButtonText = "KHÔNG CÓ CA LÀM VIỆC";
             ActionButtonIcon = "—";
             ActionButtonColor = "#94A3B8";
+            OnPropertyChanged(nameof(CanPunchCard));
+            RefreshCommandState();
             return;
         }
 
@@ -530,6 +555,8 @@ public class AttendanceViewModel : INotifyPropertyChanged
             ActionButtonText = "ĐÃ QUẸT THẺ ĐỦ";
             ActionButtonIcon = "✓";
             ActionButtonColor = "#059669";
+            OnPropertyChanged(nameof(CanPunchCard));
+            RefreshCommandState();
             return;
         }
 
@@ -538,12 +565,44 @@ public class AttendanceViewModel : INotifyPropertyChanged
             ActionButtonText = "QUẸT THẺ RA";
             ActionButtonIcon = "◉";
             ActionButtonColor = "#B45309";
+            OnPropertyChanged(nameof(CanPunchCard));
+            RefreshCommandState();
+            return;
+        }
+
+        // Chưa check-in: kiểm tra khung giờ vào ca
+        var now = AttendanceCalculator.ToUtc(DateTimeOffset.UtcNow);
+        var validation = AttendanceCalculator.ValidateCheckInWindow(_gioBatDau, _gioKetThuc, now);
+        if (!validation.IsValid)
+        {
+            if (validation.ErrorCode == "TOO_EARLY")
+            {
+                ActionButtonText = "CHƯA ĐẾN GIỜ VÀO CA";
+                ActionButtonIcon = "⏳";
+                ActionButtonColor = "#64748B";
+            }
+            else if (validation.ErrorCode == "SHIFT_ENDED")
+            {
+                ActionButtonText = "CA ĐÃ KẾT THÚC (VẮNG)";
+                ActionButtonIcon = "✕";
+                ActionButtonColor = "#DC2626";
+            }
+            else
+            {
+                ActionButtonText = "KHÔNG THỂ QUẸT THẺ";
+                ActionButtonIcon = "—";
+                ActionButtonColor = "#94A3B8";
+            }
+            OnPropertyChanged(nameof(CanPunchCard));
+            RefreshCommandState();
             return;
         }
 
         ActionButtonText = "QUẸT THẺ VÀO";
         ActionButtonIcon = "◉";
         ActionButtonColor = "#1E3A8A";
+        OnPropertyChanged(nameof(CanPunchCard));
+        RefreshCommandState();
     }
 
     /// <summary>

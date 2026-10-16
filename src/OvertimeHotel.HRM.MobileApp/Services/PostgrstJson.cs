@@ -96,6 +96,16 @@ public static class PostgrstJson
             : default;
     }
 
+    /// <summary>Đọc cột ngày kiểu DATE có thể null (chuỗi "yyyy-MM-dd").</summary>
+    public static DateOnly? ReadNullableDate(JsonElement element, string column)
+    {
+        var raw = ReadNullableString(element, column);
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        return DateOnly.TryParseExact(raw, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var value)
+            ? value
+            : null;
+    }
+
     /// <summary>Đọc cột thời gian kiểu TIMESTAMPTZ (ISO 8601 kèm offset).</summary>
     public static DateTimeOffset? ReadNullableTimestamp(JsonElement element, string column)
     {

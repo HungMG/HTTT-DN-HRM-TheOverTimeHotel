@@ -25,6 +25,18 @@ public static class AttendanceCalculator
     public const string STATUS_VANG = "VANG";
 
     /// <summary>
+    /// Số phút tối đa cho phép quẹt thẻ vào trước giờ bắt đầu ca.
+    /// Nhân viên không thể quẹt thẻ vào ca sớm hơn mốc này.
+    /// </summary>
+    public const int EARLY_CHECKIN_MINUTES_ALLOWED = 30;
+
+    /// <summary>
+    /// Số giờ tối đa sau khi kết thúc ca cho phép nhân viên quẹt thẻ ra.
+    /// Quá thời gian này ca sẽ được khóa và yêu cầu quản lý xử lý thủ công.
+    /// </summary>
+    public const int MAX_CHECKOUT_HOURS_AFTER_SHIFT = 8;
+
+    /// <summary>
     /// Chuẩn hóa phương thức quẹt thẻ do thiết bị gửi lên.
     /// Trả về null nếu phương thức không nằm trong danh sách cho phép (Zero Trust: không lọc rác từ client).
     /// </summary>
@@ -143,5 +155,56 @@ public static class AttendanceCalculator
             PhutVeSom: phutVeSom,
             GioOt: gioOt,
             TrangThai: ResolveStatus(phutDiTreDaGhiNhan, phutVeSom));
+    }
+
+    /// <summary>
+    /// Kiểm tra khung giờ hợp lệ cho việc quẹt thẻ vào ca (Check-in window validation).
+    /// Quy tắc:
+    /// 1. Không thể check-in trước giờ bắt đầu ca quá 30 phút.
+    /// 2. Không thể check-in sau khi ca đã kết thúc (kết thúc dự kiến).
+    /// </summary>
+    public static (bool IsValid, string? ErrorCode, string? ErrorMessage) ValidateCheckInWindow(
+        DateTimeOffset batDauDuKien,
+        DateTimeOffset ketThucDuKien,
+        DateTimeOffset now)
+    {
+        var earliestAllowed = batDauDuKien.AddMinutes(-EARLY_CHECKIN_MINUTES_ALLOWED);
+        if (now < earliestAllowed)
+        {
+            return (false, "TOO_EARLY", $"Chưa đến giờ mở ca. Bạn chỉ có thể quẹt thẻ trước giờ vào ca tối đa {EARLY_CHECKIN_MINUTES_ALLOWED} phút.");
+        }
+
+        if (now > ketThucDuKien)
+        {
+            return (false, "SHIFT_ENDED", "Ca làm việc này đã kết thúc. Bạn không thể quẹt thẻ vào ca nữa.");
+        }
+
+        return (true, null, null);
+    }
+
+    /// <summary>
+    /// Kiểm tra khung giờ hợp lệ cho việc quẹt thẻ ra ca (Check-out window validation).
+    /// Quy tắc:
+    /// 1. Giờ quẹt ra phải sau giờ quẹt vào.
+    /// 2. Giờ quẹt ra không được vượt quá 8 giờ sau khi ca kết thúc.
+    /// </summary>
+    public static (bool IsValid, string? ErrorCode, string? ErrorMessage) ValidateCheckOutWindow(
+        DateTimeOffset batDauDuKien,
+        DateTimeOffset ketThucDuKien,
+        DateTimeOffset gioCheckIn,
+        DateTimeOffset now)
+    {
+        if (now < gioCheckIn)
+        {
+            return (false, "INVALID_TIME", "Thời gian quẹt thẻ ra không thể sớm hơn thời gian quẹt thẻ vào.");
+        }
+
+        var latestAllowed = ketThucDuKien.AddHours(MAX_CHECKOUT_HOURS_AFTER_SHIFT);
+        if (now > latestAllowed)
+        {
+            return (false, "CHECKOUT_EXPIRED", $"Đã quá thời gian cho phép tự quẹt thẻ ra (tối đa {MAX_CHECKOUT_HOURS_AFTER_SHIFT} tiếng sau khi hết ca). Vui lòng liên hệ quản lý để được hỗ trợ.");
+        }
+
+        return (true, null, null);
     }
 }

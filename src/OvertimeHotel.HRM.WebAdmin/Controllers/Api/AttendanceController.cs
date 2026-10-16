@@ -127,17 +127,17 @@ public class AttendanceController : ControllerBase
                 return UnauthorizedError("Tài khoản không hợp lệ hoặc đã bị khóa.");
             }
 
-            // Kiểm tra hợp đồng lao động còn hiệu lực mới cho quẹt thẻ
-            var activeContract = await _context.HopDongs
+            // RÀNG BUỘC HỢP ĐỒNG: Chỉ nhân viên còn hợp đồng lao động có hiệu lực mới được chấm công
+            var contracts = await _context.HopDongs
                 .AsNoTracking()
                 .Where(h => h.MaNhanVien == maNhanVien.Value)
-                .OrderByDescending(h => h.NgayBatDau)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
 
             var today = DateOnly.FromDateTime(DateTime.Today);
-            if (activeContract != null && activeContract.NgayKetThuc.HasValue && activeContract.NgayKetThuc.Value < today)
+            var contractValidation = ContractAttendancePolicy.ValidateAttendanceContract(contracts, today);
+            if (!contractValidation.IsAllowed)
             {
-                return BadRequestError($"Hợp đồng lao động của bạn đã hết hạn vào ngày {activeContract.NgayKetThuc.Value:dd/MM/yyyy}. Hệ thống tạm khóa tính năng chấm công cho đến khi hợp đồng mới được kích hoạt.");
+                return BadRequestError(contractValidation.ErrorMessage ?? ContractAttendancePolicy.MSG_NO_CONTRACT);
             }
 
             // Zero Trust: phương thức quẹt thẻ phải nằm trong danh sách cho phép.
@@ -159,7 +159,14 @@ public class AttendanceController : ControllerBase
                 return ConflictError("Bạn đã quẹt thẻ vào ca này rồi.");
             }
 
-            var gioCheckIn = AttendanceCalculator.ToUtc(request.Timestamp);
+            var gioCheckIn = AttendanceCalculator.ToUtc(DateTimeOffset.UtcNow);
+            var windowValidation = AttendanceCalculator.ValidateCheckInWindow(
+                phanCa.BatDauDuKien, phanCa.KetThucDuKien, gioCheckIn);
+            if (!windowValidation.IsValid)
+            {
+                return BadRequestError(windowValidation.ErrorMessage ?? "Thời điểm quẹt thẻ vào ca không hợp lệ.");
+            }
+
             var result = AttendanceCalculator.EvaluateCheckIn(phanCa.BatDauDuKien, gioCheckIn);
 
             if (chamCong == null)
@@ -219,17 +226,17 @@ public class AttendanceController : ControllerBase
                 return UnauthorizedError("Tài khoản không hợp lệ hoặc đã bị khóa.");
             }
 
-            // Kiểm tra hợp đồng lao động còn hiệu lực mới cho quẹt thẻ
-            var activeContract = await _context.HopDongs
+            // RÀNG BUỘC HỢP ĐỒNG: Chỉ nhân viên còn hợp đồng lao động có hiệu lực mới được chấm công (Check-out)
+            var contracts = await _context.HopDongs
                 .AsNoTracking()
                 .Where(h => h.MaNhanVien == maNhanVien.Value)
-                .OrderByDescending(h => h.NgayBatDau)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
 
             var today = DateOnly.FromDateTime(DateTime.Today);
-            if (activeContract != null && activeContract.NgayKetThuc.HasValue && activeContract.NgayKetThuc.Value < today)
+            var contractValidation = ContractAttendancePolicy.ValidateAttendanceContract(contracts, today);
+            if (!contractValidation.IsAllowed)
             {
-                return BadRequestError($"Hợp đồng lao động của bạn đã hết hạn vào ngày {activeContract.NgayKetThuc.Value:dd/MM/yyyy}. Hệ thống tạm khóa tính năng chấm công cho đến khi hợp đồng mới được kích hoạt.");
+                return BadRequestError(contractValidation.ErrorMessage ?? ContractAttendancePolicy.MSG_NO_CONTRACT);
             }
 
             var phuongThuc = AttendanceCalculator.NormalizeMethod(request.PhuongThuc);
@@ -255,10 +262,12 @@ public class AttendanceController : ControllerBase
                 return ConflictError("Bạn đã quẹt thẻ ra ca này rồi.");
             }
 
-            var gioCheckOut = AttendanceCalculator.ToUtc(request.Timestamp);
-            if (gioCheckOut < chamCong.GioCheckIn.Value)
+            var gioCheckOut = AttendanceCalculator.ToUtc(DateTimeOffset.UtcNow);
+            var windowValidation = AttendanceCalculator.ValidateCheckOutWindow(
+                phanCa.BatDauDuKien, phanCa.KetThucDuKien, chamCong.GioCheckIn.Value, gioCheckOut);
+            if (!windowValidation.IsValid)
             {
-                return BadRequestError("Thời gian quẹt thẻ ra không hợp lệ.");
+                return BadRequestError(windowValidation.ErrorMessage ?? "Thời điểm quẹt thẻ ra ca không hợp lệ.");
             }
 
             var result = AttendanceCalculator.EvaluateCheckOut(

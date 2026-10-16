@@ -120,6 +120,13 @@ public class AttendanceService : IAttendanceService
     {
         var maNhanVien = RequireEmployeeId();
 
+        // RÀNG BUỘC HỢP ĐỒNG: Chỉ nhân viên còn hợp đồng lao động có hiệu lực mới được chấm công
+        var contractCheck = await ValidateContractAsync(maNhanVien);
+        if (!contractCheck.IsAllowed)
+        {
+            return Failure(contractCheck.ErrorCode ?? "CONTRACT_INVALID", contractCheck.ErrorMessage ?? ContractAttendancePolicy.MSG_NO_CONTRACT);
+        }
+
         // Zero Trust: chỉ nhận phương thức nằm trong danh sách cho phép, không
         // lấy bừa giá trị client gửi lên. Thiếu toạ độ nghĩa là định vị thất bại
         // nên phương thức là WIFI — cùng quy tắc với code cũ.
@@ -140,6 +147,36 @@ public class AttendanceService : IAttendanceService
             : await PunchOutAsync(phanCa.Value, chamCong, maChamCong);
     }
 
+    private async Task<(bool IsAllowed, string? ErrorCode, string? ErrorMessage)> ValidateContractAsync(int maNhanVien)
+    {
+        try
+        {
+            var json = await _rest.GetAsync(
+                $"hop_dong?select=ma_hop_dong,trang_thai,ngay_bat_dau,ngay_ket_thuc&ma_nhan_vien=eq.{maNhanVien}&order=ngay_bat_dau.desc");
+
+            var rows = PostgrstJson.ParseArray(json);
+            if (rows.Length == 0)
+            {
+                return (false, "NO_CONTRACT", ContractAttendancePolicy.MSG_NO_CONTRACT);
+            }
+
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var contracts = rows.Select(r => new Core.Models.HopDong
+            {
+                TrangThai = PostgrstJson.ReadString(r, "trang_thai") ?? string.Empty,
+                NgayBatDau = PostgrstJson.ReadDate(r, "ngay_bat_dau"),
+                NgayKetThuc = PostgrstJson.ReadNullableDate(r, "ngay_ket_thuc")
+            }).ToList();
+
+            return ContractAttendancePolicy.ValidateAttendanceContract(contracts, today);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể kiểm tra hợp đồng qua Supabase REST cho nhân viên {MaNhanVien}", maNhanVien);
+            return (true, null, null);
+        }
+    }
+
     private async Task<CheckInResponse> PunchInAsync(
         ShiftSnapshot phanCa,
         JsonElement? chamCong,
@@ -154,6 +191,14 @@ public class AttendanceService : IAttendanceService
         }
 
         var now = AttendanceCalculator.ToUtc(DateTimeOffset.UtcNow);
+        var windowValidation = AttendanceCalculator.ValidateCheckInWindow(
+            phanCa.BatDauDuKien, phanCa.KetThucDuKien, now);
+        if (!windowValidation.IsValid)
+        {
+            return Failure(windowValidation.ErrorCode ?? "INVALID_WINDOW",
+                windowValidation.ErrorMessage ?? "Không thể quẹt thẻ vào ca lúc này.");
+        }
+
         var result = AttendanceCalculator.EvaluateCheckIn(phanCa.BatDauDuKien, now);
 
         var body = JsonSerializer.Serialize(new CheckInPayload(
@@ -223,9 +268,12 @@ public class AttendanceService : IAttendanceService
         }
 
         var now = AttendanceCalculator.ToUtc(DateTimeOffset.UtcNow);
-        if (now < gioCheckIn.Value)
+        var windowValidation = AttendanceCalculator.ValidateCheckOutWindow(
+            phanCa.BatDauDuKien, phanCa.KetThucDuKien, gioCheckIn.Value, now);
+        if (!windowValidation.IsValid)
         {
-            return Failure("VALIDATION_ERROR", "Thời gian quẹt thẻ ra không hợp lệ.");
+            return Failure(windowValidation.ErrorCode ?? "INVALID_WINDOW",
+                windowValidation.ErrorMessage ?? "Không thể quẹt thẻ ra ca lúc này.");
         }
 
         var result = AttendanceCalculator.EvaluateCheckOut(

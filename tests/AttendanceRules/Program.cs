@@ -247,6 +247,115 @@ var tests = new (string Name, Action Run)[]
         Equal(true, AttendanceAccessPolicy.CanView("HR", 2, 8, 5, 4));
         Equal(true, AttendanceAccessPolicy.CanView("Admin", 1, null, 5, 4));
         Equal(false, AttendanceAccessPolicy.CanView("Admin", 0, null, 5, 4));
+    }),
+    ("Contract attendance: employee without contract is rejected for scheduling and punching", () =>
+    {
+        var emp = new NhanVien { MaNhanVien = 10, Ho = "No", Ten = "Contract", TrangThai = "DANG_LAM", HopDongs = new List<HopDong>() };
+        var date = new DateOnly(2026, 10, 16);
+
+        var (schedAllowed, schedCode, _) = ContractAttendancePolicy.ValidateSchedulingContract(emp, date);
+        Equal(false, schedAllowed);
+        Equal("NO_CONTRACT", schedCode);
+
+        var (attAllowed, attCode, _) = ContractAttendancePolicy.ValidateAttendanceContract(emp.HopDongs, date);
+        Equal(false, attAllowed);
+        Equal("NO_CONTRACT", attCode);
+    }),
+    ("Contract attendance: expired contract is rejected with exact expiration date", () =>
+    {
+        var contract = new HopDong
+        {
+            MaHopDong = 1, MaNhanVien = 11, TrangThai = "HET_HAN",
+            NgayBatDau = new DateOnly(2025, 10, 1),
+            NgayKetThuc = new DateOnly(2026, 9, 30)
+        };
+        var emp = new NhanVien { MaNhanVien = 11, Ho = "Expired", Ten = "Contract", TrangThai = "DANG_LAM", HopDongs = new List<HopDong> { contract } };
+        var date = new DateOnly(2026, 10, 16);
+
+        var (schedAllowed, schedCode, schedMsg) = ContractAttendancePolicy.ValidateSchedulingContract(emp, date);
+        Equal(false, schedAllowed);
+        Equal("CONTRACT_EXPIRED", schedCode);
+        Equal(true, schedMsg?.Contains("30/09/2026"));
+
+        var (attAllowed, attCode, attMsg) = ContractAttendancePolicy.ValidateAttendanceContract(emp.HopDongs, date);
+        Equal(false, attAllowed);
+        Equal("CONTRACT_EXPIRED", attCode);
+        Equal(true, attMsg?.Contains("30/09/2026"));
+    }),
+    ("Contract attendance: future contract is rejected prior to start date", () =>
+    {
+        var contract = new HopDong
+        {
+            MaHopDong = 2, MaNhanVien = 12, TrangThai = "HIEU_LUC",
+            NgayBatDau = new DateOnly(2026, 11, 1),
+            NgayKetThuc = new DateOnly(2027, 10, 31)
+        };
+        var emp = new NhanVien { MaNhanVien = 12, Ho = "Future", Ten = "Contract", TrangThai = "DANG_LAM", HopDongs = new List<HopDong> { contract } };
+        var date = new DateOnly(2026, 10, 16);
+
+        var (schedAllowed, schedCode, _) = ContractAttendancePolicy.ValidateSchedulingContract(emp, date);
+        Equal(false, schedAllowed);
+        Equal("CONTRACT_NOT_YET_ACTIVE", schedCode);
+
+        var (attAllowed, attCode, _) = ContractAttendancePolicy.ValidateAttendanceContract(emp.HopDongs, date);
+        Equal(false, attAllowed);
+        Equal("CONTRACT_NOT_YET_ACTIVE", attCode);
+    }),
+    ("Contract attendance: renewal immediately unlocks scheduling and attendance", () =>
+    {
+        var expiredContract = new HopDong
+        {
+            MaHopDong = 1, MaNhanVien = 13, TrangThai = "HET_HAN",
+            NgayBatDau = new DateOnly(2025, 10, 1),
+            NgayKetThuc = new DateOnly(2026, 9, 30)
+        };
+        var emp = new NhanVien { MaNhanVien = 13, Ho = "Renewed", Ten = "Contract", TrangThai = "DANG_LAM", HopDongs = new List<HopDong> { expiredContract } };
+        var date = new DateOnly(2026, 10, 16);
+
+        // Before renewal: rejected
+        Equal(false, ContractAttendancePolicy.ValidateSchedulingContract(emp, date).IsAllowed);
+        Equal(false, ContractAttendancePolicy.ValidateAttendanceContract(emp.HopDongs, date).IsAllowed);
+
+        // Renewed contract added
+        var renewedContract = new HopDong
+        {
+            MaHopDong = 2, MaNhanVien = 13, TrangThai = "HIEU_LUC",
+            NgayBatDau = new DateOnly(2026, 10, 1),
+            NgayKetThuc = new DateOnly(2027, 9, 30)
+        };
+        emp.HopDongs.Add(renewedContract);
+
+        // After renewal: permitted
+        var (schedAllowed, _, _) = ContractAttendancePolicy.ValidateSchedulingContract(emp, date);
+        Equal(true, schedAllowed);
+        var (attAllowed, _, _) = ContractAttendancePolicy.ValidateAttendanceContract(emp.HopDongs, date);
+        Equal(true, attAllowed);
+    }),
+    ("Contract attendance: weekly filter excludes employees whose contracts expired before the week", () =>
+    {
+        var weekStart = new DateOnly(2026, 10, 12);
+        var weekEnd = new DateOnly(2026, 10, 18);
+
+        var empExpired = new NhanVien
+        {
+            MaNhanVien = 14, Ho = "Expired", Ten = "Prior", TrangThai = "DANG_LAM",
+            HopDongs = new List<HopDong>
+            {
+                new() { TrangThai = "HET_HAN", NgayBatDau = new DateOnly(2025, 1, 1), NgayKetThuc = new DateOnly(2026, 10, 10) }
+            }
+        };
+
+        var empActive = new NhanVien
+        {
+            MaNhanVien = 15, Ho = "Active", Ten = "Employee", TrangThai = "DANG_LAM",
+            HopDongs = new List<HopDong>
+            {
+                new() { TrangThai = "HIEU_LUC", NgayBatDau = new DateOnly(2026, 1, 1), NgayKetThuc = new DateOnly(2027, 1, 1) }
+            }
+        };
+
+        Equal(false, ContractAttendancePolicy.HasValidContractDuring(empExpired, weekStart, weekEnd));
+        Equal(true, ContractAttendancePolicy.HasValidContractDuring(empActive, weekStart, weekEnd));
     })
 };
 

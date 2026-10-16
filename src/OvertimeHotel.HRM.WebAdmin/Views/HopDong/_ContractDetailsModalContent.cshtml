@@ -2,7 +2,7 @@
 @{
     var contract = Model.Contract;
     var emp = Model.Employee;
-    var initials = !string.IsNullOrEmpty(emp?.Ten) ? emp.Ten.Substring(0, 1).ToUpper() : "N";
+    var initials = !string.IsNullOrEmpty(emp.Ten) ? emp.Ten.Substring(0, 1).ToUpper() : "N";
 }
 
 <style>
