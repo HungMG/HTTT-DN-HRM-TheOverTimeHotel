@@ -22,6 +22,13 @@
 .payroll-name { min-width: 180px; max-width: 360px; overflow-wrap: anywhere; }
 .payroll-amount { font-variant-numeric: tabular-nums; }
 .payroll-action-button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; }
+.payroll-table-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.payroll-table-row:hover > td {
+  background-color: rgba(30, 58, 138, 0.05) !important;
+}
 @media (max-width: 575.98px) {
   .payroll-category-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .payroll-category-tab { min-height: 44px; }
