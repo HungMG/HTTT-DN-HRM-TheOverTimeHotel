@@ -1,3 +1,4 @@
+@using OvertimeHotel.HRM.WebAdmin.Security
 @model OvertimeHotel.HRM.WebAdmin.Models.HomeDashboardViewModel
 @{
     ViewData["Title"] = "Tổng quan";
@@ -9,6 +10,10 @@
         ? Math.Round((decimal)Model.ChamCongDungGioHomNay / Model.BanGhiChamCongHomNay * 100, 1)
         : 0m;
     var chuyenDongNhanSu = Model.NhanVienDangLam - Model.NhanVienKyTruoc;
+
+    // Bàn làm việc trả lời "hôm nay phải làm gì"; Báo cáo trả lời "kỳ vừa rồi diễn biến thế nào".
+    // Chỉ hiện lối sang Báo cáo khi tài khoản thật sự có quyền, tránh dẫn tới trang từ chối.
+    var canViewReports = User.HasPermission(PermissionCodes.ReportView);
 }
 
 <!-- Bảng điều khiển chỉ dành cho tài khoản đã đăng nhập. HomeController đã gắn
@@ -23,18 +28,29 @@
                 <span>@Model.GeneratedAt.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</span>
             </p>
         </div>
-        @if (Model.IsDatabaseOnline)
-        {
-            <span class="badge rounded-pill bg-success-subtle text-success border px-3 py-2">
-                <i class="bi bi-database-check me-1"></i> Supabase Online
-            </span>
-        }
-        else
-        {
-            <span class="badge rounded-pill bg-danger-subtle text-danger border px-3 py-2">
-                <i class="bi bi-database-x me-1"></i> CSDL không phản hồi
-            </span>
-        }
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            @if (Model.IsDatabaseOnline)
+            {
+                <span class="badge rounded-pill bg-success-subtle text-success border px-3 py-2">
+                    <i class="bi bi-database-check me-1"></i> Supabase Online
+                </span>
+            }
+            else
+            {
+                <span class="badge rounded-pill bg-danger-subtle text-danger border px-3 py-2">
+                    <i class="bi bi-database-x me-1"></i> CSDL không phản hồi
+                </span>
+            }
+
+            @if (canViewReports)
+            {
+                <a class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold"
+                   asp-controller="BaoCao" asp-action="Index"
+                   title="Mở phân tích nghiệp vụ theo tháng, quý hoặc cả năm">
+                    <i class="bi bi-bar-chart-line-fill me-1"></i> Xem báo cáo phân tích
+                </a>
+            }
+        </div>
     </div>
 
     <!-- ═══ CHỈ SỐ ĐIỀU HÀNH ═══════════════════════════════════════════ -->
@@ -45,7 +61,7 @@
                 <div>
                     <div class="stat-label">Nhân sự đang làm</div>
                     <div class="stat-figure">
-                        @Model.NhanVienDangLam<span class="stat-figure-unit">người</span>
+                        <span data-count-to="@Model.NhanVienDangLam">@Model.NhanVienDangLam</span><span class="stat-figure-unit">người</span>
                     </div>
                 </div>
                 <div class="stat-meta">
@@ -68,7 +84,7 @@
             <div class="stat-card">
                 <div>
                     <div class="stat-label">Đúng giờ hôm nay</div>
-                    <div class="stat-figure">@tyLeDungGio<span class="stat-figure-unit">%</span></div>
+                    <div class="stat-figure"><span data-count-to="@tyLeDungGio">@tyLeDungGio</span><span class="stat-figure-unit">%</span></div>
                 </div>
                 <div class="stat-meta">
                     @Model.ChamCongDungGioHomNay / @Model.BanGhiChamCongHomNay lượt quẹt thẻ
@@ -84,7 +100,7 @@
             <a class="stat-card" asp-controller="DonTu" asp-action="Index">
                 <div>
                     <div class="stat-label">Đơn từ chờ duyệt</div>
-                    <div class="stat-figure">@Model.DonTuChoDuyet<span class="stat-figure-unit">đơn</span></div>
+                    <div class="stat-figure"><span data-count-to="@Model.DonTuChoDuyet">@Model.DonTuChoDuyet</span><span class="stat-figure-unit">đơn</span></div>
                 </div>
                 <div class="stat-meta">
                     @if (Model.DonTuChoDuyet > 0)
@@ -103,7 +119,7 @@
             <div class="stat-card">
                 <div>
                     <div class="stat-label">Quỹ lương @Model.KyLuongHienTai</div>
-                    <div class="stat-figure">@Model.QuyLuongKyHienTai.ToString("N0")<span class="stat-figure-unit">đ</span></div>
+                    <div class="stat-figure"><span data-count-to="@Model.QuyLuongKyHienTai.ToString("N0")">@Model.QuyLuongKyHienTai.ToString("N0")</span><span class="stat-figure-unit">đ</span></div>
                 </div>
                 <div class="stat-meta">
                     @Model.SoPhieuLuongDaDuyet / @Model.SoPhieuLuongKyHienTai phiếu đã duyệt
@@ -188,7 +204,7 @@
                                 }
                             </div>
                             <div class="stat-figure">
-                                @ca.DaCheckIn<span style="color: #cbd5e1;">/</span>@ca.TongSo
+                                <span data-count-to="@ca.DaCheckIn">@ca.DaCheckIn</span><span style="color: #cbd5e1;">/@ca.TongSo</span>
                             </div>
                             <div class="shift-progress">
                                 <div class="shift-progress-bar"
@@ -222,8 +238,16 @@
                     <div class="stat-label">Phiếu lương &amp; báo cáo</div>
                     <p class="queue-sub mt-2 mb-0">
                         Công thức lương hai tầng Gross → Net đã hoàn thiện.
+                        Sáu báo cáo phân tích nhân sự, quỹ lương và chuyên cần đã có trên Web Admin.
                         Xuất phiếu lương PDF bằng QuestPDF đang được phát triển.
                     </p>
+                    @if (canViewReports)
+                    {
+                        <a class="btn btn-sm btn-outline-primary rounded-pill fw-semibold mt-3"
+                           asp-controller="BaoCao" asp-action="Index">
+                            <i class="bi bi-bar-chart-line-fill me-1"></i> Mở Báo cáo &amp; Thống kê
+                        </a>
+                    }
                 </div>
             </div>
         </div>

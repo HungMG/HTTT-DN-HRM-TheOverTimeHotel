@@ -19,6 +19,42 @@
 
 /* ── 1. Thanh tiêu đề ──────────────────────────────────────────────────── */
 
+/* Đường dẫn về Bàn làm việc. Bám token màu chung, không thêm mã màu mới. */
+.baocao-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.baocao-breadcrumb a {
+  display: inline-flex;
+  align-items: center;
+  color: var(--hotel-royal, #1e3a8a);
+  text-decoration: none;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  transition: background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.baocao-breadcrumb a:hover {
+  background: rgba(30, 58, 138, 0.07);
+}
+
+.baocao-breadcrumb a:focus-visible {
+  outline: 2px solid var(--hotel-royal, #1e3a8a);
+  outline-offset: 2px;
+}
+
+.baocao-breadcrumb-sep {
+  font-size: 0.65rem;
+  color: #cbd5e1;
+}
+
 .baocao-hero {
   display: flex;
   flex-wrap: wrap;
@@ -472,6 +508,7 @@
 @media print {
   .baocao-hero-actions,
   .baocao-filter-card,
+  .baocao-breadcrumb,
   .app-sidebar,
   .app-topbar,
   .baocao-loading,
@@ -496,6 +533,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .baocao-tab,
+  .baocao-breadcrumb a,
   .baocao-board-host.is-loading [data-baocao-board] {
     transition: none;
   }

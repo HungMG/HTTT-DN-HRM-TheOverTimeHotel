@@ -23,7 +23,17 @@
 
     <partial name="_CatalogAlerts" />
 
-    <!-- ═════════════ THANH TIÊU ĐỀ ═════════════ -->
+    <!-- ═════════════ THANH TIÊU ĐỀ ═════════════
+         Đường dẫn về Bàn làm việc: hai trang bổ trợ nhau — Bàn làm việc là việc
+         phải xử lý hôm nay, còn trang này là xu hướng theo kỳ. -->
+    <nav class="baocao-breadcrumb" aria-label="Đường dẫn">
+        <a asp-controller="Home" asp-action="Index">
+            <i class="bi bi-speedometer2 me-1"></i>Bàn làm việc
+        </a>
+        <i class="bi bi-chevron-right baocao-breadcrumb-sep"></i>
+        <span aria-current="page">Báo cáo &amp; Thống kê</span>
+    </nav>
+
     <header class="baocao-hero">
         <div class="baocao-hero-text">
             <div class="baocao-hero-eyebrow">

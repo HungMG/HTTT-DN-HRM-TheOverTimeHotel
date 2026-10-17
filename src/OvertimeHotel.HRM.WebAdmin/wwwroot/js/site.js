@@ -119,18 +119,25 @@
       return;
     }
 
-    const start = Number(startValue) || 0;
-    const target = Number(targetValue);
+    // Chấp nhận cả chuỗi đã định dạng nhóm nghìn ("10,068,462") vì data-count-to
+    // lấy thẳng từ Razor ToString("N0"). Thiếu bước này thì Number("10,068,462")
+    // là NaN, hàm thoát sớm và con số tiền đứng im.
+    const numeric = function (value) {
+      return Number(String(value == null ? '' : value).replace(/[,\s]/g, ''));
+    };
+    const start = numeric(startValue) || 0;
+    const target = numeric(targetValue);
     if (!isFinite(target)) return;
 
     const easeOutCubic = function (t) {
       return 1 - Math.pow(1 - t, 3);
     };
 
-    // Giữ nguyên phần đuôi của thẻ (ví dụ " nhân sự", " đ") nếu có.
+    // Giữ nguyên phần đuôi đơn vị của thẻ (" đ", "%", " nhân sự") trong lúc số chạy.
+    // Cắt tại chữ số cuối cùng để khoảng trắng đệm trước đơn vị không bị mất,
+    // tránh cảnh "10,068,462đ" chớp lên giữa chừng rồi mới trả về "10,068,462 đ".
     const original = element.textContent;
-    const suffixMatch = original.match(/[^0-9.,\-\s]*\s*$/);
-    const suffix = suffixMatch ? suffixMatch[0] : '';
+    const suffix = original.slice(original.replace(/\D+$/, '').length);
     const decimals = (String(targetValue).split('.')[1] || '').replace(/\D/g, '').length;
     const hasThousands = String(targetValue).indexOf(',') > -1;
 
@@ -153,7 +160,10 @@
       if (progress < 1) {
         window.requestAnimationFrame(step);
       } else {
-        element.textContent = targetValue;
+        // Chốt về ĐÚNG nội dung Razor đã render (giữ nguyên dấu nhóm nghìn và hậu tố
+        // đơn vị). Gán lại targetValue trần sẽ nuốt mất hậu tố: ô tiền hiện
+        // "10,068,462 đ" rồi tụt còn "10,068,462" ngay khi số dừng.
+        element.textContent = original;
       }
     }
 
