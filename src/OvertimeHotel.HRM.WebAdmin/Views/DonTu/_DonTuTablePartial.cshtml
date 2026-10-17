@@ -59,7 +59,7 @@
                             _ => "bg-secondary text-white"
                         };
 
-                        <tr class="@rowClass">
+                        <tr class="@rowClass dontu-table-row" style="cursor: pointer;" onclick="if (!event.target.closest('a, button, form, input, select')) openDetailModal(@item.MaDon);" title="Nhấn để xem chi tiết đơn từ">
                             <td class="ps-4 fw-bold font-monospace text-muted" style="font-size: 0.85rem;">
                                 #@item.MaDon
                             </td>
@@ -141,27 +141,20 @@
                             </td>
                             <td class="pe-4 text-end">
                                 <div class="btn-group btn-group-sm">
-                                    <!-- Nút Xem lại / Chi tiết luôn hiển thị -->
-                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-2 py-1 me-1"
-                                            onclick="openDetailModal(@item.MaDon)"
-                                            title="Xem lại chi tiết đơn từ">
-                                        <i class="bi bi-eye"></i> 
-                                    </button>
-
                                     @if (item.TrangThai == "CHO_DUYET")
                                     {
                                         if (item.CanCurrentUserReview)
                                         {
                                             <!-- Nút Phê duyệt nhanh -->
                                             <button type="button" class="btn btn-success rounded-pill px-2 py-1 me-1"
-                                                    onclick="openReviewModal(@item.MaDon, true, '@item.HoTenNhanVien', '@item.TenLoaiDon')"
+                                                    onclick="event.stopPropagation(); openReviewModal(@item.MaDon, true, '@item.HoTenNhanVien', '@item.TenLoaiDon');"
                                                     title="Phê duyệt đơn này">
                                                 <i class="bi bi-check-lg"></i> 
                                             </button>
 
                                             <!-- Nút Từ chối -->
                                             <button type="button" class="btn btn-outline-danger rounded-pill px-2 py-1"
-                                                    onclick="openReviewModal(@item.MaDon, false, '@item.HoTenNhanVien', '@item.TenLoaiDon')"
+                                                    onclick="event.stopPropagation(); openReviewModal(@item.MaDon, false, '@item.HoTenNhanVien', '@item.TenLoaiDon');"
                                                     title="Từ chối đơn">
                                                 <i class="bi bi-x-lg"></i> 
                                             </button>
@@ -176,11 +169,9 @@
                                     }
                                     else
                                     {
-                                        <button type="button" class="btn btn-light border rounded-pill px-2 py-1"
-                                                onclick="openDetailModal(@item.MaDon)"
-                                                title="Xem lại phản hồi xét duyệt">
-                                            <i class="bi bi-chat-left-text"></i> Kết quả
-                                        </button>
+                                        <span class="badge @(item.TrangThai == "DA_DUYET" ? "bg-success-subtle text-success border border-success-subtle" : "bg-danger-subtle text-danger border border-danger-subtle") rounded-pill px-2.5 py-1" style="font-size: 0.75rem;">
+                                            <i class="bi @(item.TrangThai == "DA_DUYET" ? "bi-check2-circle" : "bi-x-circle") me-1"></i>@(item.TrangThai == "DA_DUYET" ? "Đã duyệt" : "Đã từ chối")
+                                        </span>
                                     }
                                 </div>
                             </td>

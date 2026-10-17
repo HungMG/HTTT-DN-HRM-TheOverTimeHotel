@@ -127,6 +127,117 @@ public static class HotelEventRules
         }
         return IsMoney(budget);
     }
+
+    public static readonly IReadOnlyDictionary<(string EventType, string DeptCode), decimal> StandardBonusMatrix =
+        new Dictionary<(string EventType, string DeptCode), decimal>
+        {
+            // Đoàn VIP (5 phòng ban)
+            [("DOAN_VIP", "BEP")] = 800_000m,
+            [("DOAN_VIP", "AM_THUC")] = 700_000m,
+            [("DOAN_VIP", "AN_NINH")] = 700_000m,
+            [("DOAN_VIP", "TIEN_SANH")] = 600_000m,
+            [("DOAN_VIP", "BUONG_PHONG")] = 600_000m,
+
+            // Festival ẩm thực (5 phòng ban)
+            [("FESTIVAL_AM_THUC", "BEP")] = 700_000m,
+            [("FESTIVAL_AM_THUC", "AM_THUC")] = 500_000m,
+            [("FESTIVAL_AM_THUC", "KY_THUAT")] = 500_000m,
+            [("FESTIVAL_AM_THUC", "BUONG_PHONG")] = 400_000m,
+            [("FESTIVAL_AM_THUC", "AN_NINH")] = 400_000m,
+
+            // Gala Dinner (5 phòng ban)
+            [("GALA_DINNER", "BEP")] = 700_000m,
+            [("GALA_DINNER", "AM_THUC")] = 600_000m,
+            [("GALA_DINNER", "KY_THUAT")] = 600_000m,
+            [("GALA_DINNER", "TIEN_SANH")] = 400_000m,
+            [("GALA_DINNER", "AN_NINH")] = 400_000m,
+
+            // Hội nghị MICE (6 phòng ban)
+            [("HOI_NGHI_MICE", "IT")] = 700_000m,
+            [("HOI_NGHI_MICE", "KY_THUAT")] = 600_000m,
+            [("HOI_NGHI_MICE", "BEP")] = 500_000m,
+            [("HOI_NGHI_MICE", "AM_THUC")] = 400_000m,
+            [("HOI_NGHI_MICE", "TIEN_SANH")] = 400_000m,
+            [("HOI_NGHI_MICE", "AN_NINH")] = 400_000m,
+
+            // Tiệc cưới (6 phòng ban)
+            [("TIEC_CUOI", "BEP")] = 600_000m,
+            [("TIEC_CUOI", "AM_THUC")] = 500_000m,
+            [("TIEC_CUOI", "KY_THUAT")] = 500_000m,
+            [("TIEC_CUOI", "TIEN_SANH")] = 400_000m,
+            [("TIEC_CUOI", "AN_NINH")] = 400_000m,
+            [("TIEC_CUOI", "BUONG_PHONG")] = 300_000m,
+        };
+
+    public static (int? MaKhoan, string TenKhoan, decimal SoTien) ResolveEventBonus(
+        DuAn? duAn,
+        PhongBan? phongBan,
+        PhanCongDuAn phanCong,
+        IEnumerable<CauHinhKhoanLuong>? bonusConfigs = null)
+    {
+        var eventType = duAn?.LoaiDuAn?.ToUpperInvariant() ?? "";
+        if (string.IsNullOrWhiteSpace(eventType) || !TypeLabels.ContainsKey(eventType))
+        {
+            var tenDuAn = duAn?.TenDuAn ?? "";
+            if (tenDuAn.Contains("VIP", StringComparison.OrdinalIgnoreCase)) eventType = "DOAN_VIP";
+            else if (tenDuAn.Contains("Cưới", StringComparison.OrdinalIgnoreCase) || tenDuAn.Contains("Cuoi", StringComparison.OrdinalIgnoreCase) || tenDuAn.Contains("Đám cưới", StringComparison.OrdinalIgnoreCase)) eventType = "TIEC_CUOI";
+            else if (tenDuAn.Contains("MICE", StringComparison.OrdinalIgnoreCase) || tenDuAn.Contains("Hội nghị", StringComparison.OrdinalIgnoreCase)) eventType = "HOI_NGHI_MICE";
+            else if (tenDuAn.Contains("Gala", StringComparison.OrdinalIgnoreCase)) eventType = "GALA_DINNER";
+            else if (tenDuAn.Contains("Festival", StringComparison.OrdinalIgnoreCase) || tenDuAn.Contains("Ẩm thực", StringComparison.OrdinalIgnoreCase)) eventType = "FESTIVAL_AM_THUC";
+        }
+
+        var deptCode = ResolveDepartmentCode(phongBan?.MaPhongBan, phongBan?.TenPhongBan);
+
+        // 1. Tìm trong cấu hình DB cau_hinh_khoan_luong
+        if (!string.IsNullOrEmpty(eventType) && !string.IsNullOrEmpty(deptCode) && bonusConfigs != null)
+        {
+            var eventKeyword = eventType switch
+            {
+                "DOAN_VIP" => "Đoàn VIP",
+                "TIEC_CUOI" => "Tiệc cưới",
+                "HOI_NGHI_MICE" => "MICE",
+                "GALA_DINNER" => "Gala Dinner",
+                "FESTIVAL_AM_THUC" => "Festival ẩm thực",
+                _ => TypeLabels.GetValueOrDefault(eventType, eventType)
+            };
+
+            var deptKeyword = deptCode switch
+            {
+                "TIEN_SANH" => "Tiền sảnh",
+                "AM_THUC" => "F&B",
+                "BEP" => "Bếp",
+                "BUONG_PHONG" => "Buồng phòng",
+                "KY_THUAT" => "Kỹ thuật",
+                "AN_NINH" => "An ninh",
+                "IT" => "IT",
+                _ => ""
+            };
+
+            var matched = bonusConfigs.FirstOrDefault(k =>
+                k.LoaiKhoan == "THUONG" &&
+                k.TenKhoan.Contains(eventKeyword, StringComparison.OrdinalIgnoreCase) &&
+                k.TenKhoan.Contains(deptKeyword, StringComparison.OrdinalIgnoreCase));
+
+            if (matched != null)
+            {
+                return (matched.MaKhoan, matched.TenKhoan, matched.GiaTriMacDinh);
+            }
+        }
+
+        // 2. Tra cứu định mức tiêu chuẩn theo ma trận mặc định nếu có cặp (EventType, DeptCode)
+        if (!string.IsNullOrEmpty(eventType) && !string.IsNullOrEmpty(deptCode) &&
+            StandardBonusMatrix.TryGetValue((eventType, deptCode), out var standardAmount))
+        {
+            var eventName = TypeLabels.GetValueOrDefault(eventType, eventType);
+            var deptName = DepartmentLabels.GetValueOrDefault(deptCode, deptCode);
+            return (null, $"Thưởng {eventName} - {deptName}", standardAmount);
+        }
+
+        // 3. Fallback cho dự án ngoại lệ ngoài ma trận 27 định mức
+        var fallbackAmount = phanCong.SoTienPhuCap > 0 ? phanCong.SoTienPhuCap : phanCong.PhuCapDuKien;
+        var defaultTitle = $"Thưởng sự kiện: {duAn?.TenDuAn ?? "Sự kiện"} - {phanCong.VaiTroDuAn}";
+        return (null, defaultTitle, fallbackAmount);
+    }
 }
 
 public record EventDepartmentStatus(

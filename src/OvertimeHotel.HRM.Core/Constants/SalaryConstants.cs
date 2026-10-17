@@ -24,8 +24,9 @@ public static class SalaryConstants
     public const decimal DEPENDENT_TAX_DEDUCTION = 4400000m; // 4.400.000 VNĐ/tháng/người
 
     // Phạt vi phạm kỷ luật chấm công
-    public const decimal FINE_LATE_1_TO_15_MINS = 50000m;    // Đi trễ 1-15 phút: 50.000 VNĐ/lần
-    public const decimal FINE_LATE_16_TO_30_MINS = 100000m;  // Đi trễ 16-30 phút: 100.000 VNĐ/lần
+    public const decimal FINE_PER_MINUTE_LATE = 2000m;       // Phạt 2.000 VNĐ / phút đi trễ (theo cau_hinh_khau_tru ma 5)
+    public const decimal FINE_LATE_1_TO_15_MINS = 50000m;    // [Legacy] Đi trễ 1-15 phút: 50.000 VNĐ/lần
+    public const decimal FINE_LATE_16_TO_30_MINS = 100000m;  // [Legacy] Đi trễ 16-30 phút: 100.000 VNĐ/lần
     public const decimal FINE_ABSENCE_PENALTY = 200000m;     // Phạt bổ sung bỏ ca: 200.000 VNĐ/lần
 
     // Hệ số thù lao sự kiện khách sạn

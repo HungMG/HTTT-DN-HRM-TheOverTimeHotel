@@ -337,31 +337,30 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 });
             }
 
-            // --- PHỤ CẤP SỰ KIỆN / DỰ ÁN KHÁCH SẠN (PRD 05 Mục 1.1) ---
+            // --- THƯỞNG SỰ KIỆN / DỰ ÁN KHÁCH SẠN (PRD 05 Mục 1.1 & cau_hinh_khoan_luong) ---
             var empAssignments = allAssignments.Where(a => a.MaNhanVien == nv.MaNhanVien).ToList();
-            var tienSuKien = 0m;
+            var tienThuongSuKien = 0m;
             foreach (var a in empAssignments)
             {
-                var baseAllowance = a.SoTienPhuCap > 0 ? a.SoTienPhuCap : a.PhuCapDuKien;
-                var bonusRate = a.DanhGia == "XUAT_SAC" ? (1m + SalaryConstants.EVENT_EXCELLENT_BONUS_RATE) : 1m;
-                var amount = Math.Round(baseAllowance * bonusRate, MidpointRounding.AwayFromZero);
+                var (maKhoan, tenKhoan, amount) = HotelEventRules.ResolveEventBonus(a.DuAn, nv.PhongBan, a, bonusesConfig);
 
                 var eventDetail = new ChiTietPhieuLuong
                 {
-                    LoaiKhoan = "PHU_CAP",
-                    LoaiKhoanLuu = "PHU_CAP",
-                    TenKhoanLuu = $"Phụ cấp sự kiện: {a.DuAn?.TenDuAn ?? "Sự kiện"} - {a.VaiTroDuAn}",
+                    MaKhoan = maKhoan,
+                    LoaiKhoan = "THUONG",
+                    LoaiKhoanLuu = "THUONG",
+                    TenKhoanLuu = tenKhoan,
                     SoTien = amount,
-                    GhiChu = $"Đánh giá: {a.DanhGia} (Hệ số: {bonusRate:P0}). Mã phân công: #{a.MaPhanCong}"
+                    GhiChu = $"Thưởng dự án ({a.DuAn?.TenDuAn ?? "Sự kiện"}). Đánh giá: {a.DanhGia}. Mã phân công: #{a.MaPhanCong}"
                 };
 
                 details.Add(eventDetail);
-                tienSuKien += amount;
+                tienThuongSuKien += amount;
                 assignmentsToUpdate.Add((a, eventDetail));
             }
 
             // --- THƯỞNG ---
-            var tongThuong = 0m;
+            var tongThuong = tienThuongSuKien;
             // Thưởng chuyên cần: nếu công >= 25 và không đi trễ
             var lateCount = empShifts.Count(s => s.ChamCong is { PhutDiTre: > 0 });
             if (ngayCongThucTe >= 25 && lateCount == 0)
@@ -369,6 +368,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 var thuongChuyenCan = 500000m;
                 details.Add(new ChiTietPhieuLuong
                 {
+                    MaKhoan = 4,
                     LoaiKhoan = "THUONG",
                     LoaiKhoanLuu = "THUONG",
                     TenKhoanLuu = "Tiền thưởng chuyên cần",
@@ -382,6 +382,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             var serviceCharge = 1000000m;
             details.Add(new ChiTietPhieuLuong
             {
+                MaKhoan = 5,
                 LoaiKhoan = "THUONG",
                 LoaiKhoanLuu = "THUONG",
                 TenKhoanLuu = "Tiền phí phục vụ (Service Charge)",
@@ -436,43 +437,15 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 var cc = shift.ChamCong!;
                 if (cc.PhutDiTre > 0)
                 {
-                    if (cc.PhutDiTre <= 15)
+                    var fine = cc.PhutDiTre * SalaryConstants.FINE_PER_MINUTE_LATE;
+                    tongTienPhat += fine;
+                    fineDetails.Add(new ChiTietTruViPhamTamUng
                     {
-                        var fine = SalaryConstants.FINE_LATE_1_TO_15_MINS;
-                        tongTienPhat += fine;
-                        fineDetails.Add(new ChiTietTruViPhamTamUng
-                        {
-                            LoaiTru = "DI_TRE",
-                            SoPhutViPham = cc.PhutDiTre,
-                            SoTienTru = fine,
-                            LyDoChiTiet = $"Đi trễ {cc.PhutDiTre} phút ngày {shift.NgayLamViec:dd/MM/yyyy}"
-                        });
-                    }
-                    else if (cc.PhutDiTre <= 30)
-                    {
-                        var fine = SalaryConstants.FINE_LATE_16_TO_30_MINS;
-                        tongTienPhat += fine;
-                        fineDetails.Add(new ChiTietTruViPhamTamUng
-                        {
-                            LoaiTru = "DI_TRE",
-                            SoPhutViPham = cc.PhutDiTre,
-                            SoTienTru = fine,
-                            LyDoChiTiet = $"Đi trễ {cc.PhutDiTre} phút ngày {shift.NgayLamViec:dd/MM/yyyy}"
-                        });
-                    }
-                    else
-                    {
-                        // Đi trễ > 30 phút tính theo bỏ ca (trừ 1 ngày công + phạt 200k)
-                        var fine = Math.Round(donGiaNgay + SalaryConstants.FINE_ABSENCE_PENALTY, MidpointRounding.AwayFromZero);
-                        tongTienPhat += fine;
-                        fineDetails.Add(new ChiTietTruViPhamTamUng
-                        {
-                            LoaiTru = "KY_LUAT",
-                            SoPhutViPham = cc.PhutDiTre,
-                            SoTienTru = fine,
-                            LyDoChiTiet = $"Đi trễ quá 30 phút ({cc.PhutDiTre}p) ngày {shift.NgayLamViec:dd/MM/yyyy} - Trừ 1 ngày công + phạt 200k"
-                        });
-                    }
+                        LoaiTru = "DI_TRE",
+                        SoPhutViPham = cc.PhutDiTre,
+                        SoTienTru = fine,
+                        LyDoChiTiet = $"Đi trễ {cc.PhutDiTre} phút ngày {shift.NgayLamViec:dd/MM/yyyy} ({cc.PhutDiTre}p x {SalaryConstants.FINE_PER_MINUTE_LATE:N0}đ)"
+                    });
                 }
 
                 if (cc.PhutVeSom > 15)
@@ -705,36 +678,40 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             details.Add(new ChiTietPhieuLuong { MaPhuCap = 3, LoaiKhoan = "PHU_CAP", LoaiKhoanLuu = "PHU_CAP", TenKhoanLuu = "Phụ cấp điện thoại & liên lạc", SoTien = 300000m });
         }
 
-        // Sự kiện
+        // Thưởng sự kiện / dự án theo ma trận cau_hinh_khoan_luong
+        var bonusesConfig = await _context.CauHinhKhoanLuongs.AsNoTracking()
+            .Where(k => k.LoaiKhoan == "THUONG").ToListAsync(cancellationToken);
+
         var assignments = await _context.PhanCongDuAns
             .Where(pc => pc.MaNhanVien == nv.MaNhanVien && pc.TrangThaiChiTra == "CHUA_CHI_TRA" &&
                          (pc.DanhGia == "HOAN_THANH" || pc.DanhGia == "XUAT_SAC"))
             .Include(pc => pc.DuAn).ToListAsync(cancellationToken);
 
         var assignmentsToLink = new List<(PhanCongDuAn Assignment, ChiTietPhieuLuong Detail)>();
+        var tienThuongSuKien = 0m;
         foreach (var a in assignments)
         {
-            var baseA = a.SoTienPhuCap > 0 ? a.SoTienPhuCap : a.PhuCapDuKien;
-            var bonusRate = a.DanhGia == "XUAT_SAC" ? (1m + SalaryConstants.EVENT_EXCELLENT_BONUS_RATE) : 1m;
-            var amount = Math.Round(baseA * bonusRate, MidpointRounding.AwayFromZero);
+            var (maKhoan, tenKhoan, amount) = HotelEventRules.ResolveEventBonus(a.DuAn, nv.PhongBan, a, bonusesConfig);
             var item = new ChiTietPhieuLuong
             {
-                LoaiKhoan = "PHU_CAP",
-                LoaiKhoanLuu = "PHU_CAP",
-                TenKhoanLuu = $"Phụ cấp sự kiện: {a.DuAn?.TenDuAn ?? "Sự kiện"} - {a.VaiTroDuAn}",
+                MaKhoan = maKhoan,
+                LoaiKhoan = "THUONG",
+                LoaiKhoanLuu = "THUONG",
+                TenKhoanLuu = tenKhoan,
                 SoTien = amount,
-                GhiChu = $"Đánh giá: {a.DanhGia} (#{a.MaPhanCong})"
+                GhiChu = $"Thưởng dự án ({a.DuAn?.TenDuAn ?? "Sự kiện"}). Đánh giá: {a.DanhGia}. Mã phân công: #{a.MaPhanCong}"
             };
             details.Add(item);
+            tienThuongSuKien += amount;
             assignmentsToLink.Add((a, item));
         }
 
-        // Thưởng
-        var tongThuong = 1000000m;
-        details.Add(new ChiTietPhieuLuong { LoaiKhoan = "THUONG", LoaiKhoanLuu = "THUONG", TenKhoanLuu = "Tiền phí phục vụ (Service Charge)", SoTien = 1000000m });
+        // Thưởng khác (Service Charge, Chuyên cần)
+        var tongThuong = tienThuongSuKien + 1000000m;
+        details.Add(new ChiTietPhieuLuong { MaKhoan = 5, LoaiKhoan = "THUONG", LoaiKhoanLuu = "THUONG", TenKhoanLuu = "Tiền phí phục vụ (Service Charge)", SoTien = 1000000m });
         if (ngayCongThucTe >= 25 && !empShifts.Any(s => s.ChamCong is { PhutDiTre: > 0 }))
         {
-            details.Add(new ChiTietPhieuLuong { LoaiKhoan = "THUONG", LoaiKhoanLuu = "THUONG", TenKhoanLuu = "Tiền thưởng chuyên cần", SoTien = 500000m });
+            details.Add(new ChiTietPhieuLuong { MaKhoan = 4, LoaiKhoan = "THUONG", LoaiKhoanLuu = "THUONG", TenKhoanLuu = "Tiền thưởng chuyên cần", SoTien = 500000m });
             tongThuong += 500000m;
         }
 
@@ -758,9 +735,25 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         var fines = new List<ChiTietTruViPhamTamUng>();
         foreach (var s in empShifts.Where(s => s.ChamCong is { PhutDiTre: > 0 }))
         {
-            var p = s.ChamCong!.PhutDiTre <= 15 ? 50000m : 100000m;
+            var p = s.ChamCong!.PhutDiTre * SalaryConstants.FINE_PER_MINUTE_LATE;
             fineTotal += p;
-            fines.Add(new() { LoaiTru = "DI_TRE", SoPhutViPham = s.ChamCong.PhutDiTre, SoTienTru = p, LyDoChiTiet = $"Đi trễ {s.ChamCong.PhutDiTre}p" });
+            fines.Add(new() { 
+                LoaiTru = "DI_TRE", 
+                SoPhutViPham = s.ChamCong.PhutDiTre, 
+                SoTienTru = p, 
+                LyDoChiTiet = $"Đi trễ {s.ChamCong.PhutDiTre} phút ({s.ChamCong.PhutDiTre}p x {SalaryConstants.FINE_PER_MINUTE_LATE:N0}đ)" 
+            });
+        }
+        foreach (var s in empShifts.Where(s => s.ChamCong is { PhutVeSom: > 15 }))
+        {
+            var p = 50000m;
+            fineTotal += p;
+            fines.Add(new() {
+                LoaiTru = "VE_SOM",
+                SoPhutViPham = s.ChamCong!.PhutVeSom,
+                SoTienTru = p,
+                LyDoChiTiet = $"Về sớm {s.ChamCong.PhutVeSom} phút ngày {s.NgayLamViec:dd/MM/yyyy}"
+            });
         }
         if (fineTotal > 0)
         {

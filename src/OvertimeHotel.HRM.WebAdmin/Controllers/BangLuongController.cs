@@ -183,7 +183,15 @@ public class BangLuongController(
         var mealItem = details.FirstOrDefault(d => d.MaPhuCap == 1);
 
         var eventItems = details
-            .Where(d => d.LoaiKhoan == "PHU_CAP" && d.TenKhoanLuu.StartsWith("Phụ cấp sự kiện"))
+            .Where(d => (d.LoaiKhoan == "PHU_CAP" && d.TenKhoanLuu.StartsWith("Phụ cấp sự kiện"))
+                     || (d.LoaiKhoan == "THUONG" && (d.TenKhoanLuu.StartsWith("Thưởng sự kiện")
+                                                  || d.TenKhoanLuu.StartsWith("Thưởng Tiệc cưới")
+                                                  || d.TenKhoanLuu.StartsWith("Thưởng Đoàn VIP")
+                                                  || d.TenKhoanLuu.StartsWith("Thưởng Gala Dinner")
+                                                  || d.TenKhoanLuu.StartsWith("Thưởng MICE")
+                                                  || d.TenKhoanLuu.StartsWith("Thưởng Festival")
+                                                  || d.TenKhoanLuu.StartsWith("Thưởng dự án")
+                                                  || d.GhiChu?.Contains("phân công") == true)))
             .Select(d => new ChiTietKhoanItemViewModel
             {
                 MaChiTiet = d.MaChiTiet,
@@ -207,7 +215,7 @@ public class BangLuongController(
             }).ToList();
 
         var bonusItems = details
-            .Where(d => d.LoaiKhoan == "THUONG")
+            .Where(d => d.LoaiKhoan == "THUONG" && !eventItems.Any(e => e.MaChiTiet == d.MaChiTiet))
             .Select(d => new ChiTietKhoanItemViewModel
             {
                 MaChiTiet = d.MaChiTiet,

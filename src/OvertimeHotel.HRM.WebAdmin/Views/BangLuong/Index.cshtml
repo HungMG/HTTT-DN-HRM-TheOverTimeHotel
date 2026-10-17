@@ -39,108 +39,49 @@
         </div>
 
         <!-- FORM CHỌN THÁNG/NĂM -->
-        <form method="get" asp-action="Index" class="d-flex align-items-center gap-2 flex-wrap">
-            <div class="input-group input-group-sm rounded-pill border bg-white px-2 py-1 shadow-xs">
-                <span class="input-group-text bg-transparent border-0 text-muted">
-                    <i class="bi bi-calendar3"></i>
-                </span>
-                <select name="thang" class="form-select form-select-sm border-0 fw-semibold" style="width: 110px;">
-                    @for (int m = 1; m <= 12; m++)
-                    {
-                        <option value="@m" selected="@(m == Model.SelectedThang)">Tháng @m</option>
-                    }
-                </select>
-                <select name="nam" class="form-select form-select-sm border-0 fw-semibold" style="width: 100px;">
-                    @for (int y = 2025; y <= 2027; y++)
-                    {
-                        <option value="@y" selected="@(y == Model.SelectedNam)">Năm @y</option>
-                    }
-                </select>
-                <button type="submit" class="btn btn-sm btn-dark rounded-pill px-3">Xem</button>
-            </div>
-        </form>
+     
+<form method="get" asp-action="Index"
+      class="d-flex align-items-center gap-2 flex-wrap">
+
+    <div class="input-group input-group-sm rounded-pill border bg-white px-2 py-1 shadow-xs flex-nowrap">
+
+        <span class="input-group-text bg-transparent border-0 text-muted">
+            <i class="bi bi-calendar3"></i>
+        </span>
+
+        <select name="thang"
+                class="form-select form-select-sm border-0 fw-semibold flex-shrink-0"
+                style="width: 125px; min-width: 125px;">
+            @for (int m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(m == Model.SelectedThang)">
+                    Tháng @m
+                </option>
+            }
+        </select>
+
+        <select name="nam"
+                class="form-select form-select-sm border-0 fw-semibold flex-shrink-0"
+                style="width: 135px; min-width: 135px; padding-right: 32px;">
+            @for (int y = 2025; y <= 2027; y++)
+            {
+                <option value="@y" selected="@(y == Model.SelectedNam)">
+                    Năm @y
+                </option>
+            }
+        </select>
+
+        <button type="submit"
+                class="btn btn-sm btn-dark rounded-pill px-3 flex-shrink-0">
+            Xem
+        </button>
+
+    </div>
+</form>
+
     </div>
 
-    <!-- 1. WORKFLOW STEPPER (4 BƯỚC CHUẨN) -->
-    <div class="payroll-stepper d-none d-md-flex">
-        <!-- Bước 1 -->
-        <div class="payroll-step @(status != "MO" ? "completed" : "active")">
-            <div class="payroll-step-circle">
-                <i class="bi @(status != "MO" ? "bi-check-lg" : "bi-1-circle")"></i>
-            </div>
-            <div class="payroll-step-info">
-                <span class="payroll-step-title">1. Hệ thống tự tính</span>
-                <span class="payroll-step-desc">Tạo bảng lương nháp</span>
-            </div>
-        </div>
-        <div class="payroll-step-line @(status is "CHO_DUYET" or "DA_DUYET" or "KHOA_SO" ? "completed" : "")"></div>
-
-        <!-- Bước 2 -->
-        <div class="payroll-step @(status == "CHO_DUYET" ? "completed" : (status == "TU_CHOI" ? "rejected" : (status == "NHAP" ? "active" : (status is "DA_DUYET" or "KHOA_SO" ? "completed" : ""))))">
-            <div class="payroll-step-circle">
-                @if (status == "TU_CHOI")
-                {
-                    <i class="bi bi-x-lg"></i>
-                }
-                else if (status is "CHO_DUYET" or "DA_DUYET" or "KHOA_SO")
-                {
-                    <i class="bi bi-check-lg"></i>
-                }
-                else
-                {
-                    <span>2</span>
-                }
-            </div>
-            <div class="payroll-step-info">
-                <span class="payroll-step-title">2. HR kiểm tra &amp; Gửi duyệt</span>
-                <span class="payroll-step-desc">
-                    @(status == "TU_CHOI" ? "Bị từ chối (Cần sửa)" : (status == "CHO_DUYET" ? "Đã gửi duyệt" : "Rà soát sai sót"))
-                </span>
-            </div>
-        </div>
-        <div class="payroll-step-line @(status is "DA_DUYET" or "KHOA_SO" ? "completed" : "")"></div>
-
-        <!-- Bước 3 -->
-        <div class="payroll-step @(status == "DA_DUYET" ? "active" : (status == "KHOA_SO" ? "completed" : (status == "CHO_DUYET" ? "active" : "")))">
-            <div class="payroll-step-circle">
-                @if (status is "DA_DUYET" or "KHOA_SO")
-                {
-                    <i class="bi bi-check-lg"></i>
-                }
-                else
-                {
-                    <span>3</span>
-                }
-            </div>
-            <div class="payroll-step-info">
-                <span class="payroll-step-title">3. Sếp phê duyệt</span>
-                <span class="payroll-step-desc">
-                    @(status is "DA_DUYET" or "KHOA_SO" ? "Đã duyệt" : (status == "CHO_DUYET" ? "Chờ duyệt..." : "Chưa duyệt"))
-                </span>
-            </div>
-        </div>
-        <div class="payroll-step-line @(status == "KHOA_SO" ? "completed" : "")"></div>
-
-        <!-- Bước 4 -->
-        <div class="payroll-step @(status == "KHOA_SO" ? "completed" : "")">
-            <div class="payroll-step-circle">
-                @if (status == "KHOA_SO")
-                {
-                    <i class="bi bi-lock-fill"></i>
-                }
-                else
-                {
-                    <span>4</span>
-                }
-            </div>
-            <div class="payroll-step-info">
-                <span class="payroll-step-title">4. Khóa sổ &amp; Chuyển khoản</span>
-                <span class="payroll-step-desc">
-                    @(status == "KHOA_SO" ? "Đã khóa sổ & Xuất file" : "Chờ khóa sổ")
-                </span>
-            </div>
-        </div>
-    </div>
+   
 
     <!-- 2. ACTION BANNER ĐIỀU PHỐI WORKFLOW THEO VAI TRÒ -->
     <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
@@ -491,7 +432,7 @@
                     {
                         @foreach (var row in Model.Items)
                         {
-                            <tr>
+                            <tr class="payroll-table-row" style="cursor: pointer;" onclick="if (!event.target.closest('a, button, form, input, select')) window.location.href = '@Url.Action("Detail", "BangLuong", new { id = row.MaPhieuLuong })';" title="Nhấn để xem chi tiết bảng lương">
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="rounded-circle bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 34px; height: 34px; font-size: 0.8rem;">
@@ -537,14 +478,9 @@
                                     </span>
                                 </td>
                                 <td class="text-end pe-4">
-                                    <div class="btn-group btn-group-sm">
-                                        <a asp-action="Detail" asp-route-id="@row.MaPhieuLuong" class="btn btn-outline-secondary rounded-pill px-2.5" title="Xem chi tiết & đối chiếu">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        <a asp-action="Print" asp-route-id="@row.MaPhieuLuong" target="_blank" class="btn btn-outline-secondary rounded-pill px-2.5 ms-1" title="In phiếu lương / Xuất PDF">
-                                            <i class="bi bi-printer"></i>
-                                        </a>
-                                    </div>
+                                    <a asp-action="Print" asp-route-id="@row.MaPhieuLuong" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" title="In phiếu lương / Xuất PDF" onclick="event.stopPropagation();">
+                                        <i class="bi bi-printer"></i>
+                                    </a>
                                 </td>
                             </tr>
                         }
