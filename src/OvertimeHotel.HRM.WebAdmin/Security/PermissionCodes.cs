@@ -41,6 +41,17 @@ public static class PermissionCodes
     public const string CalculatePayroll = "TINH_LUONG";
     public const string ExportPayslipPdf = "XUAT_PHIEU_LUONG_PDF";
 
+    // ── Nhóm: Báo cáo & Thống kê ───────────────────────────────────────────
+    /// <summary>
+    /// Mở phân hệ Báo cáo &amp; Thống kê quản trị (Phân hệ 10.0 — TSK-24).
+    /// </summary>
+    /// <remarks>
+    /// Theo ma trận PRD 02 mục 10.0: Admin / HR / Manager / IT được xem,
+    /// Employee không. Quản lý bị thu hẹp còn bộ phận của mình ở tầng truy vấn
+    /// (<c>ReportPolicy.ResolveScope</c>) chứ không phải ở mã quyền này.
+    /// </remarks>
+    public const string ReportView = "REPORT_VIEW";
+
     // ── Nhóm: Phê duyệt ────────────────────────────────────────────────────
     public const string ApproveResignation = "DUYET_THOI_VIEC";
     public const string ApproveLeave = "DUYET_DON_NGHI";

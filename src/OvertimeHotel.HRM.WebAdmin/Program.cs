@@ -251,6 +251,10 @@ builder.Services.AddAuthorization(options =>
     AddPermissionPolicy(PermissionCodes.ApproveResignation);
     AddPermissionPolicy(PermissionCodes.ApproveLeave);
     AddPermissionPolicy(PermissionCodes.ApproveOvertime);
+    // Phân hệ Báo cáo & Thống kê (TSK-24). Admin/HR/IT xem toàn khách sạn; Manager
+    // vẫn qua được policy này nhưng bị thu hẹp còn bộ phận của mình ở tầng truy vấn
+    // (ReportPolicy.ResolveScope) — mã quyền không mang thông tin phạm vi.
+    AddPermissionPolicy(PermissionCodes.ReportView);
 });
 
 // Cấu hình kết nối Entity Framework Core với Supabase PostgreSQL

@@ -1,0 +1,175 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.BaoCaoViewModel
+@{
+    ViewData["Title"] = $"Báo cáo & Thống kê · {Model.NhanKy}";
+
+    // Tab nào cũng có thể bị sâu-liên kết bằng ?tab=...; giữ đúng tab người dùng đang xem
+    // khi bấm Xuất CSV để tệp tải về khớp màn hình.
+    var tabs = new (string Key, string Label, string Icon)[]
+    {
+        ("bien-dong", "Biến động nhân sự", "bi-graph-up-arrow"),
+        ("co-cau", "Cơ cấu nhân lực", "bi-pie-chart-fill"),
+        ("hoc-van", "Học vấn & thâm niên", "bi-mortarboard-fill"),
+        ("quy-luong", "Đối soát quỹ lương", "bi-wallet2"),
+        ("chuyen-can", "Chuyên cần & vi phạm", "bi-fingerprint"),
+        ("su-kien", "Hiệu quả sự kiện", "bi-calendar-event")
+    };
+}
+
+<div class="catalog-page baocao-page"
+     data-baocao-root
+     data-baocao-endpoint="@Url.Action("Index")"
+     data-baocao-export-endpoint="@Url.Action("Export")"
+     data-baocao-tab="@Model.Tab">
+
+    <partial name="_CatalogAlerts" />
+
+    <!-- ═════════════ THANH TIÊU ĐỀ ═════════════ -->
+    <header class="baocao-hero">
+        <div class="baocao-hero-text">
+            <div class="baocao-hero-eyebrow">
+                <i class="bi bi-bar-chart-line-fill"></i>
+                <span>Phân hệ Báo cáo &amp; Thống kê Quản trị</span>
+                <span class="baocao-hero-dot">&bull;</span>
+                <span>@Model.NhanKy</span>
+            </div>
+            <h1 class="baocao-hero-title hotel-blur-text">
+                Phân tích nghiệp vụ nhân sự
+            </h1>
+            <p class="baocao-hero-sub">
+                Sáu báo cáo phân tích theo <strong>@Model.PhamViLabel</strong> — số liệu tổng hợp
+                trực tiếp từ CSDL Supabase, không qua bảng sao lưu trung gian.
+            </p>
+        </div>
+
+        <div class="baocao-hero-actions">
+            <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold"
+                    data-baocao-export
+                    title="Tải số liệu của tab đang mở ra tệp CSV mở bằng Excel">
+                <i class="bi bi-file-earmark-excel me-1"></i> Xuất CSV
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold"
+                    data-baocao-print
+                    title="In báo cáo đang xem theo khổ A4">
+                <i class="bi bi-printer me-1"></i> In báo cáo
+            </button>
+        </div>
+    </header>
+
+    <!-- ═════════════ BỘ LỌC KỲ & PHẠM VI ═════════════
+         Mọi thao tác trên thanh này cập nhật TẠI CHỖ: JS chặn submit, gọi AJAX rồi chỉ
+         hoán đổi vùng [data-baocao-board-host]. Thanh tiêu đề, bộ lọc và thanh tab
+         không bao giờ bị nạp lại. -->
+    <section class="catalog-card shadow-sm baocao-filter-card">
+        <form method="get" asp-action="Index" class="catalog-filter-form baocao-filter-form" data-baocao-filter>
+            <input type="hidden" name="tab" value="@Model.Tab" data-baocao-tab-input />
+
+            <div class="baocao-field">
+                <label for="baocaoKy">Kiểu kỳ</label>
+                <select name="ky" id="baocaoKy" class="form-select form-select-sm" data-baocao-ky>
+                    <option value="THANG" selected="@(Model.KyBaoCao == "THANG")">Theo tháng</option>
+                    <option value="QUY" selected="@(Model.KyBaoCao == "QUY")">Theo quý</option>
+                    <option value="NAM" selected="@(Model.KyBaoCao == "NAM")">Cả năm</option>
+                </select>
+            </div>
+
+            <div class="baocao-field">
+                <label for="baocaoNam">Năm</label>
+                <select name="nam" id="baocaoNam" class="form-select form-select-sm">
+                    @foreach (var year in Model.NamOptions)
+                    {
+                        <option value="@year" selected="@(year == Model.Nam)">Năm @year</option>
+                    }
+                </select>
+            </div>
+
+            @* Ô tháng và ô quý cùng có mặt trong DOM nhưng chỉ một ô hiển thị, tùy kiểu kỳ.
+               Ô đang ẩn phải disabled để không gửi lên tham số thừa. *@
+            <div class="baocao-field" data-baocao-month-field hidden="@(Model.KyBaoCao != "THANG")">
+                <label for="baocaoThang">Tháng</label>
+                <select name="thang" id="baocaoThang" class="form-select form-select-sm"
+                        disabled="@(Model.KyBaoCao != "THANG")">
+                    @for (var m = 1; m <= 12; m++)
+                    {
+                        <option value="@m" selected="@(m == Model.Thang)">Tháng @m</option>
+                    }
+                </select>
+            </div>
+
+            <div class="baocao-field" data-baocao-quarter-field hidden="@(Model.KyBaoCao != "QUY")">
+                <label for="baocaoQuy">Quý</label>
+                <select name="quy" id="baocaoQuy" class="form-select form-select-sm"
+                        disabled="@(Model.KyBaoCao != "QUY")">
+                    @for (var q = 1; q <= 4; q++)
+                    {
+                        <option value="@q" selected="@(q == Model.Quy)">Quý @q</option>
+                    }
+                </select>
+            </div>
+
+            @* Quản lý đã bị khóa trong bộ phận của mình ngay ở tầng truy vấn, nên ô chọn
+               phòng ban không có ý nghĩa với họ — ẩn hẳn thay vì hiện ra rồi bỏ qua lựa chọn. *@
+            @if (Model.IsWholeHotel)
+            {
+                <div class="baocao-field baocao-field--wide">
+                    <label for="baocaoPhongBan">Phòng ban</label>
+                    <select name="phongBan" id="baocaoPhongBan" class="form-select form-select-sm"
+                            asp-items="Model.PhongBanOptions">
+                        <option value="">Toàn khách sạn</option>
+                    </select>
+                </div>
+            }
+
+            <div class="baocao-field baocao-field--action">
+                <button type="submit" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold">
+                    <i class="bi bi-funnel me-1"></i> Áp dụng
+                </button>
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-3 px-2"
+                   title="Đưa bộ lọc về kỳ hiện tại" data-baocao-reset>
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+        </form>
+
+        <!-- ═════════════ THANH CHỌN BÁO CÁO ═════════════
+             Nằm NGOÀI vùng dữ liệu để không chớp giật mỗi lần đổi kỳ hay đổi phòng ban. -->
+        <nav class="baocao-tabs" data-baocao-tabs aria-label="Chọn báo cáo">
+            @foreach (var item in tabs)
+            {
+                @* Khối 10.4 là dữ liệu quỹ lương. Người không có quyền vừa không thấy nút này,
+                   vừa không nhận được <section> tương ứng từ partial. *@
+                if (item.Key == "quy-luong" && !Model.CanViewPayrollFund)
+                {
+                    continue;
+                }
+
+                var active = item.Key == Model.Tab;
+                <button type="button"
+                        class="baocao-tab @(active ? "is-active" : string.Empty)"
+                        data-baocao-tab="@item.Key"
+                        aria-pressed="@(active ? "true" : "false")">
+                    <i class="bi @item.Icon"></i>
+                    <span>@item.Label</span>
+                </button>
+            }
+        </nav>
+    </section>
+
+    <!-- ═════════════ VÙNG DỮ LIỆU NẠP TẠI CHỖ ═════════════ -->
+    <div class="baocao-board-host" data-baocao-board-host>
+        <div class="baocao-loading" data-baocao-loading hidden>
+            <span class="baocao-loading-bar"></span>
+        </div>
+
+        <partial name="_BaoCaoBoard" model="Model" />
+    </div>
+</div>
+
+@section Scripts {
+    @* Ghim đúng phiên bản ECharts: bản mới có thể đổi API tuỳ chọn và làm biểu đồ dựng sai
+       mà không hề báo lỗi. Nạp từ CDN để khỏi thêm thư viện nặng vào wwwroot/lib.
+       Mã SRI tính từ chính tệp phân phối của 5.5.1 (sha384). *@
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"
+            integrity="sha384-Mx5lkUEQPM1pOJCwFtUICyX45KNojXbkWdYhkKUKsbv391mavbfoAmONbzkgYPzR"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="~/js/baocao.js" asp-append-version="true"></script>
+}

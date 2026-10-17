@@ -11,13 +11,13 @@
 ## 📊 TIẾN ĐỘ TỔNG QUAN HỆ THỐNG
 
 - **Tổng số nhiệm vụ:** 30 Tasks
-- **Đã hoàn thành:** 15 / 30 Tasks (50.0%)
+- **Đã hoàn thành:** 16 / 30 Tasks (53.3%)
 - **Đang thực hiện:** 0 Task
-- **Chưa bắt đầu:** 15 Tasks
+- **Chưa bắt đầu:** 14 Tasks
 - **Mốc chấm đồ án chính thức:** **Tuần 10 (10/11/2026)**
 
 ```text
-[████████████████░░░░░░░░░░░░░░] 50.0% Hoàn thành (15/30)
+[█████████████████░░░░░░░░░░░░░] 53.3% Hoàn thành (16/30)
 ```
 
 ---
@@ -180,11 +180,24 @@
   - **Người phụ trách:** _Chưa phân công_ | **Độ ưu tiên:** Khẩn cấp | **Hạn chót:** 03/11/2026
   - **Trạng thái:** `Chưa bắt đầu`
 
-- [ ] **TSK-24:** Lập trình Dashboard & Biểu đồ thống kê nhân sự
+- [x] **TSK-24:** Lập trình Dashboard & Biểu đồ thống kê nhân sự
   - **Phân hệ:** Báo cáo Thống kê
   - **Mô tả & Output:** Thống kê số lượng NV, phòng ban, trình độ, thâm niên, quỹ lương, chấm công trên Web & App
   - **Người phụ trách:** _Chưa phân công_ | **Độ ưu tiên:** Cao | **Hạn chót:** 03/11/2026
-  - **Trạng thái:** `Chưa bắt đầu`
+  - **Trạng thái:** `Hoàn thành (phần Web Admin)`
+  - **Phạm vi đã làm:** Phân hệ Báo cáo & Thống kê trên Web Admin, đủ **6 báo cáo** theo PRD 10.1 → 10.6
+    (biến động nhân sự, cơ cấu nhân lực, học vấn & thâm niên, đối soát quỹ lương, chuyên cần & vi phạm,
+    hiệu quả nhân sự sự kiện). Biểu đồ ECharts 5.5.1 (CDN, ghim bản + SRI), bộ lọc kỳ/tháng/quý/năm/phòng ban
+    cập nhật **tại chỗ** (AJAX + `history.pushState`, không nạp lại toàn trang), chuyển tab phía client,
+    xuất CSV (UTF-8 BOM) và in A4. Công thức nghiệp vụ tách ra `Core/Policies/ReportPolicy.cs`,
+    có bộ test `tests/ReportRules` (**27/27 xanh**). RBAC: mã quyền mới `REPORT_VIEW`
+    (Admin/HR/IT xem toàn khách sạn; **Quản lý chỉ thấy bộ phận mình** và **không thấy báo cáo 10.4 quỹ lương**).
+    ⚠️ **Còn nợ 1 bước thủ công:** phải chạy `supabase/migrations/20261017_them_quyen_bao_cao_thong_ke.sql`
+    trên SQL Editor của Supabase, nếu không HR/Quản lý/IT sẽ bị chặn ở `/BaoCao` (Admin vẫn vào được vì
+    qua policy bằng `IsInRole("Admin")`).
+  - **Việc còn lại (ngoài phạm vi đã làm):** Mobile `HrStatisticsPage` còn số liệu mock cứng, chưa nối CSDL;
+    xuất **PDF** bằng QuestPDF chưa làm vì engine chưa được cài vào `.csproj` nào; báo cáo 10.4 dùng
+    **định mức tham chiếu suy ra** từ `SUM(hop_dong.luong_co_ban)` vì CSDL chưa có bảng ngân sách quỹ lương thật.
 
 ---
 
