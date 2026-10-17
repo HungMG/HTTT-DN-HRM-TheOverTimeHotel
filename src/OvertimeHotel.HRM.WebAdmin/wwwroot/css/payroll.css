@@ -1,11 +1,37 @@
+/* Chuyển danh mục: tiêu đề mờ đi rồi hiện lại, header không bị dựng lại. */
+.catalog-title-swap {
+  animation: catalog-title-swap .28s cubic-bezier(.16, 1, .3, 1);
+}
+@keyframes catalog-title-swap {
+  0% { opacity: 1; transform: translateY(0); }
+  45% { opacity: 0; transform: translateY(-6px); }
+  46% { transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalog-title-swap { animation: none; }
+}
+
 /* Cấu hình lương dùng màu và nhịp bố cục của danh mục khách sạn. */
-.payroll-category-tabs { display: flex; flex-wrap: wrap; gap: .5rem; }
+.payroll-category-tabs {
+  display: flex; flex-wrap: wrap; gap: .5rem;
+  padding: 1.25rem 1.25rem .5rem;
+}
+/* Vùng nạp tại chỗ khi chuyển tab: overlay .catalog-loading phải bám theo panel
+   này (đã nằm dưới hàng tab) chứ không bám theo .catalog-card nữa. */
+.payroll-workspace [data-payroll-category-panel] { position: relative; }
+.payroll-category-note { padding: 0 1.25rem; margin-bottom: .75rem; font-size: .85rem; }
 .payroll-category-tab {
   display: inline-flex; align-items: center; justify-content: center;
   min-height: 42px; padding: .6rem 1.25rem; border: 1px solid #cbd5e1;
   border-radius: 12px; background: #fff; color: var(--hotel-blue);
   font-weight: 600; text-decoration: none;
+  transition: background-color .22s cubic-bezier(.16, 1, .3, 1),
+    color .22s cubic-bezier(.16, 1, .3, 1),
+    border-color .22s cubic-bezier(.16, 1, .3, 1);
 }
+/* Đang nạp danh mục mới: khoá tab, chỉ vùng dữ liệu bên dưới chớp. */
+.payroll-category-tabs.is-switching .payroll-category-tab { opacity: .6; pointer-events: none; }
 .payroll-category-tab:hover { background: #f1f5f9; color: var(--hotel-blue); border-color: var(--hotel-blue); }
 .payroll-category-tab.is-active { background: var(--hotel-blue); color: #fff; border-color: var(--hotel-blue); }
 .payroll-category-tab:focus-visible,
@@ -29,6 +55,35 @@
 .payroll-table-row:hover > td {
   background-color: rgba(30, 58, 138, 0.05) !important;
 }
+
+/* --- BẢNG LƯƠNG: BỐ CỤC CỘT GỌN, KHÔNG CẦN CUỘN NGANG --- */
+/* Bảng chi tiết lương 13 cột cũ vượt khung ở màn 1280px (cần 1554px), khiến
+   "Lương Net" và "Thao tác" bị đẩy khỏi tầm nhìn. Gộp Lương CB + Công + Lương
+   công thành một ô 2 dòng và cho phép ngắt dòng ở cột chữ. */
+.payroll-grid { font-size: .85rem; }
+.payroll-grid th,
+.payroll-grid td { white-space: normal; }
+.payroll-grid th { line-height: 1.2; vertical-align: bottom; }
+.payroll-grid td.payroll-amount,
+.payroll-grid .payroll-stack > div:first-child { white-space: nowrap; }
+.payroll-grid th:first-child,
+.payroll-grid td:first-child { min-width: 168px; }
+.payroll-grid th:nth-child(2),
+.payroll-grid td:nth-child(2) { min-width: 140px; max-width: 210px; }
+.payroll-grid th:nth-child(3),
+.payroll-grid td:nth-child(3) { min-width: 138px; }
+.payroll-grid td.payroll-stack .badge { font-size: .68rem; }
+/* Cột số gọn lại: đủ chỗ cho 11 cột mà không phải cuộn ngang ở màn 1280px. */
+.payroll-grid th:not(:first-child):not(:nth-child(2)):not(:nth-child(3)),
+.payroll-grid td:not(:first-child):not(:nth-child(2)):not(:nth-child(3)) { padding-left: .45rem; padding-right: .45rem; }
+
+/* Giữ cột "Nhân viên" luôn nhìn thấy khi bảng buộc phải cuộn ngang trên màn hẹp. */
+.payroll-grid th:first-child,
+.payroll-grid td:first-child {
+  position: sticky; left: 0; z-index: 2; background: #fff;
+}
+.payroll-grid thead th:first-child { z-index: 3; background: var(--bs-table-bg, #f8f9fa); }
+.payroll-grid tbody tr:hover td:first-child { background: #f4f7fd; }
 @media (max-width: 575.98px) {
   .payroll-category-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .payroll-category-tab { min-height: 44px; }
@@ -37,6 +92,29 @@
   .payroll-type-filter { flex: 1 1 160px; }
   .payroll-action-button { min-width: 44px; min-height: 44px; }
   .payroll-workspace .catalog-toolbar > a { width: 100%; }
+}
+
+/* --- ĐẦU TRANG BẢNG TÍNH LƯƠNG (MỘT TIÊU ĐỀ DUY NHẤT) --- */
+.payroll-page-head {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  justify-content: space-between; gap: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.payroll-eyebrow {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: #64748b; margin-bottom: .35rem;
+}
+.payroll-eyebrow .bi { color: #d4af37; font-size: .95rem; }
+.payroll-eyebrow span + span::before { content: "•"; margin-right: .5rem; color: #cbd5e1; }
+.payroll-page-title {
+  font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.75rem;
+  line-height: 1.2; color: #0f172a; margin: 0;
+}
+.payroll-period-form { flex: 0 0 auto; }
+.payroll-period-form .input-group {
+  border: 1px solid #e2e8f0; border-radius: 999px; background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
 }
 
 /* --- WORKFLOW STEPPER --- */
@@ -56,11 +134,15 @@
   align-items: center;
   gap: 0.75rem;
   position: relative;
-  flex: 1;
+  /* flex-basis 0 + min-width 0: các bước chia đều nhau, nhường chỗ cho đường nối
+     thay vì bóp méo vòng tròn số. */
+  flex: 1 1 0;
+  min-width: 0;
 }
 .payroll-step-circle {
   width: 38px;
   height: 38px;
+  flex: 0 0 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -91,24 +173,68 @@
 .payroll-step-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .payroll-step-title {
   font-weight: 600;
   font-size: 0.9rem;
   color: #1e293b;
 }
+.payroll-step.active .payroll-step-title { color: #1e3a8a; font-weight: 700; }
 .payroll-step-desc {
   font-size: 0.75rem;
+  line-height: 1.35;
   color: #64748b;
 }
 .payroll-step-line {
-  flex: 1;
+  flex: 1 1 20px;
+  min-width: 16px;
   height: 3px;
   background: #e2e8f0;
-  margin: 0 1rem;
+  margin: 0 0.75rem;
+  /* Canh đường nối ngang tâm vòng tròn số (38px) chứ không theo tâm cả khối. */
+  align-self: center;
 }
 .payroll-step-line.completed {
   background: #10b981;
+}
+
+/* --- THANH TRẠNG THÁI & HÀNH ĐỘNG DƯỚI STEPPER --- */
+.payroll-status-bar {
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: 1rem;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+  padding: 1rem 1.5rem; margin-bottom: 1.5rem;
+}
+.payroll-status-meta { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+.payroll-status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+
+/* --- THẺ CHỜ HR RÀ SOÁT (DÀNH CHO SẾP/ADMIN Ở BƯỚC 2) --- */
+.payroll-waiting-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+  padding: 3rem 1.5rem; text-align: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .05);
+}
+.payroll-waiting-icon {
+  width: 76px; height: 76px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fffbeb; color: #b45309; font-size: 2rem; margin-bottom: 1.25rem;
+  border: 2px solid #fde68a;
+}
+.payroll-waiting-card h4 { font-family: 'Fraunces', serif; font-weight: 700; color: #0f172a; }
+.payroll-waiting-card p { color: #475569; max-width: 650px; margin: 0 auto 1.25rem; }
+
+@media (max-width: 767.98px) {
+  .payroll-page-title { font-size: 1.4rem; }
+  .payroll-period-form { width: 100%; }
+  .payroll-period-form .input-group { width: 100%; }
+  /* Stepper dọc trên màn hình hẹp để không bóp chữ thành cột dọc. */
+  .payroll-stepper { flex-direction: column; align-items: stretch; gap: .75rem; padding: 1.25rem; }
+  .payroll-step { flex: 0 0 auto; }
+  .payroll-step-line { display: none; }
+  .payroll-status-bar { padding: 1rem; }
+  .payroll-status-actions { width: 100%; }
+  .payroll-status-actions .btn { flex: 1 1 auto; }
 }
 
 /* --- STATS KPI CARDS --- */
@@ -169,6 +295,135 @@
   background: #fef2f2;
   border-bottom: 2px solid #ef4444;
   color: #991b1b;
+}
+
+/* --- POPUP CHI TIẾT PHIẾU LƯƠNG NHIỀU TAB --- */
+.modal-dialog-payslip {
+  max-width: min(1180px, 96vw);
+}
+.payslip-modal-header {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  border-radius: 0;
+  /* Nới khoảng cách khối tên nhân viên ↔ nhóm nút. Trước đây không đặt gap nên
+     nút "In / PDF" và nút X đóng dính sát nhau. */
+  gap: 1rem;
+}
+.payslip-modal-avatar {
+  width: 44px; height: 44px; flex: 0 0 44px;
+  border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(212, 175, 55, .22); border: 1.5px solid #d4af37;
+  color: #fde047; font-weight: 700; font-size: 1.05rem;
+}
+.payslip-modal-header .min-w-0 { min-width: 0; }
+/* Đẩy nhóm nút (In / PDF + X đóng) sang sát mép phải và nới khoảng cách giữa
+   hai nút. Trước đây nhóm nút co theo nội dung nên nằm lơ lửng giữa thanh. */
+.payslip-modal-identity { flex: 1 1 auto; min-width: 0; }
+.payslip-modal-actions {
+  flex: 0 0 auto;
+  gap: .75rem;
+  margin-left: auto;
+  padding-left: .5rem;
+}
+/* Bootstrap cho .modal-header .btn-close margin-left:auto — trong nhóm nút co theo
+   nội dung, phần margin đó vô tác dụng nhưng vẫn bóp khoảng cách; trả về 0 để
+   khoảng nới do gap quyết định. */
+.payslip-modal-header .payslip-modal-actions .btn-close { margin: 0; }
+
+
+/* Hàng tab: cuộn ngang gọn trên màn hẹp, không đẩy vỡ bố cục popup. */
+.payslip-tabs {
+  display: flex; flex-wrap: wrap; gap: .4rem;
+  padding-bottom: .85rem; margin-bottom: .9rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.payslip-tab {
+  display: inline-flex; align-items: center; gap: .45rem;
+  min-height: 40px; padding: .45rem 1rem;
+  border: 1px solid #cbd5e1; border-radius: 999px;
+  background: #fff; color: #334155; font-weight: 600; font-size: .88rem;
+  cursor: pointer;
+  transition: background-color .22s cubic-bezier(.16, 1, .3, 1),
+    color .22s cubic-bezier(.16, 1, .3, 1),
+    border-color .22s cubic-bezier(.16, 1, .3, 1);
+}
+.payslip-tab:hover { background: #f1f5f9; border-color: var(--hotel-blue); color: var(--hotel-blue); }
+.payslip-tab.is-active { background: var(--hotel-blue); border-color: var(--hotel-blue); color: #fff; }
+.payslip-tab.is-active .payslip-tab-amount { color: #fde047 !important; }
+.payslip-tab-amount {
+  font-family: 'Fraunces', serif; font-weight: 700; font-size: .8rem;
+  padding-left: .4rem; border-left: 1px solid currentColor; opacity: .95;
+}
+.payslip-tab:focus-visible { outline: 2px solid var(--hotel-blue); outline-offset: 2px; }
+
+/* Chuyển tab tại chỗ: chỉ pane đổi, hiệu ứng cục bộ 0.24s. */
+.payslip-pane { animation: payslip-pane-in .24s cubic-bezier(.16, 1, .3, 1); }
+.payslip-pane[hidden] { display: none; }
+@keyframes payslip-pane-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .payslip-pane { animation: none; }
+}
+
+/* Dòng tóm tắt Gross / Khấu trừ trên nền navy của tab Tổng quan. */
+.payroll-net-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+}
+.payroll-net-line {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: .35rem .1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+.payroll-net-line:last-of-type { border-bottom: 0; }
+
+/* Skeleton lướt sáng khi popup đang nạp thân phiếu (thay vì vòng tròn xoay). */
+.payslip-skeleton {
+  border-radius: 12px;
+  background: linear-gradient(90deg, #eef2f7 25%, #e2e8f0 37%, #eef2f7 63%);
+  background-size: 400% 100%;
+  animation: payslip-shimmer 1.4s ease-in-out infinite;
+  margin-bottom: .7rem;
+}
+.payslip-skeleton-tabs { height: 40px; width: 60%; }
+.payslip-skeleton-title { height: 74px; }
+.payslip-skeleton-row { height: 44px; }
+@keyframes payslip-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .payslip-skeleton { animation: none; }
+}
+
+/* Nạp lại CHỈ danh sách lương khi lọc / tìm kiếm: header, bộ lọc và thẻ KPI
+   phía trên tuyệt đối không bị dựng lại (rule 4 — Zero Full-Page Reload).
+   Overlay skeleton phủ đúng khung danh sách nên không đẩy lệch bố cục. */
+.payroll-list-region { position: relative; min-height: 160px; }
+.payroll-list-loading {
+  display: flex; flex-direction: column; gap: .6rem;
+  position: absolute; inset: 0; z-index: 4;
+  padding: 1rem 1.25rem;
+  background: rgba(248, 250, 252, .88);
+  backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none;
+  transition: opacity .24s cubic-bezier(.16, 1, .3, 1);
+}
+.payroll-list-loading[hidden] { display: none; }
+.payroll-list-loading.is-visible { opacity: 1; pointer-events: auto; }
+.payroll-list-loading .payslip-skeleton-row { margin-bottom: 0; }
+[data-payroll-results] {
+  transition: filter .24s cubic-bezier(.16, 1, .3, 1),
+    opacity .24s cubic-bezier(.16, 1, .3, 1);
+}
+[data-payroll-results].is-updating { filter: blur(1px); opacity: .5; }
+.payroll-list-enter { animation: payrollListEnter .28s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes payrollListEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .payroll-list-enter { animation: none; }
 }
 
 /* --- PRINT PAYSLIP STYLES --- */

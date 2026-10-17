@@ -151,8 +151,33 @@ public class BangLuongController(
     [HttpGet]
     public async Task<IActionResult> Detail(int id)
     {
+        var (error, model) = await BuildPhieuLuongDetailAsync(id);
+        if (error != null) return error;
+
+        return View(model!);
+    }
+
+    /// <summary>
+    /// Thân phiếu lương rời, phục vụ popup nhiều tab nạp tại chỗ ở trang danh sách
+    /// (không dựng lại header/sidebar — đúng nguyên tắc Zero Full-Page Reload).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> DetailPartial(int id)
+    {
+        var (error, model) = await BuildPhieuLuongDetailAsync(id);
+        if (error != null) return error;
+
+        return PartialView("_PayslipDetailBody", model!);
+    }
+
+    /// <summary>
+    /// Dựng model phiếu lương dùng chung cho cả trang riêng và popup.
+    /// Trả về (null, model) khi thành công; ngược lại trả về ActionResult lỗi/điều hướng.
+    /// </summary>
+    private async Task<(IActionResult? Error, PhieuLuongDetailViewModel? Model)> BuildPhieuLuongDetailAsync(int id)
+    {
         var payslip = await _payrollService.GetPayslipDetailAsync(id);
-        if (payslip == null) return NotFound();
+        if (payslip == null) return (NotFound(), null);
 
         var ky = payslip.KyLuong;
         var periodStatus = ky?.TrangThai ?? SalaryConstants.PERIOD_OPEN;
@@ -161,7 +186,7 @@ public class BangLuongController(
         if (!IsHR && periodStatus is SalaryConstants.PERIOD_OPEN or SalaryConstants.PERIOD_DRAFT or SalaryConstants.PERIOD_REJECTED)
         {
             TempData["Error"] = $"Bảng lương tháng {ky?.Thang:D2}/{ky?.Nam} đang ở giai đoạn rà soát nội bộ của bộ phận HR. Ban Giám Đốc chỉ xem chi tiết sau khi HR bấm 'Gửi duyệt'.";
-            return RedirectToAction(nameof(Index), new { thang = ky?.Thang, nam = ky?.Nam });
+            return (RedirectToAction(nameof(Index), new { thang = ky?.Thang, nam = ky?.Nam }), null);
         }
 
         var nv = payslip.NhanVien;
@@ -335,7 +360,7 @@ public class BangLuongController(
             ErrorMessage = TempData["Error"]?.ToString()
         };
 
-        return View(model);
+        return (null, model);
     }
 
     [HttpGet]

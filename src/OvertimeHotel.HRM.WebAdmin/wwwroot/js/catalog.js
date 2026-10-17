@@ -10,14 +10,26 @@
   const reduceMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;
-  const filterForm = page.querySelector(".catalog-toolbar form[method='get']");
-  const searchInput = filterForm?.querySelector("input[name='keyword']");
-  const tableContainer =
-    page.querySelector("[data-catalog-results]") ||
-    page.querySelector(".table-responsive");
-  const loadingOverlay = page.querySelector("[data-catalog-loading]");
+  // Bốn tham chiếu dưới đây phải là let: chuyển tab danh mục sẽ thay cả vùng
+  // [data-payroll-category-panel] (bao gồm thanh công cụ lẫn bảng kết quả), nên sau
+  // mỗi lần thay phải truy vấn lại thay vì giữ phần tử cũ đã bị gỡ khỏi DOM.
+  let filterForm;
+  let searchInput;
+  let tableContainer;
+  let loadingOverlay;
   let searchTimer;
   let activeAbortController = null;
+
+  const bindWorkspaceRefs = () => {
+    filterForm = page.querySelector(".catalog-toolbar form[method='get']");
+    searchInput = filterForm?.querySelector("input[name='keyword']");
+    tableContainer =
+      page.querySelector("[data-catalog-results]") ||
+      page.querySelector(".table-responsive");
+    loadingOverlay = page.querySelector("[data-catalog-loading]");
+  };
+
+  bindWorkspaceRefs();
 
   const animateCountUp = (element, startValue, targetValue, duration = 420) => {
     if (!element || reduceMotion || startValue === targetValue) {
@@ -193,50 +205,55 @@
     }, delay);
   };
 
-  filterForm?.addEventListener("submit", (event) => {
+  // Uỷ quyền sự kiện ở cấp `.catalog-page` thay vì gắn trực tiếp vào phần tử:
+  // chuyển tab danh mục thay toàn bộ vùng [data-payroll-category-panel] nên mọi
+  // listener gắn thẳng vào thanh công cụ cũ sẽ chết theo phần tử bị gỡ.
+  page.addEventListener("submit", (event) => {
+    if (!filterForm || event.target !== filterForm) return;
     event.preventDefault();
     window.clearTimeout(searchTimer);
     toggleResetButtons();
     void refreshResults();
   });
 
-  filterForm?.querySelectorAll("select").forEach((select) => {
-    select.addEventListener("change", () => {
-      window.clearTimeout(searchTimer);
-      toggleResetButtons();
-      void refreshResults();
-    });
+  page.addEventListener("change", (event) => {
+    const select = event.target.closest(".catalog-toolbar select");
+    if (!filterForm || !select || !filterForm.contains(select)) return;
+    window.clearTimeout(searchTimer);
+    toggleResetButtons();
+    void refreshResults();
   });
 
-  if (searchInput) {
-    // Không chặn isComposing vì bộ gõ Tiếng Việt (Telex/VNI trên Windows) giữ trạng thái composition
-    // cho từ cuối cùng nếu chưa gõ phím cách hoặc Enter. Chặn isComposing khiến live search không bao giờ kích hoạt khi dừng gõ.
-    searchInput.addEventListener("input", () => {
-      toggleResetButtons();
-      triggerLiveSearch(350);
-    });
+  // Không chặn isComposing vì bộ gõ Tiếng Việt (Telex/VNI trên Windows) giữ trạng thái composition
+  // cho từ cuối cùng nếu chưa gõ phím cách hoặc Enter. Chặn isComposing khiến live search không bao giờ kích hoạt khi dừng gõ.
+  page.addEventListener("input", (event) => {
+    if (!searchInput || event.target !== searchInput) return;
+    toggleResetButtons();
+    triggerLiveSearch(350);
+  });
 
-    searchInput.addEventListener("compositionend", () => {
-      toggleResetButtons();
-      triggerLiveSearch(250);
-    });
+  page.addEventListener("compositionend", (event) => {
+    if (!searchInput || event.target !== searchInput) return;
+    toggleResetButtons();
+    triggerLiveSearch(250);
+  });
 
-    searchInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
+  page.addEventListener("keydown", (event) => {
+    if (!searchInput || event.target !== searchInput) return;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      window.clearTimeout(searchTimer);
+      void refreshResults();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      if (searchInput.value) {
+        searchInput.value = "";
+        toggleResetButtons();
         window.clearTimeout(searchTimer);
         void refreshResults();
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        if (searchInput.value) {
-          searchInput.value = "";
-          toggleResetButtons();
-          window.clearTimeout(searchTimer);
-          void refreshResults();
-        }
       }
-    });
-  }
+    }
+  });
 
   // Lọc nhanh bằng cách nhấp vào các thẻ KPI (Phụ cấp, Thưởng, Khấu trừ)
   const kpiFilterContainer = page.querySelector("[data-catalog-kpi-filters]");
@@ -302,6 +319,132 @@
     searchInput?.focus();
     void refreshResults(buildFilterUrl());
   });
+
+  // Chuyển tab danh mục cấu hình lương (Tăng ca / Phụ cấp / Khấu trừ / Thưởng) tại chỗ.
+  // Rule coding-style §4: chỉ nạp lại vùng dữ liệu, không reload toàn trang.
+  const categoryTabs = page.querySelector(".payroll-category-tabs");
+  const categoryPanel = page.querySelector("[data-payroll-category-panel]");
+
+  const syncCategoryTabs = (activeTab) => {
+    categoryTabs?.querySelectorAll(".payroll-category-tab").forEach((tab) => {
+      const isActive = tab === activeTab;
+      tab.classList.toggle("is-active", isActive);
+      if (isActive) {
+        tab.setAttribute("aria-current", "page");
+      } else {
+        tab.removeAttribute("aria-current");
+      }
+    });
+  };
+
+  // Thanh tiêu đề nằm NGOÀI vùng [data-payroll-category-panel] nên khi đổi danh mục
+  // nó vẫn giữ tên cũ. Cập nhật tại chỗ bằng cross-fade ngắn, không đụng tới header.
+  const syncPageTitle = (nextTitle) => {
+    if (!nextTitle) return;
+    document.title = nextTitle + " · The OverTime Hotel";
+
+    // Tiêu đề nằm trong .app-topbar (ngoài <main>); vẫn chừa đường lui cho trang
+    // đặt <h1> trong vùng nội dung.
+    const heading =
+      document.querySelector(".app-topbar-title") ||
+      document.querySelector("main h1");
+    if (!heading || heading.textContent.trim() === nextTitle) return;
+
+    heading.classList.add("catalog-title-swap");
+    window.setTimeout(() => {
+      heading.textContent = nextTitle;
+      // Gỡ class cũ rồi ép reflow để chạy lại hiệu ứng cho lần chuyển kế tiếp.
+      heading.classList.remove("catalog-title-swap");
+      void heading.offsetWidth;
+      heading.classList.add("catalog-title-swap");
+      window.setTimeout(() => heading.classList.remove("catalog-title-swap"), 280);
+    }, 120);
+  };
+
+  const swapCategoryPanel = async (url, activeTab, usePushState) => {
+    if (activeAbortController) activeAbortController.abort();
+    activeAbortController = new AbortController();
+    const currentSignal = activeAbortController.signal;
+
+    categoryTabs?.classList.add("is-switching");
+    setLoading(true);
+    try {
+      const response = await fetch(url, {
+        headers: { "X-Requested-With": "XMLHttpRequest", Accept: "text/html" },
+        signal: currentSignal,
+      });
+      if (!response.ok) throw new Error("Không thể mở danh mục này.");
+
+      const documentResult = new DOMParser().parseFromString(
+        await response.text(),
+        "text/html"
+      );
+      const nextPanel = documentResult.querySelector(
+        "[data-payroll-category-panel]"
+      );
+      if (!nextPanel || !categoryPanel) {
+        window.location.href = url.toString();
+        return;
+      }
+
+      categoryPanel.innerHTML = nextPanel.innerHTML;
+      syncCategoryTabs(activeTab);
+      syncPageTitle(nextPanel.dataset.payrollPageTitle);
+      bindWorkspaceRefs();
+      toggleResetButtons();
+
+      if (usePushState) {
+        window.history.pushState({}, "", url);
+      } else {
+        window.history.replaceState({}, "", url);
+      }
+
+      categoryPanel.classList.remove("catalog-results-enter");
+      void categoryPanel.offsetWidth;
+      categoryPanel.classList.add("catalog-results-enter");
+      window.HotelMotion?.applyEntrance?.(categoryPanel);
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      // Mạng lỗi thì để trình duyệt điều hướng thật, không kẹt người dùng ở tab cũ.
+      window.location.href = url.toString();
+    } finally {
+      if (activeAbortController?.signal === currentSignal) {
+        categoryTabs?.classList.remove("is-switching");
+        setLoading(false);
+      }
+    }
+  };
+
+  if (categoryTabs && categoryPanel) {
+    page.dataset.payrollCategory =
+      new URL(window.location.href).searchParams.get("category") || "";
+
+    categoryTabs.addEventListener("click", (event) => {
+      const tab = event.target.closest(".payroll-category-tab");
+      if (!tab) return;
+      // Giữ nguyên hành vi trình duyệt khi người dùng chủ động mở tab mới.
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      if (tab.classList.contains("is-active")) return;
+
+      const targetUrl = new URL(tab.href, window.location.origin);
+      page.dataset.payrollCategory =
+        targetUrl.searchParams.get("category") || "";
+      void swapCategoryPanel(targetUrl, tab, true);
+    });
+
+    // Back/Forward: chỉ nạp lại khung danh mục nếu thật sự đổi category.
+    window.addEventListener("popstate", () => {
+      const category =
+        new URL(window.location.href).searchParams.get("category") || "";
+      if (category === page.dataset.payrollCategory) return;
+      page.dataset.payrollCategory = category;
+      const tab = categoryTabs.querySelector(
+        `.payroll-category-tab[href*="category=${category}"]`
+      );
+      void swapCategoryPanel(new URL(window.location.href), tab, false);
+    });
+  }
 
   toggleResetButtons();
 

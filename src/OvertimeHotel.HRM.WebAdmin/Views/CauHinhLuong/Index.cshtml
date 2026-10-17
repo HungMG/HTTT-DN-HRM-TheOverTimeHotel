@@ -7,25 +7,30 @@
 }
 <link rel="stylesheet" href="~/css/payroll.css" asp-append-version="true" />
 <div class="catalog-page payroll-workspace">
-    <nav class="payroll-category-tabs mb-4" aria-label="Danh mục cấu hình lương">
-        @foreach (var category in Enum.GetValues<CauHinhLuongCategory>())
-        {
-            <a asp-action="Index" asp-route-category="@category"
-               class="payroll-category-tab @(category == Model.Category ? "is-active" : "")"
-               aria-current="@(category == Model.Category ? "page" : null)">@CauHinhLuongLabels.Title(category)</a>
-        }
-    </nav>
     @if (TempData["Success"] is string success) { <div class="alert alert-success" role="status">@success</div> }
     @if (TempData["Error"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
-    @if (Model.Category == CauHinhLuongCategory.Thuong)
-    {
-        <p class="text-muted">Danh mục thưởng tiếp tục sử dụng dữ liệu hiện có. Phụ cấp và khấu trừ được quản lý ở các danh mục riêng.</p>
-    }
-    @if (Model.Category == CauHinhLuongCategory.KhauTru)
-    {
-        <p class="text-muted">Bảo hiểm nhập tỷ lệ %; vi phạm nhập VNĐ/phút. Thuế TNCN dùng thuật toán lũy tiến, định mức tại đây chỉ là tham chiếu.</p>
-    }
     <section class="catalog-card">
+        <!-- TAB DANH MỤC NẰM TRONG THẺ: chuyển tab tại chỗ, chỉ vùng bên dưới đổi -->
+        <nav class="payroll-category-tabs" aria-label="Danh mục cấu hình lương">
+            @foreach (var category in Enum.GetValues<CauHinhLuongCategory>())
+            {
+                var isCurrent = category == Model.Category;
+                <a asp-action="Index" asp-route-category="@category"
+                   class="payroll-category-tab @(isCurrent ? "is-active" : "")"
+                   aria-current="@(isCurrent ? "page" : null)">@CauHinhLuongLabels.Title(category)</a>
+            }
+        </nav>
+        <!-- data-payroll-page-title đi kèm vùng được nạp tại chỗ: thanh tiêu đề nằm
+             ngoài panel nên khi chuyển tab phải cập nhật lại tiêu đề cho khớp danh mục. -->
+        <div data-payroll-category-panel data-payroll-page-title="Cấu hình @title.ToLower()">
+        @if (Model.Category == CauHinhLuongCategory.Thuong)
+        {
+            <p class="text-muted payroll-category-note">Danh mục thưởng tiếp tục sử dụng dữ liệu hiện có. Phụ cấp và khấu trừ được quản lý ở các danh mục riêng.</p>
+        }
+        @if (Model.Category == CauHinhLuongCategory.KhauTru)
+        {
+            <p class="text-muted payroll-category-note">Bảo hiểm nhập tỷ lệ %; vi phạm nhập VNĐ/phút. Thuế TNCN dùng thuật toán lũy tiến, định mức tại đây chỉ là tham chiếu.</p>
+        }
         <div class="catalog-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3">
             <form asp-action="Index" method="get" class="catalog-filter-form d-flex flex-wrap align-items-center gap-2 flex-grow-1">
                 <input name="category" type="hidden" value="@Model.Category" data-catalog-preserve />
@@ -113,6 +118,7 @@
                     </tbody>
                 </table>
             </div>
+        </div>
         </div>
     </section>
 </div>
