@@ -131,6 +131,16 @@
   }
 
   // Lát cắt tròn dùng chung cho mọi biểu đồ cơ cấu.
+  //
+  // Hai chế độ, chọn theo SỐ LÁT CẮT:
+  //
+  //   • Ít lát (<= 6): nhãn nằm quanh vành tròn, mỗi nhãn một dòng.
+  //   • Nhiều lát (> 6): TẮT nhãn quanh vành, dồn toàn bộ tên + tỷ lệ xuống
+  //     chú giải dọc bên phải. Phòng ban và chức vụ có tên tiếng Việt rất dài
+  //     (vd "Bộ phận Công nghệ thông tin (IT - Information Technology)");
+  //     nhãn hai dòng quanh vành tròn rộng ~380px chắc chắn chồng lên nhau và
+  //     đè cả lên chú giải — ECharts có avoidLabelOverlap cũng không đủ chỗ.
+  //     Đưa vào danh sách chú giải thì xếp dọc, không bao giờ đè.
   function pieOption(items, options) {
     var config = options || {};
     var rows = Array.isArray(items) ? items : [];
@@ -138,34 +148,79 @@
       return sum + (Number(item && item.GiaTri) || 0);
     }, 0);
 
+    // Bảng tra tên -> tỷ lệ, để chú giải hiển thị kèm phần trăm như nhãn cũ.
+    var percentByName = {};
+    rows.forEach(function (item) {
+      var value = Number(item && item.GiaTri) || 0;
+      var percent = total > 0 ? Math.round((value / total) * 1000) / 10 : 0;
+      percentByName[String(item.Nhan || "—")] = percent;
+    });
+
+    // Donut hai lát như "Theo giới tính" vẫn nên có nhãn: chỉ 2 chỗ, không đè.
+    var dense = rows.length > 6;
+
+    var baseLegend = {
+      icon: "circle",
+      itemWidth: 10,
+      itemHeight: 10,
+      textStyle: { color: "#475569" }
+    };
+
     return {
       color: PIE_PALETTE,
       tooltip: {
         trigger: "item",
         confine: true,
-        valueFormatter: function (value) {
-          var percent = total > 0 ? Math.round((value / total) * 1000) / 10 : 0;
-          return vnNumber(value) + (config.unit ? " " + config.unit : "") + " (" + percent + "%)";
+        formatter: function (params) {
+          // Tên đầy đủ luôn có ở đây, kể cả khi chú giải đã rút gọn chữ.
+          return params.name + ": " + vnNumber(params.value) +
+            (config.unit ? " " + config.unit : "") + " (" + params.percent + "%)";
         }
       },
-      legend: { bottom: 0, icon: "circle", itemWidth: 10, itemHeight: 10, textStyle: { color: "#475569" } },
+      legend: dense
+        ? Object.assign({}, baseLegend, {
+            type: "scroll",
+            orient: "vertical",
+            right: 0,
+            top: 12,
+            bottom: 12,
+            itemGap: 7,
+            textStyle: {
+              color: "#475569",
+              fontSize: 11,
+              width: 196,
+              overflow: "truncate"
+            },
+            formatter: function (name) {
+              return name + " · " + percentByName[name] + "%";
+            }
+          })
+        : Object.assign({}, baseLegend, { bottom: 0 }),
       series: [
         {
           type: "pie",
-          radius: config.donut ? ["46%", "70%"] : ["0%", "68%"],
-          center: ["50%", "46%"],
+          // Chừa chỗ hai bên cho nhãn khi có nhãn; khi dồn sang chú giải thì
+          // đẩy vành tròn sang trái nhường nửa phải cho danh sách.
+          radius: dense
+            ? (config.donut ? ["42%", "64%"] : ["0%", "62%"])
+            : (config.donut ? ["44%", "58%"] : ["0%", "56%"]),
+          center: dense ? ["28%", "50%"] : ["50%", "45%"],
           avoidLabelOverlap: true,
+          minAngle: 3,
           itemStyle: { borderColor: "#ffffff", borderWidth: 2, borderRadius: 6 },
           label: {
-            show: true,
+            show: !dense,
             formatter: function (params) {
-              return params.name + "\n" + Math.round(params.percent) + "%";
+              // Một dòng để hai nhãn cạnh nhau không đè lên nhau.
+              return params.name + " " + Math.round(params.percent) + "%";
             },
             color: "#334155",
             fontSize: 11,
             lineHeight: 15
           },
-          labelLine: { length: 8, length2: 8 },
+          // Khi đã tắt nhãn thì đường dẫn nhãn cũng phải tắt, nếu không ECharts
+          // vẫn vẽ các vạch gãy trỏ ra ngoài và trông như nhãn bị mất chữ.
+          labelLine: { show: !dense, length: 10, length2: 6 },
           data: rows.map(function (item) {
             return { name: String(item.Nhan || "—"), value: Number(item.GiaTri) || 0 };
           })

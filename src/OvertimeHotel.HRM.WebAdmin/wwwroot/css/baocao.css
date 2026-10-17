@@ -311,6 +311,20 @@
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+/* Khối "Cơ cấu nhân lực": hai biểu đồ nhiều lát cần rộng hơn ô giới tính chỉ có
+   2 lát. Tỉ lệ 1.35 : 1.35 : 1, tự dồn thành 2 cột rồi 1 cột khi màn hình hẹp. */
+.baocao-grid-cocau {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+@media (min-width: 1200px) {
+  .baocao-grid-cocau {
+    grid-template-columns: 1.35fr 1.35fr 1fr;
+  }
+}
+
 .baocao-card-title {
   font-family: var(--font-sans);
   font-size: 0.95rem;
