@@ -206,10 +206,10 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <div class="fw-semibold text-dark d-flex align-items-center gap-2">
-                                    <span>6. Thù lao Sự kiện khách sạn (MICE / Tiệc)</span>
+                                    <span>6. Thưởng sự kiện / Dự án khách sạn (MICE / Tiệc / VIP...)</span>
                                     <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill" style="font-size: 0.65rem;">Chịu thuế TNCN</span>
                                 </div>
-                                <div class="small text-muted">Kết chuyển từ bảng phân công dự án hoàn thành</div>
+                                <div class="small text-muted">Kết chuyển từ bảng phân công dự án hoàn thành theo ma trận cấu hình thưởng</div>
                             </div>
                             <div class="font-monospace fw-bold fs-6 text-dark">
                                 @Model.EventAllowances.Sum(e => e.SoTien).ToString("N0") đ
@@ -235,8 +235,8 @@
                     <!-- 7. Tiền thưởng (Incentives / Service Charge) -->
                     <div class="py-2">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div class="fw-semibold text-dark">7. Tiền thưởng &amp; Phí phục vụ</div>
-                            <div class="font-monospace fw-bold fs-6 text-dark">@Model.TongThuong.ToString("N0") đ</div>
+                            <div class="fw-semibold text-dark">7. Tiền thưởng khác &amp; Phí phục vụ</div>
+                            <div class="font-monospace fw-bold fs-6 text-dark">@Model.BonusItems.Sum(b => b.SoTien).ToString("N0") đ</div>
                         </div>
                         @if (Model.BonusItems.Count > 0)
                         {

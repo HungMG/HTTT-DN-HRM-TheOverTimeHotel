@@ -87,6 +87,7 @@ var tests = new (string Name, Action Run)[]
 
     ("Fines: Đúng các mức phạt chấm công theo PRD 05", () =>
     {
+        Equal(2_000m, SalaryConstants.FINE_PER_MINUTE_LATE);       // Phạt 2.000đ / phút đi trễ
         Equal(50_000m, SalaryConstants.FINE_LATE_1_TO_15_MINS);    // 1-15m: 50.000đ
         Equal(100_000m, SalaryConstants.FINE_LATE_16_TO_30_MINS);  // 16-30m: 100.000đ
         Equal(200_000m, SalaryConstants.FINE_ABSENCE_PENALTY);     // Phạt bổ sung bỏ ca: 200.000đ
@@ -147,18 +148,76 @@ var tests = new (string Name, Action Run)[]
         Equal(11_834_100m, thucNhan);
     }),
 
-    // --- PART 5: PHỤ CẤP DỰ ÁN / SỰ KIỆN (MỤC 1.1 PRD 05) ---
-    ("Project Assignment: Đánh giá XUAT_SAC được cộng 10% thưởng theo PRD 05", () =>
+    // --- PART 5: THƯỞNG DỰ ÁN / SỰ KIỆN THEO MA TRẬN CAU_HINH_KHOAN_LUONG (MỤC 1.1 PRD 05) ---
+    ("Project Assignment: Ma trận thưởng 27 định mức theo Loại dự án x Phòng ban", () =>
     {
-        decimal baseAllowance = 1_000_000m;
-        string danhGiaHoanThanh = "HOAN_THANH";
-        string danhGiaXuatSac = "XUAT_SAC";
+        // Kiểm tra đúng 27 cặp định mức chuẩn quy định trong cau_hinh_khoan_luong
+        Equal(27, HotelEventRules.StandardBonusMatrix.Count);
 
-        decimal allowanceHoanThanh = danhGiaHoanThanh == "XUAT_SAC" ? baseAllowance * (1m + SalaryConstants.EVENT_EXCELLENT_BONUS_RATE) : baseAllowance;
-        decimal allowanceXuatSac = danhGiaXuatSac == "XUAT_SAC" ? baseAllowance * (1m + SalaryConstants.EVENT_EXCELLENT_BONUS_RATE) : baseAllowance;
+        // Đoàn VIP (5 phòng ban)
+        Equal(800_000m, HotelEventRules.StandardBonusMatrix[("DOAN_VIP", "BEP")]);
+        Equal(700_000m, HotelEventRules.StandardBonusMatrix[("DOAN_VIP", "AM_THUC")]);
+        Equal(700_000m, HotelEventRules.StandardBonusMatrix[("DOAN_VIP", "AN_NINH")]);
+        Equal(600_000m, HotelEventRules.StandardBonusMatrix[("DOAN_VIP", "TIEN_SANH")]);
+        Equal(600_000m, HotelEventRules.StandardBonusMatrix[("DOAN_VIP", "BUONG_PHONG")]);
 
-        Equal(1_000_000m, allowanceHoanThanh);
-        Equal(1_100_000m, allowanceXuatSac);
+        // Tiệc cưới (6 phòng ban)
+        Equal(600_000m, HotelEventRules.StandardBonusMatrix[("TIEC_CUOI", "BEP")]);
+        Equal(500_000m, HotelEventRules.StandardBonusMatrix[("TIEC_CUOI", "AM_THUC")]);
+        Equal(500_000m, HotelEventRules.StandardBonusMatrix[("TIEC_CUOI", "KY_THUAT")]);
+        Equal(400_000m, HotelEventRules.StandardBonusMatrix[("TIEC_CUOI", "TIEN_SANH")]);
+        Equal(400_000m, HotelEventRules.StandardBonusMatrix[("TIEC_CUOI", "AN_NINH")]);
+        Equal(300_000m, HotelEventRules.StandardBonusMatrix[("TIEC_CUOI", "BUONG_PHONG")]);
+
+        // Hội nghị MICE (6 phòng ban)
+        Equal(700_000m, HotelEventRules.StandardBonusMatrix[("HOI_NGHI_MICE", "IT")]);
+        Equal(600_000m, HotelEventRules.StandardBonusMatrix[("HOI_NGHI_MICE", "KY_THUAT")]);
+        Equal(500_000m, HotelEventRules.StandardBonusMatrix[("HOI_NGHI_MICE", "BEP")]);
+        Equal(400_000m, HotelEventRules.StandardBonusMatrix[("HOI_NGHI_MICE", "AM_THUC")]);
+        Equal(400_000m, HotelEventRules.StandardBonusMatrix[("HOI_NGHI_MICE", "TIEN_SANH")]);
+        Equal(400_000m, HotelEventRules.StandardBonusMatrix[("HOI_NGHI_MICE", "AN_NINH")]);
+
+        // Gala Dinner (5 phòng ban)
+        Equal(700_000m, HotelEventRules.StandardBonusMatrix[("GALA_DINNER", "BEP")]);
+        Equal(600_000m, HotelEventRules.StandardBonusMatrix[("GALA_DINNER", "AM_THUC")]);
+        Equal(600_000m, HotelEventRules.StandardBonusMatrix[("GALA_DINNER", "KY_THUAT")]);
+        Equal(400_000m, HotelEventRules.StandardBonusMatrix[("GALA_DINNER", "TIEN_SANH")]);
+        Equal(400_000m, HotelEventRules.StandardBonusMatrix[("GALA_DINNER", "AN_NINH")]);
+
+        // Festival ẩm thực (5 phòng ban)
+        Equal(700_000m, HotelEventRules.StandardBonusMatrix[("FESTIVAL_AM_THUC", "BEP")]);
+        Equal(500_000m, HotelEventRules.StandardBonusMatrix[("FESTIVAL_AM_THUC", "AM_THUC")]);
+        Equal(500_000m, HotelEventRules.StandardBonusMatrix[("FESTIVAL_AM_THUC", "KY_THUAT")]);
+        Equal(400_000m, HotelEventRules.StandardBonusMatrix[("FESTIVAL_AM_THUC", "BUONG_PHONG")]);
+        Equal(400_000m, HotelEventRules.StandardBonusMatrix[("FESTIVAL_AM_THUC", "AN_NINH")]);
+    }),
+
+    ("Project Assignment: ResolveEventBonus tự động ánh xạ cấu hình cau_hinh_khoan_luong", () =>
+    {
+        var sampleConfigs = new List<CauHinhKhoanLuong>
+        {
+            new() { MaKhoan = 32, TenKhoan = "Thưởng Tiệc cưới - Bếp", LoaiKhoan = "THUONG", GiaTriMacDinh = 600_000m },
+            new() { MaKhoan = 28, TenKhoan = "Thưởng MICE - IT", LoaiKhoan = "THUONG", GiaTriMacDinh = 700_000m },
+            new() { MaKhoan = 11, TenKhoan = "Thưởng Đoàn VIP - Bếp", LoaiKhoan = "THUONG", GiaTriMacDinh = 800_000m }
+        };
+
+        var duAnCuoi = new DuAn { LoaiDuAn = "TIEC_CUOI", TenDuAn = "Tiệc cưới Trọng Thể" };
+        var phongBep = new PhongBan { MaPhongBan = 5, TenPhongBan = "Bộ phận Bếp (Kitchen / Culinary)" };
+        var pcCuoi = new PhanCongDuAn { MaPhanCong = 101, VaiTroDuAn = "Bếp chính" };
+
+        var (maKhoan, tenKhoan, soTien) = HotelEventRules.ResolveEventBonus(duAnCuoi, phongBep, pcCuoi, sampleConfigs);
+        Equal(32, maKhoan);
+        Equal("Thưởng Tiệc cưới - Bếp", tenKhoan);
+        Equal(600_000m, soTien);
+
+        // Trường hợp không có config nạp vào: dùng trực tiếp ma trận tiêu chuẩn
+        var duAnMice = new DuAn { LoaiDuAn = "HOI_NGHI_MICE", TenDuAn = "Hội thảo AI 2026" };
+        var phongIt = new PhongBan { MaPhongBan = 9, TenPhongBan = "Bộ phận Công nghệ Thông tin (IT)" };
+        var pcMice = new PhanCongDuAn { MaPhanCong = 102, VaiTroDuAn = "Phụ trách kỹ thuật mạng" };
+
+        var (_, tenKhoanMice, soTienMice) = HotelEventRules.ResolveEventBonus(duAnMice, phongIt, pcMice, null);
+        Equal("Thưởng Hội nghị MICE - IT", tenKhoanMice);
+        Equal(700_000m, soTienMice);
     }),
 
     // --- PART 6: WORKFLOW STATE MACHINE (4 BƯỚC THEO QUY TRÌNH NGƯỜI DÙNG) ---

@@ -193,7 +193,7 @@
                     {
                         <tr>
                             <td>6</td>
-                            <td class="fw-semibold">Phụ cấp Sự kiện / Dự án khách sạn</td>
+                            <td class="fw-semibold">Thưởng Sự kiện / Dự án khách sạn</td>
                             <td class="text-muted small">@string.Join("; ", Model.EventAllowances.Select(e => e.TenKhoan))</td>
                             <td class="text-end font-num">@Model.EventAllowances.Sum(e => e.SoTien).ToString("N0")</td>
                         </tr>
@@ -202,9 +202,9 @@
                     {
                         <tr>
                             <td>7</td>
-                            <td class="fw-semibold">Tiền thưởng &amp; Phí phục vụ (Service Charge)</td>
+                            <td class="fw-semibold">Tiền thưởng khác &amp; Phí phục vụ (Service Charge)</td>
                             <td class="text-muted small">@string.Join("; ", Model.BonusItems.Select(b => b.TenKhoan))</td>
-                            <td class="text-end font-num">@Model.TongThuong.ToString("N0")</td>
+                            <td class="text-end font-num">@Model.BonusItems.Sum(b => b.SoTien).ToString("N0")</td>
                         </tr>
                     }
                     <tr class="table-success fw-bold">
