@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { Toaster } from "@/components/ui/toaster"
 
+import "katex/dist/katex.min.css"
 import "./globals.css"
 
 export const metadata: Metadata = {

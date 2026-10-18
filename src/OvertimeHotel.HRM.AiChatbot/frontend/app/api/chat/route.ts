@@ -6,7 +6,8 @@ export const runtime = 'edge';
 
 export async function POST(req: Request) {
   try {
-    const { message, threadId } = await req.json();
+    const { message, threadId, accessToken, pageContext, year, month, quarter } =
+      await req.json();
 
     if (!message) {
       return new NextResponse(
@@ -50,6 +51,17 @@ export async function POST(req: Request) {
           config: {
             configurable: {
               ...retrievalAssistantStreamConfig,
+              // Merged per request, not baked into the shared constant: the ticket changes on
+              // every page load and belongs to one user, so it must never become module state
+              // that outlives a single request.
+              ...(accessToken ? { accessToken } : {}),
+              ...(pageContext ? { pageContext } : {}),
+              // The period shown on the screen being asked about. Only forwarded when present,
+              // so an absent period stays absent and the data bridge keeps its own default
+              // instead of receiving a fabricated one.
+              ...(Number.isFinite(year) ? { year } : {}),
+              ...(Number.isFinite(month) ? { month } : {}),
+              ...(Number.isFinite(quarter) ? { quarter } : {}),
             },
           },
         },

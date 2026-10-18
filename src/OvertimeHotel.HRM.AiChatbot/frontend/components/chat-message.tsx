@@ -4,6 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { PDFDocument } from '@/types/graphTypes';
 import {
   Accordion,
@@ -107,7 +109,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
               </div>
             ) : (
               <div className="prose prose-sm prose-slate max-w-none text-[13.5px] sm:text-[14.5px] leading-relaxed text-slate-700 prose-headings:text-slate-900 prose-headings:font-bold prose-headings:text-base prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-strong:text-slate-900 prose-strong:font-bold">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
                   {message.content}
                 </ReactMarkdown>
               </div>

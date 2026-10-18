@@ -84,6 +84,21 @@ export interface AgentConfiguration extends BaseConfiguration {
    * Should be in the form: provider/model-name.
    */
   queryModel?: string;
+
+  /**
+   * Short-lived data ticket issued by the WebAdmin.
+   *
+   * Opaque here on purpose — this app never verifies or decodes it, it only relays it to the
+   * graph, which sends it back to the WebAdmin. Keeping it opaque avoids a JWT dependency in
+   * the Edge runtime and guarantees the token cannot be tampered with in transit.
+   */
+  accessToken?: string;
+
+  /**
+   * Which admin screen the user is looking at, forwarded so the assistant can resolve
+   * questions like "what does this number mean?" against the report actually on screen.
+   */
+  pageContext?: string;
 }
 
 export interface IndexConfiguration extends BaseConfiguration {

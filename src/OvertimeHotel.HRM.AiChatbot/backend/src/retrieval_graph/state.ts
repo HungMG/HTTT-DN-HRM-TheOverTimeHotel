@@ -22,5 +22,31 @@ export const AgentStateAnnotation = Annotation.Root({
     reducer: reduceDocs,
   }),
 
-  // Additional attributes can be added here as needed
+  /**
+   * Compact JSON digest of report figures fetched from the WebAdmin data bridge.
+   *
+   * Empty string means "no figures available" — either the route was not taken, the
+   * WebAdmin refused the ticket (403), or it was unreachable. The answer node treats an
+   * empty digest as "cannot read data right now" and must never invent numbers to fill it.
+   */
+  dataDigest: Annotation<string>(),
+
+  /**
+   * Human-readable reason why `dataDigest` is empty.
+   *
+   * Kept apart from the digest so the answer node can tell "no figures because the user's role
+   * is not allowed" from "no figures because the WebAdmin is down", and word each case
+   * correctly without leaking a raw HTTP status into the chat.
+   */
+  dataError: Annotation<string>(),
+
+  /**
+   * Human-readable data scope the WebAdmin resolved for this user, e.g. "Toàn khách sạn"
+   * or "Bộ phận: Lễ tân".
+   *
+   * Surfaced separately from the digest so the chat frame can display which slice of data the
+   * answer is based on — the user should be able to see that a manager's figures cover only
+   * their own department, without having to read the whole answer.
+   */
+  scopeLabel: Annotation<string>(),
 });

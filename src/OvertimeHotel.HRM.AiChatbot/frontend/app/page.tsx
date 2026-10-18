@@ -26,10 +26,10 @@ import {
 } from '@/types/graphTypes';
 
 const SUGGESTED_PROMPTS = [
+  'Tỷ lệ thôi việc tháng này nghĩa là gì?',
+  'Cơ cấu nhân lực hiện tại của khách sạn ra sao?',
   'Quy chế phụ cấp ca đêm (+30%) được tính như thế nào?',
-  'Tóm tắt các điều khoản và quyền lợi trong hợp đồng lao động này?',
   'Công chuẩn hàng tháng và công thức tính lương 2 tầng ra sao?',
-  'Quy trình nộp đơn xin nghỉ phép và cấp tài khoản nhân viên mới?',
 ];
 
 export default function Home() {
@@ -47,17 +47,69 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [isEmbedded, setIsEmbedded] = useState(false);
+  const [scopeLabel, setScopeLabel] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastRetrievedDocsRef = useRef<PDFDocument[]>([]);
+  // Read once at mount and held in refs: the WebAdmin mints a fresh ticket per page load, and
+  // re-reading the address on every keystroke would give a rotating value a chance to arrive
+  // mid-conversation, pointing the backend at a ticket that is already spent.
+  const accessTokenRef = useRef('');
+  const pageContextRef = useRef('');
+  // The period as raw numbers, kept alongside the human-readable description above. The
+  // backend needs numbers to rebuild the same report period; the description is only for the
+  // model to read.
+  const periodRef = useRef<{ year?: number; month?: number; quarter?: number }>({});
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const embedded =
-        window.self !== window.top ||
-        window.location.search.includes('embed=true');
+      const params = new URLSearchParams(window.location.search);
+      const embedded = window.self !== window.top || params.has('embed');
       setIsEmbedded(embedded);
+
+      // Page context travels in the query string and is safe to keep there.
+      const page = params.get('page') ?? '';
+      const action = params.get('action') ?? '';
+      const tab = params.get('tab') ?? '';
+      const period = params.get('period') ?? '';
+      pageContextRef.current = [
+        page && `màn hình ${page}`,
+        action && `chức năng ${action}`,
+        tab && `thẻ ${tab}`,
+        period && `kỳ ${period}`,
+      ]
+        .filter(Boolean)
+        .join(', ');
+
+      // Parsed separately from the description above so the backend can ask the WebAdmin for
+      // that exact period. Absent or malformed values are dropped rather than guessed: a wrong
+      // figure presented as the one on screen is worse than saying the period is unknown.
+      const toNumber = (key: string) => {
+        const raw = params.get(key);
+        if (!raw) return undefined;
+        const value = Number.parseInt(raw, 10);
+        return Number.isFinite(value) ? value : undefined;
+      };
+      periodRef.current = {
+        year: toNumber('nam'),
+        month: toNumber('thang'),
+        quarter: toNumber('quy'),
+      };
+
+      // The data ticket travels in the URL fragment, which browsers never send to a server.
+      // It stays out of the Next.js access log and off the Referer header of any later
+      // request. Read it once, then strip it so it does not linger in the address bar or in
+      // the history entry the user might bookmark or share.
+      const hash = window.location.hash;
+      if (hash.startsWith('#bt=')) {
+        accessTokenRef.current = decodeURIComponent(hash.slice('#bt='.length));
+        window.history.replaceState(
+          null,
+          '',
+          window.location.pathname + window.location.search,
+        );
+      }
     }
   }, []);
 
@@ -85,6 +137,9 @@ export default function Home() {
 
   const handleResetChat = () => {
     setMessages([]);
+    // Clear the scope banner too: it described the previous conversation's figures and would
+    // otherwise sit above an empty new chat claiming a scope nothing has been read under.
+    setScopeLabel('');
     initThread();
     toast({
       title: 'Đã làm mới cuộc trò chuyện',
@@ -122,6 +177,11 @@ export default function Home() {
         body: JSON.stringify({
           message: userMessage,
           threadId,
+          accessToken: accessTokenRef.current || undefined,
+          pageContext: pageContextRef.current || undefined,
+          year: periodRef.current.year,
+          month: periodRef.current.month,
+          quarter: periodRef.current.quarter,
         }),
         signal: abortController.signal,
       });
@@ -166,7 +226,14 @@ export default function Home() {
             const metaKeys = Object.keys(data);
             for (const key of metaKeys) {
               const node = data[key]?.metadata?.langgraph_node;
-              if (node === 'directAnswer' || node === 'generateResponse') {
+              // `dataInsight` must be listed here too. Omitting it leaves activeAiMessageId
+              // null for data answers, so every later partial chunk is judged by the
+              // tool-call heuristic, matches nothing, and the answer never renders.
+              if (
+                node === 'directAnswer' ||
+                node === 'generateResponse' ||
+                node === 'dataInsight'
+              ) {
                 activeAiMessageId = key;
               }
             }
@@ -236,7 +303,18 @@ export default function Home() {
               lastRetrievedDocsRef.current = retrievedDocs;
             }
 
-            const updateNode = (data as any)?.directAnswer || (data as any)?.generateResponse;
+            // Carry the scope label the WebAdmin resolved, so the frame can show which slice
+            // of data this answer covers. An empty digest leaves it empty — the banner then
+            // stays hidden rather than claiming a scope the server never confirmed.
+            const digestNode = (data as any)?.loadDataDigest;
+            if (typeof digestNode?.scopeLabel === 'string') {
+              setScopeLabel(digestNode.scopeLabel);
+            }
+
+            const updateNode =
+              (data as any)?.directAnswer ||
+              (data as any)?.generateResponse ||
+              (data as any)?.dataInsight;
             if (updateNode?.messages && Array.isArray(updateNode.messages)) {
               const aiMsg = [...updateNode.messages].reverse().find((m: any) => m?.type === 'ai');
               if (aiMsg?.content && typeof aiMsg.content === 'string' && !aiMsg.content.startsWith('{')) {
@@ -394,6 +472,14 @@ export default function Home() {
           <span className="flex items-center gap-1.5 font-semibold text-slate-700 text-[11px]">
             <Sparkles className="w-3.5 h-3.5 text-[#d4af37]" />
             <span>Trợ lý AI 5★ · The OverTime Hotel</span>
+            {scopeLabel && (
+              <span
+                className="ml-1 inline-flex items-center gap-1 rounded-full border border-[#d4af37]/50 bg-amber-50 px-2 py-0.5 font-medium text-[10px] text-amber-800"
+                title="Phạm vi số liệu Trợ lý AI được phép đọc theo vai trò của bạn"
+              >
+                Phạm vi: {scopeLabel}
+              </span>
+            )}
           </span>
           <button
             type="button"
