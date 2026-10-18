@@ -1,3 +1,4 @@
+@inject OvertimeHotel.HRM.WebAdmin.Security.AiChatbotUrlBuilder ChatbotUrlBuilder
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -167,7 +168,16 @@
                 </div>
             </div>
             <div class="offcanvas-body p-0 d-flex flex-column" style="height: calc(100vh - 65px);">
-                <iframe src="http://localhost:3000?embed=true"
+                @{
+                    // Địa chỉ do máy chủ dựng: kèm ngữ cảnh trang đang mở (để bot hiểu
+                    // "con số này" đang trỏ tới đâu) và vé dữ liệu ngắn hạn (để bot hỏi
+                    // được số liệu tổng hợp mà không cần khoá Supabase).
+                    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+                    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+                    var drawerChatbotUrl = ChatbotUrlBuilder.BuildEmbedUrl(
+                        User, currentController, currentAction, ViewContext.HttpContext.Request.Query);
+                }
+                <iframe src="@drawerChatbotUrl"
                         id="drawerChatbotIframe"
                         title="The OverTime Hotel AI Chatbot"
                         style="width: 100%; height: 100%; border: none;"

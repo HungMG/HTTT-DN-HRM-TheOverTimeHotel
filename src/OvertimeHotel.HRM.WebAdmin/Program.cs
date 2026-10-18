@@ -12,6 +12,7 @@ using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.Data.Supabase;
 using OvertimeHotel.HRM.WebAdmin.Security;
+using OvertimeHotel.HRM.WebAdmin.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +63,20 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]) &&
     string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JWT_KEY")))
 {
     throw new InvalidOperationException("Bảo mật hệ thống (Fail-Closed): Khóa bí mật Jwt:Key chưa được cấu hình trong appsettings hoặc biến môi trường JWT_KEY.");
+}
+
+// Khoá ký vé dữ liệu Trợ lý AI (xem Security/AiContextTokenService.cs). Cố ý KHÔNG
+// chặn khởi động như Jwt:Key ở trên: thiếu khoá này chỉ làm tính năng hỏi số liệu
+// của chatbot tắt đi, không được phép hạ gục cả hệ thống quản trị. Nhưng cũng
+// không được âm thầm ký bằng khoá rỗng — AiContextTokenService ném lỗi rõ ràng khi dùng.
+if (string.IsNullOrWhiteSpace(builder.Configuration[AiContextTokenService.KeyConfigPath]) &&
+    string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(AiContextTokenService.KeyEnvVar)))
+{
+    Console.WriteLine(
+        "[Cảnh báo] Chưa cấu hình '" + AiContextTokenService.KeyConfigPath +
+        "': Trợ lý AI sẽ không truy cập được số liệu báo cáo. " +
+        "Đặt khoá trong appsettings.Development.json hoặc biến môi trường " +
+        AiContextTokenService.KeyEnvVar + ".");
 }
 
 // JWKS của Supabase. Tự tải và tự làm mới: Supabase xoay vòng khoá ký, nên
@@ -274,8 +289,22 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     }
 });
 
+// Vé dữ liệu cho Trợ lý AI: WebAdmin ký một JWT ngắn hạn mang danh tính người đang
+// đăng nhập, chatbot cầm vé gọi ngược về /api/ai-data/* để xin số liệu tổng hợp.
+// Nhờ vậy khoá Supabase không bao giờ phải rời máy chủ WebAdmin.
+// Dùng IMemoryCache (đăng ký sẵn ở trên) làm sổ chống dùng lại vé.
+builder.Services.AddScoped<AiContextTokenService>();
+
+// Dựng địa chỉ nhúng khung chat Trợ lý AI (ngữ cảnh trang + vé dữ liệu).
+// Dùng chung cho drawer nổi ở _Layout.cshtml và trang AiAssistant/Index.cshtml.
+builder.Services.AddScoped<AiChatbotUrlBuilder>();
+
 // Đăng ký dịch vụ sao lưu & phục hồi CSDL
 builder.Services.AddScoped<IBackupService, BackupService>();
+
+// Dựng số liệu sáu báo cáo thống kê (PRD 10.1 → 10.6). Dùng chung cho trang
+// Báo cáo & Thống kê và cho Trợ lý AI, nên hai nơi không thể lệch số liệu.
+builder.Services.AddScoped<BaoCaoReportService>();
 builder.Services.AddScoped<IAttendanceSummaryService, AttendanceSummaryService>();
 builder.Services.AddScoped<IHotelEventService, HotelEventService>();
 builder.Services.AddScoped<IPayrollCalculationService, PayrollCalculationService>();

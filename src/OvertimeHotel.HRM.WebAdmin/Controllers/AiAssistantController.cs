@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
@@ -9,18 +10,27 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 [Authorize]
 public class AiAssistantController : Controller
 {
-    private readonly IConfiguration _configuration;
+    private readonly AiChatbotUrlBuilder _urlBuilder;
 
-    public AiAssistantController(IConfiguration configuration)
+    public AiAssistantController(AiChatbotUrlBuilder urlBuilder)
     {
-        _configuration = configuration;
+        _urlBuilder = urlBuilder;
     }
 
     [HttpGet]
     public IActionResult Index()
     {
-        var chatbotUrl = _configuration["Chatbot:Url"] ?? "http://localhost:3000";
-        ViewBag.ChatbotUrl = chatbotUrl;
+        // Địa chỉ cơ bản để hiển thị và mở ở tab riêng (không kèm vé).
+        ViewBag.ChatbotUrl = _urlBuilder.GetBaseUrl();
+
+        // Địa chỉ nhúng: kèm ngữ cảnh trang và vé dữ liệu ngắn hạn. Dùng chung một
+        // bộ dựng với drawer nổi ở _Layout.cshtml để hai nơi không lệch nhau.
+        ViewBag.ChatbotEmbedUrl = _urlBuilder.BuildEmbedUrl(
+            User,
+            RouteData.Values["controller"]?.ToString(),
+            RouteData.Values["action"]?.ToString(),
+            Request.Query);
+
         return View();
     }
 }

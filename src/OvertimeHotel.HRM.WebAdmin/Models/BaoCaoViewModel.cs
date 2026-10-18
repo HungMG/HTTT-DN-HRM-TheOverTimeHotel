@@ -41,6 +41,23 @@ public class BaoCaoViewModel
     /// <summary>Tab đang mở, dùng cho deep-link <c>?tab=</c>.</summary>
     public string Tab { get; set; } = "bien-dong";
 
+    /// <summary>
+    /// Bản sao nông của mô hình, dùng để trả kết quả đệm cho một yêu cầu cụ thể.
+    ///
+    /// <para>
+    /// <see cref="Tab"/> là trạng thái giao diện nên không nằm trong khóa đệm: hai người mở
+    /// hai tab khác nhau trên cùng một kỳ báo cáo vẫn dùng chung một mục đệm. Ghi thẳng vào
+    /// object đệm sẽ khiến yêu cầu này ghi đè tab của yêu cầu kia. Các danh sách con được
+    /// dựng xong rồi chỉ đọc, nên sao nông là đủ và không tốn bộ nhớ đáng kể.
+    /// </para>
+    /// </summary>
+    public BaoCaoViewModel CloneWithTab(string tab)
+    {
+        var copy = (BaoCaoViewModel)MemberwiseClone();
+        copy.Tab = tab;
+        return copy;
+    }
+
     // ── Phạm vi &amp; năng lực của người đang đăng nhập ────────────────────
     /// <summary>True nếu người đang xem được thấy số liệu toàn khách sạn.</summary>
     public bool IsWholeHotel { get; set; }
