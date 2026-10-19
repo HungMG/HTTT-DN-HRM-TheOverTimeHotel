@@ -29,6 +29,16 @@ export const BaseConfigurationAnnotation = Annotation.Root({
    * The number of documents to retrieve.
    */
   k: Annotation<number>,
+
+  /**
+   * Which document scopes this caller may read.
+   *
+   * Resolved by the WebAdmin from the signed-in user's role and department — never taken from
+   * the browser. Values are `all` (shared documents), `dept:<id>` (one department) or `*`
+   * (the whole knowledge base). Retrieval runs one filtered search per scope and merges the
+   * results, so a manager sees shared policy plus their own department without seeing others.
+   */
+  docScopes: Annotation<string[]>,
 });
 
 /**
@@ -51,5 +61,31 @@ export function ensureBaseConfiguration(
     retrieverProvider: configurable.retrieverProvider || defaultProvider,
     filterKwargs: configurable.filterKwargs || {},
     k: configurable.k || 5,
+    docScopes: normalizeDocScopes(configurable.docScopes),
   };
+}
+
+/**
+ * Accept only well-formed scope codes, and fall back to the narrowest one.
+ *
+ * The list normally comes from the WebAdmin, but the graph is also invoked directly in tests
+ * and demos, so it is still treated as untrusted. An unrecognised value is dropped rather than
+ * forwarded: a typo becoming a filter that matches nothing is a silently empty answer, while a
+ * typo passed through could reach the database function as an unexpected argument.
+ *
+ * An empty result means "shared documents only" — never "everything". Failing open here would
+ * turn a missing scope into a knowledge-base-wide read.
+ */
+function normalizeDocScopes(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return ['all'];
+  }
+
+  const scopes = value.filter(
+    (item): item is string =>
+      typeof item === 'string' &&
+      (item === '*' || item === 'all' || /^dept:\d+$/.test(item)),
+  );
+
+  return scopes.length > 0 ? Array.from(new Set(scopes)) : ['all'];
 }

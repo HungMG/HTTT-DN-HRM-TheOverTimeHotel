@@ -295,6 +295,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Dùng IMemoryCache (đăng ký sẵn ở trên) làm sổ chống dùng lại vé.
 builder.Services.AddScoped<AiContextTokenService>();
 
+// Phân giải phạm vi ĐỌC/GHI kho tri thức cho Trợ lý AI. Chatbot gọi
+// /api/ai-data/knowledge-access mỗi lượt để biết lọc tài liệu theo phòng ban nào
+// và người này có được nạp tệp hay không — trình duyệt không tự khai được hai điều đó.
+builder.Services.AddScoped<AiKnowledgeAccessService>();
+
 // Dựng địa chỉ nhúng khung chat Trợ lý AI (ngữ cảnh trang + vé dữ liệu).
 // Dùng chung cho drawer nổi ở _Layout.cshtml và trang AiAssistant/Index.cshtml.
 builder.Services.AddScoped<AiChatbotUrlBuilder>();

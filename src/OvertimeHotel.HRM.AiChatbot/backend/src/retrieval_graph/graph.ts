@@ -227,16 +227,22 @@ async function loadDataDigest(
     }
 
     if (err instanceof DataBridgeError) {
-      // Only a refusal is expected in normal use: the user's role has no report access.
+      // Two refusals happen in normal use and they mean different things to the reader, so they
+      // must not share one sentence. 403 is a role boundary: the ticket is valid, this person
+      // simply may not see figures. 401 is a stale ticket: the ten-minute window has closed and
+      // the fix is to reopen the assistant from the HRM portal, not to request more rights.
+      // Reporting the second as "the service is busy" sends the user to the wrong place.
       // The raw status is logged for operators but never surfaced to the chat.
       console.warn(`Data digest request rejected with status ${err.status}.`);
-      return {
-        dataDigest: '',
-        dataError:
-          err.status === 403
-            ? 'Vai trò của bạn không được xem số liệu báo cáo, nên tôi chưa có dữ liệu để phân tích.'
-            : 'Hệ thống dữ liệu đang bận, chưa lấy được số liệu.',
-      };
+
+      const dataError =
+        err.status === 403
+          ? 'Vai trò của bạn không được xem số liệu báo cáo, nên tôi chưa có dữ liệu để phân tích.'
+          : err.status === 401
+            ? 'Phiên làm việc với hệ thống dữ liệu đã hết hiệu lực. Hãy mở lại Trợ lý AI từ cổng Quản trị để hỏi tiếp số liệu.'
+            : 'Hệ thống dữ liệu đang bận, chưa lấy được số liệu.';
+
+      return { dataDigest: '', dataError };
     }
 
     console.warn('Data digest request failed:', err);

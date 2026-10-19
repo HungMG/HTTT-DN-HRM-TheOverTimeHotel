@@ -45,6 +45,7 @@ public class AiDataController : ControllerBase
     private const int PersonalPayslipCount = 3;
 
     private readonly AiContextTokenService _tokenService;
+    private readonly AiKnowledgeAccessService _knowledgeAccessService;
     private readonly BaoCaoReportService _reportService;
     private readonly IAttendanceSummaryService _attendanceService;
     private readonly AppDbContext _context;
@@ -52,12 +53,14 @@ public class AiDataController : ControllerBase
 
     public AiDataController(
         AiContextTokenService tokenService,
+        AiKnowledgeAccessService knowledgeAccessService,
         BaoCaoReportService reportService,
         IAttendanceSummaryService attendanceService,
         AppDbContext context,
         ILogger<AiDataController> logger)
     {
         _tokenService = tokenService;
+        _knowledgeAccessService = knowledgeAccessService;
         _reportService = reportService;
         _attendanceService = attendanceService;
         _context = context;
@@ -99,6 +102,42 @@ public class AiDataController : ControllerBase
             ScopeReports => await BuildReportsAsync(principal, request),
             _ => BadRequest(new { message = "Phạm vi dữ liệu không hợp lệ." })
         };
+    }
+
+    /// <summary>
+    /// Cho biết người cầm vé được ĐỌC tài liệu nào và có được NẠP tài liệu không.
+    ///
+    /// <para>
+    /// <b>Vì sao phải có endpoint riêng:</b> cả việc lọc tài liệu khi tra cứu lẫn việc chấp nhận
+    /// tệp khi nạp đều không thể do phía trình duyệt tự khai. Chính route <c>/api/chat</c> và
+    /// <c>/api/ingest</c> của chatbot gọi endpoint này <b>mỗi lượt</b>, bằng vé lấy từ chính phiên
+    /// đăng nhập, rồi dùng kết quả đó để dựng bộ lọc.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Phạm vi được dựng lại ở đây, không đọc từ yêu cầu.</b> Thân yêu cầu chỉ có vé; nếu
+    /// nhận thêm trường phạm vi thì endpoint này biến thành công cụ tự nâng quyền.
+    /// </para>
+    /// </summary>
+    /// <response code="200">Phạm vi đọc/ghi đã phân giải.</response>
+    /// <response code="400">Thiếu vé.</response>
+    /// <response code="401">Vé sai chữ ký, hết hạn, sai đối tượng nhận, hoặc đã hết hiệu lực.</response>
+    [HttpPost("knowledge-access")]
+    public async Task<IActionResult> KnowledgeAccess([FromBody] AiKnowledgeAccessRequest request)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Token))
+        {
+            return BadRequest(new { message = "Thiếu vé dữ liệu." });
+        }
+
+        var principal = _tokenService.Validate(request.Token);
+        if (principal is null)
+        {
+            return Unauthorized(new { message = "Vé dữ liệu không hợp lệ hoặc đã hết hiệu lực." });
+        }
+
+        var access = await _knowledgeAccessService.ResolveAsync(principal);
+        return Ok(access);
     }
 
     /// <summary>
@@ -444,3 +483,14 @@ public class AiDataController : ControllerBase
 /// <param name="Month">Tháng 1–12.</param>
 /// <param name="Quarter">Quý 1–4; có giá trị thì được ưu tiên hơn tháng.</param>
 public sealed record AiDataRequest(string? Token, string? Scope, int? Year, int? Month, int? Quarter);
+
+/// <summary>
+/// Thân yêu cầu xin phạm vi kho tri thức.
+/// </summary>
+/// <remarks>
+/// Cố ý chỉ có vé. Mọi trường phạm vi (đọc được gì, nạp được gì) đều do máy chủ dựng từ vé và
+/// CSDL; nhận thêm một trường như <c>role</c> hay <c>departmentId</c> sẽ biến endpoint thành
+/// chỗ tự khai quyền.
+/// </remarks>
+/// <param name="Token">Vé dữ liệu do Web Admin ký cho phiên đăng nhập hiện tại.</param>
+public sealed record AiKnowledgeAccessRequest(string? Token);

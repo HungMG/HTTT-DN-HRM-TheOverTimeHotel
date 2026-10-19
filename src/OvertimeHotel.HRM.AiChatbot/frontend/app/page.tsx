@@ -373,12 +373,34 @@ export default function Home() {
       return;
     }
 
+    // No ticket means this frame was not opened from the HRM portal (someone typed the
+    // chatbot address directly, or the ten-minute ticket expired). The ingest route would
+    // refuse with 403, which reads as "you lack permission" when the truth is "you are not
+    // signed in here". Say which one it is, and skip a round trip that cannot succeed.
+    if (!accessTokenRef.current) {
+      toast({
+        title: 'Chưa có phiên làm việc',
+        description:
+          'Hãy mở Trợ lý AI từ nút nổi trong cổng Quản trị (hoặc trang /AiAssistant) để nạp tài liệu. Mở trực tiếp địa chỉ chatbot không kèm quyền nạp.',
+        variant: 'destructive',
+      });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     setIsUploading(true);
     try {
       const formData = new FormData();
       selectedFiles.forEach((file) => {
         formData.append('files', file);
       });
+      // The upload is authorised by the same short-lived ticket the chat uses. Without it the
+      // route refuses: the knowledge base is shared state, so writing to it needs a proven
+      // identity and a permission the server checks, not a button that happens to be visible.
+      // Presence was already checked above, so this is always set here.
+      formData.append('ticket', accessTokenRef.current);
 
       const response = await fetch('/api/ingest', {
         method: 'POST',
@@ -521,6 +543,9 @@ export default function Home() {
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">
                   Hỗ trợ tải lên Hợp đồng lao động, Quy chế, Sổ tay nhân viên (Tối đa 5 file, &lt; 10MB)
+                </p>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Cần phiên đăng nhập Web Admin và quyền nạp tài liệu (Nhân sự / Quản trị viên)
                 </p>
               </div>
             </div>

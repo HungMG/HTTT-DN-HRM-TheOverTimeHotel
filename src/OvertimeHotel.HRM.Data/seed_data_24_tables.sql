@@ -57,7 +57,7 @@ SET ten_vai_tro = EXCLUDED.ten_vai_tro, mo_ta = EXCLUDED.mo_ta;
 
 SELECT setval('vai_tro_ma_vai_tro_seq', (SELECT MAX(ma_vai_tro) FROM VAI_TRO));
 
--- 4. NẠP BẢNG QUYEN (18 Quyền chức năng)
+-- 4. NẠP BẢNG QUYEN (19 Quyền chức năng)
 INSERT INTO QUYEN (ma_quyen, ma_quyen_code, ten_quyen, mo_ta) VALUES
 (1, 'SYS_ADMIN', 'Toàn quyền quản trị hệ thống', 'Truy cập mọi chức năng quản trị cấp cao'),
 (2, 'QL_TAI_KHOAN', 'Quản lý tài khoản người dùng', 'Thêm, sửa, khóa tài khoản trên Web Admin'),
@@ -76,7 +76,8 @@ INSERT INTO QUYEN (ma_quyen, ma_quyen_code, ten_quyen, mo_ta) VALUES
 (15, 'CHAM_CONG_DI_DONG', 'Chấm công quẹt thẻ di động', 'Bấm nút Check-in / Check-out trên Mobile App'),
 (16, 'NOP_DON_TU', 'Nộp đơn từ trực tuyến', 'Gửi đơn nghỉ phép, việc riêng, thôi việc trên App'),
 (17, 'CAP_TAI_KHOAN_MOBILE', 'Cấp phát tài khoản đăng nhập Mobile App', 'Tạo user trong Supabase Auth để nhân viên đăng nhập ứng dụng di động. Chỉ dành cho Quản trị viên và bộ phận Công nghệ Thông tin'),
-(18, 'REPORT_VIEW', 'Xem báo cáo & thống kê quản trị', 'Truy cập phân hệ Báo cáo & Thống kê: biến động nhân sự, cơ cấu nhân lực, học vấn & thâm niên, đối soát quỹ lương, chuyên cần & vi phạm, hiệu quả sự kiện. Quản lý chỉ xem được dữ liệu bộ phận của mình')
+(18, 'REPORT_VIEW', 'Xem báo cáo & thống kê quản trị', 'Truy cập phân hệ Báo cáo & Thống kê: biến động nhân sự, cơ cấu nhân lực, học vấn & thâm niên, đối soát quỹ lương, chuyên cần & vi phạm, hiệu quả sự kiện. Quản lý chỉ xem được dữ liệu bộ phận của mình'),
+(19, 'QL_TRI_THUC_AI', 'Nạp tài liệu vào kho tri thức Trợ lý AI', 'Tải tệp PDF (quy chế, hợp đồng, sổ tay nhân viên) vào kho tri thức để Trợ lý AI tra cứu. Tách khỏi REPORT_VIEW: Quản lý bộ phận xem được báo cáo nhưng không được nạp văn bản toàn khách sạn')
 ON CONFLICT (ma_quyen) DO UPDATE
 SET ma_quyen_code = EXCLUDED.ma_quyen_code, ten_quyen = EXCLUDED.ten_quyen, mo_ta = EXCLUDED.mo_ta;
 
@@ -105,7 +106,13 @@ INSERT INTO VAI_TRO_QUYEN (ma_vai_tro, ma_quyen) VALUES
 -- KHÔNG gán cho Admin (#1): rào chắn 2 của trigger trg_chan_cap_quyen_tai_khoan_di_dong
 -- từ chối mọi dòng quyền mới gán cho vai trò Admin, và Admin vốn đã qua mọi policy
 -- nhờ IsInRole("Admin") trong Program.cs.
-(2, 18), (3, 18), (5, 18)
+(2, 18), (3, 18), (5, 18),
+-- Nạp tài liệu vào kho tri thức Trợ lý AI (QL_TRI_THUC_AI): HR và IT. CỐ Ý KHÔNG
+-- gán cho Manager (#3) — Quản lý xem báo cáo được nhưng không được đưa văn bản
+-- toàn khách sạn vào kho dùng chung. Admin (#1) cũng không gán vì trigger trong
+-- migration 20261009 chặn mọi quyền mới của vai trò Admin, và Admin đã qua mọi
+-- policy nhờ IsInRole("Admin").
+(2, 19), (5, 19)
 ON CONFLICT (ma_vai_tro, ma_quyen) DO NOTHING;
 
 -- 6. NẠP BẢNG CA_LAM_VIEC (3 Ca chuẩn 24/7)

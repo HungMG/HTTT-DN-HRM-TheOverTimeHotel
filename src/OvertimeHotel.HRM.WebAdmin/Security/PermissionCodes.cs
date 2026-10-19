@@ -41,6 +41,18 @@ public static class PermissionCodes
     public const string CalculatePayroll = "TINH_LUONG";
     public const string ExportPayslipPdf = "XUAT_PHIEU_LUONG_PDF";
 
+    // ── Nhóm: Trợ lý AI ────────────────────────────────────────────────────
+    /// <summary>
+    /// Nạp tài liệu PDF vào kho tri thức của Trợ lý AI.
+    /// </summary>
+    /// <remarks>
+    /// Cấp cho HR và IT. Tách khỏi <see cref="ReportView"/> có chủ đích: xem báo cáo và
+    /// nạp văn bản là hai quyền khác nhau, và Quản lý bộ phận (có <c>REPORT_VIEW</c>)
+    /// không được đưa tài liệu toàn khách sạn vào kho tri thức dùng chung.
+    /// Admin vốn qua mọi policy nhờ <c>IsInRole("Admin")</c>.
+    /// </remarks>
+    public const string ManageAiKnowledge = "QL_TRI_THUC_AI";
+
     // ── Nhóm: Báo cáo & Thống kê ───────────────────────────────────────────
     /// <summary>
     /// Mở phân hệ Báo cáo &amp; Thống kê quản trị (Phân hệ 10.0 — TSK-24).

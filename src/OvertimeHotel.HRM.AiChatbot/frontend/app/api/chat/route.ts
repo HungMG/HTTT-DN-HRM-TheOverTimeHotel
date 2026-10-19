@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/langgraph-server';
 import { retrievalAssistantStreamConfig } from '@/constants/graphConfigs';
+import { fetchKnowledgeAccess } from '@/lib/knowledge-access';
 
-export const runtime = 'edge';
+// Node runtime, not Edge. The route now asks the WebAdmin to turn the ticket into an explicit
+// document scope before the graph runs. Doing that server-side here is what lets the browser
+// stop asserting its own scope; the ticket travels in the request body to the WebAdmin, never
+// in a URL, so it stays out of access logs.
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
@@ -42,6 +47,11 @@ export async function POST(req: Request) {
       const assistantId = process.env.LANGGRAPH_RETRIEVAL_ASSISTANT_ID;
       const serverClient = createServerClient();
 
+      // Ask the WebAdmin which documents this ticket may read. The answer is derived from the
+      // signed-in user's role and department on the WebAdmin side — the browser above supplied
+      // only the ticket. An anonymous assistant (no ticket) reads shared documents only.
+      const access = await fetchKnowledgeAccess(accessToken);
+
       const stream = await serverClient.client.runs.stream(
         threadId,
         assistantId,
@@ -62,6 +72,10 @@ export async function POST(req: Request) {
               ...(Number.isFinite(year) ? { year } : {}),
               ...(Number.isFinite(month) ? { month } : {}),
               ...(Number.isFinite(quarter) ? { quarter } : {}),
+              // Replaces whatever the browser sent. Retrieval runs one filtered search per
+              // scope, so a manager sees shared policy plus their own department and nothing
+              // else. This is placed last on purpose: it must win over any inherited value.
+              docScopes: access.documentScopes,
             },
           },
         },

@@ -75,6 +75,14 @@ export interface BaseConfiguration {
    * @default 5
    */
   k?: number;
+
+  /**
+   * Document scopes the caller may read, resolved by the WebAdmin from the ticket.
+   *
+   * Values are `all`, `dept:<id>` or `*`. Set by the chat route, never read from the browser:
+   * the route asks the WebAdmin and overwrites whatever arrived in the request body.
+   */
+  docScopes?: string[];
 }
 
 export interface AgentConfiguration extends BaseConfiguration {
@@ -99,6 +107,17 @@ export interface AgentConfiguration extends BaseConfiguration {
    * questions like "what does this number mean?" against the report actually on screen.
    */
   pageContext?: string;
+
+  /**
+   * The report period on screen, as raw numbers.
+   *
+   * The backend already reads these to rebuild the same period at the data bridge; declaring
+   * them here keeps the frontend from having to send untyped values. Absent means "the page
+   * shows no period", which the bridge treats as its own default.
+   */
+  year?: number;
+  month?: number;
+  quarter?: number;
 }
 
 export interface IndexConfiguration extends BaseConfiguration {
