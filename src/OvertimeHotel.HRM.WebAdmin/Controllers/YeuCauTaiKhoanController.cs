@@ -124,6 +124,7 @@ public class YeuCauTaiKhoanController : Controller
                 RoleName = item.VaiTro == null ? "Chưa cấp" : item.VaiTro.TenVaiTro,
                 Status = item.TrangThai,
                 StatusLabel = GetStatusLabel(item.TrangThai),
+                IsPromotion = item.GhiChuTuChoi != null && item.GhiChuTuChoi.StartsWith("[THANG_CHUC]"),
                 ContractNo = item.HopDong == null ? null : item.HopDong.SoHopDong,
                 SenderName = item.NguoiGui == null
                     ? "Không xác định"
@@ -380,6 +381,225 @@ public class YeuCauTaiKhoanController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    // =====================================================================
+    //  CREATE PROMOTION — GỬI YÊU CẦU THĂNG CHỨC LÊN QUẢN LÝ
+    // =====================================================================
+    [HttpGet]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
+    public async Task<IActionResult> CreatePromotion(int? employeeId = null)
+    {
+        var role = GetCurrentRoleName();
+        if (!LeaveApprovalPolicy.CanSubmitPromotionRequest(role))
+        {
+            TempData["Error"] = "Chỉ Quản trị viên và Nhân sự mới có thẩm quyền đề xuất thăng chức cho nhân viên.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var model = new CreatePromotionRequestViewModel();
+        if (employeeId.HasValue && employeeId.Value > 0)
+        {
+            model.EmployeeId = employeeId.Value;
+        }
+
+        await LoadPromotionOptionsAsync(model);
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
+    public async Task<IActionResult> CreatePromotion(CreatePromotionRequestViewModel model)
+    {
+        var role = GetCurrentRoleName();
+        if (!LeaveApprovalPolicy.CanSubmitPromotionRequest(role))
+        {
+            TempData["Error"] = "Chỉ Quản trị viên và Nhân sự mới có thẩm quyền đề xuất thăng chức cho nhân viên.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var senderEmployeeId = GetCurrentEmployeeId();
+        if (!senderEmployeeId.HasValue)
+        {
+            ModelState.AddModelError(string.Empty, "Không xác định được nhân viên đang đăng nhập. Vui lòng đăng nhập lại.");
+            await LoadPromotionOptionsAsync(model);
+            return View(model);
+        }
+
+        var managerRole = await _context.VaiTros
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.TenVaiTro == "Manager");
+        if (managerRole == null)
+        {
+            ModelState.AddModelError(string.Empty, "Hệ thống chưa thiết lập vai trò Quản lý (Manager).");
+            await LoadPromotionOptionsAsync(model);
+            return View(model);
+        }
+
+        model.TargetRoleId = managerRole.MaVaiTro;
+
+        var employee = await _context.NhanViens
+            .AsNoTracking()
+            .Include(item => item.TaiKhoan)!.ThenInclude(tk => tk!.VaiTro)
+            .FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
+
+        if (employee == null)
+        {
+            ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên được chọn không tồn tại.");
+        }
+        else if (employee.TaiKhoan == null)
+        {
+            ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên chưa có tài khoản. Vui lòng gửi yêu cầu cấp mới tài khoản trước khi thăng chức.");
+        }
+        else if (!string.Equals(employee.TrangThai, "DANG_LAM", StringComparison.Ordinal))
+        {
+            ModelState.AddModelError(nameof(model.EmployeeId), "Chỉ nhân viên đang làm việc mới được đề xuất thăng chức.");
+        }
+        else if (!LeaveApprovalPolicy.CanPromoteRole(employee.TaiKhoan.VaiTro?.TenVaiTro, "Manager"))
+        {
+            ModelState.AddModelError(nameof(model.EmployeeId), "Quy định hệ thống: Chỉ nhân viên (Employee) mới có thể được đề xuất thăng chức lên Quản lý (Manager).");
+        }
+        else if (await _context.YeuCauTaiKhoans.AnyAsync(req =>
+                     req.MaNhanVien == model.EmployeeId &&
+                     (req.TrangThai == STATUS_CHO_IT || req.TrangThai == STATUS_DANG_XU_LY)))
+        {
+            ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên này đang có một yêu cầu chờ hoặc đang được xử lý.");
+        }
+
+        if (!model.ContractId.HasValue || model.ContractId.Value <= 0)
+        {
+            ModelState.AddModelError(nameof(model.ContractId), "Vui lòng chọn hợp đồng lao động làm căn cứ thăng chức.");
+        }
+        else
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var contract = await _context.HopDongs
+                .AsNoTracking()
+                .Where(c => c.MaHopDong == model.ContractId.Value && c.MaNhanVien == model.EmployeeId)
+                .Select(c => new { c.TrangThai, c.NgayBatDau, c.NgayKetThuc })
+                .SingleOrDefaultAsync();
+
+            if (contract == null || !LeaveApprovalPolicy.IsValidContractForAccountRequest(contract.TrangThai, contract.NgayBatDau, contract.NgayKetThuc, today))
+            {
+                ModelState.AddModelError(nameof(model.ContractId), "Hợp đồng không hợp lệ hoặc đã hết hạn (chỉ chấp nhận HĐ đang hiệu lực, đã bắt đầu và chưa hết hạn).");
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(model.Reason))
+        {
+            ModelState.AddModelError(nameof(model.Reason), "Vui lòng nhập lý do đề xuất thăng chức.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await LoadPromotionOptionsAsync(model);
+            return View(model);
+        }
+
+        var promotionNote = $"[THANG_CHUC] Lý do: {model.Reason.Trim()}";
+        if (promotionNote.Length > 500)
+        {
+            promotionNote = promotionNote[..500];
+        }
+
+        var request = new YeuCauTaiKhoan
+        {
+            MaNhanVien = model.EmployeeId,
+            MaHopDong = model.ContractId,
+            TenDangNhap = employee!.TaiKhoan!.TenDangNhap,
+            MaVaiTro = managerRole.MaVaiTro,
+            TrangThai = STATUS_CHO_IT,
+            NgayGui = DateTimeOffset.UtcNow,
+            MaNguoiGui = senderEmployeeId.Value,
+            GhiChuTuChoi = promotionNote
+        };
+
+        var created = await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            _context.ChangeTracker.Clear();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(2026101601, {model.EmployeeId})");
+            if (await _context.YeuCauTaiKhoans.AnyAsync(item => item.MaNhanVien == model.EmployeeId &&
+                (item.TrangThai == STATUS_CHO_IT || item.TrangThai == STATUS_DANG_XU_LY))) return false;
+
+            _context.YeuCauTaiKhoans.Add(request);
+            _context.NhatKyQuanTris.Add(CreateAuditLog(
+                targetAccountId: employee.TaiKhoan.MaTaiKhoan,
+                targetUsername: employee.TaiKhoan.TenDangNhap,
+                action: "CREATE_PROMOTION_REQUEST",
+                description: $"Đề xuất thăng chức nhân viên #{model.EmployeeId} lên Quản lý (Manager).",
+                oldValue: $"Vai trò hiện tại: {employee.TaiKhoan.VaiTro?.TenVaiTro ?? "Employee"}",
+                newValue: $"Vai trò đề xuất: Quản lý (Manager); Hợp đồng #{model.ContractId}",
+                reason: model.Reason));
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return true;
+        });
+
+        if (!created)
+        {
+            ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên này đang có yêu cầu chờ hoặc đang được xử lý.");
+            await LoadPromotionOptionsAsync(model);
+            return View(model);
+        }
+
+        TempData["Success"] = $"Đã gửi yêu cầu thăng chức cho nhân viên '{employee.HoTen}' lên Quản lý. Bộ phận IT hoặc Admin sẽ phê duyệt.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    /// <summary>
+    /// Nạp danh sách nhân viên vai trò Employee và hợp đồng còn hiệu lực cho form thăng chức.
+    /// </summary>
+    private async Task LoadPromotionOptionsAsync(CreatePromotionRequestViewModel model)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        var employeeRole = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(r => r.TenVaiTro == "Employee");
+        var managerRole = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(r => r.TenVaiTro == "Manager");
+        var employeeRoleId = employeeRole?.MaVaiTro ?? 0;
+        model.TargetRoleId = managerRole?.MaVaiTro ?? 0;
+
+        model.EligibleEmployees = await _context.NhanViens
+            .AsNoTracking()
+            .Where(employee =>
+                employee.TrangThai == "DANG_LAM" &&
+                employee.EmailCongVu != null &&
+                employee.EmailCongVu != string.Empty &&
+                _context.TaiKhoans.Any(account => account.MaNhanVien == employee.MaNhanVien && account.MaVaiTro == employeeRoleId) &&
+                !_context.YeuCauTaiKhoans.Any(req =>
+                    req.MaNhanVien == employee.MaNhanVien &&
+                    (req.TrangThai == STATUS_CHO_IT || req.TrangThai == STATUS_DANG_XU_LY)))
+            .OrderBy(employee => employee.Ho)
+            .ThenBy(employee => employee.Ten)
+            .Select(employee => new SelectListItem
+            {
+                Value = employee.MaNhanVien.ToString(),
+                Text = (employee.Ho + " " + employee.Ten).Trim() + " (" + employee.EmailCongVu + ")",
+                Selected = employee.MaNhanVien == model.EmployeeId
+            })
+            .ToListAsync();
+
+        model.ActiveContracts = await _context.HopDongs
+            .AsNoTracking()
+            .Where(contract =>
+                contract.TrangThai == "HIEU_LUC" &&
+                contract.NgayBatDau <= today &&
+                (contract.NgayKetThuc == null || contract.NgayKetThuc.Value >= today))
+            .OrderBy(contract => contract.NgayKetThuc ?? DateOnly.MaxValue)
+            .ThenBy(contract => contract.SoHopDong)
+            .Select(contract => new ActiveContractOptionViewModel
+            {
+                ContractId = contract.MaHopDong,
+                EmployeeId = contract.MaNhanVien,
+                ContractNo = contract.SoHopDong,
+                Label = contract.SoHopDong + " · " +
+                        (contract.LoaiHopDong ?? string.Empty) + " · " +
+                        (contract.NgayKetThuc == null
+                            ? "không xác định thời hạn"
+                            : "đến " + contract.NgayKetThuc.Value.ToString("dd/MM/yyyy"))
+            })
+            .ToListAsync();
+    }
+
     /// <summary>
     /// Nạp danh sách nhân viên, vai trò và hợp đồng còn hiệu lực cho form gửi yêu cầu.
     /// </summary>
@@ -579,6 +799,69 @@ public class YeuCauTaiKhoanController : Controller
                 StatusCodes.Status409Conflict);
         }
 
+        // Kiểm tra xem đây có phải là yêu cầu thăng chức (nhân viên đã có tài khoản) hay không
+        var existingAccount = await _context.TaiKhoans
+            .Include(t => t.VaiTro)
+            .FirstOrDefaultAsync(t => t.MaNhanVien == request.MaNhanVien);
+
+        if (existingAccount != null)
+        {
+            var oldRoleName = existingAccount.VaiTro?.TenVaiTro ?? "Chưa cấp";
+            var targetRole = await _context.VaiTros
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.MaVaiTro == request.MaVaiTro);
+            var newRoleName = targetRole?.TenVaiTro ?? "Quản lý";
+
+            try
+            {
+                var executionStrategy = _context.Database.CreateExecutionStrategy();
+                await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                    existingAccount.MaVaiTro = request.MaVaiTro;
+                    _context.TaiKhoans.Update(existingAccount);
+                    await _context.SaveChangesAsync();
+
+                    _context.NhatKyQuanTris.Add(CreateAuditLog(
+                        targetAccountId: existingAccount.MaTaiKhoan,
+                        targetUsername: existingAccount.TenDangNhap,
+                        action: "PROMOTE_ACCOUNT",
+                        description: $"Phê duyệt thăng chức nhân viên từ {oldRoleName} lên {newRoleName}.",
+                        oldValue: $"Vai trò cũ: {oldRoleName}",
+                        newValue: $"Vai trò mới: {newRoleName}",
+                        reason: $"Duyệt yêu cầu thăng chức #{request.MaYeuCau}."));
+
+                    await _context.SaveChangesAsync();
+
+                    var completed = await _context.YeuCauTaiKhoans
+                        .Where(item => item.MaYeuCau == id && item.TrangThai == STATUS_DANG_XU_LY)
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(item => item.TrangThai, STATUS_DA_CAP)
+                            .SetProperty(item => item.MaTaiKhoan, existingAccount.MaTaiKhoan)
+                            .SetProperty(item => item.MaNguoiXuLy, accountId.Value)
+                            .SetProperty(item => item.NgayXuLy, DateTimeOffset.UtcNow));
+
+                    if (completed == 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Yêu cầu #{id} đã chuyển trạng thái trước khi hoàn tất phê duyệt.");
+                    }
+
+                    await transaction.CommitAsync();
+                });
+
+                return ProcessingSuccess(
+                    $"Đã phê duyệt thăng chức cho tài khoản '{existingAccount.TenDangNhap}' lên vai trò {newRoleName}.",
+                    await GetStatusOptionsForRefresh(GetCurrentRoleName()));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi phê duyệt thăng chức yêu cầu #{RequestId}.", id);
+                return ProcessingFailure("Không thể phê duyệt thăng chức do lỗi xử lý CSDL.", StatusCodes.Status500InternalServerError);
+            }
+        }
+
         // Email công vụ là điều kiện tiên quyết: custom_access_token_hook đối
         // chiếu claims.email với nhan_vien.email mới cấp claim vai trò. Không
         // có email thì nhân viên đăng nhập được app nhưng vào trong không có
@@ -761,7 +1044,7 @@ public class YeuCauTaiKhoanController : Controller
             .Where(item => item.MaYeuCau == id && item.TrangThai == STATUS_DANG_XU_LY)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(item => item.TrangThai, STATUS_TU_CHOI)
-                .SetProperty(item => item.GhiChuTuChoi, lyDo)
+                .SetProperty(item => item.GhiChuTuChoi, request.GhiChuTuChoi != null && request.GhiChuTuChoi.StartsWith("[THANG_CHUC]") ? (request.GhiChuTuChoi.Length + lyDo.Length + 14 <= 500 ? $"{request.GhiChuTuChoi} | Từ chối: {lyDo}" : $"[THANG_CHUC] Từ chối: {lyDo}") : lyDo)
                 .SetProperty(item => item.MaNguoiXuLy, accountId.Value)
                 .SetProperty(item => item.NgayXuLy, DateTimeOffset.UtcNow));
 

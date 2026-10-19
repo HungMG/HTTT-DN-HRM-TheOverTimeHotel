@@ -111,6 +111,12 @@
                         <td class="py-2.5">
                             <div class="d-flex align-items-center gap-1 font-monospace small fw-semibold text-dark">
                                 <code class="text-primary bg-primary bg-opacity-10 px-2 py-0.5 rounded-2" style="font-size: 0.78rem;">@@@item.Username</code>
+                                @if (item.IsPromotion)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size: 0.68rem;" title="Yêu cầu thăng chức">
+                                        <i class="bi bi-arrow-up-circle-fill me-1 text-warning"></i>Thăng chức
+                                    </span>
+                                }
                             </div>
                             <div class="text-muted" style="font-size: 0.72rem;">
                                 <i class="bi bi-send text-primary me-1"></i><b>@item.SenderName</b> lúc @sentAt.ToString("HH:mm · dd/MM")
@@ -153,7 +159,7 @@
                             else if (item.Status == "DA_CAP" && !string.IsNullOrWhiteSpace(item.GrantedUsername))
                             {
                                 <div class="text-success mt-1 small" style="font-size: 0.72rem;">
-                                    <i class="bi bi-check2 me-1"></i>Tài khoản #@item.GrantedUsername
+                                    <i class="bi bi-check2 me-1"></i>@(item.IsPromotion ? "Đã thăng chức @" + item.GrantedUsername : "Tài khoản #" + item.GrantedUsername)
                                 </div>
                             }
                             else if (!string.IsNullOrWhiteSpace(item.HandlerUsername))
@@ -185,9 +191,18 @@
                                         {
                                             <form asp-action="Complete" asp-route-id="@item.RequestId" method="post" class="d-inline" data-request-action-form>
                                                 @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm" title="Kích hoạt &amp; cấp tài khoản Supabase" style="font-size: 0.78rem;">
-                                                    <i class="bi bi-key-fill me-1"></i>Cấp tài khoản
-                                                </button>
+                                                @if (item.IsPromotion)
+                                                {
+                                                    <button type="submit" class="btn btn-sm btn-warning rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm text-dark" title="Duyệt nâng quyền tài khoản lên Quản lý" style="font-size: 0.78rem;">
+                                                        <i class="bi bi-arrow-up-circle-fill me-1"></i>Duyệt thăng chức
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm" title="Kích hoạt &amp; cấp tài khoản Supabase" style="font-size: 0.78rem;">
+                                                        <i class="bi bi-key-fill me-1"></i>Cấp tài khoản
+                                                    </button>
+                                                }
                                             </form>
                                             <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold hover-lift" title="Từ chối yêu cầu"
                                                     data-request-reject="@item.RequestId"

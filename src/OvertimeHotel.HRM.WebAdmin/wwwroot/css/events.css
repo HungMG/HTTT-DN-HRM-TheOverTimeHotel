@@ -1191,3 +1191,237 @@
 .event-create-dialog .event-panel {
   padding: 20px;
 }
+
+.event-details-dialog .modal-content,
+.event-assignment-dialog .modal-content {
+  background: #fffdf7;
+  border: 1px solid #e9e1d2;
+  border-radius: 18px;
+}
+
+.event-details-dialog .modal-header,
+.event-assignment-dialog .modal-header {
+  padding: 18px 24px;
+  color: #172b42;
+  border-bottom-color: #e9e1d2;
+}
+
+.event-details-dialog .modal-body,
+.event-assignment-dialog .modal-body {
+  padding: 24px;
+}
+
+.event-details-content [hidden] {
+  display: none !important;
+}
+
+.event-details-content .event-page-heading {
+  margin-top: 0;
+}
+
+.event-details-content .event-page-heading h2 {
+  font-size: clamp(24px, 3vw, 32px);
+  overflow-wrap: anywhere;
+}
+
+.event-details-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.event-details-navigation [aria-pressed="true"] {
+  color: #fff;
+  background: #172b42;
+  border-color: #172b42;
+}
+
+.event-details-content button:focus-visible,
+.event-details-content [tabindex="-1"]:focus-visible {
+  outline: 3px solid #b68b44;
+  outline-offset: 3px;
+}
+
+.event-staff-heading,
+.event-department-card > header,
+.event-assigned-member,
+.event-member-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.event-staff-heading {
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.event-staff-heading h3 {
+  margin: 0;
+  font-size: 21px;
+}
+
+.event-department-list {
+  display: grid;
+  gap: 16px;
+}
+
+.event-department-card {
+  background: #fff;
+  border: 1px solid #e9e1d2;
+  border-radius: 14px;
+  padding: 20px;
+  min-width: 0;
+}
+
+.event-department-card > header h4 {
+  font-size: 17px;
+  margin: 0 0 4px;
+}
+
+.event-department-card > header > button {
+  flex-shrink: 0;
+}
+
+.event-assigned-member {
+  padding: 16px 0;
+  border-top: 1px solid #edf0f4;
+  margin-top: 16px;
+  align-items: flex-start;
+}
+
+.event-assigned-member > div:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-assigned-member span,
+.event-assigned-member small,
+.event-assignment-person span,
+.event-member-option small {
+  display: block;
+  color: #64748b;
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.event-member-actions {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.event-member-picker {
+  border-top: 1px solid #e9e1d2;
+  margin-top: 16px;
+  padding-top: 16px;
+}
+
+.event-member-options {
+  max-height: 250px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.event-member-option {
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  padding: 12px;
+  border: 0;
+  border-bottom: 1px solid #edf0f4;
+  color: #172b42;
+}
+
+.event-member-option:hover:not(:disabled) {
+  background: #f5f1e8;
+}
+
+.event-member-option:disabled {
+  opacity: .6;
+}
+
+.event-assignment-person {
+  background: #f3efe6;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+.event-assignment-options summary {
+  color: #64748b;
+  cursor: pointer;
+}
+
+.event-review-department {
+  font-size: 15px;
+  padding-top: 20px;
+}
+
+.event-role-group {
+  border-top: 1px solid #edf0f4;
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
+.event-role-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.event-role-heading > span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.event-role-group.is-missing > .event-role-heading > span,
+.event-role-shortage {
+  color: #9a5500;
+}
+
+.event-role-shortage {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.event-role-group > .event-assigned-member {
+  border-top: 0;
+  margin-top: 6px;
+}
+
+@media (max-width: 575px) {
+  .event-details-dialog .modal-body,
+  .event-assignment-dialog .modal-body {
+    padding: 16px;
+  }
+  .event-details-navigation {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .event-details-navigation button {
+    justify-content: center;
+  }
+  .event-department-card {
+    padding: 14px;
+  }
+  .event-department-card > header {
+    flex-wrap: wrap;
+  }
+  .event-assigned-member {
+    flex-wrap: wrap;
+  }
+  .event-member-actions {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+}

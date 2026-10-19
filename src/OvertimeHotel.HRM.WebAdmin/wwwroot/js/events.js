@@ -128,6 +128,7 @@
     }
     if (typeof module !== 'undefined' && module.exports) module.exports = { moveDate, calendarUrl, createUrl, handleDayInteraction, validTimeRange, toggleDate, selectionRange, responseError, canCreateSelection, bindDepartmentEmployeeFiltering };
     if (typeof document === 'undefined') return;
+    window.HotelEventUI = { responseError, bindTimeForms };
     document.addEventListener('DOMContentLoaded', function () {
         bindTimeForms(document);
         bindDepartmentEmployeeFiltering(document);
@@ -175,6 +176,8 @@
             events.forEach(item => {
                 const link = document.createElement('a');
                 link.className = 'event-agenda-card';
+                link.dataset.eventLink = '';
+                link.dataset.eventId = item.id;
                 link.href = item.url + '&returnDate=' + encodeURIComponent(date);
                 const time = document.createElement('span');
                 time.className = 'event-eyebrow';
@@ -296,5 +299,19 @@
             }
         });
         renderSelection(calendar.dataset.selected);
+        document.addEventListener('hotel-event-updated', event => {
+            const update = event.detail;
+            const item = cards.find(card => card.id === Number(update.id));
+            if (!item) return;
+            Object.assign(item, { count: Number(update.count), status: update.status, statusLabel: update.statusLabel });
+            calendar.querySelectorAll('[data-event-link]').forEach(link => {
+                if (Number(link.dataset.eventId) !== item.id) return;
+                link.className = 'event-calendar-chip event-chip-' + item.status;
+                link.title = item.name + ' · ' + item.statusLabel;
+                link.querySelector('.event-chip-meta').textContent = item.statusLabel + ' · ' + item.count + ' người';
+            });
+            const selected = new URLSearchParams(window.location.search).get('date') || calendar.dataset.selected;
+            renderSelection(selected);
+        });
     });
 })();

@@ -69,7 +69,7 @@ try
             Manager = new { Username = f.Prefix + "-manager", f.Manager.EmployeeId, f.Manager.AccountId },
             OtherManager = new { Username = f.Prefix + "-manager2", f.OtherManager.EmployeeId, f.OtherManager.AccountId },
             IT = new { Username = f.Prefix + "-it", f.IT.EmployeeId, f.IT.AccountId },
-            f.WorkerA, f.WorkerB
+            f.WorkerA, f.WorkerB, f.RoleWorkers
         };
         await File.WriteAllTextAsync(previewPath, JsonSerializer.Serialize(preview, new JsonSerializerOptions { WriteIndented = true }));
         keepFixture = true;
@@ -419,6 +419,66 @@ try
         Require((await f.With(s => s.HistoryAsync(item.MaDuAn))).Count == before + 1, "Acceptance audit duplicated or lost.");
     });
 
+    await Check("Assignment rejects forged roles and requires a name for custom roles", async () =>
+    {
+        var item = await f.Create(f.Input());
+        var input = f.Assignment(item, f.WorkerA);
+        input.Role = "Tiếp nhận đăng ký";
+        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, input)), field: "Assignment.Role");
+        input.Role = "Role forged by client";
+        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, input)), field: "Assignment.Role");
+    });
+
+    await Check("Custom roles retain their prefix and new assignments have no task", async () =>
+    {
+        var item = await f.Create(f.Input());
+        var input = f.Assignment(item, f.WorkerA);
+        input.Role = "__OTHER__";
+        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, input)), field: "Assignment.Role");
+        input.OtherRole = "Custom support";
+        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, input));
+        var stored = (await f.Get(item.MaDuAn)).PhanCongs.Single();
+        Require(stored.VaiTroDuAn == "Khác: Custom support" && stored.NhiemVuCuThe is null, "Custom role or empty task was not preserved.");
+    });
+
+    await Check("A primary-only team cannot start despite enough employees per department", async () =>
+    {
+        var item = await f.Create(f.Input());
+        foreach (var dept in HotelEventRules.GetRequiredDepartments(item.LoaiDuAn))
+            foreach (var worker in f.RoleWorkers[dept].Take(2))
+            {
+                await f.With(s => s.AssignAsync(f.Manager,item.MaDuAn,f.Assignment(item,worker)));
+                item = await f.Get(item.MaDuAn);
+            }
+        await f.MoveToPast(item.MaDuAn);
+        item = await f.Get(item.MaDuAn);
+        await Reject(() => f.With(s => s.ChangeStatusAsync(f.Manager,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
+    });
+
+    await Check("A zero-guest event cannot start with an otherwise complete team", async () =>
+    {
+        var item = await f.Create(f.Input());
+        item = await f.StaffFully(item);
+        var edit = f.Edit(item); edit.ExpectedGuests = 0;
+        await f.With(s => s.SaveAsync(f.Admin,edit));
+        await f.MoveToPast(item.MaDuAn);
+        item = await f.Get(item.MaDuAn);
+        await Reject(() => f.With(s => s.ChangeStatusAsync(f.Manager,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
+    });
+
+    await Check("Changing guests keeps existing assignments but increases role demand", async () =>
+    {
+        var item = await f.Create(f.Input());
+        item = await f.StaffFully(item);
+        var oldCount=item.PhanCongs.Count;
+        var edit=f.Edit(item); edit.ExpectedGuests=120;
+        await f.With(s=>s.SaveAsync(f.Admin,edit));
+        await f.MoveToPast(item.MaDuAn);
+        item=await f.Get(item.MaDuAn);
+        Require(item.PhanCongs.Count==oldCount,"Changing guests silently removed assignments.");
+        await Reject(()=>f.With(s=>s.ChangeStatusAsync(f.Manager,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
+    });
+
     await Check("Staffing rejects employees belonging to disallowed departments", async () =>
     {
         var item = await f.Create(f.Input()); // HOI_NGHI_MICE
@@ -459,23 +519,22 @@ try
         Require(item.TrangThai == "DANG_DIEN_RA", "Event failed to transition to DANG_DIEN_RA after full staffing.");
     });
 
-    await Check("Removing the last employee of a mandatory department is blocked when event is ongoing", async () =>
+    await Check("Removing a mandatory role is blocked even when another role has extra people", async () =>
     {
         var item = await f.Create(f.Input());
         item = await f.StaffFully(item);
-        // Add a second KY_THUAT worker (WorkerB)
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerB)));
-        await f.MoveToPast(item.MaDuAn);
+        var spare = f.RoleWorkers["KY_THUAT"][2];
+        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, spare)));
+        await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
         await f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
         item = await f.Get(item.MaDuAn);
 
-        // WorkerB is 2nd in KY_THUAT -> removing WorkerB succeeds
-        var assignB = item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerB);
+        var assignB = item.PhanCongs.Single(p => p.MaNhanVien == spare);
         await f.With(s => s.RemoveAssignmentAsync(f.Manager, item.MaDuAn, assignB.MaPhanCong, item.Version));
         item = await f.Get(item.MaDuAn);
 
-        // WorkerA is now the ONLY worker in KY_THUAT -> removing WorkerA must be blocked
+        // WorkerB still covers support, but cannot substitute for WorkerA's primary role.
         var assignA = item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerA);
         await Reject(() => f.With(s => s.RemoveAssignmentAsync(f.Manager, item.MaDuAn, assignA.MaPhanCong, item.Version)));
     });
@@ -592,6 +651,7 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
     public int WorkerSecurity { get; private set; }
     public int WorkerIT { get; private set; }
     public int WorkerUnrelated { get; private set; }
+    public Dictionary<string, List<int>> RoleWorkers { get; private set; } = [];
     public AppDbContext Open() => new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connection).Options);
     public async Task<T> With<T>(Func<IHotelEventService, Task<T>> run)
     {
@@ -664,28 +724,32 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         WorkerSecurity = (await Employee("worker-sec", deptSec.MaPhongBan)).MaNhanVien;
         WorkerIT = (await Employee("worker-it", office.MaPhongBan)).MaNhanVien;
         WorkerUnrelated = (await Employee("worker-unrelated", deptUnrelated.MaPhongBan)).MaNhanVien;
+        RoleWorkers = new()
+        {
+            ["TIEN_SANH"] = [WorkerFO], ["AM_THUC"] = [WorkerFB], ["BEP"] = [WorkerKitchen],
+            ["BUONG_PHONG"] = [WorkerHK], ["KY_THUAT"] = [WorkerA, WorkerB],
+            ["AN_NINH"] = [WorkerSecurity], ["IT"] = [WorkerIT]
+        };
+        foreach (var (code, workers) in RoleWorkers)
+        {
+            var department = db.NhanViens.Local.Single(n => n.MaNhanVien == workers[0]).MaPhongBan!.Value;
+            while (workers.Count < 3)
+                workers.Add((await Employee($"role-{code}-{workers.Count+1}", department)).MaNhanVien);
+        }
     }
     public async Task<DuAn> StaffFully(DuAn item)
     {
         var depts = HotelEventRules.GetRequiredDepartments(item.LoaiDuAn);
         foreach (var d in depts)
         {
-            var worker = d switch
-            {
-                "TIEN_SANH" => WorkerFO,
-                "AM_THUC" => WorkerFB,
-                "BEP" => WorkerKitchen,
-                "BUONG_PHONG" => WorkerHK,
-                "KY_THUAT" => WorkerA,
-                "IT" => WorkerIT,
-                "AN_NINH" => WorkerSecurity,
-                _ => throw new InvalidOperationException()
-            };
-            if (!item.PhanCongs.Any(p => p.MaNhanVien == worker))
-            {
-                await With(s => s.AssignAsync(Manager, item.MaDuAn, Assignment(item, worker)));
-                item = await Get(item.MaDuAn);
-            }
+            foreach (var role in HotelEventRoleRules.GetRoles(item.LoaiDuAn,d,item.SoKhachDuKien).Where(r=>r.IsRequired))
+                while (item.PhanCongs.Count(p=>p.VaiTroDuAn==role.Name)<role.RequiredCount)
+                {
+                    var worker=RoleWorkers[d].First(id=>item.PhanCongs.All(p=>p.MaNhanVien!=id));
+                    var input=Assignment(item,worker); input.Role=role.Name;
+                    await With(s => s.AssignAsync(Manager,item.MaDuAn,input));
+                    item=await Get(item.MaDuAn);
+                }
         }
         return item;
     }
@@ -703,7 +767,8 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
     public async Task<DuAn> Get(int id) => await With(s => s.GetAsync(Admin, id)) ?? throw new InvalidOperationException("Owned event missing.");
     public EventAssignmentInput Assignment(DuAn item, int worker, decimal allowance = 50) => new()
     {
-        Version = item.Version, EmployeeId = worker, Role = "Support", Task = "Integration fixture",
+        Version = item.Version, EmployeeId = worker,
+        Role = HotelEventRoleRules.GetRoles(item.LoaiDuAn,RoleWorkers.FirstOrDefault(d=>d.Value.Contains(worker)).Key ?? "KY_THUAT",item.SoKhachDuKien).FirstOrDefault()?.Name ?? "Support",
         Start = item.NgayBatDau.ToOffset(TimeSpan.FromHours(7)).DateTime,
         End = item.NgayKetThuc.ToOffset(TimeSpan.FromHours(7)).DateTime, Allowance = allowance
     };
@@ -722,6 +787,15 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
     {
         await using var db = Open();
         await db.DuAns.Where(e => e.MaDuAn == id && e.TenDuAn.StartsWith(Prefix)).ExecuteUpdateAsync(p => p.SetProperty(e => e.TrangThai, status));
+    }
+    public async Task MoveToOngoing(int id)
+    {
+        await using var db=Open();
+        var item=await db.DuAns.Include(e=>e.PhanCongs).SingleAsync(e=>e.MaDuAn==id && e.TenDuAn.StartsWith(Prefix));
+        var delta=DateTimeOffset.UtcNow.AddHours(-1)-item.NgayBatDau;
+        item.NgayBatDau+=delta; item.NgayKetThuc+=delta;
+        foreach(var assignment in item.PhanCongs) { assignment.BatDau+=delta; assignment.KetThuc+=delta; }
+        await db.SaveChangesAsync();
     }
     public async Task MoveToPast(int id)
     {

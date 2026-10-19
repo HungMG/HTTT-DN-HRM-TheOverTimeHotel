@@ -28,7 +28,7 @@ public class EventAssignmentInput
     public long Version { get; set; }
     public int EmployeeId { get; set; }
     public string Role { get; set; } = "";
-    public string? Task { get; set; }
+    public string? OtherRole { get; set; }
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
     public decimal Allowance { get; set; }

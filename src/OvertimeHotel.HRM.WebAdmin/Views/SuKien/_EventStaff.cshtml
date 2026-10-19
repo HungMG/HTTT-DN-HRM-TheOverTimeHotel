@@ -1,0 +1,97 @@
+@model EventDetailsViewModel
+@using OvertimeHotel.HRM.Core.Policies
+@using System.Globalization
+@{
+    var item = Model.Event;
+    var canStaff = Model.CanManage && item.TrangThai is "LEN_KE_HOACH" or "DANG_DIEN_RA";
+    var closed = item.TrangThai is "HOAN_THANH" or "HUY";
+    var summary = Model.StaffingSummary;
+    var departments = summary.Departments.ToList();
+    var groupedIds = departments.SelectMany(d => d.Assignments).Select(p => p.MaPhanCong).ToHashSet();
+    var otherAssignments = item.PhanCongs.Where(p => !groupedIds.Contains(p.MaPhanCong)).ToList();
+    if (otherAssignments.Count > 0)
+        departments.Add(new EventDepartmentStatus("OTHER", "Phòng ban khác", otherAssignments.Count, true, otherAssignments));
+    var assignedIds = item.PhanCongs.Select(p => p.MaNhanVien).ToHashSet();
+    string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
+}
+<div class="event-staff-heading">
+    <div><span class="event-eyebrow">ĐỘI NGŨ SỰ KIỆN</span><h3>@item.PhanCongs.Count nhân sự đồng hành</h3></div>
+    <span>Phụ cấp dự kiến: <strong>@Money(item.PhanCongs.Sum(p => p.PhuCapDuKien))</strong></span>
+</div>
+<p class="alert @(closed || summary.IsFullyStaffed ? "alert-success" : "alert-warning")" role="status">@(closed ? "Dữ liệu sự kiện đã được khóa; giữ nguyên vai trò và phụ cấp đã ghi nhận." : summary.SummaryText)</p>
+<div class="event-department-list">
+    @foreach (var department in departments)
+    {
+        var canAdd = canStaff && Model.RequiredDepartments.Contains(department.Code);
+        var available = Model.Employees.Where(n => HotelEventRules.ResolveDepartmentCode(n) == department.Code && !assignedIds.Contains(n.MaNhanVien)).ToList();
+        var roleGroups = department.Roles.ToList();
+        var mapped = roleGroups.SelectMany(r => r.Assignments).Select(p => p.MaPhanCong).ToHashSet();
+        foreach (var group in department.Assignments.Where(p => !mapped.Contains(p.MaPhanCong)).GroupBy(p => p.VaiTroDuAn))
+            roleGroups.Add(new EventRoleStaffingStatus(group.Key, 0, false, group.Count(), 0, 0, group.ToList()));
+        <section class="event-department-card" data-department-card="@department.Code">
+            <header>
+                <div><h4>@department.Name</h4><span class="event-muted">@department.AssignedCount người · @(closed ? "Đã ghi nhận" : item.SoKhachDuKien == 0 ? "Chưa xác định quy mô" : department.IsSufficient ? "Đủ vai trò" : $"Thiếu {department.MissingCount} người theo vai trò")</span></div>
+                @if (canAdd)
+                {
+                    <button type="button" class="event-secondary-button" data-add-member aria-expanded="false" aria-controls="picker-@item.MaDuAn-@department.Code"><i class="bi bi-plus-lg" aria-hidden="true"></i> Thêm người</button>
+                }
+            </header>
+            @foreach (var role in roleGroups)
+            {
+                var known = department.Roles.Any(r => r.Name == role.Name);
+                <div class="event-role-group @(role.MissingCount > 0 ? "is-missing" : "")" data-event-role="@role.Name" data-role-missing="@role.MissingCount">
+                    <div class="event-role-heading">
+                        <strong>@role.Name</strong>
+                        <span>@(closed ? "Đã ghi nhận" : role.IsRequired ? $"Cần {role.RequiredCount} · Đã có {role.AssignedCount}" : known || role.Name.StartsWith(HotelEventRoleRules.OtherRolePrefix) ? "Vai trò bổ sung" : "Vai trò cũ cần phân công lại")</span>
+                    </div>
+                    @if (role.MissingCount > 0) { <p class="event-role-shortage">Thiếu @role.MissingCount người · Trực ít nhất @role.MinimumConcurrentCount người trong khung giờ sự kiện</p> }
+                    @foreach (var member in role.Assignments.OrderBy(p => p.NhanVien?.HoTen))
+                    {
+                    <div class="event-assigned-member" data-assigned-member data-employee-id="@member.MaNhanVien">
+                    <div><strong>@member.NhanVien?.HoTen</strong><span>Vai trò: @member.VaiTroDuAn</span><small>@HotelEventRules.Local(member.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(member.KetThuc).ToString("dd/MM HH:mm")</small></div>
+                    <div class="event-member-actions">
+                        <strong>@Money(member.PhuCapDuKien)</strong>
+                        @if (canStaff)
+                        {
+                            <form asp-action="RemoveAssignment" asp-route-id="@item.MaDuAn" method="post">
+                                <partial name="_EventContext" model="Model" />
+                                <input name="version" value="@item.Version" type="hidden" />
+                                <input name="assignmentId" value="@member.MaPhanCong" type="hidden" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Gỡ @member.NhanVien?.HoTen">Gỡ</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+                    }
+                    @if (role.Assignments.Count == 0) { <p class="event-empty mb-0">Chưa có nhân viên đảm nhiệm.</p> }
+                </div>
+            }
+            @if (canAdd)
+            {
+                <div class="event-member-picker" data-member-picker id="picker-@item.MaDuAn-@department.Code" hidden>
+                    <label for="search-@item.MaDuAn-@department.Code" class="form-label">Chọn nhân viên @department.Name</label>
+                    <input id="search-@item.MaDuAn-@department.Code" type="search" class="form-control" data-member-search placeholder="Tìm theo tên nhân viên…" />
+                    <div class="event-member-options">
+                        @foreach (var employee in available)
+                        {
+                            var eligible = HotelEventRules.ContractCovers(employee, item.NgayBatDau, item.NgayKetThuc);
+                            <button type="button" class="event-member-option" data-choose-member="@employee.MaNhanVien" data-member-name="@employee.HoTen" data-assignment-url="@Url.Action("Assignment", new { id = item.MaDuAn, employeeId = employee.MaNhanVien, department = department.Code, returnYear = Model.ReturnYear, returnMonth = Model.ReturnMonth, returnDate = Model.ReturnDate.ToString("yyyy-MM-dd") })">
+                                <span><strong>@employee.HoTen</strong>@if (!eligible) { <small>Cần chọn thời gian tham gia phù hợp hợp đồng</small> }</span><i class="bi bi-plus-circle" aria-hidden="true"></i>
+                            </button>
+                        }
+                    </div>
+                    <p class="event-muted mt-2 mb-0" data-member-empty hidden="@(available.Count > 0)">Không có nhân viên phù hợp.</p>
+                </div>
+            }
+        </section>
+    }
+</div>
+@if (Model.Shifts.Count > 0)
+{
+    <details class="event-panel mt-3">
+        <summary class="fw-semibold">Lịch ca liên quan</summary>
+        <div class="table-responsive mt-3"><table class="table event-table"><thead><tr><th>Nhân viên</th><th>Ca làm việc</th><th>Khung giờ (UTC+7)</th></tr></thead><tbody>
+        @foreach (var shift in Model.Shifts.OrderBy(s => s.BatDauDuKien)) { <tr><td>@shift.NhanVien?.HoTen</td><td>@shift.CaLamViec?.TenCa</td><td>@HotelEventRules.Local(shift.BatDauDuKien).ToString("dd/MM HH:mm") – @HotelEventRules.Local(shift.KetThucDuKien).ToString("dd/MM HH:mm")</td></tr> }
+        </tbody></table></div>
+    </details>
+}

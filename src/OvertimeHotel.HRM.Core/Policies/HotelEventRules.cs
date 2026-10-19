@@ -94,6 +94,34 @@ public static class HotelEventRules
 
         return new EventStaffingSummary(total, satisfied, isFull, missing, list, summary);
     }
+
+    public static EventStaffingSummary GetStaffingSummary(DuAn item, DateTimeOffset? coverageStart = null)
+    {
+        var baseline = GetStaffingSummary(item.LoaiDuAn, item.PhanCongs);
+        var start = coverageStart is { } from && from > item.NgayBatDau ? from : item.NgayBatDau;
+        var missingRoles = new List<string>();
+        var departments = baseline.Departments.Select(department =>
+        {
+            var roles = HotelEventRoleRules.GetRoles(item.LoaiDuAn, department.Code, item.SoKhachDuKien).Select(rule =>
+            {
+                var assigned = department.Assignments.Where(p => HotelEventRoleRules.Matches(rule.Name, p.VaiTroDuAn)).ToList();
+                var concurrent = HotelEventRoleRules.MinimumConcurrentCount(assigned, start, item.NgayKetThuc);
+                var missing = Math.Max(0, rule.RequiredCount - concurrent);
+                if (missing > 0) missingRoles.Add($"{department.Name}: {rule.Name} (thiếu {missing} người)");
+                return new EventRoleStaffingStatus(rule.Name, rule.RequiredCount, rule.IsRequired,
+                    assigned.Select(p => p.MaNhanVien).Distinct().Count(), concurrent, missing, assigned);
+            }).ToList();
+            return department with { Roles = roles, IsSufficient = item.SoKhachDuKien > 0 && roles.Count > 0 && roles.All(r => r.MissingCount == 0) };
+        }).ToList();
+        var satisfied = departments.Count(d => d.IsSufficient);
+        var full = departments.Count > 0 && satisfied == departments.Count;
+        var message = item.SoKhachDuKien == 0 ? "Chưa xác định quy mô. Nhập số khách trước khi bắt đầu sự kiện."
+            : full ? $"Đã đủ vai trò bắt buộc {satisfied}/{departments.Count} phòng ban."
+            : $"Đủ vai trò {satisfied}/{departments.Count} phòng ban; còn thiếu nhân sự theo vai trò và thời gian tham gia.";
+        return new EventStaffingSummary(departments.Count, satisfied, full,
+            departments.Where(d => !d.IsSufficient).Select(d => d.Name).ToList(), departments, message)
+        { MissingRoleDescriptions = missingRoles };
+    }
     public static DateTimeOffset ToUtc(DateTime local) => new DateTimeOffset(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), TimeSpan.FromHours(7)).ToUniversalTime();
     public static DateTime Local(DateTimeOffset instant) => instant.ToOffset(TimeSpan.FromHours(7)).DateTime;
     public static bool CanCreateOn(DateOnly date, DateTimeOffset now) => date >= DateOnly.FromDateTime(Local(now));
@@ -246,7 +274,12 @@ public record EventDepartmentStatus(
     int AssignedCount,
     bool IsSufficient,
     IReadOnlyList<PhanCongDuAn> Assignments
-);
+)
+{
+    public IReadOnlyList<EventRoleStaffingStatus> Roles { get; init; } = [];
+    public int RequiredCount => Roles.Sum(r => r.RequiredCount);
+    public int MissingCount => Roles.Sum(r => r.MissingCount);
+}
 
 public record EventStaffingSummary(
     int TotalRequired,
@@ -255,4 +288,7 @@ public record EventStaffingSummary(
     IReadOnlyList<string> MissingDepartmentNames,
     IReadOnlyList<EventDepartmentStatus> Departments,
     string SummaryText
-);
+)
+{
+    public IReadOnlyList<string> MissingRoleDescriptions { get; init; } = [];
+}

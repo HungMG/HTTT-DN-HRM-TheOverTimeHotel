@@ -84,11 +84,13 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
             var incompatible = item.PhanCongs
                 .Where(p => {
                     var code = HotelEventRules.ResolveDepartmentCode(p.NhanVien);
-                    return code == null || !newAllowed.Contains(code);
+                    return code == null || !newAllowed.Contains(code)
+                        || (!p.VaiTroDuAn.StartsWith(HotelEventRoleRules.OtherRolePrefix, StringComparison.Ordinal)
+                            && HotelEventRoleRules.ResolveRole(input.Type, code, p.VaiTroDuAn, null) == null);
                 })
                 .ToList();
             Require(incompatible.Count == 0, "Input.Type",
-                $"Không thể đổi loại sự kiện: có {incompatible.Count} nhân viên thuộc phòng ban không thuộc loại sự kiện mới. Vui lòng gỡ các phân công không phù hợp trước khi đổi.");
+                $"Không thể đổi loại sự kiện: có {incompatible.Count} phân công có phòng ban hoặc vai trò không phù hợp. Vui lòng phân công lại trước khi đổi.");
         }
         Require(item.PhanCongs.Sum(p => p.PhuCapDuKien) <= input.Budget, "Input.Budget", "Ngân sách thấp hơn tổng phụ cấp đã phân công.");
         var normalizedVenue = venue.ToLowerInvariant();
@@ -116,8 +118,6 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
         actor = await CurrentActor(actor);
         var item = await Editable(actor, id, input.Version);
         StaffingOpen(item);
-        var role = Text(input.Role, 100, "Assignment.Role", "Vai trò trong sự kiện");
-        Require(input.Task is null || input.Task.Length <= 255, "Assignment.Task", "Nhiệm vụ tối đa 255 ký tự.");
         var start = Utc(input.Start, "Assignment.Start");
         var end = Utc(input.End, "Assignment.End");
         Require(start >= item.NgayBatDau && start < end && end <= item.NgayKetThuc, "Assignment.End", "Thời gian tham gia phải nằm trong thời gian sự kiện.");
@@ -129,12 +129,14 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
         var empDept = HotelEventRules.ResolveDepartmentCode(employee);
         Require(empDept != null && allowedDepts.Contains(empDept), "Assignment.EmployeeId",
             $"Chỉ được chọn nhân viên thuộc các phòng ban quy định cho {HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, "sự kiện")}.");
+        var role = HotelEventRoleRules.ResolveRole(item.LoaiDuAn, empDept!, input.Role, input.OtherRole);
+        Require(role != null, "Assignment.Role", "Chọn vai trò đúng loại sự kiện và phòng ban; vai trò khác cần tên không trống, tổng tối đa 100 ký tự.");
         Require(!await db.PhanCongDuAns.AnyAsync(p => p.MaNhanVien == input.EmployeeId && p.MaDuAn != id
             && p.DuAn!.TrangThai != "HUY" && p.BatDau < end && p.KetThuc > start), "Assignment.EmployeeId", "Nhân viên đã tham gia sự kiện khác trong khoảng thời gian này.");
         Require(item.PhanCongs.Sum(p => p.PhuCapDuKien) + input.Allowance <= item.NganSachPhuCap, "Assignment.Allowance", "Tổng phụ cấp dự kiến vượt ngân sách sự kiện.");
         item.PhanCongs.Add(new PhanCongDuAn
         {
-            MaNhanVien = input.EmployeeId, VaiTroDuAn = role, NhiemVuCuThe = input.Task?.Trim(),
+            MaNhanVien = input.EmployeeId, VaiTroDuAn = role!,
             BatDau = start, KetThuc = end, PhuCapDuKien = input.Allowance
         });
         item.Version++;
@@ -152,6 +154,8 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
         Require(assignment!.MaChiTiet == null && assignment.TrangThaiChiTra == "CHUA_CHI_TRA", "", "Không thể gỡ phân công đã kết chuyển.");
         if (item.TrangThai == "DANG_DIEN_RA")
         {
+            Require(HotelEventRoleRules.CanRemove(item, assignmentId, DateTimeOffset.UtcNow), "",
+                "Không thể gỡ người làm thiếu vai trò bắt buộc trong thời gian còn lại. Phải thêm người thay thế cùng vai trò trước.");
             var deptCode = HotelEventRules.ResolveDepartmentCode(assignment.NhanVien);
             if (deptCode != null && HotelEventRules.GetRequiredDepartments(item.LoaiDuAn).Contains(deptCode))
             {
@@ -194,9 +198,10 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
         Require(HotelEventRules.CanTransition(item.TrangThai, status, item.NgayBatDau, item.NgayKetThuc, DateTimeOffset.UtcNow), "", "Chuyển trạng thái không hợp lệ hoặc chưa đến thời gian thực hiện.");
         if (item.TrangThai == "LEN_KE_HOACH" && status == "DANG_DIEN_RA")
         {
-            var summary = HotelEventRules.GetStaffingSummary(item.LoaiDuAn, item.PhanCongs);
+            Require(item.SoKhachDuKien > 0, "", "Nhập số khách dự kiến lớn hơn 0 trước khi bắt đầu sự kiện.");
+            var summary = HotelEventRules.GetStaffingSummary(item);
             Require(summary.IsFullyStaffed, "",
-                $"Chưa thể bắt đầu sự kiện vì còn thiếu nhân sự phòng ban: {string.Join(", ", summary.MissingDepartmentNames)}.");
+                $"Chưa thể bắt đầu sự kiện vì còn thiếu vai trò bắt buộc: {string.Join("; ", summary.MissingRoleDescriptions)}.");
         }
         var oldStatus = item.TrangThai;
         if (status == "HUY")

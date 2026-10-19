@@ -150,6 +150,24 @@ public static class LeaveApprovalPolicy
     }
 
     /// <summary>
+    /// Quyền tạo/gửi yêu cầu thăng chức — chỉ Admin và HR.
+    /// </summary>
+    public static bool CanSubmitPromotionRequest(string? senderRole)
+        => NormalizeRole(senderRole) is RoleType.Admin or RoleType.HR;
+
+    /// <summary>
+    /// Quy tắc nghiệp vụ thăng chức:
+    /// Nhân viên (Employee) CHỈ có thể được thăng chức lên Quản lý (Manager).
+    /// </summary>
+    public static bool CanPromoteRole(string? currentRole, string? targetRole)
+    {
+        var normalizedCurrent = NormalizeRole(currentRole);
+        var normalizedTarget = NormalizeRole(targetRole);
+
+        return normalizedCurrent == RoleType.Employee && normalizedTarget == RoleType.Manager;
+    }
+
+    /// <summary>
     /// Kiểm tra tính hợp lệ của hợp đồng lao động làm căn cứ cấp tài khoản:
     /// - Trạng thái: "HIEU_LUC"
     /// - Đã bắt đầu: ngay_bat_dau &lt;= today

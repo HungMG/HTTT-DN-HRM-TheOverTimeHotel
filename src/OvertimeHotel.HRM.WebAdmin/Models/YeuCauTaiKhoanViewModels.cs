@@ -51,6 +51,9 @@ public class YeuCauTaiKhoanListItemViewModel
     public string Status { get; set; } = string.Empty;
     public string StatusLabel { get; set; } = string.Empty;
 
+    /// <summary>Đánh dấu đây là yêu cầu thăng chức lên Quản lý (thay vì cấp mới).</summary>
+    public bool IsPromotion { get; set; }
+
     /// <summary>Số hợp đồng làm căn cứ; null nghĩa là không gắn hợp đồng.</summary>
     public string? ContractNo { get; set; }
 
@@ -104,4 +107,32 @@ public class ActiveContractOptionViewModel
     public int EmployeeId { get; set; }
     public string ContractNo { get; set; } = string.Empty;
     public string Label { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Form đề xuất thăng chức cho nhân viên lên Quản lý (Manager).
+/// </summary>
+public class CreatePromotionRequestViewModel
+{
+    [Display(Name = "Nhân viên")]
+    [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn nhân viên cần đề xuất thăng chức.")]
+    public int EmployeeId { get; set; }
+
+    [Display(Name = "Hợp đồng")]
+    [Required(ErrorMessage = "Vui lòng chọn hợp đồng lao động làm căn cứ thăng chức.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn hợp đồng lao động hợp lệ.")]
+    public int? ContractId { get; set; }
+
+    [Display(Name = "Vai trò mục tiêu")]
+    public int TargetRoleId { get; set; }
+
+    public string TargetRoleName { get; set; } = "Quản lý";
+
+    [Display(Name = "Lý do thăng chức")]
+    [Required(ErrorMessage = "Vui lòng nhập lý do hoặc căn cứ đề xuất thăng chức.")]
+    [StringLength(500, MinimumLength = 5, ErrorMessage = "Lý do thăng chức phải có từ 5 đến 500 ký tự.")]
+    public string Reason { get; set; } = string.Empty;
+
+    public IReadOnlyList<SelectListItem> EligibleEmployees { get; set; } = [];
+    public IReadOnlyList<ActiveContractOptionViewModel> ActiveContracts { get; set; } = [];
 }
