@@ -177,6 +177,7 @@ foreach (var test in tests)
     try { test.Run(); Console.WriteLine($"PASS {test.Name}"); }
     catch (Exception ex) { failed++; Console.Error.WriteLine($"FAIL {test.Name}: {ex.Message}"); }
 }
+failed += RoleStaffingTests.Run();
 if (failed != 0) Environment.Exit(1);
 
 static NhanVien Employee() => new()

@@ -73,12 +73,13 @@ with sync_playwright() as p:
     page.goto(f'{base}/SuKien?year={historical.year}&month={historical.month}&date={historical}')
     link = page.locator(f'[data-date="{historical}"] [data-event-link]').filter(has_text=fixture['Prefix'])
     assert link.count() == 1
-    with page.expect_navigation(wait_until='domcontentloaded'):
-        link.click()
-    details = urlparse(page.url)
-    assert details.path.startswith('/SuKien/Details'), page.url
-    detail_id = parse_qs(details.query).get('id', [details.path.rsplit('/', 1)[-1]])[0]
-    assert detail_id == str(fixture['PastEventId']), 'Historical event link must open that event'
+    link.click()
+    dialog = page.locator('[data-event-details-dialog]')
+    dialog.wait_for(state='visible')
+    details = dialog.locator('[data-event-details]')
+    details.wait_for()
+    assert urlparse(page.url).path == '/SuKien', page.url
+    assert details.get_attribute('data-event-id') == str(fixture['PastEventId']), 'Historical event popup must show that event'
     assert page.locator('body').inner_text().find(fixture['Prefix']) >= 0
     assert not errors, errors
     print('PASS historical events remain visible and their details are accessible; no JavaScript errors')

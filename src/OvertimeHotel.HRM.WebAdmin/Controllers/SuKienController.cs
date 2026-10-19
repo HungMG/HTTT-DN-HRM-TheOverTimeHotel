@@ -148,16 +148,37 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     }
 
     [HttpGet]
-    public async Task<IActionResult> Details(int id, int? returnYear, int? returnMonth, DateOnly? returnDate, string tab = "overview")
+    public async Task<IActionResult> Details(int id, int? returnYear, int? returnMonth, DateOnly? returnDate, string tab = "overview", bool popup = false)
     {
         var actor = await ActorAsync();
         if (actor == null) return Forbid();
         var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, tab);
-        return model == null ? NotFound() : View(model);
+        if (model == null) return NotFound();
+        model.IsPopup = popup;
+        return popup ? PartialView("_EventDetailsContent", model) : View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Assignment(int id, int employeeId, string department,
+        int? returnYear, int? returnMonth, DateOnly? returnDate)
+    {
+        var actor = await ActorAsync();
+        if (actor == null) return Forbid();
+        var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, "staff");
+        if (model == null) return NotFound();
+        if (!model.CanManage || model.Event.TrangThai is not ("LEN_KE_HOACH" or "DANG_DIEN_RA")) return Forbid();
+        var employee = model.Employees.SingleOrDefault(n => n.MaNhanVien == employeeId);
+        if (employee == null || HotelEventRules.ResolveDepartmentCode(employee) != department
+            || !model.RequiredDepartments.Contains(department)
+            || model.Event.PhanCongs.Any(p => p.MaNhanVien == employeeId)) return BadRequest();
+        model.IsPopup = true;
+        model.SelectedDepartment = department;
+        model.Assignment.EmployeeId = employeeId;
+        return PartialView("_AssignmentPopup", model);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public Task<IActionResult> Assign(int id, EventDetailsViewModel model) => MutateAsync(id, model, "staff", a => events.AssignAsync(a, id, model.Assignment));
+    public Task<IActionResult> Assign(int id, EventDetailsViewModel model) => MutateAsync(id, model, "staff", a => events.AssignAsync(a, id, model.Assignment), assignmentPopup: true);
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> Review(int id, EventDetailsViewModel model) => MutateAsync(id, model, "acceptance", a => events.ReviewAsync(a, id, model.Review));
@@ -174,7 +195,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     public Task<IActionResult> Accept(int id, long version, EventDetailsViewModel model) =>
         MutateAsync(id, model, "acceptance", a => events.AcceptAsync(a, id, version));
 
-    private async Task<IActionResult> MutateAsync(int id, EventDetailsViewModel model, string tab, Func<EventActor, Task> operation)
+    private async Task<IActionResult> MutateAsync(int id, EventDetailsViewModel model, string tab, Func<EventActor, Task> operation, bool assignmentPopup = false)
     {
         var actor = await ActorAsync();
         if (actor == null) return Forbid();
@@ -185,6 +206,15 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             try
             {
                 await operation(actor);
+                if (model.IsPopup)
+                {
+                    ModelState.Clear();
+                    var updated = await DetailsAsync(actor, id, null, model.ReturnYear, model.ReturnMonth, model.ReturnDate, tab);
+                    if (updated == null) return NotFound();
+                    updated.IsPopup = true;
+                    ViewData["EventSuccess"] = "Đã cập nhật sự kiện.";
+                    return PartialView("_EventDetailsContent", updated);
+                }
                 TempData["Success"] = "Đã cập nhật sự kiện.";
                 return RedirectToAction(nameof(Details), new { id, model.ReturnYear, model.ReturnMonth, returnDate = model.ReturnDate.ToString("yyyy-MM-dd"), tab });
             }
@@ -200,7 +230,9 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             }
         }
         var result = await DetailsAsync(actor, id, model, model.ReturnYear, model.ReturnMonth, model.ReturnDate, tab);
-        return result == null ? NotFound() : View("Details", result);
+        if (result == null) return NotFound();
+        result.IsPopup = model.IsPopup;
+        return model.IsPopup ? PartialView(assignmentPopup ? "_AssignmentPopup" : "_EventDetailsContent", result) : View("Details", result);
     }
 
     private async Task<EventFormViewModel> FormAsync(EventFormViewModel model)
@@ -231,10 +263,11 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             ReturnMonth = Math.Clamp(returnMonth is > 0 ? returnMonth.Value : HotelEventRules.Local(item.NgayBatDau).Month, 1, 12),
             ReturnDate = returnDate is { Year: > 1 } ? returnDate.Value : DateOnly.FromDateTime(HotelEventRules.Local(item.NgayBatDau))
         };
-        if (string.IsNullOrEmpty(model.SelectedDepartment) && model.Assignment.EmployeeId > 0)
+        if (model.Assignment.EmployeeId > 0)
         {
             var emp = model.Employees.FirstOrDefault(e => e.MaNhanVien == model.Assignment.EmployeeId);
             model.SelectedDepartment = HotelEventRules.ResolveDepartmentCode(emp);
+            ModelState.Remove(nameof(model.SelectedDepartment));
         }
         return model;
     }

@@ -26,6 +26,7 @@ public class EventFormViewModel
 
 public class EventDetailsViewModel
 {
+    public bool IsPopup { get; set; }
     public DuAn Event { get; set; } = new();
     public IReadOnlyList<NhanVien> Employees { get; set; } = [];
     public IReadOnlyList<PhanCa> Shifts { get; set; } = [];
@@ -41,7 +42,12 @@ public class EventDetailsViewModel
     public string Tab { get; set; } = "overview";
     public string? SelectedDepartment { get; set; }
     public OvertimeHotel.HRM.Core.Policies.EventStaffingSummary StaffingSummary =>
-        OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetStaffingSummary(Event.LoaiDuAn, Event.PhanCongs);
+        Event.TrangThai is "HOAN_THANH" or "HUY"
+            ? OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetStaffingSummary(Event.LoaiDuAn, Event.PhanCongs)
+            : OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetStaffingSummary(Event);
+    public IReadOnlyList<OvertimeHotel.HRM.Core.Policies.EventRoleStaffingStatus> AssignmentRoles =>
+        OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetStaffingSummary(Event).Departments
+            .FirstOrDefault(d => d.Code == SelectedDepartment)?.Roles ?? [];
     public IReadOnlyList<string> RequiredDepartments =>
         OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetRequiredDepartments(Event.LoaiDuAn);
 }

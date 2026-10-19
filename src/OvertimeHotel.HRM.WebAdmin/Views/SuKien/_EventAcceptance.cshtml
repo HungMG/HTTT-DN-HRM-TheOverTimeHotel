@@ -1,0 +1,106 @@
+@model EventDetailsViewModel
+@using OvertimeHotel.HRM.Core.Policies
+@using System.Globalization
+@{
+    var item = Model.Event;
+    var planned = item.PhanCongs.Sum(x => x.PhuCapDuKien);
+    var actual = item.PhanCongs.Sum(x => x.SoTienPhuCap);
+    var reviewed = item.PhanCongs.Count(x => x.NgayDanhGia.HasValue);
+    var canReview = Model.CanManage && item.TrangThai == "CHO_NGHIEM_THU";
+    string? previousDepartment = null;
+    string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
+}
+            <div class="event-budget-grid">
+                <div class="event-budget-card"><span>Ngân sách phụ cấp</span><strong>@Money(item.NganSachPhuCap)</strong></div>
+                <div class="event-budget-card"><span>Phụ cấp dự kiến</span><strong>@Money(planned)</strong></div>
+                <div class="event-budget-card"><span>Phụ cấp thực tế</span><strong>@Money(actual)</strong></div>
+                <div class="event-budget-card"><span>Còn lại</span><strong class="@(actual > item.NganSachPhuCap ? "text-danger" : "")">@Money(item.NganSachPhuCap - actual)</strong></div>
+            </div>
+            <div class="event-panel mt-4">
+                <span class="event-eyebrow">GHI NHẬN ĐÓNG GÓP</span>
+                <h3>Đánh giá nhân sự <small class="event-muted">@reviewed/@item.PhanCongs.Count</small></h3>
+                <p class="event-muted">Đánh giá khi sự kiện đã chuyển chờ nghiệm thu. Nhân sự không tham gia có phụ cấp thực tế bằng 0.</p>
+                @if (item.PhanCongs.Count == 0)
+                {
+                    <p class="event-empty">Chưa có nhân sự để đánh giá.</p>
+                }
+                @foreach (var assignment in item.PhanCongs.OrderBy(x => x.NhanVien?.PhongBan?.TenPhongBan).ThenBy(x => x.NhanVien?.HoTen))
+                {
+                    var department = assignment.NhanVien?.PhongBan?.TenPhongBan ?? "Chưa có phòng ban";
+                    if (previousDepartment != department)
+                    {
+                        <h4 class="event-review-department">@department</h4>
+                        previousDepartment = department;
+                    }
+                    var preserveReview = Model.Review.AssignmentId == assignment.MaPhanCong;
+                    var rating = preserveReview ? Model.Review.Rating : assignment.DanhGia;
+                    var amount = preserveReview && ViewData.ModelState.TryGetValue("Review.ActualAllowance", out var attempted) ? attempted.AttemptedValue : (preserveReview ? Model.Review.ActualAllowance : assignment.SoTienPhuCap).ToString(CultureInfo.InvariantCulture);
+                    <div class="event-review-row">
+                        <div>
+                            <strong>@assignment.NhanVien?.HoTen</strong>
+                            <small>@assignment.VaiTroDuAn · Dự kiến @Money(assignment.PhuCapDuKien)</small>
+                            @if (assignment.NgayDanhGia.HasValue)
+                            {
+                                <small>Đánh giá @HotelEventRules.Local(assignment.NgayDanhGia.Value).ToString("dd/MM/yyyy HH:mm")</small>
+                            }
+                        </div>
+                        @if (canReview)
+                        {
+                            <form asp-action="Review" asp-route-id="@item.MaDuAn" method="post" class="event-review-form">
+                                <partial name="_EventContext" model="Model" />
+                                <input name="Review.Version" value="@item.Version" type="hidden" />
+                                <input name="Review.AssignmentId" value="@assignment.MaPhanCong" type="hidden" />
+                                <div>
+                                    <label for="rating-@assignment.MaPhanCong" class="form-label">Kết quả</label>
+                                    <select name="Review.Rating" id="rating-@assignment.MaPhanCong" class="form-select" required>
+                                        <option value="">Chọn đánh giá</option>
+                                        @foreach (var option in HotelEventRules.RatingLabels.Where(x => x.Key is not ("CHUA_DANH_GIA" or "XUAT_SAC")))
+                                        {
+                                            <option value="@option.Key" selected="@(rating == option.Key)">@option.Value</option>
+                                        }
+                                    </select>
+                                    @if (preserveReview)
+                                    {
+                                        <span class="text-danger">@Html.ValidationMessage("Review.Rating")</span>
+                                    }
+                                </div>
+                                <div>
+                                    <label for="allowance-@assignment.MaPhanCong" class="form-label">Phụ cấp thực tế (đ)</label>
+                                    <input name="Review.ActualAllowance" id="allowance-@assignment.MaPhanCong" value="@amount" type="number" class="form-control" min="0" step="0.01" required />
+                                    @if (preserveReview)
+                                    {
+                                        <span class="text-danger">@Html.ValidationMessage("Review.ActualAllowance")</span>
+                                    }
+                                </div>
+                                <button type="submit" class="event-secondary-button">Lưu đánh giá</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <div>
+                                <span class="event-status">@HotelEventRules.RatingLabels.GetValueOrDefault(assignment.DanhGia, assignment.DanhGia)</span>
+                                <strong class="ms-3">@Money(assignment.SoTienPhuCap)</strong>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="event-panel event-acceptance-panel mt-4">
+                <div>
+                    <span class="event-eyebrow">XÁC NHẬN CUỐI CÙNG</span>
+                    <h3>Nghiệm thu sự kiện</h3>
+                    <p>Hoàn tất đánh giá tất cả nhân sự và bảo đảm tổng phụ cấp thực tế trong ngân sách. Nghiệm thu sẽ khóa thông tin sự kiện và các phân công.</p>
+                </div>
+                @if (Model.CanAccept)
+                {
+                    <form asp-action="Accept" asp-route-id="@item.MaDuAn" method="post">
+                        <partial name="_EventContext" model="Model" />
+                        <input name="version" value="@item.Version" type="hidden" />
+                        <button class="event-primary-button" type="submit"><i class="bi bi-patch-check" aria-hidden="true"></i> Nghiệm thu &amp; khóa</button>
+                    </form>
+                }
+                else
+                {
+                    <span class="event-muted">@(item.TrangThai == "HOAN_THANH" ? "Đã nghiệm thu" : "HR/Admin nghiệm thu khi sự kiện ở trạng thái chờ nghiệm thu.")</span>
+                }
+            </div>
