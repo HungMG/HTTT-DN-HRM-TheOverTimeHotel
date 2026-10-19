@@ -3,8 +3,6 @@
 @using OvertimeHotel.HRM.WebAdmin.Security
 @{
     ViewData["Title"] = "Chỉnh sửa tài khoản";
-    var isCurrentAccount = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentAccountId)
-        && currentAccountId == Model.AccountId;
 }
 
 <div class="account-workspace account-workspace--bleed py-2">
@@ -79,7 +77,7 @@
                             </span>
                             <div>
                                 <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.96rem;">01. Định Danh Đăng Nhập &amp; Phân Cấp Vai Trò</h6>
-                                <small class="text-muted" style="font-size: 0.74rem;">Cập nhật tên tài khoản và điều chỉnh quyền hạn RBAC</small>
+                                <small class="text-muted" style="font-size: 0.74rem;">Cập nhật tên tài khoản (vai trò được khóa cố định theo hồ sơ)</small>
                             </div>
                         </div>
                         <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5" style="font-size: 0.72rem;">Bước 1/3</span>
@@ -102,24 +100,14 @@
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
-                                        <i class="bi bi-shield-check"></i>
+                                        <i class="bi bi-shield-lock-fill"></i>
                                     </span>
-                                    @if (isCurrentAccount)
-                                    {
-                                        <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select border-start-0 py-2 ps-3 rounded-end-3 bg-light" disabled id="RoleId"></select>
-                                        <input asp-for="RoleId" type="hidden" />
-                                    }
-                                    else
-                                    {
-                                        <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select border-start-0 py-2 ps-3 rounded-end-3" id="RoleId"></select>
-                                    }
+                                    <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select border-start-0 py-2 ps-3 rounded-end-3 bg-light text-muted" disabled id="RoleId"></select>
+                                    <input asp-for="RoleId" type="hidden" />
                                 </div>
-                                @if (isCurrentAccount)
-                                {
-                                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
-                                        <i class="bi bi-lock-fill text-warning me-2"></i> Không thể tự đổi vai trò của tài khoản đang đăng nhập hiện tại.
-                                    </small>
-                                }
+                                <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                                    <i class="bi bi-lock-fill text-warning me-1"></i> Vai trò được khóa cố định theo hồ sơ tài khoản và không thể thay đổi tại đây.
+                                </small>
                                 <span asp-validation-for="RoleId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
                             </div>
                         </div>
@@ -189,7 +177,7 @@
                             </span>
                             <div>
                                 <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.96rem;">03. Lý Do Điều Chỉnh &amp; Kiểm Toán Hệ Thống</h6>
-                                <small class="text-muted" style="font-size: 0.74rem;">Bắt buộc khi có sự thay đổi tên đăng nhập, vai trò hoặc mật khẩu</small>
+                                <small class="text-muted" style="font-size: 0.74rem;">Bắt buộc khi có sự thay đổi tên đăng nhập hoặc mật khẩu</small>
                             </div>
                         </div>
                         <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5" style="font-size: 0.72rem;">Bước 3/3</span>
@@ -271,7 +259,7 @@
                         <!-- GHI CHÚ BẢO MẬT -->
                         <div class="p-3 rounded-3 bg-light mt-3 text-start text-muted d-flex align-items-start gap-2" style="font-size: 0.72rem; line-height: 1.4;">
                             <i class="bi bi-info-circle-fill text-primary flex-shrink-0 mt-0.5 me-1"></i>
-                            <span>Thay đổi vai trò sẽ có hiệu lực ngay trong phiên đăng nhập tiếp theo của người dùng.</span>
+                            <span>Vai trò tài khoản được khóa cố định và không thể thay đổi tại màn hình chỉnh sửa này.</span>
                         </div>
                     </div>
                 </div>

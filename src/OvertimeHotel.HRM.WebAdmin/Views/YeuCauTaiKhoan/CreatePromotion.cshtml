@@ -1,0 +1,278 @@
+@model CreatePromotionRequestViewModel
+@{
+    ViewData["Title"] = "Đề xuất thăng chức cho nhân viên";
+}
+
+<div class="account-workspace account-workspace--bleed py-2">
+    <!-- THANH ĐIỀU HƯỚNG & TIÊU ĐỀ TRANG -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3.5 py-2 fw-semibold hover-lift d-flex align-items-center gap-2" style="font-size: 0.82rem;">
+                <i class="bi bi-arrow-left fs-6"></i> Quay lại hàng đợi
+            </a>
+            <div>
+                <h4 class="mb-0 fw-bold font-serif text-dark" style="font-size: 1.15rem;">Đề Xuất Thăng Chức Lên Quản Lý</h4>
+                <small class="text-muted" style="font-size: 0.75rem;">Quy trình đề xuất thăng chức từ Nhân viên lên Quản lý chờ bộ phận IT hoặc Admin phê duyệt</small>
+            </div>
+        </div>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger border-0 shadow-sm rounded-4 d-flex align-items-start gap-3 p-3 mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-5 text-danger flex-shrink-0 mt-0.5"></i>
+            <div class="flex-grow-1">
+                <div class="fw-bold text-dark small mb-1">Chưa thể gửi yêu cầu thăng chức</div>
+                <div asp-validation-summary="ModelOnly" class="small text-danger"></div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <form asp-action="CreatePromotion" method="post" id="createPromotionForm">
+        @Html.AntiForgeryToken()
+        <input asp-for="TargetRoleId" type="hidden" />
+        <input asp-for="TargetRoleName" type="hidden" />
+
+        <div class="row g-4">
+            <!-- CỘT CHÍNH: FORM NHẬP LIỆU -->
+            <div class="col-lg-8 col-md-12">
+                <!-- KHỐI 1: NHÂN SỰ ĐỀ XUẤT & PHÂN BỔ VAI TRÒ -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom luxury-card-header d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center flex-shrink-0 me-1" style="width: 42px; height: 42px; font-size: 1.2rem;">
+                                <i class="bi bi-arrow-up-circle-fill text-warning"></i>
+                            </span>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.96rem;">01. Nhân Sự Đề Xuất &amp; Cấp Bậc Mục Tiêu</h6>
+                                <small class="text-muted" style="font-size: 0.74rem;">Nhân viên (Employee) chỉ có thể được nâng cấp lên Quản lý (Manager)</small>
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5" style="font-size: 0.72rem;">Bước 1/2</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label asp-for="EmployeeId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Nhân viên đề xuất thăng chức <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
+                                        <i class="bi bi-person-fill"></i>
+                                    </span>
+                                    <select asp-for="EmployeeId" asp-items="Model.EligibleEmployees" class="form-select border-start-0 py-2 ps-3 rounded-end-3" id="EmployeeId">
+                                        <option value="">-- Chọn nhân viên đang có vai trò Nhân viên --</option>
+                                    </select>
+                                </div>
+                                <span asp-validation-for="EmployeeId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                                @if (Model.EligibleEmployees.Count == 0)
+                                {
+                                    <div class="p-2.5 mt-2 rounded-3 bg-warning bg-opacity-10 border border-warning-subtle text-warning-emphasis small d-flex align-items-center gap-2" style="font-size: 0.75rem;">
+                                        <i class="bi bi-info-circle-fill flex-shrink-0 me-1"></i>
+                                        <span>Hiện không có nhân viên nào thỏa mãn điều kiện thăng chức (phải đang làm việc, có hợp đồng hiệu lực và đang giữ vai trò Nhân viên).</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                                        <i class="bi bi-info-circle text-primary me-2"></i> Danh sách chỉ hiển thị nhân viên đang hoạt động, có tài khoản vai trò Nhân viên và chưa có yêu cầu chờ xử lý.
+                                    </small>
+                                }
+                            </div>
+
+                            <!-- KHỐI CHUYỂN ĐỔI VAI TRÒ (CỐ ĐỊNH) -->
+                            <div class="col-12 mt-3">
+                                <label class="form-label text-uppercase text-secondary fw-bold small mb-2" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Lộ trình thăng cấp vai trò (Quy định RBAC)
+                                </label>
+                                <div class="p-3 rounded-4 bg-light border d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <span class="role-badge-luxury role-badge-luxury--employee py-2 px-3">
+                                            <i class="bi bi-person-vcard-fill me-2"></i> Vai trò hiện tại: Nhân viên
+                                        </span>
+                                        <i class="bi bi-arrow-right fs-4 text-warning"></i>
+                                        <span class="role-badge-luxury role-badge-luxury--manager py-2 px-3 shadow-sm border border-warning-subtle">
+                                            <i class="bi bi-star-fill me-2 text-warning"></i> Vai trò mục tiêu: Quản lý (Manager)
+                                        </span>
+                                    </div>
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1.5 small">
+                                        <i class="bi bi-lock-fill me-1"></i> Khóa cứng theo chính sách
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-3">
+                                <label asp-for="ContractId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Hợp đồng lao động căn cứ <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
+                                        <i class="bi bi-file-earmark-text-fill"></i>
+                                    </span>
+                                    <select asp-for="ContractId" class="form-select border-start-0 py-2 ps-3 rounded-end-3" id="ContractId">
+                                        <option value="">-- Vui lòng chọn nhân viên ở trên trước --</option>
+                                    </select>
+                                </div>
+                                <span asp-validation-for="ContractId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                                <small class="text-muted d-block mt-1" style="font-size: 0.72rem;" id="contractHelp">
+                                    <i class="bi bi-shield-check text-success me-2"></i> Chỉ các hợp đồng đang có hiệu lực pháp lý mới đủ điều kiện thăng chức.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KHỐI 2: LÝ DO ĐỀ XUẤT & KIỂM TOÁN -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom luxury-card-header d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="rounded-circle bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center flex-shrink-0 me-1" style="width: 42px; height: 42px; font-size: 1.2rem;">
+                                <i class="bi bi-journal-check"></i>
+                            </span>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.96rem;">02. Lý Do &amp; Căn Cứ Đề Xuất</h6>
+                                <small class="text-muted" style="font-size: 0.74rem;">Thông tin bắt buộc lưu vết kiểm toán quản trị để IT/Admin phê duyệt</small>
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5" style="font-size: 0.72rem;">Bước 2/2</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-2">
+                            <label asp-for="Reason" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                Lý do đề xuất thăng chức <span class="text-danger">*</span>
+                            </label>
+                            <textarea asp-for="Reason" rows="3" class="form-control rounded-3 p-3" placeholder="Ví dụ: Đạt thành tích xuất sắc trong quản lý ca trực, bổ nhiệm làm Quản lý bộ phận Lễ tân theo quyết định số..."></textarea>
+                            <span asp-validation-for="Reason" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                            <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                                <i class="bi bi-info-circle text-primary me-1"></i> Lý do này sẽ hiển thị trực tiếp cho IT/Admin khi nhận việc và phê duyệt trên Hàng đợi.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NÚT THAO TÁC -->
+                <div class="d-flex align-items-center justify-content-between gap-3 pt-2">
+                    <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 py-2.5 fw-semibold hover-lift d-inline-flex align-items-center gap-2" style="font-size: 0.85rem;">
+                        <i class="bi bi-x-circle fs-6"></i> Hủy bỏ
+                    </a>
+                    <button type="submit" class="btn btn-warning rounded-pill px-4 py-2.5 fw-bold shadow-sm hover-lift d-flex align-items-center gap-2 text-dark" style="font-size: 0.85rem;">
+                        <i class="bi bi-send-check-fill fs-6"></i> Gửi Yêu Cầu Thăng Chức
+                    </button>
+                </div>
+            </div>
+
+            <!-- CỘT PHỤ: THẺ XEM TRƯỚC HỒ SƠ THĂNG CẤP -->
+            <div class="col-lg-4 col-md-12">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden position-sticky" style="top: 20px;">
+                    <div class="luxury-preview-header text-white d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-stars fs-6 me-1" style="color: #fde047;"></i>
+                            <span class="small fw-bold font-serif text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Hồ Sơ Đề Xuất</span>
+                        </div>
+                        <span class="badge rounded-pill px-3 py-1.5 bg-warning text-dark fw-bold" style="font-size: 0.72rem;">Thăng chức 5★</span>
+                    </div>
+
+                    <div class="card-body p-4 text-center">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-4 shadow-sm mb-3"
+                             style="width: 64px; height: 64px; background: linear-gradient(135deg, #b45309 0%, #1e3a8a 100%); color: #ffffff; border: 2px solid rgba(212,175,55,0.8); font-size: 1.5rem; font-weight: 700; font-family: var(--font-serif);"
+                             id="avatarPreview">
+                            P
+                        </div>
+                        <h5 class="fw-bold text-dark font-serif mb-1" style="font-size: 1rem;" id="namePreview">Chưa chọn nhân sự</h5>
+                        <div class="small text-muted font-monospace mb-2" id="infoPreview">@@chua_chon</div>
+
+                        <div class="d-flex justify-content-center mb-3">
+                            <span class="role-badge-luxury role-badge-luxury--manager py-1.5 px-3">
+                                <i class="bi bi-star-fill me-2 text-warning"></i> Quản lý (Manager)
+                            </span>
+                        </div>
+
+                        <hr class="opacity-10 my-3" />
+
+                        <div class="text-start small">
+                            <div class="d-flex align-items-center justify-content-between py-1.5 border-bottom border-light">
+                                <span class="text-muted"><i class="bi bi-check2-circle text-primary me-2"></i> Trạng thái gửi:</span>
+                                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2.5">Chờ IT/Admin duyệt</span>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between py-1.5 border-bottom border-light">
+                                <span class="text-muted"><i class="bi bi-shield-check text-info me-2"></i> Quy trình:</span>
+                                <span class="fw-semibold text-dark">Hàng đợi tài khoản</span>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between py-1.5">
+                                <span class="text-muted"><i class="bi bi-person-check text-success me-2"></i> Phê duyệt:</span>
+                                <span class="fw-semibold text-dark">IT hoặc Admin</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-3 bg-light mt-3 text-start text-muted d-flex align-items-start gap-2" style="font-size: 0.72rem; line-height: 1.4;">
+                            <i class="bi bi-info-circle-fill text-primary flex-shrink-0 mt-0.5 me-1"></i>
+                            <span>Khi IT hoặc Admin duyệt yêu cầu này, vai trò tài khoản của nhân viên sẽ tự động được cập nhật sang Quản lý mà không cần cấp lại mật khẩu.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const contracts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ActiveContracts));
+            const employeeSelect = document.getElementById("EmployeeId");
+            const contractSelect = document.getElementById("ContractId");
+            const namePreview = document.getElementById("namePreview");
+            const infoPreview = document.getElementById("infoPreview");
+            const avatarPreview = document.getElementById("avatarPreview");
+
+            const updateContracts = () => {
+                const empId = parseInt(employeeSelect.value, 10);
+                contractSelect.innerHTML = "";
+
+                if (!empId) {
+                    contractSelect.innerHTML = '<option value="">-- Vui lòng chọn nhân viên ở trên trước --</option>';
+                    if (namePreview) namePreview.textContent = "Chưa chọn nhân sự";
+                    if (infoPreview) infoPreview.textContent = "@@chua_chon";
+                    if (avatarPreview) avatarPreview.textContent = "?";
+                    return;
+                }
+
+                const selectedText = employeeSelect.options[employeeSelect.selectedIndex]?.text || "";
+                if (namePreview) {
+                    const parts = selectedText.split("(");
+                    namePreview.textContent = parts[0].trim();
+                    if (avatarPreview && parts[0].trim()) {
+                        avatarPreview.textContent = parts[0].trim().charAt(0).toUpperCase();
+                    }
+                }
+                if (infoPreview) {
+                    const match = selectedText.match(/\((.*?)\)/);
+                    infoPreview.textContent = match ? match[1] : "";
+                }
+
+                const matching = contracts.filter(c => c.EmployeeId === empId);
+                if (matching.length === 0) {
+                    contractSelect.innerHTML = '<option value="">-- Nhân viên này không có hợp đồng hiệu lực --</option>';
+                } else {
+                    contractSelect.innerHTML = '<option value="">-- Chọn hợp đồng căn cứ --</option>';
+                    matching.forEach(c => {
+                        const opt = document.createElement("option");
+                        opt.value = c.ContractId;
+                        opt.textContent = c.Label;
+                        contractSelect.appendChild(opt);
+                    });
+                    if (matching.length === 1) {
+                        contractSelect.value = matching[0].ContractId;
+                    }
+                }
+            };
+
+            employeeSelect?.addEventListener("change", updateContracts);
+            if (employeeSelect?.value) {
+                updateContracts();
+            }
+        });
+    </script>
+}

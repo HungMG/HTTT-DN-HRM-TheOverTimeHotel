@@ -94,6 +94,29 @@ var tests = new (string Name, Action Run)[]
         Assert(!LeaveApprovalPolicy.IsValidContractForAccountRequest("HET_HAN", new DateOnly(2026, 1, 1), new DateOnly(2027, 1, 1), today), "Expired status contract rejected");
         Assert(!LeaveApprovalPolicy.IsValidContractForAccountRequest("TAM_HOAN", new DateOnly(2026, 1, 1), new DateOnly(2027, 1, 1), today), "Suspended contract rejected");
         Assert(!LeaveApprovalPolicy.IsValidContractForAccountRequest(null, new DateOnly(2026, 1, 1), new DateOnly(2027, 1, 1), today), "Null status contract rejected");
+    }),
+
+    ("3.1 Phân quyền thăng chức: Nhân viên (Employee) CHỈ có thể thăng chức lên Quản lý (Manager)", () =>
+    {
+        Assert(LeaveApprovalPolicy.CanPromoteRole("Employee", "Manager"), "Employee can be promoted to Manager");
+        Assert(!LeaveApprovalPolicy.CanPromoteRole("Employee", "Admin"), "Employee CANNOT be promoted to Admin");
+        Assert(!LeaveApprovalPolicy.CanPromoteRole("Employee", "HR"), "Employee CANNOT be promoted to HR");
+        Assert(!LeaveApprovalPolicy.CanPromoteRole("Employee", "IT"), "Employee CANNOT be promoted to IT");
+        Assert(!LeaveApprovalPolicy.CanPromoteRole("Manager", "Admin"), "Manager CANNOT be promoted to Admin");
+        Assert(!LeaveApprovalPolicy.CanPromoteRole("HR", "Manager"), "HR cannot be promoted to Manager");
+        Assert(!LeaveApprovalPolicy.CanPromoteRole("IT", "Manager"), "IT cannot be promoted to Manager");
+        Assert(!LeaveApprovalPolicy.CanPromoteRole(null, "Manager"), "Null cannot be promoted");
+        Assert(!LeaveApprovalPolicy.CanPromoteRole("Employee", null), "Cannot promote to null");
+    }),
+
+    ("3.2 Phân quyền gửi yêu cầu thăng chức: Chỉ Admin và HR được phép gửi", () =>
+    {
+        Assert(LeaveApprovalPolicy.CanSubmitPromotionRequest("Admin"), "Admin can submit promotion request");
+        Assert(LeaveApprovalPolicy.CanSubmitPromotionRequest("HR"), "HR can submit promotion request");
+        Assert(!LeaveApprovalPolicy.CanSubmitPromotionRequest("Manager"), "Manager CANNOT submit promotion request");
+        Assert(!LeaveApprovalPolicy.CanSubmitPromotionRequest("Employee"), "Employee CANNOT submit promotion request");
+        Assert(!LeaveApprovalPolicy.CanSubmitPromotionRequest("IT"), "IT CANNOT submit promotion request");
+        Assert(!LeaveApprovalPolicy.CanSubmitPromotionRequest(null), "Null role CANNOT submit promotion request");
     })
 };
 

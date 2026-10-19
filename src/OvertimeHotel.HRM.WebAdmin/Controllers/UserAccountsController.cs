@@ -372,31 +372,15 @@ public class UserAccountsController : Controller
         model.EmployeeEmail = account.NhanVien?.EmailCongVu ?? string.Empty;
         model.IsActive = account.TrangThai;
 
+        // Khóa cứng vai trò: không cho phép thay đổi tại màn hình chỉnh sửa tài khoản
+        model.RoleId = account.MaVaiTro;
+
         var oldUsername = account.TenDangNhap;
-        var oldRoleId = account.MaVaiTro;
-        var oldRoleName = account.VaiTro?.TenVaiTro ?? "Chưa cấp";
 
         if (await _context.TaiKhoans.AnyAsync(item =>
                 item.MaTaiKhoan != id && item.TenDangNhap.ToLower() == model.Username.ToLower()))
         {
             ModelState.AddModelError(nameof(model.Username), "Tên đăng nhập này đã được sử dụng.");
-        }
-
-        if (!await IsSupportedRoleAsync(model.RoleId))
-        {
-            ModelState.AddModelError(nameof(model.RoleId), "Vai trò được chọn không hợp lệ.");
-        }
-
-        var currentAccountId = GetCurrentAccountId();
-        if (currentAccountId == account.MaTaiKhoan && model.RoleId != account.MaVaiTro)
-        {
-            ModelState.AddModelError(nameof(model.RoleId), "Bạn không thể tự thay đổi vai trò của tài khoản đang đăng nhập.");
-        }
-
-        if (account.VaiTro?.TenVaiTro == "Admin" && model.RoleId != account.MaVaiTro &&
-            await CountOtherActiveAdminsAsync(account.MaTaiKhoan) == 0)
-        {
-            ModelState.AddModelError(nameof(model.RoleId), "Phải duy trì ít nhất một tài khoản Admin đang hoạt động.");
         }
 
         if (string.IsNullOrWhiteSpace(model.NewPassword))
@@ -406,9 +390,8 @@ public class UserAccountsController : Controller
         }
 
         var usernameChanged = !string.Equals(oldUsername, model.Username, StringComparison.Ordinal);
-        var roleChanged = oldRoleId != model.RoleId;
         var passwordChanged = !string.IsNullOrWhiteSpace(model.NewPassword);
-        var hasChanges = usernameChanged || roleChanged || passwordChanged;
+        var hasChanges = usernameChanged || passwordChanged;
 
         if (hasChanges && string.IsNullOrWhiteSpace(model.ChangeReason))
         {
@@ -427,13 +410,6 @@ public class UserAccountsController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        var newRoleName = roleChanged
-            ? await _context.VaiTros.AsNoTracking()
-                .Where(role => role.MaVaiTro == model.RoleId)
-                .Select(role => role.TenVaiTro)
-                .SingleAsync()
-            : oldRoleName;
-
         var oldValues = new List<string>();
         var newValues = new List<string>();
         var changedFields = new List<string>();
@@ -445,13 +421,6 @@ public class UserAccountsController : Controller
             changedFields.Add("tên đăng nhập");
         }
 
-        if (roleChanged)
-        {
-            oldValues.Add($"Vai trò: {oldRoleName}");
-            newValues.Add($"Vai trò: {newRoleName}");
-            changedFields.Add("vai trò");
-        }
-
         if (passwordChanged)
         {
             oldValues.Add("Mật khẩu: giá trị cũ được bảo mật");
@@ -460,7 +429,6 @@ public class UserAccountsController : Controller
         }
 
         account.TenDangNhap = model.Username;
-        account.MaVaiTro = model.RoleId;
         if (!string.IsNullOrWhiteSpace(model.NewPassword))
         {
             account.MatKhauBam = PasswordHasher.Hash(model.NewPassword);
@@ -471,7 +439,7 @@ public class UserAccountsController : Controller
             _context.NhatKyQuanTris.Add(CreateAuditLog(
                 account.MaTaiKhoan,
                 account.TenDangNhap,
-                passwordChanged && !usernameChanged && !roleChanged ? "RESET_PASSWORD" : "UPDATE_ACCOUNT",
+                passwordChanged && !usernameChanged ? "RESET_PASSWORD" : "UPDATE_ACCOUNT",
                 $"Cập nhật {string.Join(", ", changedFields)} của tài khoản.",
                 string.Join("; ", oldValues),
                 string.Join("; ", newValues),
