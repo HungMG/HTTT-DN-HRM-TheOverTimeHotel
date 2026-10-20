@@ -1,0 +1,116 @@
+@using OvertimeHotel.HRM.Core.DTOs
+@model OvertimeHotel.HRM.WebAdmin.Models.CongThangViewModel
+
+@if (Model.IsEmpty)
+{
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-calendar2-x d-block mb-3" style="font-size: 2.4rem; opacity: 0.35;"></i>
+        <div class="fw-semibold">Chưa có ca nào trong @Model.TieuDeKy</div>
+        <div class="small mt-1">Hãy xếp ca ở màn <b>Ca &amp; Lịch làm việc</b> trước khi tổng hợp công.</div>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.82rem;">
+            <thead class="table-light">
+                <tr>
+                    <th style="min-width: 190px;">Nhân viên</th>
+                    <th class="text-center">Ca phân</th>
+                    <th class="text-center">Đã kết thúc</th>
+                    <th class="text-center text-success">Đúng giờ</th>
+                    <th class="text-center text-warning-emphasis">Trễ</th>
+                    <th class="text-center text-warning-emphasis">Về sớm</th>
+                    <th class="text-center text-warning-emphasis">Trễ &amp; sớm</th>
+                    <th class="text-center text-danger">Vắng</th>
+                    <th class="text-center text-muted">Chưa quẹt</th>
+                    <th class="text-end">Phút trễ</th>
+                    <th class="text-end">Phút về sớm</th>
+                    <th class="text-end">Giờ OT</th>
+                    <th class="text-end">Giờ thực tế</th>
+                    <th class="text-end" style="min-width: 110px;">Chuyên cần</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Report.Rows)
+                {
+                    @* Ngưỡng màu bám theo PRD 4.4: dưới 80% là mức phải nhắc nhở,
+                       dưới 60% là mức xử lý kỷ luật — không dùng màu tuỳ hứng. *@
+                    var mucChuyenCan = row.TyLeChuyenCan >= 90m ? "bg-success"
+                        : row.TyLeChuyenCan >= 80m ? "bg-info text-dark"
+                        : row.TyLeChuyenCan >= 60m ? "bg-warning text-dark"
+                        : "bg-danger";
+
+                    <tr data-cong-thang-row="@row.EmployeeId">
+                        <td>
+                            <div class="fw-semibold text-dark">@row.EmployeeName</div>
+                            <div class="text-muted" style="font-size: 0.73rem;">
+                                <span class="font-monospace">@row.MaNhanVienFormat</span>
+                                @if (!string.IsNullOrWhiteSpace(row.DepartmentName))
+                                {
+                                    <text> · @row.DepartmentName</text>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(row.PositionName))
+                                {
+                                    <text> · @row.PositionName</text>
+                                }
+                            </div>
+                        </td>
+                        <td class="text-center fw-semibold">@row.TongCaPhanCong</td>
+                        <td class="text-center text-muted">@row.SoCaDaKetThuc</td>
+                        <td class="text-center fw-semibold text-success">@row.SoCaDungGio</td>
+                        <td class="text-center">@row.SoCaDiTre</td>
+                        <td class="text-center">@row.SoCaVeSom</td>
+                        <td class="text-center">@row.SoCaTreVaSom</td>
+                        <td class="text-center fw-semibold text-danger">@row.SoCaVangMat</td>
+                        <td class="text-center text-muted">@row.SoCaChuaCheckIn</td>
+                        <td class="text-end @(row.TongPhutTre > 0 ? "text-warning-emphasis fw-semibold" : "text-muted")">
+                            @row.TongPhutTre
+                        </td>
+                        <td class="text-end @(row.TongPhutVeSom > 0 ? "text-warning-emphasis fw-semibold" : "text-muted")">
+                            @row.TongPhutVeSom
+                        </td>
+                        <td class="text-end @(row.TongGioOt > 0 ? "text-primary fw-semibold" : "text-muted")">
+                            @row.TongGioOt.ToString("0.##")
+                        </td>
+                        <td class="text-end fw-semibold text-dark">@row.TongGioLamThucTe.ToString("0.##")</td>
+                        <td class="text-end">
+                            <span class="badge @mucChuyenCan rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
+                                @row.TyLeChuyenCan.ToString("0.##")%
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot class="table-light">
+                <tr class="fw-bold">
+                    <td>
+                        Tổng cộng
+                        <span class="text-muted fw-normal" style="font-size: 0.73rem;">(@Model.Report.TongNhanVien nhân viên)</span>
+                    </td>
+                    <td class="text-center">@Model.Report.TongCaPhanCong</td>
+                    <td class="text-center text-muted">@Model.Report.TongCaDaKetThuc</td>
+                    <td class="text-center text-success">@Model.Report.TongCaDungGio</td>
+                    <td class="text-center" colspan="3">—</td>
+                    <td class="text-center text-danger">@Model.Report.TongCaVangMat</td>
+                    <td class="text-center text-muted">—</td>
+                    <td class="text-end">@Model.Report.TongPhutTre</td>
+                    <td class="text-end">@Model.Report.TongPhutVeSom</td>
+                    <td class="text-end text-primary">@Model.Report.TongGioOt.ToString("0.##")</td>
+                    <td class="text-end text-dark">@Model.Report.TongGioLamThucTe.ToString("0.##")</td>
+                    <td class="text-end">
+                        <span class="badge bg-dark rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
+                            @Model.Report.TyLeChuyenCan.ToString("0.##")%
+                        </span>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="px-3 py-2 border-top text-muted" style="font-size: 0.75rem;">
+        <i class="bi bi-info-circle me-1"></i>
+        Tỷ lệ chuyên cần = số ca đúng giờ / số ca <b>đã kết thúc</b>. Ca chưa tới giờ và ca chưa quẹt
+        không thuộc mẫu số nên không kéo tụt chỉ số giữa tháng.
+    </div>
+}

@@ -13,4 +13,10 @@ public class PhanCa
     public virtual NhanVien? NhanVien { get; set; }
     public virtual CaLamViec? CaLamViec { get; set; }
     public virtual ChamCong? ChamCong { get; set; }
+
+    /// <summary>Các yêu cầu đổi ca mà chính ca này là ca được nhường đi.</summary>
+    public virtual ICollection<YeuCauDoiCa> YeuCauDoiCaGui { get; set; } = new List<YeuCauDoiCa>();
+
+    /// <summary>Các yêu cầu đổi ca mà chính ca này là ca người khác nhận về.</summary>
+    public virtual ICollection<YeuCauDoiCa> YeuCauDoiCaNhan { get; set; } = new List<YeuCauDoiCa>();
 }

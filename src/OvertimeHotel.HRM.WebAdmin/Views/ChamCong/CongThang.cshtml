@@ -1,0 +1,204 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.CongThangViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Tổng Hợp Công Tháng";
+
+    // Số đếm động đi qua data-count-to dưới dạng invariant (dấu chấm thập phân),
+    // không phụ thuộc culture của máy chủ — site.js đọc thẳng thuộc tính này.
+    var inv = CultureInfo.InvariantCulture;
+}
+
+<div class="container-fluid px-3 px-md-4 py-3 schedule-page-container">
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+            <h1 class="h4 mb-1 fw-bold text-dark font-serif hotel-blur-text">Tổng hợp công tháng</h1>
+            <p class="text-muted mb-0" style="font-size: 0.85rem;">
+                Gộp từng lượt ca theo nhân viên — đối chiếu chuyên cần trước khi chuyển sang bảng lương.
+            </p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-semibold hover-lift"
+           style="font-size: 0.85rem;">
+            <i class="bi bi-fingerprint me-1"></i> Nhật ký chấm công
+        </a>
+    </div>
+
+    <partial name="_CatalogAlerts" />
+
+    <div class="row g-3 mb-4" id="congThangKpi">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #1e3a8a !important;">
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Nhân viên có ca</span>
+                <h3 class="h3 mb-0 fw-bold text-dark font-serif">
+                    <span data-count-to="@Model.Report.TongNhanVien.ToString(inv)">@Model.Report.TongNhanVien</span>
+                </h3>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #0284c7 !important;">
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Ca đã kết thúc</span>
+                <h3 class="h3 mb-0 fw-bold text-info-emphasis font-serif">
+                    <span data-count-to="@Model.Report.TongCaDaKetThuc.ToString(inv)">@Model.Report.TongCaDaKetThuc</span>
+                </h3>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #b45309 !important;">
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Tổng giờ tăng ca OT</span>
+                <h3 class="h3 mb-0 fw-bold text-warning-emphasis font-serif">
+                    <span data-count-to="@Model.Report.TongGioOt.ToString("0.##", inv)">@Model.Report.TongGioOt.ToString("0.##")</span>
+                    <small class="fs-6 text-muted fw-normal">giờ</small>
+                </h3>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #059669 !important;">
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Chuyên cần toàn bộ</span>
+                <h3 class="h3 mb-0 fw-bold text-success font-serif">
+                    <span data-count-to="@Model.Report.TyLeChuyenCan.ToString("0.##", inv)">@Model.Report.TyLeChuyenCan.ToString("0.##")</span>%
+                </h3>
+            </div>
+        </div>
+    </div>
+
+    <form class="card border-0 shadow-sm rounded-4 mb-3" id="congThangFilterForm" data-cong-thang-filter>
+        @* Token vừa phục vụ form lọc thường, vừa là nguồn cho các lệnh fetch bên dưới. *@
+        @Html.AntiForgeryToken()
+        <div class="card-body p-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1" for="filterThang">Tháng</label>
+                    <select class="form-select form-select-sm rounded-3" id="filterThang" name="thang">
+                        @foreach (var option in Model.ThangOptions)
+                        {
+                            <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1" for="filterNam">Năm</label>
+                    <select class="form-select form-select-sm rounded-3" id="filterNam" name="nam">
+                        @foreach (var option in Model.NamOptions)
+                        {
+                            <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                        }
+                    </select>
+                </div>
+
+                @* Quản lý bộ phận luôn bị khóa vào phòng ban của mình ở phía máy chủ;
+                   ô lọc chỉ hiện với người có phạm vi toàn khách sạn. *@
+                @if (Model.CoQuyenLocPhongBan)
+                {
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-semibold text-muted mb-1" for="filterPhongBan">Phòng ban</label>
+                        <select class="form-select form-select-sm rounded-3" id="filterPhongBan" name="phongBanId">
+                            <option value="">Toàn khách sạn</option>
+                            @foreach (var option in Model.PhongBanOptions)
+                            {
+                                <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                <div class="col-12 col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold flex-grow-1">
+                        <i class="bi bi-arrow-repeat me-1"></i>Tổng hợp
+                    </button>
+                    <a class="btn btn-sm btn-outline-success rounded-pill px-3 fw-semibold" id="exportCongThang"
+                       href="@Url.Action("XuatCongThang", new { nam = Model.Nam, thang = Model.Thang, phongBanId = Model.PhongBanId })"
+                       title="Xuất CSV đối soát lương">
+                        <i class="bi bi-file-earmark-spreadsheet"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
+                            onclick="window.print()" title="In bảng công tháng">
+                        <i class="bi bi-printer"></i>
+                    </button>
+                </div>
+            </div>
+
+            @* Một phần tử chứa cả cặp ngày: script thay textContent nguyên cụm nên
+               không phải ghép lại từ hai ô rời. *@
+            <div class="text-muted mt-2" style="font-size: 0.75rem;">
+                Kỳ đang xem: <b data-cong-thang-ky>@Model.TuNgay.ToString("dd/MM/yyyy") – @Model.DenNgay.ToString("dd/MM/yyyy")</b>
+            </div>
+        </div>
+    </form>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div data-cong-thang-table>
+            <partial name="_CongThangTable" model="Model" />
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Đổi tháng / năm / phòng ban: chỉ thay cụm KPI và khung bảng, giữ nguyên
+        // header, thanh lọc và vị trí cuộn — không tải lại toàn trang.
+        (function () {
+            const tableHost = document.querySelector('[data-cong-thang-table]');
+            const kpiHost = document.getElementById('congThangKpi');
+            const filterForm = document.querySelector('[data-cong-thang-filter]');
+
+            function buildParams() {
+                const params = new URLSearchParams();
+                const thang = document.getElementById('filterThang')?.value;
+                const nam = document.getElementById('filterNam')?.value;
+                const phongBan = document.getElementById('filterPhongBan')?.value;
+                if (thang) { params.set('thang', thang); }
+                if (nam) { params.set('nam', nam); }
+                if (phongBan) { params.set('phongBanId', phongBan); }
+                return params;
+            }
+
+            async function reload() {
+                const params = buildParams();
+                const url = '/ChamCong/CongThang?' + params.toString();
+
+                // Lấy nguyên trang rồi bóc hai vùng cần đổi: bảng do máy chủ trả
+                // qua PartialView, KPI nằm ở trang đầy đủ — một lượt tải duy nhất.
+                const response = await fetch(url);
+                if (!response.ok) { return; }
+
+                const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+
+                const incomingTable = doc.querySelector('[data-cong-thang-table]');
+                const incomingKpi = doc.getElementById('congThangKpi');
+                if (incomingTable && tableHost) { tableHost.innerHTML = incomingTable.innerHTML; }
+                if (incomingKpi && kpiHost) { kpiHost.innerHTML = incomingKpi.innerHTML; }
+
+                // Số mới vừa được chèn nên phải đếm lại từ đầu. site.js đánh dấu
+                // data-count-done khi đếm xong và chỉ công khai animateCountUp;
+                // hàm này tự giữ đuôi đơn vị ("%", "giờ") đang có trong thẻ.
+                const kpiValues = kpiHost?.querySelectorAll('[data-count-to]') || [];
+                kpiValues.forEach(function (el, index) {
+                    el.removeAttribute('data-count-done');
+                    const target = el.getAttribute('data-count-to');
+                    window.setTimeout(function () {
+                        if (window.animateCountUp) { window.animateCountUp(el, 0, target, 900); }
+                        el.closest('.kpi-card-item')?.classList.add('kpi-pulse-active');
+                        window.setTimeout(function () {
+                            el.closest('.kpi-card-item')?.classList.remove('kpi-pulse-active');
+                        }, 900);
+                    }, Math.min(index * 0.05, 0.35) * 1000);
+                });
+
+                const incomingKy = doc.querySelector('[data-cong-thang-ky]');
+                const currentKy = document.querySelector('[data-cong-thang-ky]');
+                if (incomingKy && currentKy) { currentKy.textContent = incomingKy.textContent; }
+
+                history.pushState(null, '', url);
+
+                // Nút xuất phải mang đúng kỳ/bộ phận đang xem, không lấy theo URL cũ.
+                const exportLink = document.getElementById('exportCongThang');
+                if (exportLink) { exportLink.href = '/ChamCong/XuatCongThang?' + params.toString(); }
+            }
+
+            filterForm?.addEventListener('submit', function (event) {
+                event.preventDefault();
+                reload();
+            });
+        })();
+    </script>
+}

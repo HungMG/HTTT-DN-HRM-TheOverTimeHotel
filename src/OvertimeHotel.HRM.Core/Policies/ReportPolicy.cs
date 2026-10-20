@@ -173,9 +173,20 @@ public static class ReportPolicy
 
     /// <summary>
     /// Lượt chấm công bị coi là vi phạm kỷ luật: đi trễ, về sớm, hoặc cả hai.
-    /// Vắng mặt (<c>VANG</c>) không nằm trong nhóm này — vắng là hành vi khác, tính riêng.
+    /// Vắng mặt không nằm trong nhóm này — vắng là hành vi khác, tính riêng
+    /// (xem <see cref="IsAbsent"/>).
     /// </summary>
     public static bool IsViolation(string? trangThai) => trangThai is "DI_TRE" or "VE_SOM" or "TRE_VA_SOM";
+
+    /// <summary>
+    /// Lượt chấm công bị đánh dấu vắng mặt.
+    /// <para>
+    /// Mã lưu trong CSDL là <c>VANG_MAT</c> — ràng buộc CHECK của bảng <c>cham_cong</c>
+    /// chỉ cho đúng năm mã <c>DUNG_GIO / DI_TRE / VE_SOM / TRE_VA_SOM / VANG_MAT</c>.
+    /// Gom về một chỗ để không nơi nào so sánh nhầm với <c>"VANG"</c> rồi luôn đếm ra 0.
+    /// </para>
+    /// </summary>
+    public static bool IsAbsent(string? trangThai) => trangThai == "VANG_MAT";
 
     /// <summary>Lượt chấm công đúng giờ, dùng cho tử số của tỷ lệ chuyên cần.</summary>
     public static bool IsOnTime(string? trangThai) => trangThai == "DUNG_GIO";

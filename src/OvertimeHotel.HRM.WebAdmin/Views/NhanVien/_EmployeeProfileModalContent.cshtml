@@ -462,7 +462,7 @@
                 <div class="row g-3 small">
                     <div class="col-sm-6 col-md-3">
                         <span class="text-muted d-block">Loại hợp đồng:</span>
-                        <strong class="text-dark">@contract.LoaiHopDong</strong>
+                        <strong class="text-dark">@ContractTypes.ToDisplayName(contract.LoaiHopDong)</strong>
                     </div>
                     <div class="col-sm-6 col-md-3">
                         <span class="text-muted d-block">Lương cơ bản:</span>
@@ -500,7 +500,7 @@
                             {
                                 <tr>
                                     <td class="font-monospace fw-bold">@h.SoHopDong</td>
-                                    <td>@h.LoaiHopDong</td>
+                                    <td>@ContractTypes.ToDisplayName(h.LoaiHopDong)</td>
                                     <td>@h.NgayBatDau.ToString("dd/MM/yyyy") &rarr; @(h.NgayKetThuc.HasValue ? h.NgayKetThuc.Value.ToString("dd/MM/yyyy") : "Vô thời hạn")</td>
                                     <td class="text-primary fw-semibold font-monospace">@h.LuongCoBan.ToString("N0") đ</td>
                                     <td>

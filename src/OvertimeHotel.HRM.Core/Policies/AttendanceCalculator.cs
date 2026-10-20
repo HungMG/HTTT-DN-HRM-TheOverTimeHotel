@@ -22,7 +22,14 @@ public static class AttendanceCalculator
     public const string STATUS_DI_TRE = "DI_TRE";
     public const string STATUS_VE_SOM = "VE_SOM";
     public const string STATUS_TRE_VA_SOM = "TRE_VA_SOM";
-    public const string STATUS_VANG = "VANG";
+
+    /// <summary>
+    /// Ca không có ai quẹt thẻ và đã qua giờ kết thúc. Đây vừa là trạng thái hiển thị trên
+    /// nhật ký chấm công, vừa là giá trị được ghi vào <c>phan_ca.trang_thai</c> khi quản lý
+    /// đánh dấu vắng — nên phải trùng đúng mã mà CHECK constraint của CSDL chấp nhận.
+    /// Giá trị cũ "VANG" không có trong ràng buộc của CSDL cloud nên không ghi được.
+    /// </summary>
+    public const string STATUS_VANG = "VANG_MAT";
 
     /// <summary>
     /// Số phút tối đa cho phép quẹt thẻ vào trước giờ bắt đầu ca.
@@ -87,8 +94,30 @@ public static class AttendanceCalculator
     }
 
     /// <summary>
+    /// Ngưỡng tối thiểu để phần làm thêm ngoài giờ được tính là tăng ca (PRD 4.3).
+    /// Vượt giờ kết thúc dưới 30 phút thì không tính OT — tránh trường hợp nấn ná vài
+    /// phút cuối ca cũng thành tiền tăng ca.
+    /// </summary>
+    public const int MIN_OVERTIME_MINUTES = 30;
+
+    /// <summary>Đơn vị làm tròn của giờ tăng ca: nửa giờ.</summary>
+    public const decimal OVERTIME_ROUNDING_HOURS = 0.5m;
+
+    /// <summary>
     /// Tính số giờ làm thêm (OT) là phần vượt quá giờ kết thúc dự kiến của ca.
-    /// Dùng decimal để tránh sai số dấu phẩy động, làm tròn 2 chữ số theo độ chính xác DECIMAL(4,2).
+    ///
+    /// <para>
+    /// <b>Luật tính (PRD 4.3):</b> chỉ tính khi vượt quá <see cref="MIN_OVERTIME_MINUTES"/>
+    /// phút, sau đó <b>làm tròn xuống</b> bội số <see cref="OVERTIME_ROUNDING_HOURS"/>.
+    /// Làm tròn xuống là có chủ ý: 45 phút → 0,5 giờ; 90 phút → 1,5 giờ; 105 phút → 1,5 giờ;
+    /// 120 phút → 2,0 giờ. Phần lẻ dưới nửa giờ không quy thành tiền.
+    /// </para>
+    ///
+    /// <para>
+    /// Trước đây hàm này làm tròn 2 chữ số thập phân, khiến 45 phút thành 0,75 giờ — trả
+    /// thừa so với đặc tả. Cột <c>gio_tang_ca_ot</c> là DECIMAL(4,2) nên 0,5 và 1,5 vẫn lưu
+    /// vừa; chỉ công thức thay đổi, dữ liệu cũ giữ nguyên.
+    /// </para>
     /// </summary>
     public static decimal CalculateOvertimeHours(DateTimeOffset ketThucDuKien, DateTimeOffset gioCheckOut)
     {
@@ -97,7 +126,16 @@ public static class AttendanceCalculator
             return 0m;
         }
 
-        return Math.Round((decimal)(gioCheckOut - ketThucDuKien).TotalHours, 2, MidpointRounding.AwayFromZero);
+        var overtimeMinutes = (gioCheckOut - ketThucDuKien).TotalMinutes;
+        if (overtimeMinutes < MIN_OVERTIME_MINUTES)
+        {
+            return 0m;
+        }
+
+        // Floor về bội số nửa giờ. Cộng thêm một lượng epsilon rất nhỏ để phép chia
+        // không bị tụt mất nửa giờ do sai số dấu phẩy động (ví dụ 89,9999999 phút).
+        var steps = Math.Floor((decimal)overtimeMinutes / 60m / OVERTIME_ROUNDING_HOURS + 0.000001m);
+        return steps * OVERTIME_ROUNDING_HOURS;
     }
 
     /// <summary>

@@ -2,7 +2,7 @@
 
 **Dự án:** Hệ thống Quản lý Nhân sự & Tiền lương Khách sạn The OverTime Hotel  
 **Chuyên ngành:** Hệ thống Thông tin Doanh nghiệp (HTTTDN) / Công nghệ Phần mềm  
-**Nền tảng công nghệ:** C# .NET 10 (ASP.NET Core MVC & .NET MAUI) · Supabase Cloud Database (PostgreSQL 27 bảng chuẩn 3NF)  
+**Nền tảng công nghệ:** C# .NET 10 (ASP.NET Core MVC & .NET MAUI) · Supabase Cloud Database (PostgreSQL 30 bảng chuẩn 3NF)  
 **Tài liệu trực quan kèm theo:** Xem sơ đồ đồ họa tương tác tại `docs project/diagrams/`
 
 ---
@@ -74,7 +74,7 @@ Sơ đồ ngữ cảnh định nghĩa ranh giới tương tác và các luồng 
 
 ## 2. Sơ Đồ Luồng Dữ Liệu Mức 1 (DFD Level 1)
 
-Phân rã tiến trình `0.0` thành **11 tiến trình nghiệp vụ cốt lõi (1.0 đến 11.0)** và **4 tiến trình kỹ thuật & vận hành (12.0 đến 15.0)**, tương tác chặt chẽ với **9 kho dữ liệu Supabase (D1 đến D9)** bao phủ toàn bộ 27 bảng CSDL chuẩn 3NF.
+Phân rã tiến trình `0.0` thành **11 tiến trình nghiệp vụ cốt lõi (1.0 đến 11.0)** và **4 tiến trình kỹ thuật & vận hành (12.0 đến 15.0)**, tương tác chặt chẽ với **9 kho dữ liệu Supabase (D1 đến D9)** bao phủ toàn bộ 30 bảng CSDL chuẩn 3NF.
 
 ### Quy ước đánh số tiến trình Mức 1
 
@@ -95,7 +95,7 @@ Cấu trúc phân rã DFD Mức 1 được chuẩn hóa theo đúng kiến trúc
 
 2. **Nhóm 4 Tiến trình Kỹ thuật & Vận hành (12.0 – 15.0):**
    - **12.0 — Xác thực & Quản lý Phiên:** Cổng xác thực danh tính tập trung, kiểm tra băm mật khẩu, cấp phát token JWT/Claims và duy trì phiên an toàn cho cả Web Admin và Mobile App.
-   - **13.0 — Sao lưu & Phục hồi CSDL:** Tác vụ kỹ thuật độc lập cho Quản trị viên (Admin) thực hiện sao lưu toàn vẹn 27 bảng CSDL Supabase ra tệp nén `.sql.gz` và phục hồi khẩn cấp.
+   - **13.0 — Sao lưu & Phục hồi CSDL:** Tác vụ kỹ thuật độc lập cho Quản trị viên (Admin) thực hiện sao lưu toàn vẹn 30 bảng CSDL Supabase ra tệp nén `.sql.gz` và phục hồi khẩn cấp.
    - **14.0 — Duyệt & Chốt khóa sổ lương:** Quy trình thẩm định bảng lương giữa HR và Ban Giám Đốc, chuyển trạng thái từ dự thảo `NHAP` sang `DA_DUYET`, thực hiện khóa sổ kỳ lương (`KHOA_SO`) trước khi phát hành.
    - **15.0 — Cảnh báo tự động & Thông báo:** Tiến trình nền quét và đẩy cảnh báo tự động: cảnh báo HĐLĐ sắp hết hạn trước 30 ngày, thông báo đơn từ mới, thông báo lịch ca trực và thông báo phân công dự án/sự kiện tới người dùng.
 
@@ -114,13 +114,13 @@ Cấu trúc phân rã DFD Mức 1 được chuẩn hóa theo đúng kiến trúc
 
 ### 2.1. Danh Sách 9 Kho Dữ Liệu (Data Stores)
 
-Kho dữ liệu trong DFD là tập hợp logic các bảng CSDL lưu trữ cùng chủ đề nghiệp vụ. Toàn bộ **27 bảng CSDL Supabase PostgreSQL** được chuẩn hóa và khớp nối hoàn chỉnh vào **9 kho dữ liệu (D1 đến D9)**:
+Kho dữ liệu trong DFD là tập hợp logic các bảng CSDL lưu trữ cùng chủ đề nghiệp vụ. Toàn bộ **30 bảng CSDL Supabase PostgreSQL** được chuẩn hóa và khớp nối hoàn chỉnh vào **9 kho dữ liệu (D1 đến D9)**:
 
 | Mã Kho | Tên Kho Dữ Liệu | Số Bảng | Các Bảng CSDL Supabase Thành Phần | Chức Năng Nghiệp Vụ Cốt Lõi |
 |:---:|:---|:---:|:---|:---|
 | **D1** | Kho Nhân sự & HĐLĐ | 4 | `phong_ban`, `chuc_vu`, `nhan_vien`, `hop_dong` | Lưu trữ cơ cấu tổ chức, chức danh nghề nghiệp, hồ sơ lý lịch nhân sự và hợp đồng lao động pháp lý. |
 | **D2** | Kho Tài khoản & Phân quyền | 5 | `tai_khoan`, `vai_tro`, `quyen`, `vai_tro_quyen`, `yeu_cau_tai_khoan` | Lưu trữ tài khoản đăng nhập, 5 nhóm vai trò RBAC, danh mục 17 mã quyền và yêu cầu cấp tài khoản từ HR chuyển sang IT. |
-| **D3** | Kho Ca làm & Chấm công | 3 | `ca_lam_viec`, `phan_ca`, `cham_cong` | Lưu trữ 3 mẫu ca chuẩn 24/7, lịch phân ca tuần/tháng và toàn bộ dữ liệu quẹt thẻ Check-in/out thực tế di động. |
+| **D3** | Kho Ca làm & Chấm công | 6 | `ca_lam_viec`, `phan_ca`, `cham_cong`, `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca` | Lưu trữ 3 mẫu ca chuẩn 24/7, lịch phân ca tuần/tháng, dữ liệu quẹt thẻ Check-in/out thực tế di động, định biên số người tối thiểu mỗi ca, hồ sơ giải trình sai lệch giờ công và yêu cầu đổi ca giữa nhân viên. |
 | **D4** | Kho Đơn từ điện tử | 2 | `loai_don`, `don_tu` | Lưu trữ danh mục 4 loại đơn trực tuyến và lịch sử nộp/xét duyệt đơn từ của nhân sự. |
 | **D5** | Kho Tiền lương & Thu chi | 10 | `ky_luong`, `phieu_luong`, `chi_tiet_phieu_luong`, `chi_tiet_tru_bao_hiem`, `chi_tiet_tru_thue_tncn`, `chi_tiet_tru_vi_pham_tam_ung`, `cau_hinh_khoan_luong`, `cau_hinh_tang_ca`, `cau_hinh_phu_cap`, `cau_hinh_khau_tru` | Lưu trữ chu kỳ tính lương, bảng tổng hợp lương tháng, chi tiết phân rã thu nhập/khấu trừ 2 tầng, và bảng cấu hình tham số lương/thuế/bảo hiểm. |
 | **D6** | Kho Nhật ký & Kiểm toán | 1 | `nhat_ky_quan_tri` | Lưu trữ lịch sử kiểm toán thao tác quản trị: đổi mật khẩu, phân quyền, khóa tài khoản, can thiệp dữ liệu hệ thống. |
@@ -262,18 +262,18 @@ Khi triển khai bản vẽ kỹ thuật trên các công cụ chuyên dụng (d
 
 ---
 
-### 2.7. Đối Chiếu Số Lượng Bảng CSDL (Khớp Nối 27 Bảng Supabase)
+### 2.7. Đối Chiếu Số Lượng Bảng CSDL (Khớp Nối 30 Bảng Supabase)
 
 Bảng đối chiếu khẳng định tính đồng bộ tuyệt đối giữa hồ sơ thiết kế DFD, tài liệu kiến trúc CSDL và mã nguồn hệ thống:
 
 | Nguồn Tài Liệu Đối Chiếu | Số Lượng Khai Báo | Trạng Thái Đồng Bộ |
 |:---|:---:|:---|
-| **PRD 03 (Tài liệu này, Mục 2.1 & 2.2)** | **9 kho dữ liệu gom từ 27 bảng CSDL** | Hoàn thành khớp nối 100% (25 bảng hiện hữu + 2 bảng mới `du_an`, `phan_cong_du_an`). |
-| **Mã nguồn thực tế `AppDbContext.cs` & Schema DB** | **27 bảng chuẩn hóa 3NF** | Đã định nghĩa đầy đủ các thực thể và cấu hình quan hệ khóa ngoại trên Supabase Cloud. |
-| **PRD 04 (`04_Thiet_Ke_CSDL_17_Bang.md`)** | **27 bảng CSDL Supabase PostgreSQL** | Đã cập nhật từ điển dữ liệu chi tiết cho toàn bộ 27 bảng (bao gồm 2 bảng sự kiện/dự án). |
+| **PRD 03 (Tài liệu này, Mục 2.1 & 2.2)** | **9 kho dữ liệu gom từ 30 bảng CSDL** | Hoàn thành khớp nối 100% (25 bảng nền tảng + 2 bảng dự án/sự kiện `du_an`, `phan_cong_du_an` + 3 bảng ca & chấm công `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`). |
+| **Mã nguồn thực tế `AppDbContext.cs` & Schema DB** | **30 bảng chuẩn hóa 3NF** | Đã định nghĩa đầy đủ các thực thể và cấu hình quan hệ khóa ngoại trên Supabase Cloud. |
+| **PRD 04 (`04_Thiet_Ke_CSDL_17_Bang.md`)** | **30 bảng CSDL Supabase PostgreSQL** | Đã cập nhật từ điển dữ liệu chi tiết cho toàn bộ 30 bảng (bao gồm 2 bảng sự kiện/dự án và 3 bảng ca & chấm công). |
 | **PRD 02 (`02_Phan_Tich_Chuc_Nang_BFD.md`)** | **11 phân hệ nghiệp vụ Cấp 1** | Khớp nối đồng bộ với 11 tiến trình nghiệp vụ cốt lõi 1.0 đến 11.0 của DFD Mức 1. |
 
-#### Danh mục chi tiết 27 bảng CSDL Supabase phân bổ theo 9 Kho Dữ Liệu DFD:
+#### Danh mục chi tiết 30 bảng CSDL Supabase phân bổ theo 9 Kho Dữ Liệu DFD:
 
 | STT | Tên Bảng CSDL (Supabase) | Thuộc Kho DFD | Nhóm Phân Hệ Nghiệp Vụ | Ý Nghĩa Thực Tế Trong Vận Hành Khách Sạn |
 |:---:|:---|:---:|:---|:---|
@@ -304,3 +304,6 @@ Bảng đối chiếu khẳng định tính đồng bộ tuyệt đối giữa h
 | 25 | `nhat_ky_quan_tri` | **D6** | Nhật ký & Kiểm toán | Ghi vết kiểm toán quản trị hệ thống: thời điểm, tài khoản thao tác, loại hành động và dữ liệu thay đổi. |
 | **26** | **`du_an`** | **D9** | **Quản lý Dự án & Sự kiện** | **Lưu trữ thông tin dự án/sự kiện đặc thù (tiệc cưới gala, hội nghị, lễ hội ẩm thực), ngân sách thù lao, thời gian và quản lý phụ trách.** |
 | **27** | **`phan_cong_du_an`** | **D9** | **Quản lý Dự án & Sự kiện** | **Quản lý phân công nhân sự tham gia dự án, vai trò nhiệm vụ, số giờ làm việc, mức thù lao/phụ cấp sự kiện nghiệm thu để đổ vào lương.** |
+| **28** | **`dinh_bien_ca`** | **D3** | **Ca làm & Chấm công** | **Định biên số nhân sự tối thiểu cho từng cặp Ca × Chức vụ, làm căn cứ cảnh báo thiếu người trên lịch phân ca.** |
+| **29** | **`giai_trinh_cham_cong`** | **D3** | **Ca làm & Chấm công** | **Hồ sơ giải trình sai lệch giờ vào/ra, đi qua hai cấp xác minh: Quản lý bộ phận → HR xác nhận trước khi ghi lại giờ công.** |
+| **30** | **`yeu_cau_doi_ca`** | **D3** | **Ca làm & Chấm công** | **Yêu cầu đổi ca trực giữa hai nhân viên, kèm trạng thái duyệt và phản hồi của Quản lý/HR.** |

@@ -1,9 +1,12 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.DTOs;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
+using OvertimeHotel.HRM.Core.Services;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
@@ -114,7 +117,17 @@ public class ChamCongController : Controller
                 .Include(p => p.ChamCong)
                 .Where(p => p.NgayLamViec >= startDate && p.NgayLamViec <= endDate);
 
-            if (phongBanId.HasValue && phongBanId.Value > 0)
+            // Quản lý bộ phận chỉ thấy nhân sự của mình: bộ lọc phòng ban do họ
+            // chọn bị ghi đè bởi phạm vi quyền, nếu không chỉ cần sửa query string
+            // là xem được giờ công của bộ phận khác.
+            var scopeDept = GetManagerDepartmentScope();
+            if (scopeDept.HasValue)
+            {
+                query = scopeDept.Value <= 0
+                    ? query.Where(_ => false)
+                    : query.Where(p => p.NhanVien != null && p.NhanVien.MaPhongBan == scopeDept.Value);
+            }
+            else if (phongBanId.HasValue && phongBanId.Value > 0)
             {
                 query = query.Where(p => p.NhanVien != null && p.NhanVien.MaPhongBan == phongBanId.Value);
             }
@@ -249,6 +262,215 @@ public class ChamCongController : Controller
     }
 
     /// <summary>
+    /// Bảng tổng hợp công tháng theo từng nhân viên (PRD 4.4).
+    ///
+    /// <para>
+    /// Khác với <see cref="Index"/> — vốn liệt kê từng lượt ca — màn này gộp theo
+    /// người để HR chấm công tháng và đối chiếu tỷ lệ chuyên cần trước khi chuyển
+    /// sang bảng lương.
+    /// </para>
+    /// </summary>
+    [HttpGet]
+    [Authorize(Policy = PermissionCodes.ViewDepartmentAttendance)]
+    public async Task<IActionResult> CongThang(int? nam, int? thang, int? phongBanId)
+    {
+        var model = await BuildCongThangAsync(nam, thang, phongBanId);
+
+        if (Request.Headers.XRequestedWith == "XMLHttpRequest")
+        {
+            return PartialView("_CongThangTable", model);
+        }
+
+        return View(model);
+    }
+
+    /// <summary>
+    /// Xuất bảng công tháng ra CSV cho bước đối soát lương (PRD 4.4).
+    ///
+    /// <para>
+    /// Dùng chung <see cref="BuildCongThangAsync"/> với màn hình nên tệp xuất luôn
+    /// khớp đúng số liệu đang thấy, kể cả phạm vi phòng ban mà Quản lý bị khóa.
+    /// UTF-8 kèm BOM để Excel đọc đúng tiếng Việt.
+    /// </para>
+    /// </summary>
+    [HttpGet]
+    [Authorize(Policy = PermissionCodes.ViewDepartmentAttendance)]
+    public async Task<IActionResult> XuatCongThang(int? nam, int? thang, int? phongBanId)
+    {
+        var model = await BuildCongThangAsync(nam, thang, phongBanId);
+        var content = BuildCongThangCsv(model);
+        return File(content, "text/csv; charset=utf-8", $"CongThang_{model.Thang:00}-{model.Nam}.csv");
+    }
+
+    private static byte[] BuildCongThangCsv(CongThangViewModel model)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('﻿');
+
+        sb.AppendLine($"BẢNG TỔNG HỢP CÔNG THÁNG {model.Thang:00}/{model.Nam}");
+        sb.AppendLine($"Kỳ đối soát: {model.TuNgay:dd/MM/yyyy} - {model.DenNgay:dd/MM/yyyy}");
+        sb.AppendLine();
+
+        sb.AppendLine("Mã NV,Họ tên,Phòng ban,Chức vụ,Ca phân,Đã kết thúc,Đúng giờ,Trễ,Về sớm,Trễ và sớm,Vắng,Chưa quẹt,Phút trễ,Phút về sớm,Giờ OT,Giờ thực tế,Chuyên cần (%)");
+
+        foreach (var row in model.Report.Rows)
+        {
+            // Bọc mỗi ô trong ngoặc kép và nhân đôi dấu nháy — tên phòng ban có
+            // thể chứa dấu phẩy, nếu không bọc Excel sẽ tách sai cột.
+            static string Csv(string? value) => $"\"{(value ?? string.Empty).Replace("\"", "\"\"")}\"";
+
+            sb.AppendLine(string.Join(',',
+                Csv(row.MaNhanVienFormat),
+                Csv(row.EmployeeName),
+                Csv(row.DepartmentName),
+                Csv(row.PositionName),
+                row.TongCaPhanCong,
+                row.SoCaDaKetThuc,
+                row.SoCaDungGio,
+                row.SoCaDiTre,
+                row.SoCaVeSom,
+                row.SoCaTreVaSom,
+                row.SoCaVangMat,
+                row.SoCaChuaCheckIn,
+                row.TongPhutTre,
+                row.TongPhutVeSom,
+                row.TongGioOt.ToString("0.##"),
+                row.TongGioLamThucTe.ToString("0.##"),
+                row.TyLeChuyenCan.ToString("0.##")));
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("TỔNG CỘNG,"
+            + $"{model.Report.TongNhanVien} nhân viên,"
+            + $",,"
+            + $"{model.Report.TongCaPhanCong},"
+            + $"{model.Report.TongCaDaKetThuc},"
+            + $"{model.Report.TongCaDungGio},"
+            + $",,,,"
+            + $"{model.Report.TongCaVangMat},"
+            + $","
+            + $"{model.Report.TongPhutTre},"
+            + $"{model.Report.TongPhutVeSom},"
+            + $"{model.Report.TongGioOt:0.##},"
+            + $"{model.Report.TongGioLamThucTe:0.##},"
+            + $"{model.Report.TyLeChuyenCan:0.##}");
+
+        return System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+    }
+
+    /// <summary>
+    /// Dựng số liệu tổng hợp công tháng cho kỳ và phòng ban đang chọn.
+    /// Dùng chung cho màn hình, phần AJAX và tệp xuất CSV.
+    /// </summary>
+    private async Task<CongThangViewModel> BuildCongThangAsync(int? nam, int? thang, int? phongBanId)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var namChon = nam is >= 2000 and <= 2100 ? nam.Value : today.Year;
+        var thangChon = thang is >= 1 and <= 12 ? thang.Value : today.Month;
+
+        // Kẹp về tháng hiện tại: bảng công tương lai chưa có gì để tổng hợp và
+        // chỉ làm người dùng tưởng hệ thống mất dữ liệu.
+        var thangHienTai = new DateOnly(today.Year, today.Month, 1);
+        var thangDau = new DateOnly(namChon, thangChon, 1);
+        if (thangDau > thangHienTai)
+        {
+            namChon = today.Year;
+            thangChon = today.Month;
+            thangDau = thangHienTai;
+        }
+
+        var tuNgay = thangDau;
+        var denNgay = thangDau.AddMonths(1).AddDays(-1);
+
+        var scopeDept = GetManagerDepartmentScope();
+        var phongBanLoc = scopeDept ?? (phongBanId is > 0 ? phongBanId : null);
+
+        var model = new CongThangViewModel
+        {
+            Nam = namChon,
+            Thang = thangChon,
+            PhongBanId = phongBanLoc,
+            TuNgay = tuNgay,
+            DenNgay = denNgay,
+            // Quản lý bộ phận đã bị khóa vào phòng ban của mình ở trên; chỉ người
+            // có phạm vi toàn khách sạn mới được đổi bộ lọc phòng ban.
+            CoQuyenLocPhongBan = !scopeDept.HasValue
+        };
+
+        try
+        {
+            var phongBans = await _context.PhongBans.AsNoTracking()
+                .OrderBy(p => p.TenPhongBan)
+                .ToListAsync();
+
+            model.PhongBanOptions = phongBans
+                .Select(p => new SelectListItem(p.TenPhongBan, p.MaPhongBan.ToString(), p.MaPhongBan == phongBanLoc))
+                .ToList();
+
+            model.ThangOptions = Enumerable.Range(1, 12)
+                .Select(m => new SelectListItem($"Tháng {m:00}", m.ToString(), m == thangChon))
+                .ToList();
+
+            model.NamOptions = Enumerable.Range(today.Year - 3, 4)
+                .Reverse()
+                .Select(y => new SelectListItem($"Năm {y}", y.ToString(), y == namChon))
+                .ToList();
+
+            // Chiếu thẳng ra DTO thay vì Include navigation: câu truy vấn chỉ lấy
+            // đúng các cột cần tính, không kéo theo cả entity nhân viên.
+            var shiftQuery = _context.PhanCas
+                .AsNoTracking()
+                .Where(p => p.NgayLamViec >= tuNgay && p.NgayLamViec <= denNgay);
+
+            if (phongBanLoc.HasValue)
+            {
+                shiftQuery = shiftQuery.Where(p => p.NhanVien != null && p.NhanVien.MaPhongBan == phongBanLoc.Value);
+            }
+
+            var shifts = await shiftQuery
+                .Select(p => new MonthlyAttendanceShiftInput(
+                    p.MaNhanVien,
+                    p.NgayLamViec,
+                    p.BatDauDuKien,
+                    p.KetThucDuKien,
+                    p.TrangThai,
+                    p.ChamCong == null ? null : p.ChamCong.GioCheckIn,
+                    p.ChamCong == null ? null : p.ChamCong.GioCheckOut,
+                    p.ChamCong == null ? 0 : p.ChamCong.PhutDiTre,
+                    p.ChamCong == null ? 0 : p.ChamCong.PhutVeSom,
+                    p.ChamCong == null ? 0m : p.ChamCong.GioTangCaOt,
+                    p.ChamCong == null ? null : p.ChamCong.TrangThai))
+                .ToListAsync();
+
+            var employeeIds = shifts.Select(s => s.EmployeeId).Distinct().ToList();
+
+            var employees = await _context.NhanViens
+                .AsNoTracking()
+                .Where(n => employeeIds.Contains(n.MaNhanVien))
+                .Select(n => new
+                {
+                    n.MaNhanVien,
+                    HoTen = (n.Ho + " " + n.Ten).Trim(),
+                    PhongBan = n.PhongBan == null ? null : n.PhongBan.TenPhongBan,
+                    ChucVu = n.ChucVu == null ? null : n.ChucVu.TenChucVu
+                })
+                .ToDictionaryAsync(
+                    n => n.MaNhanVien,
+                    n => (n.HoTen, n.PhongBan, n.ChucVu));
+
+            model.Report = MonthlyAttendanceCalculator.Calculate(
+                tuNgay, denNgay, shifts, employees, DateTimeOffset.UtcNow);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi tổng hợp công tháng {Month}/{Year}.", thangChon, namChon);
+            TempData["Error"] = "Lỗi kết nối CSDL Supabase: " + ex.Message;
+        }
+
+        return model;
+    }
+
+    /// <summary>
     /// API trả về chi tiết 1 bản ghi chấm công dạng JSON phục vụ Modal chi tiết
     /// </summary>
     [HttpGet]
@@ -349,5 +571,22 @@ public class ChamCongController : Controller
         }
 
         return "CHUA_DEN_GIO";
+    }
+
+    /// <summary>
+    /// Bộ phận mà Quản lý bị giới hạn trong đó. <c>null</c> = không giới hạn
+    /// (HR/Admin/IT nhìn toàn khách sạn). <c>-1</c> = Manager nhưng thiếu claim
+    /// phòng ban ⇒ không được thấy bộ phận nào.
+    /// </summary>
+    private int? GetManagerDepartmentScope()
+    {
+        if (!User.IsInRole("Manager"))
+        {
+            return null;
+        }
+
+        return int.TryParse(User.FindFirstValue("DepartmentId"), out var departmentId) && departmentId > 0
+            ? departmentId
+            : -1;
     }
 }

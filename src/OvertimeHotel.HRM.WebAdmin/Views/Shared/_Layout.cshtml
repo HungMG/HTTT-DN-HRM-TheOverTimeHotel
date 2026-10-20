@@ -177,7 +177,11 @@
                     var drawerChatbotUrl = ChatbotUrlBuilder.BuildEmbedUrl(
                         User, currentController, currentAction, ViewContext.HttpContext.Request.Query);
                 }
-                <iframe src="@drawerChatbotUrl"
+                @* src để rỗng có chủ ý: khung chat chỉ được nạp khi người dùng thực sự mở.
+                   Nhồi sẵn src ở đây khiến MỌI trang kéo về trọn bộ JS của Next.js (~12 MB ở
+                   chế độ dev) dù không ai mở chat — đó là nguyên nhân chính làm tải trang chậm.
+                   Địa chỉ thật nằm ở data-chatbot-src và được gán trong sự kiện show bên dưới. *@
+                <iframe data-chatbot-src="@drawerChatbotUrl"
                         id="drawerChatbotIframe"
                         title="The OverTime Hotel AI Chatbot"
                         style="width: 100%; height: 100%; border: none;"
@@ -194,9 +198,19 @@
     <script src="~/js/catalog.js" asp-append-version="true"></script>
 
     <script>
+        // Gán src thật cho iframe chat. Chỉ gọi khi người dùng thực sự cần khung chat,
+        // nhờ vậy trang không phải tải trọn bộ JS Next.js ngay từ đầu.
+        function loadDrawerChatbot() {
+            var iframe = document.getElementById('drawerChatbotIframe');
+            if (!iframe) return;
+            var url = iframe.getAttribute('data-chatbot-src');
+            if (url) iframe.src = url;
+        }
+
         function reloadDrawerChatbotIframe() {
             var iframe = document.getElementById('drawerChatbotIframe');
-            if (iframe) iframe.src = iframe.src;
+            var url = iframe && iframe.getAttribute('data-chatbot-src');
+            if (url) iframe.src = url;
         }
 
         function toggleAiAssistantWidth() {
@@ -222,6 +236,8 @@
             var floatBtn = document.getElementById('aiFloatingWidget');
             if (offcanvasEl && floatBtn) {
                 offcanvasEl.addEventListener('show.bs.offcanvas', function () {
+                    // Nạp khung chat đúng lúc người dùng mở, không sớm hơn.
+                    loadDrawerChatbot();
                     floatBtn.style.opacity = '0';
                     floatBtn.style.pointerEvents = 'none';
                 });

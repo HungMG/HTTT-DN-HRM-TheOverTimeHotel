@@ -1,0 +1,142 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.GiaiTrinhCreateViewModel
+@{
+    ViewData["Title"] = "Lập Giải Trình Chấm Công";
+}
+
+<div class="container-fluid px-3 px-md-4 py-3" style="max-width: 880px;">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i>Danh sách
+        </a>
+        <h1 class="h5 mb-0 fw-bold text-dark font-serif hotel-blur-text">Lập giải trình chấm công</h1>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+
+            @if (!Model.CoCaDeChon)
+            {
+                <div class="alert alert-warning rounded-3 border-0 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Không có ca nào đã kết thúc trong thời hạn nhận giải trình. Ca chỉ được giải trình sau khi
+                    hết giờ trực và trong vòng 45 ngày.
+                </div>
+            }
+            else
+            {
+                <form asp-action="Create" method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3 border-0 py-2 px-3 small"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted mb-1" asp-for="MaPhanCa">
+                            Ca trực cần giải trình <span class="text-danger">*</span>
+                        </label>
+                        <select asp-for="MaPhanCa" asp-items="Model.CaOptions" class="form-select rounded-3"
+                                id="shiftSelect">
+                            <option value="0">-- Chọn ca đã kết thúc --</option>
+                        </select>
+                        <span asp-validation-for="MaPhanCa" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row g-3 mb-3" id="currentTimes">
+                        <div class="col-md-6">
+                            <div class="rounded-3 border bg-light p-3">
+                                <div class="small text-muted text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.5px;">
+                                    Giờ vào đang ghi nhận
+                                </div>
+                                <div class="fw-bold text-dark mt-1">@Model.GioVaoHienTai</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="rounded-3 border bg-light p-3">
+                                <div class="small text-muted text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.5px;">
+                                    Giờ ra đang ghi nhận
+                                </div>
+                                <div class="fw-bold text-dark mt-1">@Model.GioRaHienTai</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-muted mb-1" asp-for="GioDeXuatVao">
+                                Giờ vào đề xuất
+                            </label>
+                            <input asp-for="GioDeXuatVao" type="datetime-local" class="form-control rounded-3" />
+                            <span asp-validation-for="GioDeXuatVao" class="text-danger small"></span>
+                            <div class="form-text">Để trống nếu chỉ cần điều chỉnh giờ ra.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-muted mb-1" asp-for="GioDeXuatRa">
+                                Giờ ra đề xuất
+                            </label>
+                            <input asp-for="GioDeXuatRa" type="datetime-local" class="form-control rounded-3" />
+                            <span asp-validation-for="GioDeXuatRa" class="text-danger small"></span>
+                            <div class="form-text">Để trống nếu chỉ cần điều chỉnh giờ vào.</div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold text-muted mb-1" asp-for="LyDo">
+                                Lý do giải trình <span class="text-danger">*</span>
+                            </label>
+                            <textarea asp-for="LyDo" class="form-control rounded-3" rows="4" maxlength="500"
+                                      placeholder="Ví dụ: quên quẹt thẻ ra lúc 22:05 do hết ca đột xuất, có xác nhận của tổ trưởng…"></textarea>
+                            <span asp-validation-for="LyDo" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold text-muted mb-1" asp-for="MinhChung">
+                                Minh chứng (tuỳ chọn)
+                            </label>
+                            <input asp-for="MinhChung" class="form-control rounded-3" maxlength="500"
+                                   placeholder="Mã biên bản giao ca, số điện thoại tổ trưởng, đường dẫn ảnh…" />
+                            <span asp-validation-for="MinhChung" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border rounded-3 mt-4 mb-0 small text-muted">
+                        <i class="bi bi-diagram-3 text-primary me-1"></i>
+                        Hồ sơ đi qua <b>hai cấp</b>: Quản lý bộ phận xác minh có mặt, rồi Phòng HR xác nhận.
+                        Chỉ khi HR xác nhận thì giờ công và phút trễ/về sớm mới được ghi lại — mọi thay đổi
+                        đều lưu vào nhật ký quản trị.
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Huỷ</a>
+                        <button type="submit" class="btn btn-hotel-primary rounded-pill px-4 fw-bold">
+                            <i class="bi bi-send me-1"></i>Gửi giải trình
+                        </button>
+                    </div>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Đổi ca đang chọn thì nạp lại hai ô "giờ đang ghi nhận" tại chỗ, không
+        // tải lại trang — người lập cần thấy mốc cũ trước khi đề xuất mốc mới.
+        (function () {
+            const select = document.getElementById('shiftSelect');
+            if (!select) { return; }
+
+            select.addEventListener('change', async function () {
+                const id = parseInt(select.value, 10);
+                if (!id) { return; }
+
+                const response = await fetch('/GiaiTrinhChamCong/Create?maPhanCa=' + id);
+                if (!response.ok) { return; }
+
+                const html = await response.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const incoming = doc.getElementById('currentTimes');
+                const current = document.getElementById('currentTimes');
+                if (incoming && current) {
+                    current.replaceWith(incoming);
+                }
+            });
+        })();
+    </script>
+}

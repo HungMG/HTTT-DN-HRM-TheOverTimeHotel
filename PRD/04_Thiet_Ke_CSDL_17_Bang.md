@@ -1,6 +1,6 @@
-# PRD 04: Thiết Kế Cơ Sở Dữ Liệu 27 Bảng Chuẩn 3NF (Supabase PostgreSQL)
+# PRD 04: Thiết Kế Cơ Sở Dữ Liệu 30 Bảng Chuẩn 3NF (Supabase PostgreSQL)
 
-> **Lưu ý về tên file:** File này vẫn mang tên `04_Thiet_Ke_CSDL_17_Bang.md` (đã được tham chiếu ở nhiều tài liệu và mã nguồn nên **không đổi tên file** để tránh đứt gãy liên kết), nhưng **nội dung thực tế mô tả đầy đủ 27 bảng CSDL chuẩn hóa 3NF**. Hãy luôn đối chiếu con số trong tiêu đề nội dung của tài liệu.
+> **Lưu ý về tên file:** File này vẫn mang tên `04_Thiet_Ke_CSDL_17_Bang.md` (đã được tham chiếu ở nhiều tài liệu và mã nguồn nên **không đổi tên file** để tránh đứt gãy liên kết), nhưng **nội dung thực tế mô tả đầy đủ 30 bảng CSDL chuẩn hóa 3NF**. Hãy luôn đối chiếu con số trong tiêu đề nội dung của tài liệu.
 
 > **Nguồn đối chiếu & Tiến trình chuẩn hóa mở rộng:**
 > Toàn bộ thiết kế CSDL được kiểm chứng và nâng cấp qua 4 giai đoạn tiến hóa kiến trúc:
@@ -8,10 +8,11 @@
 > 2. **24 Bảng chuẩn 3NF (07/10/2026):** Dump từ CSDL vận hành Supabase Cloud (PostgreSQL 17.6). Phân rã chuẩn 3NF phân hệ tiền lương: tách 3 bảng cấu hình tham số (`cau_hinh_phu_cap`, `cau_hinh_khau_tru`, `cau_hinh_tang_ca`); tách 3 bảng chi tiết khấu trừ lương 3 tầng (`chi_tiet_tru_bao_hiem`, `chi_tiet_tru_thue_tncn`, `chi_tiet_tru_vi_pham_tam_ung`); bổ sung bảng kiểm toán an ninh `nhat_ky_quan_tri`; giữ bảng `cau_hinh_khoan_luong` làm bảng Legacy/Bonus.
 > 3. **25 Bảng (09/10/2026):** Bổ sung bảng thứ 25 `yeu_cau_tai_khoan`, tách riêng bộ phận Công nghệ Thông tin (`ma_phong_ban = 9`) và bổ sung nhóm vai trò thứ 5 (`IT`), thiết lập quy trình kiểm soát cấp tài khoản Mobile App: *HR duyệt HĐLĐ -> IT cấp tài khoản* kèm 4 triggers rào chắn CSDL chống tự cấp và leo quyền.
 > 4. **27 Bảng chính thức (14/10/2026):** Bổ sung 2 bảng `du_an` (Bảng 26) và `phan_cong_du_an` (Bảng 27) phục vụ Phân hệ 9 (Quản lý Dự án & Sự kiện Khách sạn: Tiệc cưới, Hội nghị MICE, Gala Dinner, Đoàn VIP...), hỗ trợ phân công nhân sự và kết chuyển thù lao sự kiện vào bảng lương tháng.
+> 5. **30 Bảng chính thức (20/10/2026):** Bổ sung 3 bảng phục vụ nhóm chức năng 3.0 (Phân ca) và 4.0 (Chấm công) của PRD: `dinh_bien_ca` (Bảng 28 — định biên số người tối thiểu theo ca × chức vụ, phát hiện thiếu người khi xếp ca), `giai_trinh_cham_cong` (Bảng 29 — giải trình sai lệch giờ quẹt thẻ, duyệt 2 cấp Quản lý → HR), `yeu_cau_doi_ca` (Bảng 30 — nhân viên tự nguyện đổi ca trực với đồng nghiệp). Đồng thời mở rộng `cham_cong_trang_thai_check` thêm mã `TRE_VA_SOM` (nhân viên vừa đi trễ vừa về sớm trong cùng một ca).
 
 ---
 
-## 1. Danh Mục Tổng Hợp 27 Bảng CSDL
+## 1. Danh Mục Tổng Hợp 30 Bảng CSDL
 
 Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn hóa **dạng chuẩn 3 (3NF)** trên nền tảng Supabase Cloud (PostgreSQL Engine):
 
@@ -44,6 +45,9 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 | **25** | `nhat_ky_quan_tri` | Nhật ký thao tác quản trị (Audit Log: ai làm gì, lúc nào, giá trị cũ/mới, IP) | `ma_nhat_ky` | `ma_tai_khoan_thuc_hien`, `ma_tai_khoan_bi_tac_dong` |
 | **26** | `du_an` | Danh mục Dự án / Sự kiện Khách sạn (Tiệc cưới, MICE, Gala, Hội nghị, Bảo trì...) | `ma_du_an` | `ma_nguoi_quan_ly` (FK -> `nhan_vien`) |
 | **27** | `phan_cong_du_an` | Phân công nhân sự & Thù lao sự kiện, liên kết kết chuyển lương tháng | `ma_phan_cong` | `ma_du_an`, `ma_nhan_vien`, `ma_chi_tiet` (FK -> `chi_tiet_phieu_luong`) |
+| **28** | `dinh_bien_ca` | Định biên nhân sự tối thiểu cho từng cặp Ca × Chức vụ, làm cơ sở cảnh báo thiếu người khi xếp ca | `ma_dinh_bien` | `ma_ca`, `ma_chuc_vu` |
+| **29** | `giai_trinh_cham_cong` | Giải trình sai lệch giờ vào/ra, duyệt 2 cấp Quản lý xác minh → HR xác nhận | `ma_giai_trinh` | `ma_phan_ca`, `ma_nhan_vien`, `ma_quan_ly_xac_minh`, `ma_hr_xac_nhan` |
+| **30** | `yeu_cau_doi_ca` | Yêu cầu đổi ca trực giữa hai nhân viên, kèm trạng thái duyệt và phản hồi | `ma_yeu_cau` | `ma_phan_ca_gui`, `ma_phan_ca_nhan`, `ma_nhan_vien_gui`, `ma_nhan_vien_nhan`, `ma_nguoi_duyet` |
 
 ---
 
@@ -317,15 +321,62 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ngay_danh_gia` (TIMESTAMPTZ, NULL): Thời điểm quản lý nghiệm thu và chấm điểm đánh giá.
 - *Ràng buộc:* `UNIQUE (ma_du_an, ma_nhan_vien)` — Mỗi nhân viên chỉ được phân công một vị trí chính trong một dự án sự kiện để đảm bảo tập trung trách nhiệm và tránh phân bổ trùng lặp thù lao.
 
+### Bảng 28: `dinh_bien_ca` (Định biên nhân sự theo ca & chức vụ)
+- `ma_dinh_bien` (SERIAL, PK): Mã định danh duy nhất của dòng định biên.
+- `ma_ca` (INT, FK -> ca_lam_viec.ma_ca, NOT NULL, ON DELETE CASCADE): Ca làm việc được đặt định biên.
+- `ma_chuc_vu` (INT, FK -> chuc_vu.ma_chuc_vu, NOT NULL, ON DELETE CASCADE): Chức vụ / vị trí công tác cần đếm số người.
+- `so_nguoi_toi_thieu` (INT, NOT NULL, DEFAULT 1, CHECK >= 1): Số nhân sự tối thiểu phải có mặt trong ca để vận hành không bị gián đoạn (VD: ca Đêm cần 1 Lễ tân + 1 Bảo vệ + 1 Kỹ thuật trực).
+- *Ràng buộc:* `UNIQUE (ma_ca, ma_chuc_vu)` — Mỗi cặp Ca × Chức vụ chỉ có một dòng định biên, tránh khai trùng gây cộng dồn sai số người tối thiểu.
+- *Nghiệp vụ:* Màn **Phân ca** (PRD 3.5) đối chiếu số nhân sự đã xếp của mỗi ca với bảng này để gắn nhãn cảnh báo **thiếu người** ngay trên lịch, thay vì để Quản lý tự đếm thủ công.
+
+### Bảng 29: `giai_trinh_cham_cong` (Giải trình sai lệch giờ chấm công)
+- `ma_giai_trinh` (SERIAL, PK): Mã định danh hồ sơ giải trình.
+- `ma_phan_ca` (INT, FK -> phan_ca.ma_phan_ca, NOT NULL, ON DELETE CASCADE): Lượt ca bị giải trình; xoá ca thì hồ sơ giải trình đi theo.
+- `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE CASCADE): Nhân viên đứng tên giải trình.
+- `gio_de_xuat_vao` (TIMESTAMPTZ, NULL): Giờ vào thực tế đề nghị ghi nhận; để trống nếu chỉ điều chỉnh giờ ra.
+- `gio_de_xuat_ra` (TIMESTAMPTZ, NULL): Giờ ra thực tế đề nghị ghi nhận; để trống nếu chỉ điều chỉnh giờ vào.
+- `ly_do` (VARCHAR(500), NOT NULL): Nội dung giải trình (quên quẹt thẻ, hỏng đầu đọc, kẹt khách...). Trần 500 ký tự khớp đúng cột CSDL — vượt hạn mức sẽ bị PostgreSQL từ chối với mã lỗi `22001`.
+- `minh_chung` (VARCHAR(500), NULL): Mã biên bản giao ca, số điện thoại tổ trưởng, đường dẫn ảnh chụp… làm căn cứ xác minh.
+- `trang_thai` (VARCHAR(20), NOT NULL, DEFAULT 'CHO_QUAN_LY', CHECK in ('CHO_QUAN_LY', 'CHO_HR', 'DA_DUYET', 'TU_CHOI')): Tiến trình duyệt 2 cấp — Quản lý bộ phận xác minh, rồi HR xác nhận; chỉ khi `DA_DUYET` giờ công mới được ghi lại.
+- `ma_quan_ly_xac_minh` (INT, FK -> nhan_vien.ma_nhan_vien, NULL, ON DELETE SET NULL): Quản lý cấp 1 đã xác minh có mặt.
+- `ngay_quan_ly_xac_minh` (TIMESTAMPTZ, NULL): Thời điểm Quản lý xác minh.
+- `y_kien_quan_ly` (VARCHAR(500), NULL): Ý kiến / lý do từ chối của cấp Quản lý.
+- `ma_hr_xac_nhan` (INT, FK -> nhan_vien.ma_nhan_vien, NULL, ON DELETE SET NULL): Cán bộ HR đã xác nhận cấp 2.
+- `ngay_hr_xac_nhan` (TIMESTAMPTZ, NULL): Thời điểm HR xác nhận.
+- `y_kien_hr` (VARCHAR(500), NULL): Ý kiến / lý do từ chối của cấp HR.
+- `ngay_gui` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm nhân viên gửi hồ sơ.
+- *Ràng buộc:*
+  - `chk_giai_trinh_can_gio` — `CHECK (gio_de_xuat_vao IS NOT NULL OR gio_de_xuat_ra IS NOT NULL)`: không chấp nhận hồ sơ không đề xuất mốc giờ nào.
+  - `chk_giai_trinh_tu_choi_can_y_kien` — từ chối bắt buộc kèm ý kiến của cấp ra quyết định, không để nhân viên bị từ chối mà không biết lý do.
+  - `UNIQUE INDEX uq_giai_trinh_dang_mo ON giai_trinh_cham_cong(ma_phan_ca) WHERE trang_thai IN ('CHO_QUAN_LY','CHO_HR')` — mỗi lượt ca chỉ mở **một** hồ sơ đang chờ duyệt tại một thời điểm, chặn gửi trùng lặp.
+
+### Bảng 30: `yeu_cau_doi_ca` (Yêu cầu đổi ca trực giữa nhân viên)
+- `ma_yeu_cau` (SERIAL, PK): Mã định danh yêu cầu đổi ca.
+- `ma_phan_ca_gui` (INT, FK -> phan_ca.ma_phan_ca, NOT NULL, ON DELETE CASCADE): Lượt ca nhân viên gửi nhường lại.
+- `ma_phan_ca_nhan` (INT, FK -> phan_ca.ma_phan_ca, NOT NULL, ON DELETE CASCADE): Lượt ca nhân viên nhận làm thay.
+- `ma_nhan_vien_gui` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Nhân viên gửi yêu cầu; chặn xoá hồ sơ nhân viên còn yêu cầu đang lưu vết.
+- `ma_nhan_vien_nhan` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Nhân viên nhận ca.
+- `ly_do` (VARCHAR(500), NOT NULL): Lý do đổi ca.
+- `trang_thai` (VARCHAR(20), NOT NULL, DEFAULT 'CHO_DUYET', CHECK in ('CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'DA_HUY')): Vòng đời yêu cầu; `DA_HUY` dành cho trường hợp người gửi tự rút trước khi có quyết định.
+- `ma_nguoi_duyet` (INT, FK -> nhan_vien.ma_nhan_vien, NULL, ON DELETE SET NULL): Quản lý / HR đã xử lý yêu cầu.
+- `ngay_gui` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm gửi yêu cầu.
+- `ngay_duyet` (TIMESTAMPTZ, NULL): Thời điểm ra quyết định duyệt / từ chối.
+- `phan_hoi_duyet` (VARCHAR(500), NULL): Phản hồi của người duyệt.
+- *Ràng buộc:*
+  - `chk_doi_ca_khac_ca` — `CHECK (ma_phan_ca_gui <> ma_phan_ca_nhan)`: không cho "đổi" một ca với chính nó.
+  - `chk_doi_ca_khac_nguoi` — `CHECK (ma_nhan_vien_gui <> ma_nhan_vien_nhan)`: không cho tự đổi ca với chính mình.
+  - `chk_doi_ca_tu_choi_can_ly_do` — từ chối bắt buộc kèm phản hồi, đảm bảo nhân viên luôn biết lý do không được đổi.
+
 ---
 
 ## 3. Lớp Bảo Mật CSDL (Row Level Security & Quyền Hạn)
 
-### 3.1. Thiết lập RLS toàn diện trên 27 bảng
-- **Bật RLS: 27/27 bảng** — áp dụng `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` cho toàn bộ các bảng trong schema `public`.
+### 3.1. Thiết lập RLS toàn diện trên 30 bảng
+- **Bật RLS: 30/30 bảng** — áp dụng `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` cho toàn bộ các bảng trong schema `public` (đã kiểm chứng trực tiếp trên Supabase Cloud: `pg_class` trả về 30/30 bảng có `relrowsecurity = true`).
 - **Chính sách phân quyền RBAC:**
-  - Nhóm danh mục tĩnh (`phong_ban`, `chuc_vu`, `ca_lam_viec`, `loai_don`, `vai_tro`, `quyen`): Mở quyền đọc (`SELECT`) cho mọi user đã xác thực (`auth.uid() IS NOT NULL`), khóa quyền ghi chỉ dành cho `service_role`.
+  - Nhóm danh mục tĩnh (`phong_ban`, `chuc_vu`, `ca_lam_viec`, `dinh_bien_ca`, `loai_don`, `vai_tro`, `quyen`): Mở quyền đọc (`SELECT`) cho mọi user đã xác thực (`auth.uid() IS NOT NULL`), khóa quyền ghi chỉ dành cho `service_role`.
   - Nhóm dữ liệu cá nhân (`nhan_vien`, `hop_dong`, `cham_cong`, `don_tu`, `phieu_luong`): Phân quyền đọc dựa trên hàm `nhan_vien_hien_tai()`: nhân viên chỉ xem dữ liệu của chính mình; Quản lý/HR/Admin xem theo phạm vi phân cấp.
+  - Nhóm nghiệp vụ ca & chấm công (`phan_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`): Nhân viên chỉ đọc/ghi hồ sơ gắn với `ma_nhan_vien` của chính mình; Quản lý bộ phận đọc theo phòng ban; cấp HR và Admin đọc toàn bộ để xác nhận cấp 2.
   - Nhóm dự án & sự kiện (`du_an`, `phan_cong_du_an`): Quản lý sự kiện và Ban Giám đốc có quyền lập kế hoạch và điều phối; nhân viên được phân công có quyền xem thông tin sự kiện và thù lao cá nhân.
   - Bảng nhạy cảm (`tai_khoan`, `yeu_cau_tai_khoan`, `nhat_ky_quan_tri`): Không cấp quyền truy cập trực tiếp cho client `authenticated`; mọi thao tác đều thực thi qua backend Web Admin bằng `service_role`.
 
@@ -350,9 +401,9 @@ Hàm `custom_access_token_hook(event jsonb)` được GoTrue Auth gọi mỗi kh
 
 ---
 
-## 4. Hệ Thống 4 Triggers Rào Chắn Bảo Mật & Toàn Vẹn CSDL
+## 4. Hệ Thống 6 Triggers Rào Chắn Bảo Mật & Toàn Vẹn CSDL
 
-Nhằm bảo đảm an toàn dữ liệu ở cấp độ phần cứng CSDL (Database Engine Level), 4 triggers đặc thù được kích hoạt tự động để ngăn chặn mọi hành vi vượt quyền, thao tác nhầm hoặc tấn công SQL bypass qua Dashboard:
+Nhằm bảo đảm an toàn dữ liệu ở cấp độ phần cứng CSDL (Database Engine Level), **6 triggers** được kích hoạt tự động để ngăn chặn mọi hành vi vượt quyền, thao tác nhầm hoặc tấn công SQL bypass qua Dashboard — 4 trigger bảo vệ quy trình cấp tài khoản (mục 4.1–4.4) và 2 trigger ràng buộc hợp đồng lao động khi phân ca / chấm công (mục 4.5–4.6):
 
 ```text
 [Màn hình Web / Script SQL]
@@ -397,9 +448,25 @@ Nhằm bảo đảm an toàn dữ liệu ở cấp độ phần cứng CSDL (Dat
   - Trigger truy vấn ngược từ `tai_khoan` người xử lý -> `vai_tro_quyen` -> `quyen` để xác minh người xử lý bắt buộc phải sở hữu mã quyền `CAP_TAI_KHOAN_MOBILE` (vai trò Admin hoặc IT).
   - Đây là lớp phòng thủ chuyên sâu (Defense in Depth) ở tầng CSDL: kể cả khi kẻ tấn công vượt qua bộ lọc `[Authorize]` ở tầng ứng dụng hoặc thao tác trực tiếp trên SQL console, CSDL vẫn ném ngoại lệ `insufficient_privilege` từ chối thao tác.
 
+### 4.5. Trigger 5: `trg_chan_phan_ca_khong_hop_dong`
+- **Bảng áp dụng:** `public.phan_ca` (BEFORE INSERT OR UPDATE).
+- **Hàm thực thi:** `public.chan_phan_ca_khong_hop_dong()` — `SECURITY DEFINER` vì `anon` không có quyền đọc `hop_dong`.
+- **Cơ chế & Mục tiêu an ninh:**
+  - Chặn xếp ca cho nhân viên không ở trạng thái `DANG_LAM`.
+  - Bắt buộc ngày làm việc phải nằm trong khoảng hiệu lực của một hợp đồng lao động (`nhan_vien_co_hop_dong_hieu_luc`), tránh phát sinh công cho người đã hết hạn hợp đồng.
+  - Bỏ qua khi dòng đã tồn tại trên INSERT (no-op của `ON CONFLICT DO NOTHING` lúc seed dữ liệu).
+
+### 4.6. Trigger 6: `trg_chan_cham_cong_khong_hop_dong`
+- **Bảng áp dụng:** `public.cham_cong` (BEFORE INSERT OR UPDATE).
+- **Hàm thực thi:** `public.chan_cham_cong_khong_hop_dong()` — `SECURITY DEFINER`.
+- **Cơ chế & Mục tiêu an ninh:**
+  - Với bản ghi đã gắn `ma_phan_ca`, tra ngược ra nhân viên và ngày làm việc rồi kiểm tra hợp đồng lao động còn hiệu lực.
+  - Ném lỗi `integrity_constraint_violation` kèm thông điệp nêu rõ mã ca, mã nhân viên và ngày sai, giúp người vận hành sửa đúng gốc thay vì dò log.
+  - Đây là lớp chặn cuối cùng bảo vệ bảng lương khỏi việc ghi công cho người không còn hợp đồng.
+
 ---
 
-## 5. Mạng Lưới Quan Hệ Liên Kết & Sơ Đồ Thực Thể (ERD 27 Bảng 3NF)
+## 5. Mạng Lưới Quan Hệ Liên Kết & Sơ Đồ Thực Thể (ERD 30 Bảng 3NF)
 
 ### 5.1. Sơ đồ thực thể quan hệ hoàn chỉnh (Mermaid ERD)
 
@@ -430,6 +497,19 @@ erDiagram
     ca_lam_viec ||--o{ phan_ca : "loai ca truc duoc phan"
     nhan_vien ||--o{ phan_ca : "nhan vien duoc xep ca"
     phan_ca ||--o| cham_cong : "quet the vao ra 1-1"
+
+    %% DINH BIEN, GIAI TRINH & DOI CA (PRD 3.4 / 3.5 / 4.5)
+    ca_lam_viec ||--o{ dinh_bien_ca : "dinh muc nguoi toi thieu"
+    chuc_vu ||--o{ dinh_bien_ca : "theo tung chuc vu"
+    phan_ca ||--o{ giai_trinh_cham_cong : "ca bi giai trinh"
+    nhan_vien ||--o{ giai_trinh_cham_cong : "nguoi gui giai trinh"
+    nhan_vien ||--o{ giai_trinh_cham_cong : "quan ly xac minh cap 1"
+    nhan_vien ||--o{ giai_trinh_cham_cong : "HR xac nhan cap 2"
+    phan_ca ||--o{ yeu_cau_doi_ca : "ca nhuong di"
+    phan_ca ||--o{ yeu_cau_doi_ca : "ca nhan lam thay"
+    nhan_vien ||--o{ yeu_cau_doi_ca : "nguoi gui yeu cau"
+    nhan_vien ||--o{ yeu_cau_doi_ca : "nguoi nhan ca"
+    nhan_vien ||--o{ yeu_cau_doi_ca : "nguoi duyet doi ca"
 
     %% PHAN HE 4: DON TU TRUC TUYEN
     loai_don ||--o{ don_tu : "phan loai don"
@@ -496,3 +576,14 @@ erDiagram
 | `phan_cong_du_an` | `ma_du_an` | `du_an(ma_du_an)` | N - 1 | CASCADE | Dự án sự kiện tiếp nhận nhân sự. Xóa sự kiện xóa phân công. |
 | `phan_cong_du_an` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Nhân sự khách sạn được điều động phục vụ sự kiện. |
 | `phan_cong_du_an` | `ma_chi_tiet` | `chi_tiet_phieu_luong(ma_chi_tiet)` | 1 - 1 | SET NULL | Kết chuyển thù lao sự kiện vào dòng phụ cấp trên phiếu lương tháng. |
+| `dinh_bien_ca` | `ma_ca` | `ca_lam_viec(ma_ca)` | N - 1 | CASCADE | Định biên thuộc một ca mẫu. Xóa ca xóa luôn định biên của ca đó. |
+| `dinh_bien_ca` | `ma_chuc_vu` | `chuc_vu(ma_chuc_vu)` | N - 1 | CASCADE | Định biên đếm số người theo chức vụ chuyên môn. |
+| `giai_trinh_cham_cong` | `ma_phan_ca` | `phan_ca(ma_phan_ca)` | N - 1 | CASCADE | Giải trình gắn với đúng lượt ca bị sai lệch giờ. |
+| `giai_trinh_cham_cong` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Nhân viên đứng tên giải trình. |
+| `giai_trinh_cham_cong` | `ma_quan_ly_xac_minh` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Quản lý cấp 1 xác minh. Xóa hồ sơ quản lý không làm mất giải trình. |
+| `giai_trinh_cham_cong` | `ma_hr_xac_nhan` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Cán bộ HR xác nhận cấp 2. |
+| `yeu_cau_doi_ca` | `ma_phan_ca_gui` | `phan_ca(ma_phan_ca)` | N - 1 | CASCADE | Lượt ca người gửi nhường lại. |
+| `yeu_cau_doi_ca` | `ma_phan_ca_nhan` | `phan_ca(ma_phan_ca)` | N - 1 | CASCADE | Lượt ca người nhận làm thay. |
+| `yeu_cau_doi_ca` | `ma_nhan_vien_gui` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Người gửi yêu cầu; còn yêu cầu lưu vết thì không xóa được hồ sơ nhân viên. |
+| `yeu_cau_doi_ca` | `ma_nhan_vien_nhan` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Người nhận ca; cùng lý do bảo toàn lịch sử đổi ca. |
+| `yeu_cau_doi_ca` | `ma_nguoi_duyet` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Quản lý / HR ra quyết định duyệt hoặc từ chối. |

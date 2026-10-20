@@ -40,17 +40,27 @@ public class AttendanceService : IAttendanceService
 {
     private readonly SupabaseRestClient _rest;
     private readonly IAuthService _authService;
+    private readonly IGeoLocationService _geoLocationService;
     private readonly ILogger<AttendanceService> _logger;
+
+    /// <summary>
+    /// Cấu hình phạm vi quẹt thẻ, nạp một lần rồi dùng lại. Toạ độ khách sạn
+    /// không đổi trong suốt phiên chạy nên đọc file lại mỗi lần quẹt thẻ là
+    /// thừa — và trên Android, mở stream từ APK khá chậm.
+    /// </summary>
+    private GeofenceConfig? _geofenceConfig;
 
     public bool IsDemoMode => false;
 
     public AttendanceService(
         SupabaseRestClient rest,
         IAuthService authService,
+        IGeoLocationService geoLocationService,
         ILogger<AttendanceService> logger)
     {
         _rest = rest ?? throw new ArgumentNullException(nameof(rest));
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _geoLocationService = geoLocationService ?? throw new ArgumentNullException(nameof(geoLocationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -127,10 +137,19 @@ public class AttendanceService : IAttendanceService
             return Failure(contractCheck.ErrorCode ?? "CONTRACT_INVALID", contractCheck.ErrorMessage ?? ContractAttendancePolicy.MSG_NO_CONTRACT);
         }
 
+        // PRD 4.1 — xác thực vị trí TRƯỚC khi ghi bất cứ thứ gì. Chặn ở đây
+        // chứ không chặn ở ViewModel để không client nào (kể cả bản build cũ
+        // chưa cập nhật) đi vòng qua được.
+        var geofence = await ValidateLocationAsync(toaDo);
+        if (!geofence.IsAllowed)
+        {
+            return Failure("OUT_OF_RANGE", geofence.ThongDiep ?? "Bạn đang ở ngoài phạm vi khách sạn.");
+        }
+
         // Zero Trust: chỉ nhận phương thức nằm trong danh sách cho phép, không
-        // lấy bừa giá trị client gửi lên. Thiếu toạ độ nghĩa là định vị thất bại
-        // nên phương thức là WIFI — cùng quy tắc với code cũ.
-        var phuongThuc = AttendanceCalculator.NormalizeMethod(toaDo is null ? "WIFI" : "GPS")
+        // lấy bừa giá trị client gửi lên. Phương thức lấy từ kết quả xác thực
+        // (GPS khi toạ độ hợp lệ và trong bán kính, WIFI khi khớp SSID nội bộ).
+        var phuongThuc = AttendanceCalculator.NormalizeMethod(geofence.Method)
             ?? throw new InvalidOperationException("Phương thức quẹt thẻ không hợp lệ.");
 
         var phanCa = await LoadOwnShiftAsync(maPhanCa, maNhanVien);
@@ -145,6 +164,56 @@ public class AttendanceService : IAttendanceService
         return isCheckIn
             ? await PunchInAsync(phanCa.Value, chamCong, maChamCong, phuongThuc, toaDo, thietBi)
             : await PunchOutAsync(phanCa.Value, chamCong, maChamCong);
+    }
+
+    /// <summary>
+    /// Xác thực hai lớp vị trí quẹt thẻ theo PRD 4.1: GPS trong bán kính
+    /// <b>hoặc</b> đang nối đúng Wi-Fi nội bộ.
+    ///
+    /// <para>
+    /// Toạ độ do thiết bị gửi lên KHÔNG được tin tuyệt đối — nhưng đây là thứ
+    /// duy nhất app có. Hệ quả: kẻ gian sửa được app vẫn qua được lớp GPS.
+    /// Lớp phòng thủ thật là RLS ở CSDL (chỉ quẹt được cho chính mình) cộng với
+    /// <c>toa_do_checkin</c> lưu lại làm bằng chứng để HR đối chiếu sau.
+    /// </para>
+    /// </summary>
+    private async Task<GeofenceCheckResult> ValidateLocationAsync(string? toaDo)
+    {
+        _geofenceConfig ??= await GeofenceConfig.LoadAsync(_logger);
+
+        // Chỉ tra SSID khi GPS không đủ kết luận. Đọc SSID trên Android cần quyền
+        // vị trí và mất vài chục mili-giây; khi toạ độ đã nằm trong bán kính thì
+        // lớp thứ hai không thể thay đổi kết quả.
+        if (GeofencePolicy.TryParseCoordinate(toaDo, out var lat, out var lng))
+        {
+            var khoangCach = GeofencePolicy.CalculateDistanceMeters(
+                lat, lng, _geofenceConfig.HotelLatitude, _geofenceConfig.HotelLongitude);
+
+            if (khoangCach <= _geofenceConfig.RadiusMeters)
+            {
+                return new GeofenceCheckResult(true, "GPS", khoangCach, null);
+            }
+        }
+
+        var ssid = await _geoLocationService.GetCurrentWifiSsidAsync();
+
+        var result = GeofencePolicy.Evaluate(
+            toaDo,
+            ssid,
+            _geofenceConfig.HotelLatitude,
+            _geofenceConfig.HotelLongitude,
+            _geofenceConfig.RadiusMeters,
+            _geofenceConfig.WifiSsid);
+
+        if (!result.IsAllowed)
+        {
+            _logger.LogWarning(
+                "Chặn quẹt thẻ ngoài phạm vi. Khoảng cách: {KhoangCach} m, SSID: {Ssid}.",
+                result.KhoangCachMet?.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) ?? "không có",
+                ssid ?? "không có");
+        }
+
+        return result;
     }
 
     private async Task<(bool IsAllowed, string? ErrorCode, string? ErrorMessage)> ValidateContractAsync(int maNhanVien)

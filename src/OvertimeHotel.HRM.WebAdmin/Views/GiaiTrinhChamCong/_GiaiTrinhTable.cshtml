@@ -1,0 +1,161 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.GiaiTrinhIndexViewModel
+
+@if (Model.Items.Count == 0)
+{
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-journal-text d-block mb-3" style="font-size: 2.4rem; opacity: 0.35;"></i>
+        <div class="fw-semibold">Chưa có giải trình nào khớp bộ lọc</div>
+        <div class="small mt-1">Nhân viên gửi giải trình từ ứng dụng di động khi quên quẹt thẻ.</div>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 60px;">Mã</th>
+                    <th>Nhân viên / Ca trực</th>
+                    <th>Giờ hiện tại → Đề xuất</th>
+                    <th style="min-width: 190px;">Lý do</th>
+                    <th style="width: 250px;">Tiến trình duyệt</th>
+                    <th style="width: 150px;" class="text-end">Xử lý</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr data-giai-trinh-row="@item.MaGiaiTrinh">
+                        <td class="font-monospace fw-bold text-primary">#@item.MaGiaiTrinh</td>
+                        <td>
+                            <div class="fw-semibold text-dark">@item.TenNhanVien</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">
+                                <span class="font-monospace">@item.MaNhanVienFormat</span> · @item.TenPhongBan
+                            </div>
+                            <div class="text-muted mt-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-clock-history me-1"></i>@item.TenCa · @item.NgayLamViec.ToString("dd/MM/yyyy") · @item.GioCa
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-size: 0.78rem;">
+                                <span class="text-muted">Vào:</span>
+                                <span class="text-dark">@(item.GioVaoHienTai ?? "chưa quẹt")</span>
+                                <i class="bi bi-arrow-right mx-1 text-warning"></i>
+                                <span class="fw-semibold text-primary">@(item.GioDeXuatVao.HasValue ? item.GioDeXuatVaoDisplay : "—")</span>
+                            </div>
+                            <div style="font-size: 0.78rem;">
+                                <span class="text-muted">Ra:</span>
+                                <span class="text-dark">@(item.GioRaHienTai ?? "chưa quẹt")</span>
+                                <i class="bi bi-arrow-right mx-1 text-warning"></i>
+                                <span class="fw-semibold text-primary">@(item.GioDeXuatRa.HasValue ? item.GioDeXuatRaDisplay : "—")</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="text-dark">@item.LyDo</div>
+                            @if (!string.IsNullOrWhiteSpace(item.MinhChung))
+                            {
+                                <div class="text-muted mt-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-paperclip me-1"></i>@item.MinhChung
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge @item.TrangThaiCss rounded-pill px-2.5 py-1">@item.TrangThaiNhan</span>
+
+                            @if (!string.IsNullOrWhiteSpace(item.TenQuanLyXacMinh))
+                            {
+                                <div class="text-muted mt-1" style="font-size: 0.73rem;">
+                                    <i class="bi bi-person-check text-success me-1"></i>
+                                    @item.TenQuanLyXacMinh
+                                    @if (item.NgayQuanLyXacMinh.HasValue)
+                                    {
+                                        <text>· @item.NgayQuanLyXacMinh.Value.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM HH:mm")</text>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(item.YKienQuanLy))
+                                {
+                                    <div class="text-muted fst-italic" style="font-size: 0.73rem;">“@item.YKienQuanLy”</div>
+                                }
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(item.TenHrXacNhan))
+                            {
+                                <div class="text-muted mt-1" style="font-size: 0.73rem;">
+                                    <i class="bi bi-shield-check text-primary me-1"></i>
+                                    @item.TenHrXacNhan
+                                    @if (item.NgayHrXacNhan.HasValue)
+                                    {
+                                        <text>· @item.NgayHrXacNhan.Value.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM HH:mm")</text>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(item.YKienHr))
+                                {
+                                    <div class="text-muted fst-italic" style="font-size: 0.73rem;">“@item.YKienHr”</div>
+                                }
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (item.ChoQuanLy && Model.CoQuyenQuanLy)
+                            {
+                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold"
+                                        data-giai-trinh-verify="@item.MaGiaiTrinh"
+                                        data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                    <i class="bi bi-check2-circle me-1"></i>Xác minh
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold mt-1 w-100"
+                                        data-giai-trinh-reject="@item.MaGiaiTrinh"
+                                        data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                    <i class="bi bi-x-lg me-1"></i>Từ chối
+                                </button>
+                            }
+                            else if (item.ChoHr && Model.CoQuyenHr)
+                            {
+                                <button type="button" class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold"
+                                        data-giai-trinh-confirm="@item.MaGiaiTrinh"
+                                        data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                    <i class="bi bi-check2-circle me-1"></i>Xác nhận
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold mt-1 w-100"
+                                        data-giai-trinh-reject="@item.MaGiaiTrinh"
+                                        data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                    <i class="bi bi-x-lg me-1"></i>Từ chối
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-top">
+        <div class="text-muted" style="font-size: 0.78rem;">
+            Hiển thị @(((Model.PageNumber - 1) * Model.PageSize) + 1)–@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredItems))
+            trên @Model.TotalFilteredItems giải trình
+        </div>
+        <nav aria-label="Phân trang giải trình">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                    <a class="page-link" href="#" data-giai-trinh-page="@(Model.PageNumber - 1)" aria-label="Trang trước">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                @for (var p = 1; p <= Model.TotalPages; p++)
+                {
+                    <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                        <a class="page-link" href="#" data-giai-trinh-page="@p">@p</a>
+                    </li>
+                }
+                <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" href="#" data-giai-trinh-page="@(Model.PageNumber + 1)" aria-label="Trang sau">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+}

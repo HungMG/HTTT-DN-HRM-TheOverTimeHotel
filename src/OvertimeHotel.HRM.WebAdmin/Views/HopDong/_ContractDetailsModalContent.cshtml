@@ -110,7 +110,7 @@
                 </div>
                 <div class="contract-prop-row">
                     <span class="text-muted small">Loại hợp đồng:</span>
-                    <span class="badge bg-light text-dark border">@contract.LoaiHopDong</span>
+                    <span class="badge bg-light text-dark border">@ContractTypes.ToDisplayName(contract.LoaiHopDong)</span>
                 </div>
                 <div class="contract-prop-row">
                     <span class="text-muted small">Hình thức hợp đồng:</span>
@@ -232,13 +232,13 @@
                             @if (Model.PreviousContract != null)
                             {
                                 <span class="badge bg-light text-secondary border px-2 py-1">
-                                    <i class="bi bi-arrow-left me-1"></i>HĐ trước đó: @Model.PreviousContract.SoHopDong (@Model.PreviousContract.LoaiHopDong)
+                                    <i class="bi bi-arrow-left me-1"></i>HĐ trước đó: @Model.PreviousContract.SoHopDong (@ContractTypes.ToDisplayName(Model.PreviousContract.LoaiHopDong))
                                 </span>
                             }
                             @if (Model.NextContract != null)
                             {
                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                                    <i class="bi bi-arrow-right me-1"></i>Đã gia hạn tiếp theo: @Model.NextContract.SoHopDong (@Model.NextContract.LoaiHopDong)
+                                    <i class="bi bi-arrow-right me-1"></i>Đã gia hạn tiếp theo: @Model.NextContract.SoHopDong (@ContractTypes.ToDisplayName(Model.NextContract.LoaiHopDong))
                                 </span>
                             }
                         </div>

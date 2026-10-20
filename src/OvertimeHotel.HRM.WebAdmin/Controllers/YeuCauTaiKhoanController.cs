@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
@@ -578,7 +579,10 @@ public class YeuCauTaiKhoanController : Controller
             })
             .ToListAsync();
 
-        model.ActiveContracts = await _context.HopDongs
+        // Nạp về bộ nhớ rồi mới ghép nhãn: ContractTypes.ToDisplayName không dịch
+        // được sang SQL. Nếu chiếu thẳng cột vào Label như trước, người dùng đọc
+        // thấy mã "XAC_DINH_THOI_HAN_1_NAM" thay vì tên tiếng Việt.
+        var hopDongHieuLuc = await _context.HopDongs
             .AsNoTracking()
             .Where(contract =>
                 contract.TrangThai == "HIEU_LUC" &&
@@ -586,18 +590,27 @@ public class YeuCauTaiKhoanController : Controller
                 (contract.NgayKetThuc == null || contract.NgayKetThuc.Value >= today))
             .OrderBy(contract => contract.NgayKetThuc ?? DateOnly.MaxValue)
             .ThenBy(contract => contract.SoHopDong)
-            .Select(contract => new ActiveContractOptionViewModel
+            .Select(contract => new
             {
-                ContractId = contract.MaHopDong,
-                EmployeeId = contract.MaNhanVien,
-                ContractNo = contract.SoHopDong,
-                Label = contract.SoHopDong + " · " +
-                        (contract.LoaiHopDong ?? string.Empty) + " · " +
-                        (contract.NgayKetThuc == null
-                            ? "không xác định thời hạn"
-                            : "đến " + contract.NgayKetThuc.Value.ToString("dd/MM/yyyy"))
+                contract.MaHopDong,
+                contract.MaNhanVien,
+                contract.SoHopDong,
+                contract.LoaiHopDong,
+                contract.NgayKetThuc
             })
             .ToListAsync();
+
+        model.ActiveContracts = hopDongHieuLuc.Select(contract => new ActiveContractOptionViewModel
+        {
+            ContractId = contract.MaHopDong,
+            EmployeeId = contract.MaNhanVien,
+            ContractNo = contract.SoHopDong,
+            Label = contract.SoHopDong + " · " +
+                    ContractTypes.ToDisplayName(contract.LoaiHopDong) + " · " +
+                    (contract.NgayKetThuc == null
+                        ? "không xác định thời hạn"
+                        : "đến " + contract.NgayKetThuc.Value.ToString("dd/MM/yyyy"))
+        }).ToList();
     }
 
     /// <summary>
@@ -659,7 +672,10 @@ public class YeuCauTaiKhoanController : Controller
         }
 
         // 3. Chỉ hợp đồng HIỆU LỰC, ĐÃ BẮT ĐẦU và CHƯA HẾT HẠN (chấp nhận hết hạn hôm nay hoặc không thời hạn)
-        model.ActiveContracts = await _context.HopDongs
+        // Nạp về bộ nhớ rồi mới ghép nhãn: ContractTypes.ToDisplayName không dịch
+        // được sang SQL. Nếu chiếu thẳng cột vào Label như trước, người dùng đọc
+        // thấy mã "XAC_DINH_THOI_HAN_1_NAM" thay vì tên tiếng Việt.
+        var hopDongHieuLuc = await _context.HopDongs
             .AsNoTracking()
             .Where(contract =>
                 contract.TrangThai == "HIEU_LUC" &&
@@ -667,18 +683,27 @@ public class YeuCauTaiKhoanController : Controller
                 (contract.NgayKetThuc == null || contract.NgayKetThuc.Value >= today))
             .OrderBy(contract => contract.NgayKetThuc ?? DateOnly.MaxValue)
             .ThenBy(contract => contract.SoHopDong)
-            .Select(contract => new ActiveContractOptionViewModel
+            .Select(contract => new
             {
-                ContractId = contract.MaHopDong,
-                EmployeeId = contract.MaNhanVien,
-                ContractNo = contract.SoHopDong,
-                Label = contract.SoHopDong + " · " +
-                        (contract.LoaiHopDong ?? string.Empty) + " · " +
-                        (contract.NgayKetThuc == null
-                            ? "không xác định thời hạn"
-                            : "đến " + contract.NgayKetThuc.Value.ToString("dd/MM/yyyy"))
+                contract.MaHopDong,
+                contract.MaNhanVien,
+                contract.SoHopDong,
+                contract.LoaiHopDong,
+                contract.NgayKetThuc
             })
             .ToListAsync();
+
+        model.ActiveContracts = hopDongHieuLuc.Select(contract => new ActiveContractOptionViewModel
+        {
+            ContractId = contract.MaHopDong,
+            EmployeeId = contract.MaNhanVien,
+            ContractNo = contract.SoHopDong,
+            Label = contract.SoHopDong + " · " +
+                    ContractTypes.ToDisplayName(contract.LoaiHopDong) + " · " +
+                    (contract.NgayKetThuc == null
+                        ? "không xác định thời hạn"
+                        : "đến " + contract.NgayKetThuc.Value.ToString("dd/MM/yyyy"))
+        }).ToList();
     }
 
     // =====================================================================

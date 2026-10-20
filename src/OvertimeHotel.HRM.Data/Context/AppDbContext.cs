@@ -38,6 +38,12 @@ public class AppDbContext : DbContext
     public DbSet<DuAn> DuAns => Set<DuAn>();
     public DbSet<PhanCongDuAn> PhanCongDuAns => Set<PhanCongDuAn>();
 
+    // Bổ sung theo PRD 3.4 (đổi ca), 3.5 (định biên tối thiểu), 4.5 (giải trình chấm công)
+    public DbSet<YeuCauDoiCa> YeuCauDoiCas => Set<YeuCauDoiCa>();
+    public DbSet<DinhBienCa> DinhBienCas => Set<DinhBienCa>();
+    public DbSet<DinhBienNgay> DinhBienNgays => Set<DinhBienNgay>();
+    public DbSet<GiaiTrinhChamCong> GiaiTrinhChamCongs => Set<GiaiTrinhChamCong>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -621,6 +627,157 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.TaiKhoanDuocCap)
                 .WithMany(t => t.YeuCauTaiKhoanDuocTao)
                 .HasForeignKey(e => e.MaTaiKhoan)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // 26. YEU_CAU_DOI_CA (PRD 3.4)
+        // Ba khoá ngoại cùng trỏ về NHAN_VIEN nên bắt buộc phải khai báo tường minh;
+        // để EF tự suy luận sẽ báo lỗi vì không biết navigation nào ứng với cột nào.
+        modelBuilder.Entity<YeuCauDoiCa>(entity =>
+        {
+            entity.ToTable("yeu_cau_doi_ca");
+            entity.HasKey(e => e.MaYeuCau);
+            entity.Property(e => e.MaYeuCau).HasColumnName("ma_yeu_cau");
+            entity.Property(e => e.MaPhanCaGui).HasColumnName("ma_phan_ca_gui").IsRequired();
+            entity.Property(e => e.MaPhanCaNhan).HasColumnName("ma_phan_ca_nhan").IsRequired();
+            entity.Property(e => e.MaNhanVienGui).HasColumnName("ma_nhan_vien_gui").IsRequired();
+            entity.Property(e => e.MaNhanVienNhan).HasColumnName("ma_nhan_vien_nhan").IsRequired();
+            entity.Property(e => e.LyDo).HasColumnName("ly_do").HasMaxLength(500).IsRequired();
+            entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(20).HasDefaultValue("CHO_DUYET").IsRequired();
+            entity.Property(e => e.MaNguoiDuyet).HasColumnName("ma_nguoi_duyet");
+            entity.Property(e => e.NgayGui).HasColumnName("ngay_gui").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.NgayDuyet).HasColumnName("ngay_duyet");
+            entity.Property(e => e.PhanHoiDuyet).HasColumnName("phan_hoi_duyet").HasMaxLength(500);
+
+            entity.HasOne(e => e.PhanCaGui)
+                .WithMany(p => p.YeuCauDoiCaGui)
+                .HasForeignKey(e => e.MaPhanCaGui)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.PhanCaNhan)
+                .WithMany(p => p.YeuCauDoiCaNhan)
+                .HasForeignKey(e => e.MaPhanCaNhan)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.NhanVienGui)
+                .WithMany(n => n.YeuCauDoiCaDaGui)
+                .HasForeignKey(e => e.MaNhanVienGui)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.NhanVienNhan)
+                .WithMany(n => n.YeuCauDoiCaDaNhan)
+                .HasForeignKey(e => e.MaNhanVienNhan)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.NguoiDuyet)
+                .WithMany(n => n.YeuCauDoiCaDaDuyet)
+                .HasForeignKey(e => e.MaNguoiDuyet)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // 27. DINH_BIEN_CA (PRD 3.5)
+        modelBuilder.Entity<DinhBienCa>(entity =>
+        {
+            entity.ToTable("dinh_bien_ca");
+            entity.HasKey(e => e.MaDinhBien);
+            entity.Property(e => e.MaDinhBien).HasColumnName("ma_dinh_bien");
+            entity.Property(e => e.MaCa).HasColumnName("ma_ca").IsRequired();
+            entity.Property(e => e.MaChucVu).HasColumnName("ma_chuc_vu").IsRequired();
+            entity.Property(e => e.SoNguoiToiThieu).HasColumnName("so_nguoi_toi_thieu").HasDefaultValue(1).IsRequired();
+
+            // Mỗi cặp (ca, chức vụ) chỉ có đúng một dòng định biên; hai dòng cho cùng
+            // một cặp là dữ liệu mâu thuẫn không biết lấy số nào.
+            entity.HasIndex(e => new { e.MaCa, e.MaChucVu }).IsUnique();
+
+            entity.HasOne(e => e.CaLamViec)
+                .WithMany(c => c.DinhBienCas)
+                .HasForeignKey(e => e.MaCa)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ChucVu)
+                .WithMany(c => c.DinhBienCas)
+                .HasForeignKey(e => e.MaChucVu)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 27b. DINH_BIEN_NGAY (PRD 3.5 — định biên riêng theo từng ngày)
+        modelBuilder.Entity<DinhBienNgay>(entity =>
+        {
+            entity.ToTable("dinh_bien_ngay");
+            entity.HasKey(e => e.MaDinhBienNgay);
+            entity.Property(e => e.MaDinhBienNgay).HasColumnName("ma_dinh_bien_ngay");
+            entity.Property(e => e.Ngay).HasColumnName("ngay").IsRequired();
+            entity.Property(e => e.MaCa).HasColumnName("ma_ca").IsRequired();
+            entity.Property(e => e.MaChucVu).HasColumnName("ma_chuc_vu").IsRequired();
+            entity.Property(e => e.SoNguoiToiThieu).HasColumnName("so_nguoi_toi_thieu").HasDefaultValue(1).IsRequired();
+
+            // Mỗi (ngày, ca, chức vụ) đúng một dòng. Hai dòng cho cùng một ô là dữ
+            // liệu mâu thuẫn — khi đối chiếu không biết lấy số nào.
+            entity.HasIndex(e => new { e.Ngay, e.MaCa, e.MaChucVu })
+                .IsUnique()
+                .HasDatabaseName("uq_dinh_bien_ngay_duy_nhat");
+
+            entity.HasOne(e => e.CaLamViec)
+                .WithMany(c => c.DinhBienNgays)
+                .HasForeignKey(e => e.MaCa)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ChucVu)
+                .WithMany(c => c.DinhBienNgays)
+                .HasForeignKey(e => e.MaChucVu)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 28. GIAI_TRINH_CHAM_CONG (PRD 4.5)
+        modelBuilder.Entity<GiaiTrinhChamCong>(entity =>
+        {
+            entity.ToTable("giai_trinh_cham_cong");
+            entity.HasKey(e => e.MaGiaiTrinh);
+            entity.Property(e => e.MaGiaiTrinh).HasColumnName("ma_giai_trinh");
+            entity.Property(e => e.MaPhanCa).HasColumnName("ma_phan_ca").IsRequired();
+            entity.Property(e => e.MaNhanVien).HasColumnName("ma_nhan_vien").IsRequired();
+            entity.Property(e => e.GioDeXuatVao).HasColumnName("gio_de_xuat_vao");
+            entity.Property(e => e.GioDeXuatRa).HasColumnName("gio_de_xuat_ra");
+            entity.Property(e => e.LyDo).HasColumnName("ly_do").HasMaxLength(500).IsRequired();
+            entity.Property(e => e.MinhChung).HasColumnName("minh_chung").HasMaxLength(500);
+            entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(20).HasDefaultValue("CHO_QUAN_LY").IsRequired();
+            entity.Property(e => e.MaQuanLyXacMinh).HasColumnName("ma_quan_ly_xac_minh");
+            entity.Property(e => e.NgayQuanLyXacMinh).HasColumnName("ngay_quan_ly_xac_minh");
+            entity.Property(e => e.YKienQuanLy).HasColumnName("y_kien_quan_ly").HasMaxLength(500);
+            entity.Property(e => e.MaHrXacNhan).HasColumnName("ma_hr_xac_nhan");
+            entity.Property(e => e.NgayHrXacNhan).HasColumnName("ngay_hr_xac_nhan");
+            entity.Property(e => e.YKienHr).HasColumnName("y_kien_hr").HasMaxLength(500);
+            entity.Property(e => e.NgayGui).HasColumnName("ngay_gui").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Mỗi ca chỉ nộp một giải trình đang mở — sau khi HR duyệt hoặc từ chối
+            // người dùng mới nộp lại được. Chặn bằng index có điều kiện để không
+            // vướng các giải trình cũ đã đóng.
+            entity.HasIndex(e => e.MaPhanCa)
+                .HasDatabaseName("uq_giai_trinh_dang_mo")
+                .IsUnique()
+                .HasFilter("trang_thai IN ('CHO_QUAN_LY', 'CHO_HR')");
+
+            entity.HasOne(e => e.PhanCa)
+                .WithMany()
+                .HasForeignKey(e => e.MaPhanCa)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.NhanVien)
+                .WithMany(n => n.GiaiTrinhChamCongDaGui)
+                .HasForeignKey(e => e.MaNhanVien)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.QuanLyXacMinh)
+                .WithMany(n => n.GiaiTrinhQuanLyXacMinh)
+                .HasForeignKey(e => e.MaQuanLyXacMinh)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.HrXacNhan)
+                .WithMany(n => n.GiaiTrinhHrXacNhan)
+                .HasForeignKey(e => e.MaHrXacNhan)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
         });

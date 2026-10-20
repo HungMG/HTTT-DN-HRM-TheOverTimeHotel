@@ -685,6 +685,18 @@
                             data-bs-toggle="modal" data-bs-target="#modalShiftTemplates" title="Quản lý danh mục 3 mẫu ca chuẩn">
                         <i class="bi bi-clock-history text-primary me-1"></i> Mẫu Ca Trực 24/7
                     </button>
+
+                    <button type="button" class="btn btn-hotel-secondary btn-sm rounded-pill px-3 py-1 fw-semibold shadow-xs hover-lift position-relative"
+                            data-bs-toggle="modal" data-bs-target="#modalDinhBien" title="Cấu hình số người tối thiểu cho từng ca × chức vụ">
+                        <i class="bi bi-people text-primary me-1"></i> Định Biên Ca
+                        @if (Model.TongCaThieuDinhBien > 0)
+                        {
+                            <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.66rem;"
+                                  title="Có @Model.TongCaThieuDinhBien ca trong ngày đang thiếu người so với định biên">
+                                @Model.TongCaThieuDinhBien
+                            </span>
+                        }
+                    </button>
                 </div>
             </div>
 
@@ -901,6 +913,13 @@
                                                 <span class="@dotClass"></span>
                                                 <span>@shift.TenCa</span>
                                                 <span class="badge bg-light text-dark border ms-1" style="font-size:10px;">@shift.Employees.Count NV</span>
+                                                @if (shift.ThieuDinhBien)
+                                                {
+                                                    <span class="badge bg-danger ms-1" style="font-size:10px;"
+                                                          title="Thiếu @shift.TongConThieu người so với định biên tối thiểu">
+                                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Thiếu @shift.TongConThieu
+                                                    </span>
+                                                }
                                             </div>
                                             <div class="phanca-agenda-shift-actions">
                                                 <button type="button" class="phanca-btn-add-to-shift"
@@ -914,6 +933,33 @@
                                             </div>
                                         </div>
                                         <div class="phanca-agenda-emp-list">
+                                            @if (shift.DinhBien.Count > 0)
+                                            {
+                                                // Đối chiếu định biên (PRD 3.5): chỉ hiện chức vụ đang
+                                                // thiếu người, đủ rồi thì thôi để danh sách gọn.
+                                                var thieu = shift.DinhBien.Where(d => d.ConThieu > 0).ToList();
+                                                if (thieu.Count > 0)
+                                                {
+                                                    <div class="phanca-dinh-bien-warning">
+                                                        <i class="bi bi-shield-exclamation"></i>
+                                                        <span>
+                                                            Thiếu định biên:
+                                                            @foreach (var d in thieu)
+                                                            {
+                                                                @* Đánh dấu ô lấy số từ bảng đè theo ngày: người xếp ca
+                                                                   cần biết sửa mức chung hay sửa riêng ngày này. *@
+                                                                <span class="phanca-dinh-bien-item">
+                                                                    @d.TenChucVu @d.SoNguoiHienCo/@d.SoNguoiToiThieu
+                                                                    @if (d.LaMucRiengNgay)
+                                                                    {
+                                                                        <i class="bi bi-calendar-day ms-1" title="Mức riêng cho ngày @Model.SelectedDate.ToString("dd/MM/yyyy")"></i>
+                                                                    }
+                                                                </span>
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                }
+                                            }
                                             @if (shift.Employees.Count == 0)
                                             {
                                                 <div class="phanca-agenda-empty-shift">Chưa có nhân sự được phân ca này.</div>
@@ -1857,6 +1903,9 @@
 
 <!-- EMBED DANH MỤC MẪU CA POPUP -->
 <partial name="_ShiftTemplatesModal" model="Model.DanhSachCa" />
+
+<!-- EMBED CẤU HÌNH ĐỊNH BIÊN CA POPUP (PRD 3.5) -->
+<partial name="_DinhBienModal" model="Model.DinhBien" />
 
 <style>
 /* CẤU TRÚC MODAL SCROLLABLE: ĐẢM BẢO FOOTER VÀ NÚT XÁC NHẬN LUÔN NẰM TRONG KHUNG NHÌN */
@@ -3611,6 +3660,98 @@
         }
     }
 
+    /* =========================================================================
+       CẤU HÌNH ĐỊNH BIÊN CA (PRD 3.5)
+       Hai chế độ trên cùng một lưới:
+         * "nen"  — mức chung mọi ngày, ghi vào dinh_bien_ca
+         * "ngay" — mức riêng của ngày đang xem, ghi vào dinh_bien_ngay
+       Lưới chỉ hiển thị một chế độ tại một thời điểm, và chỉ những ô người dùng
+       thực sự sửa mới được gửi lên — nếu gửi cả lưới ở chế độ "ngay" thì mọi ô
+       kế thừa từ mức nền sẽ bị biến thành dòng đè, làm mất tính "chỉ ghi phần lệch".
+       ========================================================================= */
+    let dinhBienMode = 'nen';
+
+    function dinhBienOriginalValue(input) {
+        // Ở chế độ ngày, ô chưa có dòng riêng hiển thị số của mức nền — đó là giá
+        // trị gốc để so sánh, không phải 0.
+        const mucNen = parseInt(input.dataset.mucNen || '0', 10);
+        const mucNgay = parseInt(input.dataset.mucNgay || '0', 10);
+        return dinhBienMode === 'nen' ? mucNen : (mucNgay > 0 ? mucNgay : mucNen);
+    }
+
+    function renderDinhBienGrid() {
+        document.querySelectorAll('.dinh-bien-input').forEach(function (input) {
+            input.value = dinhBienOriginalValue(input) || '';
+        });
+    }
+
+    function switchDinhBienMode(mode, btn) {
+        dinhBienMode = mode;
+        document.querySelectorAll('.dinh-bien-mode-btn').forEach(function (b) {
+            const isActive = b.dataset.mode === mode;
+            b.classList.toggle('active', isActive);
+            b.classList.toggle('btn-light', !isActive);
+        });
+
+        const hint = document.getElementById('dinhBienModeHint');
+        if (hint) {
+            hint.innerHTML = mode === 'nen'
+                ? '<i class="bi bi-info-circle text-primary me-1"></i>Mức chung áp cho mọi ngày trong lịch.'
+                : '<i class="bi bi-calendar-day text-warning me-1"></i>Chỉ áp riêng cho ngày đang xem; các ngày khác vẫn theo mức chung.';
+        }
+
+        renderDinhBienGrid();
+    }
+
+    function submitDinhBien(event) {
+        const container = document.getElementById('dinhBienCellsContainer');
+        const form = document.getElementById('formDinhBien');
+        if (!container || !form) { return; }
+
+        container.innerHTML = '';
+        const ngayInput = document.getElementById('inputDinhBienNgay');
+        ngayInput.value = dinhBienMode === 'ngay'
+            ? (form.dataset.ngay || '')
+            : '';
+
+        let soOCoThayDoi = 0;
+        const maCaHopLe = new Set();
+        let chiSo = 0;
+
+        document.querySelectorAll('.dinh-bien-input').forEach(function (input) {
+            const giaTriMoi = parseInt(input.value || '0', 10) || 0;
+            const giaTriGoc = dinhBienOriginalValue(input);
+            if (giaTriMoi === giaTriGoc) { return; }
+
+            const maCa = parseInt(input.dataset.maCa, 10);
+            const maChucVu = parseInt(input.dataset.maChucVu, 10);
+            const coRiengNgay = input.dataset.coRiengNgay === '1';
+            const mucNen = parseInt(input.dataset.mucNen || '0', 10);
+
+            // Ở chế độ ngày: gõ đúng bằng mức nền nghĩa là "trả ô này về mặc định",
+            // tức xoá dòng đè. Gửi 0 để tầng máy chủ xoá thay vì lưu một dòng thừa.
+            let soGui = giaTriMoi;
+            if (dinhBienMode === 'ngay' && coRiengNgay && giaTriMoi === mucNen) {
+                soGui = 0;
+            }
+
+            maCaHopLe.add(maCa);
+            const prefix = 'Cells[' + chiSo + '].';
+            container.insertAdjacentHTML('beforeend',
+                '<input type="hidden" name="' + prefix + 'MaCa" value="' + maCa + '" />' +
+                '<input type="hidden" name="' + prefix + 'MaChucVu" value="' + maChucVu + '" />' +
+                '<input type="hidden" name="' + prefix + 'SoNguoi" value="' + soGui + '" />');
+            chiSo++;
+            soOCoThayDoi++;
+        });
+
+        if (soOCoThayDoi === 0) {
+            event.preventDefault();
+            showQuickToast('Không có ô nào thay đổi để lưu.');
+            return;
+        }
+    }
+
     // Khởi tạo & Kích hoạt lần đầu tải trang
     document.addEventListener('DOMContentLoaded', function () {
         const savedMode = localStorage.getItem('overtime_phanca_active_tab') || 'calendar';
@@ -3619,6 +3760,9 @@
         // Render bộ lịch tháng tương tác trong modal
         renderModalCalendar();
 
+        // Nạp sẵn lưới định biên ở chế độ mức chung, để lần mở đầu tiên đã đúng số.
+        renderDinhBienGrid();
+
         // Tự động mở popup Quản lý mẫu ca nếu có query openShiftModal=true
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('openShiftModal') === 'true') {
@@ -3626,6 +3770,17 @@
             if (shiftModalEl) {
                 const shiftModal = new bootstrap.Modal(shiftModalEl);
                 shiftModal.show();
+            }
+        }
+
+        // Mở lại popup định biên sau khi lưu (SaveDinhBien chuyển hướng kèm cờ).
+        if (urlParams.get('openDinhBienModal') === 'true') {
+            const dinhBienModalEl = document.getElementById('modalDinhBien');
+            if (dinhBienModalEl) {
+                // Chế độ mặc định vẫn là "mức chung"; nếu người dùng vừa lưu mức
+                // riêng ngày thì máy chủ đã đưa cờ, nhưng không phân biệt được ở URL
+                // nên mở lại ở "mức chung" là lựa chọn an toàn (không sửa nhầm ngày).
+                new bootstrap.Modal(dinhBienModalEl).show();
             }
         }
 

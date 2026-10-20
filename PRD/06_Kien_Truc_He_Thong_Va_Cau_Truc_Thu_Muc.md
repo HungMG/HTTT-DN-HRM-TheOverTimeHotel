@@ -1,6 +1,6 @@
 # PRD 06: Kiến Trúc Hệ Thống & Cấu Trúc Thư Mục Source Code
 
-> **Trạng thái tài liệu:** mô tả **hiện trạng đã triển khai trong mã nguồn** (`src/`) tại tháng 10/2026 kèm **định hướng mở rộng kiến trúc** cho phân hệ Quản lý Dự án & Sự kiện Khách sạn (toàn hệ thống gồm **11 phân hệ chức năng nghiệp vụ** và **27 bảng CSDL chuẩn 3NF**).
+> **Trạng thái tài liệu:** mô tả **hiện trạng đã triển khai trong mã nguồn** (`src/`) tại tháng 10/2026 kèm **định hướng mở rộng kiến trúc** cho phân hệ Quản lý Dự án & Sự kiện Khách sạn (toàn hệ thống gồm **11 phân hệ chức năng nghiệp vụ** và **30 bảng CSDL chuẩn 3NF**).
 > Mọi khẳng định về tồn tại / không tồn tại bên dưới đều đối chiếu được với file thật; phần nào suy ra từ hạ tầng bên ngoài repo mà chưa kiểm chứng được thì ghi rõ **"cần xác minh"**.
 
 ---
@@ -25,7 +25,7 @@ Nhằm phân định rõ ràng cổng quản trị máy chủ và ứng dụng n
 └───────────────┬───────────────┘               └───────────────┬───────────────┘
                 │                                               │
                 │        ┌─────────────────────────────┐        │
-                ├───────►│    OvertimeHotel.HRM.Core   │◄───────┤ (Dùng chung 27 Entities,
+                ├───────►│    OvertimeHotel.HRM.Core   │◄───────┤ (Dùng chung 30 Entities,
                 │        │     Class Library .NET 10   │        │  DTOs, Enums & Policies)
                 │        └─────────────────────────────┘        │
                 ▼                                               ▼
@@ -42,7 +42,7 @@ Nhằm phân định rõ ràng cổng quản trị máy chủ và ứng dụng n
                         ┌───────────────────────────────┐
                         │     SUPABASE CLOUD DATABASE   │
                         │       PostgreSQL Engine       │
-                        │    27 Bảng Chuẩn Hóa 3NF      │
+                        │    30 Bảng Chuẩn Hóa 3NF      │
                         │    + RLS (Row Level Security) │
                         └───────────────────────────────┘
 ```
@@ -70,7 +70,7 @@ Nhằm phân định rõ ràng cổng quản trị máy chủ và ứng dụng n
 
 ### 1.2. Kiến Trúc 11 Phân Hệ Nghiệp Vụ Chức Năng (Kèm Phân Hệ Quản Lý Dự Án & Sự Kiện)
 
-Hệ thống Quản lý Nhân sự & Tiền lương The OverTime Hotel được chuẩn hóa thành **11 phân hệ nghiệp vụ cấp 1** (57 chức năng cấp 2 theo BFD), vận hành trên nền tảng **27 bảng CSDL chuẩn 3NF**:
+Hệ thống Quản lý Nhân sự & Tiền lương The OverTime Hotel được chuẩn hóa thành **11 phân hệ nghiệp vụ cấp 1** (57 chức năng cấp 2 theo BFD), vận hành trên nền tảng **30 bảng CSDL chuẩn 3NF**:
 
 | STT | Phân Hệ Nghiệp Vụ Cấp 1 | Phạm Vi Nghiệp Vụ Trong Khách Sạn | Bảng CSDL Tương Ứng (3NF) |
 | :---: | :--- | :--- | :--- |
@@ -84,7 +84,7 @@ Hệ thống Quản lý Nhân sự & Tiền lương The OverTime Hotel được 
 | **8.0** | **Quản Lý Tiền Thưởng** | Quản lý thưởng hiệu quả KPI, thưởng doanh thu buồng phòng/tiệc, thưởng Lễ Tết chuyên cần, phê duyệt danh sách và báo cáo phân bổ quỹ thưởng. | `cau_hinh_khoan_luong` (khoản thưởng), `cau_hinh_tang_ca` |
 | **9.0** | **Quản Lý Dự Án & Sự Kiện Khách Sạn (MỚI)** | Khởi tạo sự kiện/dự án (tiệc cưới VIP, hội nghị MICE, gala dinner), điều động nhân lực liên phòng ban (Task Force), thông báo điều động realtime lên Mobile App, nghiệm thu đánh giá và kết chuyển phụ cấp dự án vào kỳ lương tháng (Gross). | `du_an`, `phan_cong_du_an` |
 | **10.0** | **Báo Cáo & Thống Kê Quản Trị** | Thống kê biến động nhân sự (Turnover Rate), cơ cấu bộ phận, học vấn thâm niên, đối soát ngân sách quỹ lương, chuyên cần vi phạm và báo cáo hiệu quả nhân sự sự kiện. | Tổng hợp liên bảng |
-| **11.0** | **Quản Trị Hệ Thống** | Danh mục cơ cấu tổ chức (phòng ban, chức vụ), cấu hình khung giờ ca 24/7 (độc quyền Admin), thiết lập tham số tỷ lệ định mức, sao lưu và phục hồi CSDL Supabase. | `nhat_ky_quan_tri` (+ toàn bộ 27 bảng) |
+| **11.0** | **Quản Trị Hệ Thống** | Danh mục cơ cấu tổ chức (phòng ban, chức vụ), cấu hình khung giờ ca 24/7 (độc quyền Admin), thiết lập tham số tỷ lệ định mức, sao lưu và phục hồi CSDL Supabase. | `nhat_ky_quan_tri` (+ toàn bộ 30 bảng) |
 
 ---
 
@@ -95,7 +95,7 @@ src/
 ├── OvertimeHotel.HRM.slnx                     # Solution file Visual Studio 2026
 │
 ├── OvertimeHotel.HRM.Core/                    # [DỰ ÁN DÙNG CHUNG - CLASS LIBRARY .NET 10]
-│   ├── Models/                                # 27 Class Entities ánh xạ 27 bảng CSDL chuẩn 3NF
+│   ├── Models/                                # 30 Class Entities ánh xạ 30 bảng CSDL chuẩn 3NF
 │   │   ├── PhongBan.cs            ├── NhatKyQuanTri.cs
 │   │   ├── ChucVu.cs              ├── CauHinhKhoanLuong.cs
 │   │   ├── NhanVien.cs            ├── CauHinhKhauTru.cs
@@ -116,40 +116,47 @@ src/
 │   │   ├── AttendanceSummaryDto.cs            # Thống kê công & giờ làm
 │   │   ├── LeaveRequestDto.cs                 # Nộp và duyệt đơn
 │   │   ├── PayslipDto.cs                      # Bảng lương tóm tắt & chi tiết
-│   │   ├── ProjectDto.cs                      # [MỚI] DTO danh sách, chi tiết, tạo/sửa sự kiện
-│   │   └── ProjectAssignmentDto.cs            # [MỚI] DTO điều phối nhân sự, nghiệm thu & thù lao
-│   ├── Enums/                                 # Kiểu liệt kê (13 enum)
+│   │   └── MonthlyAttendanceDto.cs            # Tổng hợp công tháng
+│   ├── Enums/                                 # Kiểu liệt kê (9 enum)
 │   │   ├── RoleType.cs, ShiftType.cs, LeaveStatus.cs, ContractStatus.cs
-│   │   ├── AttendanceStatus.cs, EmployeeStatus.cs, PayrollStatus.cs
-│   │   ├── PeriodStatus.cs, SalaryItemType.cs
-│   │   ├── ProjectStatus.cs                   # [MỚI] ChuaBatDau, DangDienRa, DaHoanThanh, TamDung, HuyBo
-│   │   ├── ProjectRoleType.cs                 # [MỚI] TruongNhom, DieuPhoi, PhucVuChinh, HoTro, KyThuat, HauCan
-│   │   ├── ProjectEvaluation.cs               # [MỚI] ChuaDanhGia, XuatSac, Tot, DatYeuCau, KhongDat
-│   │   └── ProjectPaymentStatus.cs            # [MỚI] ChuaQuyetToan, ChoPheDuyet, DaQuyetToan, DaKetChuyenLuong
+│   │   ├── AttendanceStatus.cs, EmployeeStatus.cs
+│   │   └── PayrollStatus.cs, PeriodStatus.cs, SalaryItemType.cs
 │   ├── Policies/                              # Logic nghiệp vụ dùng chung 2 app
 │   │   ├── LeaveApprovalPolicy.cs             # Quy tắc ai duyệt loại đơn nào
 │   │   ├── AttendanceCalculator.cs            # Chuẩn hoá check-in/check-out
-│   │   └── ProjectAllowancePolicy.cs          # [ĐỊNH HƯỚNG] Định mức thù lao dự án theo vai trò & đánh giá
+│   │   ├── ContractAttendancePolicy.cs        # Ràng buộc HĐLĐ ↔ chấm công / phân ca
+│   │   ├── ShiftSchedulingPolicy.cs           # Khoảng nghỉ ≥ 8h, chống trùng ca
+│   │   ├── ShiftSwapPolicy.cs                 # Điều kiện đổi ca giữa hai nhân viên
+│   │   ├── GeofencePolicy.cs                  # Bán kính GPS & Wi-Fi hợp lệ khi quẹt thẻ
+│   │   ├── AttendanceAccessPolicy.cs          # Ai được xem công của ai
+│   │   ├── ReportPolicy.cs                    # Phân quyền số liệu báo cáo theo vai trò
+│   │   ├── PersonalIncomeTaxCalculator.cs     # Thuế TNCN lũy tiến 5 bậc
+│   │   ├── HotelEventRules.cs                 # Vòng đời & trạng thái sự kiện
+│   │   └── HotelEventRoleRules.cs             # Ai được thao tác trên sự kiện nào
 │   └── Constants/
-│       ├── SalaryConstants.cs                 # 26 ngày công, tỷ lệ BH 10.5%, hệ số OT 1.5/2.0/3.0
-│       └── ProjectConstants.cs                # [ĐỊNH HƯỚNG] Mã định mức phụ cấp dự án, giới hạn ngân sách
+│       └── SalaryConstants.cs                 # 26 ngày công, tỷ lệ BH 10.5%, hệ số OT 1.5/2.0/3.0
 │
 ├── OvertimeHotel.HRM.Data/                    # [TẦNG TRUY XUẤT DỮ LIỆU - CHỈ WEBADMIN DÙNG]
 │   ├── Context/
-│   │   ├── AppDbContext.cs                    # EF Core DbContext, cấu hình quan hệ PK/FK (27 DbSet)
+│   │   ├── AppDbContext.cs                    # EF Core DbContext, cấu hình quan hệ PK/FK (30 DbSet)
 │   │   └── DatabaseSchemaInitializer.cs       # Tự tạo bảng nhật ký admin nếu thiếu
 │   ├── Supabase/
 │   │   ├── SupabaseClientFactory.cs           # Tạo Supabase SDK client (Realtime/Storage)
 │   │   └── SupabaseOptions.cs
 │   ├── Services/
 │   │   ├── IBackupService.cs                  # Interface sao lưu & phục hồi CSDL
-│   │   └── BackupService.cs                   # Xuất/nhập JSON 27 bảng + thống kê
+│   │   └── BackupService.cs                   # Xuất/nhập JSON 30 bảng + thống kê
 │   ├── migrations/                            # Script SQL áp dụng tay lên Supabase
-│   ├── database_schema_3nf.sql                # DDL 27 bảng chuẩn 3NF
+│   ├── database_schema_3nf.sql                # DDL nền 24 bảng chuẩn 3NF (bản gốc)
 │   └── seed_data_24_tables.sql                # Dữ liệu danh mục & tài khoản mẫu
 │
+│   # 6 bảng còn lại được tạo bằng script migration riêng, không nằm trong DDL nền:
+│   #   du_an, phan_cong_du_an      -> migrations/20261015_hotel_events.sql
+│   #   dinh_bien_ca, giai_trinh_cham_cong, yeu_cau_doi_ca
+│   #                              -> supabase/migrations/20261020_bo_sung_chuc_nang_phan_ca_cham_cong.sql
+│
 ├── OvertimeHotel.HRM.WebAdmin/                # [CỔNG QUẢN TRỊ ADMIN - ASP.NET CORE MVC .NET 10]
-│   ├── Controllers/                           # 14 Controller MVC + 4 API controller
+│   ├── Controllers/                           # 21 Controller MVC + 5 API controller
 │   │   ├── HomeController.cs                  # Dashboard & báo cáo KPI
 │   │   ├── NhanVienController.cs              # Hồ sơ nhân viên
 │   │   ├── PhongBanController.cs, ChucVuController.cs, CaLamViecController.cs  # Danh mục
@@ -158,14 +165,23 @@ src/
 │   │   ├── AccountController.cs, UserAccountsController.cs                     # Tài khoản, nhật ký
 │   │   ├── YeuCauTaiKhoanController.cs        # Tiếp nhận & cấp tài khoản cho bộ phận IT
 │   │   ├── BackupController.cs                # Sao lưu & phục hồi CSDL
-│   │   ├── DuAnController.cs                  # [MỚI] Quản trị sự kiện, điều phối nhân sự, chốt thù lao
+│   │   ├── ChamCongController.cs              # Nhật ký chấm công 24/7
+│   │   ├── GiaiTrinhChamCongController.cs     # [MỚI] Duyệt giải trình sai lệch giờ quẹt thẻ
+│   │   ├── YeuCauDoiCaController.cs           # [MỚI] Duyệt yêu cầu đổi ca
+│   │   ├── DonTuController.cs                 # Duyệt 4 loại đơn từ
+│   │   ├── BangLuongController.cs             # Bảng lương tháng
+│   │   ├── BaoCaoController.cs                # Báo cáo & thống kê quản trị
+│   │   ├── AiAssistantController.cs           # Nhúng Trợ lý AI (iframe + vé dữ liệu)
+│   │   ├── SuKienController.cs                # [MỚI] Quản trị sự kiện, điều phối nhân sự, chốt thù lao
 │   │   └── Api/                               # API cho các luồng dữ liệu
 │   │       ├── AttendanceController.cs, LeaveRequestsController.cs
 │   │       └── MobileAuthController.cs, MobileProfileController.cs
 │   ├── Security/                              # Hạ tầng RBAC (policy, permission codes)
 │   ├── Models/                                # ViewModel riêng cho từng màn hình Web
 │   ├── Views/                                 # Razor (.cshtml) cho các nhóm chức năng
-│   │   └── DuAn/                              # [MỚI] Index, Details, Create, Edit, AssignStaff, Settlement
+│   │   ├── SuKien/                            # [MỚI] Index, Details, Create, Edit, Assignment + 9 partial
+│   │   ├── GiaiTrinhChamCong/                 # [MỚI] Giải trình sai lệch giờ quẹt thẻ (duyệt 2 cấp)
+│   │   └── YeuCauDoiCa/                       # [MỚI] Yêu cầu đổi ca giữa hai nhân viên
 │   ├── wwwroot/                               # css / js / lib (Bootstrap, jQuery, react-bits motion)
 │   ├── appsettings.json                       # Chuỗi kết nối Supabase PostgreSQL + cấu hình Supabase
 │   └── Program.cs                             # Cấu hình DI, Authentication & Authorization
@@ -174,12 +190,15 @@ src/
     ├── App.xaml / AppShell.xaml               # Shell + điều hướng tab
     ├── MauiProgram.cs                         # Điểm khởi động & đăng ký DI
     ├── Platforms/                             # Android, iOS, MacCatalyst, Windows
-    ├── Views/                                 # 15 màn hình XAML hiện có + định hướng phân hệ Dự án
+    ├── Views/                                 # 18 màn hình XAML hiện có + định hướng phân hệ Dự án
     │   ├── IntroPage.xaml                     # Màn hình khởi động có thanh tiến trình 0%→100%
     │   ├── LoginPage.xaml                     # Đăng nhập
     │   ├── EmployeeHomePage.xaml              # Trang chủ Nhân viên
     │   ├── ManagerHomePage.xaml               # Trang chủ Quản lý
     │   ├── HrHomePage.xaml                    # Trang chủ Nhân sự (HR)
+    │   ├── HrStatisticsPage.xaml              # Báo cáo thống kê dành cho HR
+    │   ├── AdminHomePage.xaml                 # Trang chủ Quản trị viên
+    │   ├── AdminAuditLogPage.xaml             # Nhật ký kiểm toán quản trị
     │   ├── AttendancePage.xaml                # Chấm công quẹt thẻ check-in/out (GPS/WiFi)
     │   ├── AttendanceSummaryPage.xaml         # Bảng tổng hợp công cá nhân
     │   ├── SchedulePage.xaml                  # Xem lịch phân ca 24/7
@@ -190,21 +209,28 @@ src/
     │   ├── ProfilePage.xaml                   # Hồ sơ cá nhân
     │   ├── ChangePasswordPage.xaml            # Đổi mật khẩu
     │   ├── SettingsPage.xaml                  # Cài đặt
-    │   ├── ProjectSchedulePage.xaml           # [ĐỊNH HƯỚNG MỚI] Xem lịch phân công sự kiện khách sạn
-    │   └── ProjectDetailPage.xaml             # [ĐỊNH HƯỚNG MỚI] Tra cứu chi tiết sự kiện & thù lao duyệt
+    │   # [ĐỊNH HƯỚNG] ProjectSchedulePage.xaml / ProjectDetailPage.xaml — CHƯA tồn tại
     ├── Views/Controls/                        # Custom component tái sử dụng (Luxury UI 5★)
     │   ├── LuxuryPopup.xaml, ShiftHeroCard.xaml, LocationClockPanel.xaml
     │   └── FeatureTile.xaml, StatTile.xaml, ProfileHeaderBar.xaml
-    ├── ViewModels/                            # Các ViewModel theo mô hình MVVM
-    │   ├── ProjectScheduleViewModel.cs        # [ĐỊNH HƯỚNG MỚI] Lọc và hiển thị sự kiện được phân công
-    │   └── ProjectDetailViewModel.cs          # [ĐỊNH HƯỚNG MỚI] Hiển thị chi tiết giờ công, đánh giá, thù lao
+    ├── ViewModels/                            # 19 ViewModel theo mô hình MVVM (tự viết INotifyPropertyChanged)
+    │   ├── LoginViewModel.cs, EmployeeHomeViewModel.cs, ManagerHomeViewModel.cs
+    │   ├── HrHomeViewModel.cs, HrStatisticsViewModel.cs  # Trang chủ theo vai trò
+    │   ├── AdminHomeViewModel.cs, AdminAuditLogViewModel.cs
+    │   ├── AttendanceViewModel.cs, AttendanceSummaryViewModel.cs
+    │   ├── ScheduleViewModel.cs, PayslipViewModel.cs, ProfileViewModel.cs
+    │   ├── LeaveSubmitViewModel.cs, LeaveApprovalViewModel.cs, LeaveDetailViewModel.cs
+    │   ├── ChangePasswordViewModel.cs, SettingsViewModel.cs
+    │   ├── HomeViewModelBase.cs               # Base class dùng chung cho dashboard
+    │   # [ĐỊNH HƯỚNG] ProjectScheduleViewModel.cs / ProjectDetailViewModel.cs — CHƯA tồn tại
     ├── Services/                              # Gọi PostgREST trực tiếp (KHÔNG dùng Supabase SDK)
     │   ├── SupabaseRestClient.cs              # HttpClient → PostgREST, kèm bearer token & RLS
-    │   ├── PostgrestJson.cs                   # Đọc/ghi JSON & xử lý NoRowsMatched
+    │   ├── PostgrstJson.cs                    # Đọc/ghi JSON & xử lý NoRowsMatched
     │   ├── AuthService.cs                     # Đăng nhập Supabase GoTrue
     │   ├── AttendanceService.cs, LeaveApprovalService.cs
+    │   ├── MobileScheduleService.cs, MobilePayslipService.cs, MobileAttendanceSummaryService.cs
     │   ├── GeoLocationService.cs              # Kiểm tra tọa độ GPS & WiFi BSSID
-    │   ├── ProjectService.cs                  # [ĐỊNH HƯỚNG MỚI] Lấy danh sách sự kiện & thù lao của nhân viên
+    │   # [ĐỊNH HƯỚNG] ProjectService.cs — CHƯA tồn tại
     │   └── ApiConfig.cs                       # URL + Anon Key
     ├── Resources/                             # Tài nguyên ứng dụng
     │   ├── AppIcon/                           # appicon.png, appiconfg.png (PNG bắt buộc cho Linux build)
@@ -272,14 +298,14 @@ src/
 
 ---
 
-## 4. Cơ Chế Sao Lưu & Phục Hồi CSDL (27 Bảng Chuẩn 3NF)
+## 4. Cơ Chế Sao Lưu & Phục Hồi CSDL (30 Bảng Chuẩn 3NF)
 
 **Hiện trạng đã triển khai — sao lưu thủ công từ trong Web Admin:**
 
 * `BackupService` (`Data/Services/BackupService.cs`) nối thẳng PostgreSQL qua EF Core:
-  * `ExportDatabaseToJsonAsync()` — trích xuất dữ liệu của **toàn bộ 27 bảng** (bao gồm danh mục, phân ca, chấm công, đơn từ, bảng lương, nhật ký admin và 2 bảng mới `du_an`, `phan_cong_du_an`) thành **một file JSON duy nhất** tải về máy quản trị viên.
+  * `ExportDatabaseToJsonAsync()` — trích xuất dữ liệu của **toàn bộ 30 bảng** (bao gồm danh mục, phân ca, chấm công, đơn từ, bảng lương, nhật ký admin, 2 bảng dự án/sự kiện `du_an`, `phan_cong_du_an` và 3 bảng ca & chấm công mở rộng `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`) thành **một file JSON duy nhất** tải về máy quản trị viên.
   * `RestoreDatabaseFromJsonAsync(json)` — nạp ngược JSON, làm sạch và tái tạo dữ liệu theo thứ tự quan hệ phụ thuộc khóa ngoại (Foreign Key Dependency Graph), đảm bảo không vi phạm ràng buộc toàn vẹn.
-  * `GetTableStatisticsAsync()` — thống kê số lượng bản ghi hiện hữu trên từng bảng trong số 27 bảng.
+  * `GetTableStatisticsAsync()` — thống kê số lượng bản ghi hiện hữu trên từng bảng trong số 30 bảng.
 * `BackupController` (`[Authorize(Policy = PermissionCodes.BackupDatabase)]`) là điểm điều khiển duy nhất: `GET /Backup/Export` và `POST /Backup/Restore`.
 * Quyền `SAO_LUU_CSDL` ("Sao lưu & Phục hồi CSDL") được cấp phát độc quyền cho nhóm Quản trị viên (Admin).
 
@@ -298,12 +324,12 @@ src/
 Kiến trúc triển khai trong `WebAdmin` hiện **không áp dụng mô hình Service/Repository trung gian**:
 
 * Không có thư mục `Services/` hay `Repositories/` trong project `WebAdmin`.
-* **14 Controller MVC tiêm trực tiếp `AppDbContext`** và thực thi truy vấn LINQ:
+* **16 Controller MVC tiêm trực tiếp `AppDbContext`** và thực thi truy vấn LINQ:
   ```text
-  Controller (DuAnController, NhanVienController...)
+  Controller (SuKienController, NhanVienController...)
      │
      ▼ (Dependency Injection)
-  AppDbContext (27 DbSet)
+  AppDbContext (30 DbSet)
      │
      ▼ (Npgsql Driver)
   PostgreSQL Engine (Supabase Cloud)
@@ -348,17 +374,17 @@ Hệ thống giải quyết bài toán này thông qua **Cơ chế Snapshot Bấ
 ┌─────────────────────────────────┐
 │     BẢNG PHAN_CONG_DU_AN        │
 ├─────────────────────────────────┤
-│ ma_phan_cong_da = 101           │
+│ ma_phan_cong = 101              │
 │ ma_du_an = 12 (Gala Dinner 5★)  │
 │ ma_nhan_vien = 45               │
-│ so_gio_cong_du_an = 8.5         │
-│ phu_cap_du_an = 850,000 VNĐ     │
+│ vai_tro_du_an = 'PhucVuChinh'   │
+│ so_tien_phu_cap = 850,000 VNĐ   │
 │ trang_thai_chi_tra =            │
-│   'DA_QUYET_TOAN'               │
+│   'CHUA_CHI_TRA'                │
 └────────────────┬────────────────┘
                  │
-                 │ Thao tác "Kết chuyển lương" (TransferToPayroll)
-                 │ tại DuAnController
+                 │ Thao tác "Kết chuyển lương" khi tính kỳ lương
+                 │ tại PayrollCalculationService
                  ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                      BẢNG CHI_TIET_PHIEU_LUONG                           │
@@ -384,16 +410,23 @@ Hệ thống giải quyết bài toán này thông qua **Cơ chế Snapshot Bấ
 
 **Các nguyên tắc thực thi bất biến:**
 
-1. **Phân tách trạng thái thanh toán:** Cột `trang_thai_chi_tra` trên `phan_cong_du_an` trải qua các giai đoạn:
-   `CHO_QUYET_TOAN` ➔ `CHO_PHE_DUYET` ➔ `DA_QUYET_TOAN` ➔ `DA_KET_CHUYEN_LUONG`.
-2. **Khóa ghi sau kết chuyển:** Khi đã chuyển sang `DA_KET_CHUYEN_LUONG`, bản ghi phân công dự án **bị khóa sửa/xóa** ở cả tầng C# và trigger database, ngăn chặn việc thay đổi số tiền thù lao.
-3. **Tính độc lập của phiếu lương:** `chi_tiet_phieu_luong` lưu bản sao giá trị số tiền (`so_tien = 850000`) và diễn giải chi tiết (`ten_khoan`). Khi kỳ lương đóng (`ky_luong.trang_thai = 'KhoaSo'`), dữ liệu lương là bất biến vĩnh viễn, phục vụ thanh tra thuế và kiểm toán độc lập.
+1. **Phân tách trạng thái thanh toán:** Cột `trang_thai_chi_tra` trên `phan_cong_du_an` là `VARCHAR(30)` với ràng buộc CSDL
+   `CHECK (trang_thai_chi_tra IN ('CHUA_CHI_TRA', 'DA_KET_CHUYEN_LUONG', 'HUY_BO'))`
+   (`supabase/migrations/20261014_tao_bang_du_an_va_gan_rls.sql:72`). Đánh giá chất lượng công việc nằm ở cột riêng
+   `danh_gia` (`CHUA_DANH_GIA`, `HOAN_THANH`, `XUAT_SAC`, `KHONG_THAM_GIA`) — tách khỏi trạng thái chi trả.
+2. **Khóa ghi sau kết chuyển:** Khi đã chuyển sang `DA_KET_CHUYEN_LUONG`, bản ghi phân công dự án mang `ma_chi_tiet`
+   trỏ ngược về dòng chi tiết phiếu lương, ngăn chặn việc thay đổi số tiền thù lao đã chốt.
+3. **Tính độc lập của phiếu lương:** `chi_tiet_phieu_luong` lưu bản sao giá trị số tiền và diễn giải chi tiết (`ten_khoan`).
+   Khi kỳ lương khóa sổ (`ky_luong.trang_thai = 'KHOA_SO'`), dữ liệu lương là bất biến vĩnh viễn, phục vụ thanh tra thuế và kiểm toán độc lập.
+4. **Điểm thực thi thật trong mã nguồn:** thao tác kết chuyển **không** nằm ở controller sự kiện mà chạy bên trong
+   `PayrollCalculationService` (`src/OvertimeHotel.HRM.Data/Services/PayrollCalculationService.cs:548,802`) — tức là
+   gắn liền với bước tính kỳ lương, không phải một nút bấm riêng trên màn hình sự kiện.
 
 ---
 
-### 6.2. Chính Sách Bảo Mật Hàng (Row Level Security - RLS) Cho Bảng Dự Án & Phân Công
+### 6.2. Chính Sách Bảo Mật Hàng (Row Level Security - RLS) Cho Các Bảng Mở Rộng
 
-Do Mobile App sử dụng Anon Key công khai, **RLS trên Supabase là chốt chặn bảo vệ dữ liệu duy nhất**. RLS cho 2 bảng mới `du_an` và `phan_cong_du_an` được thiết kế chặt chẽ theo ma trận thẩm quyền:
+Do Mobile App sử dụng Anon Key công khai, **RLS trên Supabase là chốt chặn bảo vệ dữ liệu duy nhất**. RLS cho các bảng mới (`du_an`, `phan_cong_du_an` và 3 bảng ca & chấm công) được thiết kế chặt chẽ theo ma trận thẩm quyền:
 
 ```text
                TÀI KHOẢN ĐĂNG NHẬP TRÊN MOBILE
@@ -461,16 +494,54 @@ Do Mobile App sử dụng Anon Key công khai, **RLS trên Supabase là chốt c
    - **Policy điều hành cho Quản lý/HR/Admin (`du_an_all_quan_ly`):**
      Ban quản lý có toàn quyền tạo mới, lập kế hoạch ngân sách, điều chỉnh tiến độ và nghiệm thu dự án.
 
+3. **Ba bảng ca & chấm công mở rộng (`dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`):**
+   Chính sách dưới đây đã được áp dụng thực tế trên Supabase Cloud (tổng 8 policy), dùng các hàm `SECURITY DEFINER` `vai_tro_hien_tai()`, `nhan_vien_hien_tai()`, `phong_ban_hien_tai()`:
+
+   - **`dinh_bien_ca`** — Danh mục cấu hình, mọi tài khoản đã đăng nhập đều đọc được để hiển thị cảnh báo thiếu người; chỉ Admin (1) và HR (2) được ghi:
+     ```sql
+     -- doc_dinh_bien_ca: FOR SELECT, USING (true)
+     -- ghi_dinh_bien_ca: FOR ALL, USING (vai_tro_hien_tai() = ANY (ARRAY[1, 2]))
+     ```
+
+   - **`giai_trinh_cham_cong`** — Nhân viên xem/ghi hồ sơ của chính mình; Quản lý (3) xem hồ sơ của nhân sự cùng phòng ban; Admin/HR xem toàn bộ. Người nộp được sửa hồ sơ còn mở, cấp duyệt được cập nhật trạng thái:
+     ```sql
+     -- doc_giai_trinh_cham_cong: FOR SELECT
+     --   USING (vai_tro_hien_tai() IN (1,2) OR ma_nhan_vien = nhan_vien_hien_tai()
+     --          OR (vai_tro_hien_tai() = 3 AND EXISTS (SELECT 1 FROM nhan_vien nv
+     --              WHERE nv.ma_nhan_vien = giai_trinh_cham_cong.ma_nhan_vien
+     --                AND nv.ma_phong_ban = phong_ban_hien_tai())))
+     -- them_giai_trinh_cham_cong: FOR INSERT
+     -- sua_giai_trinh_cham_cong: FOR UPDATE
+     --   USING (vai_tro_hien_tai() IN (1,2,3) OR ma_nhan_vien = nhan_vien_hien_tai())
+     ```
+
+   - **`yeu_cau_doi_ca`** — Hai bên tham gia đổi ca đều thấy yêu cầu; Quản lý (3) chỉ thấy yêu cầu do nhân sự phòng mình gửi; Admin/HR thấy toàn bộ:
+     ```sql
+     -- doc_yeu_cau_doi_ca: FOR SELECT
+     --   USING (vai_tro_hien_tai() IN (1,2) OR ma_nhan_vien_gui = nhan_vien_hien_tai()
+     --          OR ma_nhan_vien_nhan = nhan_vien_hien_tai()
+     --          OR (vai_tro_hien_tai() = 3 AND EXISTS (SELECT 1 FROM nhan_vien nv
+     --              WHERE nv.ma_nhan_vien = yeu_cau_doi_ca.ma_nhan_vien_gui
+     --                AND nv.ma_phong_ban = phong_ban_hien_tai())))
+     -- them_yeu_cau_doi_ca: FOR INSERT
+     -- sua_yeu_cau_doi_ca: FOR UPDATE
+     --   USING (vai_tro_hien_tai() IN (1,2,3) OR ma_nhan_vien_gui = nhan_vien_hien_tai()
+     --          OR ma_nhan_vien_nhan = nhan_vien_hien_tai())
+     ```
+
 ---
 
-### 6.3. Khai Báo Fluent API Trong `AppDbContext` (27 Bảng CSDL)
+### 6.3. Khai Báo Fluent API Trong `AppDbContext` (30 Bảng CSDL)
 
-Để tầng ORM EF Core trong `OvertimeHotel.HRM.Data` nhận diện và đồng bộ hoàn hảo 27 bảng CSDL, `AppDbContext.cs` mở rộng danh mục 27 `DbSet` và khai báo cấu hình Fluent API chi tiết cho 2 bảng mới:
+Để tầng ORM EF Core trong `OvertimeHotel.HRM.Data` nhận diện và đồng bộ hoàn hảo 30 bảng CSDL, `AppDbContext.cs` khai báo danh mục 30 `DbSet` và cấu hình Fluent API chi tiết cho các bảng mới (2 bảng dự án/sự kiện và 3 bảng ca & chấm công):
 
 ```csharp
-// 1. Mở rộng 27 DbSet trong AppDbContext
+// 1. Mở rộng 30 DbSet trong AppDbContext
 public DbSet<DuAn> DuAns => Set<DuAn>();
 public DbSet<PhanCongDuAn> PhanCongDuAns => Set<PhanCongDuAn>();
+public DbSet<YeuCauDoiCa> YeuCauDoiCas => Set<YeuCauDoiCa>();
+public DbSet<DinhBienCa> DinhBienCas => Set<DinhBienCa>();
+public DbSet<GiaiTrinhChamCong> GiaiTrinhChamCongs => Set<GiaiTrinhChamCong>();
 
 // 2. Cấu hình Fluent API trong OnModelCreating
 modelBuilder.Entity<DuAn>(entity =>
@@ -539,6 +610,96 @@ modelBuilder.Entity<PhanCongDuAn>(entity =>
         .IsRequired(false)
         .OnDelete(DeleteBehavior.SetNull);
 });
+
+// 3. Cấu hình Fluent API cho 3 bảng ca & chấm công mở rộng (PRD 3.4 / 3.5 / 4.5)
+
+// YeuCauDoiCa: ba khoá ngoại cùng trỏ về NhanVien nên bắt buộc khai báo tường minh,
+// để EF tự suy luận sẽ báo lỗi vì không biết navigation nào ứng với cột nào.
+modelBuilder.Entity<YeuCauDoiCa>(entity =>
+{
+    entity.ToTable("yeu_cau_doi_ca");
+    entity.HasKey(e => e.MaYeuCau);
+    entity.Property(e => e.MaYeuCau).HasColumnName("ma_yeu_cau");
+    entity.Property(e => e.MaPhanCaGui).HasColumnName("ma_phan_ca_gui").IsRequired();
+    entity.Property(e => e.MaPhanCaNhan).HasColumnName("ma_phan_ca_nhan").IsRequired();
+    entity.Property(e => e.MaNhanVienGui).HasColumnName("ma_nhan_vien_gui").IsRequired();
+    entity.Property(e => e.MaNhanVienNhan).HasColumnName("ma_nhan_vien_nhan").IsRequired();
+    entity.Property(e => e.LyDo).HasColumnName("ly_do").HasMaxLength(500).IsRequired();
+    entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(20).HasDefaultValue("CHO_DUYET").IsRequired();
+    entity.Property(e => e.MaNguoiDuyet).HasColumnName("ma_nguoi_duyet");
+    entity.Property(e => e.NgayGui).HasColumnName("ngay_gui").HasDefaultValueSql("CURRENT_TIMESTAMP");
+    entity.Property(e => e.NgayDuyet).HasColumnName("ngay_duyet");
+    entity.Property(e => e.PhanHoiDuyet).HasColumnName("phan_hoi_duyet").HasMaxLength(500);
+
+    entity.HasOne(e => e.PhanCaGui).WithMany(p => p.YeuCauDoiCaGui)
+        .HasForeignKey(e => e.MaPhanCaGui).OnDelete(DeleteBehavior.Cascade);
+    entity.HasOne(e => e.PhanCaNhan).WithMany(p => p.YeuCauDoiCaNhan)
+        .HasForeignKey(e => e.MaPhanCaNhan).OnDelete(DeleteBehavior.Cascade);
+    entity.HasOne(e => e.NhanVienGui).WithMany(n => n.YeuCauDoiCaDaGui)
+        .HasForeignKey(e => e.MaNhanVienGui).OnDelete(DeleteBehavior.Restrict);
+    entity.HasOne(e => e.NhanVienNhan).WithMany(n => n.YeuCauDoiCaDaNhan)
+        .HasForeignKey(e => e.MaNhanVienNhan).OnDelete(DeleteBehavior.Restrict);
+    entity.HasOne(e => e.NguoiDuyet).WithMany(n => n.YeuCauDoiCaDaDuyet)
+        .HasForeignKey(e => e.MaNguoiDuyet).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+});
+
+modelBuilder.Entity<DinhBienCa>(entity =>
+{
+    entity.ToTable("dinh_bien_ca");
+    entity.HasKey(e => e.MaDinhBien);
+    entity.Property(e => e.MaDinhBien).HasColumnName("ma_dinh_bien");
+    entity.Property(e => e.MaCa).HasColumnName("ma_ca").IsRequired();
+    entity.Property(e => e.MaChucVu).HasColumnName("ma_chuc_vu").IsRequired();
+    entity.Property(e => e.SoNguoiToiThieu).HasColumnName("so_nguoi_toi_thieu").HasDefaultValue(1).IsRequired();
+
+    // Mỗi cặp (ca, chức vụ) chỉ có đúng một dòng định biên; hai dòng cho cùng một
+    // cặp là dữ liệu mâu thuẫn không biết lấy số nào.
+    entity.HasIndex(e => new { e.MaCa, e.MaChucVu }).IsUnique();
+
+    entity.HasOne(e => e.CaLamViec).WithMany(c => c.DinhBienCas)
+        .HasForeignKey(e => e.MaCa).OnDelete(DeleteBehavior.Cascade);
+    entity.HasOne(e => e.ChucVu).WithMany(c => c.DinhBienCas)
+        .HasForeignKey(e => e.MaChucVu).OnDelete(DeleteBehavior.Cascade);
+});
+
+// GiaiTrinhChamCong: ba khoá ngoại trỏ về NhanVien (người gửi, Quản lý xác minh, HR xác nhận).
+modelBuilder.Entity<GiaiTrinhChamCong>(entity =>
+{
+    entity.ToTable("giai_trinh_cham_cong");
+    entity.HasKey(e => e.MaGiaiTrinh);
+    entity.Property(e => e.MaGiaiTrinh).HasColumnName("ma_giai_trinh");
+    entity.Property(e => e.MaPhanCa).HasColumnName("ma_phan_ca").IsRequired();
+    entity.Property(e => e.MaNhanVien).HasColumnName("ma_nhan_vien").IsRequired();
+    entity.Property(e => e.GioDeXuatVao).HasColumnName("gio_de_xuat_vao");
+    entity.Property(e => e.GioDeXuatRa).HasColumnName("gio_de_xuat_ra");
+    entity.Property(e => e.LyDo).HasColumnName("ly_do").HasMaxLength(500).IsRequired();
+    entity.Property(e => e.MinhChung).HasColumnName("minh_chung").HasMaxLength(500);
+    entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(20).HasDefaultValue("CHO_QUAN_LY").IsRequired();
+    entity.Property(e => e.MaQuanLyXacMinh).HasColumnName("ma_quan_ly_xac_minh");
+    entity.Property(e => e.NgayQuanLyXacMinh).HasColumnName("ngay_quan_ly_xac_minh");
+    entity.Property(e => e.YKienQuanLy).HasColumnName("y_kien_quan_ly").HasMaxLength(500);
+    entity.Property(e => e.MaHrXacNhan).HasColumnName("ma_hr_xac_nhan");
+    entity.Property(e => e.NgayHrXacNhan).HasColumnName("ngay_hr_xac_nhan");
+    entity.Property(e => e.YKienHr).HasColumnName("y_kien_hr").HasMaxLength(500);
+    entity.Property(e => e.NgayGui).HasColumnName("ngay_gui").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+    // Mỗi ca chỉ nộp một giải trình đang mở — sau khi HR duyệt hoặc từ chối
+    // người dùng mới nộp lại được. Chặn bằng index có điều kiện để không
+    // vướng các giải trình cũ đã đóng.
+    entity.HasIndex(e => e.MaPhanCa)
+        .HasDatabaseName("uq_giai_trinh_dang_mo")
+        .IsUnique()
+        .HasFilter("trang_thai IN ('CHO_QUAN_LY', 'CHO_HR')");
+
+    entity.HasOne(e => e.PhanCa).WithMany()
+        .HasForeignKey(e => e.MaPhanCa).OnDelete(DeleteBehavior.Cascade);
+    entity.HasOne(e => e.NhanVien).WithMany(n => n.GiaiTrinhChamCongDaGui)
+        .HasForeignKey(e => e.MaNhanVien).OnDelete(DeleteBehavior.Cascade);
+    entity.HasOne(e => e.QuanLyXacMinh).WithMany(n => n.GiaiTrinhQuanLyXacMinh)
+        .HasForeignKey(e => e.MaQuanLyXacMinh).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+    entity.HasOne(e => e.HrXacNhan).WithMany(n => n.GiaiTrinhHrXacNhan)
+        .HasForeignKey(e => e.MaHrXacNhan).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+});
 ```
 
 ---
@@ -577,4 +738,4 @@ Các hệ quả kỹ thuật cần lưu ý và giải trình khi bảo vệ đ�
 | **1** | Supabase có bật **backup tự động hàng ngày** không, thời gian lưu trữ | Là tính năng thuộc hạ tầng tài khoản Supabase Cloud bên ngoài repo — cần kiểm tra trực tiếp trên trang quản trị dự án Supabase. |
 | **2** | Tiến độ hoàn thiện gói **QuestPDF** trên các nhánh tính năng | Mã nguồn nhánh `main` chưa có tham chiếu; cần kiểm tra tiến độ của thành viên phụ trách nhánh `feat/payroll-questpdf`. |
 | **3** | Khả năng tiêu thụ gói **`supabase` SDK (`1.0.0`)** trong tầng Data | Đã đăng ký DI trong `Program.cs` nhưng các Controller hiện chưa tiêm sử dụng — cần đánh giá khả năng tận dụng cho tính năng Realtime thông báo sự kiện mới. |
-| **4** | Đồng bộ triển khai DDL **2 bảng mới `du_an` và `phan_cong_du_an`** trên Cloud | Cần chạy script migration tương ứng lên Supabase trước khi kích hoạt các màn hình tương tác trên Web và Mobile. |
+| **4** | Đồng bộ triển khai DDL **5 bảng mới** (`du_an`, `phan_cong_du_an`, `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`) trên Cloud | **Đã xác minh xong:** cả 5 bảng đã hiện diện trên Supabase Cloud (30/30 bảng `public` có RLS bật). Lưu ý: thư mục `supabase/migrations/` đang bị `.git/info/exclude` bỏ qua — thành viên clone repo mới cần chạy tay script `20261020_bo_sung_chuc_nang_phan_ca_cham_cong.sql` bằng `supabase db query --linked -f`. |

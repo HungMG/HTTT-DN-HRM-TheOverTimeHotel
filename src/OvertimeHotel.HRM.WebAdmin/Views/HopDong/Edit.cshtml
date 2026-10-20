@@ -149,7 +149,7 @@
             const posSelect = document.getElementById('contractPositionSelect');
             const chucVu = (posSelect && posSelect.selectedIndex > 0 ? posSelect.options[posSelect.selectedIndex].text : '@Model.PositionName').trim();
             const loaiHdSelect = document.getElementById('contractLoaiHopDong');
-            const loaiHd = loaiHdSelect ? loaiHdSelect.options[loaiHdSelect.selectedIndex].text : '@Model.Contract.LoaiHopDong';
+            const loaiHd = loaiHdSelect ? loaiHdSelect.options[loaiHdSelect.selectedIndex].text : '@ContractTypes.ToDisplayName(Model.Contract.LoaiHopDong)';
             const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
             const hinhThuc = hinhThucSelect ? hinhThucSelect.options[hinhThucSelect.selectedIndex].text : '@Model.Contract.HinhThucHopDong';
             const ngayBatDauRaw = document.getElementById('contractNgayBatDau')?.value;

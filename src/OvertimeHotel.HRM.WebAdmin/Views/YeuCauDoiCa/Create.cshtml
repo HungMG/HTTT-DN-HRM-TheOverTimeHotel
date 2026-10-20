@@ -1,0 +1,81 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.YeuCauDoiCaCreateViewModel
+@{
+    ViewData["Title"] = "Tạo Yêu Cầu Đổi Ca";
+}
+
+<div class="container-fluid px-3 px-md-4 py-3" style="max-width: 880px;">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i>Danh sách
+        </a>
+        <h1 class="h5 mb-0 fw-bold text-dark font-serif hotel-blur-text">Tạo yêu cầu đổi ca</h1>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+
+            @if (!Model.CoTheGui)
+            {
+                <div class="alert alert-warning rounded-3 border-0 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Chưa có ca nào trong 30 ngày tới thuộc phạm vi bạn quản lý, nên chưa lập được yêu cầu đổi ca.
+                    Hãy xếp ca trước ở màn <b>Ca &amp; Lịch làm việc</b>.
+                </div>
+            }
+            else
+            {
+                <form asp-action="Create" method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3 border-0 py-2 px-3 small"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-muted mb-1" asp-for="MaPhanCaGui">
+                                Ca sẽ nhường đi
+                            </label>
+                            <select asp-for="MaPhanCaGui" asp-items="Model.CaCuaToi"
+                                    class="form-select rounded-3">
+                                <option value="0">-- Chọn ca --</option>
+                            </select>
+                            <span asp-validation-for="MaPhanCaGui" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-muted mb-1" asp-for="MaPhanCaNhan">
+                                Ca sẽ nhận thay
+                            </label>
+                            <select asp-for="MaPhanCaNhan" asp-items="Model.CaDongNghiep"
+                                    class="form-select rounded-3">
+                                <option value="0">-- Chọn ca --</option>
+                            </select>
+                            <span asp-validation-for="MaPhanCaNhan" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold text-muted mb-1" asp-for="LyDo">
+                                Lý do đổi ca <span class="text-danger">*</span>
+                            </label>
+                            <textarea asp-for="LyDo" class="form-control rounded-3" rows="4" maxlength="500"
+                                      placeholder="Ví dụ: việc gia đình đột xuất, không thể trực ca đêm 22h ngày 24/10…"></textarea>
+                            <span asp-validation-for="LyDo" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border rounded-3 mt-4 mb-0 small text-muted">
+                        <i class="bi bi-shield-check text-success me-1"></i>
+                        Trước khi ghi nhận, hệ thống kiểm tra cả hai người: không chồng giờ với ca khác và
+                        vẫn đủ <b>8 giờ nghỉ</b> giữa hai ca liền kề (Điều 110 Bộ luật Lao động 2019).
+                        Yêu cầu sau khi gửi sẽ nằm ở trạng thái <b>Chờ duyệt</b>.
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Huỷ</a>
+                        <button type="submit" class="btn btn-hotel-primary rounded-pill px-4 fw-bold">
+                            <i class="bi bi-send me-1"></i>Gửi yêu cầu
+                        </button>
+                    </div>
+                </form>
+            }
+        </div>
+    </div>
+</div>

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
@@ -37,8 +38,15 @@ public class HopDongController : Controller
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var value = keyword.ToLower();
+            // Cột loai_hop_dong lưu mã ("XAC_DINH_THOI_HAN_1_NAM"), nhưng người
+            // dùng gõ "1 năm". Tra trước ra danh sách mã khớp rồi đẩy vào EF dưới
+            // dạng Contains — dịch được thành "= ANY(...)" của PostgreSQL.
+            // .ToArray() để EF chắc chắn nhận ra đây là tập hằng tham số hoá
+            // (= ANY(...) của PostgreSQL), không cố dịch IReadOnlyList thành SQL.
+            var maLoaiKhop = ContractTypes.MatchingCodes(keyword).ToArray();
             query = query.Where(contract =>
                 contract.SoHopDong.ToLower().Contains(value) ||
+                maLoaiKhop.Contains(contract.LoaiHopDong) ||
                 contract.LoaiHopDong.ToLower().Contains(value) ||
                 (contract.NhanVien != null && (
                     contract.NhanVien.Ho.ToLower().Contains(value) ||
@@ -114,8 +122,12 @@ public class HopDongController : Controller
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 var value = keyword.ToLower();
+                // Đường dự phòng đọc trên bộ nhớ — vẫn cần vì dữ liệu cũ có thể
+                // còn câu tiếng Việt trong cột thô.
+                var maLoaiKhop = ContractTypes.MatchingCodes(keyword);
                 filtered = filtered.Where(contract =>
                     contract.SoHopDong.ToLower().Contains(value) ||
+                    maLoaiKhop.Contains(contract.LoaiHopDong) ||
                     contract.LoaiHopDong.ToLower().Contains(value) ||
                     (contract.NhanVien != null && (contract.NhanVien.Ho.ToLower().Contains(value) || contract.NhanVien.Ten.ToLower().Contains(value))));
             }
@@ -412,13 +424,18 @@ public class HopDongController : Controller
         // Tự động tính ngày kết thúc nếu để trống theo loại hợp đồng
         if (!model.Contract.NgayKetThuc.HasValue)
         {
-            if (model.Contract.LoaiHopDong == "XAC_DINH_THOI_HAN_1_NAM")
+            // So khớp qua ContractTypes thay vì so tuyệt đối với hai mã: dữ liệu
+            // cũ còn câu tiếng Việt ("HĐLĐ Xác định thời hạn (3 năm)"), so tuyệt
+            // đối thì rơi vào cả hai nhánh đều trượt và hợp đồng ra đời không có
+            // ngày kết thúc — tức bị đọc thành vô thời hạn.
+            switch (ContractTypes.Normalize(model.Contract.LoaiHopDong))
             {
-                model.Contract.NgayKetThuc = model.Contract.NgayBatDau.AddYears(1);
-            }
-            else if (model.Contract.LoaiHopDong == "XAC_DINH_THOI_HAN_3_NAM")
-            {
-                model.Contract.NgayKetThuc = model.Contract.NgayBatDau.AddYears(3);
+                case ContractTypes.XAC_DINH_THOI_HAN_1_NAM:
+                    model.Contract.NgayKetThuc = model.Contract.NgayBatDau.AddYears(1);
+                    break;
+                case ContractTypes.XAC_DINH_THOI_HAN_3_NAM:
+                    model.Contract.NgayKetThuc = model.Contract.NgayBatDau.AddYears(3);
+                    break;
             }
         }
 

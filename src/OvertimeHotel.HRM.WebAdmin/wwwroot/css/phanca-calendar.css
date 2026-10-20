@@ -435,6 +435,42 @@
   font-style: italic;
 }
 
+/* ---------------------------------------------------------------
+   Cảnh báo định biên tối thiểu (PRD 3.5)
+
+   Khối này nằm ngay trên danh sách nhân sự của ca. Cố ý dùng nền đỏ
+   rất nhạt + viền trái đậm: đủ nổi để người xếp ca thấy, nhưng không
+   lấn át tên nhân viên bên dưới.
+   --------------------------------------------------------------- */
+.phanca-dinh-bien-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 12px 0;
+  padding: 8px 10px;
+  border-left: 3px solid #dc2626;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.phanca-dinh-bien-warning i {
+  margin-top: 1px;
+  font-size: 13px;
+}
+
+.phanca-dinh-bien-item {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #fee2e2;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ==========================================================================
    BẢNG MÀU PHÂN BIỆT BA CA LÀM VIỆC (SÁNG · CHIỀU · ĐÊM)
    Trước đây Ca Sáng và Ca Chiều cùng rơi vào nhánh bg-primary nên nhìn y hệt

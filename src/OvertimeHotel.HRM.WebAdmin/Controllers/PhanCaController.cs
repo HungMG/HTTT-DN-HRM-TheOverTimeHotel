@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
@@ -12,6 +14,13 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 [Authorize(Policy = PermissionCodes.AssignShifts)]
 public class PhanCaController : Controller
 {
+    /// <summary>
+    /// Thông báo dùng chung khi bảng định biên theo ngày chưa được tạo trên CSDL.
+    /// </summary>
+    private const string MissingDinhBienNgayMessage =
+        "Chưa lưu được định biên riêng theo ngày vì bảng dinh_bien_ngay chưa có trên CSDL. " +
+        "Hãy chạy migration 20261021_dinh_bien_ngay_override.sql rồi thử lại.";
+
     private readonly AppDbContext _context;
     private readonly ILogger<PhanCaController> _logger;
 
@@ -33,7 +42,8 @@ public class PhanCaController : Controller
         int? phongBanId,
         int? caId,
         string viewMode = "calendar",
-        bool openShiftModal = false)
+        bool openShiftModal = false,
+        bool openDinhBienModal = false)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
         DateOnly targetDate;
@@ -90,6 +100,7 @@ public class PhanCaController : Controller
         ViewBag.NextMonth = nextMonth;
         ViewBag.ViewMode = viewMode;
         ViewBag.OpenShiftModal = openShiftModal;
+        ViewBag.OpenDinhBienModal = openDinhBienModal;
 
         var model = new PhanCaIndexViewModel
         {
@@ -263,6 +274,105 @@ public class PhanCaController : Controller
                 model.SelectedAgenda.Shifts.Add(shiftGroup);
             }
 
+            // 8b. Đối chiếu định biên tối thiểu theo chức vụ (PRD 3.5).
+            // Mức nền nằm ở dinh_bien_ca; ngày đang xem có thể có dòng riêng ở
+            // dinh_bien_ngay đè lên. Ô không có dòng riêng thì vẫn theo mức nền.
+            var dinhBienTheoCa = await _context.DinhBienCas.AsNoTracking()
+                .Include(d => d.ChucVu)
+                .ToListAsync();
+
+            // Bảng định biên theo ngày là phần mở rộng mới. Nếu CSDL cloud chưa chạy
+            // migration 20261021 thì bảng chưa tồn tại — khi đó chỉ bỏ qua phần đè
+            // theo ngày và vẫn hiển thị mức nền, thay vì ném lỗi làm sập cả màn phân ca.
+            List<DinhBienNgay> dinhBienNgayTheoCa;
+            try
+            {
+                dinhBienNgayTheoCa = await _context.DinhBienNgays.AsNoTracking()
+                    .Include(d => d.ChucVu)
+                    .Where(d => d.Ngay == model.SelectedDate)
+                    .ToListAsync();
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                _logger.LogWarning(ex, "Bảng dinh_bien_ngay chưa tồn tại — chỉ dùng mức định biên chung.");
+                dinhBienNgayTheoCa = new List<DinhBienNgay>();
+            }
+
+            foreach (var shiftGroup in model.SelectedAgenda.Shifts)
+            {
+                var mucNenCuaCa = dinhBienTheoCa.Where(d => d.MaCa == shiftGroup.MaCa).ToList();
+                var mucNgayCuaCa = dinhBienNgayTheoCa.Where(d => d.MaCa == shiftGroup.MaCa).ToList();
+
+                // Gộp hai nguồn theo chức vụ: số của ngày đè lên số nền. Đưa về cùng
+                // một hình dạng (chức vụ, số người, tên) vì hai bảng là hai lớp khác
+                // nhau, không ghép thẳng được.
+                var maChucVuCoDinhBienNgay = mucNgayCuaCa.Select(d => d.MaChucVu).ToHashSet();
+                var mucHieuLuc = mucNgayCuaCa
+                    .Select(d => (d.MaChucVu, d.SoNguoiToiThieu, d.ChucVu))
+                    .Concat(mucNenCuaCa
+                        .Where(nen => !maChucVuCoDinhBienNgay.Contains(nen.MaChucVu))
+                        .Select(nen => (nen.MaChucVu, nen.SoNguoiToiThieu, nen.ChucVu)))
+                    .ToList();
+
+                if (mucHieuLuc.Count == 0)
+                {
+                    continue;
+                }
+
+                // Đếm theo chức vụ của người đang được xếp trong ca, chỉ tính lượt
+                // phân ca còn hiệu lực (không tính lượt đã vắng mặt).
+                var soNguoiTheoChucVu = selectedDayShifts
+                    .Where(p => p.MaCa == shiftGroup.MaCa && p.TrangThai != "VANG_MAT")
+                    .Select(p => p.NhanVien?.MaChucVu)
+                    .Where(maChucVu => maChucVu.HasValue)
+                    .GroupBy(maChucVu => maChucVu!.Value)
+                    .ToDictionary(g => g.Key, g => g.Count());
+
+                foreach (var dinhBien in mucHieuLuc.OrderBy(d => d.ChucVu?.TenChucVu))
+                {
+                    shiftGroup.DinhBien.Add(new DinhBienCheckItem
+                    {
+                        MaChucVu = dinhBien.MaChucVu,
+                        TenChucVu = dinhBien.ChucVu?.TenChucVu ?? $"Chức vụ #{dinhBien.MaChucVu}",
+                        SoNguoiToiThieu = dinhBien.SoNguoiToiThieu,
+                        SoNguoiHienCo = soNguoiTheoChucVu.TryGetValue(dinhBien.MaChucVu, out var hienCo) ? hienCo : 0,
+                        LaMucRiengNgay = maChucVuCoDinhBienNgay.Contains(dinhBien.MaChucVu)
+                    });
+                }
+            }
+
+            model.TongCaThieuDinhBien = model.SelectedAgenda.Shifts.Count(s => s.ThieuDinhBien);
+
+            // 8c. Dữ liệu cho popup cấu hình định biên (PRD 3.5).
+            var chucVus = await _context.ChucVus.AsNoTracking()
+                .Include(c => c.PhongBan)
+                .OrderBy(c => c.TenChucVu)
+                .ToListAsync();
+
+            model.DinhBien = new DinhBienModalViewModel
+            {
+                Ngay = model.SelectedDate,
+                DanhSachCa = model.DanhSachCa,
+                ReturnWeek = weekStart.ToString("yyyy-MM-dd"),
+                CoQuyenSua = User.HasPermission(PermissionCodes.AssignShifts),
+                Rows = chucVus.Select(cv => new DinhBienMatrixRow
+                {
+                    MaChucVu = cv.MaChucVu,
+                    TenChucVu = cv.TenChucVu,
+                    TenPhongBan = cv.PhongBan?.TenPhongBan ?? "Khách sạn",
+                    MucNenTheoCa = dinhBienTheoCa
+                        .Where(d => d.MaChucVu == cv.MaChucVu)
+                        .ToDictionary(d => d.MaCa, d => d.SoNguoiToiThieu),
+                    MucNgayTheoCa = dinhBienNgayTheoCa
+                        .Where(d => d.MaChucVu == cv.MaChucVu)
+                        .ToDictionary(d => d.MaCa, d => d.SoNguoiToiThieu),
+                    HienCoTheoCa = selectedDayShifts
+                        .Where(p => p.TrangThai != "VANG_MAT" && p.NhanVien?.MaChucVu == cv.MaChucVu)
+                        .GroupBy(p => p.MaCa)
+                        .ToDictionary(g => g.Key, g => g.Count())
+                }).ToList()
+            };
+
             // 9. Xây dựng ma trận tuần (Weekly Matrix Rows)
             foreach (var emp in matrixEmps)
             {
@@ -409,11 +519,51 @@ public class PhanCaController : Controller
                 .Where(n => empIds.Contains(n.MaNhanVien))
                 .ToDictionaryAsync(n => n.MaNhanVien);
 
+            // PHẠM VI PHÒNG BAN (PRD 3.2): Quản lý chỉ được xếp ca cho nhân sự thuộc
+            // bộ phận mình. Admin và HR vẫn xếp được toàn khách sạn vì họ điều phối
+            // liên bộ phận khi cao điểm. Lọc ở đây chứ không chỉ ẩn trên giao diện —
+            // form có thể bị gửi lại bằng tay hoặc sửa request.
+            var managerDeptId = GetManagerDepartmentScope();
+            var skippedOutOfScopeCount = 0;
+            if (managerDeptId.HasValue)
+            {
+                var inScope = employeeMap.Values
+                    .Where(n => n.MaPhongBan == managerDeptId.Value)
+                    .Select(n => n.MaNhanVien)
+                    .ToHashSet();
+                skippedOutOfScopeCount = empIds.Count(id => !inScope.Contains(id));
+                empIds = empIds.Where(inScope.Contains).ToList();
+            }
+
+            if (empIds.Count == 0)
+            {
+                TempData["Error"] = TempData["ErrorMessage"] =
+                    "Bạn chỉ được phân ca cho nhân sự thuộc phòng ban mình phụ trách.";
+                return RedirectToAction(nameof(Index), new { week = targetDates.First().ToString("yyyy-MM-dd") });
+            }
+
+            // Bản đồ ca đang có của từng nhân viên, nới thêm 1 ngày mỗi đầu để bắt được
+            // ca đêm của hôm trước kéo sang hôm sau (PRD 3.2 chồng giờ + 3.3 nghỉ 8h).
+            var rangeStart = targetDates.Min().AddDays(-1);
+            var rangeEnd = targetDates.Max().AddDays(1);
+            var shiftWindows = (await _context.PhanCas.AsNoTracking()
+                    .Where(p => empIds.Contains(p.MaNhanVien) &&
+                                p.NgayLamViec >= rangeStart && p.NgayLamViec <= rangeEnd)
+                    .Select(p => new { p.MaNhanVien, p.BatDauDuKien, p.KetThucDuKien })
+                    .ToListAsync())
+                .GroupBy(p => p.MaNhanVien)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => new ShiftSchedulingPolicy.ShiftWindow(x.BatDauDuKien, x.KetThucDuKien)).ToList());
+
             int successCount = 0;
             int skippedDuplicateCount = 0;
             int skippedPastCount = 0;
             int skippedEndedCount = 0;
             int skippedNoContractCount = 0;
+            int skippedOverlapCount = 0;
+            int skippedRestCount = 0;
+            string? firstConflictMessage = null;
             var today = DateOnly.FromDateTime(DateTime.Today);
             var nowLocal = DateTime.Now;
 
@@ -447,7 +597,7 @@ public class PhanCaController : Controller
                         continue;
                     }
 
-                    // Kiểm tra trùng ca trong ngày
+                    // Kiểm tra trùng đúng mã ca trong ngày
                     var exist = await _context.PhanCas.AnyAsync(p =>
                         p.MaNhanVien == empId &&
                         p.NgayLamViec == targetDate &&
@@ -459,17 +609,45 @@ public class PhanCaController : Controller
                         continue;
                     }
 
+                    var shiftStart = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
+                    var shiftEnd = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
+
+                    // Chồng giờ + nghỉ tối thiểu 8 giờ (PRD 3.2 và 3.3). Dùng danh sách
+                    // ca đã tải sẵn ở trên, nối thêm các ca vừa xếp trong cùng lượt gọi
+                    // để hai ca của cùng một đợt cũng không lọt lưới.
+                    var existingWindows = shiftWindows.TryGetValue(empId, out var windows)
+                        ? windows
+                        : new List<ShiftSchedulingPolicy.ShiftWindow>();
+
+                    var conflict = ShiftSchedulingPolicy.ValidateAssignment(existingWindows, shiftStart, shiftEnd);
+                    if (conflict.HasConflict)
+                    {
+                        if (conflict.Kind == ShiftConflictKind.Overlap)
+                        {
+                            skippedOverlapCount++;
+                        }
+                        else
+                        {
+                            skippedRestCount++;
+                        }
+
+                        firstConflictMessage ??= conflict.ThongDiep;
+                        continue;
+                    }
+
                     var phanCa = new PhanCa
                     {
                         MaNhanVien = empId,
                         MaCa = input.MaCa,
                         NgayLamViec = targetDate,
-                        BatDauDuKien = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
-                        KetThucDuKien = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
+                        BatDauDuKien = shiftStart,
+                        KetThucDuKien = shiftEnd,
                         TrangThai = safeStatus
                     };
 
                     _context.PhanCas.Add(phanCa);
+                    existingWindows.Add(new ShiftSchedulingPolicy.ShiftWindow(shiftStart, shiftEnd));
+                    shiftWindows[empId] = existingWindows;
                     successCount++;
                 }
             }
@@ -486,6 +664,9 @@ public class PhanCaController : Controller
                 if (skippedEndedCount > 0) skipReasons.Add($"{skippedEndedCount} lượt do ca đã hết giờ trong hôm nay");
                 if (skippedNoContractCount > 0) skipReasons.Add($"{skippedNoContractCount} lượt do hợp đồng hết hạn hoặc chưa ký");
                 if (skippedDuplicateCount > 0) skipReasons.Add($"{skippedDuplicateCount} lượt đã có ca trùng");
+                if (skippedOverlapCount > 0) skipReasons.Add($"{skippedOverlapCount} lượt trùng giờ với ca khác");
+                if (skippedRestCount > 0) skipReasons.Add($"{skippedRestCount} lượt nghỉ giữa ca dưới {ShiftSchedulingPolicy.MIN_REST_HOURS:0} giờ");
+                if (skippedOutOfScopeCount > 0) skipReasons.Add($"{skippedOutOfScopeCount} lượt ngoài phòng ban phụ trách");
                 if (skipReasons.Count > 0)
                 {
                     msg += $" (Bỏ qua: {string.Join(", ", skipReasons)}).";
@@ -499,8 +680,19 @@ public class PhanCaController : Controller
                 if (skippedEndedCount > 0) errors.Add("Ca làm việc đã kết thúc trong ngày hôm nay");
                 if (skippedNoContractCount > 0) errors.Add("Nhân viên không có hợp đồng lao động có hiệu lực (hợp đồng đã hết hạn hoặc chưa ký)");
                 if (skippedDuplicateCount > 0) errors.Add("Tất cả các ca phân công đều đã được xếp trước đó");
+                if (skippedOverlapCount > 0) errors.Add("Ca đang xếp trùng giờ với ca khác của nhân viên");
+                if (skippedRestCount > 0) errors.Add($"Khoảng nghỉ giữa hai ca ngắn hơn {ShiftSchedulingPolicy.MIN_REST_HOURS:0} giờ theo {ShiftSchedulingPolicy.REST_RULE_CITATION}");
+                if (skippedOutOfScopeCount > 0) errors.Add("Có nhân sự ngoài phòng ban bạn phụ trách");
+
+                // Thông điệp xung đột đầu tiên nêu rõ mốc giờ để người xếp ca biết
+                // phải dời ca đi đâu, thay vì chỉ báo "không hợp lệ".
+                if (firstConflictMessage != null)
+                {
+                    errors.Add(firstConflictMessage);
+                }
+
                 TempData["Warning"] = TempData["WarningMessage"] = errors.Count > 0
-                    ? string.Join(". ", errors) + "."
+                    ? string.Join(" ", errors)
                     : "Không thể tạo lượt phân ca.";
             }
         }
@@ -550,11 +742,33 @@ public class PhanCaController : Controller
                 return RedirectToAction(nameof(Index), new { week = weekStartStr });
             }
 
+            // Nhân viên ngoài phòng ban phụ trách của quản lý thì không xếp ca được.
+            var scopeDeptId = GetManagerDepartmentScope();
+            if (scopeDeptId.HasValue && emp.MaPhongBan != scopeDeptId.Value)
+            {
+                TempData["Error"] = TempData["ErrorMessage"] = "Bạn chỉ được xếp ca cho nhân sự thuộc phòng ban mình phụ trách.";
+                return RedirectToAction(nameof(Index), new { week = weekStartStr });
+            }
+
             int addedCount = 0;
             int skippedPastCount = 0;
             int skippedNoContractCount = 0;
+            int skippedOverlapCount = 0;
+            int skippedRestCount = 0;
+            string? firstConflictMessage = null;
             var today = DateOnly.FromDateTime(DateTime.Today);
             var nowLocal = DateTime.Now;
+
+            // Nạp sẵn lịch hiện có của nhân viên trong tuần (rộng 1 ngày mỗi đầu để
+            // bắt được ca đêm của ngày kề bên vắt qua ranh giới tuần).
+            var existingWindows = (await _context.PhanCas.AsNoTracking()
+                    .Where(p => p.MaNhanVien == maNhanVien &&
+                                p.NgayLamViec >= weekStart.AddDays(-1) &&
+                                p.NgayLamViec <= weekStart.AddDays(6))
+                    .Select(p => new { p.BatDauDuKien, p.KetThucDuKien })
+                    .ToListAsync())
+                .Select(p => new ShiftSchedulingPolicy.ShiftWindow(p.BatDauDuKien, p.KetThucDuKien))
+                .ToList();
 
             // Xếp từ Thứ Hai đến Thứ Sáu (5 ngày)
             for (int i = 0; i < 5; i++)
@@ -591,15 +805,29 @@ public class PhanCaController : Controller
 
                 if (!exist)
                 {
+                    var shiftStart = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
+                    var shiftEnd = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
+
+                    // PRD 3.2 / 3.3: chặn trùng giờ và chặn nghỉ dưới 8 giờ.
+                    var conflict = ShiftSchedulingPolicy.ValidateAssignment(existingWindows, shiftStart, shiftEnd);
+                    if (conflict.HasConflict)
+                    {
+                        if (conflict.Kind == ShiftConflictKind.Overlap) skippedOverlapCount++;
+                        else skippedRestCount++;
+                        firstConflictMessage ??= conflict.ThongDiep;
+                        continue;
+                    }
+
                     _context.PhanCas.Add(new PhanCa
                     {
                         MaNhanVien = maNhanVien,
                         MaCa = maCa,
                         NgayLamViec = workDate,
-                        BatDauDuKien = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
-                        KetThucDuKien = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
+                        BatDauDuKien = shiftStart,
+                        KetThucDuKien = shiftEnd,
                         TrangThai = "DA_PHAN"
                     });
+                    existingWindows.Add(new ShiftSchedulingPolicy.ShiftWindow(shiftStart, shiftEnd));
                     addedCount++;
                 }
             }
@@ -617,6 +845,14 @@ public class PhanCaController : Controller
                 {
                     skipNotes.Add($"{skippedNoContractCount} ngày hợp đồng hết hạn hoặc chưa có hiệu lực");
                 }
+                if (skippedOverlapCount > 0)
+                {
+                    skipNotes.Add($"{skippedOverlapCount} ngày trùng giờ với ca khác");
+                }
+                if (skippedRestCount > 0)
+                {
+                    skipNotes.Add($"{skippedRestCount} ngày nghỉ giữa ca dưới {ShiftSchedulingPolicy.MIN_REST_HOURS:0} giờ");
+                }
                 if (skipNotes.Count > 0)
                 {
                     msg += $" (Đã tự động bỏ qua: {string.Join(", ", skipNotes)}).";
@@ -628,6 +864,22 @@ public class PhanCaController : Controller
                 if (skippedNoContractCount > 0)
                 {
                     TempData["Warning"] = TempData["WarningMessage"] = $"Không thể xếp ca nhanh vì hợp đồng của nhân viên {emp.HoTen} đã hết hạn hoặc chưa có hiệu lực trong các ngày được chọn. Vui lòng gia hạn hợp đồng.";
+                }
+                else if (skippedOverlapCount > 0 || skippedRestCount > 0)
+                {
+                    var reasons = new List<string>();
+                    if (skippedOverlapCount > 0)
+                    {
+                        reasons.Add($"{skippedOverlapCount} ngày trùng giờ với ca khác");
+                    }
+                    if (skippedRestCount > 0)
+                    {
+                        reasons.Add($"{skippedRestCount} ngày nghỉ giữa ca dưới {ShiftSchedulingPolicy.MIN_REST_HOURS:0} giờ theo {ShiftSchedulingPolicy.REST_RULE_CITATION}");
+                    }
+
+                    TempData["Warning"] = TempData["WarningMessage"] =
+                        $"Không xếp được ca cho {emp.HoTen}: {string.Join(", ", reasons)}."
+                        + (firstConflictMessage != null ? " " + firstConflictMessage : string.Empty);
                 }
                 else
                 {
@@ -689,6 +941,202 @@ public class PhanCaController : Controller
     }
 
     /// <summary>
+    /// Lưu lưới định biên ca (PRD 3.5).
+    ///
+    /// <para>
+    /// Một lần lưu có thể ghi cả ba loại thay đổi trên cùng lưới: thêm ô mới, đổi
+    /// số ô đã có, và xoá ô (khi người dùng nhập 0 hoặc để trống). Vì vậy mỗi
+    /// ô phải được xử lý theo đúng ý người nhập chứ không phải "ghi đè toàn bộ":
+    /// xoá nhầm một ô mức nền sẽ làm cả tháng mất cảnh báo ở ô đó.
+    /// </para>
+    ///
+    /// <para>
+    /// <paramref name="input"/>.<see cref="DinhBienSaveInput.Ngay"/> rỗng là lưu
+    /// mức nền vào <c>dinh_bien_ca</c>; có ngày là lưu mức riêng vào
+    /// <c>dinh_bien_ngay</c>. Hai bảng có cùng ràng buộc <c>so_nguoi &gt;= 1</c>
+    /// nên số 0 luôn được hiểu là DELETE.
+    /// </para>
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveDinhBien(DinhBienSaveInput input)
+    {
+        var returnUrl = Url.Action(nameof(Index), new { week = input.ReturnWeek, openDinhBienModal = true });
+
+        DateOnly? ngayApDung = null;
+        if (!string.IsNullOrWhiteSpace(input.Ngay))
+        {
+            if (!DateOnly.TryParse(input.Ngay, out var parsed))
+            {
+                TempData["Error"] = "Ngày áp dụng định biên không hợp lệ.";
+                return SafeRedirect(returnUrl);
+            }
+            ngayApDung = parsed;
+        }
+
+        // Mã ca / chức vụ phải tồn tại thật. Lọc trước để không gửi rác xuống
+        // CSDL rồi nhận lỗi khoá ngoại khó hiểu cho người dùng.
+        var hopLeCa = (await _context.CaLamViecs.AsNoTracking()
+            .Select(c => c.MaCa).ToListAsync()).ToHashSet();
+        var hopLeChucVu = (await _context.ChucVus.AsNoTracking()
+            .Select(c => c.MaChucVu).ToListAsync()).ToHashSet();
+
+        var cells = input.Cells
+            .Where(c => hopLeCa.Contains(c.MaCa) && hopLeChucVu.Contains(c.MaChucVu))
+            .GroupBy(c => new { c.MaCa, c.MaChucVu })
+            .Select(g => g.Last())
+            .ToList();
+
+        if (cells.Count == 0)
+        {
+            TempData["Warning"] = "Không có ô định biên nào cần lưu.";
+            return SafeRedirect(returnUrl);
+        }
+
+        try
+        {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                if (ngayApDung is null)
+                {
+                    await UpsertDinhBienMucNenAsync(cells);
+                }
+                else
+                {
+                    await UpsertDinhBienNgayAsync(ngayApDung.Value, cells);
+                }
+
+                await transaction.CommitAsync();
+            });
+
+            TempData["Success"] = ngayApDung is null
+                ? $"Đã cập nhật định biên chung cho {cells.Count} ô."
+                : $"Đã cập nhật định biên riêng ngày {ngayApDung:dd/MM/yyyy} cho {cells.Count} ô.";
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            _logger.LogError(ex, "Bảng dinh_bien_ngay chưa tồn tại khi lưu định biên theo ngày.");
+            TempData["Error"] = MissingDinhBienNgayMessage;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UndefinedTable })
+        {
+            // SaveChanges bọc lỗi Postgres trong DbUpdateException, nên phải soi cả
+            // lớp trong — nếu không, lỗi "chưa chạy migration" sẽ hiện thành thông
+            // báo chung chung "kiểm tra lại số người tối thiểu", dẫn người dùng đi sai hướng.
+            _logger.LogError(ex, "Bảng dinh_bien_ngay chưa tồn tại khi lưu định biên theo ngày.");
+            TempData["Error"] = MissingDinhBienNgayMessage;
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Không thể lưu định biên ca.");
+            TempData["Error"] = "Không thể lưu định biên. Vui lòng kiểm tra lại số người tối thiểu.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi không xác định khi lưu định biên ca.");
+            TempData["Error"] = "Lỗi khi lưu định biên: " + ex.Message;
+        }
+
+        return SafeRedirect(returnUrl);
+    }
+
+    /// <summary>
+    /// Ghi mức nền vào <c>dinh_bien_ca</c>: số &gt;= 1 là upsert, 0 là xoá dòng.
+    /// </summary>
+    private async Task UpsertDinhBienMucNenAsync(List<DinhBienCellInput> cells)
+    {
+        // Nạp đúng các cặp cần đụng tới, không nạp cả bảng — bảng có thể nhiều dòng
+        // (số ca × số chức vụ) trong khi mỗi lần lưu chỉ vài ô.
+        var maCaCanXuLy = cells.Select(c => c.MaCa).Distinct().ToList();
+        var hienCo = await _context.DinhBienCas
+            .Where(d => maCaCanXuLy.Contains(d.MaCa))
+            .ToListAsync();
+
+        foreach (var cell in cells)
+        {
+            var dong = hienCo.FirstOrDefault(d => d.MaCa == cell.MaCa && d.MaChucVu == cell.MaChucVu);
+
+            if (cell.SoNguoi <= 0)
+            {
+                if (dong is not null)
+                {
+                    _context.DinhBienCas.Remove(dong);
+                }
+                continue;
+            }
+
+            if (dong is null)
+            {
+                _context.DinhBienCas.Add(new DinhBienCa
+                {
+                    MaCa = cell.MaCa,
+                    MaChucVu = cell.MaChucVu,
+                    SoNguoiToiThieu = cell.SoNguoi
+                });
+            }
+            else
+            {
+                dong.SoNguoiToiThieu = cell.SoNguoi;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Ghi mức riêng của một ngày vào <c>dinh_bien_ngay</c>: số &gt;= 1 là upsert,
+    /// 0 là xoá dòng để ô đó quay về theo mức nền.
+    /// </summary>
+    private async Task UpsertDinhBienNgayAsync(DateOnly ngay, List<DinhBienCellInput> cells)
+    {
+        var hienCo = await _context.DinhBienNgays
+            .Where(d => d.Ngay == ngay)
+            .ToListAsync();
+
+        foreach (var cell in cells)
+        {
+            var dong = hienCo.FirstOrDefault(d => d.MaCa == cell.MaCa && d.MaChucVu == cell.MaChucVu);
+
+            if (cell.SoNguoi <= 0)
+            {
+                if (dong is not null)
+                {
+                    _context.DinhBienNgays.Remove(dong);
+                }
+                continue;
+            }
+
+            if (dong is null)
+            {
+                _context.DinhBienNgays.Add(new DinhBienNgay
+                {
+                    Ngay = ngay,
+                    MaCa = cell.MaCa,
+                    MaChucVu = cell.MaChucVu,
+                    SoNguoiToiThieu = cell.SoNguoi
+                });
+            }
+            else
+            {
+                dong.SoNguoiToiThieu = cell.SoNguoi;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Chuyển hướng về URL nội bộ, rơi về Index nếu URL rỗng hoặc không hợp lệ.
+    /// </summary>
+    private IActionResult SafeRedirect(string? url) =>
+        string.IsNullOrWhiteSpace(url) || !Url.IsLocalUrl(url)
+            ? RedirectToAction(nameof(Index))
+            : LocalRedirect(url);
+
+    /// <summary>
     /// API gán nhanh / đổi ca / xóa ca trực tiếp trên cuốn lịch ma trận (In-Place Ajax)
     /// </summary>
     [HttpPost]
@@ -741,6 +1189,13 @@ public class PhanCaController : Controller
                 return Json(new { success = false, message = "Không tìm thấy thông tin nhân viên." });
             }
 
+            // PRD 3.1: quản lý chỉ xếp ca trong phòng ban mình phụ trách.
+            var scopeDeptId = GetManagerDepartmentScope();
+            if (scopeDeptId.HasValue && emp.MaPhongBan != scopeDeptId.Value)
+            {
+                return Json(new { success = false, message = "Bạn chỉ được xếp ca cho nhân sự thuộc phòng ban mình phụ trách." });
+            }
+
             var contractValidation = ContractAttendancePolicy.ValidateSchedulingContract(emp, targetDate);
             if (!contractValidation.IsAllowed)
             {
@@ -783,13 +1238,34 @@ public class PhanCaController : Controller
                 _context.PhanCas.RemoveRange(existing);
             }
 
+            var shiftStart = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
+            var shiftEnd = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
+
+            // PRD 3.2 / 3.3: ca đang xếp không được trùng giờ và phải giữ khoảng
+            // nghỉ tối thiểu với các ca của những ngày khác. Ca cùng ngày vừa nằm
+            // trong `existing` (sẽ bị xoá) nên không tính vào tập so sánh.
+            var otherWindows = (await _context.PhanCas.AsNoTracking()
+                    .Where(p => p.MaNhanVien == input.MaNhanVien &&
+                                p.NgayLamViec != targetDate &&
+                                p.NgayLamViec >= targetDate.AddDays(-2) &&
+                                p.NgayLamViec <= targetDate.AddDays(2))
+                    .Select(p => new { p.BatDauDuKien, p.KetThucDuKien })
+                    .ToListAsync())
+                .Select(p => new ShiftSchedulingPolicy.ShiftWindow(p.BatDauDuKien, p.KetThucDuKien));
+
+            var conflict = ShiftSchedulingPolicy.ValidateAssignment(otherWindows, shiftStart, shiftEnd);
+            if (conflict.HasConflict)
+            {
+                return Json(new { success = false, message = conflict.ThongDiep });
+            }
+
             var phanCa = new PhanCa
             {
                 MaNhanVien = input.MaNhanVien,
                 MaCa = input.MaCa,
                 NgayLamViec = targetDate,
-                BatDauDuKien = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
-                KetThucDuKien = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime(),
+                BatDauDuKien = shiftStart,
+                KetThucDuKien = shiftEnd,
                 TrangThai = "DA_PHAN"
             };
 
@@ -815,6 +1291,27 @@ public class PhanCaController : Controller
             _logger.LogError(ex, "Lỗi khi gán nhanh ca trực cho nhân viên {MaNhanVien} ngày {NgayLamViec}", input.MaNhanVien, input.NgayLamViec);
             return Json(new { success = false, message = "Lỗi khi lưu dữ liệu vào CSDL: " + ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Phạm vi phòng ban mà người đang đăng nhập được phép xếp ca (PRD 3.1 —
+    /// quản lý chỉ xếp ca cho nhân sự thuộc phòng ban mình phụ trách).
+    ///
+    /// Trả về <c>null</c> nghĩa là KHÔNG giới hạn: Admin và HR vẫn xếp ca toàn
+    /// khách sạn. Chỉ vai trò Manager mới bị giới hạn, và chỉ khi tài khoản có
+    /// claim <c>DepartmentId</c> hợp lệ — tài khoản Manager thiếu claim phòng ban
+    /// là dữ liệu hỏng, đóng về "không xếp được ca nào" thay vì mở toàn bộ.
+    /// </summary>
+    private int? GetManagerDepartmentScope()
+    {
+        if (!User.IsInRole("Manager"))
+        {
+            return null;
+        }
+
+        return int.TryParse(User.FindFirstValue("DepartmentId"), out var departmentId) && departmentId > 0
+            ? departmentId
+            : -1; // -1 không khớp phòng ban nào ⇒ danh sách nhân sự rỗng
     }
 
     private static string GetDayOfWeekName(DayOfWeek day) => day switch
@@ -1077,5 +1574,38 @@ public class PhanCaController : Controller
                 });
             }
         }
+
+        // Dữ liệu popup định biên ở chế độ dự phòng. Bình thường phần này do
+        // nhánh đọc CSDL dựng (mục 8c); khi rơi vào đây mà để trống thì nút
+        // "Định Biên Ca" sẽ mở ra một lưới không có dòng nào — trông như lỗi.
+        // Dùng đúng danh mục chức vụ/ca vừa dựng ở trên để hai nơi khớp nhau.
+        var chucVuDuPhong = model.DanhSachNhanVien
+            .Where(nv => nv.ChucVu != null)
+            .Select(nv => nv.ChucVu!)
+            .GroupBy(cv => cv.MaChucVu)
+            .Select(g => g.First())
+            .OrderBy(cv => cv.TenChucVu)
+            .ToList();
+
+        model.DinhBien = new DinhBienModalViewModel
+        {
+            Ngay = model.SelectedDate,
+            DanhSachCa = model.DanhSachCa,
+            ReturnWeek = weekStart.ToString("yyyy-MM-dd"),
+            CoQuyenSua = User.HasPermission(PermissionCodes.AssignShifts),
+            Rows = chucVuDuPhong.Select(cv => new DinhBienMatrixRow
+            {
+                MaChucVu = cv.MaChucVu,
+                TenChucVu = cv.TenChucVu,
+                TenPhongBan = model.DanhSachNhanVien
+                    .FirstOrDefault(nv => nv.MaChucVu == cv.MaChucVu)?.PhongBan?.TenPhongBan ?? "Khách sạn",
+                // Chế độ dự phòng không đọc được bảng định biên, nên để trống
+                // mức nền thay vì bịa số — người dùng thấy rõ là chưa cấu hình.
+                HienCoTheoCa = model.DanhSachPhanCa
+                    .Where(p => p.NgayLamViec == model.SelectedDate && p.NhanVien?.MaChucVu == cv.MaChucVu)
+                    .GroupBy(p => p.MaCa)
+                    .ToDictionary(g => g.Key, g => g.Count())
+            }).ToList()
+        };
     }
 }

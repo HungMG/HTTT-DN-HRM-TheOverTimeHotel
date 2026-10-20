@@ -27,21 +27,23 @@ public class ScheduleShiftItem(PhanCa shift)
     public string StatusText => shift.TrangThai switch
     {
         "HOAN_THANH" => "Đã hoàn thành",
-        "VANG" => "Đánh dấu vắng",
+        // Mã trong CSDL là VANG_MAT. Giữ nhánh "VANG" để dữ liệu cũ còn sót mã
+        // cũ vẫn hiện đúng nhãn thay vì rơi về "Đã phân ca".
+        "VANG_MAT" or "VANG" => "Đánh dấu vắng",
         _ => "Đã phân ca"
     };
 
     public string StatusColor => shift.TrangThai switch
     {
         "HOAN_THANH" => "#047857",
-        "VANG" => "#B91C1C",
+        "VANG_MAT" or "VANG" => "#B91C1C",
         _ => "#1E3A8A"
     };
 
     public string StatusBackground => shift.TrangThai switch
     {
         "HOAN_THANH" => "#ECFDF5",
-        "VANG" => "#FEF2F2",
+        "VANG_MAT" or "VANG" => "#FEF2F2",
         _ => "#EFF6FF"
     };
 }

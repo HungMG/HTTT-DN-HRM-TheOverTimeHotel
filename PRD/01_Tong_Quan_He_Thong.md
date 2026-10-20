@@ -194,23 +194,24 @@ Nhằm đáp ứng toàn diện bài toán quản trị nhân lực đặc thù 
 
 ---
 
-## 6. Quy Mô Cơ Sở Dữ Liệu: 27 Bảng Chuẩn Hóa 3NF
+## 6. Quy Mô Cơ Sở Dữ Liệu: 30 Bảng Chuẩn Hóa 3NF
 
-Cơ sở dữ liệu của hệ thống HRM The OverTime Hotel được thiết kế đạt chuẩn hóa **dạng chuẩn 3 (3NF)** trên nền tảng Supabase Cloud (PostgreSQL Engine), bao gồm **27 bảng** được phân nhóm chặt chẽ theo 11 phân hệ chức năng:
+Cơ sở dữ liệu của hệ thống HRM The OverTime Hotel được thiết kế đạt chuẩn hóa **dạng chuẩn 3 (3NF)** trên nền tảng Supabase Cloud (PostgreSQL Engine), bao gồm **30 bảng** được phân nhóm chặt chẽ theo 11 phân hệ chức năng:
 
 ```text
 +---------------------------------------------------------------------------------------+
-|                 CSDL THE OVERTIME HOTEL HRM - 27 BẢNG CHUẨN 3NF                      |
+|                 CSDL THE OVERTIME HOTEL HRM - 30 BẢNG CHUẨN 3NF                      |
 +---------------------------------------------------------------------------------------+
 | [1]  Nhóm Tổ chức & Nhân sự (4 bảng):                                                 |
 |      - phong_ban, chuc_vu, nhan_vien, hop_dong                                        |
 | [2]  Nhóm Tài khoản & Phân quyền RBAC (5 bảng):                                      |
 |      - tai_khoan, vai_tro, quyen, vai_tro_quyen, yeu_cau_tai_khoan                    |
-| [3]  Nhóm Ca làm & Chấm công 24/7 (3 bảng):                                          |
-|      - ca_lam_viec, phan_ca, cham_cong                                                |
+| [3]  Nhóm Ca làm & Chấm công 24/7 (6 bảng):                                          |
+|      - ca_lam_viec, phan_ca, cham_cong, dinh_bien_ca, giai_trinh_cham_cong,           |
+|        yeu_cau_doi_ca                                                                 |
 | [4]  Nhóm Đơn từ điện tử (2 bảng):                                                    |
 |      - loai_don, don_tu                                                               |
-| [5]  Nhóm Dự án / Sự kiện Khách sạn (2 bảng mới):                                     |
+| [5]  Nhóm Dự án / Sự kiện Khách sạn (2 bảng):                                         |
 |      - du_an, phan_cong_du_an                                                         |
 | [6]  Nhóm Cấu hình Lương, Phụ cấp & Khấu trừ (5 bảng):                               |
 |      - ky_luong, cau_hinh_khoan_luong, cau_hinh_phu_cap, cau_hinh_khau_tru,          |
@@ -223,7 +224,7 @@ Cơ sở dữ liệu của hệ thống HRM The OverTime Hotel được thiết 
 +---------------------------------------------------------------------------------------+
 ```
 
-### 6.1. Danh Mục Tổng Hợp 27 Bảng CSDL
+### 6.1. Danh Mục Tổng Hợp 30 Bảng CSDL
 
 | STT | Tên Bảng | Phân Hệ Nghiệp Vụ Tương Ứng | Khóa Chính (PK) | Khóa Ngoại (FK) & Quan Hệ Nghiệp Vụ |
 |:---:|:---|:---|:---|:---|
@@ -254,8 +255,45 @@ Cơ sở dữ liệu của hệ thống HRM The OverTime Hotel được thiết 
 | **25** | `chi_tiet_tru_thue_tncn` | Phân hệ 6 | `ma_chi_tiet_thue` | FK -> `chi_tiet_phieu_luong` (1-1). Tính thuế theo biểu lũy tiến từng phần. |
 | **26** | `chi_tiet_tru_vi_pham_tam_ung` | Phân hệ 6 | `ma_chi_tiet_vp` | FK -> `chi_tiet_phieu_luong` (1-1). Khấu trừ vi phạm trễ/sớm và tạm ứng. |
 | **27** | `nhat_ky_quan_tri` | Phân hệ 11 | `ma_nhat_ky` | FK -> `tai_khoan`. Nhật ký kiểm toán thao tác hệ thống (Audit Log). |
+| **28** | `dinh_bien_ca` | Phân hệ 3 | `ma_dinh_bien` | FK -> `ca_lam_viec`, `chuc_vu`. Số người tối thiểu mỗi ca × chức vụ để cảnh báo thiếu người khi xếp ca. |
+| **29** | `giai_trinh_cham_cong` | Phân hệ 3 & 4 | `ma_giai_trinh` | FK -> `phan_ca`, `nhan_vien` (người gửi, quản lý xác minh, HR xác nhận). Giải trình sai lệch giờ quẹt thẻ, duyệt 2 cấp. |
+| **30** | `yeu_cau_doi_ca` | Phân hệ 3 & 4 | `ma_yeu_cau` | FK -> `phan_ca` (ca nhường, ca nhận), `nhan_vien` (người gửi, người nhận, người duyệt). Yêu cầu đổi ca trực giữa nhân viên. |
 
-### 6.2. Đặc Tả 2 Bảng Mới Cho Phân Hệ Quản Lý Dự Án & Sự Kiện Khách Sạn
+### 6.2. Đặc Tả 3 Bảng Mới Cho Phân Hệ Ca Làm & Chấm Công
+
+Nhằm hoàn thiện nhóm chức năng **3.0 Quản lý Phân ca** và **4.0 Quản lý Chấm công** của PRD, CSDL bổ sung 3 bảng chuyên trách:
+
+#### Bảng `dinh_bien_ca` (Định biên nhân sự theo ca & chức vụ)
+- `ma_dinh_bien` (SERIAL, PRIMARY KEY): Mã định danh dòng định biên.
+- `ma_ca` (INT, NOT NULL, FK -> `ca_lam_viec.ma_ca` ON DELETE CASCADE): Ca mẫu được đặt định biên.
+- `ma_chuc_vu` (INT, NOT NULL, FK -> `chuc_vu.ma_chuc_vu` ON DELETE CASCADE): Chức vụ cần đếm số người.
+- `so_nguoi_toi_thieu` (INT, NOT NULL, DEFAULT 1, CHECK >= 1): Số nhân sự tối thiểu phải có trong ca.
+- *Ràng buộc:* `UNIQUE (ma_ca, ma_chuc_vu)` — mỗi cặp Ca × Chức vụ chỉ có một dòng định biên.
+
+#### Bảng `giai_trinh_cham_cong` (Giải trình sai lệch giờ chấm công)
+- `ma_giai_trinh` (SERIAL, PRIMARY KEY): Mã hồ sơ giải trình.
+- `ma_phan_ca` (INT, NOT NULL, FK -> `phan_ca.ma_phan_ca` ON DELETE CASCADE): Lượt ca bị giải trình.
+- `ma_nhan_vien` (INT, NOT NULL, FK -> `nhan_vien.ma_nhan_vien` ON DELETE CASCADE): Nhân viên đứng tên giải trình.
+- `gio_de_xuat_vao` / `gio_de_xuat_ra` (TIMESTAMPTZ, NULL): Giờ vào/ra thực tế đề nghị ghi nhận; bắt buộc có ít nhất một mốc.
+- `ly_do` (VARCHAR(500), NOT NULL): Nội dung giải trình.
+- `minh_chung` (VARCHAR(500), NULL): Mã biên bản giao ca, đường dẫn ảnh… làm căn cứ.
+- `trang_thai` (VARCHAR(20), NOT NULL, DEFAULT 'CHO_QUAN_LY', CHECK in ('CHO_QUAN_LY', 'CHO_HR', 'DA_DUYET', 'TU_CHOI')): Tiến trình duyệt 2 cấp Quản lý → HR.
+- `ma_quan_ly_xac_minh`, `ngay_quan_ly_xac_minh`, `y_kien_quan_ly`: Vết xác minh cấp 1.
+- `ma_hr_xac_nhan`, `ngay_hr_xac_nhan`, `y_kien_hr`: Vết xác nhận cấp 2.
+- `ngay_gui` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm gửi hồ sơ.
+- *Ràng buộc:* từ chối bắt buộc kèm ý kiến của cấp ra quyết định; mỗi lượt ca chỉ mở một hồ sơ đang chờ duyệt (partial unique index).
+
+#### Bảng `yeu_cau_doi_ca` (Yêu cầu đổi ca trực giữa nhân viên)
+- `ma_yeu_cau` (SERIAL, PRIMARY KEY): Mã yêu cầu đổi ca.
+- `ma_phan_ca_gui` / `ma_phan_ca_nhan` (INT, NOT NULL, FK -> `phan_ca.ma_phan_ca` ON DELETE CASCADE): Ca nhường đi và ca nhận làm thay.
+- `ma_nhan_vien_gui` / `ma_nhan_vien_nhan` (INT, NOT NULL, FK -> `nhan_vien` ON DELETE RESTRICT): Người gửi và người nhận ca.
+- `ly_do` (VARCHAR(500), NOT NULL): Lý do đổi ca.
+- `trang_thai` (VARCHAR(20), NOT NULL, DEFAULT 'CHO_DUYET', CHECK in ('CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'DA_HUY')): Vòng đời yêu cầu.
+- `ma_nguoi_duyet` (INT, NULL, FK -> `nhan_vien` ON DELETE SET NULL): Quản lý / HR xử lý.
+- `ngay_gui`, `ngay_duyet`, `phan_hoi_duyet`: Mốc thời gian và phản hồi của người duyệt.
+- *Ràng buộc:* không cho đổi ca với chính ca đó hoặc tự đổi với chính mình; từ chối bắt buộc kèm phản hồi.
+
+### 6.3. Đặc Tả 2 Bảng Mới Cho Phân Hệ Quản Lý Dự Án & Sự Kiện Khách Sạn
 
 Nhằm hiện thực hóa phân hệ **9.0 Quản lý Dự án / Sự kiện Khách sạn (Event & Project Management)**, CSDL bổ sung 2 bảng chuyên trách:
 

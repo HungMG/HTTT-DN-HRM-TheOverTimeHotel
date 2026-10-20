@@ -91,9 +91,21 @@
                    asp-controller="PhanCa" asp-action="Index">
                     <i class="bi bi-calendar-week-fill"></i><span>Ca &amp; Lịch làm việc</span>
                 </a>
-                <a class="app-nav-item@(IsCurrent("ChamCong") ? " is-active" : "")"
+                <a class="app-nav-item@(IsCurrentAction("ChamCong", "Index") ? " is-active" : "")"
                    asp-controller="ChamCong" asp-action="Index">
                     <i class="bi bi-fingerprint"></i><span>Nhật ký chấm công</span>
+                </a>
+                <a class="app-nav-item@(IsCurrentAction("ChamCong", "CongThang") ? " is-active" : "")"
+                   asp-controller="ChamCong" asp-action="CongThang">
+                    <i class="bi bi-calendar3-range"></i><span>Tổng hợp công tháng</span>
+                </a>
+                <a class="app-nav-item@(IsCurrent("GiaiTrinhChamCong") ? " is-active" : "")"
+                   asp-controller="GiaiTrinhChamCong" asp-action="Index">
+                    <i class="bi bi-journal-text"></i><span>Giải trình chấm công</span>
+                </a>
+                <a class="app-nav-item@(IsCurrent("YeuCauDoiCa") ? " is-active" : "")"
+                   asp-controller="YeuCauDoiCa" asp-action="Index">
+                    <i class="bi bi-arrow-left-right"></i><span>Yêu cầu đổi ca</span>
                 </a>
             }
 

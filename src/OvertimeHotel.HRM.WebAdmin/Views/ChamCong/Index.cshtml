@@ -8,6 +8,12 @@
 
     <!-- 1. CỤM NÚT THAO TÁC TRÊN CÙNG -->
     <div class="d-flex align-items-center justify-content-end gap-2 mb-3">
+        <a asp-action="CongThang" class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-semibold hover-lift" style="font-size: 0.85rem;">
+            <i class="bi bi-calendar3-range me-1"></i> Tổng Hợp Công Tháng
+        </a>
+        <a asp-controller="GiaiTrinhChamCong" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-semibold hover-lift" style="font-size: 0.85rem;">
+            <i class="bi bi-journal-text me-1"></i> Giải Trình
+        </a>
         <a asp-controller="PhanCa" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-semibold hover-lift" style="font-size: 0.85rem;">
             <i class="bi bi-calendar-week me-1"></i> Lưới Phân Ca 24/7
         </a>

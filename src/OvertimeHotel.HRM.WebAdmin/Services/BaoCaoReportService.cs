@@ -535,7 +535,8 @@ public sealed class BaoCaoReportService
             DiTre = rows.Count(r => r.TrangThai == "DI_TRE"),
             VeSom = rows.Count(r => r.TrangThai == "VE_SOM"),
             TreVaSom = rows.Count(r => r.TrangThai == "TRE_VA_SOM"),
-            Vang = rows.Count(r => r.TrangThai == "VANG"),
+            // Mã vắng trong CSDL là VANG_MAT, không phải "VANG" — so sánh cũ luôn ra 0.
+            Vang = rows.Count(r => ReportPolicy.IsAbsent(r.TrangThai)),
             TongPhutTre = rows.Sum(r => r.PhutDiTre),
             TongPhutVeSom = rows.Sum(r => r.PhutVeSom),
             TongGioOt = rows.Sum(r => r.GioTangCaOt),

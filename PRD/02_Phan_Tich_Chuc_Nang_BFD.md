@@ -2,7 +2,7 @@
 
 **Dự án:** Hệ thống Quản lý Nhân sự & Tiền lương Khách sạn The OverTime Hotel  
 **Chuyên ngành:** Hệ thống Thông tin Doanh nghiệp (HTTTDN) / Công nghệ Phần mềm  
-**Nền tảng công nghệ:** C# .NET 10 (ASP.NET Core MVC & .NET MAUI) · Supabase Cloud Database (PostgreSQL 27 bảng chuẩn 3NF)  
+**Nền tảng công nghệ:** C# .NET 10 (ASP.NET Core MVC & .NET MAUI) · Supabase Cloud Database (PostgreSQL 30 bảng chuẩn 3NF)  
 **Tài liệu trực quan kèm theo:** Xem sơ đồ đồ họa tương tác tại `docs project/diagrams/HRM_KhachSan_BFD_IPO.html`
 
 ---
@@ -509,7 +509,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 │ • Khoảng thời gian báo cáo: Theo Tháng, theo Quý, hoặc theo Năm tài chính                     │
 │ • Phạm vi thống kê: Toàn bộ khách sạn hoặc phân rã theo từng Phòng ban/Khối nghiệp vụ         │
 │ • Định mức ngân sách quỹ lương kế hoạch được Ban Giám đốc phê duyệt từ đầu kỳ                 │
-│ • Dữ liệu tổng hợp từ 27 bảng CSDL: Hồ sơ nhân sự, bảng chấm công, phiếu lương, dự án sự kiện │
+│ • Dữ liệu tổng hợp từ 30 bảng CSDL: Hồ sơ nhân sự, bảng chấm công, phiếu lương, dự án sự kiện │
 └───────────────────────────────────────────────┬───────────────────────────────────────────────┘
                                                 │
                                                 ▼
@@ -566,7 +566,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 │ 1. Toàn vẹn dữ liệu: Kiểm tra khóa ngoại (FK) - Chặn xóa phòng ban/chức vụ nếu còn nhân viên  │
 │ 2. Cấu hình ca làm việc: Admin độc quyền thiết lập khung giờ và hệ số lương ca trực 24/7      │
 │ 3. Thiết lập tham số: Lưu định mức vào cau_hinh_khoan_luong để động cơ tính lương tự động nạp │
-│ 4. Sao lưu CSDL: Kết nối Supabase Cloud -> Trích xuất DDL 27 bảng + Dữ liệu -> Đóng gói tệp nén│
+│ 4. Sao lưu CSDL: Kết nối Supabase Cloud -> Trích xuất DDL 30 bảng + Dữ liệu -> Đóng gói tệp nén│
 │ 5. Phục hồi CSDL: Xác thực đa yếu tố quyền Admin -> Nạp lại kịch bản phục hồi an toàn         │
 │ 6. Ghi nhật ký kiểm toán hệ thống an toàn thông tin (nhat_ky_quan_tri)                        │
 └───────────────────────────────────────────────┬───────────────────────────────────────────────┘
@@ -579,7 +579,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 │ • Thông số định mức mới được áp dụng tự động cho các kỳ tính lương tiếp theo                  │
 │ • File sao lưu an toàn CSDL tải về máy hoặc lưu trữ đám mây an toàn                           │
 │ • Bản ghi kiểm toán ghi nhận toàn bộ thao tác trong nhật ký quản trị                          │
-│ • Phạm vi bảo vệ: Toàn bộ 27 bảng Supabase PostgreSQL chuẩn 3NF                               │
+│ • Phạm vi bảo vệ: Toàn bộ 30 bảng Supabase PostgreSQL chuẩn 3NF                               │
 └───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -591,7 +591,7 @@ Sơ đồ phân rã chức năng nghiệp vụ (Business Function Diagram - BFD)
 | **11.2** | **Quản lý danh mục chức vụ** | Admin | • `ma_chuc_vu`, `ten_chuc_vu`, `mo_ta` | 1. Kiểm tra không trùng tên chức danh công việc.<br>2. Chặn xóa nếu còn nhân viên đang đảm nhiệm chức vụ. | • Danh mục chức danh nghề nghiệp chuẩn hóa.<br>CSDL: `chuc_vu`, `nhan_vien` |
 | **11.3** | **Cấu hình khung giờ ca 24/7** *(Độc quyền Admin)* | Admin | • `ma_ca`, giờ mở ca, giờ đóng ca, hệ số, cờ đêm | 1. Validate tính hợp lệ của khung giờ ca 24/7.<br>2. Cập nhật bảng `ca_lam_viec` để áp dụng cho quy trình xếp ca.<br>3. Admin là vai trò duy nhất có quyền tạo/sửa cấu hình ca; HR chỉ đối chiếu vận hành. | • Cấu hình ca làm việc được lưu trong `ca_lam_viec`.<br>CSDL: `ca_lam_viec` |
 | **11.4** | **Thiết lập tham số hệ thống & định mức** | Admin | • `ma_khoan`, tên khoản, loại khoản (`PHU_CAP`/`THUONG`/`KHAU_TRU`), giá trị định mức | 1. Tùy chỉnh các tham số hệ thống (ăn ca 30k, phạt trễ 50k-100k, tỷ lệ bảo hiểm 10.5%...).<br>2. Lưu vào `cau_hinh_khoan_luong` để các công thức tự động áp dụng. | • Bảng tham số định mức được cập nhật.<br>• Kỳ lương kế tiếp tự động áp dụng số mới.<br>CSDL: `cau_hinh_khoan_luong` |
-| **11.5** | **Sao lưu & Phục hồi CSDL** | Admin | • Lệnh Backup (Schema / Data / Full) hoặc File phục hồi `.sql.gz`<br>• Mật khẩu xác thực Super Admin | 1. Backup: Dump cấu trúc 27 bảng + Dữ liệu từ Supabase Cloud -> Nén file mã hóa.<br>2. Restore: Xác thực nghiêm ngặt quyền Admin -> Nạp script phục hồi an toàn.<br>3. Ghi log kiểm toán thao tác hệ thống. | • File backup tải về máy hoặc lưu trữ đám mây.<br>• Thông báo kết quả và nhật ký an toàn.<br>CSDL: Toàn bộ 27 bảng Supabase |
+| **11.5** | **Sao lưu & Phục hồi CSDL** | Admin | • Lệnh Backup (Schema / Data / Full) hoặc File phục hồi `.sql.gz`<br>• Mật khẩu xác thực Super Admin | 1. Backup: Dump cấu trúc 30 bảng + Dữ liệu từ Supabase Cloud -> Nén file mã hóa.<br>2. Restore: Xác thực nghiêm ngặt quyền Admin -> Nạp script phục hồi an toàn.<br>3. Ghi log kiểm toán thao tác hệ thống. | • File backup tải về máy hoặc lưu trữ đám mây.<br>• Thông báo kết quả và nhật ký an toàn.<br>CSDL: Toàn bộ 30 bảng Supabase |
 
 ---
 
@@ -622,15 +622,15 @@ Hệ thống phân định quyền hạn rõ ràng cho 5 vai trò chuẩn:
 
 ---
 
-## 5. Ma Trận Đối Chiếu CRUD (57 Chức Năng ↔ 27 Bảng CSDL Supabase)
+## 5. Ma Trận Đối Chiếu CRUD (57 Chức Năng ↔ 30 Bảng CSDL Supabase)
 
-Cơ sở dữ liệu của hệ thống đạt chuẩn hóa **dạng chuẩn 3 (3NF)** với quy mô **27 bảng** hoàn chỉnh, đảm bảo tính toàn vẹn dữ liệu và hiệu năng truy vấn:
+Cơ sở dữ liệu của hệ thống đạt chuẩn hóa **dạng chuẩn 3 (3NF)** với quy mô **30 bảng** hoàn chỉnh, đảm bảo tính toàn vẹn dữ liệu và hiệu năng truy vấn:
 
 ### Bảng Ánh Xạ Chức Năng và Bảng CSDL:
 
 ```text
 ┌─────────────────────────────────┬──────────────────────────────────────────────────────────────────┐
-│ Tên Bảng CSDL (Supabase 27 Bảng)│ Các Chức Năng Nghiệp Vụ Tương Tác Trực Tiếp                      │
+│ Tên Bảng CSDL (Supabase 30 Bảng)│ Các Chức Năng Nghiệp Vụ Tương Tác Trực Tiếp                      │
 ├─────────────────────────────────┼──────────────────────────────────────────────────────────────────┤
 │ 1. phong_ban                    │ 1.1, 1.2, 1.4, 1.5, 3.5, 8.2, 10.1, 10.2, 10.4, 11.1             │
 │ 2. chuc_vu                      │ 1.1, 1.2, 1.4, 1.5, 7.3, 10.2, 11.2                              │
@@ -660,6 +660,9 @@ Cơ sở dữ liệu của hệ thống đạt chuẩn hóa **dạng chuẩn 3 (
 │ 25. nhat_ky_quan_tri            │ 2.2, 2.5, 7.5, 11.5                                              │
 │ 26. du_an                       │ 9.1, 9.2, 9.4, 10.6                                              │
 │ 27. phan_cong_du_an             │ 9.2, 9.3, 9.4, 9.5, 6.2, 10.6                                    │
+│ 28. dinh_bien_ca                │ 3.2, 3.5, 10.5                                                   │
+│ 29. giai_trinh_cham_cong        │ 4.5, 6.1, 6.2, 10.5                                              │
+│ 30. yeu_cau_doi_ca              │ 3.4, 3.5, 4.4, 10.5                                              │
 └─────────────────────────────────┴──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -704,16 +707,77 @@ Bảng trung gian quản lý danh sách biệt đội Task Force được điề
 
 ---
 
-### Bảng Tổng Hợp Hiện Trạng Nghiệp Vụ và Quy Mô CSDL 27 Bảng:
+### Đặc Tả Chi Tiết 3 Bảng Mới: `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`
+
+Nhằm hoàn thiện nhóm chức năng **3.0 Quản lý Phân ca** và **4.0 Quản lý Chấm công** của PRD, hệ thống thiết kế bổ sung 3 bảng CSDL chuẩn 3NF:
+
+#### Bảng 28: `dinh_bien_ca` (Định biên nhân sự theo ca & chức vụ)
+Xác lập số nhân sự tối thiểu cần có cho từng cặp Ca × Chức vụ, làm căn cứ tự động cảnh báo thiếu người khi Quản lý xếp lịch (PRD 3.5):
+
+| Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Ý Nghĩa Nghiệp Vụ |
+|:---|:---|:---|:---|
+| `ma_dinh_bien` | SERIAL | PRIMARY KEY | Mã định danh dòng định biên |
+| `ma_ca` | INT | FK -> `ca_lam_viec.ma_ca`, NOT NULL, ON DELETE CASCADE | Ca mẫu được đặt định biên |
+| `ma_chuc_vu` | INT | FK -> `chuc_vu.ma_chuc_vu`, NOT NULL, ON DELETE CASCADE | Chức vụ cần đếm số người trong ca |
+| `so_nguoi_toi_thieu` | INT | NOT NULL, DEFAULT 1, CHECK >= 1 | Số nhân sự tối thiểu phải có mặt để vận hành ca không bị gián đoạn |
+| *Ràng buộc duy nhất* | `UNIQUE (ma_ca, ma_chuc_vu)` | UNIQUE | Mỗi cặp Ca × Chức vụ chỉ có một dòng định biên, tránh cộng dồn sai số người tối thiểu |
+
+#### Bảng 29: `giai_trinh_cham_cong` (Giải trình sai lệch giờ chấm công)
+Lưu hồ sơ nhân viên giải trình khi giờ vào/ra thực tế lệch so với ca đã xếp (quên quẹt thẻ, hỏng đầu đọc...). Hồ sơ đi qua **hai cấp duyệt**: Quản lý bộ phận xác minh → HR xác nhận (PRD 4.5):
+
+| Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Ý Nghĩa Nghiệp Vụ |
+|:---|:---|:---|:---|
+| `ma_giai_trinh` | SERIAL | PRIMARY KEY | Mã hồ sơ giải trình |
+| `ma_phan_ca` | INT | FK -> `phan_ca.ma_phan_ca`, NOT NULL, ON DELETE CASCADE | Lượt ca bị giải trình |
+| `ma_nhan_vien` | INT | FK -> `nhan_vien.ma_nhan_vien`, NOT NULL, ON DELETE CASCADE | Nhân viên đứng tên giải trình |
+| `gio_de_xuat_vao` | TIMESTAMPTZ | NULL | Giờ vào thực tế đề nghị ghi nhận; để trống nếu chỉ điều chỉnh giờ ra |
+| `gio_de_xuat_ra` | TIMESTAMPTZ | NULL | Giờ ra thực tế đề nghị ghi nhận; để trống nếu chỉ điều chỉnh giờ vào |
+| `ly_do` | VARCHAR(500) | NOT NULL | Nội dung giải trình; trần 500 ký tự khớp đúng cột CSDL |
+| `minh_chung` | VARCHAR(500) | NULL | Mã biên bản giao ca, số điện thoại tổ trưởng, đường dẫn ảnh… làm căn cứ xác minh |
+| `trang_thai` | VARCHAR(20) | NOT NULL, DEFAULT 'CHO_QUAN_LY', CHECK in ('CHO_QUAN_LY', 'CHO_HR', 'DA_DUYET', 'TU_CHOI') | Tiến trình duyệt 2 cấp: Quản lý xác minh → HR xác nhận; chỉ `DA_DUYET` mới ghi lại giờ công |
+| `ma_quan_ly_xac_minh` | INT | FK -> `nhan_vien.ma_nhan_vien`, NULL, ON DELETE SET NULL | Quản lý cấp 1 đã xác minh |
+| `ngay_quan_ly_xac_minh` | TIMESTAMPTZ | NULL | Thời điểm Quản lý xác minh |
+| `y_kien_quan_ly` | VARCHAR(500) | NULL | Ý kiến / lý do từ chối của cấp Quản lý |
+| `ma_hr_xac_nhan` | INT | FK -> `nhan_vien.ma_nhan_vien`, NULL, ON DELETE SET NULL | Cán bộ HR xác nhận cấp 2 |
+| `ngay_hr_xac_nhan` | TIMESTAMPTZ | NULL | Thời điểm HR xác nhận |
+| `y_kien_hr` | VARCHAR(500) | NULL | Ý kiến / lý do từ chối của cấp HR |
+| `ngay_gui` | TIMESTAMPTZ | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Thời điểm nhân viên gửi hồ sơ |
+| *Ràng buộc nghiệp vụ* | `chk_giai_trinh_can_gio` | CHECK | Bắt buộc có ít nhất một trong hai mốc giờ đề xuất |
+| *Ràng buộc từ chối* | `chk_giai_trinh_tu_choi_can_y_kien` | CHECK | Từ chối bắt buộc kèm ý kiến của cấp ra quyết định |
+| *Ràng buộc chống trùng* | `uq_giai_trinh_dang_mo` | PARTIAL UNIQUE INDEX trên `ma_phan_ca` WHERE `trang_thai IN ('CHO_QUAN_LY','CHO_HR')` | Mỗi lượt ca chỉ mở một hồ sơ đang chờ duyệt tại một thời điểm |
+
+#### Bảng 30: `yeu_cau_doi_ca` (Yêu cầu đổi ca trực giữa nhân viên)
+Cho phép nhân viên chủ động đổi ca với đồng nghiệp, có vết duyệt của Quản lý/HR (PRD 3.4):
+
+| Tên Cột | Kiểu Dữ Liệu | Ràng Buộc | Ý Nghĩa Nghiệp Vụ |
+|:---|:---|:---|:---|
+| `ma_yeu_cau` | SERIAL | PRIMARY KEY | Mã yêu cầu đổi ca |
+| `ma_phan_ca_gui` | INT | FK -> `phan_ca.ma_phan_ca`, NOT NULL, ON DELETE CASCADE | Lượt ca nhân viên gửi nhường lại |
+| `ma_phan_ca_nhan` | INT | FK -> `phan_ca.ma_phan_ca`, NOT NULL, ON DELETE CASCADE | Lượt ca nhân viên nhận làm thay |
+| `ma_nhan_vien_gui` | INT | FK -> `nhan_vien.ma_nhan_vien`, NOT NULL, ON DELETE RESTRICT | Nhân viên gửi yêu cầu |
+| `ma_nhan_vien_nhan` | INT | FK -> `nhan_vien.ma_nhan_vien`, NOT NULL, ON DELETE RESTRICT | Nhân viên nhận ca |
+| `ly_do` | VARCHAR(500) | NOT NULL | Lý do đổi ca |
+| `trang_thai` | VARCHAR(20) | NOT NULL, DEFAULT 'CHO_DUYET', CHECK in ('CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'DA_HUY') | Vòng đời yêu cầu; `DA_HUY` dành cho trường hợp người gửi tự rút |
+| `ma_nguoi_duyet` | INT | FK -> `nhan_vien.ma_nhan_vien`, NULL, ON DELETE SET NULL | Quản lý / HR ra quyết định |
+| `ngay_gui` | TIMESTAMPTZ | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Thời điểm gửi yêu cầu |
+| `ngay_duyet` | TIMESTAMPTZ | NULL | Thời điểm duyệt / từ chối |
+| `phan_hoi_duyet` | VARCHAR(500) | NULL | Phản hồi của người duyệt |
+| *Ràng buộc khác ca* | `chk_doi_ca_khac_ca` | CHECK | Không cho đổi một ca với chính nó |
+| *Ràng buộc khác người* | `chk_doi_ca_khac_nguoi` | CHECK | Không cho tự đổi ca với chính mình |
+| *Ràng buộc từ chối* | `chk_doi_ca_tu_choi_can_ly_do` | CHECK | Từ chối bắt buộc kèm phản hồi để nhân viên biết lý do |
+
+---
+
+### Bảng Tổng Hợp Hiện Trạng Nghiệp Vụ và Quy Mô CSDL 30 Bảng:
 
 | Nhóm Nghiệp Vụ | Số Bảng | Danh Sách Các Bảng CSDL | Trạng Thái Triển Khai Thực Tế |
 |:---|:---:|:---|:---|
 | **1. Nhân sự & Tổ chức** | 4 bảng | `phong_ban`, `chuc_vu`, `nhan_vien`, `hop_dong` | Đã hoàn thành 100% CSDL, Core, Controller và View Web Admin |
 | **2. Tài khoản & Phân quyền** | 5 bảng | `tai_khoan`, `vai_tro`, `quyen`, `vai_tro_quyen`, `yeu_cau_tai_khoan` | Đã hoàn thành 100% CSDL, Core, Controller và View (`/YeuCauTaiKhoan`) |
-| **3. Ca làm & Chấm công 24/7** | 3 bảng | `ca_lam_viec`, `phan_ca`, `cham_cong` | Đã hoàn thành 100% Web Admin và Mobile App Check-in GPS/Wi-Fi |
+| **3. Ca làm & Chấm công 24/7** | 6 bảng | `ca_lam_viec`, `phan_ca`, `cham_cong`, `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca` | Đã hoàn thành 100% Web Admin (lịch phân ca, định biên, giải trình 2 cấp, đổi ca) và Mobile App Check-in GPS/Wi-Fi |
 | **4. Đơn từ điện tử** | 2 bảng | `loai_don`, `don_tu` | Đã hoàn thành 100% nộp đơn Mobile và xét duyệt Web Admin |
 | **5. Kỳ lương & Cấu hình** | 5 bảng | `ky_luong`, `cau_hinh_khoan_luong`, `cau_hinh_phu_cap`, `cau_hinh_khau_tru`, `cau_hinh_tang_ca` | Đã hoàn thành 100% CSDL và cấu hình Web Admin |
 | **6. Phiếu lương & Khấu trừ chi tiết** | 5 bảng | `phieu_luong`, `chi_tiet_phieu_luong`, `chi_tiet_tru_bao_hiem`, `chi_tiet_tru_thue_tncn`, `chi_tiet_tru_vi_pham_tam_ung` | Đã hoàn thành 100% động cơ tính lương 2 tầng; QuestPDF đang theo lộ trình phát triển |
 | **7. Quản trị & Nhật ký** | 1 bảng | `nhat_ky_quan_tri` | Đã hoàn thành 100% lưu vết thao tác kiểm toán an toàn |
 | **8. Dự án & Sự kiện Khách sạn** | 2 bảng | `du_an`, `phan_cong_du_an` | Thiết kế CSDL chuẩn hóa phục vụ phân hệ 9.0 và kết chuyển tự động vào lương |
-| **TỔNG CỘNG** | **27 bảng** | **Hệ thống CSDL Supabase PostgreSQL chuẩn 3NF hoàn chỉnh** | **Đảm bảo tính nhất quán, toàn vẹn và khả năng mở rộng cao** |
+| **TỔNG CỘNG** | **30 bảng** | **Hệ thống CSDL Supabase PostgreSQL chuẩn 3NF hoàn chỉnh** | **Đảm bảo tính nhất quán, toàn vẹn và khả năng mở rộng cao** |

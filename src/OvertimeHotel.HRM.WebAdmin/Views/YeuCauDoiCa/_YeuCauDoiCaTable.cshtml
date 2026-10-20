@@ -1,0 +1,118 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.YeuCauDoiCaIndexViewModel
+
+@if (Model.Items.Count == 0)
+{
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-arrow-left-right d-block mb-3" style="font-size: 2.4rem; opacity: 0.35;"></i>
+        <div class="fw-semibold">Chưa có yêu cầu đổi ca nào khớp bộ lọc</div>
+        <div class="small mt-1">Thử đổi trạng thái hoặc xoá từ khoá tìm kiếm.</div>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 60px;">Mã</th>
+                    <th>Người nhường → Người nhận</th>
+                    <th>Ca nhường</th>
+                    <th>Ca nhận thay</th>
+                    <th style="min-width: 180px;">Lý do</th>
+                    <th style="width: 130px;">Trạng thái</th>
+                    <th style="width: 150px;" class="text-end">Xử lý</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr data-request-row="@item.MaYeuCau">
+                        <td class="font-monospace fw-bold text-primary">#@item.MaYeuCau</td>
+                        <td>
+                            <div class="fw-semibold text-dark">
+                                @item.TenNguoiGui
+                                <i class="bi bi-arrow-right mx-1 text-warning"></i>
+                                @item.TenNguoiNhan
+                            </div>
+                            <div class="text-muted" style="font-size: 0.75rem;">
+                                <span class="font-monospace">@item.MaNguoiGuiFormat</span> · @item.TenPhongBanNguoiGui
+                                <span class="mx-1">/</span>
+                                <span class="font-monospace">@item.MaNguoiNhanFormat</span> · @item.TenPhongBanNguoiNhan
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">@item.TenCaGui</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">@item.NgayCaGui.ToString("dd/MM/yyyy") · @item.GioCaGui</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">@item.TenCaNhan</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">@item.NgayCaNhan.ToString("dd/MM/yyyy") · @item.GioCaNhan</div>
+                        </td>
+                        <td>
+                            <div class="text-dark">@item.LyDo</div>
+                            @if (!string.IsNullOrWhiteSpace(item.PhanHoiDuyet))
+                            {
+                                <div class="text-muted mt-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-chat-left-quote me-1"></i>@item.PhanHoiDuyet
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge @item.TrangThaiCss rounded-pill px-2.5 py-1">@item.TrangThaiNhan</span>
+                            @if (item.NgayDuyet.HasValue)
+                            {
+                                <div class="text-muted mt-1" style="font-size: 0.72rem;">
+                                    @(item.TenNguoiDuyet ?? "—") · @item.NgayDuyet.Value.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM HH:mm")
+                                </div>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (item.CoTheXuLy && Model.CoQuyenDuyet)
+                            {
+                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold"
+                                        data-request-approve="@item.MaYeuCau" data-request-label="#@item.MaYeuCau">
+                                    <i class="bi bi-check2 me-1"></i>Duyệt
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold ms-1"
+                                        data-request-reject="@item.MaYeuCau" data-request-label="#@item.MaYeuCau">
+                                    <i class="bi bi-x-lg me-1"></i>Từ chối
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Đã xử lý</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-top">
+        <div class="text-muted" style="font-size: 0.78rem;">
+            Hiển thị @(((Model.PageNumber - 1) * Model.PageSize) + 1)–@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredItems))
+            trên @Model.TotalFilteredItems yêu cầu
+        </div>
+        <nav aria-label="Phân trang yêu cầu đổi ca">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                    <a class="page-link" href="#" data-request-page="@(Model.PageNumber - 1)" aria-label="Trang trước">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                @for (var p = 1; p <= Model.TotalPages; p++)
+                {
+                    <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                        <a class="page-link" href="#" data-request-page="@p">@p</a>
+                    </li>
+                }
+                <li class="page-item @(Model.PageNumber >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" href="#" data-request-page="@(Model.PageNumber + 1)" aria-label="Trang sau">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+}

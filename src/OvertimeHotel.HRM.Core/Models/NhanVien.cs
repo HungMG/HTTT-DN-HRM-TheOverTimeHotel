@@ -57,4 +57,15 @@ public class NhanVien
     // nên nó nằm trên TaiKhoan chứ không ở đây.)
     public virtual ICollection<YeuCauTaiKhoan> YeuCauTaiKhoanCuaNhanVien { get; set; } = new List<YeuCauTaiKhoan>();
     public virtual ICollection<YeuCauTaiKhoan> YeuCauTaiKhoanDaGui { get; set; } = new List<YeuCauTaiKhoan>();
+
+    // Đổi ca (PRD 3.4): một người có thể vừa là bên nhường ca, vừa là bên nhận
+    // ca, vừa là quản lý duyệt — ba vai trò khác nhau nên phải tách ba tập.
+    public virtual ICollection<YeuCauDoiCa> YeuCauDoiCaDaGui { get; set; } = new List<YeuCauDoiCa>();
+    public virtual ICollection<YeuCauDoiCa> YeuCauDoiCaDaNhan { get; set; } = new List<YeuCauDoiCa>();
+    public virtual ICollection<YeuCauDoiCa> YeuCauDoiCaDaDuyet { get; set; } = new List<YeuCauDoiCa>();
+
+    // Giải trình chấm công (PRD 4.5): người nộp, quản lý xác minh, HR xác nhận.
+    public virtual ICollection<GiaiTrinhChamCong> GiaiTrinhChamCongDaGui { get; set; } = new List<GiaiTrinhChamCong>();
+    public virtual ICollection<GiaiTrinhChamCong> GiaiTrinhQuanLyXacMinh { get; set; } = new List<GiaiTrinhChamCong>();
+    public virtual ICollection<GiaiTrinhChamCong> GiaiTrinhHrXacNhan { get; set; } = new List<GiaiTrinhChamCong>();
 }

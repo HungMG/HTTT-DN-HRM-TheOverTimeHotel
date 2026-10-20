@@ -16,4 +16,11 @@ public interface IGeoLocationService
     /// Lấy tên thiết bị để ghi nhận vào hồ sơ chấm công.
     /// </summary>
     Task<string?> GetDeviceNameAsync();
+
+    /// <summary>
+    /// Lấy tên Wi-Fi (SSID) thiết bị đang kết nối — lớp xác thực thứ hai của
+    /// PRD 4.1. Trả về null khi không phải Wi-Fi, thiếu quyền vị trí, hoặc nền
+    /// tảng không cho đọc SSID.
+    /// </summary>
+    Task<string?> GetCurrentWifiSsidAsync();
 }

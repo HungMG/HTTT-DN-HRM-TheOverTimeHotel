@@ -18,8 +18,9 @@ public static class AttendanceSummaryCalculator
         ValidatePeriod(from, to);
         // Night shifts belong to NgayLamViec, never the checkout date or the device timezone.
         var shiftsByDay = shifts
+            // Mã vắng của phan_ca trong CSDL là VANG_MAT (không phải "VANG").
             .Where(s => s.MaNhanVien == employeeId && s.NgayLamViec >= from && s.NgayLamViec <= to &&
-                s.TrangThai is "DA_PHAN" or "HOAN_THANH" or "VANG")
+                s.TrangThai is "DA_PHAN" or "HOAN_THANH" or "VANG_MAT")
             .GroupBy(s => s.NgayLamViec)
             .ToDictionary(g => g.Key, g => g.DistinctBy(s => s.MaPhanCa).ToList());
 

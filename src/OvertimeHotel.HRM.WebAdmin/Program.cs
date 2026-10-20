@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -45,6 +46,18 @@ if (builder.Environment.IsDevelopment())
     mvcBuilder.AddRazorRuntimeCompilation();
 }
 builder.Services.AddMemoryCache();
+
+// Nén phản hồi HTTP (Brotli ưu tiên, rơi về Gzip). Không có lớp này, mỗi trang phải
+// truyền nguyên văn ~670 KB CSS/JS và HTML lớn nhất gần 1.8 MB — đo thực tế cho thấy
+// bật nén giảm HTML /PhanCa từ 1.83 MB xuống ~85 KB (21 lần), bootstrap.min.css từ
+// 242 KB xuống 33 KB. Text (HTML/CSS/JS/JSON) là toàn bộ nội dung của Web Admin nên
+// mặc định của provider đã đủ; SVG cũng nén tốt nên bổ sung vào danh sách.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+        new[] { "image/svg+xml", "application/manifest+json" });
+});
 
 // Cấu hình Coexistence Authentication: Cookie Auth cho Web Admin & JWT Bearer cho Mobile API
 //
@@ -369,6 +382,11 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// Nén phải nằm TRƯỚC UseStaticFiles: file tĩnh trong wwwroot (bootstrap, jquery,
+// catalog.css…) đi thẳng ra ngoài qua UseStaticFiles nên middleware đặt sau sẽ
+// không bao giờ nhìn thấy chúng để nén.
+app.UseResponseCompression();
 
 // Phục vụ trực tiếp các file trong wwwroot. Cần đặt trước endpoint routing để
 // tránh phản hồi rỗng khi trình duyệt yêu cầu CSS/JS với Accept-Encoding: gzip.

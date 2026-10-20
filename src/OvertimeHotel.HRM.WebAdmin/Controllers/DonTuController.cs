@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Enums;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
@@ -228,8 +229,10 @@ public class DonTuController : Controller
             if (d.MaLoaiDon == 5 && contractsMap.TryGetValue(d.MaNhanVien, out var hopDong))
             {
                 loaiHopDong = hopDong.LoaiHopDong;
-                var laKhongXacDinh = string.Equals(hopDong.LoaiHopDong, "KHONG_XAC_DINH", StringComparison.OrdinalIgnoreCase) ||
-                                     hopDong.LoaiHopDong.Contains("không xác định", StringComparison.OrdinalIgnoreCase);
+                // Trước đây chỗ này so tuyệt đối với "KHONG_XAC_DINH" — một chuỗi
+                // không tồn tại trong dữ liệu — nên hợp đồng vô thời hạn bị đọc
+                // thành có thời hạn và chỉ đòi báo trước 30 ngày thay vì 45.
+                var laKhongXacDinh = ContractTypes.IsIndefinite(hopDong.LoaiHopDong);
                 ngayBaoTruocYeuCau = LeaveApprovalPolicy.ResignationNoticeDays[laKhongXacDinh];
                 ngayBaoTruocThucTe = d.TuNgay.DayNumber - DateOnly.FromDateTime(d.NgayGui.DateTime).DayNumber;
             }
@@ -391,8 +394,10 @@ public class DonTuController : Controller
             if (hopDong != null)
             {
                 loaiHopDong = hopDong.LoaiHopDong;
-                var laKhongXacDinh = string.Equals(hopDong.LoaiHopDong, "KHONG_XAC_DINH", StringComparison.OrdinalIgnoreCase) ||
-                                     hopDong.LoaiHopDong.Contains("không xác định", StringComparison.OrdinalIgnoreCase);
+                // Trước đây chỗ này so tuyệt đối với "KHONG_XAC_DINH" — một chuỗi
+                // không tồn tại trong dữ liệu — nên hợp đồng vô thời hạn bị đọc
+                // thành có thời hạn và chỉ đòi báo trước 30 ngày thay vì 45.
+                var laKhongXacDinh = ContractTypes.IsIndefinite(hopDong.LoaiHopDong);
                 ngayBaoTruocYeuCau = LeaveApprovalPolicy.ResignationNoticeDays[laKhongXacDinh];
                 ngayBaoTruocThucTe = donTu.TuNgay.DayNumber - DateOnly.FromDateTime(donTu.NgayGui.DateTime).DayNumber;
             }

@@ -85,7 +85,9 @@ public class HomeController : Controller
 
             model.BanGhiChamCongHomNay = homNay.Length;
             model.ChamCongDungGioHomNay = homNay.Count(t => t == "DUNG_GIO");
-            model.ChamCongDiTreHomNay = homNay.Count(t => t is "DI_TRE" or "VE_SOM");
+            // TRE_VA_SOM được CSDL chấp nhận từ migration 20261020; thiếu mã này thì
+            // người vừa trễ vừa về sớm không được tính là vi phạm chuyên cần.
+            model.ChamCongDiTreHomNay = homNay.Count(t => t is "DI_TRE" or "VE_SOM" or "TRE_VA_SOM");
 
             var tuanTruoc = await _context.ChamCongs
                 .AsNoTracking()
