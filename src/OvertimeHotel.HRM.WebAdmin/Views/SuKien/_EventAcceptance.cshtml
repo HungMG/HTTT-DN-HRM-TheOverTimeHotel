@@ -11,15 +11,23 @@
     string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
 }
             <div class="event-budget-grid">
-                <div class="event-budget-card"><span>Ngân sách phụ cấp</span><strong>@Money(item.NganSachPhuCap)</strong></div>
-                <div class="event-budget-card"><span>Phụ cấp dự kiến</span><strong>@Money(planned)</strong></div>
-                <div class="event-budget-card"><span>Phụ cấp thực tế</span><strong>@Money(actual)</strong></div>
-                <div class="event-budget-card"><span>Còn lại</span><strong class="@(actual > item.NganSachPhuCap ? "text-danger" : "")">@Money(item.NganSachPhuCap - actual)</strong></div>
+                @if (item.TinhPhuCapKhiNghiemThu)
+                {
+                    <div class="event-budget-card"><span>Ngân sách trả nhân viên</span><strong>@(item.TrangThai == "HOAN_THANH" ? Money(item.NganSachPhuCap) : "Tính khi nghiệm thu")</strong></div>
+                    <div class="event-budget-card"><span>Nhân viên hoàn thành</span><strong>@item.PhanCongs.Count(x => x.DanhGia is "HOAN_THANH" or "XUAT_SAC")</strong></div>
+                }
+                else
+                {
+                    <div class="event-budget-card"><span>Ngân sách phụ cấp</span><strong>@Money(item.NganSachPhuCap)</strong></div>
+                    <div class="event-budget-card"><span>Phụ cấp dự kiến</span><strong>@Money(planned)</strong></div>
+                    <div class="event-budget-card"><span>Phụ cấp thực tế</span><strong>@Money(actual)</strong></div>
+                    <div class="event-budget-card"><span>Còn lại</span><strong class="@(actual > item.NganSachPhuCap ? "text-danger" : "")">@Money(item.NganSachPhuCap - actual)</strong></div>
+                }
             </div>
             <div class="event-panel mt-4">
                 <span class="event-eyebrow">GHI NHẬN ĐÓNG GÓP</span>
                 <h3>Đánh giá nhân sự <small class="event-muted">@reviewed/@item.PhanCongs.Count</small></h3>
-                <p class="event-muted">Đánh giá khi sự kiện đã chuyển chờ nghiệm thu. Nhân sự không tham gia có phụ cấp thực tế bằng 0.</p>
+                <p class="event-muted">@(item.TinhPhuCapKhiNghiemThu ? "Đánh giá từng nhân viên trước nghiệm thu. Người hoàn thành được tính thưởng theo loại sự kiện và phòng ban; người không tham gia nhận 0 đ." : "Đánh giá khi sự kiện đã chuyển chờ nghiệm thu. Nhân sự không tham gia có phụ cấp thực tế bằng 0.")</p>
                 @if (item.PhanCongs.Count == 0)
                 {
                     <p class="event-empty">Chưa có nhân sự để đánh giá.</p>
@@ -38,7 +46,7 @@
                     <div class="event-review-row">
                         <div>
                             <strong>@assignment.NhanVien?.HoTen</strong>
-                            <small>@assignment.VaiTroDuAn · Dự kiến @Money(assignment.PhuCapDuKien)</small>
+                            <small>@assignment.VaiTroDuAn @if (!item.TinhPhuCapKhiNghiemThu) { <text>· Dự kiến @Money(assignment.PhuCapDuKien)</text> }</small>
                             @if (assignment.NgayDanhGia.HasValue)
                             {
                                 <small>Đánh giá @HotelEventRules.Local(assignment.NgayDanhGia.Value).ToString("dd/MM/yyyy HH:mm")</small>
@@ -64,14 +72,17 @@
                                         <span class="text-danger">@Html.ValidationMessage("Review.Rating")</span>
                                     }
                                 </div>
-                                <div>
-                                    <label for="allowance-@assignment.MaPhanCong" class="form-label">Phụ cấp thực tế (đ)</label>
-                                    <input name="Review.ActualAllowance" id="allowance-@assignment.MaPhanCong" value="@amount" type="number" class="form-control" min="0" step="0.01" required />
-                                    @if (preserveReview)
-                                    {
-                                        <span class="text-danger">@Html.ValidationMessage("Review.ActualAllowance")</span>
-                                    }
-                                </div>
+                                @if (!item.TinhPhuCapKhiNghiemThu)
+                                {
+                                    <div>
+                                        <label for="allowance-@assignment.MaPhanCong" class="form-label">Phụ cấp thực tế (đ)</label>
+                                        <input name="Review.ActualAllowance" id="allowance-@assignment.MaPhanCong" value="@amount" type="number" class="form-control" min="0" step="0.01" required />
+                                        @if (preserveReview)
+                                        {
+                                            <span class="text-danger">@Html.ValidationMessage("Review.ActualAllowance")</span>
+                                        }
+                                    </div>
+                                }
                                 <button type="submit" class="event-secondary-button">Lưu đánh giá</button>
                             </form>
                         }
@@ -79,7 +90,7 @@
                         {
                             <div>
                                 <span class="event-status">@HotelEventRules.RatingLabels.GetValueOrDefault(assignment.DanhGia, assignment.DanhGia)</span>
-                                <strong class="ms-3">@Money(assignment.SoTienPhuCap)</strong>
+                                @if (!item.TinhPhuCapKhiNghiemThu || item.TrangThai == "HOAN_THANH") { <strong class="ms-3">@Money(assignment.SoTienPhuCap)</strong> }
                             </div>
                         }
                     </div>
@@ -89,7 +100,7 @@
                 <div>
                     <span class="event-eyebrow">XÁC NHẬN CUỐI CÙNG</span>
                     <h3>Nghiệm thu sự kiện</h3>
-                    <p>Hoàn tất đánh giá tất cả nhân sự và bảo đảm tổng phụ cấp thực tế trong ngân sách. Nghiệm thu sẽ khóa thông tin sự kiện và các phân công.</p>
+                    <p>@(item.TinhPhuCapKhiNghiemThu ? "Hoàn tất đánh giá tất cả nhân sự. Khi nghiệm thu, hệ thống tính phụ cấp cho người hoàn thành, cộng thành ngân sách trả nhân viên và khóa sự kiện." : "Hoàn tất đánh giá tất cả nhân sự và bảo đảm tổng phụ cấp thực tế trong ngân sách. Nghiệm thu sẽ khóa thông tin sự kiện và các phân công.")</p>
                 </div>
                 @if (Model.CanAccept)
                 {

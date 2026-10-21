@@ -197,12 +197,24 @@ public static class HotelEventRules
             [("TIEC_CUOI", "BUONG_PHONG")] = 300_000m,
         };
 
+    public static decimal AcceptanceAmount(DuAn item, PhanCongDuAn assignment,
+        IEnumerable<CauHinhKhoanLuong>? bonusConfigs = null)
+    {
+        if (assignment.DanhGia == "KHONG_THAM_GIA") return 0;
+        if (assignment.DanhGia is not ("HOAN_THANH" or "XUAT_SAC"))
+            throw new ArgumentException("Nhân viên chưa được đánh giá.", nameof(assignment));
+        return ResolveEventBonus(item, assignment.NhanVien?.PhongBan, assignment, bonusConfigs, assignment.MaPhongBanSuKien).SoTien;
+    }
+
     public static (int? MaKhoan, string TenKhoan, decimal SoTien) ResolveEventBonus(
         DuAn? duAn,
         PhongBan? phongBan,
         PhanCongDuAn phanCong,
-        IEnumerable<CauHinhKhoanLuong>? bonusConfigs = null)
+        IEnumerable<CauHinhKhoanLuong>? bonusConfigs = null,
+        string? departmentCode = null)
     {
+        if (duAn?.TinhPhuCapKhiNghiemThu == true && duAn.TrangThai == "HOAN_THANH")
+            return (null, $"Thưởng sự kiện SK-{duAn.MaDuAn} - {phanCong.VaiTroDuAn}", phanCong.SoTienPhuCap);
         var eventType = duAn?.LoaiDuAn?.ToUpperInvariant() ?? "";
         if (string.IsNullOrWhiteSpace(eventType) || !TypeLabels.ContainsKey(eventType))
         {
@@ -214,7 +226,7 @@ public static class HotelEventRules
             else if (tenDuAn.Contains("Festival", StringComparison.OrdinalIgnoreCase) || tenDuAn.Contains("Ẩm thực", StringComparison.OrdinalIgnoreCase)) eventType = "FESTIVAL_AM_THUC";
         }
 
-        var deptCode = ResolveDepartmentCode(phongBan?.MaPhongBan, phongBan?.TenPhongBan);
+        var deptCode = departmentCode ?? ResolveDepartmentCode(phongBan?.MaPhongBan, phongBan?.TenPhongBan);
 
         // 1. Tìm trong cấu hình DB cau_hinh_khoan_luong
         if (!string.IsNullOrEmpty(eventType) && !string.IsNullOrEmpty(deptCode) && bonusConfigs != null)

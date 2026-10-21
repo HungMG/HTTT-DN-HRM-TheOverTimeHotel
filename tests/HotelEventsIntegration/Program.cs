@@ -190,6 +190,28 @@ try
         Require(row.SoTienPhuCap == 0 && row.MaChiTiet is null && row.TrangThaiChiTra == "CHUA_CHI_TRA", "Assignment created payment prematurely.");
     });
 
+    await Check("Multiple assignments save together and reject invalid groups atomically", async () =>
+    {
+        var item = await f.Create(f.Input());
+        await Reject(() => f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version,
+            [f.Assignment(item, f.WorkerA), f.Assignment(item, f.InactiveWorker)])));
+        Require((await f.Get(item.MaDuAn)).PhanCongs.Count == 0, "Invalid batch partially assigned staff.");
+        await Reject(() => f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version,
+            [f.Assignment(item, f.WorkerA), f.Assignment(item, f.WorkerA)])));
+        await Reject(() => f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version, [])));
+        var second = f.Assignment(item, f.WorkerB);
+        second.Role = HotelEventRoleRules.GetRoles(item.LoaiDuAn, "KY_THUAT", item.SoKhachDuKien)[1].Name;
+        await f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version, [f.Assignment(item, f.WorkerA), second]));
+        var after = await f.Get(item.MaDuAn);
+        Require(after.PhanCongs.Count == 2 && after.Version == item.Version + 1
+            && after.PhanCongs.Single(p => p.MaNhanVien == f.WorkerB).VaiTroDuAn == second.Role,
+            "Batch did not save individual roles together.");
+        await Reject(() => f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version,
+            [f.Assignment(item, f.WorkerA)])));
+        await Reject(() => f.With(s => s.AssignManyAsync(f.OtherManager, item.MaDuAn, after.Version,
+            [f.Assignment(after, f.WorkerB)])), forbidden: true);
+    });
+
     await Check("Duplicate employee assignment is rejected", async () =>
     {
         var item = await f.Create(f.Input());
@@ -302,6 +324,74 @@ try
         var item = await f.WaitingWithAssignment();
         await Reject(() => f.With(s => s.AcceptAsync(f.Admin, item.MaDuAn, item.Version)));
         Require((await f.Get(item.MaDuAn)).TrangThai == "CHO_NGHIEM_THU", "Unreviewed event accepted.");
+    });
+
+    await Check("Automatic event budget is frozen from completed staff at acceptance", async () =>
+    {
+        var input = f.Input();
+        input.CalculateBudgetAtAcceptance = true;
+        input.Budget = 9000;
+        input.Name = f.Prefix + new string('X', 200 - f.Prefix.Length);
+        var item = await f.Create(input);
+        Require(item.TinhPhuCapKhiNghiemThu && item.NganSachPhuCap == 0, "New event kept a creation budget.");
+        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA, 123)));
+        item = await f.Get(item.MaDuAn);
+        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerB, 123)));
+        item = await f.Get(item.MaDuAn);
+        Require(item.PhanCongs.All(p => p.PhuCapDuKien == 0 && p.MaPhongBanSuKien == "KY_THUAT"),
+            "Automatic event did not snapshot the workers' department without planned allowances.");
+        await f.MoveToPast(item.MaDuAn);
+        await f.SeedStatus(item.MaDuAn, "CHO_NGHIEM_THU");
+        item = await f.Get(item.MaDuAn);
+        var review = new EventReviewInput { Version = item.Version,
+            AssignmentId = item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerA).MaPhanCong,
+            Rating = "HOAN_THANH", ActualAllowance = 987 };
+        await f.With(s => s.ReviewAsync(f.Manager, item.MaDuAn, review));
+        item = await f.Get(item.MaDuAn);
+        review = new EventReviewInput { Version = item.Version,
+            AssignmentId = item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerB).MaPhanCong,
+            Rating = "KHONG_THAM_GIA", ActualAllowance = 987 };
+        await f.With(s => s.ReviewAsync(f.Manager, item.MaDuAn, review));
+        item = await f.Get(item.MaDuAn);
+        Require(item.PhanCongs.All(p => p.SoTienPhuCap == 0), "Review paid staff before acceptance.");
+        int? originalDepartment;
+        await using (var departmentDb = f.Open())
+        {
+            originalDepartment = await departmentDb.NhanViens.Where(n => n.MaNhanVien == f.WorkerA)
+                .Select(n => n.MaPhongBan).SingleAsync();
+            var unrelatedDepartment = await departmentDb.NhanViens.Where(n => n.MaNhanVien == f.WorkerUnrelated)
+                .Select(n => n.MaPhongBan).SingleAsync();
+            await departmentDb.NhanViens.Where(n => n.MaNhanVien == f.WorkerA)
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.MaPhongBan, unrelatedDepartment));
+        }
+        try { await f.With(s => s.AcceptAsync(f.HR, item.MaDuAn, item.Version)); }
+        finally
+        {
+            await using var departmentDb = f.Open();
+            await departmentDb.NhanViens.Where(n => n.MaNhanVien == f.WorkerA)
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.MaPhongBan, originalDepartment));
+        }
+        item = await f.Get(item.MaDuAn);
+        Require(item.TrangThai == "HOAN_THANH" && item.NganSachPhuCap > 0
+            && item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerA).SoTienPhuCap == item.NganSachPhuCap
+            && item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerB).SoTienPhuCap == 0,
+            "Acceptance did not freeze a matching employee payment and total budget.");
+        await using var db = f.Open();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var period = new KyLuong { Thang = 1, Nam = 2099, TuNgay = new DateOnly(2099, 1, 1),
+            DenNgay = new DateOnly(2099, 1, 31) };
+        db.KyLuongs.Add(period);
+        db.PhieuLuongs.Add(new PhieuLuong { MaNhanVien = f.WorkerA, KyLuong = period });
+        await db.SaveChangesAsync();
+        var payslipId = await db.PhieuLuongs.Where(p => p.MaNhanVien == f.WorkerA && p.MaKyLuong == period.MaKyLuong)
+            .Select(p => p.MaPhieuLuong).SingleAsync();
+        Require(await new PayrollCalculationService(db).RecalculateEmployeeAsync(payslipId, "Event test", null),
+            "Payroll recalculation failed for a long event name.");
+        var payrollItem = await db.ChiTietPhieuLuongs.SingleAsync(d => d.MaPhieuLuong != payslipId
+            && d.LoaiKhoan == "THUONG" && d.GhiChu != null && d.GhiChu.Contains($"SK-{item.MaDuAn}"));
+        Require(payrollItem.GhiChu!.Length <= 255 && payrollItem.SoTien == item.NganSachPhuCap,
+            "Long event name prevented the frozen payout from reaching payroll.");
+        await transaction.RollbackAsync();
     });
 
     await Check("Acceptance freezes edits, staffing, reviews and status", async () =>

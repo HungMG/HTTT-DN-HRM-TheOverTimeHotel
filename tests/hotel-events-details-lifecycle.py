@@ -50,14 +50,16 @@ with sync_playwright() as p:
         if card.locator(f'[data-employee-id="{worker}"]').count():
             continue
         card.locator('[data-add-member]').click()
-        card.locator(f'[data-choose-member="{worker}"]').click()
         assignment = page.locator('[data-event-assignment-dialog]')
+        assignment.locator(f'[data-choose-member="{worker}"]').click()
+        assignment.locator('[data-continue-assignment]').click()
         form = assignment.locator('[data-assignment-popup-form]')
         form.wait_for()
-        form.locator('[name="Assignment.Role"]').select_option(role_name)
+        form.locator('[name="Assignments[0].Role"]').select_option(role_name)
         form.locator('details').evaluate('(element)=>element.open=true')
         form.locator('[name="Assignment.Allowance"]').fill('50')
         form.get_by_role('button', name='Lưu phân công').click()
+        assignment.wait_for(state='hidden')
         dialog.wait_for(state='visible')
         card.locator(f'[data-employee-id="{worker}"]').wait_for()
     assert dialog.locator('[data-assigned-member]').count() == 12
@@ -67,17 +69,18 @@ with sync_playwright() as p:
     tech = dialog.locator('[data-department-card="KY_THUAT"]')
     tech.locator('[data-add-member]').click()
     spare_worker = fixture['RoleWorkers']['KY_THUAT'][2]
-    tech.locator(f'[data-choose-member="{spare_worker}"]').click()
+    page.locator('[data-event-assignment-dialog]').locator(f'[data-choose-member="{spare_worker}"]').click()
+    page.locator('[data-continue-assignment]:visible').click()
     form = page.locator('[data-assignment-popup-form]')
     form.wait_for()
-    form.locator('[name="Assignment.Role"]').select_option('__OTHER__')
-    form.locator('[name="Assignment.OtherRole"]').fill('Vai trò cần giữ lại')
+    form.locator('[name="Assignments[0].Role"]').select_option('__OTHER__')
+    form.locator('[name="Assignments[0].OtherRole"]').fill('Vai trò cần giữ lại')
     version = form.locator('[name="Assignment.Version"]')
     version.evaluate('(element)=>element.value=Number(element.value)-1')
     form.get_by_role('button', name='Lưu phân công').click()
     page.locator('[data-event-assignment-dialog] .validation-summary-errors').wait_for()
-    assert page.locator('[name="Assignment.Role"]').input_value() == '__OTHER__'
-    assert page.locator('[name="Assignment.OtherRole"]').input_value() == 'Vai trò cần giữ lại'
+    assert page.locator('[name="Assignments[0].Role"]').input_value() == '__OTHER__'
+    assert page.locator('[name="Assignments[0].OtherRole"]').input_value() == 'Vai trò cần giữ lại'
     page.locator('[data-assignment-popup-form]').get_by_role('button', name='Hủy', exact=True).click()
     dialog.wait_for(state='visible')
     assert dialog.locator('[data-assigned-member]').count() == 12

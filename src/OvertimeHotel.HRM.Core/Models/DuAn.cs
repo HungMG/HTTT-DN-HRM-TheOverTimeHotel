@@ -9,6 +9,7 @@ public class DuAn
     public DateTimeOffset NgayBatDau { get; set; }
     public DateTimeOffset NgayKetThuc { get; set; }
     public decimal NganSachPhuCap { get; set; }
+    public bool TinhPhuCapKhiNghiemThu { get; set; }
     public int MaNguoiQuanLy { get; set; }
     public int SoKhachDuKien { get; set; }
     public string? MoTa { get; set; }

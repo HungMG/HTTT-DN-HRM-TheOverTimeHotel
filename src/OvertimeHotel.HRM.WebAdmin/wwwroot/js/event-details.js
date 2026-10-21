@@ -11,7 +11,6 @@
         let originBody = detailsBody;
         let trigger, memberTrigger, eventId, detailsRequest, assignmentRequest;
         let saving = false;
-        let switching = false;
 
         function message(body, text) {
             body.querySelector('[data-dialog-error]')?.remove();
@@ -36,8 +35,7 @@
         }
         function bindContent(body, notify = false) {
             ui.bindTimeForms(body);
-            const roleSelect = body.querySelector('[data-assignment-role]');
-            if (roleSelect) toggleCustomRole(roleSelect);
+            body.querySelectorAll('[data-assignment-role]').forEach(toggleCustomRole);
             const root = body.querySelector('[data-event-details]');
             if (!root) return;
             selectSection(root, root.dataset.activeSection);
@@ -47,7 +45,7 @@
             } }));
         }
         function toggleCustomRole(select) {
-            const fields = select.form.querySelector('[data-custom-role-fields]');
+            const fields = select.closest('[data-assignment-person]').querySelector('[data-custom-role-fields]');
             const custom = fields.querySelector('[data-custom-role-name]');
             const enabled = select.selectedOptions[0]?.hasAttribute('data-custom-role') || false;
             fields.hidden = !enabled;
@@ -70,12 +68,6 @@
         function focusMember() {
             if (memberTrigger?.isConnected) memberTrigger.focus();
             else originBody.querySelector('[data-details-section="staff"]')?.focus();
-        }
-        function returnToDetails() {
-            if (originBody === detailsBody) {
-                dialog.addEventListener('shown.bs.modal', focusMember, { once: true });
-                modal(dialog).show();
-            } else focusMember();
         }
         async function openDetails(link) {
             if (saving) return;
@@ -100,30 +92,45 @@
         }
         function openAssignment(button) {
             if (saving) return;
-            originBody = button.closest('[data-event-standalone]') || detailsBody;
-            memberTrigger = button;
+            const picker = button.closest('[data-member-picker]');
+            const selected = [...picker.querySelectorAll('[data-choose-member]:checked')];
+            if (!selected.length) return;
+            const url = new URL(picker.dataset.assignmentUrl, window.location.origin);
+            selected.forEach(employee => url.searchParams.append('employeeIds', employee.value));
             assignmentRequest?.abort();
             const request = assignmentRequest = new AbortController();
+            assignment.querySelector('[data-event-assignment-title]').textContent = 'Phân công nhân viên';
             assignmentBody.textContent = 'Đang tải phân công…';
             assignmentBody.setAttribute('aria-busy', 'true');
             const show = async () => {
-                modal(assignment).show();
                 try {
-                    const template = await readHtml(await fetch(button.dataset.assignmentUrl, { credentials: 'same-origin', signal: request.signal }));
+                    const template = await readHtml(await fetch(url, { credentials: 'same-origin', signal: request.signal }));
                     if (request.signal.aborted) return;
                     replace(assignmentBody, template);
-                    assignmentBody.querySelector('[autofocus]')?.focus();
+                    assignmentBody.scrollTop = 0;
+                    assignmentBody.querySelector('[data-assignment-role]')?.focus();
                 } catch (error) {
                     if (error.name !== 'AbortError') message(assignmentBody, error.message);
                 } finally {
                     if (!request.signal.aborted) assignmentBody.setAttribute('aria-busy', 'false');
                 }
             };
-            if (dialog.classList.contains('show')) {
-                switching = true;
-                dialog.addEventListener('hidden.bs.modal', show, { once: true });
-                modal(dialog).hide();
-            } else void show();
+            void show();
+        }
+        function openPicker(button) {
+            if (saving) return;
+            originBody = button.closest('[data-event-standalone]') || detailsBody;
+            memberTrigger = button;
+            const picker = button.closest('[data-department-card]').querySelector('[data-member-picker]').cloneNode(true);
+            picker.hidden = false;
+            picker.removeAttribute('id');
+            const search = picker.querySelector('[data-member-search]');
+            search.id = 'event-modal-member-search';
+            picker.querySelector('label').htmlFor = search.id;
+            assignment.querySelector('[data-event-assignment-title]').textContent = 'Chọn nhân viên';
+            assignmentBody.replaceChildren(picker);
+            assignment.showModal();
+            search.focus();
         }
         document.addEventListener('click', event => {
             const link = event.target.closest('[data-event-link]');
@@ -132,33 +139,36 @@
                 void openDetails(link);
                 return;
             }
+            const close = event.target.closest('[data-assignment-close]');
+            if (close) { if (!saving) assignment.close(); return; }
+            const next = event.target.closest('[data-continue-assignment]');
+            if (next && !next.disabled) { openAssignment(next); return; }
             const root = event.target.closest('[data-event-details]');
             if (!root) return;
             const section = event.target.closest('[data-details-section]');
             if (section) selectSection(root, section.dataset.detailsSection, true);
             const add = event.target.closest('[data-add-member]');
-            if (add) {
-                const picker = add.closest('[data-department-card]').querySelector('[data-member-picker]');
-                picker.hidden = !picker.hidden;
-                add.setAttribute('aria-expanded', String(!picker.hidden));
-                if (!picker.hidden) picker.querySelector('input').focus();
-            }
-            const member = event.target.closest('[data-choose-member]');
-            if (member && !member.disabled) openAssignment(member);
+            if (add) openPicker(add);
         }, true);
         document.addEventListener('input', event => {
             if (!event.target.matches('[data-member-search]')) return;
             const picker = event.target.closest('[data-member-picker]');
             const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
             const query = normalize(event.target.value.trim());
-            const options = [...picker.querySelectorAll('[data-choose-member]')];
+            const options = [...picker.querySelectorAll('[data-member-name]')];
             options.forEach(option => option.hidden = !normalize(option.dataset.memberName).includes(query));
             picker.querySelector('[data-member-empty]').hidden = options.some(option => !option.hidden);
         });
         document.addEventListener('change', event => {
+            if (event.target.matches('[data-choose-member]')) {
+                const picker = event.target.closest('[data-member-picker]');
+                const count = picker.querySelectorAll('[data-choose-member]:checked').length;
+                picker.querySelector('[data-selected-count]').textContent = '(' + count + ')';
+                picker.querySelector('[data-continue-assignment]').disabled = count === 0;
+            }
             if (event.target.matches('[data-assignment-role]')) {
                 toggleCustomRole(event.target);
-                const custom = event.target.form.querySelector('[data-custom-role-name]');
+                const custom = event.target.closest('[data-assignment-person]').querySelector('[data-custom-role-name]');
                 if (!custom.disabled) custom.focus();
             }
         });
@@ -184,7 +194,7 @@
                     replace(originBody, template, true);
                     if (isAssignment) {
                         saving = false;
-                        modal(assignment).hide();
+                        assignment.close();
                     } else {
                         const status = originBody.querySelector('[role="alert"], [role="status"]');
                         if (status) { status.tabIndex = -1; status.focus(); }
@@ -204,18 +214,19 @@
         });
         dialog.addEventListener('hide.bs.modal', event => {
             if (saving) event.preventDefault();
-            else if (!switching) detailsRequest?.abort();
+            else detailsRequest?.abort();
         });
         dialog.addEventListener('hidden.bs.modal', () => {
-            if (switching) { switching = false; return; }
             if (trigger?.isConnected) trigger.focus();
             else document.querySelector('[data-event-link][data-event-id="' + eventId + '"]')?.focus();
         });
-        assignment.addEventListener('hide.bs.modal', event => {
+        assignment.addEventListener('cancel', event => {
             if (saving) event.preventDefault();
-            else assignmentRequest?.abort();
         });
-        assignment.addEventListener('hidden.bs.modal', returnToDetails);
+        assignment.addEventListener('close', () => {
+            assignmentRequest?.abort();
+            focusMember();
+        });
         const standalone = document.querySelector('[data-event-standalone]');
         if (standalone) bindContent(standalone);
     });

@@ -91,6 +91,26 @@ var tests = new (string Name, Action Run)[]
         a.NgayDanhGia = null;
         Equal(false, HotelEventRules.ReviewsReady([a], 0));
     }),
+    ("Acceptance calculates completed staff from event rates and excludes absent staff", () =>
+    {
+        var item = new DuAn { LoaiDuAn = "TIEC_CUOI", TinhPhuCapKhiNghiemThu = true };
+        var department = new PhongBan { TenPhongBan = "Bếp" };
+        var completed = new PhanCongDuAn { DanhGia = "HOAN_THANH", NhanVien = new NhanVien { PhongBan = department } };
+        var absent = new PhanCongDuAn { DanhGia = "KHONG_THAM_GIA", NhanVien = new NhanVien { PhongBan = department } };
+        Equal(600_000m, HotelEventRules.AcceptanceAmount(item, completed));
+        var configured = new CauHinhKhoanLuong { LoaiKhoan = "THUONG", TenKhoan = "Thưởng Tiệc cưới - Bếp", GiaTriMacDinh = 750_000m };
+        Equal(750_000m, HotelEventRules.AcceptanceAmount(item, completed, [configured]));
+        Equal(0m, HotelEventRules.AcceptanceAmount(item, absent));
+        completed.MaPhongBanSuKien = "BEP";
+        completed.NhanVien!.PhongBan = new PhongBan { TenPhongBan = "Ẩm thực" };
+        Equal(600_000m, HotelEventRules.AcceptanceAmount(item, completed));
+        completed.SoTienPhuCap = 123m;
+        item.TrangThai = "HOAN_THANH";
+        Equal(123m, HotelEventRules.ResolveEventBonus(item, department, completed, [configured]).SoTien);
+        item.TenDuAn = new string('X', 200);
+        completed.VaiTroDuAn = new string('Y', 100);
+        Equal(true, HotelEventRules.ResolveEventBonus(item, department, completed).TenKhoan.Length <= 150);
+    }),
     ("Only 5 valid event types exist and BAO_TRI_NANG_CAP is removed", () =>
     {
         Equal(5, HotelEventRules.TypeLabels.Count);

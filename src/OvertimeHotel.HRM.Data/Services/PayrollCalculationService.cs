@@ -150,7 +150,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         var allAssignments = await _context.PhanCongDuAns
             .Where(pc => pc.TrangThaiChiTra == "CHUA_CHI_TRA" &&
-                        (pc.DanhGia == "HOAN_THANH" || pc.DanhGia == "XUAT_SAC"))
+                        (pc.DanhGia == "HOAN_THANH" || pc.DanhGia == "XUAT_SAC") &&
+                        (pc.DuAn == null || !pc.DuAn.TinhPhuCapKhiNghiemThu || pc.DuAn.TrangThai == "HOAN_THANH"))
             .Include(pc => pc.DuAn)
             .ToListAsync(cancellationToken);
 
@@ -351,7 +352,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                     LoaiKhoanLuu = "THUONG",
                     TenKhoanLuu = tenKhoan,
                     SoTien = amount,
-                    GhiChu = $"Thưởng dự án ({a.DuAn?.TenDuAn ?? "Sự kiện"}). Đánh giá: {a.DanhGia}. Mã phân công: #{a.MaPhanCong}"
+                    GhiChu = $"Thưởng dự án SK-{a.MaDuAn}. Đánh giá: {a.DanhGia}. Mã phân công: #{a.MaPhanCong}"
                 };
 
                 details.Add(eventDetail);
@@ -684,7 +685,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         var assignments = await _context.PhanCongDuAns
             .Where(pc => pc.MaNhanVien == nv.MaNhanVien && pc.TrangThaiChiTra == "CHUA_CHI_TRA" &&
-                         (pc.DanhGia == "HOAN_THANH" || pc.DanhGia == "XUAT_SAC"))
+                         (pc.DanhGia == "HOAN_THANH" || pc.DanhGia == "XUAT_SAC") &&
+                         (pc.DuAn == null || !pc.DuAn.TinhPhuCapKhiNghiemThu || pc.DuAn.TrangThai == "HOAN_THANH"))
             .Include(pc => pc.DuAn).ToListAsync(cancellationToken);
 
         var assignmentsToLink = new List<(PhanCongDuAn Assignment, ChiTietPhieuLuong Detail)>();
@@ -699,7 +701,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 LoaiKhoanLuu = "THUONG",
                 TenKhoanLuu = tenKhoan,
                 SoTien = amount,
-                GhiChu = $"Thưởng dự án ({a.DuAn?.TenDuAn ?? "Sự kiện"}). Đánh giá: {a.DanhGia}. Mã phân công: #{a.MaPhanCong}"
+                GhiChu = $"Thưởng dự án SK-{a.MaDuAn}. Đánh giá: {a.DanhGia}. Mã phân công: #{a.MaPhanCong}"
             };
             details.Add(item);
             tienThuongSuKien += amount;

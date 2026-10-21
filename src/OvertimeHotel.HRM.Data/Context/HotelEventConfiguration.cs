@@ -17,6 +17,7 @@ internal sealed class HotelEventConfiguration : IEntityTypeConfiguration<DuAn>
         entity.Property(e => e.NgayBatDau).HasColumnName("ngay_bat_dau");
         entity.Property(e => e.NgayKetThuc).HasColumnName("ngay_ket_thuc");
         entity.Property(e => e.NganSachPhuCap).HasColumnName("ngan_sach_phu_cap").HasPrecision(15, 2);
+        entity.Property(e => e.TinhPhuCapKhiNghiemThu).HasColumnName("tinh_phu_cap_khi_nghiem_thu").HasDefaultValue(false);
         entity.Property(e => e.MaNguoiQuanLy).HasColumnName("ma_nguoi_quan_ly");
         entity.Property(e => e.SoKhachDuKien).HasColumnName("so_khach_du_kien");
         entity.Property(e => e.MoTa).HasColumnName("mo_ta");
@@ -38,6 +39,7 @@ internal sealed class HotelEventAssignmentConfiguration : IEntityTypeConfigurati
         entity.Property(e => e.MaDuAn).HasColumnName("ma_du_an");
         entity.Property(e => e.MaNhanVien).HasColumnName("ma_nhan_vien");
         entity.Property(e => e.VaiTroDuAn).HasColumnName("vai_tro_du_an").HasMaxLength(100).IsRequired();
+        entity.Property(e => e.MaPhongBanSuKien).HasColumnName("ma_phong_ban_su_kien").HasMaxLength(30);
         entity.Property(e => e.NhiemVuCuThe).HasColumnName("nhiem_vu_cu_the").HasMaxLength(255);
         entity.Property(e => e.PhuCapDuKien).HasColumnName("phu_cap_du_kien").HasPrecision(15, 2);
         entity.Property(e => e.SoTienPhuCap).HasColumnName("so_tien_phu_cap").HasPrecision(15, 2);

@@ -48,49 +48,63 @@ with sync_playwright() as p:
     dialog.get_by_role('button', name='Nhân sự', exact=False).click()
     department = dialog.locator('[data-department-card="KY_THUAT"]')
     department.get_by_role('button', name='Thêm người', exact=False).click()
-    picker = department.locator('[data-member-picker]')
+    assignment = page.locator('[data-event-assignment-dialog]')
+    picker = assignment.locator('[data-member-picker]')
     picker.wait_for(state='visible')
+    assert dialog.is_visible(), 'Opening the picker must keep staff visible below it'
+    assert picker.locator('[data-continue-assignment]').is_disabled()
+    assert picker.locator('[data-member-search]').evaluate('(e) => document.activeElement === e')
     picker.locator('[data-member-search]').fill('worker-a')
     worker = picker.locator(f'[data-choose-member="{fixture["WorkerA"]}"]')
     worker.click()
-    assignment = page.locator('[data-event-assignment-dialog]')
+    assignment.locator('[data-continue-assignment]').click()
     assignment.wait_for(state='visible')
     form = assignment.locator('[data-assignment-popup-form]')
     form.wait_for()
-    assert not dialog.is_visible(), 'Only one Bootstrap modal can be visible'
-    role = form.locator('[name="Assignment.Role"]')
+    assert dialog.is_visible(), 'The staff section must remain visible beneath the picker'
+    role = form.locator('[name="Assignments[0].Role"]')
     assert role.evaluate('(element)=>element.tagName') == 'SELECT'
     assert role.get_attribute('required') is not None
     assert form.locator('[name="Assignment.Task"]').count() == 0
     assert role.locator('option[value="Tiếp nhận đăng ký"]').count() == 0, 'Department must scope the role catalog'
     role.select_option('__OTHER__')
-    custom = form.locator('[name="Assignment.OtherRole"]')
+    custom = form.locator('[name="Assignments[0].OtherRole"]')
     assert custom.is_visible() and not custom.evaluate('(element)=>element.checkValidity()')
     custom.fill('Hỗ trợ tại hội trường')
     role.select_option('Phụ trách âm thanh và micro')
     assert not custom.is_visible()
     assignment.locator('form').get_by_role('button', name='Hủy', exact=True).click()
     dialog.wait_for(state='visible')
-    assert picker.is_visible(), 'Cancel must return to the same employee picker'
-    assert picker.locator('[data-member-search]').input_value() == 'worker-a'
+    assert department.locator('[data-add-member]').is_visible(), 'Cancel must return to the staffing section'
+    department.get_by_role('button', name='Thêm người', exact=False).click()
+    picker.wait_for(state='visible')
+    picker.locator('[data-member-search]').fill('worker-a')
     worker.click()
+    picker.locator('[data-member-search]').fill('worker-b')
+    picker.locator(f'[data-choose-member="{fixture["WorkerB"]}"]').check()
+    assert picker.locator('[data-selected-count]').inner_text() == '(2)'
+    assignment.locator('[data-continue-assignment]').click()
     assignment.wait_for(state='visible')
     form = assignment.locator('[data-assignment-popup-form]')
-    form.locator('[name="Assignment.Role"]').select_option('Phụ trách âm thanh và micro')
+    form.locator('[name="Assignments[0].Role"]').select_option('Phụ trách âm thanh và micro')
+    form.locator('[name="Assignments[1].Role"]').select_option('Trực thiết bị hội trường')
     form.locator('details').evaluate('(element) => element.open = true')
     form.locator('[name="Assignment.Allowance"]').fill('9999999999999.99')
     assignment.get_by_role('button', name='Lưu phân công', exact=True).click()
     assignment.locator('.validation-summary-errors').wait_for()
-    assert assignment.locator('[name="Assignment.Role"]').input_value() == 'Phụ trách âm thanh và micro'
+    assert assignment.locator('[name="Assignments[0].Role"]').input_value() == 'Phụ trách âm thanh và micro'
+    assert assignment.locator('[name="Assignments[1].Role"]').input_value() == 'Trực thiết bị hội trường'
+    assert department.locator('[data-assigned-member]').count() == 0, 'Invalid group must not partially save'
     assignment.locator('details').evaluate('(element) => element.open = true')
     assignment.locator('[name="Assignment.Allowance"]').fill('123.45')
     assignment.get_by_role('button', name='Lưu phân công', exact=True).dblclick()
+    assignment.wait_for(state='hidden')
     dialog.wait_for(state='visible')
     member = dialog.locator('[data-department-card="KY_THUAT"] [data-assigned-member]')
-    assert member.count() == 1, 'Saving twice must create one assignment'
-    assert 'Phụ trách âm thanh và micro' in member.inner_text()
-    assert dialog.locator('[data-department-card="KY_THUAT"] [data-event-role="Trực thiết bị hội trường"]').get_attribute('data-role-missing') == '1'
-    assert '123,45' in member.inner_text()
+    assert member.count() == 2, 'Saving twice must create each selected employee once'
+    assert 'Phụ trách âm thanh và micro' in member.first.inner_text()
+    assert dialog.locator('[data-department-card="KY_THUAT"] [data-event-role="Trực thiết bị hội trường"]').get_attribute('data-role-missing') == '0'
+    assert '123,45' in member.first.inner_text()
     dialog.get_by_role('button', name='Đánh giá & nghiệm thu', exact=False).click()
     assert dialog.locator('[data-details-pane="acceptance"]').is_visible()
     assert dialog.locator('select option[value="XUAT_SAC"]').count() == 0
@@ -98,7 +112,7 @@ with sync_playwright() as p:
     assert dialog.locator('[data-details-pane="overview"]').is_visible()
     dialog.get_by_role('button', name='Đóng', exact=True).click()
     dialog.wait_for(state='hidden')
-    assert page.locator('[data-selected-events]').inner_text().find('1 nhân sự') >= 0
+    assert page.locator('[data-selected-events]').inner_text().find('2 nhân sự') >= 0
     assert page.evaluate('document.activeElement.matches("[data-event-link]")'), 'Close must restore focus to the event'
     # The calendar chip uses the same popup; mobile content must fit the viewport.
     page.set_viewport_size({'width': 390, 'height': 844})
@@ -108,5 +122,5 @@ with sync_playwright() as p:
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1')
     page.screenshot(path=str(root / '.probe/event-details-mobile.png'), full_page=True)
     assert not errors, errors
-    print('PASS details popup, department picker, role form, cancel/context, budget validation, single save, review navigation and mobile')
+    print('PASS details overlay, multiple selection, individual roles, cancel/focus, atomic budget validation, batch save and mobile')
     browser.close()

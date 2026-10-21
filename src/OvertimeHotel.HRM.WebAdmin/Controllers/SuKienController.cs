@@ -80,6 +80,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     {
         model.Input.Id = 0;
         model.Input.Version = 0;
+        model.Input.CalculateBudgetAtAcceptance = true;
         return SaveAsync(model, "Create");
     }
 
@@ -97,7 +98,8 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             {
                 Id = id, Version = item.Version, Name = item.TenDuAn, Type = item.LoaiDuAn, Venue = item.DiaDiem,
                 Start = HotelEventRules.Local(item.NgayBatDau), End = HotelEventRules.Local(item.NgayKetThuc),
-                ManagerId = item.MaNguoiQuanLy, ExpectedGuests = item.SoKhachDuKien, Budget = item.NganSachPhuCap, Description = item.MoTa
+                ManagerId = item.MaNguoiQuanLy, ExpectedGuests = item.SoKhachDuKien, Budget = item.NganSachPhuCap,
+                CalculateBudgetAtAcceptance = item.TinhPhuCapKhiNghiemThu, Description = item.MoTa
             }
         };
         SetContext(model, returnYear, returnMonth, returnDate ?? DateOnly.FromDateTime(model.Input.Start));
@@ -159,7 +161,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     }
 
     [HttpGet]
-    public async Task<IActionResult> Assignment(int id, int employeeId, string department,
+    public async Task<IActionResult> Assignment(int id, int[] employeeIds, string department,
         int? returnYear, int? returnMonth, DateOnly? returnDate)
     {
         var actor = await ActorAsync();
@@ -167,18 +169,31 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, "staff");
         if (model == null) return NotFound();
         if (!model.CanManage || model.Event.TrangThai is not ("LEN_KE_HOACH" or "DANG_DIEN_RA")) return Forbid();
-        var employee = model.Employees.SingleOrDefault(n => n.MaNhanVien == employeeId);
-        if (employee == null || HotelEventRules.ResolveDepartmentCode(employee) != department
+        if (employeeIds.Length == 0 || employeeIds.Distinct().Count() != employeeIds.Length
             || !model.RequiredDepartments.Contains(department)
-            || model.Event.PhanCongs.Any(p => p.MaNhanVien == employeeId)) return BadRequest();
+            || employeeIds.Any(employeeId => !model.Employees.Any(n => n.MaNhanVien == employeeId
+                && HotelEventRules.ResolveDepartmentCode(n) == department)
+                || model.Event.PhanCongs.Any(p => p.MaNhanVien == employeeId))) return BadRequest();
         model.IsPopup = true;
         model.SelectedDepartment = department;
-        model.Assignment.EmployeeId = employeeId;
+        model.Assignments = employeeIds.Select(employeeId => new EventAssignmentInput { EmployeeId = employeeId }).ToList();
         return PartialView("_AssignmentPopup", model);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> Assign(int id, EventDetailsViewModel model) => MutateAsync(id, model, "staff", a => events.AssignAsync(a, id, model.Assignment), assignmentPopup: true);
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> AssignMany(int id, EventDetailsViewModel model)
+    {
+        foreach (var input in model.Assignments)
+        {
+            input.Start = model.Assignment.Start;
+            input.End = model.Assignment.End;
+            input.Allowance = model.Assignment.Allowance;
+        }
+        return MutateAsync(id, model, "staff", a => events.AssignManyAsync(a, id, model.Assignment.Version, model.Assignments), assignmentPopup: true);
+    }
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> Review(int id, EventDetailsViewModel model) => MutateAsync(id, model, "acceptance", a => events.ReviewAsync(a, id, model.Review));
@@ -258,6 +273,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
                 Start = HotelEventRules.Local(item.NgayBatDau), End = HotelEventRules.Local(item.NgayKetThuc), Version = item.Version
             },
             SelectedDepartment = previous?.SelectedDepartment,
+            Assignments = previous?.Assignments ?? [],
             Review = previous?.Review ?? new EventReviewInput { Version = item.Version },
             ReturnYear = Math.Clamp(returnYear is > 0 ? returnYear.Value : HotelEventRules.Local(item.NgayBatDau).Year, 1900, 2100),
             ReturnMonth = Math.Clamp(returnMonth is > 0 ? returnMonth.Value : HotelEventRules.Local(item.NgayBatDau).Month, 1, 12),

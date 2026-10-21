@@ -35,6 +35,7 @@ public class EventDetailsViewModel
     public bool CanAccept { get; set; }
     public bool CanEdit { get; set; }
     public EventAssignmentInput Assignment { get; set; } = new();
+    public List<EventAssignmentInput> Assignments { get; set; } = [];
     public EventReviewInput Review { get; set; } = new();
     public int ReturnYear { get; set; }
     public int ReturnMonth { get; set; }

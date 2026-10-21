@@ -15,6 +15,9 @@
     function canCreateSelection(dates, today) {
         return dates.length > 0 && dates.every(date => date >= today);
     }
+    function selectedOccurrences(cards, dates) {
+        return [...dates].sort().flatMap(day => cards.filter(item => item.days.includes(day)).map(item => ({ ...item, day })));
+    }
     function calendarUrl(base, year, month, date, dates) {
         const query = new URLSearchParams({ year, month, date });
         if (dates) query.set('dates', dates.join(','));
@@ -126,7 +129,7 @@
             filterEmployees(true);
         });
     }
-    if (typeof module !== 'undefined' && module.exports) module.exports = { moveDate, calendarUrl, createUrl, handleDayInteraction, validTimeRange, toggleDate, selectionRange, responseError, canCreateSelection, bindDepartmentEmployeeFiltering };
+    if (typeof module !== 'undefined' && module.exports) module.exports = { moveDate, calendarUrl, createUrl, handleDayInteraction, validTimeRange, toggleDate, selectionRange, responseError, canCreateSelection, selectedOccurrences, bindDepartmentEmployeeFiltering };
     if (typeof document === 'undefined') return;
     window.HotelEventUI = { responseError, bindTimeForms };
     document.addEventListener('DOMContentLoaded', function () {
@@ -164,7 +167,7 @@
             });
             const formatDay = value => value.split('-').reverse().join('/');
             selectedTitle.textContent = selectedDates.length === 1 ? formatDay(selectedDates[0]) : selectedDates.length + ' ngày đã chọn';
-            const events = cards.filter(item => item.days.some(day => selectedDates.includes(day)));
+            const events = selectedOccurrences(cards, selectedDates);
             selectedCount.textContent = selectedDates.map(formatDay).join(', ') + (selectedDates.length ? ' · ' : '') + events.length + ' sự kiện';
             selectedList.replaceChildren();
             if (!events.length) {
@@ -178,10 +181,10 @@
                 link.className = 'event-agenda-card';
                 link.dataset.eventLink = '';
                 link.dataset.eventId = item.id;
-                link.href = item.url + '&returnDate=' + encodeURIComponent(date);
+                link.href = item.url + '&returnDate=' + encodeURIComponent(item.day);
                 const time = document.createElement('span');
                 time.className = 'event-eyebrow';
-                time.textContent = item.time + ' · ' + item.type;
+                time.textContent = formatDay(item.day) + ' · ' + item.time + ' · ' + item.type;
                 const name = document.createElement('strong');
                 name.textContent = item.name;
                 const meta = document.createElement('span');

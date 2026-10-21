@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { moveDate, calendarUrl, createUrl, handleDayInteraction, validTimeRange, toggleDate, selectionRange, responseError, canCreateSelection } = require('../src/OvertimeHotel.HRM.WebAdmin/wwwroot/js/events.js');
+const { moveDate, calendarUrl, createUrl, handleDayInteraction, validTimeRange, toggleDate, selectionRange, responseError, canCreateSelection, selectedOccurrences } = require('../src/OvertimeHotel.HRM.WebAdmin/wwwroot/js/events.js');
+
+const recurring = { id: 1, name: 'Banquet', days: ['2026-10-21', '2026-10-22', '2026-10-23'] };
+const sameName = { id: 2, name: 'Banquet', days: ['2026-10-22'] };
+assert.deepEqual(selectedOccurrences([recurring, sameName], ['2026-10-22', '2026-10-21']).map(item => [item.id, item.day]),
+    [[1, '2026-10-21'], [1, '2026-10-22'], [2, '2026-10-22']], 'Show every selected day and keep separate events with the same name');
+assert.deepEqual(selectedOccurrences([recurring], []), []);
+assert.deepEqual(selectedOccurrences([recurring], ['2026-10-24']), []);
 
 assert.equal(canCreateSelection(['2026-10-15'], '2026-10-16'), false);
 assert.equal(canCreateSelection(['2026-10-15', '2026-10-17'], '2026-10-16'), false, 'A mixed selection must not silently create from a past day');

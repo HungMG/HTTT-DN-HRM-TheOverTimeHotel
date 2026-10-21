@@ -6,6 +6,7 @@ public class PhanCongDuAn
     public int MaDuAn { get; set; }
     public int MaNhanVien { get; set; }
     public string VaiTroDuAn { get; set; } = "";
+    public string? MaPhongBanSuKien { get; set; }
     public string? NhiemVuCuThe { get; set; }
     public decimal PhuCapDuKien { get; set; }
     public decimal SoTienPhuCap { get; set; }

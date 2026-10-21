@@ -57,7 +57,10 @@ with sync_playwright() as p:
     page.locator('[data-date="2028-02-29"] .event-day-number').click()
     page.locator('[data-create-event]').first.click()
     popup.locator('[name="Input.Name"]').wait_for()
-    for name, value in {'Name': fixture['Prefix'] + '-popup', 'Venue': fixture['Prefix'] + '-popup-venue', 'Budget': '12345.50', 'ExpectedGuests': '50'}.items():
+    assert popup.locator('.modal-content').evaluate('(e)=>getComputedStyle(e).backgroundColor') == 'rgb(255, 255, 255)'
+    assert popup.locator('.event-panel').first.evaluate('(e)=>getComputedStyle(e).backgroundColor') == 'rgb(255, 255, 255)'
+    assert popup.locator('[name="Input.Budget"]').count() == 0
+    for name, value in {'Name': fixture['Prefix'] + '-popup', 'Venue': fixture['Prefix'] + '-popup-venue', 'ExpectedGuests': '50'}.items():
         popup.locator('[name="Input.' + name + '"]').fill(value)
     popup.locator('[name="Input.ManagerId"]').select_option(str(fixture['Manager']['EmployeeId']))
     popup.locator('[name="Input.End"]').fill('2028-02-28T17:00')
@@ -69,6 +72,18 @@ with sync_playwright() as p:
     assert urlparse(page.url).path == '/SuKien'
     assert page.locator('[data-calendar-day][aria-selected=true]').count() == 2
     assert fixture['Prefix'] + '-popup' in page.locator('[data-selected-events]').inner_text()
+    page.locator('[data-selected-events] [data-event-link]').filter(has_text=fixture['Prefix'] + '-popup').first.click()
+    details = page.locator('[data-event-details-dialog]')
+    details.get_by_role('button', name='Nhân sự', exact=False).click()
+    assert 'tính khi nghiệm thu' in details.inner_text().lower()
+    details.locator('[data-department-card="KY_THUAT"] [data-add-member]').click()
+    assignment = page.locator('[data-event-assignment-dialog]')
+    assignment.locator(f'[data-choose-member="{fixture["WorkerA"]}"]').click()
+    assignment.locator('[data-continue-assignment]').click()
+    assignment.locator('[data-assignment-popup-form]').wait_for()
+    assert assignment.locator('[name="Assignment.Allowance"]').count() == 0
+    assignment.locator('[data-assignment-popup-form]').get_by_role('button', name='Hủy', exact=True).click()
+    details.get_by_role('button', name='Đóng', exact=True).click()
     page.locator('[data-create-event]').first.click()
     popup.locator('[name="Input.Name"]').wait_for()
     popup.locator('[name="Input.Name"]').fill(fixture['Prefix'] + '-popup-conflict')

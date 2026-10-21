@@ -20,6 +20,7 @@ public class EventInput
     public int ManagerId { get; set; }
     public int ExpectedGuests { get; set; }
     public decimal Budget { get; set; }
+    public bool CalculateBudgetAtAcceptance { get; set; }
     public string? Description { get; set; }
 }
 

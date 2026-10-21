@@ -1,6 +1,6 @@
 .events-page {
   --event-ink: #172b42;
-  --event-paper: #fffdf7;
+  --event-paper: #fff;
   --event-gold: #b68b44;
   --event-line: #e9e1d2;
   color: var(--event-ink);
@@ -440,15 +440,15 @@
 .event-agenda-card {
   min-width: 0;
   overflow-wrap: anywhere;
-  border: 1px solid #eae4d8;
+  border: 1px solid #2c3564;
   border-radius: 8px;
   padding: 15px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   text-decoration: none;
-  color: var(--event-ink);
-  background: #fffefa;
+  color: #fff;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
   transition: border-color .15s;
 }
 
@@ -464,11 +464,12 @@
 }
 
 .event-agenda-card:hover {
-  color: var(--event-ink);
-  border-color: #bba078;
+  color: #fff;
+  border-color: #515e91;
 }
 
 .event-agenda-card .event-eyebrow {
+  color: #cedbee;
   font-size: 8px;
   letter-spacing: .5px;
   margin: 0;
@@ -481,7 +482,7 @@
 
 .event-agenda-card>span:not(.event-eyebrow):not(.event-status) {
   font-size: 10px;
-  color: #8b8e8c;
+  color: #cedbee;
   line-height: 1.6;
 }
 
@@ -551,6 +552,13 @@
   padding: 28px;
   border: 1px solid var(--event-line);
   border-radius: 12px;
+}
+
+.event-create-page {
+  --event-paper: #fff;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px 24px 32px;
 }
 
 .event-panel h3 {
@@ -1174,7 +1182,7 @@
 }
 
 .event-create-dialog .modal-content {
-  background: #fffdf7;
+  background: #fff;
   border: 1px solid #e9e1d2;
   border-radius: 14px;
 }
@@ -1189,14 +1197,54 @@
 }
 
 .event-create-dialog .event-panel {
+  background: #fff;
   padding: 20px;
 }
 
 .event-details-dialog .modal-content,
 .event-assignment-dialog .modal-content {
-  background: #fffdf7;
+  background: #fff;
   border: 1px solid #e9e1d2;
   border-radius: 18px;
+}
+
+dialog.event-assignment-dialog {
+  --event-ink: #172b42;
+  color: var(--event-ink);
+  width: min(640px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+}
+
+dialog.event-assignment-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.event-assignment-dialog .modal-dialog {
+  margin: 0;
+  max-width: none;
+  pointer-events: auto;
+}
+
+.event-assignment-dialog .modal-content {
+  max-height: calc(100dvh - 24px);
+}
+
+.event-assignment-dialog .modal-header {
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #e9e1d2;
+}
+
+.event-assignment-dialog .modal-header .btn-close {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.event-assignment-dialog .modal-body {
+  overflow-y: auto;
 }
 
 .event-details-dialog .modal-header,
@@ -1253,6 +1301,10 @@
   gap: 16px;
 }
 
+.event-member-option[hidden] {
+  display: none;
+}
+
 .event-staff-heading {
   flex-wrap: wrap;
   margin-bottom: 20px;
@@ -1299,7 +1351,6 @@
 
 .event-assigned-member span,
 .event-assigned-member small,
-.event-assignment-person span,
 .event-member-option small {
   display: block;
   color: #64748b;
@@ -1320,32 +1371,122 @@
   padding-top: 16px;
 }
 
+.event-assignment-dialog .event-member-picker {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
 .event-member-options {
-  max-height: 250px;
+  max-height: min(340px, 40dvh);
   overflow-y: auto;
   margin-top: 10px;
+  padding: 3px;
 }
 
 .event-member-option {
+  cursor: pointer;
   width: 100%;
   text-align: left;
   background: #fff;
-  padding: 12px;
-  border: 0;
-  border-bottom: 1px solid #edf0f4;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
   color: #172b42;
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
 
-.event-member-option:hover:not(:disabled) {
-  background: #f5f1e8;
+.event-member-option:hover {
+  background: #f8fafc;
+  border-color: #c9d6e5;
 }
 
-.event-member-option:disabled {
-  opacity: .6;
+.event-member-option:has(.event-member-toggle:checked) {
+  background: #f0f5fb;
+  border-color: #a8bfd9;
+  box-shadow: inset 3px 0 #426991;
+}
+
+.event-member-option > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-member-toggle {
+  appearance: none;
+  position: relative;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  border: 1px solid #d8e0e9;
+  border-radius: 10px;
+  background: #fff;
+  color: #52749b;
+  cursor: pointer;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .15s ease;
+}
+
+.event-member-toggle::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  background: linear-gradient(currentColor, currentColor) center / 12px 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 1.5px 12px no-repeat;
+  transition: opacity .15s ease, transform .18s ease;
+}
+
+.event-member-toggle::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 8px;
+  width: 6px;
+  height: 11px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  opacity: 0;
+  transform: translateY(2px) rotate(45deg) scale(.75);
+  transition: opacity .15s ease, transform .18s ease;
+}
+
+.event-member-toggle:checked {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  border-color: #1e3a8a;
+  color: #fff;
+}
+
+.event-member-toggle:checked::before {
+  opacity: 0;
+  transform: rotate(90deg) scale(.7);
+}
+
+.event-member-toggle:checked::after {
+  opacity: 1;
+  transform: rotate(45deg) scale(1);
+}
+
+.event-member-toggle:active {
+  transform: scale(.94);
+}
+
+.event-member-toggle:focus-visible {
+  outline: 2px solid #9ab5d4;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-member-option,
+  .event-member-toggle,
+  .event-member-toggle::before,
+  .event-member-toggle::after {
+    transition: none;
+  }
 }
 
 .event-assignment-person {
-  background: #f3efe6;
+  background: #f8fafc;
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 20px;

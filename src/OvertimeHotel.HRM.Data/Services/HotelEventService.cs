@@ -68,7 +68,9 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
         Require(input.Id != 0 || HotelEventRules.CanCreateOn(DateOnly.FromDateTime(input.Start), DateTimeOffset.UtcNow),
             "Input.Start", "Chỉ được tạo sự kiện từ hôm nay trở đi (giờ Việt Nam).");
         Require(end > start, "Input.End", "Kết thúc phải sau thời gian bắt đầu.");
-        Require(HotelEventRules.IsMoney(input.Budget), "Input.Budget", "Ngân sách phải không âm, tối đa 13 chữ số và 2 số thập phân.");
+        var calculateAtAcceptance = input.Id == 0 ? input.CalculateBudgetAtAcceptance : item.TinhPhuCapKhiNghiemThu;
+        var budget = calculateAtAcceptance ? 0m : input.Budget;
+        Require(HotelEventRules.IsMoney(budget), "Input.Budget", "Ngân sách phải không âm, tối đa 13 chữ số và 2 số thập phân.");
         Require(input.ExpectedGuests >= 0, "Input.ExpectedGuests", "Số khách dự kiến không được âm.");
         Require(input.Description is null || input.Description.Length <= 10000, "Input.Description", "Mô tả tối đa 10.000 ký tự.");
         Require(!await db.DuAns.AnyAsync(e => e.MaDuAn != input.Id && e.TenDuAn == name), "Input.Name", "Tên sự kiện đã được sử dụng.");
@@ -92,7 +94,7 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
             Require(incompatible.Count == 0, "Input.Type",
                 $"Không thể đổi loại sự kiện: có {incompatible.Count} phân công có phòng ban hoặc vai trò không phù hợp. Vui lòng phân công lại trước khi đổi.");
         }
-        Require(item.PhanCongs.Sum(p => p.PhuCapDuKien) <= input.Budget, "Input.Budget", "Ngân sách thấp hơn tổng phụ cấp đã phân công.");
+        Require(calculateAtAcceptance || item.PhanCongs.Sum(p => p.PhuCapDuKien) <= budget, "Input.Budget", "Ngân sách thấp hơn tổng phụ cấp đã phân công.");
         var normalizedVenue = venue.ToLowerInvariant();
         Require(!await db.DuAns.AnyAsync(e => e.MaDuAn != input.Id && e.TrangThai != "HUY"
             && e.DiaDiem.Trim().ToLower() == normalizedVenue && e.NgayBatDau < end && e.NgayKetThuc > start),
@@ -102,7 +104,8 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
         item.DiaDiem = venue;
         item.NgayBatDau = start;
         item.NgayKetThuc = end;
-        item.NganSachPhuCap = input.Budget;
+        item.NganSachPhuCap = budget;
+        item.TinhPhuCapKhiNghiemThu = calculateAtAcceptance;
         item.MaNguoiQuanLy = input.ManagerId;
         item.SoKhachDuKien = input.ExpectedGuests;
         item.MoTa = input.Description?.Trim();
@@ -113,15 +116,30 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
         return item.MaDuAn;
     });
 
-    public Task AssignAsync(EventActor actor, int id, EventAssignmentInput input) => Write(async () =>
+    public Task AssignAsync(EventActor actor, int id, EventAssignmentInput input) =>
+        AssignManyAsync(actor, id, input.Version, [input]);
+
+    public Task AssignManyAsync(EventActor actor, int id, long version, IReadOnlyList<EventAssignmentInput> inputs) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        var item = await Editable(actor, id, input.Version);
+        var item = await Editable(actor, id, version);
         StaffingOpen(item);
+        Require(inputs.Count > 0, "", "Chọn ít nhất một nhân viên.");
+        foreach (var input in inputs)
+            await AddAssignment(item, input);
+        item.Version++;
+        Audit(actor, item, "PHAN_CONG_SU_KIEN", inputs.Count == 1
+            ? $"Phân công nhân viên #{inputs[0].EmployeeId}." : $"Phân công {inputs.Count} nhân viên.");
+        return 0;
+    });
+
+    private async Task AddAssignment(DuAn item, EventAssignmentInput input)
+    {
         var start = Utc(input.Start, "Assignment.Start");
         var end = Utc(input.End, "Assignment.End");
         Require(start >= item.NgayBatDau && start < end && end <= item.NgayKetThuc, "Assignment.End", "Thời gian tham gia phải nằm trong thời gian sự kiện.");
-        Require(HotelEventRules.IsMoney(input.Allowance), "Assignment.Allowance", "Phụ cấp không âm, tối đa 13 chữ số và 2 số thập phân.");
+        var allowance = item.TinhPhuCapKhiNghiemThu ? 0m : input.Allowance;
+        Require(HotelEventRules.IsMoney(allowance), "Assignment.Allowance", "Phụ cấp không âm, tối đa 13 chữ số và 2 số thập phân.");
         Require(!item.PhanCongs.Any(p => p.MaNhanVien == input.EmployeeId), "Assignment.EmployeeId", "Nhân viên đã được phân công trong sự kiện.");
         var employee = await db.NhanViens.Include(n => n.PhongBan).Include(n => n.HopDongs).SingleOrDefaultAsync(n => n.MaNhanVien == input.EmployeeId);
         Require(employee != null && HotelEventRules.ContractCovers(employee, start, end), "Assignment.EmployeeId", "Nhân viên phải đang làm việc và có hợp đồng hiệu lực suốt thời gian tham gia.");
@@ -131,18 +149,15 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
             $"Chỉ được chọn nhân viên thuộc các phòng ban quy định cho {HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, "sự kiện")}.");
         var role = HotelEventRoleRules.ResolveRole(item.LoaiDuAn, empDept!, input.Role, input.OtherRole);
         Require(role != null, "Assignment.Role", "Chọn vai trò đúng loại sự kiện và phòng ban; vai trò khác cần tên không trống, tổng tối đa 100 ký tự.");
-        Require(!await db.PhanCongDuAns.AnyAsync(p => p.MaNhanVien == input.EmployeeId && p.MaDuAn != id
+        Require(!await db.PhanCongDuAns.AnyAsync(p => p.MaNhanVien == input.EmployeeId && p.MaDuAn != item.MaDuAn
             && p.DuAn!.TrangThai != "HUY" && p.BatDau < end && p.KetThuc > start), "Assignment.EmployeeId", "Nhân viên đã tham gia sự kiện khác trong khoảng thời gian này.");
-        Require(item.PhanCongs.Sum(p => p.PhuCapDuKien) + input.Allowance <= item.NganSachPhuCap, "Assignment.Allowance", "Tổng phụ cấp dự kiến vượt ngân sách sự kiện.");
+        Require(item.TinhPhuCapKhiNghiemThu || item.PhanCongs.Sum(p => p.PhuCapDuKien) + allowance <= item.NganSachPhuCap, "Assignment.Allowance", "Tổng phụ cấp dự kiến vượt ngân sách sự kiện.");
         item.PhanCongs.Add(new PhanCongDuAn
         {
-            MaNhanVien = input.EmployeeId, VaiTroDuAn = role!,
-            BatDau = start, KetThuc = end, PhuCapDuKien = input.Allowance
+            MaNhanVien = input.EmployeeId, VaiTroDuAn = role!, MaPhongBanSuKien = empDept,
+            BatDau = start, KetThuc = end, PhuCapDuKien = allowance
         });
-        item.Version++;
-        Audit(actor, item, "PHAN_CONG_SU_KIEN", $"Phân công nhân viên #{input.EmployeeId}.");
-        return 0;
-    });
+    }
 
     public Task RemoveAssignmentAsync(EventActor actor, int id, int assignmentId, long version) => Write(async () =>
     {
@@ -178,16 +193,17 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
         var assignment = item.PhanCongs.SingleOrDefault(p => p.MaPhanCong == input.AssignmentId);
         Require(assignment != null, "Review.AssignmentId", "Không tìm thấy phân công trong sự kiện.");
         Require(input.Rating is "HOAN_THANH" or "XUAT_SAC" or "KHONG_THAM_GIA", "Review.Rating", "Chọn kết quả đánh giá hợp lệ.");
-        Require(HotelEventRules.IsMoney(input.ActualAllowance), "Review.ActualAllowance", "Phụ cấp thực tế không âm, tối đa 13 chữ số và 2 số thập phân.");
-        Require(input.Rating != "KHONG_THAM_GIA" || input.ActualAllowance == 0, "Review.ActualAllowance", "Nhân viên không tham gia phải có phụ cấp bằng 0.");
-        Require(item.PhanCongs.Where(p => p.MaPhanCong != input.AssignmentId).Sum(p => p.SoTienPhuCap) + input.ActualAllowance <= item.NganSachPhuCap,
+        var actualAllowance = item.TinhPhuCapKhiNghiemThu ? 0m : input.ActualAllowance;
+        Require(HotelEventRules.IsMoney(actualAllowance), "Review.ActualAllowance", "Phụ cấp thực tế không âm, tối đa 13 chữ số và 2 số thập phân.");
+        Require(input.Rating != "KHONG_THAM_GIA" || actualAllowance == 0, "Review.ActualAllowance", "Nhân viên không tham gia phải có phụ cấp bằng 0.");
+        Require(item.TinhPhuCapKhiNghiemThu || item.PhanCongs.Where(p => p.MaPhanCong != input.AssignmentId).Sum(p => p.SoTienPhuCap) + actualAllowance <= item.NganSachPhuCap,
             "Review.ActualAllowance", "Tổng phụ cấp thực tế vượt ngân sách sự kiện.");
         Require(assignment!.MaChiTiet == null && assignment.TrangThaiChiTra == "CHUA_CHI_TRA", "", "Không thể đánh giá lại phân công đã kết chuyển.");
         assignment.DanhGia = input.Rating;
-        assignment.SoTienPhuCap = input.ActualAllowance;
+        assignment.SoTienPhuCap = actualAllowance;
         assignment.NgayDanhGia = DateTimeOffset.UtcNow;
         item.Version++;
-        Audit(actor, item, "DANH_GIA_SU_KIEN", $"Đánh giá nhân viên #{assignment.MaNhanVien}: {input.Rating}; phụ cấp {input.ActualAllowance}.");
+        Audit(actor, item, "DANH_GIA_SU_KIEN", $"Đánh giá nhân viên #{assignment.MaNhanVien}: {input.Rating}; phụ cấp {(item.TinhPhuCapKhiNghiemThu ? "tính khi nghiệm thu" : actualAllowance.ToString())}.");
         return 0;
     });
 
@@ -226,8 +242,25 @@ public sealed class HotelEventService(AppDbContext db) : IHotelEventService
         Require(actor.IsOffice, "", "Chỉ HR hoặc Admin được nghiệm thu sự kiện.", true);
         var item = await Editable(actor, id, version);
         ReviewOpen(item);
-        Require(HotelEventRules.ReviewsReady(item.PhanCongs, item.NganSachPhuCap), "", "Đánh giá toàn bộ nhân viên và bảo đảm tổng phụ cấp không vượt ngân sách trước khi nghiệm thu.");
+        Require(HotelEventRules.ReviewsReady(item.PhanCongs,
+            item.TinhPhuCapKhiNghiemThu ? 9999999999999.99m : item.NganSachPhuCap), "",
+            "Đánh giá toàn bộ nhân viên và bảo đảm tổng phụ cấp hợp lệ trước khi nghiệm thu.");
         Require(item.PhanCongs.All(p => p.MaChiTiet == null && p.TrangThaiChiTra == "CHUA_CHI_TRA"), "", "Phụ cấp sự kiện đã kết chuyển hoặc bị hủy.");
+        if (item.TinhPhuCapKhiNghiemThu)
+        {
+            var configs = await db.CauHinhKhoanLuongs.AsNoTracking().Where(k => k.LoaiKhoan == "THUONG").ToListAsync();
+            decimal total = 0;
+            foreach (var assignment in item.PhanCongs)
+            {
+                var amount = HotelEventRules.AcceptanceAmount(item, assignment, configs);
+                Require(HotelEventRules.IsMoney(amount) && amount > 0 || assignment.DanhGia == "KHONG_THAM_GIA" && amount == 0,
+                    "", $"Chưa có mức thưởng hợp lệ cho nhân viên #{assignment.MaNhanVien}.");
+                Require(total <= 9999999999999.99m - amount, "", "Tổng phụ cấp vượt giới hạn lưu trữ.");
+                assignment.SoTienPhuCap = amount;
+                total += amount;
+            }
+            item.NganSachPhuCap = total;
+        }
         item.TrangThai = "HOAN_THANH";
         item.Version++;
         Audit(actor, item, "NGHIEM_THU_SU_KIEN", $"Nghiệm thu {item.PhanCongs.Count} phân công; tổng phụ cấp {item.PhanCongs.Sum(p => p.SoTienPhuCap)}.");

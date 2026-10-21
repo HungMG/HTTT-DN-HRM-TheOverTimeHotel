@@ -22,9 +22,6 @@
 }
 <link rel="stylesheet" href="~/css/events.css" asp-append-version="true" />
 <div class="events-page event-calendar-page">
-    <div class="event-page-heading">
-        <div><h2>Lịch sự kiện khách sạn</h2><p>Theo dõi lịch tổ chức và phân công nhân sự trên cùng một trang.</p></div>
-    </div>
     @if (TempData["Success"] is string message) { <div class="alert alert-success" role="status">@message</div> }
     @if (TempData["Error"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
     @if (!Model.DatabaseReady) { <div class="alert alert-warning" role="alert">Dữ liệu sự kiện chưa sẵn sàng. Vui lòng liên hệ quản trị viên để cập nhật cơ sở dữ liệu.</div> }
@@ -75,7 +72,6 @@
             <span class="event-eyebrow">CÁC NGÀY ĐÃ CHỌN</span><h3 data-selected-title>@Model.SelectedDate.ToString("dd/MM/yyyy")</h3><p class="event-muted" data-selected-count></p>
             @if (Model.CanCreate && Model.DatabaseReady)
             {
-                <a class="event-primary-button w-100" data-create-event aria-disabled="@(Model.SelectedDate < today ? "true" : "false")" tabindex="@(Model.SelectedDate < today ? -1 : 0)" asp-action="Create" asp-route-date="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-returnYear="@Model.Year" asp-route-returnMonth="@Model.Month" asp-route-returnDate="@Model.SelectedDate.ToString("yyyy-MM-dd")"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo sự kiện</a>
                 <p class="event-muted" data-create-date-note role="status" hidden="@(Model.SelectedDate >= today)">Ngày trước hôm nay chỉ xem chi tiết sự kiện. Chọn ngày từ hôm nay trở đi để tạo mới.</p>
             }
             <div data-selected-events class="event-agenda-list" aria-live="polite"></div>
