@@ -86,6 +86,17 @@ public class DinhBienCheckItem
 {
     public int MaChucVu { get; set; }
     public string TenChucVu { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Bộ phận của dòng định biên; <c>null</c> là mức dùng chung. Cùng một chức danh
+    /// trải nhiều bộ phận sinh nhiều mục đối chiếu — "Thiếu định biên: Giám Sát Ca
+    /// 0/1 (Bếp)" phải chỉ đúng nơi thiếu, không gộp chung toàn khách sạn.
+    /// </summary>
+    public int? MaPhongBan { get; set; }
+
+    /// <summary>Tên bộ phận hiển thị; rỗng khi là mức dùng chung.</summary>
+    public string TenPhongBan { get; set; } = string.Empty;
+
     public int SoNguoiToiThieu { get; set; }
     public int SoNguoiHienCo { get; set; }
     public int ConThieu => Math.Max(0, SoNguoiToiThieu - SoNguoiHienCo);
@@ -189,6 +200,14 @@ public class DinhBienMatrixRow
 {
     public int MaChucVu { get; set; }
     public string TenChucVu { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Bộ phận của dòng này; <c>null</c> là dòng dùng chung mọi bộ phận. Chức danh
+    /// trải nhiều bộ phận (Trưởng Bộ Phận, Giám Sát Ca) sinh ra một dòng cho mỗi bộ
+    /// phận, nhờ đó mới đặt được mức riêng cho từng nơi.
+    /// </summary>
+    public int? MaPhongBan { get; set; }
+
     public string TenPhongBan { get; set; } = string.Empty;
 
     /// <summary>Mức nền lấy từ bảng <c>dinh_bien_ca</c>.</summary>
@@ -210,6 +229,12 @@ public class DinhBienModalViewModel
     public DateOnly Ngay { get; set; }
 
     public List<CaLamViec> DanhSachCa { get; set; } = new();
+
+    /// <summary>
+    /// Danh mục bộ phận, để dropdown "Thêm dòng theo bộ phận" có dữ liệu chọn.
+    /// </summary>
+    public List<PhongBan> DanhSachPhongBan { get; set; } = new();
+
     public List<DinhBienMatrixRow> Rows { get; set; } = new();
 
     /// <summary>Tuần đang xem, để sau khi lưu quay lại đúng chỗ.</summary>
@@ -237,6 +262,13 @@ public class DinhBienCellInput
 {
     public int MaCa { get; set; }
     public int MaChucVu { get; set; }
+
+    /// <summary>
+    /// Bộ phận của ô; <c>null</c> là ô dùng chung mọi bộ phận. Phải có trong payload
+    /// vì cùng một chức danh trải nhiều bộ phận sinh nhiều ô — thiếu nó thì mọi ô
+    /// ghi đè lên nhau ở dòng "dùng chung".
+    /// </summary>
+    public int? MaPhongBan { get; set; }
 
     /// <summary>0 nghĩa là xoá dòng (không đặt định biên), không phải ghi số 0.</summary>
     public int SoNguoi { get; set; }

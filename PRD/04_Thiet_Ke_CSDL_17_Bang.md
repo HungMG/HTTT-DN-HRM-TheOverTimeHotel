@@ -45,7 +45,7 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 | **25** | `nhat_ky_quan_tri` | Nhật ký thao tác quản trị (Audit Log: ai làm gì, lúc nào, giá trị cũ/mới, IP) | `ma_nhat_ky` | `ma_tai_khoan_thuc_hien`, `ma_tai_khoan_bi_tac_dong` |
 | **26** | `du_an` | Danh mục Dự án / Sự kiện Khách sạn (Tiệc cưới, MICE, Gala, Hội nghị, Bảo trì...) | `ma_du_an` | `ma_nguoi_quan_ly` (FK -> `nhan_vien`) |
 | **27** | `phan_cong_du_an` | Phân công nhân sự & Thù lao sự kiện, liên kết kết chuyển lương tháng | `ma_phan_cong` | `ma_du_an`, `ma_nhan_vien`, `ma_chi_tiet` (FK -> `chi_tiet_phieu_luong`) |
-| **28** | `dinh_bien_ca` | Định biên nhân sự tối thiểu cho từng cặp Ca × Chức vụ, làm cơ sở cảnh báo thiếu người khi xếp ca | `ma_dinh_bien` | `ma_ca`, `ma_chuc_vu` |
+| **28** | `dinh_bien_ca` | Định biên nhân sự tối thiểu cho từng bộ ba Ca × Chức vụ × Bộ phận, làm cơ sở cảnh báo thiếu người khi xếp ca | `ma_dinh_bien` | `ma_ca`, `ma_chuc_vu`, `ma_phong_ban` (NULL = dùng chung) |
 | **29** | `giai_trinh_cham_cong` | Giải trình sai lệch giờ vào/ra, duyệt 2 cấp Quản lý xác minh → HR xác nhận | `ma_giai_trinh` | `ma_phan_ca`, `ma_nhan_vien`, `ma_quan_ly_xac_minh`, `ma_hr_xac_nhan` |
 | **30** | `yeu_cau_doi_ca` | Yêu cầu đổi ca trực giữa hai nhân viên, kèm trạng thái duyệt và phản hồi | `ma_yeu_cau` | `ma_phan_ca_gui`, `ma_phan_ca_nhan`, `ma_nhan_vien_gui`, `ma_nhan_vien_nhan`, `ma_nguoi_duyet` |
 
@@ -321,13 +321,14 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ngay_danh_gia` (TIMESTAMPTZ, NULL): Thời điểm quản lý nghiệm thu và chấm điểm đánh giá.
 - *Ràng buộc:* `UNIQUE (ma_du_an, ma_nhan_vien)` — Mỗi nhân viên chỉ được phân công một vị trí chính trong một dự án sự kiện để đảm bảo tập trung trách nhiệm và tránh phân bổ trùng lặp thù lao.
 
-### Bảng 28: `dinh_bien_ca` (Định biên nhân sự theo ca & chức vụ)
+### Bảng 28: `dinh_bien_ca` (Định biên nhân sự theo ca, chức vụ & bộ phận)
 - `ma_dinh_bien` (SERIAL, PK): Mã định danh duy nhất của dòng định biên.
 - `ma_ca` (INT, FK -> ca_lam_viec.ma_ca, NOT NULL, ON DELETE CASCADE): Ca làm việc được đặt định biên.
 - `ma_chuc_vu` (INT, FK -> chuc_vu.ma_chuc_vu, NOT NULL, ON DELETE CASCADE): Chức vụ / vị trí công tác cần đếm số người.
+- `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NULL, ON DELETE CASCADE): Bộ phận áp dụng định biên. `NULL` nghĩa là **dùng chung mọi bộ phận**. Cột này cần thiết vì `chuc_vu` có những chức danh mang `ma_phong_ban = NULL` — "Trưởng Bộ Phận" (5 người / 5 bộ phận) và "Giám Sát Ca" (2 người / 2 bộ phận) — cùng một chức danh nhưng trải trên nhiều nơi. Thiếu chiều bộ phận thì không đặt được "Bếp cần 1 Giám Sát Ca ca đêm" mà chỉ đặt được một con số gộp cho toàn khách sạn.
 - `so_nguoi_toi_thieu` (INT, NOT NULL, DEFAULT 1, CHECK >= 1): Số nhân sự tối thiểu phải có mặt trong ca để vận hành không bị gián đoạn (VD: ca Đêm cần 1 Lễ tân + 1 Bảo vệ + 1 Kỹ thuật trực).
-- *Ràng buộc:* `UNIQUE (ma_ca, ma_chuc_vu)` — Mỗi cặp Ca × Chức vụ chỉ có một dòng định biên, tránh khai trùng gây cộng dồn sai số người tối thiểu.
-- *Nghiệp vụ:* Màn **Phân ca** (PRD 3.5) đối chiếu số nhân sự đã xếp của mỗi ca với bảng này để gắn nhãn cảnh báo **thiếu người** ngay trên lịch, thay vì để Quản lý tự đếm thủ công.
+- *Ràng buộc:* `UNIQUE NULLS NOT DISTINCT (ma_ca, ma_chuc_vu, ma_phong_ban)` — Mỗi bộ ba Ca × Chức vụ × Bộ phận chỉ có một dòng định biên. Mệnh đề `NULLS NOT DISTINCT` (PostgreSQL 15+) là bắt buộc: mặc định Postgres coi mọi `NULL` là khác nhau, nên nếu thiếu nó thì hai dòng "dùng chung" của cùng một cặp Ca × Chức vụ đều lọt qua ràng buộc.
+- *Nghiệp vụ:* Màn **Phân ca** (PRD 3.5) đối chiếu số nhân sự đã xếp của mỗi ca với bảng này để gắn nhãn cảnh báo **thiếu người** ngay trên lịch, thay vì để Quản lý tự đếm thủ công. Cảnh báo nêu rõ tên bộ phận đang thiếu (VD: "Giám Sát Ca · Bộ phận Bếp 0/1").
 
 ### Bảng 29: `giai_trinh_cham_cong` (Giải trình sai lệch giờ chấm công)
 - `ma_giai_trinh` (SERIAL, PK): Mã định danh hồ sơ giải trình.
@@ -501,6 +502,7 @@ erDiagram
     %% DINH BIEN, GIAI TRINH & DOI CA (PRD 3.4 / 3.5 / 4.5)
     ca_lam_viec ||--o{ dinh_bien_ca : "dinh muc nguoi toi thieu"
     chuc_vu ||--o{ dinh_bien_ca : "theo tung chuc vu"
+    phong_ban ||--o{ dinh_bien_ca : "theo tung bo phan (NULL = dung chung)"
     phan_ca ||--o{ giai_trinh_cham_cong : "ca bi giai trinh"
     nhan_vien ||--o{ giai_trinh_cham_cong : "nguoi gui giai trinh"
     nhan_vien ||--o{ giai_trinh_cham_cong : "quan ly xac minh cap 1"
@@ -578,6 +580,7 @@ erDiagram
 | `phan_cong_du_an` | `ma_chi_tiet` | `chi_tiet_phieu_luong(ma_chi_tiet)` | 1 - 1 | SET NULL | Kết chuyển thù lao sự kiện vào dòng phụ cấp trên phiếu lương tháng. |
 | `dinh_bien_ca` | `ma_ca` | `ca_lam_viec(ma_ca)` | N - 1 | CASCADE | Định biên thuộc một ca mẫu. Xóa ca xóa luôn định biên của ca đó. |
 | `dinh_bien_ca` | `ma_chuc_vu` | `chuc_vu(ma_chuc_vu)` | N - 1 | CASCADE | Định biên đếm số người theo chức vụ chuyên môn. |
+| `dinh_bien_ca` | `ma_phong_ban` | `phong_ban(ma_phong_ban)` | N - 1 | CASCADE | Bộ phận áp dụng; `NULL` là dùng chung mọi bộ phận. Cần thiết cho chức danh trải nhiều bộ phận (Trưởng Bộ Phận, Giám Sát Ca). |
 | `giai_trinh_cham_cong` | `ma_phan_ca` | `phan_ca(ma_phan_ca)` | N - 1 | CASCADE | Giải trình gắn với đúng lượt ca bị sai lệch giờ. |
 | `giai_trinh_cham_cong` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Nhân viên đứng tên giải trình. |
 | `giai_trinh_cham_cong` | `ma_quan_ly_xac_minh` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Quản lý cấp 1 xác minh. Xóa hồ sơ quản lý không làm mất giải trình. |

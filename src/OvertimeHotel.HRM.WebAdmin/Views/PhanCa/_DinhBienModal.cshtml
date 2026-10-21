@@ -110,7 +110,18 @@
                                         <tr>
                                             <td class="ps-4">
                                                 <div class="fw-semibold text-dark font-serif" style="font-size: 0.9rem;">@row.TenChucVu</div>
-                                                <div class="text-muted" style="font-size: 0.72rem;">@row.TenPhongBan</div>
+                                                @if (row.MaPhongBan.HasValue)
+                                                {
+                                                    <div class="text-muted" style="font-size: 0.72rem;">@row.TenPhongBan</div>
+                                                }
+                                                else
+                                                {
+                                                    @* Chức danh không gắn bộ phận: ghi rõ là dùng chung, không để
+                                                       nhãn mơ hồ khiến người dùng tưởng đã tách được theo bộ phận. *@
+                                                    <div class="text-muted fst-italic" style="font-size: 0.72rem;">
+                                                        <i class="bi bi-diagram-3 me-1"></i>@row.TenPhongBan
+                                                    </div>
+                                                }
                                             </td>
                                             @foreach (var ca in Model.DanhSachCa)
                                             {
@@ -128,6 +139,7 @@
                                                                min="0" max="99" step="1" inputmode="numeric"
                                                                data-ma-ca="@ca.MaCa"
                                                                data-ma-chuc-vu="@row.MaChucVu"
+                                                               data-ma-phong-ban="@(row.MaPhongBan?.ToString() ?? "")"
                                                                data-muc-nen="@mucNen"
                                                                data-muc-ngay="@mucNgay"
                                                                data-co-rieng-ngay="@(coRiengNgay ? "1" : "0")"

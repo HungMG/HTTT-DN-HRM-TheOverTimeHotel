@@ -685,11 +685,18 @@ public class AppDbContext : DbContext
             entity.Property(e => e.MaDinhBien).HasColumnName("ma_dinh_bien");
             entity.Property(e => e.MaCa).HasColumnName("ma_ca").IsRequired();
             entity.Property(e => e.MaChucVu).HasColumnName("ma_chuc_vu").IsRequired();
+            entity.Property(e => e.MaPhongBan).HasColumnName("ma_phong_ban");
             entity.Property(e => e.SoNguoiToiThieu).HasColumnName("so_nguoi_toi_thieu").HasDefaultValue(1).IsRequired();
 
-            // Mỗi cặp (ca, chức vụ) chỉ có đúng một dòng định biên; hai dòng cho cùng
-            // một cặp là dữ liệu mâu thuẫn không biết lấy số nào.
-            entity.HasIndex(e => new { e.MaCa, e.MaChucVu }).IsUnique();
+            // Khoá nghiệp vụ ba chiều: mỗi (ca, chức vụ, bộ phận) đúng một dòng.
+            // Hai dòng cho cùng một bộ ba là dữ liệu mâu thuẫn, không biết lấy số nào.
+            // Cột bộ phận nullable nên Postgres mặc định coi mọi NULL là khác nhau —
+            // phải chỉ định NULLS NOT DISTINCT để hai dòng "dùng chung" của cùng một
+            // cặp (ca, chức vụ) cũng bị chặn, đúng ý đồ thiết kế.
+            entity.HasIndex(e => new { e.MaCa, e.MaChucVu, e.MaPhongBan })
+                .IsUnique()
+                .AreNullsDistinct(false)
+                .HasDatabaseName("uq_dinh_bien_ca_ca_chuc_vu_phong_ban");
 
             entity.HasOne(e => e.CaLamViec)
                 .WithMany(c => c.DinhBienCas)
@@ -699,6 +706,13 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.ChucVu)
                 .WithMany(c => c.DinhBienCas)
                 .HasForeignKey(e => e.MaChucVu)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Bộ phận NULL là "dùng chung mọi bộ phận" nên phải xoá theo khi bộ phận bị
+            // xoá, để không còn dòng định biên trỏ vào mã bộ phận đã mất.
+            entity.HasOne(e => e.PhongBan)
+                .WithMany()
+                .HasForeignKey(e => e.MaPhongBan)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -711,12 +725,15 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Ngay).HasColumnName("ngay").IsRequired();
             entity.Property(e => e.MaCa).HasColumnName("ma_ca").IsRequired();
             entity.Property(e => e.MaChucVu).HasColumnName("ma_chuc_vu").IsRequired();
+            entity.Property(e => e.MaPhongBan).HasColumnName("ma_phong_ban");
             entity.Property(e => e.SoNguoiToiThieu).HasColumnName("so_nguoi_toi_thieu").HasDefaultValue(1).IsRequired();
 
-            // Mỗi (ngày, ca, chức vụ) đúng một dòng. Hai dòng cho cùng một ô là dữ
-            // liệu mâu thuẫn — khi đối chiếu không biết lấy số nào.
-            entity.HasIndex(e => new { e.Ngay, e.MaCa, e.MaChucVu })
+            // Mỗi (ngày, ca, chức vụ, bộ phận) đúng một dòng. Hai dòng cho cùng một ô
+            // là dữ liệu mâu thuẫn — khi đối chiếu không biết lấy số nào. Bộ phận
+            // nullable nên cần NULLS NOT DISTINCT như bảng mức nền.
+            entity.HasIndex(e => new { e.Ngay, e.MaCa, e.MaChucVu, e.MaPhongBan })
                 .IsUnique()
+                .AreNullsDistinct(false)
                 .HasDatabaseName("uq_dinh_bien_ngay_duy_nhat");
 
             entity.HasOne(e => e.CaLamViec)
@@ -727,6 +744,11 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.ChucVu)
                 .WithMany(c => c.DinhBienNgays)
                 .HasForeignKey(e => e.MaChucVu)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.PhongBan)
+                .WithMany()
+                .HasForeignKey(e => e.MaPhongBan)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

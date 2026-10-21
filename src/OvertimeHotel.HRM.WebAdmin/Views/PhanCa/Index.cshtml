@@ -949,7 +949,7 @@
                                                                 @* Đánh dấu ô lấy số từ bảng đè theo ngày: người xếp ca
                                                                    cần biết sửa mức chung hay sửa riêng ngày này. *@
                                                                 <span class="phanca-dinh-bien-item">
-                                                                    @d.TenChucVu @d.SoNguoiHienCo/@d.SoNguoiToiThieu
+                                                                    @d.TenChucVu@(string.IsNullOrEmpty(d.TenPhongBan) ? "" : $" · {d.TenPhongBan}") @d.SoNguoiHienCo/@d.SoNguoiToiThieu
                                                                     @if (d.LaMucRiengNgay)
                                                                     {
                                                                         <i class="bi bi-calendar-day ms-1" title="Mức riêng cho ngày @Model.SelectedDate.ToString("dd/MM/yyyy")"></i>
@@ -3725,6 +3725,10 @@
 
             const maCa = parseInt(input.dataset.maCa, 10);
             const maChucVu = parseInt(input.dataset.maChucVu, 10);
+            // Bộ phận là chiều thứ ba của khoá định biên; rỗng nghĩa là dòng dùng
+            // chung mọi bộ phận. Thiếu trường này thì mọi chức danh trải nhiều bộ
+            // phận sẽ ghi đè lên nhau ở cùng một dòng.
+            const maPhongBan = input.dataset.maPhongBan || '';
             const coRiengNgay = input.dataset.coRiengNgay === '1';
             const mucNen = parseInt(input.dataset.mucNen || '0', 10);
 
@@ -3740,6 +3744,7 @@
             container.insertAdjacentHTML('beforeend',
                 '<input type="hidden" name="' + prefix + 'MaCa" value="' + maCa + '" />' +
                 '<input type="hidden" name="' + prefix + 'MaChucVu" value="' + maChucVu + '" />' +
+                '<input type="hidden" name="' + prefix + 'MaPhongBan" value="' + maPhongBan + '" />' +
                 '<input type="hidden" name="' + prefix + 'SoNguoi" value="' + soGui + '" />');
             chiSo++;
             soOCoThayDoi++;

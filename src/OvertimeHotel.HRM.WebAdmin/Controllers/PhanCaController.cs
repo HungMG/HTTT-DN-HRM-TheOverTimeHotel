@@ -21,6 +21,10 @@ public class PhanCaController : Controller
         "Chưa lưu được định biên riêng theo ngày vì bảng dinh_bien_ngay chưa có trên CSDL. " +
         "Hãy chạy migration 20261021_dinh_bien_ngay_override.sql rồi thử lại.";
 
+    private const string MissingDinhBienBoPhanMessage =
+        "Chưa lưu được định biên theo bộ phận vì CSDL chưa có cột ma_phong_ban. " +
+        "Hãy chạy migration 20261026_dinh_bien_theo_bo_phan.sql rồi thử lại.";
+
     private readonly AppDbContext _context;
     private readonly ILogger<PhanCaController> _logger;
 
@@ -277,41 +281,39 @@ public class PhanCaController : Controller
             // 8b. Đối chiếu định biên tối thiểu theo chức vụ (PRD 3.5).
             // Mức nền nằm ở dinh_bien_ca; ngày đang xem có thể có dòng riêng ở
             // dinh_bien_ngay đè lên. Ô không có dòng riêng thì vẫn theo mức nền.
-            var dinhBienTheoCa = await _context.DinhBienCas.AsNoTracking()
-                .Include(d => d.ChucVu)
-                .ToListAsync();
+            //
+            // Hai bảng này được mở rộng dần qua nhiều migration (20261020 tạo bảng,
+            // 20261021 thêm mức theo ngày, 20261026 thêm chiều bộ phận). CSDL cloud
+            // có thể chậm hơn code một nhịp, nên cả hai lần đọc đều chịu được trường
+            // hợp cột/bảng chưa có: khi đó bỏ qua phần thiếu và vẫn hiển thị được
+            // lịch, thay vì ném lỗi làm sập cả màn phân ca.
+            var dinhBienTheoCa = await DocDinhBienCaAsync();
+            var dinhBienNgayTheoCa = await DocDinhBienNgayAsync(model.SelectedDate);
 
-            // Bảng định biên theo ngày là phần mở rộng mới. Nếu CSDL cloud chưa chạy
-            // migration 20261021 thì bảng chưa tồn tại — khi đó chỉ bỏ qua phần đè
-            // theo ngày và vẫn hiển thị mức nền, thay vì ném lỗi làm sập cả màn phân ca.
-            List<DinhBienNgay> dinhBienNgayTheoCa;
-            try
-            {
-                dinhBienNgayTheoCa = await _context.DinhBienNgays.AsNoTracking()
-                    .Include(d => d.ChucVu)
-                    .Where(d => d.Ngay == model.SelectedDate)
-                    .ToListAsync();
-            }
-            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
-            {
-                _logger.LogWarning(ex, "Bảng dinh_bien_ngay chưa tồn tại — chỉ dùng mức định biên chung.");
-                dinhBienNgayTheoCa = new List<DinhBienNgay>();
-            }
+            // Đếm người đã xếp theo bộ ba (ca, chức vụ, bộ phận) — khớp đúng khoá của
+            // bảng định biên. Đếm theo chức vụ không thôi thì dòng "Giám Sát Ca" của
+            // bộ phận Bếp sẽ cộng cả người của bộ phận Ẩm thực vào.
+            var soNguoiTheoODinhBien = selectedDayShifts
+                .Where(p => p.TrangThai != "VANG_MAT" && p.NhanVien?.MaChucVu != null)
+                .GroupBy(p => (p.MaCa, MaChucVu: p.NhanVien!.MaChucVu!.Value, p.NhanVien.MaPhongBan))
+                .ToDictionary(g => g.Key, g => g.Count());
 
             foreach (var shiftGroup in model.SelectedAgenda.Shifts)
             {
                 var mucNenCuaCa = dinhBienTheoCa.Where(d => d.MaCa == shiftGroup.MaCa).ToList();
                 var mucNgayCuaCa = dinhBienNgayTheoCa.Where(d => d.MaCa == shiftGroup.MaCa).ToList();
 
-                // Gộp hai nguồn theo chức vụ: số của ngày đè lên số nền. Đưa về cùng
-                // một hình dạng (chức vụ, số người, tên) vì hai bảng là hai lớp khác
-                // nhau, không ghép thẳng được.
-                var maChucVuCoDinhBienNgay = mucNgayCuaCa.Select(d => d.MaChucVu).ToHashSet();
+                // Gộp hai nguồn theo bộ ba (chức vụ, bộ phận): số của ngày đè lên số
+                // nền. Khoá gộp phải ba chiều — gộp theo chức vụ không thôi thì dòng
+                // đè của bộ phận Bếp sẽ nuốt luôn mức nền của bộ phận Ẩm thực.
+                var oCoDinhBienNgay = mucNgayCuaCa
+                    .Select(d => (d.MaChucVu, d.MaPhongBan))
+                    .ToHashSet();
                 var mucHieuLuc = mucNgayCuaCa
-                    .Select(d => (d.MaChucVu, d.SoNguoiToiThieu, d.ChucVu))
+                    .Select(d => (d.MaChucVu, d.MaPhongBan, d.SoNguoiToiThieu, d.ChucVu, d.PhongBan))
                     .Concat(mucNenCuaCa
-                        .Where(nen => !maChucVuCoDinhBienNgay.Contains(nen.MaChucVu))
-                        .Select(nen => (nen.MaChucVu, nen.SoNguoiToiThieu, nen.ChucVu)))
+                        .Where(nen => !oCoDinhBienNgay.Contains((nen.MaChucVu, nen.MaPhongBan)))
+                        .Select(nen => (nen.MaChucVu, nen.MaPhongBan, nen.SoNguoiToiThieu, nen.ChucVu, nen.PhongBan)))
                     .ToList();
 
                 if (mucHieuLuc.Count == 0)
@@ -319,24 +321,22 @@ public class PhanCaController : Controller
                     continue;
                 }
 
-                // Đếm theo chức vụ của người đang được xếp trong ca, chỉ tính lượt
-                // phân ca còn hiệu lực (không tính lượt đã vắng mặt).
-                var soNguoiTheoChucVu = selectedDayShifts
-                    .Where(p => p.MaCa == shiftGroup.MaCa && p.TrangThai != "VANG_MAT")
-                    .Select(p => p.NhanVien?.MaChucVu)
-                    .Where(maChucVu => maChucVu.HasValue)
-                    .GroupBy(maChucVu => maChucVu!.Value)
-                    .ToDictionary(g => g.Key, g => g.Count());
-
-                foreach (var dinhBien in mucHieuLuc.OrderBy(d => d.ChucVu?.TenChucVu))
+                foreach (var dinhBien in mucHieuLuc
+                    .OrderBy(d => d.ChucVu?.TenChucVu)
+                    .ThenBy(d => d.PhongBan?.TenPhongBan))
                 {
+                    var soNguoiHienCo = soNguoiTheoODinhBien.TryGetValue(
+                        (shiftGroup.MaCa, dinhBien.MaChucVu, dinhBien.MaPhongBan), out var dem) ? dem : 0;
+
                     shiftGroup.DinhBien.Add(new DinhBienCheckItem
                     {
                         MaChucVu = dinhBien.MaChucVu,
                         TenChucVu = dinhBien.ChucVu?.TenChucVu ?? $"Chức vụ #{dinhBien.MaChucVu}",
+                        MaPhongBan = dinhBien.MaPhongBan,
+                        TenPhongBan = dinhBien.PhongBan?.TenPhongBan ?? string.Empty,
                         SoNguoiToiThieu = dinhBien.SoNguoiToiThieu,
-                        SoNguoiHienCo = soNguoiTheoChucVu.TryGetValue(dinhBien.MaChucVu, out var hienCo) ? hienCo : 0,
-                        LaMucRiengNgay = maChucVuCoDinhBienNgay.Contains(dinhBien.MaChucVu)
+                        SoNguoiHienCo = soNguoiHienCo,
+                        LaMucRiengNgay = oCoDinhBienNgay.Contains((dinhBien.MaChucVu, dinhBien.MaPhongBan))
                     });
                 }
             }
@@ -344,30 +344,84 @@ public class PhanCaController : Controller
             model.TongCaThieuDinhBien = model.SelectedAgenda.Shifts.Count(s => s.ThieuDinhBien);
 
             // 8c. Dữ liệu cho popup cấu hình định biên (PRD 3.5).
+            // Dựng theo danh mục chức vụ × bộ phận: chức danh gắn cứng một bộ phận
+            // sinh đúng một dòng; chức danh có ma_phong_ban = NULL (Trưởng Bộ Phận,
+            // Giám Sát Ca) trải trên nhiều bộ phận nên sinh một dòng cho mỗi bộ phận
+            // thực sự có người giữ chức danh đó, cộng một dòng "dùng chung" nếu đã
+            // cấu hình mức chung hoặc nếu chưa xác định được bộ phận nào.
             var chucVus = await _context.ChucVus.AsNoTracking()
                 .Include(c => c.PhongBan)
                 .OrderBy(c => c.TenChucVu)
                 .ToListAsync();
 
+            // Bộ phận thực tế của từng chức danh dùng chung, suy từ nhân sự đang giữ
+            // chức danh đó. Không suy từ chuc_vu vì cột đó NULL đúng theo thiết kế.
+            var phongBanTheoChucVuDungChung = await _context.NhanViens.AsNoTracking()
+                .Where(n => n.MaChucVu.HasValue && n.MaPhongBan.HasValue)
+                .Select(n => new { n.MaChucVu, n.MaPhongBan, TenPhongBan = n.PhongBan!.TenPhongBan })
+                .Distinct()
+                .ToListAsync();
+
+            var danhSachPhongBan = await _context.PhongBans.AsNoTracking()
+                .OrderBy(p => p.TenPhongBan)
+                .ToListAsync();
+
+            var rowDefs = new List<(int MaChucVu, int? MaPhongBan, string TenChucVu, string TenPhongBan)>();
+
+            foreach (var cv in chucVus)
+            {
+                if (cv.MaPhongBan.HasValue)
+                {
+                    rowDefs.Add((cv.MaChucVu, cv.MaPhongBan, cv.TenChucVu, cv.PhongBan?.TenPhongBan ?? "Khách sạn"));
+                    continue;
+                }
+
+                // Chức danh dùng chung: một dòng cho mỗi bộ phận đang có người giữ.
+                var phongBansCuaChucVu = phongBanTheoChucVuDungChung
+                    .Where(p => p.MaChucVu == cv.MaChucVu)
+                    .OrderBy(p => p.TenPhongBan)
+                    .ToList();
+
+                foreach (var pb in phongBansCuaChucVu)
+                {
+                    rowDefs.Add((cv.MaChucVu, pb.MaPhongBan, cv.TenChucVu, pb.TenPhongBan ?? "Khách sạn"));
+                }
+
+                // Dòng dùng chung: giữ lại khi đã có mức nền/mức ngày đặt ở khoá NULL,
+                // hoặc khi chức danh chưa gắn được với bộ phận nào (dữ liệu trống) —
+                // nếu bỏ đi thì định biên cũ trở nên vô hình, không sửa được nữa.
+                var coMucDungChung = dinhBienTheoCa.Any(d => d.MaChucVu == cv.MaChucVu && d.MaPhongBan == null)
+                    || dinhBienNgayTheoCa.Any(d => d.MaChucVu == cv.MaChucVu && d.MaPhongBan == null);
+
+                if (coMucDungChung || phongBansCuaChucVu.Count == 0)
+                {
+                    rowDefs.Add((cv.MaChucVu, null, cv.TenChucVu, "Dùng chung mọi bộ phận"));
+                }
+            }
+
             model.DinhBien = new DinhBienModalViewModel
             {
                 Ngay = model.SelectedDate,
                 DanhSachCa = model.DanhSachCa,
+                DanhSachPhongBan = danhSachPhongBan,
                 ReturnWeek = weekStart.ToString("yyyy-MM-dd"),
                 CoQuyenSua = User.HasPermission(PermissionCodes.AssignShifts),
-                Rows = chucVus.Select(cv => new DinhBienMatrixRow
+                Rows = rowDefs.Select(r => new DinhBienMatrixRow
                 {
-                    MaChucVu = cv.MaChucVu,
-                    TenChucVu = cv.TenChucVu,
-                    TenPhongBan = cv.PhongBan?.TenPhongBan ?? "Khách sạn",
+                    MaChucVu = r.MaChucVu,
+                    MaPhongBan = r.MaPhongBan,
+                    TenChucVu = r.TenChucVu,
+                    TenPhongBan = r.TenPhongBan,
                     MucNenTheoCa = dinhBienTheoCa
-                        .Where(d => d.MaChucVu == cv.MaChucVu)
+                        .Where(d => d.MaChucVu == r.MaChucVu && d.MaPhongBan == r.MaPhongBan)
                         .ToDictionary(d => d.MaCa, d => d.SoNguoiToiThieu),
                     MucNgayTheoCa = dinhBienNgayTheoCa
-                        .Where(d => d.MaChucVu == cv.MaChucVu)
+                        .Where(d => d.MaChucVu == r.MaChucVu && d.MaPhongBan == r.MaPhongBan)
                         .ToDictionary(d => d.MaCa, d => d.SoNguoiToiThieu),
                     HienCoTheoCa = selectedDayShifts
-                        .Where(p => p.TrangThai != "VANG_MAT" && p.NhanVien?.MaChucVu == cv.MaChucVu)
+                        .Where(p => p.TrangThai != "VANG_MAT"
+                            && p.NhanVien?.MaChucVu == r.MaChucVu
+                            && p.NhanVien.MaPhongBan == r.MaPhongBan)
                         .GroupBy(p => p.MaCa)
                         .ToDictionary(g => g.Key, g => g.Count())
                 }).ToList()
@@ -981,9 +1035,15 @@ public class PhanCaController : Controller
         var hopLeChucVu = (await _context.ChucVus.AsNoTracking()
             .Select(c => c.MaChucVu).ToListAsync()).ToHashSet();
 
+        // Bộ phận gửi lên phải tồn tại thật; null là hợp lệ (dùng chung mọi bộ phận).
+        var hopLePhongBan = (await _context.PhongBans.AsNoTracking()
+            .Select(p => p.MaPhongBan).ToListAsync()).ToHashSet();
+
         var cells = input.Cells
-            .Where(c => hopLeCa.Contains(c.MaCa) && hopLeChucVu.Contains(c.MaChucVu))
-            .GroupBy(c => new { c.MaCa, c.MaChucVu })
+            .Where(c => hopLeCa.Contains(c.MaCa)
+                && hopLeChucVu.Contains(c.MaChucVu)
+                && (c.MaPhongBan == null || hopLePhongBan.Contains(c.MaPhongBan.Value)))
+            .GroupBy(c => new { c.MaCa, c.MaChucVu, c.MaPhongBan })
             .Select(g => g.Last())
             .ToList();
 
@@ -1021,6 +1081,11 @@ public class PhanCaController : Controller
             _logger.LogError(ex, "Bảng dinh_bien_ngay chưa tồn tại khi lưu định biên theo ngày.");
             TempData["Error"] = MissingDinhBienNgayMessage;
         }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogError(ex, "Cột ma_phong_ban chưa có khi lưu định biên — chưa chạy migration 20261026.");
+            TempData["Error"] = MissingDinhBienBoPhanMessage;
+        }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UndefinedTable })
         {
             // SaveChanges bọc lỗi Postgres trong DbUpdateException, nên phải soi cả
@@ -1028,6 +1093,11 @@ public class PhanCaController : Controller
             // báo chung chung "kiểm tra lại số người tối thiểu", dẫn người dùng đi sai hướng.
             _logger.LogError(ex, "Bảng dinh_bien_ngay chưa tồn tại khi lưu định biên theo ngày.");
             TempData["Error"] = MissingDinhBienNgayMessage;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UndefinedColumn })
+        {
+            _logger.LogError(ex, "Cột ma_phong_ban chưa có khi lưu định biên — chưa chạy migration 20261026.");
+            TempData["Error"] = MissingDinhBienBoPhanMessage;
         }
         catch (DbUpdateException ex)
         {
@@ -1044,6 +1114,58 @@ public class PhanCaController : Controller
     }
 
     /// <summary>
+    /// Đọc mức định biên nền, chịu được trường hợp CSDL chưa có cột <c>ma_phong_ban</c>
+    /// (migration 20261026 chưa chạy). Khi đó trả về danh sách rỗng thay vì làm sập
+    /// màn phân ca — cảnh báo thiếu định biên tạm ẩn, lịch vẫn dùng được bình thường.
+    /// </summary>
+    private async Task<List<DinhBienCa>> DocDinhBienCaAsync()
+    {
+        try
+        {
+            return await _context.DinhBienCas.AsNoTracking()
+                .Include(d => d.ChucVu)
+                .Include(d => d.PhongBan)
+                .ToListAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            _logger.LogWarning(ex, "Bảng dinh_bien_ca chưa tồn tại — bỏ qua đối chiếu định biên.");
+            return new List<DinhBienCa>();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogWarning(ex, "Cột ma_phong_ban chưa có trên dinh_bien_ca — chưa chạy migration 20261026.");
+            return new List<DinhBienCa>();
+        }
+    }
+
+    /// <summary>
+    /// Đọc mức định biên riêng của một ngày, chịu được cả trường hợp bảng chưa tồn
+    /// tại (migration 20261021 chưa chạy) lẫn cột bộ phận chưa có (20261026).
+    /// </summary>
+    private async Task<List<DinhBienNgay>> DocDinhBienNgayAsync(DateOnly ngay)
+    {
+        try
+        {
+            return await _context.DinhBienNgays.AsNoTracking()
+                .Include(d => d.ChucVu)
+                .Include(d => d.PhongBan)
+                .Where(d => d.Ngay == ngay)
+                .ToListAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            _logger.LogWarning(ex, "Bảng dinh_bien_ngay chưa tồn tại — chỉ dùng mức định biên chung.");
+            return new List<DinhBienNgay>();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+        {
+            _logger.LogWarning(ex, "Cột ma_phong_ban chưa có trên dinh_bien_ngay — chưa chạy migration 20261026.");
+            return new List<DinhBienNgay>();
+        }
+    }
+
+    /// <summary>
     /// Ghi mức nền vào <c>dinh_bien_ca</c>: số &gt;= 1 là upsert, 0 là xoá dòng.
     /// </summary>
     private async Task UpsertDinhBienMucNenAsync(List<DinhBienCellInput> cells)
@@ -1057,7 +1179,9 @@ public class PhanCaController : Controller
 
         foreach (var cell in cells)
         {
-            var dong = hienCo.FirstOrDefault(d => d.MaCa == cell.MaCa && d.MaChucVu == cell.MaChucVu);
+            var dong = hienCo.FirstOrDefault(d => d.MaCa == cell.MaCa
+                && d.MaChucVu == cell.MaChucVu
+                && d.MaPhongBan == cell.MaPhongBan);
 
             if (cell.SoNguoi <= 0)
             {
@@ -1074,6 +1198,7 @@ public class PhanCaController : Controller
                 {
                     MaCa = cell.MaCa,
                     MaChucVu = cell.MaChucVu,
+                    MaPhongBan = cell.MaPhongBan,
                     SoNguoiToiThieu = cell.SoNguoi
                 });
             }
@@ -1098,7 +1223,9 @@ public class PhanCaController : Controller
 
         foreach (var cell in cells)
         {
-            var dong = hienCo.FirstOrDefault(d => d.MaCa == cell.MaCa && d.MaChucVu == cell.MaChucVu);
+            var dong = hienCo.FirstOrDefault(d => d.MaCa == cell.MaCa
+                && d.MaChucVu == cell.MaChucVu
+                && d.MaPhongBan == cell.MaPhongBan);
 
             if (cell.SoNguoi <= 0)
             {
@@ -1116,6 +1243,7 @@ public class PhanCaController : Controller
                     Ngay = ngay,
                     MaCa = cell.MaCa,
                     MaChucVu = cell.MaChucVu,
+                    MaPhongBan = cell.MaPhongBan,
                     SoNguoiToiThieu = cell.SoNguoi
                 });
             }
@@ -1591,21 +1719,50 @@ public class PhanCaController : Controller
         {
             Ngay = model.SelectedDate,
             DanhSachCa = model.DanhSachCa,
+            // Hàm này là nhánh dự phòng đồng bộ; danh mục bộ phận lấy từ danh sách
+            // nhân viên đã nạp sẵn thay vì gọi CSDL thêm một lượt.
+            DanhSachPhongBan = model.DanhSachNhanVien
+                .Where(nv => nv.PhongBan != null)
+                .Select(nv => nv.PhongBan!)
+                .GroupBy(p => p.MaPhongBan)
+                .Select(g => g.First())
+                .OrderBy(p => p.TenPhongBan)
+                .ToList(),
             ReturnWeek = weekStart.ToString("yyyy-MM-dd"),
             CoQuyenSua = User.HasPermission(PermissionCodes.AssignShifts),
-            Rows = chucVuDuPhong.Select(cv => new DinhBienMatrixRow
-            {
-                MaChucVu = cv.MaChucVu,
-                TenChucVu = cv.TenChucVu,
-                TenPhongBan = model.DanhSachNhanVien
-                    .FirstOrDefault(nv => nv.MaChucVu == cv.MaChucVu)?.PhongBan?.TenPhongBan ?? "Khách sạn",
-                // Chế độ dự phòng không đọc được bảng định biên, nên để trống
-                // mức nền thay vì bịa số — người dùng thấy rõ là chưa cấu hình.
-                HienCoTheoCa = model.DanhSachPhanCa
-                    .Where(p => p.NgayLamViec == model.SelectedDate && p.NhanVien?.MaChucVu == cv.MaChucVu)
-                    .GroupBy(p => p.MaCa)
-                    .ToDictionary(g => g.Key, g => g.Count())
-            }).ToList()
+            Rows = chucVuDuPhong
+                // Chế độ dự phòng dựng theo nhân sự thật, nên đã biết bộ phận của từng
+                // người: chức danh dùng chung sinh một dòng cho mỗi bộ phận có người.
+                .SelectMany(cv =>
+                {
+                    var phongBans = model.DanhSachNhanVien
+                        .Where(nv => nv.MaChucVu == cv.MaChucVu)
+                        .Select(nv => (nv.MaPhongBan, nv.PhongBan?.TenPhongBan))
+                        .Distinct()
+                        .ToList();
+
+                    if (phongBans.Count == 0)
+                    {
+                        phongBans.Add((null, "Dùng chung mọi bộ phận"));
+                    }
+
+                    return phongBans.Select(pb => (cv, pb.MaPhongBan, pb.TenPhongBan));
+                })
+                .Select(x => new DinhBienMatrixRow
+                {
+                    MaChucVu = x.cv.MaChucVu,
+                    MaPhongBan = x.MaPhongBan,
+                    TenChucVu = x.cv.TenChucVu,
+                    TenPhongBan = x.TenPhongBan ?? "Dùng chung mọi bộ phận",
+                    // Chế độ dự phòng không đọc được bảng định biên, nên để trống
+                    // mức nền thay vì bịa số — người dùng thấy rõ là chưa cấu hình.
+                    HienCoTheoCa = model.DanhSachPhanCa
+                        .Where(p => p.NgayLamViec == model.SelectedDate
+                            && p.NhanVien?.MaChucVu == x.cv.MaChucVu
+                            && p.NhanVien.MaPhongBan == x.MaPhongBan)
+                        .GroupBy(p => p.MaCa)
+                        .ToDictionary(g => g.Key, g => g.Count())
+                }).ToList()
         };
     }
 }

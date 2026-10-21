@@ -10,7 +10,12 @@ public class ChucVu
     public virtual PhongBan? PhongBan { get; set; }
     public virtual ICollection<NhanVien> NhanViens { get; set; } = new List<NhanVien>();
 
-    /// <summary>Các dòng định biên tối thiểu theo ca áp cho chức vụ này (PRD 3.5).</summary>
+    /// <summary>
+    /// Các dòng định biên tối thiểu theo ca áp cho chức vụ này (PRD 3.5). Một chức
+    /// danh trải nhiều bộ phận (Trưởng Bộ Phận, Giám Sát Ca) có nhiều dòng ở đây —
+    /// mỗi bộ phận một dòng, cộng thêm dòng <c>MaPhongBan = null</c> nếu có mức
+    /// dùng chung.
+    /// </summary>
     public virtual ICollection<DinhBienCa> DinhBienCas { get; set; } = new List<DinhBienCa>();
 
     /// <summary>Định biên riêng theo ngày cho chức vụ này.</summary>
