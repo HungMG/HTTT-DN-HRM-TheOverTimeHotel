@@ -4,18 +4,15 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using OvertimeHotel.HRM.Core.DTOs;
+using OvertimeHotel.HRM.Core.Utilities;
 using OvertimeHotel.HRM.MobileApp.Models;
 using OvertimeHotel.HRM.MobileApp.Services;
 
 namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 
 /// <summary>
-/// Danh sách phiếu lương của người đang đăng nhập, và chi tiết của một phiếu.
+/// Danh sách phiếu lương của người đang đăng nhập, và chi tiết 2 tầng Gross - Net của một phiếu.
 /// </summary>
-/// <remarks>
-/// Cùng khung phiên bản + huỷ lệnh với <see cref="ScheduleViewModel"/>: bấm phiếu
-/// khác khi đang tải phải bỏ kết quả cũ, không để hai lần tải dồn lên nhau.
-/// </remarks>
 public class PayslipViewModel : INotifyPropertyChanged
 {
     private readonly IPayslipService _service;
@@ -40,6 +37,8 @@ public class PayslipViewModel : INotifyPropertyChanged
 
     public ObservableCollection<PayslipRowItem> Payslips { get; } = [];
     public ObservableCollection<PayslipItemRowItem> DetailItems { get; } = [];
+    public ObservableCollection<PayslipItemRowItem> IncomeItems { get; } = [];
+    public ObservableCollection<PayslipItemRowItem> DeductionItems { get; } = [];
 
     public Command RefreshCommand { get; }
     public Command<int> SelectPayslipCommand { get; }
@@ -62,6 +61,7 @@ public class PayslipViewModel : INotifyPropertyChanged
     }
 
     public bool IsDemoMode => _service.IsDemoMode;
+
     public bool IsLoading
     {
         get => _isLoading;
@@ -70,6 +70,7 @@ public class PayslipViewModel : INotifyPropertyChanged
             if (Set(ref _isLoading, value)) RefreshCommand.ChangeCanExecute();
         }
     }
+
     public bool IsRefreshing { get => _isRefreshing; set => Set(ref _isRefreshing, value); }
     public bool HasError { get => _hasError; private set => Set(ref _hasError, value); }
     public bool RequiresLogin { get => _requiresLogin; private set => Set(ref _requiresLogin, value); }
@@ -77,6 +78,7 @@ public class PayslipViewModel : INotifyPropertyChanged
     public bool IsEmpty { get => _isEmpty; private set => Set(ref _isEmpty, value); }
     public bool IsDetailLoading { get => _isDetailLoading; private set => Set(ref _isDetailLoading, value); }
     public string ErrorMessage { get => _errorMessage; private set => Set(ref _errorMessage, value); }
+
     public string EmployeeName
     {
         get => _employeeName;
@@ -84,19 +86,80 @@ public class PayslipViewModel : INotifyPropertyChanged
     }
 
     public bool HasDetail => _summary != null;
-
-    /// <summary>Phiếu đang mở mà không có dòng thu chi nào để hiện.</summary>
+    public bool HasListVisible => !HasDetail && HasData;
+    public bool HasIncomeItems => IncomeItems.Count > 0;
+    public bool HasDeductionItems => DeductionItems.Count > 0;
+    public bool HasNoDeductions => _summary != null && DeductionItems.Count == 0 && !IsDetailLoading;
     public bool IsEmptyDetail => _summary != null && DetailItems.Count == 0 && !IsDetailLoading;
 
+    public decimal TotalGross => _summary == null
+        ? 0m
+        : (_summary.TienLuongCong + _summary.TienTangCa + _summary.TongPhuCap + _summary.TongThuong);
+
     public string DetailPeriodText => _summary == null ? string.Empty : new PayslipRowItem(_summary).PeriodText;
-    public string DetailNetText => _summary == null ? string.Empty : PayslipRowItem.Format(_summary.ThucNhan);
-    public string DetailEarnedText => _summary == null ? string.Empty : PayslipRowItem.Format(
-        _summary.TienLuongCong + _summary.TienTangCa + _summary.TongPhuCap + _summary.TongThuong);
-    public string DetailDeductionText => _summary == null ? string.Empty : PayslipRowItem.Format(_summary.TongKhauTru);
-    public string DetailWorkDayText => _summary == null ? string.Empty : $"{_summary.NgayCongThucTe:0.##} ngày công";
+    public string DetailSlipIdText => _summary == null ? string.Empty : $"#{_summary.MaPhieuLuong:D4}";
+
+    public string DetailStatusText => _summary == null ? string.Empty : new PayslipRowItem(_summary).StatusText;
+    public string DetailStatusColor => _summary == null ? "#047857" : new PayslipRowItem(_summary).StatusColor;
+    public string DetailStatusBackground => _summary == null ? "#ECFDF5" : new PayslipRowItem(_summary).StatusBackground;
+
+    public string DetailDepartmentRole
+    {
+        get
+        {
+            if (_summary == null) return string.Empty;
+            if (!string.IsNullOrWhiteSpace(_summary.TenPhongBan) && !string.IsNullOrWhiteSpace(_summary.TenChucVu))
+                return $"{_summary.TenPhongBan} • {_summary.TenChucVu}";
+
+            var user = _authService.CurrentUser;
+            if (user != null && !string.IsNullOrWhiteSpace(user.TenPhongBan))
+                return $"{user.TenPhongBan} • {user.TenChucVu}";
+
+            return "Khách Sạn The OverTime";
+        }
+    }
+
+    public string DetailNetText => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.ThucNhan)} ₫";
+
+    public string DetailNetInWords => _summary == null
+        ? string.Empty
+        : VietnameseNumberToWords.ConvertToWords(_summary.ThucNhan);
+
+    public string DetailGrossText => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(TotalGross)} ₫";
+    public string DetailDeductionText => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.TongKhauTru)} ₫";
+    public string DetailDeductionMinusText => _summary == null ? "0 ₫" : $"- {PayslipRowItem.Format(_summary.TongKhauTru)} ₫";
+
+    public string DetailWorkDayBadge => _summary == null ? string.Empty : $"{_summary.NgayCongThucTe:0.##} / 26 công";
+
+    public string DetailBaseSalaryText => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.LuongCoBan)} ₫";
+    public string DetailWorkDayText => _summary == null ? "0 công" : $"{_summary.NgayCongThucTe:0.##} công";
+
+    public string DetailDailyRateText => _summary == null
+        ? "0 ₫/ngày"
+        : $"{PayslipRowItem.Format(Math.Round(_summary.LuongCoBan / 26m, MidpointRounding.AwayFromZero))} ₫/ngày";
+
+    public string DetailHourlyRateText => _summary == null
+        ? "0 ₫/h"
+        : $"{PayslipRowItem.Format(Math.Round(_summary.LuongCoBan / (26m * 8m), MidpointRounding.AwayFromZero))} ₫/h";
+
+    public string DetailWageSalaryText => _summary == null ? "0 ₫" : $"+ {PayslipRowItem.Format(_summary.TienLuongCong)} ₫";
+
+    public string DetailWageFormulaText => _summary == null
+        ? string.Empty
+        : $"({PayslipRowItem.Format(_summary.LuongCoBan)} / 26) × {_summary.NgayCongThucTe:0.##} ngày";
+
+    public string DetailOvertimeSalaryText => _summary == null ? "0 ₫" : $"+ {PayslipRowItem.Format(_summary.TienTangCa)} ₫";
+    public bool DetailHasOvertimeSalary => _summary != null && _summary.TienTangCa > 0;
+
+    public string DetailGrossTotalText => _summary == null ? "+ 0 ₫" : $"+ {PayslipRowItem.Format(TotalGross)} ₫";
+    public string DetailTotalDeductionText => _summary == null ? "- 0 ₫" : $"- {PayslipRowItem.Format(_summary.TongKhauTru)} ₫";
+
+    public string DetailFormulaGross => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(TotalGross)} ₫";
+    public string DetailFormulaDeduction => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.TongKhauTru)} ₫";
+    public string DetailFormulaNet => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.ThucNhan)} ₫";
 
     public string EmptyText =>
-        "Chưa có phiếu lương nào được lập. Phiếu lương do khách sạn chốt sau kỳ tính lương.";
+        "Chưa có phiếu lương nào được gửi. Phiếu lương sẽ tự động hiển thị tại đây sau khi bảng lương được duyệt và khóa sổ trên hệ thống.";
 
     public async Task LoadAsync()
     {
@@ -124,11 +187,11 @@ public class PayslipViewModel : INotifyPropertyChanged
             foreach (var slip in slips)
             {
                 Payslips.Add(new PayslipRowItem(slip));
-                // Tên lấy từ hồ sơ nên giống nhau ở mọi phiếu — chỉ đọc dòng đầu.
                 if (Payslips.Count == 1) EmployeeName = slip.HoTen;
             }
             HasData = true;
             IsEmpty = Payslips.Count == 0;
+            NotifyDetail();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex)
@@ -152,6 +215,7 @@ public class PayslipViewModel : INotifyPropertyChanged
                 IsLoading = false;
                 IsRefreshing = false;
                 RefreshCommand.ChangeCanExecute();
+                NotifyDetail();
             }
         }
     }
@@ -174,8 +238,6 @@ public class PayslipViewModel : INotifyPropertyChanged
     private async Task LoadDetailAsync(int maPhieuLuong)
     {
         if (IsDetailLoading || maPhieuLuong <= 0) return;
-        // Phiên bản RIÊNG cho tải chi tiết: dùng chung _loadVersion với tải danh
-        // sách sẽ vô hiệu hoá lần tải danh sách đang dở, khiến danh sách trống.
         var version = ++_detailVersion;
         _detailCancellation?.Dispose();
         _detailCancellation = new CancellationTokenSource();
@@ -183,13 +245,24 @@ public class PayslipViewModel : INotifyPropertyChanged
         IsDetailLoading = true;
         try
         {
+            _summary = Payslips.FirstOrDefault(p => p.MaPhieuLuong == maPhieuLuong)?.Source;
+            DetailItems.Clear();
+            IncomeItems.Clear();
+            DeductionItems.Clear();
+            NotifyDetail();
+
             var items = await _service.GetPayslipItemsAsync(maPhieuLuong, token);
             if (version != _detailVersion || token.IsCancellationRequested) return;
 
-            _summary = Payslips.FirstOrDefault(p => p.MaPhieuLuong == maPhieuLuong)?.Source;
-            DetailItems.Clear();
-            foreach (var item in items) DetailItems.Add(new PayslipItemRowItem(item));
-            OnPropertyChanged(nameof(HasDetail));
+            foreach (var item in items)
+            {
+                var rowItem = new PayslipItemRowItem(item);
+                DetailItems.Add(rowItem);
+                if (rowItem.IsDeduction)
+                    DeductionItems.Add(rowItem);
+                else
+                    IncomeItems.Add(rowItem);
+            }
             NotifyDetail();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
@@ -214,16 +287,48 @@ public class PayslipViewModel : INotifyPropertyChanged
     {
         _summary = null;
         DetailItems.Clear();
-        OnPropertyChanged(nameof(HasDetail));
+        IncomeItems.Clear();
+        DeductionItems.Clear();
         NotifyDetail();
     }
 
     private void NotifyDetail()
     {
-        foreach (var property in new[] { nameof(DetailPeriodText), nameof(DetailNetText),
-                     nameof(DetailEarnedText), nameof(DetailDeductionText), nameof(DetailWorkDayText),
-                     nameof(IsEmptyDetail) })
-            OnPropertyChanged(property);
+        OnPropertyChanged(nameof(HasDetail));
+        OnPropertyChanged(nameof(HasListVisible));
+        OnPropertyChanged(nameof(TotalGross));
+        OnPropertyChanged(nameof(DetailPeriodText));
+        OnPropertyChanged(nameof(DetailSlipIdText));
+        OnPropertyChanged(nameof(DetailStatusText));
+        OnPropertyChanged(nameof(DetailStatusColor));
+        OnPropertyChanged(nameof(DetailStatusBackground));
+        OnPropertyChanged(nameof(DetailDepartmentRole));
+        OnPropertyChanged(nameof(DetailNetText));
+        OnPropertyChanged(nameof(DetailNetInWords));
+        OnPropertyChanged(nameof(DetailGrossText));
+        OnPropertyChanged(nameof(DetailDeductionText));
+        OnPropertyChanged(nameof(DetailDeductionMinusText));
+        OnPropertyChanged(nameof(DetailWorkDayBadge));
+        OnPropertyChanged(nameof(DetailBaseSalaryText));
+        OnPropertyChanged(nameof(DetailWorkDayText));
+        OnPropertyChanged(nameof(DetailDailyRateText));
+        OnPropertyChanged(nameof(DetailHourlyRateText));
+        OnPropertyChanged(nameof(DetailWageSalaryText));
+        OnPropertyChanged(nameof(DetailWageFormulaText));
+        OnPropertyChanged(nameof(DetailOvertimeSalaryText));
+        OnPropertyChanged(nameof(DetailHasOvertimeSalary));
+        OnPropertyChanged(nameof(DetailGrossTotalText));
+        OnPropertyChanged(nameof(DetailTotalDeductionText));
+        OnPropertyChanged(nameof(DetailFormulaGross));
+        OnPropertyChanged(nameof(DetailFormulaDeduction));
+        OnPropertyChanged(nameof(DetailFormulaNet));
+        OnPropertyChanged(nameof(HasIncomeItems));
+        OnPropertyChanged(nameof(HasDeductionItems));
+        OnPropertyChanged(nameof(HasNoDeductions));
+        OnPropertyChanged(nameof(IsEmptyDetail));
+        OnPropertyChanged(nameof(DetailItems));
+        OnPropertyChanged(nameof(IncomeItems));
+        OnPropertyChanged(nameof(DeductionItems));
     }
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null)

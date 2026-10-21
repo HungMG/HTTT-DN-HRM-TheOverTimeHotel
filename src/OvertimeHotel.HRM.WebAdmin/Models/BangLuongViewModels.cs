@@ -27,6 +27,8 @@ public class BangLuongIndexViewModel
     public bool CanApprove { get; set; }
     public bool CanLock { get; set; }
     public bool CanPublishAndExport { get; set; }
+    public bool ArePayslipsPublished => (CurrentPeriod?.PhieuLuongs.Any(p => p.TrangThai == OvertimeHotel.HRM.Core.Constants.SalaryConstants.PAYSLIP_PAID) == true)
+                                        || (Items.Count > 0 && Items.All(i => i.TrangThai == OvertimeHotel.HRM.Core.Constants.SalaryConstants.PAYSLIP_PAID));
 
     // Phân định vai trò (Separation of Duties)
     public bool IsHR { get; set; }

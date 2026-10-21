@@ -1061,13 +1061,19 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         period.NgayKhoaSo = DateTimeOffset.UtcNow;
         period.NguoiKhoaSo = nguoiKhoa;
 
+        // Tự động phát hành & gửi toàn bộ phiếu lương sang ứng dụng di động cho nhân viên trong kỳ
+        foreach (var p in period.PhieuLuongs)
+        {
+            p.TrangThai = SalaryConstants.PAYSLIP_PAID;
+        }
+
         _context.NhatKyQuanTris.Add(new NhatKyQuanTri
         {
             MaTaiKhoanThucHien = maTaiKhoan,
             TenNguoiThucHien = nguoiKhoa,
             TenTaiKhoanBiTacDong = $"KY_LUONG_{period.Thang}_{period.Nam}",
-            HanhDong = "KHOA_SO_BANG_LUONG",
-            NoiDung = $"Khóa sổ tài chính bảng lương kỳ {period.Thang:D2}/{period.Nam}"
+            HanhDong = "KHOA_SO_VA_PHAT_HANH_PHIEU_LUONG",
+            NoiDung = $"Khóa sổ tài chính bảng lương kỳ {period.Thang:D2}/{period.Nam} và gửi {period.PhieuLuongs.Count} phiếu lương sang ứng dụng di động cho nhân viên"
         });
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -1097,7 +1103,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             TenNguoiThucHien = nguoiThucHien,
             TenTaiKhoanBiTacDong = $"KY_LUONG_{period.Thang}_{period.Nam}",
             HanhDong = "PHAT_HANH_PHIEU_LUONG",
-            NoiDung = $"Phát hành gửi phiếu lương tháng {period.Thang:D2}/{period.Nam} cho {period.PhieuLuongs.Count} nhân viên qua ứng dụng Mobile & Portal"
+            NoiDung = $"Phát hành / gửi lại phiếu lương tháng {period.Thang:D2}/{period.Nam} cho {period.PhieuLuongs.Count} nhân viên qua ứng dụng Mobile & Portal"
         });
 
         await _context.SaveChangesAsync(cancellationToken);

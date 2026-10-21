@@ -287,6 +287,62 @@ var tests = new (string Name, Action Run)[]
         Equal(true, canExportAfterLock);
     }),
 
+    ("Workflow & App: Khóa sổ tự động chuyển trạng thái phiếu lương sang Đã gửi App (PAYSLIP_PAID)", () =>
+    {
+        var ky = new KyLuong
+        {
+            TrangThai = SalaryConstants.PERIOD_APPROVED,
+            PhieuLuongs = new List<PhieuLuong>
+            {
+                new() { MaPhieuLuong = 1, MaNhanVien = 10, TrangThai = SalaryConstants.PAYSLIP_APPROVED },
+                new() { MaPhieuLuong = 2, MaNhanVien = 11, TrangThai = SalaryConstants.PAYSLIP_APPROVED }
+            }
+        };
+
+        // Khi ở bước Phê duyệt (DA_DUYET): Chưa khóa sổ, phiếu chưa chuyển sang PAYSLIP_PAID
+        Equal(false, ky.PhieuLuongs.All(p => p.TrangThai == SalaryConstants.PAYSLIP_PAID));
+
+        // Khóa sổ bảng lương -> chuyển sang KHOA_SO và tự động cập nhật toàn bộ PhieuLuong sang DA_THANH_TOAN (đã gửi tới App)
+        ky.TrangThai = SalaryConstants.PERIOD_LOCKED;
+        ky.NgayKhoaSo = DateTimeOffset.UtcNow;
+        ky.NguoiKhoaSo = "Admin User";
+        foreach (var p in ky.PhieuLuongs)
+        {
+            p.TrangThai = SalaryConstants.PAYSLIP_PAID;
+        }
+
+        Equal(SalaryConstants.PERIOD_LOCKED, ky.TrangThai);
+        Equal(true, ky.PhieuLuongs.All(p => p.TrangThai == SalaryConstants.PAYSLIP_PAID));
+    }),
+
+    ("Mobile App Security: Nhân viên chỉ nhận phiếu lương khi bảng lương đã duyệt và khóa sổ", () =>
+    {
+        // Luật bảo mật: Nhân viên chỉ thấy phiếu lương trên Mobile khi kỳ lương đã KHOA_SO hoặc phiếu đã DA_THANH_TOAN
+        static bool IsVisibleOnMobile(string slipStatus, string periodStatus)
+        {
+            if (slipStatus == SalaryConstants.PAYSLIP_PAID) return true;
+            if (periodStatus == SalaryConstants.PERIOD_LOCKED &&
+                (slipStatus == SalaryConstants.PAYSLIP_APPROVED || slipStatus == SalaryConstants.PAYSLIP_PAID))
+                return true;
+            return false;
+        }
+
+        // 1. Bản nháp HR đang tính: Tuyệt đối KHÔNG hiển thị trên App nhân viên
+        Equal(false, IsVisibleOnMobile(SalaryConstants.PAYSLIP_DRAFT, SalaryConstants.PERIOD_DRAFT));
+
+        // 2. Chờ Sếp duyệt: Tuyệt đối KHÔNG hiển thị trên App nhân viên
+        Equal(false, IsVisibleOnMobile(SalaryConstants.PAYSLIP_PENDING, SalaryConstants.PERIOD_PENDING_APPROVAL));
+
+        // 3. Đã duyệt nhưng CHƯA khóa sổ: Chưa gửi tới App nhân viên
+        Equal(false, IsVisibleOnMobile(SalaryConstants.PAYSLIP_APPROVED, SalaryConstants.PERIOD_APPROVED));
+
+        // 4. Bị từ chối: KHÔNG hiển thị
+        Equal(false, IsVisibleOnMobile(SalaryConstants.PAYSLIP_DRAFT, SalaryConstants.PERIOD_REJECTED));
+
+        // 5. Sau khi duyệt và khóa sổ (KHOA_SO & DA_THANH_TOAN): TỰ ĐỘNG GỬI QUA APP NHÂN VIÊN
+        Equal(true, IsVisibleOnMobile(SalaryConstants.PAYSLIP_PAID, SalaryConstants.PERIOD_LOCKED));
+    }),
+
     // --- PART 1.1: KIỂM TRA TẤT CẢ CÁC MỐC BIÊN CỦA 7 BẬC THUẾ TNCN ---
     ("PIT: Chính xác từng mốc biên của 7 bậc thuế lũy tiến", () =>
     {

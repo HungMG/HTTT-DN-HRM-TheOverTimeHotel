@@ -33,23 +33,23 @@ public class PayslipRowItem(PayslipSummaryDto slip)
 
     public string StatusText => slip.TrangThai switch
     {
-        "DA_DUYET" => "Đã duyệt",
-        "DA_THANH_TOAN" => "Đã thanh toán",
-        _ => "Đang nhập"
+        "DA_DUYET" => "Đã khóa sổ",
+        "DA_THANH_TOAN" => "Đã gửi · Đã chốt",
+        _ => "Đang xử lý"
     };
 
     public string StatusColor => slip.TrangThai switch
     {
-        "DA_DUYET" => "#1E3A8A",
+        "DA_DUYET" => "#047857",
         "DA_THANH_TOAN" => "#047857",
-        _ => "#B45309"
+        _ => "#64748B"
     };
 
     public string StatusBackground => slip.TrangThai switch
     {
-        "DA_DUYET" => "#EFF6FF",
+        "DA_DUYET" => "#ECFDF5",
         "DA_THANH_TOAN" => "#ECFDF5",
-        _ => "#FFFBEB"
+        _ => "#F1F5F9"
     };
 
     public static string Format(decimal amount) =>
@@ -59,16 +59,44 @@ public class PayslipRowItem(PayslipSummaryDto slip)
 /// <summary>Một dòng thu chi trong phần chi tiết phiếu lương.</summary>
 public class PayslipItemRowItem(PayslipItemDto item)
 {
+    public int MaChiTiet => item.MaChiTiet;
     public string Name => item.TenKhoan;
+    public string LoaiKhoan => item.LoaiKhoan;
+    public decimal SoTien => item.SoTien;
+    public decimal RawAmount => Math.Abs(item.SoTien);
 
-    // Dòng KHAU_TRU đã mang giá trị âm sẵn trong CSDL (ví dụ -892500.00), nên
-    // hiển thị kèm dấu trừ và không trừ thêm lần nữa ở tầng UI.
-    public string AmountText => PayslipRowItem.Format(item.SoTien);
+    public bool IsDeduction => string.Equals(item.LoaiKhoan, "KHAU_TRU", StringComparison.OrdinalIgnoreCase);
+    public bool IsIncome => !IsDeduction;
 
-    public bool IsDeduction => item.LoaiKhoan == "KHAU_TRU";
+    public string AmountText => (IsDeduction ? "- " : "+ ") + PayslipRowItem.Format(RawAmount) + " ₫";
 
-    public string AmountColor => IsDeduction ? "#B91C1C" : "#047857";
+    public string AmountColor => IsDeduction ? "#DC2626" : "#059669";
 
     public string Note => item.GhiChu ?? string.Empty;
     public bool HasNote => !string.IsNullOrWhiteSpace(item.GhiChu);
+
+    public string BadgeText => item.LoaiKhoan switch
+    {
+        "KHAU_TRU" => "Khấu trừ",
+        "TANG_CA" => "Tăng ca OT",
+        "PHU_CAP" => "Phụ cấp",
+        "THUONG" => "Tiền thưởng",
+        _ => "Khoản mục"
+    };
+
+    public string BadgeTextColor => item.LoaiKhoan switch
+    {
+        "KHAU_TRU" => "#DC2626",
+        "TANG_CA" => "#1D4ED8",
+        "THUONG" => "#B45309",
+        _ => "#047857"
+    };
+
+    public string BadgeBackgroundColor => item.LoaiKhoan switch
+    {
+        "KHAU_TRU" => "#FEF2F2",
+        "TANG_CA" => "#EFF6FF",
+        "THUONG" => "#FFFBEB",
+        _ => "#ECFDF5"
+    };
 }

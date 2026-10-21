@@ -82,7 +82,7 @@
             ("HR kiểm tra", "Đối chiếu & gửi duyệt"),
             ("GĐ phê duyệt", "Ban Giám Đốc xem xét"),
             ("Khóa sổ", "Đóng băng dữ liệu tài chính"),
-            ("Gửi phiếu", "Phát phiếu & chuyển khoản")
+            ("Gửi phiếu", "Phát phiếu tới App nhân viên")
         };
     }
 
@@ -90,9 +90,10 @@
         @for (int i = 0; i < steps.Length; i++)
         {
             var stepNumber = i + 1;
-            var isActive = stepNumber == currentStep;
+            var isStep5Done = stepNumber == 5 && status == "KHOA_SO" && Model.ArePayslipsPublished;
+            var isActive = stepNumber == currentStep && !isStep5Done;
             var isRejectedStep = status == "TU_CHOI" && stepNumber == currentStep;
-            var isCompleted = stepNumber < currentStep && !(status == "TU_CHOI" && stepNumber >= currentStep);
+            var isCompleted = (stepNumber < currentStep || isStep5Done) && !(status == "TU_CHOI" && stepNumber >= currentStep);
             var stateClass = isRejectedStep ? "rejected" : (isActive ? "active" : (isCompleted ? "completed" : ""));
             var iconClass = isRejectedStep ? "bi-x-lg" : (isCompleted ? "bi-check-lg" : stepNumber.ToString());
 
@@ -117,7 +118,7 @@
 
             @if (i < steps.Length - 1)
             {
-                <span class="payroll-step-line @(stepNumber < currentStep ? "completed" : "")" aria-hidden="true"></span>
+                <span class="payroll-step-line @(stepNumber < currentStep || isStep5Done ? "completed" : "")" aria-hidden="true"></span>
             }
         }
     </div>
@@ -181,7 +182,13 @@
             else if (status == "KHOA_SO")
             {
                 <div class="small text-muted mt-1">
-                    Khóa sổ an toàn bởi: <strong>@Model.CurrentPeriod?.NguoiKhoaSo</strong> vào lúc @Model.CurrentPeriod?.NgayKhoaSo?.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM/yyyy HH:mm"). Dữ liệu tài chính đã đóng băng.
+                    <i class="bi bi-shield-lock-fill text-success me-1"></i>Khóa sổ an toàn bởi: <strong>@Model.CurrentPeriod?.NguoiKhoaSo</strong> vào lúc @Model.CurrentPeriod?.NgayKhoaSo?.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM/yyyy HH:mm"). Dữ liệu tài chính đã đóng băng.
+                    @if (Model.ArePayslipsPublished)
+                    {
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1 ms-1">
+                            <i class="bi bi-phone-fill me-1"></i>Phiếu lương đã gửi tới App nhân viên
+                        </span>
+                    }
                 </div>
             }
             else if (status == "CHO_DUYET")
@@ -295,7 +302,7 @@
                             <input type="hidden" name="thang" value="@Model.SelectedThang" />
                             <input type="hidden" name="nam" value="@Model.SelectedNam" />
                             <button type="submit" class="btn btn-primary rounded-pill px-3 shadow-sm" onclick="return confirm('Gửi phiếu lương chính thức cho tất cả nhân viên trong kỳ?');">
-                                <i class="bi bi-envelope-paper-fill me-1"></i> Gửi phiếu lương
+                                <i class="bi bi-send-check-fill me-1"></i> @(Model.ArePayslipsPublished ? "Gửi lại phiếu tới App" : "Gửi phiếu tới App")
                             </button>
                         </form>
 
@@ -507,7 +514,7 @@
                                             "NHAP" => "Nháp",
                                             "CHO_DUYET" => "Chờ duyệt",
                                             "DA_DUYET" => "Đã duyệt",
-                                            "DA_THANH_TOAN" => "Đã chi trả",
+                                            "DA_THANH_TOAN" => "Đã gửi App",
                                             _ => row.TrangThai
                                         })
                                     </span>

@@ -36,15 +36,18 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
         var rows = await LoadRowsAsync(
             "phieu_luong?select=ma_phieu_luong,ma_nhan_vien,luong_co_ban,ngay_cong_thuc_te," +
             "tien_luong_cong,tien_tang_ca,tong_phu_cap,tong_thuong,tong_khau_tru,thuc_nhan," +
-            $"trang_thai,ky_luong(thang,nam)&ma_nhan_vien=eq.{user.MaNhanVien}" +
+            $"trang_thai,ky_luong(thang,nam,trang_thai)&ma_nhan_vien=eq.{user.MaNhanVien}" +
             "&order=ma_phieu_luong.desc",
             cancellationToken);
 
-        // TenPhongBan/TenChucVu không nằm trong phieu_luong; màn phiếu lương của
-        // chính mình thì tên đã hiện ở header các trang khác, nên để rỗng thay vì
-        // tốn thêm vòng truy vấn phong_ban/chuc_vu không dùng tới.
         var name = await ReadEmployeeNameAsync(user.MaNhanVien, cancellationToken);
-        return rows.Select(row => ToSummary(row, name)).ToArray();
+        var dept = user.TenPhongBan ?? string.Empty;
+        var role = user.TenChucVu ?? string.Empty;
+
+        return rows
+            .Where(IsPayslipPublishedToEmployee)
+            .Select(row => ToSummary(row, name, dept, role))
+            .ToArray();
     }
 
     public async Task<IReadOnlyList<PayslipItemDto>> GetPayslipItemsAsync(int maPhieuLuong,
@@ -57,27 +60,62 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
             throw new UnauthorizedAccessException("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
 
         var rows = await LoadRowsAsync(
-            "chi_tiet_phieu_luong?select=ma_chi_tiet,loai_khoan,ten_khoan_luu,so_tien,ghi_chu" +
+            "chi_tiet_phieu_luong?select=ma_chi_tiet,loai_khoan,loai_khoan_luu,ten_khoan_luu,so_tien,ghi_chu" +
             $"&ma_phieu_luong=eq.{maPhieuLuong}&order=loai_khoan.asc,ma_chi_tiet.asc",
             cancellationToken);
 
-        return rows.Select(row => new PayslipItemDto(
-            PostgrstJson.ReadNullableInt(row, "ma_chi_tiet") ?? 0,
-            PostgrstJson.ReadString(row, "ten_khoan_luu"),
-            PostgrstJson.ReadString(row, "loai_khoan"),
-            PostgrstJson.ReadDecimal(row, "so_tien"),
-            PostgrstJson.ReadNullableString(row, "ghi_chu"))).ToArray();
+        return rows.Select(row =>
+        {
+            var loai = PostgrstJson.ReadString(row, "loai_khoan");
+            if (string.IsNullOrWhiteSpace(loai))
+                loai = PostgrstJson.ReadString(row, "loai_khoan_luu");
+
+            return new PayslipItemDto(
+                PostgrstJson.ReadNullableInt(row, "ma_chi_tiet") ?? 0,
+                PostgrstJson.ReadString(row, "ten_khoan_luu"),
+                loai,
+                PostgrstJson.ReadDecimal(row, "so_tien"),
+                PostgrstJson.ReadNullableString(row, "ghi_chu"));
+        }).ToArray();
     }
 
-    private static PayslipSummaryDto ToSummary(JsonElement row, string employeeName)
+    /// <summary>
+    /// Kiểm tra phiếu lương đã được duyệt và khóa sổ trên web để gửi sang app nhân viên hay chưa.
+    /// Nhân viên chỉ thấy phiếu lương khi:
+    /// - Phiếu đã được phát hành / gửi tới app (trang_thai == "DA_THANH_TOAN")
+    /// - Hoặc kỳ lương đã được Ban Giám Đốc phê duyệt và khóa sổ (ky_luong.trang_thai == "KHOA_SO") và phiếu không phải bản nháp/chờ duyệt.
+    /// Bản nháp (NHAP), chờ duyệt (CHO_DUYET) hoặc kỳ chưa khóa sổ bị ẩn hoàn toàn khỏi app nhân viên.
+    /// </summary>
+    private static bool IsPayslipPublishedToEmployee(JsonElement row)
+    {
+        var slipStatus = PostgrstJson.ReadString(row, "trang_thai");
+        if (string.Equals(slipStatus, "DA_THANH_TOAN", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var period = PostgrstJson.ReadEmbedded(row, "ky_luong");
+        if (period is { } p && p.TryGetProperty("trang_thai", out var pStatus))
+        {
+            var periodStatus = pStatus.GetString();
+            if (string.Equals(periodStatus, "KHOA_SO", StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(slipStatus, "DA_DUYET", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(slipStatus, "DA_THANH_TOAN", StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static PayslipSummaryDto ToSummary(JsonElement row, string employeeName, string dept, string role)
     {
         var period = PostgrstJson.ReadEmbedded(row, "ky_luong");
         return new PayslipSummaryDto(
             PostgrstJson.ReadNullableInt(row, "ma_phieu_luong") ?? 0,
             PostgrstJson.ReadNullableInt(row, "ma_nhan_vien") ?? 0,
             employeeName,
-            string.Empty,
-            string.Empty,
+            dept,
+            role,
             period is { } value && value.TryGetProperty("thang", out var month) &&
                 month.ValueKind == System.Text.Json.JsonValueKind.Number ? month.GetInt32() : 0,
             period is { } named && named.TryGetProperty("nam", out var year) &&

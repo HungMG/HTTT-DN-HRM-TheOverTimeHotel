@@ -552,7 +552,7 @@ public class BangLuongController(
         try
         {
             await _payrollService.LockPayrollAsync(maKyLuong, CurrentUserName, CurrentUserId);
-            TempData["Success"] = $"Đã khóa sổ bảng lương tháng {thang:D2}/{nam}. Bảng lương đã đóng băng an toàn!";
+            TempData["Success"] = $"Đã khóa sổ bảng lương tháng {thang:D2}/{nam}. Bảng lương đã đóng băng an toàn và tự động phát hành gửi toàn bộ phiếu lương tới ứng dụng Mobile của nhân viên!";
         }
         catch (Exception ex)
         {
@@ -571,7 +571,7 @@ public class BangLuongController(
         try
         {
             await _payrollService.PublishPayslipsAsync(maKyLuong, CurrentUserName, CurrentUserId);
-            TempData["Success"] = $"Đã gửi phiếu lương tháng {thang:D2}/{nam} thành công! Nhân viên có thể xem trên ứng dụng di động.";
+            TempData["Success"] = $"Đã gửi phiếu lương tháng {thang:D2}/{nam} tới ứng dụng di động của nhân viên thành công!";
         }
         catch (Exception ex)
         {
