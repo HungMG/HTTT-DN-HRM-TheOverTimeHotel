@@ -1,6 +1,8 @@
 @model IReadOnlyList<OvertimeHotel.HRM.Core.Models.PhongBan>
 @{
     ViewData["Title"] = "Quản lý phòng ban · The OverTime Hotel";
+    var workingCounts = ViewBag.WorkingEmployeeCounts as IReadOnlyDictionary<int, int>;
+    var assignedCounts = ViewBag.AssignedEmployeeCounts as IReadOnlyDictionary<int, int>;
 }
 
 <div class="catalog-page">
@@ -129,7 +131,8 @@
                             badgeTheme = "catalog-icon--hr";
                         }
 
-                        var empCount = item.NhanViens?.Count ?? 0;
+                        var empCount = workingCounts?.GetValueOrDefault(item.MaPhongBan) ?? item.NhanViens.Count(employee => employee.TrangThai == "DANG_LAM");
+                        var assignedCount = assignedCounts?.GetValueOrDefault(item.MaPhongBan) ?? item.NhanViens.Count;
 
                         <tr>
                             <td class="text-center text-muted fw-semibold">#@item.MaPhongBan</td>
@@ -139,7 +142,7 @@
                                         <i class="bi @iconClass"></i>
                                     </span>
                                     <div>
-                                        <strong class="d-block text-dark fs-6 font-serif">@item.TenPhongBan</strong>
+                                        <button type="button" class="btn btn-link d-block p-0 text-start fw-bold fs-6 font-serif" data-department-details="@Url.Action("Details", new { id = item.MaPhongBan })" data-bs-toggle="modal" data-bs-target="#departmentDetailsModal" aria-label="Xem chi tiết phòng ban @item.TenPhongBan">@item.TenPhongBan</button>
                                         <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>Khu phức hợp The OverTime</small>
                                     </div>
                                 </div>
@@ -178,9 +181,9 @@
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
 
-                                @if (empCount > 0)
+                                @if (assignedCount > 0)
                                 {
-                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 opacity-50" disabled title="Không thể xóa: đang có @empCount nhân viên đang thuộc phòng ban này. Hãy điều chuyển nhân sự trước.">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 opacity-50" disabled title="Không thể xóa: đang có @assignedCount hồ sơ nhân viên thuộc phòng ban này. Hãy điều chuyển nhân sự trước.">
                                         <i class="bi bi-lock-fill"></i>
                                     </button>
                                 }
@@ -199,6 +202,25 @@
         </div>
     </section>
 </div>
+
+<div class="modal fade" id="departmentDetailsModal" tabindex="-1" aria-labelledby="departmentDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header px-4">
+                <h2 class="modal-title h5 font-serif" id="departmentDetailsModalLabel">Chi tiết phòng ban</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body p-4" data-department-details-body aria-live="polite"></div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/department-details.js" asp-append-version="true"></script>
+}
 
 <!-- MODAL THÊM PHÒNG BAN MỚI -->
 <div class="modal fade" id="createPhongBanModal" tabindex="-1" aria-labelledby="createPhongBanModalLabel" aria-hidden="true">

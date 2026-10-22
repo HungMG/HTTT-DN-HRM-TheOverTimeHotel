@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
@@ -22,7 +23,7 @@ public class PhongBanController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? keyword)
     {
-        var query = _context.PhongBans.AsNoTracking().Include(item => item.NhanViens).AsQueryable();
+        var query = _context.PhongBans.AsNoTracking().AsQueryable();
         keyword = keyword?.Trim();
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -38,7 +39,17 @@ public class PhongBanController : Controller
         try
         {
             ViewBag.Total = await _context.PhongBans.CountAsync();
-            return View(await query.OrderBy(item => item.TenPhongBan).ToListAsync());
+            var departments = await query.OrderBy(item => item.TenPhongBan)
+                .Select(item => new
+                {
+                    Department = item,
+                    // Integration: also require employee.IsProfileComplete once the profile change lands.
+                    WorkingCount = item.NhanViens.Count(employee => employee.TrangThai == "DANG_LAM"),
+                    AssignedCount = item.NhanViens.Count
+                }).ToListAsync();
+            ViewBag.WorkingEmployeeCounts = departments.ToDictionary(item => item.Department.MaPhongBan, item => item.WorkingCount);
+            ViewBag.AssignedEmployeeCounts = departments.ToDictionary(item => item.Department.MaPhongBan, item => item.AssignedCount);
+            return View(departments.Select(item => item.Department).ToList());
         }
         catch (Exception ex)
         {
@@ -55,6 +66,58 @@ public class PhongBanController : Controller
             ViewBag.Total = GetFallbackItems().Count;
             ViewBag.IsDemoData = true;
             return View(fallbackItems);
+        }
+    }
+
+    [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> Details(int id)
+    {
+        try
+        {
+            var department = await _context.PhongBans.AsNoTracking()
+                .FirstOrDefaultAsync(item => item.MaPhongBan == id);
+            if (department == null) return NotFound();
+
+            var positions = await _context.ChucVus.AsNoTracking()
+                .Where(item => item.MaPhongBan == id || item.MaPhongBan == null)
+                .OrderBy(item => item.TenChucVu).ToListAsync();
+            return PartialView("_DepartmentDetails", new DepartmentDetailsViewModel
+            {
+                Department = department,
+                Positions = positions
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể tải chi tiết phòng ban {DepartmentId}.", id);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    [HttpGet]
+    [Authorize(Policy = PermissionCodes.ManageEmployees)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> PositionEmployees(int id, int positionId)
+    {
+        try
+        {
+            if (!await _context.PhongBans.AnyAsync(item => item.MaPhongBan == id)) return NotFound();
+            if (!await _context.ChucVus.AnyAsync(item => item.MaChucVu == positionId &&
+                (item.MaPhongBan == id || item.MaPhongBan == null))) return NotFound();
+
+            // Integration: also require item.IsProfileComplete once the profile change lands.
+            var employees = await _context.NhanViens.AsNoTracking()
+                .Where(item => item.MaPhongBan == id && item.MaChucVu == positionId && item.TrangThai == "DANG_LAM")
+                .OrderBy(item => item.Ten).ThenBy(item => item.Ho).ThenBy(item => item.MaNhanVien)
+                .Select(item => new { id = item.MaNhanVien, name = (item.Ho + " " + item.Ten).Trim() })
+                .ToListAsync();
+            return Json(employees);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể tải nhân viên phòng ban {DepartmentId}, chức vụ {PositionId}.", id, positionId);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
     }
 
