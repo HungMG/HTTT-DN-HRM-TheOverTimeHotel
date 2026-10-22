@@ -850,6 +850,10 @@
   border-top: 5px solid #16a34a;
 }
 
+.catalog-kpi-card--warning {
+  border-top: 5px solid #d97706;
+}
+
 .catalog-kpi-card--bonus.is-active {
   background: #f0fdf4;
   border-color: #22c55e;
@@ -910,6 +914,11 @@
 .catalog-kpi-card--bonus .catalog-kpi-icon {
   background: #f0fdf4;
   color: #16a34a;
+}
+
+.catalog-kpi-card--warning .catalog-kpi-icon {
+  background: #fffbeb;
+  color: #b45309;
 }
 
 .catalog-kpi-card--deduction .catalog-kpi-icon {

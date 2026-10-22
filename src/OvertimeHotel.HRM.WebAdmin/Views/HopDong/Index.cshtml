@@ -17,18 +17,36 @@
     <partial name="_CatalogAlerts" />
 
     <div class="row g-3 mb-4">
-        <div class="col-md-4"><div class="catalog-kpi-card shadow-sm border border-success-subtle bg-success-subtle">
-            <div class="catalog-kpi-icon text-success"><i class="bi bi-file-earmark-check-fill" aria-hidden="true"></i></div>
-            <div><span class="catalog-kpi-label text-success-emphasis">Đang hiệu lực</span><h3 class="catalog-kpi-value text-success-emphasis">@Model.ActiveContracts <small>hợp đồng</small></h3><p class="catalog-kpi-desc">Đã bắt đầu, còn trên 30 ngày hoặc vô thời hạn</p></div>
-        </div></div>
-        <div class="col-md-4"><div class="catalog-kpi-card shadow-sm border border-warning-subtle bg-warning-subtle">
-            <div class="catalog-kpi-icon text-warning-emphasis"><i class="bi bi-hourglass-split" aria-hidden="true"></i></div>
-            <div><span class="catalog-kpi-label text-warning-emphasis">Sắp hết hạn</span><h3 class="catalog-kpi-value text-warning-emphasis">@Model.ExpiringContracts <small>hợp đồng</small></h3><p class="catalog-kpi-desc">Đã bắt đầu, còn từ 0 đến 30 ngày</p></div>
-        </div></div>
-        <div class="col-md-4"><div class="catalog-kpi-card shadow-sm border border-danger-subtle bg-danger-subtle">
-            <div class="catalog-kpi-icon text-danger"><i class="bi bi-file-earmark-x-fill" aria-hidden="true"></i></div>
-            <div><span class="catalog-kpi-label text-danger-emphasis">Đã hết hạn</span><h3 class="catalog-kpi-value text-danger-emphasis">@Model.ExpiredContracts <small>hợp đồng</small></h3><p class="catalog-kpi-desc">Đã qua ngày kết thúc, chưa chấm dứt</p></div>
-        </div></div>
+        <div class="col-md-4">
+            <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
+                <div class="catalog-kpi-icon"><i class="bi bi-file-earmark-check-fill" aria-hidden="true"></i></div>
+                <div>
+                    <span class="catalog-kpi-label">Đang hiệu lực</span>
+                    <h3 class="catalog-kpi-value"><span>@Model.ActiveContracts</span> <small>hợp đồng</small></h3>
+                    <p class="catalog-kpi-desc">Đã bắt đầu, còn trên 30 ngày hoặc vô thời hạn</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="catalog-kpi-card catalog-kpi-card--warning shadow-sm">
+                <div class="catalog-kpi-icon"><i class="bi bi-hourglass-split" aria-hidden="true"></i></div>
+                <div>
+                    <span class="catalog-kpi-label">Sắp hết hạn</span>
+                    <h3 class="catalog-kpi-value"><span>@Model.ExpiringContracts</span> <small>hợp đồng</small></h3>
+                    <p class="catalog-kpi-desc">Đã bắt đầu, còn từ 0 đến 30 ngày</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="catalog-kpi-card catalog-kpi-card--deduction shadow-sm">
+                <div class="catalog-kpi-icon"><i class="bi bi-file-earmark-x-fill" aria-hidden="true"></i></div>
+                <div>
+                    <span class="catalog-kpi-label">Đã hết hạn</span>
+                    <h3 class="catalog-kpi-value"><span>@Model.ExpiredContracts</span> <small>hợp đồng</small></h3>
+                    <p class="catalog-kpi-desc">Đã qua ngày kết thúc, chưa chấm dứt</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- TABLE WORKSPACE CARD -->
