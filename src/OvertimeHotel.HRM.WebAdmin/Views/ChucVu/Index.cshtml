@@ -3,7 +3,8 @@
     ViewData["Title"] = "Quản lý chức vụ · The OverTime Hotel";
 }
 
-<div class="catalog-page">
+<link rel="stylesheet" href="~/css/organization.css" asp-append-version="true" />
+<div class="catalog-page organization-workspace">
     <partial name="_CatalogAlerts" />
 
     <!-- PRINT ONLY HEADER (A4) -->
@@ -29,7 +30,7 @@
                     <input name="keyword" value="@ViewBag.Keyword" class="form-control catalog-search" placeholder="Tìm theo tên chức danh hoặc trách nhiệm..." aria-label="Tìm kiếm chức vụ" />
                     <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
                 </div>
-                <div style="min-width: 220px;">
+                <div class="organization-department-filter">
                     <select name="departmentId" class="form-select catalog-search" onchange="this.form.submit()" aria-label="Lọc theo phòng ban">
                         <option value="">-- Tất cả phòng ban --</option>
                         @if (ViewBag.PhongBans is IEnumerable<OvertimeHotel.HRM.Core.Models.PhongBan> pbs)
@@ -78,15 +79,23 @@
         </div>
 
         <div class="table-responsive" data-catalog-results>
-            <table class="table catalog-table" data-export-table="Danh_Sach_Chuc_Vu">
+            <table class="table catalog-table organization-table organization-table--positions" data-export-table="Danh_Sach_Chuc_Vu">
+                <colgroup>
+                    <col class="organization-col-code" />
+                    <col />
+                    <col class="organization-col-department" />
+                    <col class="organization-col-staff" />
+                    <col class="organization-col-description" />
+                    <col class="organization-col-actions" />
+                </colgroup>
                 <thead>
                     <tr>
-                        <th style="width: 70px" class="text-center">Mã</th>
+                        <th class="text-center">Mã</th>
                         <th>Chức danh vị trí</th>
-                        <th style="width: 220px">Phòng ban trực thuộc</th>
-                        <th style="width: 180px">Nhân sự đảm nhiệm</th>
+                        <th>Phòng ban trực thuộc</th>
+                        <th>Nhân sự đảm nhiệm</th>
                         <th>Mô tả trách nhiệm & Tiêu chuẩn</th>
-                        <th class="text-end" style="width: 140px">Thao tác</th>
+                        <th class="text-end">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -139,16 +148,23 @@
                         }
 
                         var empCount = item.NhanViens?.Count ?? 0;
+                        var qualifierStart = item.TenChucVu.IndexOf('(');
+                        var positionName = qualifierStart > 0 ? item.TenChucVu[..qualifierStart].Trim() : item.TenChucVu;
+                        var positionQualifier = qualifierStart > 0 ? item.TenChucVu[qualifierStart..] : null;
 
                         <tr>
                             <td class="text-center text-muted fw-semibold">#@item.MaChucVu</td>
                             <td>
-                                <div class="d-flex align-items-center gap-3">
+                                <div class="organization-identity">
                                     <span class="catalog-icon catalog-icon--position shadow-sm">
                                         <i class="bi @iconClass"></i>
                                     </span>
-                                    <div>
-                                        <strong class="d-block text-dark fs-6 font-serif">@item.TenChucVu</strong>
+                                    <div class="organization-identity-text">
+                                        <strong class="organization-name">@positionName</strong>
+                                        @if (positionQualifier != null)
+                                        {
+                                            <span class="organization-qualifier">@positionQualifier</span>
+                                        }
                                         <span class="badge @levelBadge mt-1" style="font-size: 0.65rem;">
                                             @levelLabel
                                         </span>
@@ -158,7 +174,7 @@
                             <td>
                                 @if (item.PhongBan != null)
                                 {
-                                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle px-2 py-1">
+                                    <span class="badge organization-department-badge bg-primary-subtle text-primary-emphasis border border-primary-subtle px-2 py-1" title="@item.PhongBan.TenPhongBan">
                                         <i class="bi bi-building me-1"></i>@item.PhongBan.TenPhongBan
                                     </span>
                                 }
@@ -170,7 +186,7 @@
                                 }
                             </td>
                             <td>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="organization-staff">
                                     @if (empCount > 0)
                                     {
                                         <div class="catalog-avatar-stack" title="@empCount nhân sự giữ chức vụ này">
@@ -193,8 +209,8 @@
                                     }
                                 </div>
                             </td>
-                            <td class="text-muted" style="max-width: 320px;">
-                                <span class="d-inline-block text-truncate" style="max-width: 300px;" title="@item.MoTa">
+                            <td class="text-muted">
+                                <span class="organization-description" title="@item.MoTa">
                                     @(item.MoTa ?? "Chưa có mô tả tiêu chuẩn công việc.")
                                 </span>
                             </td>

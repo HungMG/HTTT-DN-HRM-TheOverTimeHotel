@@ -5,7 +5,8 @@
     var assignedCounts = ViewBag.AssignedEmployeeCounts as IReadOnlyDictionary<int, int>;
 }
 
-<div class="catalog-page">
+<link rel="stylesheet" href="~/css/organization.css" asp-append-version="true" />
+<div class="catalog-page organization-workspace">
     <partial name="_CatalogAlerts" />
 
     <!-- PRINT ONLY HEADER (A4) -->
@@ -66,14 +67,21 @@
         </div>
 
         <div class="table-responsive" data-catalog-results>
-            <table class="table catalog-table" data-export-table="Danh_Sach_Phong_Ban">
+            <table class="table catalog-table organization-table organization-table--departments" data-export-table="Danh_Sach_Phong_Ban">
+                <colgroup>
+                    <col class="organization-col-code" />
+                    <col />
+                    <col class="organization-col-staff" />
+                    <col class="organization-col-description" />
+                    <col class="organization-col-actions" />
+                </colgroup>
                 <thead>
                     <tr>
-                        <th style="width: 80px" class="text-center">Mã</th>
+                        <th class="text-center">Mã</th>
                         <th>Phòng ban</th>
-                        <th style="width: 200px">Quy mô nhân sự</th>
+                        <th>Quy mô nhân sự</th>
                         <th>Chức năng & Nhiệm vụ</th>
-                        <th class="text-end" style="width: 140px">Thao tác</th>
+                        <th class="text-end">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -133,22 +141,30 @@
 
                         var empCount = workingCounts?.GetValueOrDefault(item.MaPhongBan) ?? item.NhanViens.Count(employee => employee.IsProfileComplete && employee.TrangThai == "DANG_LAM");
                         var assignedCount = assignedCounts?.GetValueOrDefault(item.MaPhongBan) ?? item.NhanViens.Count;
+                        var qualifierStart = item.TenPhongBan.IndexOf('(');
+                        var departmentName = qualifierStart > 0 ? item.TenPhongBan[..qualifierStart].Trim() : item.TenPhongBan;
+                        var departmentQualifier = qualifierStart > 0 ? item.TenPhongBan[qualifierStart..] : null;
 
                         <tr>
                             <td class="text-center text-muted fw-semibold">#@item.MaPhongBan</td>
                             <td>
-                                <div class="d-flex align-items-center gap-3">
+                                <div class="organization-identity">
                                     <span class="catalog-icon @badgeTheme shadow-sm">
                                         <i class="bi @iconClass"></i>
                                     </span>
-                                    <div>
-                                        <button type="button" class="btn btn-link d-block p-0 text-start fw-bold fs-6 font-serif" data-department-details="@Url.Action("Details", new { id = item.MaPhongBan })" data-bs-toggle="modal" data-bs-target="#departmentDetailsModal" aria-label="Xem chi tiết phòng ban @item.TenPhongBan">@item.TenPhongBan</button>
-                                        <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>Khu phức hợp The OverTime</small>
+                                    <div class="organization-identity-text">
+                                        <button type="button" class="btn organization-name-button" data-department-details="@Url.Action("Details", new { id = item.MaPhongBan })" data-bs-toggle="modal" data-bs-target="#departmentDetailsModal" aria-label="Xem chi tiết phòng ban @item.TenPhongBan">
+                                            <span class="organization-name">@departmentName</span>
+                                            @if (departmentQualifier != null)
+                                            {
+                                                <span class="organization-qualifier">@departmentQualifier</span>
+                                            }
+                                        </button>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="organization-staff">
                                     @if (empCount > 0)
                                     {
                                         <div class="catalog-avatar-stack" title="@empCount nhân sự đang công tác">
@@ -171,8 +187,8 @@
                                     }
                                 </div>
                             </td>
-                            <td class="text-muted" style="max-width: 320px;">
-                                <span class="d-inline-block text-truncate" style="max-width: 300px;" title="@item.MoTa">
+                            <td class="text-muted">
+                                <span class="organization-description" title="@item.MoTa">
                                     @(item.MoTa ?? "Chưa có mô tả cụ thể.")
                                 </span>
                             </td>

@@ -1,0 +1,47 @@
+.organization-workspace .catalog-filter-form .catalog-search-wrapper {
+  width: auto;
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.organization-workspace .organization-department-filter { flex: 0 1 20rem; min-width: 0; }
+.organization-workspace .catalog-toolbar-actions { flex-wrap: wrap; max-width: 100%; }
+.organization-workspace .catalog-action-btn,
+.organization-workspace .catalog-badge { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; white-space: nowrap; }
+
+.organization-workspace .organization-table { width: 100%; table-layout: fixed; }
+.organization-workspace .organization-table--departments { min-width: 840px; }
+.organization-workspace .organization-table--positions { min-width: 960px; }
+.organization-workspace .organization-col-code { width: 64px; }
+.organization-workspace .organization-col-staff { width: 210px; }
+.organization-workspace .organization-col-actions { width: 112px; }
+.organization-workspace .organization-table--departments .organization-col-description { width: 28%; }
+.organization-workspace .organization-table--positions .organization-col-department { width: 22%; }
+.organization-workspace .organization-table--positions .organization-col-description { width: 18%; }
+.organization-workspace .organization-table tbody td { padding-block: .9rem; }
+.organization-workspace .organization-table tbody td:last-child { white-space: nowrap; }
+
+.organization-workspace .organization-identity { display: flex; align-items: center; gap: .8rem; }
+.organization-workspace .organization-identity-text { min-width: 0; }
+.organization-workspace .organization-name-button { display: block; padding: 0; border: 0; text-align: start; text-decoration: none; }
+.organization-workspace .organization-name { display: block; font-family: var(--font-display); font-size: 1rem; font-weight: 600; line-height: 1.45; color: var(--hotel-navy); overflow-wrap: anywhere; }
+.organization-workspace .organization-name-button:hover .organization-name { color: var(--hotel-royal); text-decoration: underline; text-underline-offset: .2em; }
+.organization-workspace .organization-name-button:focus-visible { outline: 2px solid var(--hotel-royal); outline-offset: 4px; border-radius: 3px; }
+.organization-workspace .organization-qualifier { display: block; margin-top: .2rem; color: #64748b; font-family: var(--font-sans); font-size: .75rem; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.organization-workspace .organization-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: .83rem; line-height: 1.65; overflow-wrap: anywhere; }
+.organization-workspace .organization-department-badge { max-width: 100%; white-space: normal; text-align: start; line-height: 1.5; overflow-wrap: anywhere; }
+
+.organization-workspace .organization-staff { display: grid; grid-template-columns: 60px max-content; align-items: center; gap: .65rem; }
+.organization-workspace .organization-staff .catalog-avatar-stack { width: 60px; }
+.organization-workspace .organization-staff .catalog-personnel-badge,
+.organization-workspace .organization-staff .catalog-personnel-badge--zero { grid-column: 2; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 575.98px) {
+  .organization-workspace .organization-department-filter { flex-basis: 100%; }
+  .organization-workspace .catalog-toolbar-actions { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .organization-workspace .catalog-toolbar-actions > * { width: 100%; min-width: 0; }
+}
+
+@media print {
+  .organization-workspace .organization-table { min-width: 0; }
+}
