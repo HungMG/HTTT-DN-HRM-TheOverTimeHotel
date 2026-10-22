@@ -4,6 +4,8 @@ using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Core.Utilities;
 
+if (args.Contains("--integration")) return await EventPayrollIntegration.Run();
+
 Console.WriteLine("==================================================================");
 Console.WriteLine("OVERTIME HOTEL HRM - PAYROLL RULES & FORMULAS ACCEPTANCE TESTS");
 Console.WriteLine("PRD Reference: 05_Quy_Trinh_Va_Cong_Thuc_Tinh_Luong.md");

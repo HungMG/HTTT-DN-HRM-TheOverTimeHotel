@@ -19,6 +19,9 @@ public class EventFormViewModel
     public bool IsPopup { get; set; }
     public EventInput Input { get; set; } = new();
     public IReadOnlyList<SelectListItem> Managers { get; set; } = [];
+    public IReadOnlyList<DiaDiemSuKien> Venues { get; set; } = [];
+    public string VenueName { get; set; } = "";
+    public int VenueCapacity { get; set; }
     public int ReturnYear { get; set; }
     public int ReturnMonth { get; set; }
     public DateOnly ReturnDate { get; set; }
@@ -34,6 +37,11 @@ public class EventDetailsViewModel
     public bool CanManage { get; set; }
     public bool CanAccept { get; set; }
     public bool CanEdit { get; set; }
+    public bool IsOffice { get; set; }
+    public EventNeedInput Need { get; set; } = new();
+    public EventWorkInput Work { get; set; } = new();
+    public EventPayPreview? PayPreview { get; set; }
+    public IReadOnlyList<KyLuong> PaymentPeriods { get; set; } = [];
     public EventAssignmentInput Assignment { get; set; } = new();
     public List<EventAssignmentInput> Assignments { get; set; } = [];
     public EventReviewInput Review { get; set; } = new();
@@ -50,5 +58,8 @@ public class EventDetailsViewModel
         OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetStaffingSummary(Event).Departments
             .FirstOrDefault(d => d.Code == SelectedDepartment)?.Roles ?? [];
     public IReadOnlyList<string> RequiredDepartments =>
-        OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetRequiredDepartments(Event.LoaiDuAn);
+        Event.TinhTheoGio ? Event.NhuCaus.Select(n => n.MaPhongBan)
+            .Concat(Event.PhanCongs.Select(p => p.MaPhongBanSuKien ?? OvertimeHotel.HRM.Core.Policies.HotelEventRules.ResolveDepartmentCode(p.NhanVien) ?? ""))
+            .Where(code => code != "").Distinct().ToList()
+            : OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetRequiredDepartments(Event.LoaiDuAn);
 }

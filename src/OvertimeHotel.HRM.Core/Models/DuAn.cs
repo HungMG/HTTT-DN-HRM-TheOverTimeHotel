@@ -10,6 +10,14 @@ public class DuAn
     public DateTimeOffset NgayKetThuc { get; set; }
     public decimal NganSachPhuCap { get; set; }
     public bool TinhPhuCapKhiNghiemThu { get; set; }
+    public bool TinhTheoGio { get; set; }
+    public int? MaDiaDiem { get; set; }
+    public int PhutChuanBi { get; set; }
+    public int PhutThuDon { get; set; }
+    public DateTimeOffset? KetThucThucTe { get; set; }
+    public string? LyDoDung { get; set; }
+    public int? MaNguoiNghiemThu { get; set; }
+    public DateTimeOffset? NgayNghiemThu { get; set; }
     public int MaNguoiQuanLy { get; set; }
     public int SoKhachDuKien { get; set; }
     public string? MoTa { get; set; }
@@ -18,4 +26,6 @@ public class DuAn
     public long Version { get; set; } = 1;
     public NhanVien? NguoiQuanLy { get; set; }
     public ICollection<PhanCongDuAn> PhanCongs { get; set; } = new List<PhanCongDuAn>();
+    public ICollection<NhuCauSuKien> NhuCaus { get; set; } = new List<NhuCauSuKien>();
+    public ICollection<QuyetToanSuKien> QuyetToans { get; set; } = new List<QuyetToanSuKien>();
 }

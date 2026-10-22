@@ -1,0 +1,88 @@
+@model EventDetailsViewModel
+@using OvertimeHotel.HRM.Core.Policies
+@using System.Globalization
+@{
+    var item = Model.Event;
+    var canRecord = Model.CanManage && item.TrangThai is "DANG_DIEN_RA" or "CHO_NGHIEM_THU";
+    var canReview = Model.CanManage && item.TrangThai == "CHO_NGHIEM_THU";
+    var preview = Model.PayPreview;
+    string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
+}
+<div class="event-panel">
+    <h3>Công sự kiện thực tế</h3>
+    <p class="event-muted">Mỗi lần phục vụ là một đoạn công riêng trong phân công và ca nguồn. Quản lý ghi trong giờ vào/ra đã chấm công; HR/Admin xác nhận ngoại lệ bằng giải trình. Người vắng mặt được đánh dấu không tham gia.</p>
+    @foreach (var assignment in item.PhanCongs.OrderBy(p => p.NhanVien?.HoTen).ThenBy(p => p.BatDau))
+    {
+        var canceled = assignment.TrangThaiThamGia == "HUY_PHAN_CONG";
+        var preserve = Model.Work.AssignmentId == assignment.MaPhanCong;
+        var workStart = preserve ? Model.Work.Start : HotelEventRules.Local(assignment.BatDau);
+        var workEnd = preserve ? Model.Work.End : HotelEventRules.Local(assignment.KetThuc);
+        <section class="border rounded p-3 mt-3">
+            <h4 class="h6">@assignment.NhanVien?.HoTen · @assignment.VaiTroDuAn · Ca #@assignment.MaPhanCa</h4>
+            <p class="event-muted">Phân công @HotelEventRules.Local(assignment.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(assignment.KetThuc).ToString("dd/MM HH:mm") · @(canceled ? "Đã gỡ (lịch sử)" : HotelEventRules.RatingLabels.GetValueOrDefault(assignment.DanhGia, assignment.DanhGia))</p>
+            @foreach (var work in assignment.CongThucTes.OrderBy(c => c.BatDau))
+            {
+                <div class="border-top pt-2 mt-2">
+                    <p>@HotelEventRules.Local(work.BatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(work.KetThuc).ToString("dd/MM/yyyy HH:mm") · @((work.KetThuc - work.BatDau).TotalMinutes.ToString("0.##")) phút</p>
+                    @if (!string.IsNullOrWhiteSpace(work.GiaiTrinh)) { <p class="event-preserve-lines">Giải trình: @work.GiaiTrinh</p> }
+                    @if (Model.IsOffice && canRecord && !canceled)
+                    {
+                        <details><summary>Xóa đoạn ghi sai</summary><form asp-action="DeleteWork" asp-route-id="@item.MaDuAn" method="post">
+                            <partial name="_EventContext" model="Model" /><input name="version" value="@item.Version" type="hidden" /><input name="workId" value="@work.MaCong" type="hidden" />
+                            <label for="delete-work-@work.MaCong" class="form-label">Lý do sửa công</label><input id="delete-work-@work.MaCong" name="reason" class="form-control" maxlength="500" required /><button type="submit" class="btn btn-sm btn-outline-danger mt-2">Xóa đoạn công</button>
+                        </form></details>
+                    }
+                </div>
+            }
+            @if (canRecord && !canceled)
+            {
+                <details class="mt-3" open="@(preserve && !ViewData.ModelState.IsValid)"><summary>Ghi thêm đoạn công thực tế</summary>
+                    <form asp-action="RecordWork" asp-route-id="@item.MaDuAn" method="post" data-event-time-form class="mt-3">
+                        <partial name="_EventContext" model="Model" /><input name="Work.Version" value="@item.Version" type="hidden" /><input name="Work.AssignmentId" value="@assignment.MaPhanCong" type="hidden" />
+                        <div class="row g-2">
+                            <div class="col-md-6"><label for="work-start-@assignment.MaPhanCong" class="form-label">Bắt đầu thực tế (UTC+7)</label><input id="work-start-@assignment.MaPhanCong" name="Work.Start" value="@workStart.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control" data-event-start required /></div>
+                            <div class="col-md-6"><label for="work-end-@assignment.MaPhanCong" class="form-label">Kết thúc thực tế (UTC+7)</label><input id="work-end-@assignment.MaPhanCong" name="Work.End" value="@workEnd.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control" data-event-end required /></div>
+                            @if (Model.IsOffice) { <div class="col-12"><label for="explanation-@assignment.MaPhanCong" class="form-label">HR/Admin xác nhận ngoại lệ chấm công (bắt buộc nếu thiếu giờ vào/ra hoặc ngoài khoảng đã chấm)</label><textarea id="explanation-@assignment.MaPhanCong" name="Work.Explanation" class="form-control" maxlength="500" rows="2">@(preserve ? Model.Work.Explanation : null)</textarea></div> }
+                        </div><button type="submit" class="event-secondary-button mt-2">Xác nhận đoạn công</button>
+                    </form>
+                </details>
+            }
+            @if (canReview && !canceled)
+            {
+                <form asp-action="Review" asp-route-id="@item.MaDuAn" method="post" class="mt-3">
+                    <partial name="_EventContext" model="Model" /><input name="Review.Version" value="@item.Version" type="hidden" /><input name="Review.AssignmentId" value="@assignment.MaPhanCong" type="hidden" />
+                    <label for="hourly-rating-@assignment.MaPhanCong" class="form-label">Kết quả tham gia</label>
+                    <select id="hourly-rating-@assignment.MaPhanCong" name="Review.Rating" class="form-select"><option value="HOAN_THANH" selected="@(assignment.DanhGia == "HOAN_THANH")">Hoàn thành (cần công thực tế)</option><option value="KHONG_THAM_GIA" selected="@(assignment.DanhGia == "KHONG_THAM_GIA")">Không tham gia · 0 đ</option></select>
+                    <button type="submit" class="event-secondary-button mt-2">Lưu kết quả</button>
+                </form>
+            }
+        </section>
+    }
+</div>
+<div class="event-panel mt-4">
+    <h3>@(item.TrangThai == "HOAN_THANH" ? "Quyết toán đã khóa" : "Xem trước thu nhập cộng thêm")</h3>
+    <p>Lương cơ bản tháng / 26 / 8 × số giờ sự kiện thực tế. Lương ca thường vẫn giữ nguyên. Mỗi giờ chỉ tính một lần; tiền được tách theo tháng phát sinh và trả vào kỳ HR chọn.</p>
+    @if (preview != null)
+    {
+        @foreach (var warning in preview.Warnings) { <p class="alert alert-warning" role="alert">@warning</p> }
+        <div class="table-responsive"><table class="table event-table"><thead><tr><th scope="col">Nhân viên</th><th scope="col">Tháng phát sinh</th><th scope="col">Phút</th><th scope="col">Thu nhập thêm</th><th scope="col">Căn cứ</th></tr></thead><tbody>
+            @foreach (var row in preview.Rows)
+            {
+                <tr><td>@row.EmployeeName</td><td>@row.WorkMonth.ToString("MM/yyyy")</td><td>@row.Minutes.ToString("0.##")</td><td>@Money(row.Amount)</td><td><details><summary>Chi tiết giờ và lương</summary>@foreach (var basis in row.Basis) { <p>@HotelEventRules.Local(basis.Start).ToString("dd/MM HH:mm") – @HotelEventRules.Local(basis.End).ToString("dd/MM HH:mm")<br />HĐ #@basis.ContractId · Lương tháng @Money(basis.MonthlySalary) / 26 / 8 = @Money(basis.HourlyRate)/giờ · @basis.Minutes.ToString("0.##") phút</p> }</details></td></tr>
+            }
+        </tbody><tfoot><tr><th scope="row" colspan="3">Tổng cộng</th><td colspan="2"><strong>@Money(preview.Total)</strong></td></tr></tfoot></table></div>
+        @if (Model.CanAccept)
+        {
+            @if (Model.PaymentPeriods.Count == 0)
+            { <p class="alert alert-warning" role="status">Chưa có kỳ lương có thể nhận thu nhập sự kiện.</p> }
+            <partial name="_EventPaymentPeriod" model="Model" />
+            <form asp-action="AcceptHourly" asp-route-id="@item.MaDuAn" method="post">
+                <partial name="_EventContext" model="Model" /><input name="version" value="@preview.Version" type="hidden" /><input name="previewToken" value="@preview.Token" type="hidden" />
+                <label for="event-payment-period" class="form-label">Kỳ lương chi trả</label><select id="event-payment-period" name="paymentPeriodId" class="form-select" required><option value="">Chọn kỳ chi trả</option>@foreach (var period in Model.PaymentPeriods) { <option value="@period.MaKyLuong">@period.Thang.ToString("D2")/@period.Nam · @period.TrangThai</option> }</select>
+                <p class="form-text">Nghiệm thu xác nhận đúng bảng xem trước và khóa công sự kiện. Nếu dữ liệu thay đổi, hãy xem lại bảng trước khi xác nhận.</p>
+                <button type="submit" class="event-primary-button" disabled="@(preview.Warnings.Count > 0 || Model.PaymentPeriods.Count == 0)">Nghiệm thu và khóa</button>
+            </form>
+        }
+        else { <p class="event-muted">@(item.TrangThai == "HOAN_THANH" ? "Đã nghiệm thu. Căn cứ tính và kỳ chi trả được lưu theo quyết toán." : "HR/Admin nghiệm thu khi sự kiện ở trạng thái chờ nghiệm thu.")</p> }
+    }
+</div>

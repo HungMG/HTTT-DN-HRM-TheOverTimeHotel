@@ -21,7 +21,7 @@ public class AttendanceSummaryService(AppDbContext context) : IAttendanceSummary
         if (employee == null) return null;
 
         var shifts = await context.PhanCas.AsNoTracking()
-            .Where(s => s.MaNhanVien == employeeId && s.NgayLamViec >= from && s.NgayLamViec <= to)
+            .Where(s => s.TrangThai != "DA_HUY" && s.MaNhanVien == employeeId && s.NgayLamViec >= from && s.NgayLamViec <= to)
             .Include(s => s.ChamCong).Include(s => s.CaLamViec).ToListAsync(cancellationToken);
         var requests = await context.DonTus.AsNoTracking()
             .Where(r => r.MaNhanVien == employeeId && r.TrangThai == "DA_DUYET" &&

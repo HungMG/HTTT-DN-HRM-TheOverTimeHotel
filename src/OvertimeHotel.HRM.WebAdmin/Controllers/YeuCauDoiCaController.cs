@@ -346,6 +346,19 @@ public class YeuCauDoiCaController : Controller
             {
                 _context.ChangeTracker.Clear();
                 await using var transaction = await _context.Database.BeginTransactionAsync();
+                await _context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(2026101509)");
+                var currentFirst = await LoadShiftAsync(yeuCau.MaPhanCaGui);
+                var currentSecond = await LoadShiftAsync(yeuCau.MaPhanCaNhan);
+                if (currentFirst == null || currentSecond == null
+                    || currentFirst.MaNhanVien != yeuCau.MaNhanVienGui || currentSecond.MaNhanVien != yeuCau.MaNhanVienNhan
+                    || (!InScope(currentFirst.MaPhongBan, scopeDept) && !InScope(currentSecond.MaPhongBan, scopeDept))
+                    || await HasAttendanceAsync(currentFirst.MaPhanCa) || await HasAttendanceAsync(currentSecond.MaPhanCa))
+                    throw new InvalidOperationException("Ca hoặc phạm vi quản lý đã thay đổi. Tải lại yêu cầu trước khi duyệt.");
+                var currentValidation = await ValidateSwapAsync(currentFirst, currentSecond);
+                if (!currentValidation.IsValid)
+                    throw new InvalidOperationException(currentValidation.ThongDiep ?? "Điều kiện đổi ca vừa thay đổi.");
+                var changeReason = phanHoi ?? yeuCau.LyDo;
+                await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT set_config('app.shift_change_reason', {changeReason}, true)");
 
                 // Hoán đổi người trực: câu UPDATE mang theo điều kiện "vẫn đúng
                 // người cũ" để nếu ai đó vừa sửa lịch thì không ghi đè.
@@ -376,6 +389,16 @@ public class YeuCauDoiCaController : Controller
                     throw new InvalidOperationException("Yêu cầu đã được người khác xử lý trước đó.");
                 }
 
+                var accountName = User.Identity?.Name ?? "Người duyệt đổi ca";
+                _context.NhatKyQuanTris.Add(new NhatKyQuanTri {
+                    MaTaiKhoanThucHien = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var accountId) ? accountId : null,
+                    TenNguoiThucHien = accountName.Length > 100 ? accountName[..100] : accountName,
+                    TenTaiKhoanBiTacDong = $"DOI_CA-{id}", HanhDong = "DUYET_DOI_CA",
+                    NoiDung = $"Đổi người trực ca #{yeuCau.MaPhanCaGui} và #{yeuCau.MaPhanCaNhan}; phân công sự kiện tương lai cần xác nhận lại.",
+                    LyDo = changeReason
+                });
+                await _context.SaveChangesAsync();
+
                 await transaction.CommitAsync();
             });
 
@@ -388,7 +411,7 @@ public class YeuCauDoiCaController : Controller
             return Finish(false, "Không duyệt được yêu cầu đổi ca: " + ex.Message);
         }
 
-        return Finish(true, $"Đã duyệt yêu cầu đổi ca #{id}. Lịch phân ca của hai nhân viên đã được cập nhật.",
+        return Finish(true, $"Đã duyệt yêu cầu đổi ca #{id}. Lịch phân ca đã cập nhật; phân công sự kiện tương lai liên quan cần được xác nhận lại.",
             new { maYeuCau = id, trangThai = STATUS_DA_DUYET });
     }
 

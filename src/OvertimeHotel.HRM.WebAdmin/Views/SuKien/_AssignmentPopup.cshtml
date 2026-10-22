@@ -12,12 +12,32 @@
     <section class="event-assignment-person" data-assignment-person>
         <input asp-for="Assignments[i].EmployeeId" type="hidden" />
         <h3 class="h6">@(employee?.HoTen ?? "Nhân viên không còn khả dụng")</h3>
+        @if (Model.Event.TinhTheoGio)
+        {
+            <label asp-for="Assignments[i].ShiftId" class="form-label">Ca chính thức làm nguồn</label>
+            <select asp-for="Assignments[i].ShiftId" class="form-select mb-3" required>
+                <option value="">Chọn ca đã công bố</option>
+                @foreach (var shift in Model.Shifts.Where(s => s.MaNhanVien == Model.Assignments[i].EmployeeId))
+                { <option value="@shift.MaPhanCa">@shift.CaLamViec?.TenCa · @HotelEventRules.Local(shift.BatDauDuKien).ToString("dd/MM HH:mm") – @HotelEventRules.Local(shift.KetThucDuKien).ToString("dd/MM HH:mm")</option> }
+            </select>
+            <span asp-validation-for="Assignments[i].ShiftId" class="text-danger"></span>
+            <small class="form-text">Thời gian chung bên dưới được giới hạn theo ca nguồn của từng người. Có thể phân công thêm các đoạn không trùng giờ.</small>
+        }
+
         <label asp-for="Assignments[i].Role" class="form-label">Vai trò trong sự kiện <span aria-hidden="true">*</span></label>
         <select asp-for="Assignments[i].Role" class="form-select" required data-assignment-role>
             <option value="">Chọn vai trò</option>
+            @if (Model.Event.TinhTheoGio)
+            {
+                @foreach (var role in HotelEventRoleRules.GetRoles(Model.Event.LoaiDuAn, Model.SelectedDepartment ?? "", Model.Event.SoKhachDuKien))
+                { <option value="@role.Name">@role.Name</option> }
+            }
+            else
+            {
             @foreach (var role in Model.AssignmentRoles)
             {
                 <option value="@role.Name">@role.Name — @(role.IsRequired ? $"Cần {role.RequiredCount}, đã có {role.MinimumConcurrentCount}" : "Vai trò bổ sung")</option>
+            }
             }
             <option value="@HotelEventRoleRules.OtherRoleValue" data-custom-role>Vai trò khác</option>
         </select>
@@ -42,7 +62,7 @@
             <input asp-for="Assignment.End" asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" class="form-control" required data-event-end />
             <span asp-validation-for="Assignment.End" class="text-danger"></span>
         </div>
-        @if (!Model.Event.TinhPhuCapKhiNghiemThu)
+        @if (!Model.Event.TinhTheoGio && !Model.Event.TinhPhuCapKhiNghiemThu)
         {
             <div class="mb-3">
                 <label asp-for="Assignment.Allowance" class="form-label">Phụ cấp dự kiến mỗi người (đ)</label>

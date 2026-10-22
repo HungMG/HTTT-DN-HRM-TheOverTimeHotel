@@ -1,4 +1,61 @@
-# Sự kiện khách sạn — giai đoạn 1
+# Sự kiện khách sạn — điều phối theo ca và tiền theo giờ
+
+## Chính sách mới (23/10/2026)
+
+Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng thêm được tính bằng **lương cơ bản tháng / 26 / 8 × số giờ sự kiện thực tế được duyệt** (hệ số cộng thêm **1**, không phải 2). Lương ca thông thường vẫn tính qua chấm công; không cộng lại lương ca trong dòng tiền sự kiện. Lương 8.000.000đ và hai giờ thực tế được cộng thêm **76.923đ**. Dùng số chính xác để tính và làm tròn đến đồng sau khi tổng hợp theo nhân viên/sự kiện/tháng phát sinh.
+
+### Sự kiện đặt trước lịch tuần
+
+1. HR/Admin đặt sự kiện và địa điểm, khai báo nhu cầu theo phòng ban, vai trò, khung giờ. Mẫu theo số khách được sinh sẵn; chỉnh một dòng sẽ giữ dòng đó khỏi cập nhật mẫu tự động về sau.
+2. Màn hình `/PhanCa` hiển thị nhu cầu của tuần kể cả chưa có người được phân công. Dự báo ca chỉ là số người có lịch giao giờ theo bộ lọc, chưa xác nhận vai trò hoặc khả năng điều động.
+3. Xếp ca cân đối trực thường và sự kiện. HR/Admin công bố lịch tuần vào thứ Bảy cho tuần kế tiếp; công bố ngoài lịch thông thường cần lý do. Sửa ca làm ca đó chưa công bố lại.
+4. Chọn nhân viên từ ca chính thức, chọn ca nguồn và vai trò. Backend lấy phần giao giữa khoảng nhiệm vụ và ca. Tiệc 15h–20h với ca kết thúc 17h chỉ phân công 15h–17h. Đủ người đầu buổi không bù được khoảng thiếu cuối buổi.
+5. Manager chỉ điều hành sự kiện được giao. Backend kiểm tra hợp đồng, nghỉ đã duyệt, nhiệm vụ trùng và định biên bộ phận nguồn trước khi giao/bắt đầu. Nhu cầu chỉ HR/Admin sửa trước khi sự kiện bắt đầu, có lý do.
+
+### Công thực tế, bàn giao và nghiệm thu
+
+- Ghi nhiều đoạn công không trùng nhau, trong phân công và ca; không ghi công tương lai. Chấm công vào/ra ca là dữ liệu đối chiếu, không chứng minh đã làm sự kiện toàn bộ ca.
+- Manager chỉ xác nhận công phù hợp chấm công. Thiếu/trái chấm công hoặc nghỉ đã duyệt cần HR/Admin xác minh, nhập giải trình; server lưu dấu xác nhận ngoại lệ. Xem trước kiểm tra lại bằng chứng trước nghiệm thu.
+- Phân công chưa thực hiện được hủy và giữ lịch sử. Đã làm dùng **Kết thúc / bàn giao**; thêm người thay thế trước nếu phần thời gian tương lai thiếu vai trò. Không xóa công để thay người.
+- Hủy sự kiện chỉ khi còn lên kế hoạch và chưa có công. Đã thực hiện dùng **Dừng sự kiện**, lưu giờ dừng/lý do, giữ phần công đã làm rồi chuyển chờ nghiệm thu. Chuẩn bị và thu dọn chỉ tính tiền khi có nhiệm vụ và công được xác nhận trong ca.
+- Nút nghiệm thu dành cho HR/Admin sau khi xác nhận công/vắng mặt toàn bộ phân công hiệu lực. Xem trước hiển thị từng người, tháng phát sinh, phút, mức lương theo hợp đồng và tổng cộng. Không có hệ số đánh giá xuất sắc trong công thức mới.
+- Chọn hoặc tạo kỳ trả còn `MO`, `NHAP`, `TU_CHOI`, không trước tháng phát sinh. Nghiệm thu tính lại phía server và kiểm tra dấu xem trước để không khóa theo mức lương cũ nếu căn cứ vừa thay đổi.
+- Quyết toán lưu công, căn cứ lương, người duyệt/thời điểm và kỳ trả. Đổi lương sau nghiệm thu không định giá lại. Công qua tháng được tách theo tháng Việt Nam; có thể trả bổ sung vào kỳ mở sau.
+- Nghiệm thu chưa phải đã chi tiền. Chạy bảng lương nhận đúng khoản đã duyệt của kỳ được chọn, liên kết mỗi khoản một lần. Tính lại và thao tác đồng thời không nhân đôi tiền; người đã nghỉ việc vẫn giữ quyền lợi được duyệt.
+
+### Địa điểm và thay đổi ca
+
+Địa điểm mới chọn từ danh mục có mã và sức chứa (`/SuKien/Venues`, HR/Admin). Giữ sảnh từ trước giờ tổ chức theo số phút chuẩn bị đến sau kết thúc theo số phút thu dọn. Hai yêu cầu giữ sảnh chồng nhau bị từ chối, kể cả chỉ chồng ở thời gian chuẩn bị/thu dọn.
+
+Khi đổi/hủy ca tương lai, phân công sự kiện từ ca đó được hủy hiệu lực và lưu lịch sử, sự kiện tăng phiên bản để quản lý bố trí lại. Ca đã có lịch sử công thực hiện không được sửa/xóa làm mất căn cứ; ca nguồn có lịch sử được giữ bằng trạng thái `DA_HUY` thay vì xóa vật lý. Ca hủy không tính vào lịch hoạt động/chấm công/lương. Trạng thái chấm công thường như hoàn thành không tự coi là thay lịch ca.
+
+### Dữ liệu cũ
+
+Migration không chuyển tiền lịch sử sang chính sách giờ. Sự kiện cũ tiếp tục nghiệm thu theo chính sách cũ, nhưng **không được kết chuyển trước nghiệm thu hoặc định giá lại theo cấu hình mới**. Với khoản cũ chưa vào lương, HR/Admin dùng đối soát để xác nhận số tiền đã lưu, căn cứ và kỳ trả; không sửa số tiền gốc. Các khoản cũ đã kết chuyển được bảo vệ, không tự xóa/tính lại. Nếu còn quyền lợi cũ chưa đối soát, bảng lương báo rõ để xử lý thay vì trả vào kỳ bất kỳ.
+
+### Migration và kiểm chứng
+
+Áp dụng các migration sự kiện hiện có trước, sau đó chạy **tường minh**:
+
+`src/OvertimeHotel.HRM.Data/migrations/20261023_event_hourly_shift_planning.sql`
+
+Migration cộng thêm bảng/cột, khóa giao dịch dùng chung và trigger bảo vệ ca nguồn; chạy lại được. Không tự chạy trên database thật lúc khởi động. Trước phát hành: sao lưu, kiểm kê khoản cũ chưa trả, xác nhận danh mục sảnh và các loại đơn nghỉ (`loai_don.la_nghi_phep`). Migration chỉ đánh dấu các tên nghỉ thông dụng; loại đơn tùy biến cần HR xác nhận, không suy ra nghỉ từ cờ hưởng lương.
+
+```powershell
+dotnet run --project tests/HotelEvents/HotelEvents.csproj
+dotnet run --project tests/PayrollRules/PayrollRules.csproj
+node tests/hotel-events-ui.mjs
+dotnet build src/OvertimeHotel.HRM.WebAdmin/OvertimeHotel.HRM.WebAdmin.csproj
+# Chỉ khi EVENT_TEST_CONNECTION trỏ database kiểm thử đã migration:
+dotnet run --project tests/HotelEventsIntegration/HotelEventsIntegration.csproj
+dotnet run --project tests/PayrollRules/PayrollRules.csproj -- --integration
+```
+
+Hai runner database có ghi dữ liệu fixture; không dùng database thật cho kiểm thử phát triển. Việc kiểm thử tính lương không xác nhận mức thuế/bảo hiểm của hệ thống đã được cập nhật theo quy định hiện hành.
+
+## Tham khảo giao diện và chính sách cũ
+
+Các mô tả dưới đây áp dụng cho sự kiện trước chính sách theo giờ. Quy tắc an toàn về nghiệm thu, giữ lịch sử và đối soát kỳ trả ở phần trên được ưu tiên.
 
 ## Cập nhật luồng phụ cấp (21/10/2026)
 
@@ -25,7 +82,7 @@ Mở `/SuKien` hoặc mục **Sự kiện khách sạn** trên menu. Admin và H
 
 ## Database và kiểm thử
 
-Migration: `src/OvertimeHotel.HRM.Data/migrations/20261015_hotel_events.sql`. Migration bổ sung vào hai bảng `du_an`, `phan_cong_du_an`, giữ các cột phụ cấp/lịch sử cũ và không chạy tự động khi khởi động web. Quyền truy cập trực tiếp hai bảng từ `anon`/`authenticated` được đóng; Web dùng kết nối máy chủ. Mobile và kết chuyển lương thuộc giai đoạn tiếp theo.
+Migration gốc: `src/OvertimeHotel.HRM.Data/migrations/20261015_hotel_events.sql`. Migration bổ sung vào hai bảng `du_an`, `phan_cong_du_an`, giữ các cột phụ cấp/lịch sử cũ và không chạy tự động khi khởi động web. Quyền truy cập trực tiếp từ `anon`/`authenticated` được đóng; Web dùng kết nối máy chủ. Kết chuyển lương hiện dùng quyết toán theo phần chính sách mới ở trên; không cấp quyền quản lý trực tiếp bảng cho Mobile.
 
 ```powershell
 dotnet run --project tests/HotelEvents/HotelEvents.csproj

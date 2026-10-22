@@ -1,0 +1,158 @@
+@model CreateYeuCauTaiKhoanViewModel
+
+<form asp-action="Create" asp-route-popup="true" method="post" id="createRequestPopupForm" data-create-request-form>
+    @Html.AntiForgeryToken()
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger border-0 shadow-sm rounded-3 d-flex align-items-start gap-2 p-3 mb-3" role="alert">
+            <i class="bi bi-exclamation-triangle-fill text-danger flex-shrink-0 mt-0.5"></i>
+            <div class="flex-grow-1 small">
+                <strong class="d-block mb-1">Chưa thể gửi yêu cầu:</strong>
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            </div>
+        </div>
+    }
+
+    <!-- KHỐI 1: NHÂN SỰ & CĂN CỨ HỢP ĐỒNG -->
+    <div class="card border-0 bg-light rounded-3 p-3 mb-3">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 24px; height: 24px; font-size: 0.75rem;">1</span>
+                <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Nhân sự &amp; Căn cứ hợp đồng</span>
+            </div>
+            <span class="badge bg-white text-secondary border rounded-pill px-2.5 py-1" style="font-size: 0.7rem;">Căn cứ pháp lý</span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-7 col-12">
+                <label asp-for="EmployeeId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                    Nhân viên đề xuất <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted px-2.5">
+                        <i class="bi bi-person-fill"></i>
+                    </span>
+                    <select asp-for="EmployeeId" class="form-select border-start-0 py-2 ps-2 rounded-end-3" id="popupEmployeeId">
+                        <option value="">-- Chọn nhân viên chưa có tài khoản --</option>
+                        @foreach (var opt in Model.EmployeeOptions)
+                        {
+                            <option value="@opt.Value" selected="@opt.Selected">@opt.Text</option>
+                        }
+                    </select>
+                </div>
+                <span asp-validation-for="EmployeeId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                @if (Model.EmployeeOptions.Count == 0)
+                {
+                    <div class="p-2 mt-2 rounded-2 bg-warning bg-opacity-10 border border-warning-subtle text-warning-emphasis small d-flex align-items-center gap-2" style="font-size: 0.75rem;">
+                        <i class="bi bi-info-circle-fill flex-shrink-0"></i>
+                        <span>Không còn nhân viên nào đang làm việc, chưa có tài khoản và có email công vụ.</span>
+                    </div>
+                }
+            </div>
+
+            <div class="col-md-5 col-12">
+                <label class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                    Vai trò theo hợp đồng lao động
+                </label>
+                <input type="hidden" asp-for="RoleId" id="popupRoleId" />
+                <div class="form-control bg-white border d-flex align-items-center justify-content-between py-2 ps-2.5 pe-2 rounded-3" style="min-height: 42px;">
+                    <div class="d-flex align-items-center gap-2 overflow-hidden">
+                        <i class="bi bi-shield-lock-fill text-primary flex-shrink-0"></i>
+                        <span class="fw-semibold text-truncate small" id="popupRoleDisplayName">Tự động theo HĐLĐ</span>
+                    </div>
+                    <span class="badge bg-primary px-2.5 py-1" id="popupRoleBadge" style="font-size: 0.75rem; display: none;">—</span>
+                </div>
+                <span asp-validation-for="RoleId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+            </div>
+
+            <!-- THÔNG TIN VỊ TRÍ THEO HỢP ĐỒNG ĐÃ KIỂM TRA -->
+            <div class="col-12" id="popupRoleNotice" style="display: none;">
+                <div class="p-2.5 rounded-3 bg-white border border-primary-subtle text-dark small d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-sm">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-patch-check-fill text-primary fs-5 flex-shrink-0"></i>
+                        <div>
+                            <div class="fw-semibold text-secondary" style="font-size: 0.72rem;">Căn cứ vị trí theo hợp đồng lao động:</div>
+                            <div class="fw-bold text-dark" id="popupPositionText">—</div>
+                        </div>
+                    </div>
+                    <div class="text-muted small">
+                        <i class="bi bi-lock-fill text-secondary me-1"></i>Hệ thống tự động cấp quyền theo vị trí ký kết
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="ContractId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                    Hợp đồng làm căn cứ pháp lý <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted px-2.5">
+                        <i class="bi bi-file-earmark-text-fill"></i>
+                    </span>
+                    <select asp-for="ContractId" data-contract-select class="form-select border-start-0 py-2 ps-2 rounded-end-3" id="popupContractId" disabled>
+                        <option value="">-- Chọn hợp đồng lao động làm căn cứ --</option>
+                        @foreach (var contract in Model.ActiveContracts)
+                        {
+                            <option value="@contract.ContractId"
+                                    data-employee-id="@contract.EmployeeId"
+                                    data-role-id="@contract.RoleId"
+                                    data-role-name="@contract.RoleName"
+                                    data-role-display="@contract.RoleDisplayName"
+                                    data-position="@contract.PositionName"
+                                    data-department="@contract.DepartmentName"
+                                    selected="@(Model.ContractId == contract.ContractId)">@contract.Label</option>
+                        }
+                    </select>
+                </div>
+                <span asp-validation-for="ContractId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                <div id="popupNoContractAlert" class="p-2 mt-2 rounded-2 bg-danger bg-opacity-10 border border-danger-subtle text-danger small d-none align-items-center gap-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                    <span>Nhân viên này không có hợp đồng lao động hợp lệ (chưa bắt đầu, đã hết hạn hoặc không tồn tại). Không thể gửi yêu cầu cấp tài khoản.</span>
+                </div>
+                <small class="text-muted d-block mt-1" id="popupContractHelpText" style="font-size: 0.72rem;">
+                    <i class="bi bi-info-circle text-primary me-1"></i> Bắt buộc chọn hợp đồng của đúng nhân viên, trạng thái Hiệu lực, đã bắt đầu và chưa hết hạn.
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- KHỐI 2: TÊN ĐĂNG NHẬP DỰ KIẾN -->
+    <div class="card border-0 bg-light rounded-3 p-3 mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center fw-bold" style="width: 24px; height: 24px; font-size: 0.75rem;">2</span>
+                <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Tên đăng nhập dự kiến</span>
+            </div>
+            <span class="badge bg-white text-secondary border rounded-pill px-2.5 py-1" style="font-size: 0.7rem;">Khởi tạo đăng nhập</span>
+        </div>
+
+        <div>
+            <label asp-for="Username" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                Tên đăng nhập <span class="text-danger">*</span>
+            </label>
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 text-muted font-monospace fw-bold px-3">@@</span>
+                <input asp-for="Username" class="form-control border-start-0 py-2 ps-3 rounded-end-3" placeholder="Ví dụ: nv.nguyenvana" autocomplete="off" id="popupUsername" data-username-input />
+            </div>
+            <span asp-validation-for="Username" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+            <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                <i class="bi bi-magic text-warning me-1"></i> Hệ thống tự động gợi ý tên khi bạn chọn nhân viên; bạn có thể chỉnh sửa trước khi gửi.
+            </small>
+        </div>
+    </div>
+
+    <!-- THAO TÁC -->
+    <div class="d-flex align-items-center justify-content-end gap-2 pt-2 border-top">
+        <button type="button" class="btn btn-outline-secondary rounded-pill px-3.5 py-2 fw-semibold" data-bs-dismiss="modal" style="font-size: 0.84rem;">
+            Hủy bỏ
+        </button>
+        <button type="submit" id="popupBtnSubmit" class="btn btn-hotel-primary rounded-pill px-4 py-2 fw-bold text-white shadow-sm d-flex align-items-center gap-2" disabled="@(Model.EmployeeOptions.Count == 0)" style="font-size: 0.84rem;">
+            <i class="bi bi-send-fill fs-6"></i> Gửi Yêu Cầu Cấp Tài Khoản
+        </button>
+    </div>
+</form>
+
+<script id="popup-employee-role-data" type="application/json">
+@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.EmployeeRoleMap))
+</script>

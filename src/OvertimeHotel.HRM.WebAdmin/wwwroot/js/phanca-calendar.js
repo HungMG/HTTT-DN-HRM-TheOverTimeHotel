@@ -295,24 +295,27 @@
     }
   }
 
-  // Chuyển đổi tab chế độ xem (Cuốn Lịch | Ma Trận | Danh Sách)
+  // Chuyển đổi tab chế độ xem (Cuốn Lịch | Ma Trận | Danh Sách | Nhu Cầu Sự Kiện)
   function bindViewModeTabs() {
     window.switchCalendarViewTab = function (mode) {
       var calendarContainer = document.getElementById('viewCalendarContainer');
       var matrixContainer = document.getElementById('viewMatrixContainer');
       var listContainer = document.getElementById('viewListContainer');
+      var eventDemandContainer = document.getElementById('viewEventDemandContainer');
 
       var tabCalendar = document.getElementById('tabViewCalendar');
       var tabMatrix = document.getElementById('tabViewMatrix');
       var tabList = document.getElementById('tabViewList');
+      var tabEventDemand = document.getElementById('tabViewEventDemand');
 
-      [tabCalendar, tabMatrix, tabList].forEach(function (tab) {
+      [tabCalendar, tabMatrix, tabList, tabEventDemand].forEach(function (tab) {
         if (tab) tab.classList.remove('active');
       });
 
       if (calendarContainer) calendarContainer.classList.add('d-none');
       if (matrixContainer) matrixContainer.classList.add('d-none');
       if (listContainer) listContainer.classList.add('d-none');
+      if (eventDemandContainer) eventDemandContainer.classList.add('d-none');
 
       if (mode === 'matrix') {
         if (matrixContainer) matrixContainer.classList.remove('d-none');
@@ -320,6 +323,9 @@
       } else if (mode === 'list') {
         if (listContainer) listContainer.classList.remove('d-none');
         if (tabList) tabList.classList.add('active');
+      } else if (mode === 'eventDemand') {
+        if (eventDemandContainer) eventDemandContainer.classList.remove('d-none');
+        if (tabEventDemand) tabEventDemand.classList.add('active');
       } else {
         if (calendarContainer) calendarContainer.classList.remove('d-none');
         if (tabCalendar) tabCalendar.classList.add('active');
@@ -336,12 +342,13 @@
 
   // Xóa ca trực trực tiếp trên Agenda
   window.removeShiftFromAgenda = function (maPhanCa, maNhanVien, ngayLamViec) {
-    if (!confirm('Bạn có chắc chắn muốn hủy ca trực này?')) return;
+    const changeReason = prompt('Lý do hủy ca (tối đa 500 ký tự). Phân công sự kiện từ ca này cần xác nhận lại:');
+    if (!changeReason?.trim() || changeReason.trim().length > 500) return;
 
     fetch('/PhanCa/QuickAssignAjax', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ maNhanVien: maNhanVien, ngayLamViec: ngayLamViec, maCa: 0 })
+      headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' },
+      body: JSON.stringify({ maNhanVien: maNhanVien, ngayLamViec: ngayLamViec, maCa: 0, changeReason: changeReason.trim() })
     })
       .then(function (res) { return res.json(); })
       .then(function (res) {

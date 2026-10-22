@@ -115,3 +115,23 @@
                     <span class="event-muted">@(item.TrangThai == "HOAN_THANH" ? "Đã nghiệm thu" : "HR/Admin nghiệm thu khi sự kiện ở trạng thái chờ nghiệm thu.")</span>
                 }
             </div>
+
+
+@if (Model.IsOffice && item.TrangThai == "HOAN_THANH" && item.QuyetToans.Count == 0 && item.PhanCongs.Any(p => p.MaChiTiet == null && p.TrangThaiChiTra == "CHUA_CHI_TRA" && p.DanhGia is "HOAN_THANH" or "XUAT_SAC"))
+{
+    <div class="event-panel mt-4">
+        <h3>Đối soát khoản phụ cấp theo chính sách cũ</h3>
+        <p>Xác nhận số tiền đã chốt ở trên và chọn kỳ chi trả. Số tiền lịch sử được giữ nguyên; khoản đối soát sẽ được kết chuyển khi tính lương.</p>
+        <partial name="_EventPaymentPeriod" model="Model" />
+        <form asp-action="ReconcileLegacy" asp-route-id="@item.MaDuAn" method="post" class="mt-3">
+            <partial name="_EventContext" model="Model" /><input name="version" value="@item.Version" type="hidden" />
+            <label for="legacy-payment-period" class="form-label">Kỳ lương chi trả</label><select id="legacy-payment-period" name="paymentPeriodId" class="form-select mb-3" required><option value="">Chọn kỳ mở</option>@foreach (var period in Model.PaymentPeriods) { <option value="@period.MaKyLuong">@period.Thang.ToString("D2")/@period.Nam · @period.TrangThai</option> }</select>
+            <label for="legacy-reconcile-reason" class="form-label">Căn cứ xác nhận số tiền đã chốt</label><textarea id="legacy-reconcile-reason" name="reason" maxlength="500" rows="2" class="form-control mb-3" required></textarea>
+            <button type="submit" class="event-primary-button" disabled="@(Model.PaymentPeriods.Count == 0)">Xác nhận đối soát và kỳ chi trả</button>
+        </form>
+    </div>
+}
+@if (item.QuyetToans.Count > 0)
+{
+    <div class="event-panel mt-3"><h3>Quyết toán đã đối soát</h3><ul>@foreach (var row in item.QuyetToans) { <li>@row.NhanVien?.HoTen · Phát sinh @row.ThangPhatSinh.ToString("MM/yyyy") · Kỳ trả #@row.MaKyChiTra · @Money(row.SoTien)</li> }</ul></div>
+}

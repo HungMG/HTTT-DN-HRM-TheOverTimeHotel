@@ -29,20 +29,52 @@
         <section class="event-notebook" aria-label="Lịch sự kiện tháng @Model.Month năm @Model.Year">
             <div class="event-notebook-inner">
                 <header class="event-calendar-toolbar">
-                    <div><span class="event-eyebrow">LỊCH SỰ KIỆN</span><h3>Tháng @Model.Month <span>@Model.Year</span></h3></div>
-                    <div class="event-month-controls">
-                        @if (Model.CanCreate && Model.DatabaseReady) { <a class="event-primary-button event-toolbar-create" data-create-event aria-disabled="@(Model.SelectedDate < today ? "true" : "false")" tabindex="@(Model.SelectedDate < today ? -1 : 0)" asp-action="Create" asp-route-date="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-returnYear="@Model.Year" asp-route-returnMonth="@Model.Month" asp-route-returnDate="@Model.SelectedDate.ToString("yyyy-MM-dd")"><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo sự kiện</a> }
-                        <a class="event-icon-button" asp-action="Index" asp-route-year="@previous.Year" asp-route-month="@previous.Month" asp-route-date="@previous.ToString("yyyy-MM-dd")" aria-label="Tháng trước"><i class="bi bi-chevron-left"></i></a>
-                        <a class="event-today-button" asp-action="Index" asp-route-year="@today.Year" asp-route-month="@today.Month" asp-route-date="@today.ToString("yyyy-MM-dd")">Hôm nay</a>
-                        <a class="event-icon-button" asp-action="Index" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-date="@next.ToString("yyyy-MM-dd")" aria-label="Tháng sau"><i class="bi bi-chevron-right"></i></a>
+                    <div class="event-toolbar-nav">
+                        <a class="event-icon-button" asp-action="Index" asp-route-year="@previous.Year" asp-route-month="@previous.Month" asp-route-date="@previous.ToString("yyyy-MM-dd")" aria-label="Tháng trước">
+                            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                        </a>
+                        <details class="event-month-dropdown" data-month-dropdown>
+                            <summary class="event-month-toggle" aria-label="Chọn tháng và năm">
+                                <span>Tháng @Model.Month, @Model.Year</span>
+                                <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                            </summary>
+                            <div class="event-month-popover">
+                                <form method="get" asp-action="Index" class="event-month-picker-form">
+                                    <div class="event-picker-inputs">
+                                        <div class="event-picker-field">
+                                            <label for="calendarMonth">Tháng</label>
+                                            <select id="calendarMonth" name="month" aria-label="Chọn tháng">
+                                                @for (var i = 1; i <= 12; i++)
+                                                {
+                                                    <option value="@i" selected="@(i == Model.Month)">Tháng @i</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="event-picker-field">
+                                            <label for="calendarYear">Năm</label>
+                                            <input id="calendarYear" type="number" name="year" value="@Model.Year" min="1900" max="2100" aria-label="Chọn năm" />
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="event-primary-button event-picker-submit">Áp dụng</button>
+                                </form>
+                            </div>
+                        </details>
+                        <a class="event-icon-button" asp-action="Index" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-date="@next.ToString("yyyy-MM-dd")" aria-label="Tháng sau">
+                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                    <div class="event-toolbar-actions">
+                        @if (Model.CanCreate && Model.DatabaseReady)
+                        {
+                            <a class="event-primary-button event-toolbar-create" data-create-event aria-disabled="@(Model.SelectedDate < today ? "true" : "false")" tabindex="@(Model.SelectedDate < today ? -1 : 0)" asp-action="Create" asp-route-date="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-returnYear="@Model.Year" asp-route-returnMonth="@Model.Month" asp-route-returnDate="@Model.SelectedDate.ToString("yyyy-MM-dd")">
+                                <i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo sự kiện
+                            </a>
+                        }
                     </div>
                 </header>
-                <form method="get" asp-action="Index" class="event-month-picker">
-                    <label class="visually-hidden" for="calendarMonth">Tháng</label><select id="calendarMonth" name="month" aria-label="Chọn tháng">@for (var i = 1; i <= 12; i++) { <option value="@i" selected="@(i == Model.Month)">Tháng @i</option> }</select>
-                    <label class="visually-hidden" for="calendarYear">Năm</label><input id="calendarYear" type="number" name="year" value="@Model.Year" min="1900" max="2100" aria-label="Chọn năm" />
-                    <button type="submit">Xem lịch <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+                <div class="event-calendar-subbar">
                     <span>@Model.Events.Count sự kiện · giờ Việt Nam</span>
-                </form>
+                </div>
                 <div class="event-calendar" role="grid" aria-label="Lịch tháng" aria-multiselectable="true" data-event-calendar data-year="@Model.Year" data-month="@Model.Month" data-selected="@Model.SelectedDate.ToString("yyyy-MM-dd")" data-index-url="@Url.Action("Index")" data-create-url="@Url.Action("Create")" data-today="@today.ToString("yyyy-MM-dd")">
                     <div class="event-weekdays visually-hidden" role="row">@foreach (var label in new[] { "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật" }) { <span role="columnheader">@label</span> }</div>
                     @for (var week = 0; week < 6; week++)

@@ -3,7 +3,6 @@
 @using System.Globalization
 @{
     var item = Model.Event;
-    var canStaff = Model.CanManage && item.TrangThai is "LEN_KE_HOACH" or "DANG_DIEN_RA";
     var closed = item.TrangThai is "HOAN_THANH" or "HUY";
     var summary = Model.StaffingSummary;
     var departments = summary.Departments.ToList();
@@ -11,7 +10,6 @@
     var otherAssignments = item.PhanCongs.Where(p => !groupedIds.Contains(p.MaPhanCong)).ToList();
     if (otherAssignments.Count > 0)
         departments.Add(new EventDepartmentStatus("OTHER", "Phòng ban khác", otherAssignments.Count, true, otherAssignments));
-    var assignedIds = item.PhanCongs.Select(p => p.MaNhanVien).ToHashSet();
     string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
 }
 <div class="event-staff-heading">
@@ -29,8 +27,6 @@
 <div class="event-department-list">
     @foreach (var department in departments)
     {
-        var canAdd = canStaff && Model.RequiredDepartments.Contains(department.Code);
-        var available = Model.Employees.Where(n => HotelEventRules.ResolveDepartmentCode(n) == department.Code && !assignedIds.Contains(n.MaNhanVien)).ToList();
         var roleGroups = department.Roles.ToList();
         var mapped = roleGroups.SelectMany(r => r.Assignments).Select(p => p.MaPhanCong).ToHashSet();
         foreach (var group in department.Assignments.Where(p => !mapped.Contains(p.MaPhanCong)).GroupBy(p => p.VaiTroDuAn))
@@ -38,10 +34,6 @@
         <section class="event-department-card" data-department-card="@department.Code">
             <header>
                 <div><h4>@department.Name</h4><span class="event-muted">@department.AssignedCount người · @(closed ? "Đã ghi nhận" : item.SoKhachDuKien == 0 ? "Chưa xác định quy mô" : department.IsSufficient ? "Đủ vai trò" : $"Thiếu {department.MissingCount} người theo vai trò")</span></div>
-                @if (canAdd)
-                {
-                    <button type="button" class="event-secondary-button" data-add-member aria-haspopup="dialog"><i class="bi bi-plus-lg" aria-hidden="true"></i> Thêm người</button>
-                }
             </header>
             @foreach (var role in roleGroups)
             {
@@ -55,44 +47,13 @@
                     @foreach (var member in role.Assignments.OrderBy(p => p.NhanVien?.HoTen))
                     {
                     <div class="event-assigned-member" data-assigned-member data-employee-id="@member.MaNhanVien">
-                    <div><strong>@member.NhanVien?.HoTen</strong><span>Vai trò: @member.VaiTroDuAn</span><small>@HotelEventRules.Local(member.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(member.KetThuc).ToString("dd/MM HH:mm")</small></div>
-                    <div class="event-member-actions">
-                        @if (!item.TinhPhuCapKhiNghiemThu) { <strong>@Money(member.PhuCapDuKien)</strong> }
-                        @if (canStaff)
-                        {
-                            <form asp-action="RemoveAssignment" asp-route-id="@item.MaDuAn" method="post">
-                                <partial name="_EventContext" model="Model" />
-                                <input name="version" value="@item.Version" type="hidden" />
-                                <input name="assignmentId" value="@member.MaPhanCong" type="hidden" />
-                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Gỡ @member.NhanVien?.HoTen">Gỡ</button>
-                            </form>
-                        }
+                        <div><strong>@member.NhanVien?.HoTen</strong><span>Vai trò: @member.VaiTroDuAn</span><small>@HotelEventRules.Local(member.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(member.KetThuc).ToString("dd/MM HH:mm")</small></div>
+                        <div class="event-member-actions">
+                            @if (!item.TinhPhuCapKhiNghiemThu) { <strong>@Money(member.PhuCapDuKien)</strong> }
+                        </div>
                     </div>
-                </div>
                     }
                     @if (role.Assignments.Count == 0) { <p class="event-empty mb-0">Chưa có nhân viên đảm nhiệm.</p> }
-                </div>
-            }
-            @if (canAdd)
-            {
-                <div class="event-member-picker" data-member-picker id="picker-@item.MaDuAn-@department.Code" data-assignment-url="@Url.Action("Assignment", new { id = item.MaDuAn, department = department.Code, returnYear = Model.ReturnYear, returnMonth = Model.ReturnMonth, returnDate = Model.ReturnDate.ToString("yyyy-MM-dd") })" hidden>
-                    <label for="search-@item.MaDuAn-@department.Code" class="form-label">Chọn nhân viên @department.Name</label>
-                    <input id="search-@item.MaDuAn-@department.Code" type="search" class="form-control" data-member-search placeholder="Tìm theo tên nhân viên…" />
-                    <div class="event-member-options">
-                        @foreach (var employee in available)
-                        {
-                            var eligible = HotelEventRules.ContractCovers(employee, item.NgayBatDau, item.NgayKetThuc);
-                            <label class="event-member-option" data-member-name="@employee.HoTen">
-                                <span><strong>@employee.HoTen</strong>@if (!eligible) { <small>Cần chọn thời gian tham gia phù hợp hợp đồng</small> }</span>
-                                <input type="checkbox" class="event-member-toggle" value="@employee.MaNhanVien" data-choose-member="@employee.MaNhanVien" aria-label="Chọn @employee.HoTen" />
-                            </label>
-                        }
-                    </div>
-                    <p class="event-muted mt-2 mb-0" data-member-empty hidden="@(available.Count > 0)">Không có nhân viên phù hợp.</p>
-                    <div class="event-form-actions">
-                        <button type="button" class="event-secondary-button" data-assignment-close>Hủy</button>
-                        <button type="button" class="event-primary-button" data-continue-assignment disabled>Tiếp tục <span data-selected-count>(0)</span></button>
-                    </div>
                 </div>
             }
         </section>

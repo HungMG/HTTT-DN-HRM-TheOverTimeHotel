@@ -8,6 +8,11 @@ public class PhanCaIndexViewModel
     public DateOnly WeekEnd { get; set; }
     public int? SelectedPhongBanId { get; set; }
     public int? SelectedCaId { get; set; }
+    public IReadOnlyList<DuAn> EventDemand { get; set; } = [];
+    public CongBoLichTuan? PublishedWeek { get; set; }
+    public bool CanPublishWeek { get; set; }
+    public bool CanViewEventDemand { get; set; }
+    public bool EventDemandUnavailable { get; set; }
 
     // Thông tin hiển thị Cuốn Lịch (Calendar Notebook)
     public int Year { get; set; }
@@ -183,6 +188,7 @@ public class QuickAssignAjaxModel
     public int MaNhanVien { get; set; }
     public string NgayLamViec { get; set; } = string.Empty;
     public int MaCa { get; set; }
+    public string? ChangeReason { get; set; }
 }
 
 /// <summary>

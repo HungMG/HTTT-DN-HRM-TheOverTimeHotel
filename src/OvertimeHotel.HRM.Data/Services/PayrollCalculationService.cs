@@ -12,7 +12,120 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 {
     private readonly AppDbContext _context = context;
 
-    public async Task<KyLuong> GetOrCreatePeriodAsync(int thang, int nam, CancellationToken cancellationToken = default)
+    private async Task<T> ExecutePayrollWriteAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken)
+    {
+        if (_context.Database.CurrentTransaction is { } ambient)
+        {
+            var savepoint = "payroll_" + Guid.NewGuid().ToString("N");
+            await ambient.CreateSavepointAsync(savepoint, cancellationToken);
+            try
+            {
+                await LockPayrollOperationsAsync(cancellationToken);
+                var result = await operation();
+                await ambient.ReleaseSavepointAsync(savepoint, cancellationToken);
+                return result;
+            }
+            catch
+            {
+                await ambient.RollbackToSavepointAsync(savepoint, CancellationToken.None);
+                _context.ChangeTracker.Clear();
+                throw;
+            }
+        }
+
+        return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                await LockPayrollOperationsAsync(cancellationToken);
+                var result = await operation();
+                await transaction.CommitAsync(cancellationToken);
+                return result;
+            }
+            catch
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+                _context.ChangeTracker.Clear();
+                throw;
+            }
+        });
+    }
+
+    private async Task LockPayrollOperationsAsync(CancellationToken cancellationToken)
+    {
+        await _context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(2026101509)", cancellationToken);
+        // A reused scoped context must validate the state committed by the preceding lock holder.
+        foreach (var entry in _context.ChangeTracker.Entries().Where(e => e.State == EntityState.Unchanged &&
+                     e.Entity is KyLuong or PhieuLuong or ChiTietPhieuLuong or QuyetToanSuKien or PhanCongDuAn
+                         or ChiTietTruBaoHiem or ChiTietTruThueTncn or ChiTietTruViPhamTamUng).ToList())
+            entry.State = EntityState.Detached;
+    }
+
+    private static void EnsureWritablePeriod(KyLuong period)
+    {
+        if (period.TrangThai is not (SalaryConstants.PERIOD_OPEN or SalaryConstants.PERIOD_DRAFT or SalaryConstants.PERIOD_REJECTED))
+            throw new InvalidOperationException("Chỉ kỳ lương mở, nháp hoặc bị từ chối mới được phép tính lại và điều chỉnh.");
+    }
+
+    private IQueryable<QuyetToanSuKien> OutstandingSettlements(int periodId) =>
+        _context.QuyetToanSuKiens.Where(q => q.MaKyChiTra == periodId && q.MaChiTiet == null &&
+            q.DuAn != null && q.DuAn.TrangThai == "HOAN_THANH");
+
+    private Task ResetSettlementLinksAsync(List<int> detailIds, CancellationToken cancellationToken) =>
+        _context.QuyetToanSuKiens.Where(q => q.MaChiTiet.HasValue && detailIds.Contains(q.MaChiTiet.Value))
+            .ExecuteUpdateAsync(s => s.SetProperty(q => q.MaChiTiet, (int?)null), cancellationToken);
+
+    private async Task EnsureNoHistoricalLegacyLinksAsync(List<int> detailIds, CancellationToken cancellationToken)
+    {
+        if (await _context.PhanCongDuAns.AnyAsync(p => p.MaChiTiet.HasValue && detailIds.Contains(p.MaChiTiet.Value) &&
+                p.DuAn != null && !p.DuAn.TinhTheoGio, cancellationToken))
+            throw new InvalidOperationException("Phiếu lương có khoản sự kiện cũ đã kết chuyển. HR cần đối soát; không được tự động thay đổi khoản tiền đã chốt.");
+    }
+
+    private async Task EnsureLegacyReconciledAsync(int? employeeId, CancellationToken cancellationToken)
+    {
+        if (await _context.PhanCongDuAns.AnyAsync(p => (!employeeId.HasValue || p.MaNhanVien == employeeId) &&
+                p.MaChiTiet == null && p.TrangThaiChiTra == "CHUA_CHI_TRA" && p.TrangThaiThamGia != "HUY_PHAN_CONG" &&
+                (p.DanhGia == "HOAN_THANH" || p.DanhGia == "XUAT_SAC") &&
+                p.DuAn != null && !p.DuAn.TinhTheoGio && p.DuAn.TrangThai == "HOAN_THANH" &&
+                !_context.QuyetToanSuKiens.Any(q => q.MaDuAn == p.MaDuAn && q.MaNhanVien == p.MaNhanVien), cancellationToken))
+            throw new InvalidOperationException("Còn phụ cấp sự kiện cũ chưa xác định tháng phát sinh và kỳ chi trả. HR cần đối soát số tiền đã chốt và lập quyết toán trước khi tính lương.");
+    }
+
+    private static ChiTietPhieuLuong SettlementDetail(QuyetToanSuKien settlement) => new()
+    {
+        LoaiKhoan = "THUONG",
+        LoaiKhoanLuu = "THUONG",
+        TenKhoanLuu = $"Tiền sự kiện SK-{settlement.MaDuAn}",
+        SoTien = settlement.SoTien,
+        GhiChu = $"Quyết toán sự kiện #{settlement.MaQuyetToan}; SK-{settlement.MaDuAn}; tháng phát sinh {settlement.ThangPhatSinh:MM/yyyy}"
+    };
+
+    private static PhieuLuong BonusOnlyPayslip(int periodId, int employeeId, List<ChiTietPhieuLuong> details)
+    {
+        var bonus = details.Sum(d => d.SoTien);
+        var taxable = Math.Max(0m, bonus - SalaryConstants.PERSONAL_TAX_DEDUCTION);
+        var tax = PersonalIncomeTaxCalculator.CalculateTax(taxable);
+        if (tax > 0m)
+            details.Add(new ChiTietPhieuLuong
+            {
+                MaKhoanTru = 4, LoaiKhoan = "KHAU_TRU", LoaiKhoanLuu = "KHAU_TRU",
+                TenKhoanLuu = "Thuế thu nhập cá nhân (TNCN)", SoTien = tax,
+                ChiTietTruThueTncns = [new() { ThuNhapChiuThue = bonus, GiamTruBanThan = SalaryConstants.PERSONAL_TAX_DEDUCTION, ThuNhapTinhThue = taxable, TienThue = tax }]
+            });
+        return new PhieuLuong
+        {
+            MaKyLuong = periodId, MaNhanVien = employeeId, TongThuong = bonus,
+            TongKhauTru = tax, ThucNhan = bonus - tax, TrangThai = SalaryConstants.PAYSLIP_DRAFT,
+            ChiTietPhieuLuongs = details
+        };
+    }
+
+    public Task<KyLuong> GetOrCreatePeriodAsync(int thang, int nam, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => GetOrCreatePeriodCoreAsync(thang, nam, cancellationToken), cancellationToken);
+
+    private async Task<KyLuong> GetOrCreatePeriodCoreAsync(int thang, int nam, CancellationToken cancellationToken)
     {
         await DatabaseSchemaInitializer.EnsurePayrollWorkflowSchemaAsync(_context, cancellationToken);
 
@@ -38,7 +151,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return period;
     }
 
-    public async Task<KyLuong?> GetPeriodWithDetailsAsync(int thang, int nam, CancellationToken cancellationToken = default)
+    public Task<KyLuong?> GetPeriodWithDetailsAsync(int thang, int nam, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => GetPeriodWithDetailsCoreAsync(thang, nam, cancellationToken), cancellationToken);
+
+    private async Task<KyLuong?> GetPeriodWithDetailsCoreAsync(int thang, int nam, CancellationToken cancellationToken)
     {
         await DatabaseSchemaInitializer.EnsurePayrollWorkflowSchemaAsync(_context, cancellationToken);
 
@@ -54,7 +170,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .FirstOrDefaultAsync(k => k.Thang == thang && k.Nam == nam, cancellationToken);
     }
 
-    public async Task<List<KyLuong>> GetAllPeriodsAsync(CancellationToken cancellationToken = default)
+    public Task<List<KyLuong>> GetAllPeriodsAsync(CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => GetAllPeriodsCoreAsync(cancellationToken), cancellationToken);
+
+    private async Task<List<KyLuong>> GetAllPeriodsCoreAsync(CancellationToken cancellationToken)
     {
         await DatabaseSchemaInitializer.EnsurePayrollWorkflowSchemaAsync(_context, cancellationToken);
 
@@ -83,15 +202,13 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .FirstOrDefaultAsync(p => p.MaPhieuLuong == maPhieuLuong, cancellationToken);
     }
 
-    public async Task<KyLuong> CalculatePayrollAsync(int thang, int nam, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default)
-    {
-        await DatabaseSchemaInitializer.EnsurePayrollWorkflowSchemaAsync(_context, cancellationToken);
+    public Task<KyLuong> CalculatePayrollAsync(int thang, int nam, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => CalculatePayrollCoreAsync(thang, nam, nguoiThucHien, maTaiKhoan, cancellationToken), cancellationToken);
 
-        var period = await GetOrCreatePeriodAsync(thang, nam, cancellationToken);
-        if (period.TrangThai == SalaryConstants.PERIOD_LOCKED)
-        {
-            throw new InvalidOperationException("Kỳ lương đã khóa sổ, không được phép tính toán lại.");
-        }
+    private async Task<KyLuong> CalculatePayrollCoreAsync(int thang, int nam, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken)
+    {
+        var period = await GetOrCreatePeriodCoreAsync(thang, nam, cancellationToken);
+        EnsureWritablePeriod(period);
 
         // 1. Rollback các bản ghi phân công dự án đã kết chuyển ở kỳ lương này
         var oldPayslipIds = await _context.PhieuLuongs
@@ -108,6 +225,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
             if (oldDetailIds.Count > 0)
             {
+                await EnsureNoHistoricalLegacyLinksAsync(oldDetailIds, cancellationToken);
+                await ResetSettlementLinksAsync(oldDetailIds, cancellationToken);
                 await _context.PhanCongDuAns
                     .Where(pc => pc.MaChiTiet.HasValue && oldDetailIds.Contains(pc.MaChiTiet.Value))
                     .ExecuteUpdateAsync(s => s
@@ -136,7 +255,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         // 3. Tải trước toàn bộ phân ca, chấm công và đơn từ trong kỳ
         var allShifts = await _context.PhanCas
             .AsNoTracking()
-            .Where(s => s.NgayLamViec >= period.TuNgay && s.NgayLamViec <= period.DenNgay)
+            .Where(s => s.TrangThai != "DA_HUY" && s.NgayLamViec >= period.TuNgay && s.NgayLamViec <= period.DenNgay)
             .Include(s => s.ChamCong)
             .Include(s => s.CaLamViec)
             .ToListAsync(cancellationToken);
@@ -148,20 +267,12 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .Include(r => r.LoaiDon)
             .ToListAsync(cancellationToken);
 
-        var allAssignments = await _context.PhanCongDuAns
-            .Where(pc => pc.TrangThaiChiTra == "CHUA_CHI_TRA" &&
-                        (pc.DanhGia == "HOAN_THANH" || pc.DanhGia == "XUAT_SAC") &&
-                        (pc.DuAn == null || !pc.DuAn.TinhPhuCapKhiNghiemThu || pc.DuAn.TrangThai == "HOAN_THANH"))
-            .Include(pc => pc.DuAn)
-            .ToListAsync(cancellationToken);
+        await EnsureLegacyReconciledAsync(null, cancellationToken);
+        var settlements = await OutstandingSettlements(period.MaKyLuong).ToListAsync(cancellationToken);
 
-        // Danh mục cấu hình phụ cấp và thưởng
         var allowancesConfig = await _context.CauHinhPhuCaps.AsNoTracking().ToListAsync(cancellationToken);
-        var bonusesConfig = await _context.CauHinhKhoanLuongs.AsNoTracking()
-            .Where(k => k.LoaiKhoan == "THUONG").ToListAsync(cancellationToken);
-
         var newPayslips = new List<PhieuLuong>();
-        var assignmentsToUpdate = new List<(PhanCongDuAn Assignment, ChiTietPhieuLuong Detail)>();
+        var settlementsToLink = new List<(QuyetToanSuKien Settlement, ChiTietPhieuLuong Detail)>();
 
         foreach (var nv in employees)
         {
@@ -338,27 +449,11 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 });
             }
 
-            // --- THƯỞNG SỰ KIỆN / DỰ ÁN KHÁCH SẠN (PRD 05 Mục 1.1 & cau_hinh_khoan_luong) ---
-            var empAssignments = allAssignments.Where(a => a.MaNhanVien == nv.MaNhanVien).ToList();
-            var tienThuongSuKien = 0m;
-            foreach (var a in empAssignments)
-            {
-                var (maKhoan, tenKhoan, amount) = HotelEventRules.ResolveEventBonus(a.DuAn, nv.PhongBan, a, bonusesConfig);
-
-                var eventDetail = new ChiTietPhieuLuong
-                {
-                    MaKhoan = maKhoan,
-                    LoaiKhoan = "THUONG",
-                    LoaiKhoanLuu = "THUONG",
-                    TenKhoanLuu = tenKhoan,
-                    SoTien = amount,
-                    GhiChu = $"Thưởng dự án SK-{a.MaDuAn}. Đánh giá: {a.DanhGia}. Mã phân công: #{a.MaPhanCong}"
-                };
-
-                details.Add(eventDetail);
-                tienThuongSuKien += amount;
-                assignmentsToUpdate.Add((a, eventDetail));
-            }
+            var eventDetails = settlements.Where(q => q.MaNhanVien == nv.MaNhanVien)
+                .Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
+            details.AddRange(eventDetails.Select(x => x.Detail));
+            settlementsToLink.AddRange(eventDetails);
+            var tienThuongSuKien = eventDetails.Sum(x => x.Detail.SoTien);
 
             // --- THƯỞNG ---
             var tongThuong = tienThuongSuKien;
@@ -537,6 +632,13 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             newPayslips.Add(payslip);
         }
 
+        foreach (var group in settlements.Where(q => newPayslips.All(p => p.MaNhanVien != q.MaNhanVien)).GroupBy(q => q.MaNhanVien))
+        {
+            var eventDetails = group.Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
+            newPayslips.Add(BonusOnlyPayslip(period.MaKyLuong, group.Key, eventDetails.Select(x => x.Detail).ToList()));
+            settlementsToLink.AddRange(eventDetails);
+        }
+
         _context.PhieuLuongs.AddRange(newPayslips);
         period.TrangThai = SalaryConstants.PERIOD_DRAFT;
 
@@ -544,11 +646,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         await _context.SaveChangesAsync(cancellationToken);
 
         // Cập nhật ngược lại mã chi tiết cho phân công dự án
-        foreach (var (assignment, detail) in assignmentsToUpdate)
-        {
-            assignment.TrangThaiChiTra = "DA_KET_CHUYEN_LUONG";
-            assignment.MaChiTiet = detail.MaChiTiet;
-        }
+        foreach (var (settlement, detail) in settlementsToLink)
+            settlement.MaChiTiet = detail.MaChiTiet;
 
         // Ghi nhật ký quản trị
         _context.NhatKyQuanTris.Add(new NhatKyQuanTri
@@ -565,7 +664,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return period;
     }
 
-    public async Task<bool> RecalculateEmployeeAsync(int maPhieuLuong, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default)
+    public Task<bool> RecalculateEmployeeAsync(int maPhieuLuong, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => RecalculateEmployeeCoreAsync(maPhieuLuong, nguoiThucHien, maTaiKhoan, cancellationToken), cancellationToken);
+
+    private async Task<bool> RecalculateEmployeeCoreAsync(int maPhieuLuong, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken)
     {
         var payslip = await _context.PhieuLuongs
             .Include(p => p.KyLuong)
@@ -573,18 +675,18 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .FirstOrDefaultAsync(p => p.MaPhieuLuong == maPhieuLuong, cancellationToken);
 
         if (payslip == null || payslip.KyLuong == null) return false;
-        if (payslip.KyLuong.TrangThai == SalaryConstants.PERIOD_LOCKED)
-        {
-            throw new InvalidOperationException("Bảng lương đã khóa sổ, không được phép tính lại.");
-        }
+        EnsureWritablePeriod(payslip.KyLuong);
 
         var period = payslip.KyLuong;
         var employeeId = payslip.MaNhanVien;
+        await EnsureLegacyReconciledAsync(employeeId, cancellationToken);
 
         // Hoàn tác các phân công dự án cũ
         var detailIds = payslip.ChiTietPhieuLuongs.Select(c => c.MaChiTiet).ToList();
         if (detailIds.Count > 0)
         {
+            await EnsureNoHistoricalLegacyLinksAsync(detailIds, cancellationToken);
+            await ResetSettlementLinksAsync(detailIds, cancellationToken);
             await _context.PhanCongDuAns
                 .Where(pc => pc.MaChiTiet.HasValue && detailIds.Contains(pc.MaChiTiet.Value))
                 .ExecuteUpdateAsync(s => s
@@ -609,7 +711,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .Include(e => e.HopDongs)
             .FirstOrDefaultAsync(e => e.MaNhanVien == employeeId, cancellationToken);
 
-        if (nv == null) return false;
+        if (nv == null) throw new InvalidOperationException("Không tìm thấy nhân viên để tính lại lương.");
 
         var validContract = nv.HopDongs
             .Where(h => h.TrangThai == "HIEU_LUC" && h.NgayBatDau <= period.DenNgay &&
@@ -617,14 +719,32 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .OrderByDescending(h => h.NgayBatDau)
             .FirstOrDefault();
 
-        if (validContract == null) return false;
+        var settlements = await OutstandingSettlements(period.MaKyLuong)
+            .Where(q => q.MaNhanVien == employeeId).ToListAsync(cancellationToken);
+        if (validContract == null || nv.TrangThai != "DANG_LAM")
+        {
+            if (settlements.Count == 0)
+                throw new InvalidOperationException("Nhân viên không có hợp đồng hiệu lực hoặc quyết toán sự kiện trong kỳ; cần HR đối soát phiếu lương.");
+            var eventDetails = settlements.Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
+            _context.PhieuLuongs.Add(BonusOnlyPayslip(period.MaKyLuong, employeeId, eventDetails.Select(x => x.Detail).ToList()));
+            await _context.SaveChangesAsync(cancellationToken);
+            foreach (var (settlement, detail) in eventDetails) settlement.MaChiTiet = detail.MaChiTiet;
+            _context.NhatKyQuanTris.Add(new NhatKyQuanTri
+            {
+                MaTaiKhoanThucHien = maTaiKhoan, TenNguoiThucHien = nguoiThucHien ?? "HR",
+                TenTaiKhoanBiTacDong = $"NV_{employeeId}", HanhDong = "TINH_LAI_PHIEU_LUONG",
+                NoiDung = $"Tính lại tiền sự kiện tháng {period.Thang}/{period.Nam} cho nhân viên {nv.HoTen}"
+            });
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
 
         var luongCoBan = validContract.LuongCoBan;
         var donGiaNgay = luongCoBan / SalaryConstants.STANDARD_WORKING_DAYS;
         var donGiaGio = donGiaNgay / SalaryConstants.STANDARD_WORKING_HOURS_PER_DAY;
 
         var empShifts = await _context.PhanCas.AsNoTracking()
-            .Where(s => s.MaNhanVien == nv.MaNhanVien && s.NgayLamViec >= period.TuNgay && s.NgayLamViec <= period.DenNgay)
+            .Where(s => s.TrangThai != "DA_HUY" && s.MaNhanVien == nv.MaNhanVien && s.NgayLamViec >= period.TuNgay && s.NgayLamViec <= period.DenNgay)
             .Include(s => s.ChamCong).Include(s => s.CaLamViec).ToListAsync(cancellationToken);
 
         var empLeaves = await _context.DonTus.AsNoTracking()
@@ -679,34 +799,9 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             details.Add(new ChiTietPhieuLuong { MaPhuCap = 3, LoaiKhoan = "PHU_CAP", LoaiKhoanLuu = "PHU_CAP", TenKhoanLuu = "Phụ cấp điện thoại & liên lạc", SoTien = 300000m });
         }
 
-        // Thưởng sự kiện / dự án theo ma trận cau_hinh_khoan_luong
-        var bonusesConfig = await _context.CauHinhKhoanLuongs.AsNoTracking()
-            .Where(k => k.LoaiKhoan == "THUONG").ToListAsync(cancellationToken);
-
-        var assignments = await _context.PhanCongDuAns
-            .Where(pc => pc.MaNhanVien == nv.MaNhanVien && pc.TrangThaiChiTra == "CHUA_CHI_TRA" &&
-                         (pc.DanhGia == "HOAN_THANH" || pc.DanhGia == "XUAT_SAC") &&
-                         (pc.DuAn == null || !pc.DuAn.TinhPhuCapKhiNghiemThu || pc.DuAn.TrangThai == "HOAN_THANH"))
-            .Include(pc => pc.DuAn).ToListAsync(cancellationToken);
-
-        var assignmentsToLink = new List<(PhanCongDuAn Assignment, ChiTietPhieuLuong Detail)>();
-        var tienThuongSuKien = 0m;
-        foreach (var a in assignments)
-        {
-            var (maKhoan, tenKhoan, amount) = HotelEventRules.ResolveEventBonus(a.DuAn, nv.PhongBan, a, bonusesConfig);
-            var item = new ChiTietPhieuLuong
-            {
-                MaKhoan = maKhoan,
-                LoaiKhoan = "THUONG",
-                LoaiKhoanLuu = "THUONG",
-                TenKhoanLuu = tenKhoan,
-                SoTien = amount,
-                GhiChu = $"Thưởng dự án SK-{a.MaDuAn}. Đánh giá: {a.DanhGia}. Mã phân công: #{a.MaPhanCong}"
-            };
-            details.Add(item);
-            tienThuongSuKien += amount;
-            assignmentsToLink.Add((a, item));
-        }
+        var settlementsToLink = settlements.Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
+        details.AddRange(settlementsToLink.Select(x => x.Detail));
+        var tienThuongSuKien = settlementsToLink.Sum(x => x.Detail.SoTien);
 
         // Thưởng khác (Service Charge, Chuyên cần)
         var tongThuong = tienThuongSuKien + 1000000m;
@@ -799,11 +894,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         _context.PhieuLuongs.Add(newP);
         await _context.SaveChangesAsync(cancellationToken);
 
-        foreach (var (a, d) in assignmentsToLink)
-        {
-            a.TrangThaiChiTra = "DA_KET_CHUYEN_LUONG";
-            a.MaChiTiet = d.MaChiTiet;
-        }
+        foreach (var (settlement, detail) in settlementsToLink)
+            settlement.MaChiTiet = detail.MaChiTiet;
 
         _context.NhatKyQuanTris.Add(new NhatKyQuanTri
         {
@@ -818,7 +910,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return true;
     }
 
-    public async Task<bool> AdjustSalaryItemAsync(int maPhieuLuong, string loaiKhoan, string tenKhoan, decimal soTien, string? ghiChu, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default)
+    public Task<bool> AdjustSalaryItemAsync(int maPhieuLuong, string loaiKhoan, string tenKhoan, decimal soTien, string? ghiChu, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => AdjustSalaryItemCoreAsync(maPhieuLuong, loaiKhoan, tenKhoan, soTien, ghiChu, nguoiThucHien, maTaiKhoan, cancellationToken), cancellationToken);
+
+    private async Task<bool> AdjustSalaryItemCoreAsync(int maPhieuLuong, string loaiKhoan, string tenKhoan, decimal soTien, string? ghiChu, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken)
     {
         var payslip = await _context.PhieuLuongs
             .Include(p => p.KyLuong)
@@ -826,10 +921,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .FirstOrDefaultAsync(p => p.MaPhieuLuong == maPhieuLuong, cancellationToken);
 
         if (payslip == null || payslip.KyLuong == null) return false;
-        if (payslip.KyLuong.TrangThai == SalaryConstants.PERIOD_LOCKED)
-        {
-            throw new InvalidOperationException("Bảng lương đã khóa sổ, không được phép điều chỉnh.");
-        }
+        EnsureWritablePeriod(payslip.KyLuong);
 
         var normalizedType = loaiKhoan.Trim().ToUpperInvariant();
         if (normalizedType is not ("PHU_CAP" or "THUONG" or "KHAU_TRU"))
@@ -866,7 +958,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return true;
     }
 
-    public async Task<bool> DeleteSalaryItemAsync(int maChiTiet, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default)
+    public Task<bool> DeleteSalaryItemAsync(int maChiTiet, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => DeleteSalaryItemCoreAsync(maChiTiet, nguoiThucHien, maTaiKhoan, cancellationToken), cancellationToken);
+
+    private async Task<bool> DeleteSalaryItemCoreAsync(int maChiTiet, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken)
     {
         var item = await _context.ChiTietPhieuLuongs
             .Include(c => c.PhieuLuong)
@@ -874,10 +969,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .FirstOrDefaultAsync(c => c.MaChiTiet == maChiTiet, cancellationToken);
 
         if (item == null || item.PhieuLuong == null || item.PhieuLuong.KyLuong == null) return false;
-        if (item.PhieuLuong.KyLuong.TrangThai == SalaryConstants.PERIOD_LOCKED)
-        {
-            throw new InvalidOperationException("Bảng lương đã khóa sổ, không được phép xóa khoản lương.");
-        }
+        EnsureWritablePeriod(item.PhieuLuong.KyLuong);
+
+        await EnsureNoHistoricalLegacyLinksAsync([maChiTiet], cancellationToken);
+        await ResetSettlementLinksAsync([maChiTiet], cancellationToken);
 
         // Nếu là dòng kết chuyển sự kiện -> hoàn tác trạng thái phân công dự án
         await _context.PhanCongDuAns
@@ -887,6 +982,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 .SetProperty(p => p.MaChiTiet, (int?)null), cancellationToken);
 
         var payslip = item.PhieuLuong;
+        await _context.Entry(payslip).Collection(p => p.ChiTietPhieuLuongs).LoadAsync(cancellationToken);
         _context.ChiTietPhieuLuongs.Remove(item);
         payslip.ChiTietPhieuLuongs.Remove(item);
 
@@ -930,17 +1026,19 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         payslip.ThucNhan = tongGross - payslip.TongKhauTru;
     }
 
-    public async Task<bool> SubmitForApprovalAsync(int maKyLuong, string nguoiGui, int? maTaiKhoan, CancellationToken cancellationToken = default)
+    public Task<bool> SubmitForApprovalAsync(int maKyLuong, string nguoiGui, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => SubmitForApprovalCoreAsync(maKyLuong, nguoiGui, maTaiKhoan, cancellationToken), cancellationToken);
+
+    private async Task<bool> SubmitForApprovalCoreAsync(int maKyLuong, string nguoiGui, int? maTaiKhoan, CancellationToken cancellationToken)
     {
         var period = await _context.KyLuongs
             .Include(k => k.PhieuLuongs)
             .FirstOrDefaultAsync(k => k.MaKyLuong == maKyLuong, cancellationToken);
 
         if (period == null) return false;
-        if (period.TrangThai == SalaryConstants.PERIOD_LOCKED)
-        {
-            throw new InvalidOperationException("Bảng lương đã khóa sổ.");
-        }
+        EnsureWritablePeriod(period);
+        if (await OutstandingSettlements(period.MaKyLuong).AnyAsync(cancellationToken))
+            throw new InvalidOperationException("Còn quyết toán sự kiện chưa được kết chuyển. Vui lòng tính lại lương trước khi gửi duyệt.");
         if (period.PhieuLuongs.Count == 0)
         {
             throw new InvalidOperationException("Chưa có phiếu lương nào trong kỳ để gửi duyệt. Vui lòng tính lương trước.");
@@ -969,7 +1067,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return true;
     }
 
-    public async Task<bool> ApprovePayrollAsync(int maKyLuong, string nguoiDuyet, int? maTaiKhoan, CancellationToken cancellationToken = default)
+    public Task<bool> ApprovePayrollAsync(int maKyLuong, string nguoiDuyet, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => ApprovePayrollCoreAsync(maKyLuong, nguoiDuyet, maTaiKhoan, cancellationToken), cancellationToken);
+
+    private async Task<bool> ApprovePayrollCoreAsync(int maKyLuong, string nguoiDuyet, int? maTaiKhoan, CancellationToken cancellationToken)
     {
         var period = await _context.KyLuongs
             .Include(k => k.PhieuLuongs)
@@ -1004,7 +1105,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return true;
     }
 
-    public async Task<bool> RejectPayrollAsync(int maKyLuong, string nguoiTuChoi, string lyDo, int? maTaiKhoan, CancellationToken cancellationToken = default)
+    public Task<bool> RejectPayrollAsync(int maKyLuong, string nguoiTuChoi, string lyDo, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => RejectPayrollCoreAsync(maKyLuong, nguoiTuChoi, lyDo, maTaiKhoan, cancellationToken), cancellationToken);
+
+    private async Task<bool> RejectPayrollCoreAsync(int maKyLuong, string nguoiTuChoi, string lyDo, int? maTaiKhoan, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(lyDo))
         {
@@ -1045,7 +1149,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return true;
     }
 
-    public async Task<bool> LockPayrollAsync(int maKyLuong, string nguoiKhoa, int? maTaiKhoan, CancellationToken cancellationToken = default)
+    public Task<bool> LockPayrollAsync(int maKyLuong, string nguoiKhoa, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => LockPayrollCoreAsync(maKyLuong, nguoiKhoa, maTaiKhoan, cancellationToken), cancellationToken);
+
+    private async Task<bool> LockPayrollCoreAsync(int maKyLuong, string nguoiKhoa, int? maTaiKhoan, CancellationToken cancellationToken)
     {
         var period = await _context.KyLuongs
             .Include(k => k.PhieuLuongs)
@@ -1080,7 +1187,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return true;
     }
 
-    public async Task<bool> PublishPayslipsAsync(int maKyLuong, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default)
+    public Task<bool> PublishPayslipsAsync(int maKyLuong, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => PublishPayslipsCoreAsync(maKyLuong, nguoiThucHien, maTaiKhoan, cancellationToken), cancellationToken);
+
+    private async Task<bool> PublishPayslipsCoreAsync(int maKyLuong, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken)
     {
         var period = await _context.KyLuongs
             .Include(k => k.PhieuLuongs)

@@ -2,9 +2,10 @@
 @using OvertimeHotel.HRM.Core.Policies
 @{
     var item = Model.Event;
+    var employeeCount = item.TinhTheoGio ? item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG").Select(p => p.MaNhanVien).Distinct().Count() : item.PhanCongs.Count;
     var statusLabel = HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai);
 }
-<div class="events-page event-details-content p-0" data-event-details data-event-id="@item.MaDuAn" data-event-count="@item.PhanCongs.Count" data-event-status="@item.TrangThai" data-event-status-label="@statusLabel" data-active-section="@Model.Tab">
+<div class="events-page event-details-content p-0" data-event-details data-event-id="@item.MaDuAn" data-event-count="@employeeCount" data-event-status="@item.TrangThai" data-event-status-label="@statusLabel" data-active-section="@Model.Tab">
     <div class="event-page-heading">
         <div>
             <span class="event-eyebrow">SK-@item.MaDuAn.ToString("D4") · @HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn)</span>
@@ -30,10 +31,10 @@
     }
     <nav class="event-details-navigation" aria-label="Nội dung sự kiện">
         <button type="button" class="event-secondary-button" data-details-section="overview" aria-pressed="@(Model.Tab == "overview" ? "true" : "false")"><i class="bi bi-arrow-left" aria-hidden="true"></i> Thông tin sự kiện</button>
-        <button type="button" class="event-secondary-button" data-details-section="staff" aria-pressed="@(Model.Tab == "staff" ? "true" : "false")"><i class="bi bi-people" aria-hidden="true"></i> Nhân sự · @item.PhanCongs.Count</button>
+        <button type="button" class="event-secondary-button" data-details-section="staff" aria-pressed="@(Model.Tab == "staff" ? "true" : "false")"><i class="bi bi-people" aria-hidden="true"></i> Nhân sự · @employeeCount</button>
         <button type="button" class="event-secondary-button" data-details-section="acceptance" aria-pressed="@(Model.Tab == "acceptance" ? "true" : "false")"><i class="bi bi-patch-check" aria-hidden="true"></i> Đánh giá &amp; nghiệm thu</button>
     </nav>
     <section data-details-pane="overview" hidden="@(Model.Tab != "overview")"><partial name="_EventOverview" model="Model" /></section>
-    <section data-details-pane="staff" hidden="@(Model.Tab != "staff")"><partial name="_EventStaff" model="Model" /></section>
-    <section data-details-pane="acceptance" hidden="@(Model.Tab != "acceptance")"><partial name="_EventAcceptance" model="Model" /></section>
+    <section data-details-pane="staff" hidden="@(Model.Tab != "staff")"><partial name="@(item.TinhTheoGio ? "_HourlyEventStaff" : "_EventStaff")" model="Model" /></section>
+    <section data-details-pane="acceptance" hidden="@(Model.Tab != "acceptance")"><partial name="@(item.TinhTheoGio ? "_HourlyEventAcceptance" : "_EventAcceptance")" model="Model" /></section>
 </div>

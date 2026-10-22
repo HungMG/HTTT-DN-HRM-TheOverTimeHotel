@@ -70,6 +70,7 @@ public static class HotelEventRoleRules
         var points = new SortedDictionary<DateTimeOffset, List<(int Employee, int Delta)>> { [start] = [], [end] = [] };
         foreach (var p in assignments)
         {
+            if (p.TrangThaiThamGia == "HUY_PHAN_CONG") continue;
             var from = p.BatDau > start ? p.BatDau : start;
             var to = p.KetThuc < end ? p.KetThuc : end;
             if (from >= to) continue;
@@ -96,9 +97,16 @@ public static class HotelEventRoleRules
 
     public static bool CanRemove(DuAn item, int assignmentId, DateTimeOffset now)
     {
+        if (item.TinhTheoGio)
+        {
+            var remainingEvent = new DuAn { TinhTheoGio = true, LoaiDuAn = item.LoaiDuAn, NgayBatDau = item.NgayBatDau,
+                NgayKetThuc = item.NgayKetThuc, KetThucThucTe = item.KetThucThucTe, NhuCaus = item.NhuCaus,
+                PhanCongs = item.PhanCongs.Where(p => p.MaPhanCong != assignmentId).ToList() };
+            return item.PhanCongs.Any(p => p.MaPhanCong == assignmentId) && HotelEventRules.GetStaffingSummary(remainingEvent, now).IsFullyStaffed;
+        }
         var removed = item.PhanCongs.SingleOrDefault(p => p.MaPhanCong == assignmentId);
         if (removed == null) return false;
-        var department = HotelEventRules.ResolveDepartmentCode(removed.NhanVien);
+        var department = removed.MaPhongBanSuKien ?? HotelEventRules.ResolveDepartmentCode(removed.NhanVien);
         var role = GetRoles(item.LoaiDuAn, department ?? "", item.SoKhachDuKien)
             .FirstOrDefault(r => Matches(r.Name, removed.VaiTroDuAn));
         if (role is not { IsRequired: true }) return true;
@@ -106,7 +114,7 @@ public static class HotelEventRoleRules
         var end = removed.KetThuc < item.NgayKetThuc ? removed.KetThuc : item.NgayKetThuc;
         if (start >= end) return true;
         var remaining = item.PhanCongs.Where(p => p.MaPhanCong != assignmentId
-            && HotelEventRules.ResolveDepartmentCode(p.NhanVien) == department && Matches(role.Name, p.VaiTroDuAn));
+            && p.TrangThaiThamGia != "HUY_PHAN_CONG" && (p.MaPhongBanSuKien ?? HotelEventRules.ResolveDepartmentCode(p.NhanVien)) == department && Matches(role.Name, p.VaiTroDuAn));
         return MinimumConcurrentCount(remaining, start, end) >= role.RequiredCount;
     }
 }

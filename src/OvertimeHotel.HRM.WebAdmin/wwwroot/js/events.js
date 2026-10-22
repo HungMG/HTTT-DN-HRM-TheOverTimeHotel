@@ -302,6 +302,20 @@
             }
         });
         renderSelection(calendar.dataset.selected);
+        const monthDropdown = document.querySelector('[data-month-dropdown]');
+        if (monthDropdown) {
+            document.addEventListener('click', event => {
+                if (monthDropdown.open && !monthDropdown.contains(event.target)) {
+                    monthDropdown.removeAttribute('open');
+                }
+            });
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape' && monthDropdown.open) {
+                    monthDropdown.removeAttribute('open');
+                    monthDropdown.querySelector('summary')?.focus();
+                }
+            });
+        }
         document.addEventListener('hotel-event-updated', event => {
             const update = event.detail;
             const item = cards.find(card => card.id === Number(update.id));
@@ -311,7 +325,8 @@
                 if (Number(link.dataset.eventId) !== item.id) return;
                 link.className = 'event-calendar-chip event-chip-' + item.status;
                 link.title = item.name + ' · ' + item.statusLabel;
-                link.querySelector('.event-chip-meta').textContent = item.statusLabel + ' · ' + item.count + ' người';
+                const meta = link.querySelector('.event-chip-meta');
+                if (meta) meta.textContent = item.statusLabel + ' · ' + item.count + ' người';
             });
             const selected = new URLSearchParams(window.location.search).get('date') || calendar.dataset.selected;
             renderSelection(selected);

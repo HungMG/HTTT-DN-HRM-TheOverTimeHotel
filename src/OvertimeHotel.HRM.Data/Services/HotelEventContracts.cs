@@ -22,6 +22,10 @@ public class EventInput
     public decimal Budget { get; set; }
     public bool CalculateBudgetAtAcceptance { get; set; }
     public string? Description { get; set; }
+    public bool HourlyCompensation { get; set; }
+    public int? VenueId { get; set; }
+    public int SetupMinutes { get; set; }
+    public int TeardownMinutes { get; set; }
 }
 
 public class EventAssignmentInput
@@ -33,6 +37,7 @@ public class EventAssignmentInput
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
     public decimal Allowance { get; set; }
+    public int? ShiftId { get; set; }
 }
 
 public class EventReviewInput
@@ -41,6 +46,35 @@ public class EventReviewInput
     public int AssignmentId { get; set; }
     public string Rating { get; set; } = "HOAN_THANH";
     public decimal ActualAllowance { get; set; }
+}
+
+public class EventNeedInput
+{
+    public long Version { get; set; }
+    public int NeedId { get; set; }
+    public string Name { get; set; } = "Phục vụ sự kiện";
+    public string Department { get; set; } = "";
+    public string Role { get; set; } = "";
+    public int Count { get; set; }
+    public DateTime Start { get; set; }
+    public DateTime End { get; set; }
+    public string Reason { get; set; } = "";
+}
+
+public class EventWorkInput
+{
+    public long Version { get; set; }
+    public int AssignmentId { get; set; }
+    public DateTime Start { get; set; }
+    public DateTime End { get; set; }
+    public string? Explanation { get; set; }
+}
+
+public record EventPayRow(int EmployeeId, string EmployeeName, DateOnly WorkMonth, decimal Minutes,
+    decimal Amount, IReadOnlyList<OvertimeHotel.HRM.Core.Policies.EventPaySlice> Basis);
+public record EventPayPreview(long Version, IReadOnlyList<EventPayRow> Rows, IReadOnlyList<string> Warnings, string Token)
+{
+    public decimal Total => Rows.Sum(r => r.Amount);
 }
 
 public class EventOperationException(string field, string message, bool forbidden = false) : Exception(message)

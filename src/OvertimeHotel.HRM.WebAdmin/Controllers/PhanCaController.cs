@@ -6,6 +6,7 @@ using Npgsql;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
 
@@ -27,11 +28,13 @@ public class PhanCaController : Controller
 
     private readonly AppDbContext _context;
     private readonly ILogger<PhanCaController> _logger;
+    private readonly IHotelEventService _events;
 
-    public PhanCaController(AppDbContext context, ILogger<PhanCaController> logger)
+    public PhanCaController(AppDbContext context, ILogger<PhanCaController> logger, IHotelEventService events)
     {
         _context = context;
         _logger = logger;
+        _events = events;
     }
 
     /// <summary>
@@ -153,7 +156,7 @@ public class PhanCaController : Controller
                     .ThenInclude(n => n!.HopDongs)
                 .Include(p => p.CaLamViec)
                 .Include(p => p.ChamCong)
-                .Where(p => p.NgayLamViec >= gridStart && p.NgayLamViec <= gridEnd);
+                .Where(p => p.TrangThai != "DA_HUY" && p.NgayLamViec >= gridStart && p.NgayLamViec <= gridEnd);
 
             if (phongBanId.HasValue && phongBanId.Value > 0)
             {
@@ -203,7 +206,7 @@ public class PhanCaController : Controller
                 .Include(p => p.NhanVien).ThenInclude(n => n!.ChucVu)
                 .Include(p => p.CaLamViec)
                 .Include(p => p.ChamCong)
-                .Where(p => p.NgayLamViec == today)
+                .Where(p => p.TrangThai != "DA_HUY" && p.NgayLamViec == today)
                 .ToListAsync();
 
             // 6. Tính toán thống kê Bento
@@ -479,6 +482,26 @@ public class PhanCaController : Controller
                 model.Rows.Add(row);
             }
 
+            try
+            {
+                var actor = await EventActorAsync();
+                if (actor != null)
+                {
+                    model.CanViewEventDemand = true;
+                    model.CanPublishWeek = actor.IsOffice;
+                    model.EventDemand = (await _events.ListAsync(actor,
+                        HotelEventRules.ToUtc(weekStart.ToDateTime(TimeOnly.MinValue)),
+                        HotelEventRules.ToUtc(weekStart.AddDays(7).ToDateTime(TimeOnly.MinValue))))
+                        .Where(e => e.TinhTheoGio && e.TrangThai != "HUY").ToList();
+                    model.PublishedWeek = await _events.PublishedWeekAsync(weekStart);
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                _logger.LogWarning(ex, "Không thể tải nhu cầu sự kiện và công bố lịch tuần.");
+                model.EventDemandUnavailable = true;
+                model.CanPublishWeek = false;
+            }
             return View(model);
         }
         catch (Exception ex)
@@ -488,6 +511,41 @@ public class PhanCaController : Controller
             ViewBag.IsDemoData = false;
             return View(model);
         }
+    }
+
+    private async Task<EventActor?> EventActorAsync()
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var accountId)) return null;
+        var account = await _context.TaiKhoans.AsNoTracking().Include(a => a.VaiTro).Include(a => a.NhanVien)
+            .SingleOrDefaultAsync(a => a.MaTaiKhoan == accountId && a.TrangThai);
+        var role = account?.VaiTro?.TenVaiTro.ToUpperInvariant() switch
+        { "ADMIN" => "Admin", "HR" => "HR", "MANAGER" => "Manager", _ => "" };
+        return account?.NhanVien?.TrangThai != "DANG_LAM" || role == "" ? null
+            : new EventActor(account.MaNhanVien, account.MaTaiKhoan, role, account.TenDangNhap);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> PublishWeek(DateOnly weekStart, long version, string? reason)
+    {
+        var actor = await EventActorAsync();
+        if (actor?.IsOffice != true) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
+        try
+        {
+            await _events.PublishWeekAsync(actor, weekStart, version, reason);
+            TempData["Success"] = "Đã công bố lịch tuần chính thức.";
+        }
+        catch (EventOperationException ex)
+        {
+            if (ex.Forbidden) return Forbid();
+            TempData["Error"] = ex.Message;
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Không thể công bố lịch tuần {WeekStart}.", weekStart);
+            TempData["Error"] = "Lịch tuần vừa thay đổi; tải lại trước khi công bố.";
+        }
+        return RedirectToAction(nameof(Index), new { week = weekStart.ToString("yyyy-MM-dd") });
     }
 
     /// <summary>
@@ -554,6 +612,8 @@ public class PhanCaController : Controller
 
         try
         {
+            var result = await WriteScheduleAsync<IActionResult?>(async () =>
+            {
             var ca = await _context.CaLamViecs.FindAsync(input.MaCa);
             if (ca == null)
             {
@@ -601,7 +661,7 @@ public class PhanCaController : Controller
             var rangeStart = targetDates.Min().AddDays(-1);
             var rangeEnd = targetDates.Max().AddDays(1);
             var shiftWindows = (await _context.PhanCas.AsNoTracking()
-                    .Where(p => empIds.Contains(p.MaNhanVien) &&
+                    .Where(p => p.TrangThai != "DA_HUY" && empIds.Contains(p.MaNhanVien) &&
                                 p.NgayLamViec >= rangeStart && p.NgayLamViec <= rangeEnd)
                     .Select(p => new { p.MaNhanVien, p.BatDauDuKien, p.KetThucDuKien })
                     .ToListAsync())
@@ -652,12 +712,12 @@ public class PhanCaController : Controller
                     }
 
                     // Kiểm tra trùng đúng mã ca trong ngày
-                    var exist = await _context.PhanCas.AnyAsync(p =>
+                    var exist = await _context.PhanCas.FirstOrDefaultAsync(p =>
                         p.MaNhanVien == empId &&
                         p.NgayLamViec == targetDate &&
                         p.MaCa == input.MaCa);
 
-                    if (exist)
+                    if (exist != null && exist.TrangThai != "DA_HUY")
                     {
                         skippedDuplicateCount++;
                         continue;
@@ -689,17 +749,12 @@ public class PhanCaController : Controller
                         continue;
                     }
 
-                    var phanCa = new PhanCa
-                    {
-                        MaNhanVien = empId,
-                        MaCa = input.MaCa,
-                        NgayLamViec = targetDate,
-                        BatDauDuKien = shiftStart,
-                        KetThucDuKien = shiftEnd,
-                        TrangThai = safeStatus
-                    };
-
-                    _context.PhanCas.Add(phanCa);
+                    var phanCa = exist ?? new PhanCa { MaNhanVien = empId, MaCa = input.MaCa, NgayLamViec = targetDate };
+                    phanCa.BatDauDuKien = shiftStart;
+                    phanCa.KetThucDuKien = shiftEnd;
+                    phanCa.TrangThai = safeStatus;
+                    phanCa.DaCongBo = false;
+                    if (exist == null) _context.PhanCas.Add(phanCa);
                     existingWindows.Add(new ShiftSchedulingPolicy.ShiftWindow(shiftStart, shiftEnd));
                     shiftWindows[empId] = existingWindows;
                     successCount++;
@@ -749,6 +804,9 @@ public class PhanCaController : Controller
                     ? string.Join(" ", errors)
                     : "Không thể tạo lượt phân ca.";
             }
+                return null;
+            });
+            if (result != null) return result;
         }
         catch (Exception ex)
         {
@@ -779,6 +837,8 @@ public class PhanCaController : Controller
 
         try
         {
+            var result = await WriteScheduleAsync<IActionResult?>(async () =>
+            {
             var emp = await _context.NhanViens
                 .Include(n => n.HopDongs)
                 .FirstOrDefaultAsync(n => n.MaNhanVien == maNhanVien);
@@ -816,7 +876,7 @@ public class PhanCaController : Controller
             // Nạp sẵn lịch hiện có của nhân viên trong tuần (rộng 1 ngày mỗi đầu để
             // bắt được ca đêm của ngày kề bên vắt qua ranh giới tuần).
             var existingWindows = (await _context.PhanCas.AsNoTracking()
-                    .Where(p => p.MaNhanVien == maNhanVien &&
+                    .Where(p => p.TrangThai != "DA_HUY" && p.MaNhanVien == maNhanVien &&
                                 p.NgayLamViec >= weekStart.AddDays(-1) &&
                                 p.NgayLamViec <= weekStart.AddDays(6))
                     .Select(p => new { p.BatDauDuKien, p.KetThucDuKien })
@@ -852,12 +912,12 @@ public class PhanCaController : Controller
                     continue;
                 }
 
-                var exist = await _context.PhanCas.AnyAsync(p =>
+                var exist = await _context.PhanCas.FirstOrDefaultAsync(p =>
                     p.MaNhanVien == maNhanVien &&
                     p.NgayLamViec == workDate &&
                     p.MaCa == maCa);
 
-                if (!exist)
+                if (exist == null || exist.TrangThai == "DA_HUY")
                 {
                     var shiftStart = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
                     var shiftEnd = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
@@ -872,15 +932,12 @@ public class PhanCaController : Controller
                         continue;
                     }
 
-                    _context.PhanCas.Add(new PhanCa
-                    {
-                        MaNhanVien = maNhanVien,
-                        MaCa = maCa,
-                        NgayLamViec = workDate,
-                        BatDauDuKien = shiftStart,
-                        KetThucDuKien = shiftEnd,
-                        TrangThai = "DA_PHAN"
-                    });
+                    var shift = exist ?? new PhanCa { MaNhanVien = maNhanVien, MaCa = maCa, NgayLamViec = workDate };
+                    shift.BatDauDuKien = shiftStart;
+                    shift.KetThucDuKien = shiftEnd;
+                    shift.TrangThai = "DA_PHAN";
+                    shift.DaCongBo = false;
+                    if (exist == null) _context.PhanCas.Add(shift);
                     existingWindows.Add(new ShiftSchedulingPolicy.ShiftWindow(shiftStart, shiftEnd));
                     addedCount++;
                 }
@@ -942,6 +999,9 @@ public class PhanCaController : Controller
                         : "Nhân viên đã có lịch phân ca đầy đủ cho các ngày đã chọn.";
                 }
             }
+                return null;
+            });
+            if (result != null) return result;
         }
         catch (Exception ex)
         {
@@ -957,16 +1017,20 @@ public class PhanCaController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(int id, string? returnWeek)
+    public async Task<IActionResult> Delete(int id, string? returnWeek, string? changeReason)
     {
         try
         {
+            var result = await WriteScheduleAsync<IActionResult?>(async () =>
+            {
             var phanCa = await _context.PhanCas
-                .Include(p => p.ChamCong)
+                .Include(p => p.ChamCong).Include(p => p.NhanVien)
                 .FirstOrDefaultAsync(p => p.MaPhanCa == id);
 
             if (phanCa != null)
             {
+                var scope = GetManagerDepartmentScope();
+                if (scope.HasValue && phanCa.NhanVien?.MaPhongBan != scope.Value) return Forbid();
                 var today = DateOnly.FromDateTime(DateTime.Today);
                 if (phanCa.NgayLamViec < today)
                 {
@@ -980,10 +1044,13 @@ public class PhanCaController : Controller
                     return RedirectToAction(nameof(Index), new { week = returnWeek });
                 }
 
-                _context.PhanCas.Remove(phanCa);
+                    await CancelSourceShiftsAsync([phanCa], changeReason);
                 await _context.SaveChangesAsync();
-                TempData["Success"] = TempData["SuccessMessage"] = "Đã hủy lượt phân ca thành công!";
+                    TempData["Success"] = TempData["SuccessMessage"] = "Đã hủy lượt phân ca thành công!";
             }
+                return null;
+            });
+            if (result != null) return result;
         }
         catch (Exception ex)
         {
@@ -1268,10 +1335,10 @@ public class PhanCaController : Controller
     /// API gán nhanh / đổi ca / xóa ca trực tiếp trên cuốn lịch ma trận (In-Place Ajax)
     /// </summary>
     [HttpPost]
-    [IgnoreAntiforgeryToken]
-    public async Task<IActionResult> QuickAssignAjax([FromBody] QuickAssignAjaxModel input)
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickAssignAjax([FromBody] QuickAssignAjaxModel? input)
     {
-        if (input.MaNhanVien <= 0 || !DateOnly.TryParse(input.NgayLamViec, out var targetDate))
+        if (input == null || !ModelState.IsValid || input.MaNhanVien <= 0 || !DateOnly.TryParse(input.NgayLamViec, out var targetDate))
         {
             return Json(new { success = false, message = "Thông tin nhân viên hoặc ngày làm việc không hợp lệ." });
         }
@@ -1284,30 +1351,8 @@ public class PhanCaController : Controller
 
         try
         {
-            // 1. Chế độ xóa ca (MaCa <= 0)
-            if (input.MaCa <= 0)
+            return await WriteScheduleAsync<IActionResult>(async () =>
             {
-                var oldShifts = await _context.PhanCas
-                    .Include(p => p.ChamCong)
-                    .Where(p => p.MaNhanVien == input.MaNhanVien && p.NgayLamViec == targetDate)
-                    .ToListAsync();
-
-                if (oldShifts.Any(p => p.ChamCong != null && p.ChamCong.GioCheckIn.HasValue))
-                {
-                    return Json(new { success = false, message = "Không thể xóa ca vì nhân viên đã quẹt thẻ chấm công." });
-                }
-
-                if (oldShifts.Count != 0)
-                {
-                    _context.PhanCas.RemoveRange(oldShifts);
-                    await _context.SaveChangesAsync();
-                }
-
-                return Json(new { success = true, action = "removed", maNhanVien = input.MaNhanVien, ngayLamViec = input.NgayLamViec });
-            }
-
-            // 2. Chế độ gán hoặc đổi ca
-            // RÀNG BUỘC HỢP ĐỒNG: Kiểm tra hiệu lực hợp đồng của nhân viên vào ngày làm việc
             var emp = await _context.NhanViens
                 .Include(n => n.HopDongs)
                 .FirstOrDefaultAsync(n => n.MaNhanVien == input.MaNhanVien);
@@ -1324,6 +1369,30 @@ public class PhanCaController : Controller
                 return Json(new { success = false, message = "Bạn chỉ được xếp ca cho nhân sự thuộc phòng ban mình phụ trách." });
             }
 
+            // 1. Chế độ xóa ca (MaCa <= 0)
+            if (input.MaCa <= 0)
+            {
+                var oldShifts = await _context.PhanCas
+                    .Include(p => p.ChamCong)
+                    .Where(p => p.MaNhanVien == input.MaNhanVien && p.NgayLamViec == targetDate)
+                    .ToListAsync();
+
+                if (oldShifts.Any(p => p.ChamCong != null && p.ChamCong.GioCheckIn.HasValue))
+                {
+                    return Json(new { success = false, message = "Không thể xóa ca vì nhân viên đã quẹt thẻ chấm công." });
+                }
+
+                if (oldShifts.Count != 0)
+                {
+                    await CancelSourceShiftsAsync(oldShifts, input.ChangeReason);
+                    await _context.SaveChangesAsync();
+                }
+
+                    return Json(new { success = true, action = "removed", maNhanVien = input.MaNhanVien, ngayLamViec = input.NgayLamViec });
+            }
+
+            // 2. Chế độ gán hoặc đổi ca
+            // RÀNG BUỘC HỢP ĐỒNG: Kiểm tra hiệu lực hợp đồng của nhân viên vào ngày làm việc
             var contractValidation = ContractAttendancePolicy.ValidateSchedulingContract(emp, targetDate);
             if (!contractValidation.IsAllowed)
             {
@@ -1361,19 +1430,19 @@ public class PhanCaController : Controller
                 return Json(new { success = false, message = "Không thể đổi ca vì nhân viên đã quẹt thẻ chấm công cho ca hiện tại." });
             }
 
-            if (existing.Count != 0)
-            {
-                _context.PhanCas.RemoveRange(existing);
-            }
-
             var shiftStart = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
             var shiftEnd = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
+            var activeShifts = existing.Where(p => p.TrangThai != "DA_HUY").ToList();
+            var sameSource = activeShifts.Count == 1 && activeShifts[0].MaCa == input.MaCa
+                && activeShifts[0].BatDauDuKien == shiftStart && activeShifts[0].KetThucDuKien == shiftEnd;
+            if (!sameSource && existing.Count != 0)
+                await CancelSourceShiftsAsync(existing, input.ChangeReason);
 
             // PRD 3.2 / 3.3: ca đang xếp không được trùng giờ và phải giữ khoảng
             // nghỉ tối thiểu với các ca của những ngày khác. Ca cùng ngày vừa nằm
             // trong `existing` (sẽ bị xoá) nên không tính vào tập so sánh.
             var otherWindows = (await _context.PhanCas.AsNoTracking()
-                    .Where(p => p.MaNhanVien == input.MaNhanVien &&
+                    .Where(p => p.TrangThai != "DA_HUY" && p.MaNhanVien == input.MaNhanVien &&
                                 p.NgayLamViec != targetDate &&
                                 p.NgayLamViec >= targetDate.AddDays(-2) &&
                                 p.NgayLamViec <= targetDate.AddDays(2))
@@ -1387,17 +1456,14 @@ public class PhanCaController : Controller
                 return Json(new { success = false, message = conflict.ThongDiep });
             }
 
-            var phanCa = new PhanCa
-            {
-                MaNhanVien = input.MaNhanVien,
-                MaCa = input.MaCa,
-                NgayLamViec = targetDate,
-                BatDauDuKien = shiftStart,
-                KetThucDuKien = shiftEnd,
-                TrangThai = "DA_PHAN"
-            };
-
-            _context.PhanCas.Add(phanCa);
+            var phanCa = (sameSource ? activeShifts[0] : existing.FirstOrDefault(p => p.MaCa == input.MaCa && p.TrangThai == "DA_HUY"))
+                ?? new PhanCa { MaNhanVien = input.MaNhanVien, MaCa = input.MaCa, NgayLamViec = targetDate };
+            phanCa.BatDauDuKien = shiftStart;
+            phanCa.KetThucDuKien = shiftEnd;
+            phanCa.TrangThai = "DA_PHAN";
+            phanCa.DaCongBo = sameSource && phanCa.DaCongBo;
+            if (phanCa.MaPhanCa == 0) _context.PhanCas.Add(phanCa);
+            else _context.Entry(phanCa).State = EntityState.Modified;
             await _context.SaveChangesAsync();
 
             return Json(new
@@ -1413,12 +1479,49 @@ public class PhanCaController : Controller
                 gioKetThuc = ca.GioKetThuc.ToString("HH:mm"),
                 quaDem = ca.QuaDem
             });
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi khi gán nhanh ca trực cho nhân viên {MaNhanVien} ngày {NgayLamViec}", input.MaNhanVien, input.NgayLamViec);
             return Json(new { success = false, message = "Lỗi khi lưu dữ liệu vào CSDL: " + ex.Message });
         }
+    }
+
+    private Task<T> WriteScheduleAsync<T>(Func<Task<T>> operation) =>
+        _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            _context.ChangeTracker.Clear();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await _context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(2026101509)");
+            var result = await operation();
+            await transaction.CommitAsync();
+            return result;
+        });
+
+    private async Task CancelSourceShiftsAsync(IReadOnlyList<PhanCa> shifts, string? reason)
+    {
+        var active = shifts.Where(s => s.TrangThai != "DA_HUY").ToList();
+        if (active.Count == 0) return;
+        reason = reason?.Trim();
+        if (string.IsNullOrWhiteSpace(reason) || reason.Length > 500)
+            throw new InvalidOperationException("Ghi lý do hủy / đổi ca (tối đa 500 ký tự). Phân công sự kiện từ ca này sẽ cần xác nhận lại.");
+        await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT set_config('app.shift_change_reason', {reason}, true)");
+        var ids = active.Select(s => s.MaPhanCa).ToList();
+        var referenced = await _context.PhanCongDuAns.Where(p => p.MaPhanCa.HasValue && ids.Contains(p.MaPhanCa.Value))
+            .Select(p => p.MaPhanCa!.Value).Distinct().ToListAsync();
+        foreach (var shift in active)
+        {
+            if (referenced.Contains(shift.MaPhanCa)) shift.TrangThai = "DA_HUY";
+            else _context.PhanCas.Remove(shift);
+        }
+        var name = User.Identity?.Name ?? "Người xếp ca";
+        _context.NhatKyQuanTris.Add(new NhatKyQuanTri {
+            MaTaiKhoanThucHien = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var accountId) ? accountId : null,
+            TenNguoiThucHien = name.Length > 100 ? name[..100] : name,
+            TenTaiKhoanBiTacDong = "LICH-CA", HanhDong = "HUY_DOI_CA",
+            NoiDung = "Hủy / thay thế ca #" + string.Join(", #", ids) + "; giữ ca có lịch sử sự kiện.", LyDo = reason
+        });
     }
 
     /// <summary>

@@ -217,28 +217,36 @@ public class YeuCauTaiKhoanController : Controller
     // =====================================================================
     [HttpGet]
     [Authorize(Policy = PermissionCodes.ManageAccounts)]
-    public async Task<IActionResult> Create()
+    public async Task<IActionResult> Create(bool popup = false)
     {
         var role = GetCurrentRoleName();
         if (!LeaveApprovalPolicy.CanSubmitAccountRequest(role))
         {
+            if (popup)
+            {
+                return Forbid();
+            }
             TempData["Error"] = "Chỉ Quản trị viên và Nhân sự mới có thẩm quyền gửi yêu cầu cấp tài khoản.";
             return RedirectToAction(nameof(Index));
         }
 
-        var model = new CreateYeuCauTaiKhoanViewModel();
+        var model = new CreateYeuCauTaiKhoanViewModel { IsPopup = popup };
         await LoadCreateOptionsAsync(model);
-        return View(model);
+        return popup ? PartialView("_CreateRequestPopup", model) : View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PermissionCodes.ManageAccounts)]
-    public async Task<IActionResult> Create(CreateYeuCauTaiKhoanViewModel model)
+    public async Task<IActionResult> Create(CreateYeuCauTaiKhoanViewModel model, bool popup = false)
     {
         var role = GetCurrentRoleName();
         if (!LeaveApprovalPolicy.CanSubmitAccountRequest(role))
         {
+            if (popup)
+            {
+                return Forbid();
+            }
             TempData["Error"] = "Chỉ Quản trị viên và Nhân sự mới có thẩm quyền gửi yêu cầu cấp tài khoản.";
             return RedirectToAction(nameof(Index));
         }
@@ -250,7 +258,33 @@ public class YeuCauTaiKhoanController : Controller
         {
             ModelState.AddModelError(string.Empty, "Không xác định được nhân viên đang đăng nhập. Vui lòng đăng nhập lại.");
             await LoadCreateOptionsAsync(model);
+            if (popup || string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+            {
+                return PartialView("_CreateRequestPopup", model);
+            }
             return View(model);
+        }
+
+        if (model.RoleId <= 0 && model.EmployeeId > 0)
+        {
+            var empInfo = await _context.NhanViens
+                .AsNoTracking()
+                .Include(nv => nv.ChucVu)
+                .Include(nv => nv.PhongBan)
+                .Where(nv => nv.MaNhanVien == model.EmployeeId)
+                .Select(nv => new { Pos = nv.ChucVu != null ? nv.ChucVu.TenChucVu : null, Dept = nv.PhongBan != null ? nv.PhongBan.TenPhongBan : null })
+                .FirstOrDefaultAsync();
+
+            if (empInfo != null)
+            {
+                var (infRole, _) = ResolveRoleFromPositionAndDepartment(empInfo.Pos, empInfo.Dept, LeaveApprovalPolicy.IsAdmin(GetCurrentRoleName()));
+                var matchedRole = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(r => r.TenVaiTro == infRole);
+                if (matchedRole != null)
+                {
+                    model.RoleId = matchedRole.MaVaiTro;
+                    ModelState.Remove(nameof(model.RoleId));
+                }
+            }
         }
 
         // Kiểm tra nhân viên: đang làm việc, có email công vụ, chưa có tài khoản,
@@ -335,6 +369,10 @@ public class YeuCauTaiKhoanController : Controller
         if (!ModelState.IsValid)
         {
             await LoadCreateOptionsAsync(model);
+            if (popup || string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+            {
+                return PartialView("_CreateRequestPopup", model);
+            }
             return View(model);
         }
 
@@ -375,10 +413,20 @@ public class YeuCauTaiKhoanController : Controller
         {
             ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên này đang có yêu cầu cấp tài khoản chờ hoặc đang được xử lý.");
             await LoadCreateOptionsAsync(model);
+            if (popup || string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+            {
+                return PartialView("_CreateRequestPopup", model);
+            }
             return View(model);
         }
 
-        TempData["Success"] = $"Đã gửi yêu cầu cấp tài khoản '{model.Username}'. Bộ phận Công nghệ Thông tin hoặc Quản trị viên sẽ xử lý.";
+        var successMessage = $"Đã gửi yêu cầu cấp tài khoản '{model.Username}'. Bộ phận Công nghệ Thông tin hoặc Quản trị viên sẽ xử lý.";
+        if (popup || string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+        {
+            return Json(new { success = true, message = successMessage });
+        }
+
+        TempData["Success"] = successMessage;
         return RedirectToAction(nameof(Index));
     }
 
@@ -622,8 +670,10 @@ public class YeuCauTaiKhoanController : Controller
 
         // 1. Chỉ hiện nhân viên đang làm việc, có email công vụ, chưa có tài khoản,
         // và KHÔNG có yêu cầu nào đang chờ hoặc đang xử lý.
-        model.EmployeeOptions = await _context.NhanViens
+        var eligibleEmployees = await _context.NhanViens
             .AsNoTracking()
+            .Include(employee => employee.ChucVu)
+            .Include(employee => employee.PhongBan)
             .Where(employee =>
                 employee.TrangThai == "DANG_LAM" &&
                 employee.EmailCongVu != null &&
@@ -634,13 +684,14 @@ public class YeuCauTaiKhoanController : Controller
                     (req.TrangThai == STATUS_CHO_IT || req.TrangThai == STATUS_DANG_XU_LY)))
             .OrderBy(employee => employee.Ho)
             .ThenBy(employee => employee.Ten)
-            .Select(employee => new SelectListItem
-            {
-                Value = employee.MaNhanVien.ToString(),
-                Text = (employee.Ho + " " + employee.Ten).Trim() + " · " + employee.EmailCongVu,
-                Selected = employee.MaNhanVien == model.EmployeeId
-            })
             .ToListAsync();
+
+        model.EmployeeOptions = eligibleEmployees.Select(employee => new SelectListItem
+        {
+            Value = employee.MaNhanVien.ToString(),
+            Text = (employee.Ho + " " + employee.Ten).Trim() + " · " + employee.EmailCongVu,
+            Selected = employee.MaNhanVien == model.EmployeeId
+        }).ToList();
 
         // 2. Danh sách vai trò: Admin chỉ hiện khi người gửi là Admin.
         var senderIsAdmin = LeaveApprovalPolicy.IsAdmin(GetCurrentRoleName());
@@ -648,62 +699,99 @@ public class YeuCauTaiKhoanController : Controller
             .Where(roleName => senderIsAdmin || !string.Equals(roleName, "Admin", StringComparison.Ordinal))
             .ToArray();
 
-        model.RoleOptions = await _context.VaiTros
+        var dbRoles = await _context.VaiTros
             .AsNoTracking()
             .Where(role => roleNames.Contains(role.TenVaiTro))
             .OrderBy(role => role.MaVaiTro)
-            .Select(role => new SelectListItem
-            {
-                Value = role.MaVaiTro.ToString(),
-                Text = role.TenVaiTro,
-                Selected = role.MaVaiTro == model.RoleId
-            })
             .ToListAsync();
 
-        foreach (var roleOption in model.RoleOptions)
+        model.RoleOptions = dbRoles.Select(role => new SelectListItem
         {
-            roleOption.Text = GetVietnameseRoleName(roleOption.Text);
+            Value = role.MaVaiTro.ToString(),
+            Text = GetVietnameseRoleName(role.TenVaiTro),
+            Selected = role.MaVaiTro == model.RoleId
+        }).ToList();
+
+        var roleMapByName = dbRoles.ToDictionary(r => r.TenVaiTro, r => r.MaVaiTro, StringComparer.OrdinalIgnoreCase);
+        int GetRoleId(string rName)
+        {
+            if (roleMapByName.TryGetValue(rName, out var id)) return id;
+            if (roleMapByName.TryGetValue("Employee", out var empId)) return empId;
+            return dbRoles.FirstOrDefault()?.MaVaiTro ?? 0;
         }
 
-        if (model.RoleId == 0)
+        model.EmployeeRoleMap = new Dictionary<int, EmployeeContractRoleInfo>();
+        foreach (var emp in eligibleEmployees)
         {
-            var defaultRole = model.RoleOptions.FirstOrDefault(option => option.Text == GetVietnameseRoleName("Employee"));
-            model.RoleId = defaultRole == null ? 0 : int.Parse(defaultRole.Value!);
+            var pName = emp.ChucVu?.TenChucVu ?? "Chưa phân bổ";
+            var dName = emp.PhongBan?.TenPhongBan ?? "Khách sạn";
+            var (rName, rDisplay) = ResolveRoleFromPositionAndDepartment(pName, dName, senderIsAdmin);
+            model.EmployeeRoleMap[emp.MaNhanVien] = new EmployeeContractRoleInfo
+            {
+                EmployeeId = emp.MaNhanVien,
+                RoleId = GetRoleId(rName),
+                RoleName = rName,
+                RoleDisplayName = rDisplay,
+                PositionName = pName,
+                DepartmentName = dName
+            };
         }
 
         // 3. Chỉ hợp đồng HIỆU LỰC, ĐÃ BẮT ĐẦU và CHƯA HẾT HẠN (chấp nhận hết hạn hôm nay hoặc không thời hạn)
-        // Nạp về bộ nhớ rồi mới ghép nhãn: ContractTypes.ToDisplayName không dịch
-        // được sang SQL. Nếu chiếu thẳng cột vào Label như trước, người dùng đọc
-        // thấy mã "XAC_DINH_THOI_HAN_1_NAM" thay vì tên tiếng Việt.
         var hopDongHieuLuc = await _context.HopDongs
             .AsNoTracking()
+            .Include(contract => contract.NhanVien)
+                .ThenInclude(nv => nv!.ChucVu)
+            .Include(contract => contract.NhanVien)
+                .ThenInclude(nv => nv!.PhongBan)
             .Where(contract =>
                 contract.TrangThai == "HIEU_LUC" &&
                 contract.NgayBatDau <= today &&
                 (contract.NgayKetThuc == null || contract.NgayKetThuc.Value >= today))
             .OrderBy(contract => contract.NgayKetThuc ?? DateOnly.MaxValue)
             .ThenBy(contract => contract.SoHopDong)
-            .Select(contract => new
-            {
-                contract.MaHopDong,
-                contract.MaNhanVien,
-                contract.SoHopDong,
-                contract.LoaiHopDong,
-                contract.NgayKetThuc
-            })
             .ToListAsync();
 
-        model.ActiveContracts = hopDongHieuLuc.Select(contract => new ActiveContractOptionViewModel
+        model.ActiveContracts = hopDongHieuLuc.Select(contract =>
         {
-            ContractId = contract.MaHopDong,
-            EmployeeId = contract.MaNhanVien,
-            ContractNo = contract.SoHopDong,
-            Label = contract.SoHopDong + " · " +
-                    ContractTypes.ToDisplayName(contract.LoaiHopDong) + " · " +
-                    (contract.NgayKetThuc == null
-                        ? "không xác định thời hạn"
-                        : "đến " + contract.NgayKetThuc.Value.ToString("dd/MM/yyyy"))
+            var pName = contract.NhanVien?.ChucVu?.TenChucVu ?? "Chưa phân bổ";
+            var dName = contract.NhanVien?.PhongBan?.TenPhongBan ?? "Khách sạn";
+            var (rName, rDisplay) = ResolveRoleFromPositionAndDepartment(pName, dName, senderIsAdmin);
+            return new ActiveContractOptionViewModel
+            {
+                ContractId = contract.MaHopDong,
+                EmployeeId = contract.MaNhanVien,
+                ContractNo = contract.SoHopDong,
+                RoleId = GetRoleId(rName),
+                RoleName = rName,
+                RoleDisplayName = rDisplay,
+                PositionName = pName,
+                DepartmentName = dName,
+                Label = contract.SoHopDong + " · " +
+                        ContractTypes.ToDisplayName(contract.LoaiHopDong) + " · " +
+                        (contract.NgayKetThuc == null
+                            ? "không xác định thời hạn"
+                            : "đến " + contract.NgayKetThuc.Value.ToString("dd/MM/yyyy"))
+            };
         }).ToList();
+
+        if (model.EmployeeId > 0 && model.EmployeeRoleMap.TryGetValue(model.EmployeeId, out var selectedInfo))
+        {
+            model.RoleId = selectedInfo.RoleId;
+        }
+        else if (model.RoleId == 0)
+        {
+            var firstEmp = eligibleEmployees.FirstOrDefault();
+            if (firstEmp != null && model.EmployeeRoleMap.TryGetValue(firstEmp.MaNhanVien, out var firstInfo))
+            {
+                model.RoleId = firstInfo.RoleId;
+            }
+            else
+            {
+                var defaultRole = model.RoleOptions.FirstOrDefault(option => option.Text == GetVietnameseRoleName("Employee"));
+                model.RoleId = defaultRole == null ? 0 : int.Parse(defaultRole.Value!);
+            }
+        }
     }
 
     // =====================================================================
@@ -1183,6 +1271,68 @@ public class YeuCauTaiKhoanController : Controller
             STATUS_TU_CHOI => "Từ chối",
             _ => status
         };
+    }
+
+    private static (string RoleName, string RoleDisplayName) ResolveRoleFromPositionAndDepartment(
+        string? positionName,
+        string? departmentName,
+        bool senderIsAdmin)
+    {
+        var pos = (positionName ?? string.Empty).Trim();
+        var dept = (departmentName ?? string.Empty).Trim();
+
+        // 1. CNTT / IT
+        if (dept.Contains("IT", StringComparison.OrdinalIgnoreCase) ||
+            dept.Contains("Công nghệ thông tin", StringComparison.OrdinalIgnoreCase) ||
+            dept.Contains("CNTT", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("IT", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Công nghệ thông tin", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("CNTT", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("IT", GetVietnameseRoleName("IT"));
+        }
+
+        // 2. Nhân sự (HR) & Kế toán / Tài chính
+        if (dept.Contains("Nhân sự", StringComparison.OrdinalIgnoreCase) ||
+            dept.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
+            dept.Contains("Kế toán", StringComparison.OrdinalIgnoreCase) ||
+            dept.Contains("Tài chính", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Nhân sự", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Kế toán", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("HR", GetVietnameseRoleName("HR"));
+        }
+
+        // 3. Ban Giám Đốc / Tổng Giám Đốc (Admin nếu sender là Admin; Manager nếu sender không phải Admin)
+        if (dept.Contains("Ban Giám Đốc", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Tổng Giám Đốc", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("General Manager", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Giám đốc điều hành", StringComparison.OrdinalIgnoreCase))
+        {
+            if (senderIsAdmin)
+            {
+                return ("Admin", GetVietnameseRoleName("Admin"));
+            }
+            return ("Manager", GetVietnameseRoleName("Manager"));
+        }
+
+        // 4. Quản lý / Trưởng bộ phận / Giám sát ca
+        if (pos.Contains("Trưởng Bộ Phận", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Trưởng phòng", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Department Head", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Giám Sát Ca", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Giám Sát", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Supervisor", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Bếp Trưởng", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Quản lý", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Manager", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("Manager", GetVietnameseRoleName("Manager"));
+        }
+
+        // 5. Mặc định là Nhân viên (Employee)
+        return ("Employee", GetVietnameseRoleName("Employee"));
     }
 
     private static string GetVietnameseRoleName(string? roleCode)

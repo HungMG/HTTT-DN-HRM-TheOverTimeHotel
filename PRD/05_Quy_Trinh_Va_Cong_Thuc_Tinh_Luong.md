@@ -1,5 +1,7 @@
 # PRD 05: Quy Trình & Công Thức Tính Lương Khách Sạn 2 Tầng (Gross → Net)
 
+> Cập nhật sự kiện 23/10/2026: sự kiện Web tạo mới cộng thêm **lương cơ bản có hiệu lực / 26 / 8 × số giờ sự kiện thực tế đã duyệt**, hệ số cộng thêm **1**. Lương ca vẫn tính theo chấm công; không cộng lại trong khoản sự kiện. Giờ làm nằm trong ca đã công bố. Ví dụ 8.000.000đ và hai giờ được cộng **76.923đ**. Các ma trận thưởng cố định/hệ số xuất sắc bên dưới chỉ còn áp dụng dữ liệu theo chính sách cũ; không dùng để tính sự kiện theo giờ. Nghiệm thu khóa căn cứ và tiền, kết chuyển theo kỳ HR chọn, tách công qua tháng theo giờ Việt Nam. Chi tiết luồng, ngoại lệ và đối soát dữ liệu cũ ở [docs/hotel-events.md](../docs/hotel-events.md).
+
 ## 1. Công Thức Tính Lương Chuẩn Khách Sạn
 
 Thu nhập của nhân sự tại The OverTime Hotel được tính toán tự động qua công thức 2 tầng minh bạch:

@@ -1,0 +1,52 @@
+@model EventDetailsViewModel
+@using OvertimeHotel.HRM.Core.Policies
+@{
+    var item = Model.Event;
+    var active = item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG").ToList();
+    var distinctEmployees = active.Select(p => p.MaNhanVien).Distinct().Count();
+}
+<div class="event-staff-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+        <span class="event-eyebrow">ĐỘI NGŨ SỰ KIỆN THEO CA</span>
+        <h3 class="mb-0">@distinctEmployees nhân sự tham gia theo ca trực</h3>
+    </div>
+    <div>
+        <a asp-controller="PhanCa" asp-action="Index" asp-route-week="@DateOnly.FromDateTime(HotelEventRules.Local(item.NgayBatDau)).ToString("yyyy-MM-dd")" class="event-secondary-button">
+            <i class="bi bi-calendar3" aria-hidden="true"></i> Xem ca &amp; phân ca tuần
+        </a>
+    </div>
+</div>
+<div class="event-department-list">
+@foreach (var code in Model.RequiredDepartments)
+{
+    var deptMembers = item.PhanCongs.Where(p => p.MaPhongBanSuKien == code).OrderBy(p => p.BatDau).ToList();
+    var activeCount = deptMembers.Count(p => p.TrangThaiThamGia != "HUY_PHAN_CONG");
+    <section class="event-department-card" data-department-card="@code">
+        <header>
+            <div>
+                <h4>@HotelEventRules.DepartmentLabels.GetValueOrDefault(code, code)</h4>
+                <span class="event-muted">@activeCount nhân sự trực</span>
+            </div>
+        </header>
+        @if (deptMembers.Count == 0)
+        {
+            <p class="event-empty mb-0">Chưa có nhân viên trực sự kiện thuộc bộ phận này.</p>
+        }
+        else
+        {
+            @foreach (var member in deptMembers)
+            {
+                var canceled = member.TrangThaiThamGia == "HUY_PHAN_CONG";
+                <div class="event-assigned-member" data-assigned-member data-employee-id="@member.MaNhanVien">
+                    <div>
+                        <strong>@member.NhanVien?.HoTen</strong>
+                        <span>@member.VaiTroDuAn · Ca nguồn #@member.MaPhanCa</span>
+                        <small>@HotelEventRules.Local(member.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(member.KetThuc).ToString("dd/MM HH:mm")</small>
+                        <small>@(canceled ? "Đã gỡ · Lưu lịch sử" : member.TrangThaiThamGia == "DA_KET_THUC" ? "Đã kết thúc tham gia" : "Đang phân công") @member.LyDoKetThuc</small>
+                    </div>
+                </div>
+            }
+        }
+    </section>
+}
+</div>

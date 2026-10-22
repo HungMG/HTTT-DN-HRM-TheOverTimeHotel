@@ -69,13 +69,15 @@ var tests = new (string Name, Action Run)[]
     {
         Equal(false, HotelEventRules.CanTransition("LEN_KE_HOACH", "DANG_DIEN_RA", start, end, start.AddTicks(-1)));
         Equal(true, HotelEventRules.CanTransition("LEN_KE_HOACH", "DANG_DIEN_RA", start, end, start));
+        Equal(false, HotelEventRules.CanTransition("LEN_KE_HOACH", "DANG_DIEN_RA", start, end, start.AddDays(1)));
         Equal(false, HotelEventRules.CanTransition("DANG_DIEN_RA", "CHO_NGHIEM_THU", start, end, end.AddTicks(-1)));
         Equal(true, HotelEventRules.CanTransition("DANG_DIEN_RA", "CHO_NGHIEM_THU", start, end, end));
         Equal(false, HotelEventRules.CanTransition("LEN_KE_HOACH", "HOAN_THANH", start, end, end));
         Equal(false, HotelEventRules.CanTransition("HOAN_THANH", "HUY", start, end, end));
         Equal(false, HotelEventRules.CanTransition("HUY", "LEN_KE_HOACH", start, end, end));
         Equal(false, HotelEventRules.CanTransition("INVALID", "HUY", start, end, end));
-        Equal(true, HotelEventRules.CanTransition("CHO_NGHIEM_THU", "HUY", start, end, end));
+        Equal(false, HotelEventRules.CanTransition("CHO_NGHIEM_THU", "HUY", start, end, end));
+        Equal(false, HotelEventRules.CanTransition("DANG_DIEN_RA", "HUY", start, end, start));
     }),
     ("Acceptance requires complete reviews within budget and zero absent pay", () =>
     {
@@ -189,6 +191,18 @@ var tests = new (string Name, Action Run)[]
         Equal(false, s3.IsFullyStaffed);
         Equal(5, s3.MissingDepartmentNames.Count);
         Equal("Đã đủ nhân sự 0/5 phòng ban — còn thiếu Tiền sảnh, Ẩm thực (F&B), Bếp, Kỹ thuật, An ninh.", s3.SummaryText);
+    }),
+    ("Planned event whose day has passed is expired for auto-cancellation", () =>
+    {
+        var plan = new DuAn { TrangThai = "LEN_KE_HOACH", NgayBatDau = start };
+        Equal(false, HotelEventRules.IsExpiredPlanning(plan, start));
+        Equal(false, HotelEventRules.IsExpiredPlanning(plan, start.AddHours(5)));
+        Equal(true, HotelEventRules.IsExpiredPlanning(plan, start.AddDays(1)));
+
+        var ongoing = new DuAn { TrangThai = "DANG_DIEN_RA", NgayBatDau = start };
+        Equal(false, HotelEventRules.IsExpiredPlanning(ongoing, start.AddDays(1)));
+
+        Equal("Không liên lạc được với người tổ chức sự kiện", HotelEventRules.AutoCancelReason);
     })
 };
 var failed = 0;
@@ -198,6 +212,7 @@ foreach (var test in tests)
     catch (Exception ex) { failed++; Console.Error.WriteLine($"FAIL {test.Name}: {ex.Message}"); }
 }
 failed += RoleStaffingTests.Run();
+failed += HourlyEventTests.Run();
 if (failed != 0) Environment.Exit(1);
 
 static NhanVien Employee() => new()

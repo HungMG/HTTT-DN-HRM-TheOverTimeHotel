@@ -91,6 +91,8 @@ public class CreateYeuCauTaiKhoanViewModel
     [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn vai trò sẽ gán cho tài khoản.")]
     public int RoleId { get; set; }
 
+    public bool IsPopup { get; set; }
+
     public IReadOnlyList<SelectListItem> EmployeeOptions { get; set; } = [];
     public IReadOnlyList<SelectListItem> RoleOptions { get; set; } = [];
 
@@ -99,6 +101,21 @@ public class CreateYeuCauTaiKhoanViewModel
     /// để trình duyệt lọc theo người đã chọn.
     /// </summary>
     public IReadOnlyList<ActiveContractOptionViewModel> ActiveContracts { get; set; } = [];
+
+    /// <summary>
+    /// Bản đồ vai trò và chức vụ suy ra từ hợp đồng/hồ sơ nhân sự của từng nhân viên.
+    /// </summary>
+    public IDictionary<int, EmployeeContractRoleInfo> EmployeeRoleMap { get; set; } = new Dictionary<int, EmployeeContractRoleInfo>();
+}
+
+public class EmployeeContractRoleInfo
+{
+    public int EmployeeId { get; set; }
+    public int RoleId { get; set; }
+    public string RoleName { get; set; } = string.Empty;
+    public string RoleDisplayName { get; set; } = string.Empty;
+    public string PositionName { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
 }
 
 public class ActiveContractOptionViewModel
@@ -107,6 +124,11 @@ public class ActiveContractOptionViewModel
     public int EmployeeId { get; set; }
     public string ContractNo { get; set; } = string.Empty;
     public string Label { get; set; } = string.Empty;
+    public int RoleId { get; set; }
+    public string RoleName { get; set; } = string.Empty;
+    public string RoleDisplayName { get; set; } = string.Empty;
+    public string PositionName { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
 }
 
 /// <summary>

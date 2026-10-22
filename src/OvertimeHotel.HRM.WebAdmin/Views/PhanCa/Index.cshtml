@@ -674,6 +674,13 @@
                         <button type="button" id="tabViewList" onclick="switchCalendarViewTab('list')" class="phanca-view-tab-btn">
                             <i class="bi bi-list-check text-secondary"></i> 3. Danh Sách
                         </button>
+                        <button type="button" id="tabViewEventDemand" onclick="switchCalendarViewTab('eventDemand')" class="phanca-view-tab-btn">
+                            <i class="bi bi-calendar-event text-secondary"></i> 4. Nhu Cầu Sự Kiện
+                            @if (Model.EventDemand.Count > 0)
+                            {
+                                <span class="badge bg-primary-subtle text-primary rounded-pill ms-1" style="font-size: 0.68rem;">@Model.EventDemand.Count</span>
+                            }
+                        </button>
                     </div>
 
                     <button type="button" class="btn btn-hotel-primary btn-sm rounded-pill px-3 py-1 fw-bold shadow-xs catalog-action-btn"
@@ -1449,10 +1456,10 @@
                                                     }
                                                 </td>
                                                 <td class="text-center pe-3">
-                                                    <form method="post" asp-action="Delete" onsubmit="return confirm('Bạn có chắc muốn hủy ca phân này?');" class="d-inline">
+                                                    <form method="post" asp-action="Delete" onsubmit="return confirmShiftCancellation(this);" class="d-inline">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="id" value="@p.MaPhanCa" />
-                                                        <input type="hidden" name="returnWeek" value="@currentWeek" />
+                                                        <input type="hidden" name="returnWeek" value="@currentWeek" /><input type="hidden" name="changeReason" value="" />
                                                         <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 hover-lift">
                                                             <i class="bi bi-trash3 me-1"></i> Hủy Ca
                                                         </button>
@@ -1480,6 +1487,11 @@
                             </table>
                         </div>
                     </div>
+                </div>
+
+                <!-- CHẾ ĐỘ 4: NHU CẦU NHÂN SỰ SỰ KIỆN THEO KHUNG GIỜ -->
+                <div id="viewEventDemandContainer" class="d-none mb-4">
+                    <partial name="_EventWeekDemand" model="Model" />
                 </div>
             </div>
             <!-- Kết thúc scheduleContentWrapper -->
@@ -2355,22 +2367,26 @@
         const matrixContainer = document.getElementById('viewMatrixContainer');
         const todayContainer = document.getElementById('viewTodayContainer');
         const listContainer = document.getElementById('viewListContainer');
+        const eventDemandContainer = document.getElementById('viewEventDemandContainer');
 
         const containers = {
             calendar: calendarContainer,
             matrix: matrixContainer,
             today: todayContainer,
-            list: listContainer
+            list: listContainer,
+            eventDemand: eventDemandContainer
         };
 
         const tabCalendar = document.getElementById('tabViewCalendar');
         const tabMatrix = document.getElementById('tabViewMatrix');
         const tabList = document.getElementById('tabViewList');
+        const tabEventDemand = document.getElementById('tabViewEventDemand');
 
         const tabs = {
             calendar: tabCalendar,
             matrix: tabMatrix,
-            list: tabList
+            list: tabList,
+            eventDemand: tabEventDemand
         };
 
         Object.keys(tabs).forEach(key => {
@@ -2409,7 +2425,8 @@
         if (overlay) overlay.classList.remove('d-none');
 
         fetch('/PhanCa?week=' + targetWeekDate, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            headers: { 'X-Requested-With': 'XMLHttpRequest',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' }
         })
         .then(response => {
             if (!response.ok) throw new Error('Không thể nạp dữ liệu');
@@ -3500,6 +3517,13 @@
         executeQuickAssign(maNhanVien, ngayLamViec, currentQuickShiftId, cellId, hoTen);
     }
 
+    function confirmShiftCancellation(form) {
+        const reason = prompt('Lý do hủy ca (tối đa 500 ký tự). Phân công sự kiện từ ca này cần xác nhận lại:');
+        if (!reason?.trim() || reason.trim().length > 500) return false;
+        form.elements.changeReason.value = reason.trim();
+        return true;
+    }
+
     function executeQuickAssign(maNhanVien, ngayLamViec, maCa, cellId, hoTen) {
         if (ngayLamViec < TODAY_STR) {
             showQuickToast('⚠️ Không thể phân ca hoặc sửa ca cho ngày trong quá khứ (' + ngayLamViec + ').');
@@ -3509,6 +3533,13 @@
         const targetCell = document.getElementById(cellId);
         if (!targetCell) return;
 
+        let changeReason = '';
+        if (maCa <= 0 || WEEK_SHIFTS_DATA.some(s => s.empId === maNhanVien && s.date === ngayLamViec)) {
+            changeReason = prompt('Lý do hủy / đổi ca (tối đa 500 ký tự). Phân công sự kiện từ ca này cần xác nhận lại:');
+            if (!changeReason?.trim()) return;
+            changeReason = changeReason.trim();
+            if (changeReason.length > 500) { showQuickToast('Lý do tối đa 500 ký tự.'); return; }
+        }
         const originalContent = targetCell.innerHTML;
         targetCell.innerHTML = `
             <div class="d-flex align-items-center justify-content-center py-3">
@@ -3519,12 +3550,14 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
             },
             body: JSON.stringify({
                 maNhanVien: maNhanVien,
                 ngayLamViec: ngayLamViec,
-                maCa: maCa
+                maCa: maCa,
+                changeReason: changeReason
             })
         })
         .then(res => res.json())
@@ -3535,6 +3568,8 @@
                 return;
             }
 
+            const publicationWarning = document.querySelector('[data-week-publication-warning]');
+            if (publicationWarning) publicationWarning.hidden = false;
             if (data.action === 'removed') {
                 targetCell.innerHTML = `
                     <button type="button" class="btn-quick-slot"

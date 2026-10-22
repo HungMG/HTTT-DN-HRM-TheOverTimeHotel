@@ -36,14 +36,6 @@ public static class HotelEventRules
 
     public static string? ResolveDepartmentCode(int? maPhongBan, string? tenPhongBan = null)
     {
-        if (maPhongBan == 2) return "TIEN_SANH";
-        if (maPhongBan == 4) return "AM_THUC";
-        if (maPhongBan == 5) return "BEP";
-        if (maPhongBan == 3) return "BUONG_PHONG";
-        if (maPhongBan == 6) return "KY_THUAT";
-        if (maPhongBan == 7) return "AN_NINH";
-        if (maPhongBan == 9) return "IT";
-
         if (!string.IsNullOrWhiteSpace(tenPhongBan))
         {
             var name = tenPhongBan.ToLowerInvariant();
@@ -54,7 +46,16 @@ public static class HotelEventRules
             if (name.Contains("kỹ thuật") || name.Contains("ky_thuat") || name.Contains("kythuat") || name.Contains("engineering")) return "KY_THUAT";
             if (name.Contains("an ninh") || name.Contains("an_ninh") || name.Contains("anninh") || name.Contains("security")) return "AN_NINH";
             if (name.Contains("công nghệ thông tin") || name.Contains("information technology") || name.Contains("-it") || name.Contains(" it") || name == "it" || name.EndsWith("it")) return "IT";
+            return null;
         }
+        // Old snapshots may contain only the original installation's numeric department ID.
+        if (maPhongBan == 2) return "TIEN_SANH";
+        if (maPhongBan == 4) return "AM_THUC";
+        if (maPhongBan == 5) return "BEP";
+        if (maPhongBan == 3) return "BUONG_PHONG";
+        if (maPhongBan == 6) return "KY_THUAT";
+        if (maPhongBan == 7) return "AN_NINH";
+        if (maPhongBan == 9) return "IT";
         return null;
     }
 
@@ -67,7 +68,7 @@ public static class HotelEventRules
     public static EventStaffingSummary GetStaffingSummary(string eventType, IEnumerable<PhanCongDuAn> assignments)
     {
         var requiredCodes = GetRequiredDepartments(eventType);
-        var assignmentList = assignments.ToList();
+        var assignmentList = assignments.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG").ToList();
         var list = new List<EventDepartmentStatus>();
         var missing = new List<string>();
         int satisfied = 0;
@@ -75,7 +76,7 @@ public static class HotelEventRules
         foreach (var code in requiredCodes)
         {
             var name = DepartmentLabels.GetValueOrDefault(code, code);
-            var deptAssignments = assignmentList.Where(p => ResolveDepartmentCode(p.NhanVien) == code).ToList();
+            var deptAssignments = assignmentList.Where(p => (p.MaPhongBanSuKien ?? ResolveDepartmentCode(p.NhanVien)) == code).ToList();
             var count = deptAssignments.Count;
             var ok = count >= 1;
             if (ok) satisfied++;
@@ -97,6 +98,7 @@ public static class HotelEventRules
 
     public static EventStaffingSummary GetStaffingSummary(DuAn item, DateTimeOffset? coverageStart = null)
     {
+        if (item.TinhTheoGio) return DeclaredStaffing(item, coverageStart);
         var baseline = GetStaffingSummary(item.LoaiDuAn, item.PhanCongs);
         var start = coverageStart is { } from && from > item.NgayBatDau ? from : item.NgayBatDau;
         var missingRoles = new List<string>();
@@ -122,6 +124,38 @@ public static class HotelEventRules
             departments.Where(d => !d.IsSufficient).Select(d => d.Name).ToList(), departments, message)
         { MissingRoleDescriptions = missingRoles };
     }
+
+    private static EventStaffingSummary DeclaredStaffing(DuAn item, DateTimeOffset? coverageStart)
+    {
+        var active = item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG").ToList();
+        var missing = new List<string>();
+        var departments = item.NhuCaus.GroupBy(n => n.MaPhongBan).Select(group =>
+        {
+            var name = DepartmentLabels.GetValueOrDefault(group.Key, group.Key);
+            var members = active.Where(p => (p.MaPhongBanSuKien ?? ResolveDepartmentCode(p.NhanVien)) == group.Key).ToList();
+            var roles = group.OrderBy(n => n.BatDau).Select(need =>
+            {
+                var from = coverageStart is { } start && start > need.BatDau ? start : need.BatDau;
+                var to = item.KetThucThucTe is { } stopped && stopped < need.KetThuc ? stopped : need.KetThuc;
+                var assigned = members.Where(p => HotelEventRoleRules.Matches(need.VaiTro, p.VaiTroDuAn)).ToList();
+                var concurrent = from >= to ? need.SoNguoi : HotelEventRoleRules.MinimumConcurrentCount(assigned, from, to);
+                var shortfall = Math.Max(0, need.SoNguoi - concurrent);
+                if (shortfall > 0) missing.Add($"{name}: {need.VaiTro} thiếu {shortfall} ({Local(from):dd/MM HH:mm}–{Local(to):dd/MM HH:mm})");
+                return new EventRoleStaffingStatus(need.VaiTro, need.SoNguoi, need.SoNguoi > 0,
+                    assigned.Select(p => p.MaNhanVien).Distinct().Count(), concurrent, shortfall, assigned);
+            }).ToList();
+            return new EventDepartmentStatus(group.Key, name, members.Select(p => p.MaNhanVien).Distinct().Count(),
+                roles.All(r => r.MissingCount == 0), members) { Roles = roles };
+        }).ToList();
+        var satisfied = departments.Count(d => d.IsSufficient);
+        var full = departments.Count > 0 && item.NhuCaus.Any(n => n.SoNguoi > 0) && missing.Count == 0;
+        var message = item.NhuCaus.Count == 0 ? "Chưa khai báo nhu cầu nhân sự."
+            : full ? "Đã đủ nhân sự theo các khung nhiệm vụ."
+            : $"Đã ghi nhận nhu cầu; đủ {satisfied}/{departments.Count} phòng ban. Chờ bố trí ca/phân công cho các khung còn thiếu.";
+        return new EventStaffingSummary(departments.Count, satisfied, full,
+            departments.Where(d => !d.IsSufficient).Select(d => d.Name).ToList(), departments, message)
+            { MissingRoleDescriptions = missing };
+    }
     public static DateTimeOffset ToUtc(DateTime local) => new DateTimeOffset(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), TimeSpan.FromHours(7)).ToUniversalTime();
     public static DateTime Local(DateTimeOffset instant) => instant.ToOffset(TimeSpan.FromHours(7)).DateTime;
     public static bool CanCreateOn(DateOnly date, DateTimeOffset now) => date >= DateOnly.FromDateTime(Local(now));
@@ -139,9 +173,12 @@ public static class HotelEventRules
     public static bool CanOperate(string role, int employeeId, int managerId) =>
         role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || role.Equals("HR", StringComparison.OrdinalIgnoreCase)
         || (role.Equals("Manager", StringComparison.OrdinalIgnoreCase) && employeeId == managerId);
+    public const string AutoCancelReason = "Không liên lạc được với người tổ chức sự kiện";
+    public static bool IsExpiredPlanning(DuAn item, DateTimeOffset now) =>
+        item.TrangThai == "LEN_KE_HOACH" && DateOnly.FromDateTime(Local(item.NgayBatDau)) < DateOnly.FromDateTime(Local(now));
     public static bool CanTransition(string current, string next, DateTimeOffset start, DateTimeOffset end, DateTimeOffset now) =>
-        current is ("LEN_KE_HOACH" or "DANG_DIEN_RA" or "CHO_NGHIEM_THU") && (next == "HUY"
-        || (current == "LEN_KE_HOACH" && next == "DANG_DIEN_RA" && now >= start)
+        current is ("LEN_KE_HOACH" or "DANG_DIEN_RA" or "CHO_NGHIEM_THU") && ((next == "HUY" && current == "LEN_KE_HOACH")
+        || (current == "LEN_KE_HOACH" && next == "DANG_DIEN_RA" && now >= start && DateOnly.FromDateTime(Local(start)) >= DateOnly.FromDateTime(Local(now)))
         || (current == "DANG_DIEN_RA" && next == "CHO_NGHIEM_THU" && now >= end));
     public static bool ReviewsReady(IEnumerable<PhanCongDuAn> assignments, decimal budget)
     {
@@ -213,7 +250,7 @@ public static class HotelEventRules
         IEnumerable<CauHinhKhoanLuong>? bonusConfigs = null,
         string? departmentCode = null)
     {
-        if (duAn?.TinhPhuCapKhiNghiemThu == true && duAn.TrangThai == "HOAN_THANH")
+        if (duAn?.TrangThai == "HOAN_THANH")
             return (null, $"Thưởng sự kiện SK-{duAn.MaDuAn} - {phanCong.VaiTroDuAn}", phanCong.SoTienPhuCap);
         var eventType = duAn?.LoaiDuAn?.ToUpperInvariant() ?? "";
         if (string.IsNullOrWhiteSpace(eventType) || !TypeLabels.ContainsKey(eventType))

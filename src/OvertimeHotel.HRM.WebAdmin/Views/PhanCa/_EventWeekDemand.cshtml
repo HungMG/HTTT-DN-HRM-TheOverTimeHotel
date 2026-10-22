@@ -1,0 +1,49 @@
+@model PhanCaIndexViewModel
+@using OvertimeHotel.HRM.Core.Policies
+@{
+    var hasDraft = Model.DanhSachPhanCa.Any(s => !s.DaCongBo);
+    var weekFrom = HotelEventRules.ToUtc(Model.WeekStart.ToDateTime(TimeOnly.MinValue));
+    var weekTo = HotelEventRules.ToUtc(Model.WeekStart.AddDays(7).ToDateTime(TimeOnly.MinValue));
+}
+@if (Model.EventDemandUnavailable)
+{
+    <div class="alert alert-warning" role="status">Chưa tải được nhu cầu sự kiện và trạng thái công bố tuần. Vui lòng thử lại hoặc liên hệ quản trị viên.</div>
+}
+@if (Model.CanViewEventDemand)
+{
+    <section class="shift-workspace-card p-3 mb-3" aria-labelledby="event-week-heading">
+        <h2 id="event-week-heading" class="h5">Nhu cầu nhân sự theo khung giờ · Tuần @Model.WeekStart.ToString("dd/MM") – @Model.WeekEnd.ToString("dd/MM/yyyy")</h2>
+        <p class="@(Model.PublishedWeek == null || hasDraft ? "text-warning" : "text-success")" role="status">@(Model.PublishedWeek == null ? "Lịch tuần đang dự thảo. Chưa dùng để phân công sự kiện." : hasDraft ? "Có thay đổi chưa công bố lại. Chỉ các ca vẫn còn hiệu lực công bố mới được dùng cho sự kiện." : "Lịch tuần đã công bố lúc " + HotelEventRules.Local(Model.PublishedWeek.NgayCongBo).ToString("dd/MM/yyyy HH:mm") + " (UTC+7).")</p>
+        <p class="alert alert-warning" data-week-publication-warning role="status" hidden="@(!hasDraft)">Có ca dự thảo theo bộ lọc hiện tại. Ca mới hoặc vừa thay đổi cần công bố trước khi dùng phân công sự kiện. Tải lại để xem nhu cầu mới nhất.</p>
+        <p class="text-muted">Xếp ca từ nhu cầu bên dưới, công bố lịch tuần rồi mở sự kiện để chọn nhân viên từ các ca chính thức. Công bố thông thường vào thứ Bảy; công bố ngày khác cần lý do.</p>
+        @if (Model.EventDemand.Count == 0) { <p class="text-muted">Chưa có sự kiện trong tuần thuộc phạm vi của bạn.</p> }
+        @foreach (var item in Model.EventDemand)
+        {
+            <div class="border rounded p-3 mb-3">
+                <a class="fw-semibold" asp-controller="SuKien" asp-action="Details" asp-route-id="@item.MaDuAn" asp-route-tab="staff">@item.TenDuAn</a><span> · @item.DiaDiem</span>
+                @if (item.NhuCaus.Count == 0) { <p class="text-warning mt-2 mb-0">Chưa khai báo nhu cầu vai trò / thời gian.</p> }
+                <div class="table-responsive"><table class="table table-sm mt-2 mb-0"><thead><tr><th scope="col">Khung giờ (UTC+7)</th><th scope="col">Bộ phận / vai trò</th><th scope="col">Cần</th><th scope="col">Phân công sự kiện</th><th scope="col">Dự báo ca theo bộ lọc (trong tuần)</th></tr></thead><tbody>
+                @foreach (var need in item.NhuCaus.Where(n => n.BatDau < weekTo && n.KetThuc > weekFrom).OrderBy(n => n.BatDau))
+                {
+                    var from = need.BatDau > weekFrom ? need.BatDau : weekFrom;
+                    var to = need.KetThuc < weekTo ? need.KetThuc : weekTo;
+                    var assignments = item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.MaPhongBanSuKien == need.MaPhongBan && HotelEventRoleRules.Matches(need.VaiTro, p.VaiTroDuAn));
+                    var confirmed = HotelEventRoleRules.MinimumConcurrentCount(assignments, from, to);
+                    var draftShifts = Model.DanhSachPhanCa.Where(s => s.TrangThai != "DA_HUY" && s.TrangThai != "VANG_MAT" && s.NhanVien != null && HotelEventRules.ResolveDepartmentCode(s.NhanVien) == need.MaPhongBan)
+                        .Select(s => new OvertimeHotel.HRM.Core.Models.PhanCongDuAn { MaNhanVien = s.MaNhanVien, BatDau = s.BatDauDuKien, KetThuc = s.KetThucDuKien });
+                    var forecast = HotelEventRoleRules.MinimumConcurrentCount(draftShifts, from, to);
+                    <tr><td>@need.TenKhung<br />@HotelEventRules.Local(need.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(need.KetThuc).ToString("dd/MM HH:mm")</td><td>@HotelEventRules.DepartmentLabels.GetValueOrDefault(need.MaPhongBan, need.MaPhongBan)<br />@need.VaiTro</td><td>@need.SoNguoi</td><td class="@(confirmed < need.SoNguoi ? "text-danger" : "text-success")">@confirmed/@need.SoNguoi · Thiếu @Math.Max(0, need.SoNguoi - confirmed)</td><td>@forecast người liên tục<br /><small class="text-muted">Chưa xác nhận vai trò hay khả năng điều phối</small></td></tr>
+                }
+                </tbody></table></div>
+            </div>
+        }
+        @if (Model.CanPublishWeek)
+        {
+            <form asp-action="PublishWeek" method="post" class="row g-2 align-items-end">
+                <input name="weekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" type="hidden" /><input name="version" value="@(Model.PublishedWeek?.Version ?? 0)" type="hidden" />
+                <div class="col-md-9"><label for="publish-week-reason" class="form-label">Lý do công bố / điều chỉnh (bắt buộc trừ công bố tuần kế tiếp vào thứ Bảy)</label><input id="publish-week-reason" name="reason" class="form-control" maxlength="500" required="@(HotelEventRules.Local(DateTimeOffset.UtcNow).DayOfWeek != DayOfWeek.Saturday || Model.WeekStart != HourlyEventRules.WeekStart(DateOnly.FromDateTime(HotelEventRules.Local(DateTimeOffset.UtcNow))).AddDays(7))" /></div>
+                <div class="col-md-3"><button type="submit" class="btn btn-primary w-100">@(Model.PublishedWeek == null ? "Công bố lịch tuần" : "Công bố lại lịch tuần")</button></div>
+            </form>
+        }
+    </section>
+}

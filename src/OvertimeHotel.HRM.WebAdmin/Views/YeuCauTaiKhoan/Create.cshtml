@@ -79,18 +79,33 @@
                                 }
                             </div>
                             <div class="col-md-5 col-12">
-                                <label asp-for="RoleId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
-                                    Vai trò đề xuất (RBAC) <span class="text-danger">*</span>
+                                <label class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    Vai trò theo hợp đồng lao động
                                 </label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
-                                        <i class="bi bi-shield-check"></i>
-                                    </span>
-                                    <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select border-start-0 py-2 ps-3 rounded-end-3" id="RoleId">
-                                        <option value="">-- Chọn vai trò --</option>
-                                    </select>
+                                <input type="hidden" asp-for="RoleId" id="RoleId" />
+                                <div class="form-control bg-light border py-2 px-3 rounded-3 d-flex align-items-center justify-content-between" style="min-height: 42px;">
+                                    <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                        <i class="bi bi-shield-lock-fill text-primary flex-shrink-0"></i>
+                                        <span class="fw-semibold text-truncate small" id="displayRoleName">Tự động theo HĐLĐ</span>
+                                    </div>
+                                    <span class="badge bg-primary px-2.5 py-1" id="displayRoleBadge" style="font-size: 0.75rem; display: none;">—</span>
                                 </div>
                                 <span asp-validation-for="RoleId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                            </div>
+
+                            <div class="col-12 mt-2" id="roleContractNotice" style="display: none;">
+                                <div class="p-2.5 rounded-3 bg-primary bg-opacity-10 border border-primary-subtle text-dark small d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-sm">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-patch-check-fill text-primary fs-5 flex-shrink-0"></i>
+                                        <div>
+                                            <div class="fw-semibold text-secondary" style="font-size: 0.72rem;">Căn cứ vị trí theo hợp đồng lao động:</div>
+                                            <div class="fw-bold text-dark" id="positionContractText">—</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <i class="bi bi-lock-fill text-secondary me-1"></i>Hệ thống tự động cấp quyền theo vị trí ký kết
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-12 mt-3">
@@ -107,6 +122,11 @@
                                         {
                                             <option value="@contract.ContractId"
                                                     data-employee-id="@contract.EmployeeId"
+                                                    data-role-id="@contract.RoleId"
+                                                    data-role-name="@contract.RoleName"
+                                                    data-role-display="@contract.RoleDisplayName"
+                                                    data-position="@contract.PositionName"
+                                                    data-department="@contract.DepartmentName"
                                                     selected="@(Model.ContractId == contract.ContractId)">@contract.Label</option>
                                         }
                                     </select>
@@ -224,6 +244,10 @@
             </div>
         </div>
     </form>
+
+    <script id="employee-role-data" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.EmployeeRoleMap))
+    </script>
 </div>
 
 @section Scripts {
@@ -337,8 +361,86 @@
                 }
             });
 
+            const roleSelect = document.getElementById("RoleId");
+            const roleNotice = document.getElementById("roleContractNotice");
+            const positionText = document.getElementById("positionContractText");
+            const roleBadge = document.getElementById("roleContractBadge");
+            let roleMap = {};
+            try {
+                const rawData = document.getElementById("employee-role-data")?.textContent;
+                if (rawData) roleMap = JSON.parse(rawData);
+            } catch (e) {
+                console.warn("Failed to parse employee role data", e);
+            }
+
+            const updateRoleFromContract = () => {
+                const empId = Number(employee?.value || 0);
+                const selectedContract = contractSelect?.selectedOptions[0];
+                let roleId = 0;
+                let posName = "";
+                let roleDisplay = "";
+
+                if (selectedContract && selectedContract.value && selectedContract.dataset.roleId) {
+                    roleId = Number(selectedContract.dataset.roleId);
+                    const pos = selectedContract.dataset.position || "";
+                    const dept = selectedContract.dataset.department || "";
+                    posName = pos && dept ? `${pos} · ${dept}` : (pos || dept);
+                    roleDisplay = selectedContract.dataset.roleDisplay || selectedContract.dataset.roleName || "";
+                } else if (empId && roleMap[empId]) {
+                    const info = roleMap[empId];
+                    roleId = info.roleId || info.RoleId;
+                    const pos = info.positionName || info.PositionName || "";
+                    const dept = info.departmentName || info.DepartmentName || "";
+                    posName = pos && dept ? `${pos} · ${dept}` : (pos || dept);
+                    roleDisplay = info.roleDisplayName || info.RoleDisplayName || "";
+                }
+
+                const displayRoleName = document.getElementById("displayRoleName");
+                const displayRoleBadge = document.getElementById("displayRoleBadge");
+
+                if (roleSelect) {
+                    roleSelect.value = roleId ? String(roleId) : "";
+                }
+                if (displayRoleName) {
+                    displayRoleName.textContent = roleDisplay || (roleId ? "Đã xác định theo HĐLĐ" : "Tự động theo HĐLĐ");
+                }
+                if (displayRoleBadge) {
+                    if (roleDisplay) {
+                        displayRoleBadge.textContent = roleDisplay;
+                        displayRoleBadge.style.display = "inline-block";
+                    } else {
+                        displayRoleBadge.style.display = "none";
+                    }
+                }
+
+                if (roleNotice) {
+                    if (roleId && posName.trim()) {
+                        roleNotice.style.display = "block";
+                        if (positionText) positionText.textContent = posName;
+                        if (roleBadge) roleBadge.textContent = roleDisplay;
+                    } else {
+                        roleNotice.style.display = "none";
+                    }
+                }
+            };
+
+            const origFilterContracts = filterContracts;
+            filterContracts = () => {
+                origFilterContracts();
+                updateRoleFromContract();
+            };
+
+            employee?.addEventListener("change", () => {
+                updateRoleFromContract();
+            });
+
+            contractSelect?.addEventListener("change", () => {
+                updateRoleFromContract();
+            });
+
             suggestUsername();
             filterContracts();
+            updateRoleFromContract();
         })();
     </script>
 }

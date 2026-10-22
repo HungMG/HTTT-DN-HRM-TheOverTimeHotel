@@ -37,6 +37,11 @@ public class AppDbContext : DbContext
     public DbSet<YeuCauTaiKhoan> YeuCauTaiKhoans => Set<YeuCauTaiKhoan>();
     public DbSet<DuAn> DuAns => Set<DuAn>();
     public DbSet<PhanCongDuAn> PhanCongDuAns => Set<PhanCongDuAn>();
+    public DbSet<NhuCauSuKien> NhuCauSuKiens => Set<NhuCauSuKien>();
+    public DbSet<CongSuKien> CongSuKiens => Set<CongSuKien>();
+    public DbSet<QuyetToanSuKien> QuyetToanSuKiens => Set<QuyetToanSuKien>();
+    public DbSet<CongBoLichTuan> CongBoLichTuans => Set<CongBoLichTuan>();
+    public DbSet<DiaDiemSuKien> DiaDiemSuKiens => Set<DiaDiemSuKien>();
 
     // Bổ sung theo PRD 3.4 (đổi ca), 3.5 (định biên tối thiểu), 4.5 (giải trình chấm công)
     public DbSet<YeuCauDoiCa> YeuCauDoiCas => Set<YeuCauDoiCa>();
@@ -49,6 +54,7 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfiguration(new HotelEventConfiguration());
         modelBuilder.ApplyConfiguration(new HotelEventAssignmentConfiguration());
+        EventOperationsConfiguration.Configure(modelBuilder);
 
         // 1. PHONG_BAN
         modelBuilder.Entity<PhongBan>(entity =>

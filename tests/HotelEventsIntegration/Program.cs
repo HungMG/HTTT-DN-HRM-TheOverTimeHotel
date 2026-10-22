@@ -28,7 +28,7 @@ if (args.Contains("--cleanup-preview"))
 }
 if (args.Contains("--apply-migration"))
 {
-    var sqlPath = Path.Combine(RepositoryRoot(), "src", "OvertimeHotel.HRM.Data", "migrations", "20261016_remove_maintenance_events.sql");
+    var sqlPath = Path.Combine(RepositoryRoot(), "src", "OvertimeHotel.HRM.Data", "migrations", args.Length > 1 && args[1].EndsWith(".sql") ? args[1] : "20261023_event_hourly_shift_planning.sql");
     var sql = await File.ReadAllTextAsync(sqlPath);
     await using var conn = new NpgsqlConnection(ReadConnection());
     await conn.OpenAsync();
@@ -37,14 +37,49 @@ if (args.Contains("--apply-migration"))
     Console.WriteLine("PASS migration 20261016_remove_maintenance_events.sql applied successfully");
     return 0;
 }
+static bool IsTransientNetwork(Exception? ex)
+{
+    while (ex != null)
+    {
+        if (ex is System.Net.Sockets.SocketException || ex is System.IO.IOException || ex is Npgsql.NpgsqlException)
+            return true;
+        ex = ex.InnerException;
+    }
+    return false;
+}
+
 async Task Check(string name, Func<Task> run)
 {
     if (filter is not null && !name.Contains(filter, StringComparison.OrdinalIgnoreCase)) return;
-    try { await run(); passed++; Console.WriteLine($"PASS {name}"); }
-    catch (Exception ex)
+    for (var attempt = 1; attempt <= 2; attempt++)
     {
-        failed++;
-        Console.Error.WriteLine($"FAIL {name}: {ex.GetType().Name}: {ex.Message}");
+        try
+        {
+            await run();
+            passed++;
+            Console.WriteLine($"PASS {name}");
+            return;
+        }
+        catch (Exception ex) when (attempt < 2 && IsTransientNetwork(ex))
+        {
+            Console.WriteLine($"RETRY {name} (attempt {attempt}) due to cloud network glitch...");
+            await Task.Delay(1500);
+        }
+        catch (Exception ex)
+        {
+            failed++;
+            Console.Error.WriteLine($"FAIL {name}:");
+            var cur = ex;
+            while (cur != null)
+            {
+                Console.Error.WriteLine($"  [{cur.GetType().Name}] {cur.Message}");
+                if (cur is PostgresException pg)
+                    Console.Error.WriteLine($"  [PostgresException] code={pg.SqlState} table={pg.TableName} constraint={pg.ConstraintName} detail={pg.Detail} message={pg.MessageText}");
+                cur = cur.InnerException;
+            }
+            Console.Error.WriteLine(ex.StackTrace);
+            return;
+        }
     }
 }
 
@@ -59,11 +94,13 @@ try
         var pastEvent = await f.Create(f.Input());
         await f.MoveToPast(pastEvent.MaDuAn);
         pastEvent = await f.Get(pastEvent.MaDuAn);
+        var hourlyPreview = await HourlyOperationsTests.PreparePreview(f);
         Directory.CreateDirectory(Path.GetDirectoryName(previewPath)!);
         var preview = new
         {
             f.Prefix, Password = previewPassword,
             PastEventId = pastEvent.MaDuAn, PastEventDate = HotelEventRules.Local(pastEvent.NgayBatDau).ToString("yyyy-MM-dd"),
+            HourlyEventId = hourlyPreview.EventId, HourlyShiftId = hourlyPreview.ShiftId,
             Admin = new { Username = f.Prefix + "-admin", f.Admin.EmployeeId, f.Admin.AccountId },
             HR = new { Username = f.Prefix + "-hr", f.HR.EmployeeId, f.HR.AccountId },
             Manager = new { Username = f.Prefix + "-manager", f.Manager.EmployeeId, f.Manager.AccountId },
@@ -76,6 +113,8 @@ try
         Console.WriteLine("PASS preview fixture created; credentials and exact run prefix are in .probe/event-preview.json");
         return 0;
     }
+
+    await HourlyOperationsTests.Run(f, Check);
 
     await Check("Creation rejects past dates but accepts today and future", async () =>
     {
@@ -298,9 +337,11 @@ try
         var item = await f.Create(f.Input());
         await f.StaffFully(item);
         item = await f.Get(item.MaDuAn);
-        await f.MoveToPast(item.MaDuAn);
+        await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
         await f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
+        item = await f.Get(item.MaDuAn);
+        await f.MoveToPast(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
         await f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "CHO_NGHIEM_THU"));
         Require((await f.Get(item.MaDuAn)).TrangThai == "CHO_NGHIEM_THU", "Lifecycle did not persist.");
@@ -376,22 +417,29 @@ try
             && item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerA).SoTienPhuCap == item.NganSachPhuCap
             && item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerB).SoTienPhuCap == 0,
             "Acceptance did not freeze a matching employee payment and total budget.");
+        var workMonth = HourlyEventRules.WorkMonth(item.NgayKetThuc);
+        bool existingPeriod;
+        await using (var periodDb = f.Open())
+            existingPeriod = await periodDb.KyLuongs.AnyAsync(k => k.Thang == workMonth.Month && k.Nam == workMonth.Year);
+        var periodId = await f.With(s => s.EnsurePaymentPeriodAsync(f.HR, workMonth.Month, workMonth.Year));
+        if (!existingPeriod) HourlyOperationsTests.TrackPeriod(periodId);
+        await f.With(s => s.ReconcileLegacyAsync(f.HR, item.MaDuAn, item.Version, periodId,
+            "HR verified the historical frozen employee allowance and work month."));
         await using var db = f.Open();
-        await using var transaction = await db.Database.BeginTransactionAsync();
-        var period = new KyLuong { Thang = 1, Nam = 2099, TuNgay = new DateOnly(2099, 1, 1),
-            DenNgay = new DateOnly(2099, 1, 31) };
-        db.KyLuongs.Add(period);
-        db.PhieuLuongs.Add(new PhieuLuong { MaNhanVien = f.WorkerA, KyLuong = period });
-        await db.SaveChangesAsync();
-        var payslipId = await db.PhieuLuongs.Where(p => p.MaNhanVien == f.WorkerA && p.MaKyLuong == period.MaKyLuong)
-            .Select(p => p.MaPhieuLuong).SingleAsync();
-        Require(await new PayrollCalculationService(db).RecalculateEmployeeAsync(payslipId, "Event test", null),
-            "Payroll recalculation failed for a long event name.");
-        var payrollItem = await db.ChiTietPhieuLuongs.SingleAsync(d => d.MaPhieuLuong != payslipId
+        var payslip = await db.PhieuLuongs.SingleOrDefaultAsync(p => p.MaNhanVien == f.WorkerA && p.MaKyLuong == periodId);
+        if (payslip is null)
+        {
+            payslip = new PhieuLuong { MaNhanVien = f.WorkerA, MaKyLuong = periodId };
+            db.PhieuLuongs.Add(payslip);
+            await db.SaveChangesAsync();
+        }
+        Require(await new PayrollCalculationService(db).RecalculateEmployeeAsync(payslip.MaPhieuLuong, "Event test", null),
+            "Payroll recalculation failed for a reconciled historical event with a long name.");
+        var currentPayslip = await db.PhieuLuongs.SingleAsync(p => p.MaNhanVien == f.WorkerA && p.MaKyLuong == periodId);
+        var payrollItem = await db.ChiTietPhieuLuongs.SingleAsync(d => d.MaPhieuLuong == currentPayslip.MaPhieuLuong
             && d.LoaiKhoan == "THUONG" && d.GhiChu != null && d.GhiChu.Contains($"SK-{item.MaDuAn}"));
         Require(payrollItem.GhiChu!.Length <= 255 && payrollItem.SoTien == item.NganSachPhuCap,
-            "Long event name prevented the frozen payout from reaching payroll.");
-        await transaction.RollbackAsync();
+            "Long event name prevented the reconciled frozen payout from reaching its selected payroll period.");
     });
 
     await Check("Acceptance freezes edits, staffing, reviews and status", async () =>
@@ -540,7 +588,7 @@ try
                 await f.With(s => s.AssignAsync(f.Manager,item.MaDuAn,f.Assignment(item,worker)));
                 item = await f.Get(item.MaDuAn);
             }
-        await f.MoveToPast(item.MaDuAn);
+        await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
         await Reject(() => f.With(s => s.ChangeStatusAsync(f.Manager,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
     });
@@ -551,7 +599,7 @@ try
         item = await f.StaffFully(item);
         var edit = f.Edit(item); edit.ExpectedGuests = 0;
         await f.With(s => s.SaveAsync(f.Admin,edit));
-        await f.MoveToPast(item.MaDuAn);
+        await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
         await Reject(() => f.With(s => s.ChangeStatusAsync(f.Manager,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
     });
@@ -563,7 +611,7 @@ try
         var oldCount=item.PhanCongs.Count;
         var edit=f.Edit(item); edit.ExpectedGuests=120;
         await f.With(s=>s.SaveAsync(f.Admin,edit));
-        await f.MoveToPast(item.MaDuAn);
+        await f.MoveToOngoing(item.MaDuAn);
         item=await f.Get(item.MaDuAn);
         Require(item.PhanCongs.Count==oldCount,"Changing guests silently removed assignments.");
         await Reject(()=>f.With(s=>s.ChangeStatusAsync(f.Manager,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
@@ -585,7 +633,7 @@ try
             item = await f.Get(item.MaDuAn);
         }
 
-        await f.MoveToPast(item.MaDuAn);
+        await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
         try
         {
@@ -602,14 +650,34 @@ try
     {
         var item = await f.Create(f.Input());
         item = await f.StaffFully(item);
-        await f.MoveToPast(item.MaDuAn);
+        await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
         await f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
         item = await f.Get(item.MaDuAn);
         Require(item.TrangThai == "DANG_DIEN_RA", "Event failed to transition to DANG_DIEN_RA after full staffing.");
     });
 
-    await Check("Removing a mandatory role is blocked even when another role has extra people", async () =>
+    await Check("Planned event whose day has passed is automatically cancelled with reason and unassigns staff", async () =>
+    {
+        var item = await f.Create(f.Input());
+        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA, 100)));
+        item = await f.Get(item.MaDuAn);
+        Require(item.TrangThai == "LEN_KE_HOACH", "Fixture should start in LEN_KE_HOACH.");
+
+        await f.MoveToPast(item.MaDuAn);
+
+        var refreshed = await f.Get(item.MaDuAn);
+        Require(refreshed.TrangThai == "HUY", $"Expired event was not automatically cancelled to HUY (was {refreshed.TrangThai}).");
+        Require(refreshed.LyDoHuy == HotelEventRules.AutoCancelReason, $"Cancellation reason mismatch: '{refreshed.LyDoHuy}'.");
+        Require(refreshed.PhanCongs.All(p => p.TrangThaiChiTra == "HUY_BO" && p.SoTienPhuCap == 0), "Assignments were not cancelled with zero pay.");
+
+        var history = await f.With(s => s.HistoryAsync(item.MaDuAn));
+        var autoCancelAudit = history.FirstOrDefault(h => h.HanhDong == "TU_DONG_HUY_SU_KIEN");
+        Require(autoCancelAudit != null, "Audit entry TU_DONG_HUY_SU_KIEN was not logged.");
+        Require(autoCancelAudit!.LyDo == HotelEventRules.AutoCancelReason, "Audit reason mismatch.");
+    });
+
+    await Check("Ending a mandatory role is blocked even when another role has extra people", async () =>
     {
         var item = await f.Create(f.Input());
         item = await f.StaffFully(item);
@@ -621,12 +689,17 @@ try
         item = await f.Get(item.MaDuAn);
 
         var assignB = item.PhanCongs.Single(p => p.MaNhanVien == spare);
-        await f.With(s => s.RemoveAssignmentAsync(f.Manager, item.MaDuAn, assignB.MaPhanCong, item.Version));
+        var handover = HotelEventRules.Local(DateTimeOffset.UtcNow);
+        await f.With(s => s.EndParticipationAsync(f.Manager, item.MaDuAn, assignB.MaPhanCong, item.Version, handover,
+            "Spare technician handed over after completing their work."));
         item = await f.Get(item.MaDuAn);
+        Require(item.PhanCongs.Single(p => p.MaPhanCong == assignB.MaPhanCong).TrangThaiThamGia == "DA_KET_THUC",
+            "Ending spare participation must keep its historical record.");
 
         // WorkerB still covers support, but cannot substitute for WorkerA's primary role.
         var assignA = item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerA);
-        await Reject(() => f.With(s => s.RemoveAssignmentAsync(f.Manager, item.MaDuAn, assignA.MaPhanCong, item.Version)));
+        await Reject(() => f.With(s => s.EndParticipationAsync(f.Manager, item.MaDuAn, assignA.MaPhanCong, item.Version,
+            HotelEventRules.Local(DateTimeOffset.UtcNow), "Attempted handover without a replacement")));
     });
 
     await Check("Changing event type is rejected if assigned staff are incompatible with new type", async () =>
@@ -661,7 +734,7 @@ catch (Exception ex)
 {
     failed++;
     // Avoid dumping configuration, connection strings or provider diagnostics on setup errors.
-    Console.Error.WriteLine($"FAIL fixture setup: {ex.GetType().Name}. Check PostgreSQL access, roles and the applied event migration.");
+    Console.Error.WriteLine($"FAIL fixture setup: {ex.GetType().Name}: {ex.Message}\n{(ex.InnerException != null ? "INNER: " + ex.InnerException.GetType().Name + ": " + ex.InnerException.Message + "\n" : "")}{ex.StackTrace}");
     var provider = ex as PostgresException ?? ex.InnerException as PostgresException;
     if (provider is not null)
         Console.Error.WriteLine($"PostgreSQL: code={provider.SqlState}, table={provider.TableName}, constraint={provider.ConstraintName}, message={provider.MessageText}");
@@ -670,8 +743,8 @@ finally
 {
     if (fixture is not null && !keepFixture)
     {
-        try { await fixture.Cleanup(); Console.WriteLine("PASS owned fixture cleanup"); }
-        catch (Exception ex) { failed++; Console.Error.WriteLine($"FAIL owned fixture cleanup: {ex.GetType().Name}; run prefix {fixture.Prefix}"); }
+        try { await HourlyOperationsTests.Cleanup(fixture); await fixture.Cleanup(); Console.WriteLine("PASS owned fixture cleanup"); }
+        catch (Exception ex) { failed++; Console.Error.WriteLine($"FAIL owned fixture cleanup: {ex}; run prefix {fixture.Prefix}"); }
     }
 }
 Console.WriteLine($"Hotel event PostgreSQL integration: {passed} passed, {failed} failed.");
@@ -710,7 +783,15 @@ static string ReadConnection()
         if (json.RootElement.TryGetProperty("ConnectionStrings", out var strings) && strings.TryGetProperty("DefaultConnection", out var value))
             connection = value.GetString();
     }
-    return !string.IsNullOrWhiteSpace(connection) ? connection : throw new InvalidOperationException("No PostgreSQL connection configured.");
+    if (string.IsNullOrWhiteSpace(connection)) throw new InvalidOperationException("No PostgreSQL connection configured.");
+    var builder = new NpgsqlConnectionStringBuilder(connection)
+    {
+        KeepAlive = 15,
+        ConnectionIdleLifetime = 15,
+        Timeout = 30,
+        CommandTimeout = 30
+    };
+    return builder.ConnectionString;
 }
 static string RepositoryRoot()
 {
@@ -755,6 +836,42 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
     }
     public async Task Initialize()
     {
+        await using (var orphanDb = Open())
+        {
+            var orphanEvents = await orphanDb.DuAns.Where(e => e.TenDuAn.StartsWith("EVT-") && !e.TenDuAn.StartsWith(Prefix)).Select(e => e.MaDuAn).ToArrayAsync();
+            var empIds = await orphanDb.NhanViens.Where(e => e.EmailCongVu.StartsWith("EVT-") && !e.EmailCongVu.StartsWith(Prefix)).Select(e => e.MaNhanVien).ToArrayAsync();
+            if (orphanEvents.Length > 0 || empIds.Length > 0)
+            {
+                var subjects = orphanEvents.Select(id => $"SK-{id}").ToArray();
+                var accIds = await orphanDb.TaiKhoans.Where(a => empIds.Contains(a.MaNhanVien)).Select(a => a.MaTaiKhoan).ToArrayAsync();
+                var pcIds = await orphanDb.PhanCongDuAns.Where(p => orphanEvents.Contains(p.MaDuAn) || empIds.Contains(p.MaNhanVien)).Select(p => p.MaPhanCong).ToArrayAsync();
+                var plIds = await orphanDb.PhieuLuongs.Where(p => empIds.Contains(p.MaNhanVien)).Select(p => p.MaPhieuLuong).ToArrayAsync();
+
+                await orphanDb.NhatKyQuanTris.Where(h => subjects.Contains(h.TenTaiKhoanBiTacDong) || (h.MaTaiKhoanThucHien.HasValue && accIds.Contains(h.MaTaiKhoanThucHien.Value))).ExecuteDeleteAsync();
+                await orphanDb.CongSuKiens.Where(c => pcIds.Contains(c.MaPhanCong) || empIds.Contains(c.MaNguoiXacNhan)).ExecuteDeleteAsync();
+                await orphanDb.QuyetToanSuKiens.Where(q => orphanEvents.Contains(q.MaDuAn) || empIds.Contains(q.MaNhanVien)).ExecuteDeleteAsync();
+                await orphanDb.ChiTietTruBaoHiems.Where(b => orphanDb.ChiTietPhieuLuongs.Any(c => plIds.Contains(c.MaPhieuLuong) && c.MaChiTiet == b.MaChiTiet)).ExecuteDeleteAsync();
+                await orphanDb.ChiTietTruThueTncns.Where(t => orphanDb.ChiTietPhieuLuongs.Any(c => plIds.Contains(c.MaPhieuLuong) && c.MaChiTiet == t.MaChiTiet)).ExecuteDeleteAsync();
+                await orphanDb.ChiTietTruViPhamTamUngs.Where(v => orphanDb.ChiTietPhieuLuongs.Any(c => plIds.Contains(c.MaPhieuLuong) && c.MaChiTiet == v.MaChiTiet)).ExecuteDeleteAsync();
+                await orphanDb.ChiTietPhieuLuongs.Where(c => plIds.Contains(c.MaPhieuLuong)).ExecuteDeleteAsync();
+                await orphanDb.PhieuLuongs.Where(p => empIds.Contains(p.MaNhanVien)).ExecuteDeleteAsync();
+                await orphanDb.PhanCongDuAns.Where(a => orphanEvents.Contains(a.MaDuAn) || empIds.Contains(a.MaNhanVien)).ExecuteDeleteAsync();
+                await orphanDb.NhuCauSuKiens.Where(n => orphanEvents.Contains(n.MaDuAn)).ExecuteDeleteAsync();
+                await orphanDb.DuAns.Where(e => orphanEvents.Contains(e.MaDuAn)).ExecuteDeleteAsync();
+                await orphanDb.DiaDiemSuKiens.Where(v => v.TenDiaDiem.StartsWith("EVT-") && !v.TenDiaDiem.StartsWith(Prefix)).ExecuteDeleteAsync();
+                await orphanDb.ChamCongs.Where(c => orphanDb.PhanCas.Any(s => s.MaPhanCa == c.MaPhanCa && empIds.Contains(s.MaNhanVien))).ExecuteDeleteAsync();
+                await orphanDb.PhanCas.Where(s => empIds.Contains(s.MaNhanVien)).ExecuteDeleteAsync();
+                await orphanDb.CongBoLichTuans.Where(w => empIds.Contains(w.MaNguoiCongBo)).ExecuteDeleteAsync();
+                await orphanDb.DinhBienCas.Where(d => orphanDb.CaLamViecs.Any(c => c.MaCa == d.MaCa && c.TenCa.StartsWith("EVT-") && !c.TenCa.StartsWith(Prefix))).ExecuteDeleteAsync();
+                await orphanDb.CaLamViecs.Where(c => c.TenCa.StartsWith("EVT-") && !c.TenCa.StartsWith(Prefix)).ExecuteDeleteAsync();
+                await orphanDb.DonTus.Where(d => empIds.Contains(d.MaNhanVien)).ExecuteDeleteAsync();
+                await orphanDb.LoaiDons.Where(d => d.TenLoaiDon.StartsWith("EVT-") && !d.TenLoaiDon.StartsWith(Prefix)).ExecuteDeleteAsync();
+                await orphanDb.HopDongs.Where(h => empIds.Contains(h.MaNhanVien)).ExecuteDeleteAsync();
+                await orphanDb.TaiKhoans.Where(a => accIds.Contains(a.MaTaiKhoan)).ExecuteDeleteAsync();
+                await orphanDb.NhanViens.Where(e => empIds.Contains(e.MaNhanVien)).ExecuteDeleteAsync();
+                await orphanDb.PhongBans.Where(p => p.TenPhongBan.StartsWith("EVT-") && !p.TenPhongBan.StartsWith(Prefix)).ExecuteDeleteAsync();
+            }
+        }
         await using var db = Open();
         var roles = await db.VaiTros.AsNoTracking().ToListAsync();
         var job = await db.ChucVus.Select(c => c.MaChucVu).FirstAsync();
@@ -942,10 +1059,29 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         var subjects = eventIds.Select(id => $"SK-{id}").ToArray();
         var employeeIds = await db.NhanViens.Where(e => e.EmailCongVu.StartsWith(Prefix + "-")).Select(e => e.MaNhanVien).ToArrayAsync();
         var accountIds = await db.TaiKhoans.Where(a => employeeIds.Contains(a.MaNhanVien)).Select(a => a.MaTaiKhoan).ToArrayAsync();
+        var pcIds = await db.PhanCongDuAns.Where(p => eventIds.Contains(p.MaDuAn) || employeeIds.Contains(p.MaNhanVien)).Select(p => p.MaPhanCong).ToArrayAsync();
+        var plIds = await db.PhieuLuongs.Where(p => employeeIds.Contains(p.MaNhanVien)).Select(p => p.MaPhieuLuong).ToArrayAsync();
+
         await db.NhatKyQuanTris.Where(h => subjects.Contains(h.TenTaiKhoanBiTacDong)
             || (h.MaTaiKhoanThucHien.HasValue && accountIds.Contains(h.MaTaiKhoanThucHien.Value))).ExecuteDeleteAsync();
-        await db.PhanCongDuAns.Where(a => eventIds.Contains(a.MaDuAn)).ExecuteDeleteAsync();
+        await db.CongSuKiens.Where(c => pcIds.Contains(c.MaPhanCong) || employeeIds.Contains(c.MaNguoiXacNhan)).ExecuteDeleteAsync();
+        await db.QuyetToanSuKiens.Where(q => eventIds.Contains(q.MaDuAn) || employeeIds.Contains(q.MaNhanVien)).ExecuteDeleteAsync();
+        await db.ChiTietTruBaoHiems.Where(b => db.ChiTietPhieuLuongs.Any(c => plIds.Contains(c.MaPhieuLuong) && c.MaChiTiet == b.MaChiTiet)).ExecuteDeleteAsync();
+        await db.ChiTietTruThueTncns.Where(t => db.ChiTietPhieuLuongs.Any(c => plIds.Contains(c.MaPhieuLuong) && c.MaChiTiet == t.MaChiTiet)).ExecuteDeleteAsync();
+        await db.ChiTietTruViPhamTamUngs.Where(v => db.ChiTietPhieuLuongs.Any(c => plIds.Contains(c.MaPhieuLuong) && c.MaChiTiet == v.MaChiTiet)).ExecuteDeleteAsync();
+        await db.ChiTietPhieuLuongs.Where(c => plIds.Contains(c.MaPhieuLuong)).ExecuteDeleteAsync();
+        await db.PhieuLuongs.Where(p => employeeIds.Contains(p.MaNhanVien)).ExecuteDeleteAsync();
+        await db.PhanCongDuAns.Where(a => eventIds.Contains(a.MaDuAn) || employeeIds.Contains(a.MaNhanVien)).ExecuteDeleteAsync();
+        await db.NhuCauSuKiens.Where(n => eventIds.Contains(n.MaDuAn)).ExecuteDeleteAsync();
         await db.DuAns.Where(e => eventIds.Contains(e.MaDuAn)).ExecuteDeleteAsync();
+        await db.DiaDiemSuKiens.Where(v => v.TenDiaDiem.StartsWith(Prefix)).ExecuteDeleteAsync();
+        await db.ChamCongs.Where(c => db.PhanCas.Any(s => s.MaPhanCa == c.MaPhanCa && employeeIds.Contains(s.MaNhanVien))).ExecuteDeleteAsync();
+        await db.PhanCas.Where(s => employeeIds.Contains(s.MaNhanVien)).ExecuteDeleteAsync();
+        await db.CongBoLichTuans.Where(w => employeeIds.Contains(w.MaNguoiCongBo)).ExecuteDeleteAsync();
+        await db.DinhBienCas.Where(d => db.CaLamViecs.Any(c => c.MaCa == d.MaCa && c.TenCa.StartsWith(Prefix))).ExecuteDeleteAsync();
+        await db.CaLamViecs.Where(c => c.TenCa.StartsWith(Prefix)).ExecuteDeleteAsync();
+        await db.DonTus.Where(d => employeeIds.Contains(d.MaNhanVien)).ExecuteDeleteAsync();
+        await db.LoaiDons.Where(d => d.TenLoaiDon.StartsWith(Prefix)).ExecuteDeleteAsync();
         await db.HopDongs.Where(h => employeeIds.Contains(h.MaNhanVien)).ExecuteDeleteAsync();
         await db.TaiKhoans.Where(a => accountIds.Contains(a.MaTaiKhoan)).ExecuteDeleteAsync();
         await db.NhanViens.Where(e => employeeIds.Contains(e.MaNhanVien)).ExecuteDeleteAsync();
@@ -953,3 +1089,7 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         await transaction.CommitAsync();
     }
 }
+
+
+
+
