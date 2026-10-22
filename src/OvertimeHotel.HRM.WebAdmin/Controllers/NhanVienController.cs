@@ -231,6 +231,19 @@ public class NhanVienController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(NhanVienFormViewModel model)
     {
+        var contract = await _context.HopDongs.Include(x => x.NhanVien)
+            .FirstOrDefaultAsync(x => x.MaHopDong == model.ContractId);
+        var employee = contract?.NhanVien;
+        // These fields belong to the selected contract, never to the submitted form.
+        model.Employee.Ho = employee?.Ho ?? string.Empty;
+        model.Employee.Ten = employee?.Ten ?? string.Empty;
+        model.Employee.MaPhongBan = employee?.MaPhongBan;
+        model.Employee.MaChucVu = employee?.MaChucVu;
+        model.Employee.EmailCaNhan = employee?.EmailCaNhan;
+        model.Employee.NgayVaoLam = contract?.NgayBatDau ?? default;
+        foreach (var field in new[] { "Ho", "Ten", "MaPhongBan", "MaChucVu", "EmailCaNhan", "NgayVaoLam" })
+            ModelState.Remove($"Employee.{field}");
+
         model.Employee.TrangThai = "DANG_LAM";
         model.Employee.NgayThoiViec = null;
         Normalize(model.Employee);
@@ -245,9 +258,6 @@ public class NhanVienController : Controller
             ModelState.Remove("Employee.TrinhDo");
         }
 
-        var contract = await _context.HopDongs.Include(x => x.NhanVien)
-            .FirstOrDefaultAsync(x => x.MaHopDong == model.ContractId);
-        var employee = contract?.NhanVien;
         if (employee == null || employee.IsProfileComplete || ContractState.Classify(contract, DateOnly.FromDateTime(DateTime.Today)) is "DA_CHAM_DUT" or "DA_HET_HAN")
             ModelState.AddModelError("ContractId", "Vui lòng chọn hợp đồng chưa có hồ sơ hoàn chỉnh và còn phù hợp để tiếp nhận.");
         model.Employee.MaNhanVien = employee?.MaNhanVien ?? 0;
@@ -260,17 +270,12 @@ public class NhanVienController : Controller
 
         try
         {
-            employee!.MaPhongBan = model.Employee.MaPhongBan;
-            employee.MaChucVu = model.Employee.MaChucVu;
-            employee.Ho = model.Employee.Ho;
-            employee.Ten = model.Employee.Ten;
-            employee.NgaySinh = model.Employee.NgaySinh;
+            employee!.NgaySinh = model.Employee.NgaySinh;
             employee.GioiTinh = model.Employee.GioiTinh;
             employee.DienThoai = model.Employee.DienThoai;
-            employee.EmailCaNhan = model.Employee.EmailCaNhan;
             employee.DiaChi = model.Employee.DiaChi;
             employee.TrinhDo = model.Employee.TrinhDo;
-            employee.NgayVaoLam = model.Employee.NgayVaoLam;
+            employee.NgayVaoLam = contract!.NgayBatDau;
             employee.IsProfileComplete = true;
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã thêm hồ sơ nhân viên “{model.Employee.HoTen}”.";

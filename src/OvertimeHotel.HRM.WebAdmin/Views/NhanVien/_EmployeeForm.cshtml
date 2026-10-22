@@ -1,4 +1,5 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.NhanVienFormViewModel
+@{ var completingProfile = Model.Employee.MaNhanVien == 0; }
 @Html.AntiForgeryToken()
 <input asp-for="Employee.MaNhanVien" type="hidden" />
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
@@ -15,12 +16,12 @@
                     <option value="@contract.MaHopDong" data-ho="@person.Ho" data-ten="@person.Ten" data-department="@person.MaPhongBan" data-position="@person.MaChucVu" data-email="@person.EmailCaNhan" data-start="@contract.NgayBatDau.ToString("yyyy-MM-dd")">@contract.SoHopDong — @person.HoTen</option>
                 }
             </select>
-            <div id="contractHelp" class="form-text">Lập hợp đồng trước, sau đó chọn hợp đồng để hoàn thiện hồ sơ. Hợp đồng đã có hồ sơ hoàn chỉnh sẽ không xuất hiện.</div>
+            <div id="contractHelp" class="form-text">Thông tin lấy từ hợp đồng được khóa. Nếu cần thay đổi, hãy cập nhật ở hợp đồng trước. Hợp đồng đã có hồ sơ hoàn chỉnh sẽ không xuất hiện.</div>
             <span asp-validation-for="ContractId" class="text-danger small"></span>
         </div>
     }
-    <div class="col-md-6"><label asp-for="Employee.Ho" class="form-label">Họ *</label><input asp-for="Employee.Ho" class="form-control" /><span asp-validation-for="Employee.Ho" class="text-danger small"></span></div>
-    <div class="col-md-6"><label asp-for="Employee.Ten" class="form-label">Tên *</label><input asp-for="Employee.Ten" class="form-control" /><span asp-validation-for="Employee.Ten" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.Ho" class="form-label">Họ *</label><input asp-for="Employee.Ho" class="form-control" readonly="@completingProfile" /><span asp-validation-for="Employee.Ho" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.Ten" class="form-label">Tên *</label><input asp-for="Employee.Ten" class="form-control" readonly="@completingProfile" /><span asp-validation-for="Employee.Ten" class="text-danger small"></span></div>
     <div class="col-md-4"><label asp-for="Employee.NgaySinh" class="form-label">Ngày sinh *</label><input asp-for="Employee.NgaySinh" type="date" class="form-control" /><span asp-validation-for="Employee.NgaySinh" class="text-danger small"></span></div>
     <div class="col-md-4"><label asp-for="Employee.GioiTinh" class="form-label">Giới tính *</label><select asp-for="Employee.GioiTinh" class="form-select" required><option value="">Chọn giới tính</option><option value="NAM">Nam</option><option value="NU">Nữ</option><option value="KHAC">Khác</option></select></div>
     <div class="col-md-4">
@@ -46,8 +47,8 @@
         </select>
         <span asp-validation-for="Employee.TrinhDo" class="text-danger small"></span>
     </div>
-    <div class="col-md-6"><label asp-for="Employee.MaPhongBan" class="form-label">Phòng ban *</label><select asp-for="Employee.MaPhongBan" asp-items="Model.DepartmentOptions" class="form-select" id="Employee_MaPhongBan"><option value="">Chọn phòng ban</option></select><span asp-validation-for="Employee.MaPhongBan" class="text-danger small"></span></div>
-    <div class="col-md-6"><label asp-for="Employee.MaChucVu" class="form-label">Chức vụ *</label><select asp-for="Employee.MaChucVu" asp-items="Model.PositionOptions" class="form-select" id="Employee_MaChucVu"><option value="">Chọn chức vụ</option></select><span asp-validation-for="Employee.MaChucVu" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.MaPhongBan" class="form-label">Phòng ban *</label><select asp-for="Employee.MaPhongBan" asp-items="Model.DepartmentOptions" class="form-select" id="Employee_MaPhongBan" disabled="@completingProfile"><option value="">Chọn phòng ban</option></select><span asp-validation-for="Employee.MaPhongBan" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.MaChucVu" class="form-label">Chức vụ *</label><select asp-for="Employee.MaChucVu" asp-items="Model.PositionOptions" class="form-select" id="Employee_MaChucVu" disabled="@completingProfile"><option value="">Chọn chức vụ</option></select><span asp-validation-for="Employee.MaChucVu" class="text-danger small"></span></div>
     @if (Model.Employee.MaNhanVien > 0)
     {
         <div class="col-md-6">
@@ -56,9 +57,9 @@
             <span class="form-text text-muted">Email công vụ do bộ phận IT cấp cùng tài khoản hệ thống.</span>
         </div>
     }
-    <div class="col-md-6"><label asp-for="Employee.EmailCaNhan" class="form-label">Email cá nhân</label><input asp-for="Employee.EmailCaNhan" type="email" class="form-control" placeholder="Không bắt buộc" /><span class="form-text">Chỉ lưu hồ sơ, không dùng đăng nhập.</span><span asp-validation-for="Employee.EmailCaNhan" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.EmailCaNhan" class="form-label">Email cá nhân</label><input asp-for="Employee.EmailCaNhan" type="email" class="form-control" placeholder="Không bắt buộc" readonly="@completingProfile" /><span class="form-text">Chỉ lưu hồ sơ, không dùng đăng nhập.</span><span asp-validation-for="Employee.EmailCaNhan" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.DienThoai" class="form-label">Điện thoại *</label><input asp-for="Employee.DienThoai" class="form-control" /><span asp-validation-for="Employee.DienThoai" class="text-danger small"></span></div>
-    <div class="col-md-6"><label asp-for="Employee.NgayVaoLam" class="form-label">Ngày vào làm *</label><input asp-for="Employee.NgayVaoLam" type="date" class="form-control" /><span asp-validation-for="Employee.NgayVaoLam" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.NgayVaoLam" class="form-label">Ngày vào làm *</label><input asp-for="Employee.NgayVaoLam" type="date" class="form-control" readonly="@completingProfile" /><span asp-validation-for="Employee.NgayVaoLam" class="text-danger small"></span></div>
     @if (Model.Employee.MaNhanVien > 0)
     {
         <div class="col-md-6">
