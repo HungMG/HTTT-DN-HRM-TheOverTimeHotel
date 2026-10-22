@@ -6,7 +6,7 @@
 
   const message = (container, text, retry) => {
     const paragraph = document.createElement("p");
-    paragraph.className = "text-muted mb-0";
+    paragraph.className = "department-message mb-0";
     paragraph.textContent = text;
     container.replaceChildren(paragraph);
     if (retry) {
@@ -74,14 +74,21 @@
         message(list, "Chưa có nhân viên đang làm việc ở chức vụ này trong phòng ban.");
       } else {
         const items = document.createElement("ul");
-        items.className = "list-group list-group-flush";
+        items.className = "department-employees";
         employees.forEach((employee) => {
           const item = document.createElement("li");
-          item.className = "list-group-item px-0 text-break";
+          item.className = "department-employee";
+          const avatar = document.createElement("span");
+          avatar.className = "department-avatar";
+          avatar.setAttribute("aria-hidden", "true");
+          avatar.textContent = employee.name.trim().split(/\s+/u).slice(-2).map(part => Array.from(part)[0] || "").join("").toLocaleUpperCase("vi");
+          const name = document.createElement("span");
+          name.className = "department-employee-name";
+          name.textContent = employee.name;
           const code = document.createElement("span");
-          code.className = "text-muted font-monospace me-2";
+          code.className = "department-employee-code";
           code.textContent = `NV-${String(employee.id).padStart(3, "0")}`;
-          item.append(code, document.createTextNode(employee.name));
+          item.append(avatar, name, code);
           items.append(item);
         });
         list.replaceChildren(items);

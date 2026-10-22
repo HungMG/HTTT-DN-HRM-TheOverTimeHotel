@@ -1,0 +1,75 @@
+#departmentDetailsModal .modal-content {
+  font-family: var(--font-sans);
+  border-radius: 16px !important;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, .22) !important;
+  overflow: hidden;
+}
+
+#departmentDetailsModal .modal-header {
+  background: var(--hotel-navy);
+  color: #fff;
+  border-bottom: 1px solid var(--hotel-gold);
+  padding-block: 1.2rem;
+}
+
+#departmentDetailsModal .modal-title { color: #fff; font-size: 1.1rem; }
+#departmentDetailsModal .btn-close { filter: invert(1); opacity: .8; }
+#departmentDetailsModal .btn-close:hover { opacity: 1; }
+#departmentDetailsModal .modal-body { background: #fff; }
+#departmentDetailsModal .modal-footer { background: #f8fafc !important; border-color: #e5e9ef; }
+#departmentDetailsModal .modal-footer .btn { color: var(--hotel-navy); border-color: #cbd5e1; font-size: .85rem; }
+#departmentDetailsModal .modal-footer .btn:hover { color: #fff; background: var(--hotel-navy); border-color: var(--hotel-navy); }
+
+#departmentDetailsModal .department-emblem {
+  display: grid;
+  place-items: center;
+  flex: 0 0 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #f8f1dd;
+  color: #806017;
+  font-size: 1.4rem;
+}
+
+#departmentDetailsModal .department-name { color: var(--hotel-navy); font-size: 1.4rem; line-height: 1.35; overflow-wrap: anywhere; }
+#departmentDetailsModal .department-code { color: #64748b; font-size: .76rem; font-variant-numeric: tabular-nums; }
+#departmentDetailsModal .department-description { color: #475569; font-size: .88rem; line-height: 1.8; padding-bottom: 1.15rem; border-bottom: 1px solid #e5e9ef; }
+#departmentDetailsModal .department-section-title { color: var(--hotel-navy); font-size: .92rem; font-weight: 600; display: flex; align-items: center; gap: .6rem; }
+#departmentDetailsModal .department-count { background: #f1f5f9; color: #475569; border-radius: 6px; padding: .2rem .5rem; font-size: .75rem; font-variant-numeric: tabular-nums; }
+#departmentDetailsModal .department-guidance { color: #64748b; font-size: .79rem; line-height: 1.7; margin-bottom: 1.15rem; }
+
+#departmentDetailsModal .department-position { border: 1px solid #e0e5ed; border-radius: 12px; overflow: hidden; margin-bottom: .7rem; transition: border-color 160ms ease-out; }
+#departmentDetailsModal .department-position:has([aria-expanded="true"]) { border-color: #b8c5d8; }
+#departmentDetailsModal .department-position-toggle { background: #fff; color: var(--hotel-navy); font-size: .88rem; font-weight: 600; line-height: 1.6; padding: .95rem 1.1rem; border: 0; border-radius: 0; transition: background-color 160ms ease-out; }
+#departmentDetailsModal .department-position-toggle:hover,
+#departmentDetailsModal .department-position-toggle[aria-expanded="true"] { background: #f3f6fa; color: var(--hotel-navy); }
+#departmentDetailsModal .department-shared { display: inline-block; color: #64748b; font-size: .72rem; font-weight: 400; margin-inline-start: .4rem; }
+#departmentDetailsModal .department-chevron { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: 50%; background: #f1f5f9; color: #526581; font-size: .7rem; }
+#departmentDetailsModal .department-position-toggle[aria-expanded="true"] .department-chevron { background: #e2e8f0; color: var(--hotel-navy); }
+#departmentDetailsModal .department-position-content { padding: 1rem 1.1rem; border-top: 1px solid #e5e9ef; background: #fbfcfe; }
+#departmentDetailsModal .department-position-description { color: #64748b; font-size: .79rem; line-height: 1.7; margin-bottom: .9rem; }
+#departmentDetailsModal .department-message { color: #64748b; font-size: .84rem; line-height: 1.7; }
+
+#departmentDetailsModal .department-employees { list-style: none; padding: 0; margin: 0; }
+#departmentDetailsModal .department-employee { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: .7rem; padding-block: .75rem; border-bottom: 1px solid #e9edf3; }
+#departmentDetailsModal .department-employee:first-child { padding-top: 0; }
+#departmentDetailsModal .department-employee:last-child { padding-bottom: 0; border-bottom: 0; }
+#departmentDetailsModal .department-avatar { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 50%; background: #e8edf5; color: #344c70; font-size: .73rem; font-weight: 600; }
+#departmentDetailsModal .department-employee-name { color: #24344d; font-size: .86rem; font-weight: 500; flex: 1 1 140px; overflow-wrap: anywhere; }
+#departmentDetailsModal .department-employee-code { color: #64748b; font-size: .75rem; font-variant-numeric: tabular-nums; }
+#departmentDetailsModal button:focus-visible { outline: 2px solid #98721d; outline-offset: -3px; box-shadow: none; }
+#departmentDetailsModal ::selection { background: #f1e2ac; color: #0f172a; }
+
+@media (prefers-reduced-motion: reduce) {
+  #departmentDetailsModal .department-position,
+  #departmentDetailsModal .department-position-toggle { transition: none; }
+}
+
+@media (max-width: 575.98px) {
+  #departmentDetailsModal .department-name { font-size: 1.2rem; }
+  #departmentDetailsModal .department-position-toggle,
+  #departmentDetailsModal .department-position-content { padding: .85rem; }
+  #departmentDetailsModal .department-employee { grid-template-columns: 36px minmax(0, 1fr); gap: .25rem .7rem; }
+  #departmentDetailsModal .department-avatar { grid-row: span 2; }
+  #departmentDetailsModal .department-employee-code { grid-column: 2; }
+}

@@ -5,17 +5,17 @@
 }
 
 <section data-department-content>
-    <div class="d-flex align-items-center gap-3 mb-3">
-        <span class="catalog-icon catalog-icon--department" aria-hidden="true"><i class="bi bi-building-fill"></i></span>
+    <div class="department-intro d-flex align-items-center gap-3 mb-3">
+        <span class="department-emblem" aria-hidden="true"><i class="bi bi-building-fill"></i></span>
         <div>
-            <h3 class="h5 font-serif mb-1">@Model.Department.TenPhongBan</h3>
-            <span class="text-muted small">Mã phòng ban: #@Model.Department.MaPhongBan</span>
+            <h3 class="department-name font-serif mb-1">@Model.Department.TenPhongBan</h3>
+            <span class="department-code">Mã phòng ban: #@Model.Department.MaPhongBan</span>
         </div>
     </div>
-    <p class="text-muted text-break">@(string.IsNullOrWhiteSpace(Model.Department.MoTa) ? "Chưa có mô tả chức năng và nhiệm vụ." : Model.Department.MoTa)</p>
+    <p class="department-description text-break">@(string.IsNullOrWhiteSpace(Model.Department.MoTa) ? "Chưa có mô tả chức năng và nhiệm vụ." : Model.Department.MoTa)</p>
 
-    <h3 class="h6 mt-4">Chức vụ trong phòng ban (@Model.Positions.Count)</h3>
-    <p class="small text-muted">Mở từng chức vụ để xem nhân viên đang làm việc tại phòng ban này. Chức vụ dùng chung được áp dụng cho mọi phòng ban.</p>
+    <h3 class="department-section-title mt-4">Chức vụ trong phòng ban <span class="department-count">@Model.Positions.Count</span></h3>
+    <p class="department-guidance">Mở từng chức vụ để xem nhân viên đang làm việc tại phòng ban này. Chức vụ dùng chung được áp dụng cho mọi phòng ban.</p>
     @if (!canViewEmployees)
     {
         <p class="alert alert-secondary small">Bạn không có quyền xem danh sách nhân viên.</p>
@@ -27,20 +27,20 @@
     @foreach (var position in Model.Positions)
     {
         var panelId = $"department-{Model.Department.MaPhongBan}-position-{position.MaChucVu}";
-        <div class="border rounded-3 mb-2 overflow-hidden">
+        <div class="department-position">
             <h4 class="h6 mb-0">
-                <button type="button" class="btn btn-light w-100 text-start d-flex align-items-center justify-content-between gap-2 p-3"
+                <button type="button" class="btn department-position-toggle w-100 text-start d-flex align-items-center justify-content-between gap-2"
                         data-position-toggle aria-expanded="false" aria-controls="@panelId">
-                    <span>@position.TenChucVu @if (position.MaPhongBan == null) { <small class="text-muted">(Dùng chung)</small> }</span>
-                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                    <span>@position.TenChucVu @if (position.MaPhongBan == null) { <small class="department-shared">Dùng chung</small> }</span>
+                    <i class="bi bi-chevron-down department-chevron" aria-hidden="true"></i>
                 </button>
             </h4>
-            <div id="@panelId" class="p-3 border-top" hidden data-position-employees
+            <div id="@panelId" class="department-position-content" hidden data-position-employees
                  data-employees-url="@Url.Action("PositionEmployees", new { id = Model.Department.MaPhongBan, positionId = position.MaChucVu })"
                  data-can-view-employees="@(canViewEmployees ? "true" : "false")">
                 @if (!string.IsNullOrWhiteSpace(position.MoTa))
                 {
-                    <p class="small text-muted text-break">@position.MoTa</p>
+                    <p class="department-position-description text-break">@position.MoTa</p>
                 }
                 <div data-employee-list aria-live="polite"></div>
             </div>
