@@ -21,6 +21,20 @@
     <label asp-for="MaPhongBan">Trực thuộc Phòng ban / Bộ phận</label>
     <span asp-validation-for="MaPhongBan" class="text-danger small"></span>
 </div>
+<div class="form-floating mb-2">
+    <select asp-for="CheDoLamViec" class="form-select">
+        <option value="@ShiftWorkModes.XOAY_CA">@ShiftWorkModes.ToDisplayName(ShiftWorkModes.XOAY_CA)</option>
+        <option value="@ShiftWorkModes.HANH_CHINH">@ShiftWorkModes.ToDisplayName(ShiftWorkModes.HANH_CHINH)</option>
+    </select>
+    <label asp-for="CheDoLamViec">Chế độ làm việc <span class="text-danger">*</span></label>
+    <span asp-validation-for="CheDoLamViec" class="text-danger small"></span>
+</div>
+<div class="small text-muted mb-3">
+    <i class="bi bi-signpost-split me-1"></i>
+    Quyết định nhân sự giữ chức danh này được xếp vào loại ca nào: <strong>Giờ hành chính</strong> chỉ nhận
+    ca hành chính, <strong>Ca xoay 24/7</strong> chỉ nhận ca sáng / chiều / đêm. Đổi giá trị sẽ khoá hoặc mở
+    việc xếp ca của toàn bộ nhân sự thuộc chức danh.
+</div>
 <div class="form-floating mb-4">
     <textarea asp-for="MoTa" class="form-control" placeholder="Mô tả" maxlength="255" style="height:120px"></textarea>
     <label asp-for="MoTa">Mô tả nhiệm vụ</label>

@@ -54,6 +54,19 @@
                                         <label class="form-label fw-semibold text-dark small">Giờ kết thúc <span class="text-danger">*</span></label>
                                         <input type="time" name="GioKetThuc" class="form-control rounded-3" value="14:00" required />
                                     </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold text-dark small">Giờ làm chuẩn <span class="text-danger">*</span></label>
+                                        <input type="number" name="GioLamChuan" step="0.25" min="0.25" max="24" value="8.00"
+                                               class="form-control rounded-3" required
+                                               title="Số giờ thực sự làm, không phải độ dài khung giờ. Ca 07:00–17:00 khai 8 giờ." />
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label fw-semibold text-dark small">Loại ca <span class="text-danger">*</span></label>
+                                        <select name="LoaiCa" class="form-select rounded-3">
+                                            <option value="@ShiftWorkModes.XOAY_CA" selected>@ShiftWorkModes.ToDisplayName(ShiftWorkModes.XOAY_CA)</option>
+                                            <option value="@ShiftWorkModes.HANH_CHINH">@ShiftWorkModes.ToDisplayName(ShiftWorkModes.HANH_CHINH)</option>
+                                        </select>
+                                    </div>
                                     <div class="col-12">
                                         <div class="form-check form-switch p-2 bg-white rounded-3 border ps-5">
                                             <input class="form-check-input" type="checkbox" name="QuaDem" value="true" id="switchQuaDemNew" />
@@ -140,12 +153,25 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="badge bg-primary-subtle text-primary border rounded-pill px-2 py-1 small">
-                                                @durationHours.ToString("0.#") giờ
+                                            @* Giờ làm khác khung giờ: ca hành chính 07:00–17:00 dài 10
+                                               giờ nhưng chỉ tính 8 giờ làm, phần chênh là nghỉ trưa. *@
+                                            <span class="badge bg-primary-subtle text-primary border rounded-pill px-2 py-1 small"
+                                                  title="Khung giờ dài @durationHours.ToString("0.#") giờ.">
+                                                @ca.GioLamChuan.ToString("0.#") giờ làm
                                             </span>
+                                            @if (Math.Abs(durationHours - (double)ca.GioLamChuan) >= 0.25)
+                                            {
+                                                <div class="small text-muted mt-1">khung @durationHours.ToString("0.#") giờ</div>
+                                            }
                                         </td>
                                         <td>
-                                            @if (isNight)
+                                            @if (ca.LoaiCa == ShiftWorkModes.HANH_CHINH)
+                                            {
+                                                <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle rounded-pill px-3 py-1 small">
+                                                    <i class="bi bi-briefcase-fill me-1"></i> Giờ hành chính
+                                                </span>
+                                            }
+                                            else if (isNight)
                                             {
                                                 <span class="badge rounded-pill px-3 py-1 small"
                                                       style="background: #0f172a; color: #fde047; border: 1px solid #eab308; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);">

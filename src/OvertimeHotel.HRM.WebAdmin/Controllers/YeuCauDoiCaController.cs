@@ -641,17 +641,7 @@ public class YeuCauDoiCaController : Controller
     /// Bộ phận mà Quản lý được thao tác. <c>null</c> = không giới hạn (HR/Admin/IT).
     /// <c>-1</c> = Manager nhưng thiếu claim phòng ban ⇒ không khớp phòng ban nào.
     /// </summary>
-    private int? GetManagerDepartmentScope()
-    {
-        if (!User.IsInRole("Manager"))
-        {
-            return null;
-        }
-
-        return int.TryParse(User.FindFirstValue("DepartmentId"), out var departmentId) && departmentId > 0
-            ? departmentId
-            : -1;
-    }
+    private int? GetManagerDepartmentScope() => User.GetManagedDepartmentScope();
 
     private int? GetCurrentEmployeeId() =>
         int.TryParse(User.FindFirstValue("EmployeeId"), out var employeeId) ? employeeId : null;

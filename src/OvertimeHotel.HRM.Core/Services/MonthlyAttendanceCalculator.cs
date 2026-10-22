@@ -28,6 +28,43 @@ public static class MonthlyAttendanceCalculator
     private static bool CoMat(MonthlyAttendanceShiftInput s) =>
         s.GioCheckIn.HasValue || s.GioCheckOut.HasValue;
 
+    /// <summary>
+    /// Số giờ làm thực tế của một ca: hiệu số giờ quẹt thẻ, nhưng không vượt quá
+    /// <see cref="MonthlyAttendanceShiftInput.GioLamChuan"/>.
+    ///
+    /// <para>
+    /// <b>Vì sao phải chặn trên:</b> ca hành chính 07:00–17:00 chiếm 10 tiếng
+    /// trên đồng hồ, chỉ 8 tiếng là giờ làm, phần chênh là nghỉ trưa. Quẹt đủ
+    /// cặp giờ vào/ra thì hiệu số thô ra 10 — cộng thẳng vào báo cáo là tháng
+    /// 26 ngày thành 260 giờ thay vì 208, thổi phồng 25% mà không chỉ dòng nào
+    /// báo sai.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Vì sao chặn trên chứ không trừ một hằng số:</b> hệ thống không lưu
+    /// khung giờ nghỉ (cố ý — không ai nghỉ đúng 12:00–14:00 mỗi ngày). Chặn
+    /// trên theo giờ làm chuẩn đạt cùng kết quả mà không phải biết nhân viên
+    /// nghỉ lúc nào. Hệ quả có chủ ý: ai về sớm sẽ bị tính thiếu phần đã nghỉ —
+    /// đúng, vì họ về sớm thật.
+    /// </para>
+    ///
+    /// <para>
+    /// <c>GioLamChuan = null</c> là dữ liệu cũ chưa có cột: giữ nguyên cách tính
+    /// cũ (không chặn) để số liệu lịch sử không đổi.
+    /// </para>
+    /// </summary>
+    private static decimal GioLamThucTe(MonthlyAttendanceShiftInput ca)
+    {
+        var gio = (decimal)Math.Round((ca.GioCheckOut!.Value - ca.GioCheckIn!.Value).TotalHours, 2);
+
+        if (ca.GioLamChuan is { } chuan && chuan > 0 && gio > chuan)
+        {
+            return chuan;
+        }
+
+        return gio;
+    }
+
     public static MonthlyAttendanceReportDto Calculate(
         DateOnly from,
         DateOnly to,
@@ -92,7 +129,7 @@ public static class MonthlyAttendanceCalculator
             {
                 if (ca.GioCheckIn.HasValue && ca.GioCheckOut.HasValue && ca.GioCheckOut.Value > ca.GioCheckIn.Value)
                 {
-                    tongGio += (decimal)Math.Round((ca.GioCheckOut.Value - ca.GioCheckIn.Value).TotalHours, 2);
+                    tongGio += GioLamThucTe(ca);
                     tongOt += ca.GioTangCaOt;
                 }
             }

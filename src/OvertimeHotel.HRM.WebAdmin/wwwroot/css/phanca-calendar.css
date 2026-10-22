@@ -231,6 +231,14 @@
   border: 1px solid #c7d2fe;
 }
 
+/* Ca hành chính — hậu tố "office" do CaLamViec.SacThaiCa trả về. Thiếu lớp này
+   thì chip rơi về kiểu mặc định không viền và lẫn vào nền ô ngày. */
+.phanca-mini-chip-office {
+  background: #d7f4f0;
+  color: #0f766e;
+  border: 1px solid #99e0d8;
+}
+
 .phanca-chip-warning-icon {
   color: #dc2626;
   font-size: 11px;
@@ -318,6 +326,21 @@
   border-radius: 50%;
   background: #4f46e5;
   box-shadow: 0 0 6px rgba(79, 70, 229, 0.5);
+}
+
+/* Bootstrap 5 không có tiện ích .text-teal; khai báo một lớp cùng tông với
+   ca hành chính để icon không bị mất màu. */
+.text-teal {
+  color: #0f766e !important;
+}
+
+/* Ca hành chính — trước đây không có lớp riêng nên rơi vào màu ca đêm. */
+.phanca-shift-dot-office {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0f766e;
+  box-shadow: 0 0 6px rgba(15, 118, 110, 0.45);
 }
 
 .phanca-agenda-shift-time {
@@ -472,10 +495,11 @@
 }
 
 /* ==========================================================================
-   BẢNG MÀU PHÂN BIỆT BA CA LÀM VIỆC (SÁNG · CHIỀU · ĐÊM)
+   BẢNG MÀU PHÂN BIỆT TỪNG CA LÀM VIỆC
    Trước đây Ca Sáng và Ca Chiều cùng rơi vào nhánh bg-primary nên nhìn y hệt
-   nhau. Ba lớp dưới đây là nguồn màu duy nhất, dùng chung cho: danh sách nhân
-   sự trực ngày đã chọn (trong modal), lịch sử ca của nhân sự, và thẻ nhóm ca.
+   nhau. Bốn lớp dưới đây là nguồn màu duy nhất (một lớp cho mỗi sắc thái do
+   CaLamViec.SacThaiCa trả về), dùng chung cho: danh sách nhân sự trực ngày đã
+   chọn (trong modal), lịch sử ca của nhân sự, và thẻ nhóm ca.
    ========================================================================== */
 .phanca-shift-badge-sang {
   background: #1d4ed8;
@@ -491,6 +515,14 @@
   background: #0f172a;
   color: #fde047;
   box-shadow: inset 0 0 0 1px #eab308;
+}
+
+/* Ca hành chính: tông xanh ngọc, tách khỏi Sáng (xanh dương), Chiều (hổ phách)
+   và Đêm (đen-vàng). Trước đây ca này không có nhánh riêng nên dùng chung màu
+   ca đêm, khiến người xem tưởng giờ hành chính được hưởng phụ cấp +30%. */
+.phanca-shift-badge-hanhchinh {
+  background: #0d9488;
+  color: #ffffff;
 }
 
 /* Ô chọn ca trên thanh cấu hình: mỗi ca một vạch màu riêng bên trái + icon
@@ -515,15 +547,18 @@
 .phanca-shift-seg-item[data-shift-kind="morning"]::before { background: #1d4ed8; }
 .phanca-shift-seg-item[data-shift-kind="afternoon"]::before { background: #f59e0b; }
 .phanca-shift-seg-item[data-shift-kind="night"]::before { background: #0f172a; }
+.phanca-shift-seg-item[data-shift-kind="office"]::before { background: #0d9488; }
 
 .phanca-shift-seg-item[data-shift-kind="morning"] .phanca-shift-head .bi { color: #1d4ed8 !important; }
 .phanca-shift-seg-item[data-shift-kind="afternoon"] .phanca-shift-head .bi { color: #d97706 !important; }
 .phanca-shift-seg-item[data-shift-kind="night"] .phanca-shift-head .bi { color: #b45309 !important; }
+.phanca-shift-seg-item[data-shift-kind="office"] .phanca-shift-head .bi { color: #0f766e !important; }
 
 /* ==========================================================================
    THU GỌN / MỞ RỘNG TỪNG NHÓM CA TRONG NHẬT KÝ PHÂN CA
-   Ngày đủ 3 ca làm nhật ký bên phải dài dằng dặc; cho phép gấp từng nhóm lại.
-   Mặc định chỉ mở Ca Sáng, các ca còn lại thu gọn.
+   Ngày đủ số ca trong danh mục làm nhật ký bên phải dài dằng dặc; cho phép gấp
+   từng nhóm lại.
+   Mặc định chỉ mở ca đầu tiên trong danh mục, các ca còn lại thu gọn.
    ========================================================================== */
 .phanca-agenda-shift-card.is-collapsed .phanca-agenda-emp-list {
   display: none;

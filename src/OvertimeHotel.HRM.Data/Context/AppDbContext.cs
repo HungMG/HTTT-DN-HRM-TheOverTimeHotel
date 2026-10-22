@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 
 namespace OvertimeHotel.HRM.Data.Context;
@@ -76,6 +77,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.MaPhongBan).HasColumnName("ma_phong_ban");
             entity.Property(e => e.TenChucVu).HasColumnName("ten_chuc_vu").HasMaxLength(100).IsRequired();
             entity.Property(e => e.MoTa).HasColumnName("mo_ta").HasMaxLength(255);
+            entity.Property(e => e.CheDoLamViec).HasColumnName("che_do_lam_viec")
+                .HasMaxLength(20).HasDefaultValue(ShiftWorkModes.XOAY_CA).IsRequired();
 
             entity.HasOne(e => e.PhongBan)
                 .WithMany(p => p.ChucVus)
@@ -221,6 +224,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.GioBatDau).HasColumnName("gio_bat_dau").IsRequired();
             entity.Property(e => e.GioKetThuc).HasColumnName("gio_ket_thuc").IsRequired();
             entity.Property(e => e.QuaDem).HasColumnName("qua_dem").HasDefaultValue(false);
+            entity.Property(e => e.GioLamChuan).HasColumnName("gio_lam_chuan")
+                .HasPrecision(4, 2).HasDefaultValue(8.00m);
+            entity.Property(e => e.LoaiCa).HasColumnName("loai_ca")
+                .HasMaxLength(20).HasDefaultValue(ShiftWorkModes.XOAY_CA).IsRequired();
             entity.HasIndex(e => e.TenCa).IsUnique();
         });
 

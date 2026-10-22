@@ -339,6 +339,12 @@
         color: #fef08a;
         border: 1px solid #eab308;
     }
+    /* Ca hành chính: tông xanh ngọc, không dùng chung màu ca sáng/đêm. */
+    .shift-pill-office {
+        background-color: #f0fdfa;
+        color: #0f766e;
+        border: 1px solid #99f6e4;
+    }
 
     /* Tiêu đề nhóm phòng ban */
     .dept-group-header {
@@ -659,6 +665,13 @@
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 px-2 py-1" style="font-size: 0.72rem;">
                             Lịch phân ca 24/7 &bull; @Model.TongNhanVien nhân sự
                         </span>
+                        @if (Model.BiGioiHanTheoBoPhan)
+                        {
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1 px-2 py-1"
+                                  style="font-size: 0.72rem;" title="Bạn chỉ xếp ca cho nhân sự thuộc bộ phận mình phụ trách">
+                                <i class="bi bi-shield-lock me-1"></i>Phạm vi: @(Model.TenPhamViPhongBan ?? "Bộ phận của bạn")
+                            </span>
+                        }
                     </div>
                 </div>
 
@@ -689,20 +702,17 @@
                     </button>
 
                     <button type="button" class="btn btn-hotel-secondary btn-sm rounded-pill px-3 py-1 fw-semibold shadow-xs hover-lift"
-                            data-bs-toggle="modal" data-bs-target="#modalShiftTemplates" title="Quản lý danh mục 3 mẫu ca chuẩn">
+                            data-bs-toggle="modal" data-bs-target="#modalShiftTemplates" title="Quản lý danh mục ca làm việc (ca xoay 24/7 và ca hành chính)">
                         <i class="bi bi-clock-history text-primary me-1"></i> Mẫu Ca Trực 24/7
                     </button>
 
                     <button type="button" class="btn btn-hotel-secondary btn-sm rounded-pill px-3 py-1 fw-semibold shadow-xs hover-lift position-relative"
                             data-bs-toggle="modal" data-bs-target="#modalDinhBien" title="Cấu hình số người tối thiểu cho từng ca × chức vụ">
                         <i class="bi bi-people text-primary me-1"></i> Định Biên Ca
-                        @if (Model.TongCaThieuDinhBien > 0)
-                        {
-                            <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.66rem;"
-                                  title="Có @Model.TongCaThieuDinhBien ca trong ngày đang thiếu người so với định biên">
-                                @Model.TongCaThieuDinhBien
-                            </span>
-                        }
+                        <span class="badge bg-danger rounded-pill ms-1 @(Model.TongCaThieuDinhBien > 0 ? "" : "d-none")" style="font-size: 0.66rem;"
+                              title="Có @Model.TongCaThieuDinhBien ca trong ngày đang thiếu người so với định biên" id="dinhBienTongThieuBadge">
+                            @Model.TongCaThieuDinhBien
+                        </span>
                     </button>
                 </div>
             </div>
@@ -715,23 +725,35 @@
                         <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Thêm Nhanh Các Ca:
                     </span>
 
-                    <div class="btn-group btn-group-sm rounded-pill p-1 bg-light border shadow-xs" id="quickShiftPalette" role="group">
+                    @* Sinh nút cho MỌI ca trong danh mục thay vì viết cứng ba nút
+                       Sáng/Chiều/Đêm: trước đây Ca Hành Chính (MaCa 4) không có nút
+                       nào nên không thể gán nhanh từ lưới phân ca. *@
+                    <div class="btn-group btn-group-sm rounded-pill p-1 bg-light border shadow-xs flex-wrap" id="quickShiftPalette" role="group" style="max-width: 100%;">
                         <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold quick-palette-btn active-palette-btn"
                                 id="btnQuickModeSafe" data-ca-id="" onclick="setQuickShiftMode(null, this)" title="Chế độ chỉ xem lịch an toàn (không sợ bấm nhầm vào ô)">
                             <i class="bi bi-shield-check text-success me-1"></i> Chế Độ Xem (An Toàn)
                         </button>
-                        <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold quick-palette-btn btn-light"
-                                data-ca-id="1" data-ten-ca="Ca Sáng" data-gio="06:00 - 14:00" onclick="setQuickShiftMode(1, this)">
-                            <i class="bi bi-brightness-high-fill text-primary me-1"></i> Ca Sáng (06h-14h)
-                        </button>
-                        <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold quick-palette-btn btn-light"
-                                data-ca-id="2" data-ten-ca="Ca Chiều" data-gio="14:00 - 22:00" onclick="setQuickShiftMode(2, this)">
-                            <i class="bi bi-cloud-sun-fill text-warning me-1"></i> Ca Chiều (14h-22h)
-                        </button>
-                        <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold quick-palette-btn btn-light"
-                                data-ca-id="3" data-ten-ca="Ca Đêm" data-gio="22:00 - 06:00" onclick="setQuickShiftMode(3, this)">
-                            <i class="bi bi-moon-stars-fill text-warning me-1"></i> Ca Đêm (+30%)
-                        </button>
+                        @foreach (var ca in Model.DanhSachCa)
+                        {
+                            var isOfficePalette = ca.SacThaiCa == "office";
+                            var isNightPalette = ca.SacThaiCa == "night";
+                            var isAfternoonPalette = ca.SacThaiCa == "afternoon";
+                            var paletteIcon = isOfficePalette ? "bi-briefcase-fill text-teal"
+                                : isNightPalette ? "bi-moon-stars-fill text-warning"
+                                : isAfternoonPalette ? "bi-cloud-sun-fill text-warning"
+                                : "bi-brightness-high-fill text-primary";
+                            var paletteName = ca.TenCa.Contains('(')
+                                ? ca.TenCa[..ca.TenCa.IndexOf('(')].Trim()
+                                : ca.TenCa;
+
+                            <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold quick-palette-btn btn-light"
+                                    data-ca-id="@ca.MaCa" data-ten-ca="@paletteName"
+                                    data-gio="@ca.GioBatDau.ToString("HH:mm") - @ca.GioKetThuc.ToString("HH:mm")"
+                                    onclick="setQuickShiftMode(@ca.MaCa, this)">
+                                <i class="bi @paletteIcon me-1"></i> @paletteName
+                                (@ca.GioBatDau.ToString("HH:mm")-@ca.GioKetThuc.ToString("HH:mm")@(isNightPalette ? " · +30%" : ""))
+                            </button>
+                        }
                         <button type="button" class="btn btn-sm rounded-pill px-2 py-1 fw-bold quick-palette-btn btn-light text-danger"
                                 data-ca-id="0" data-ten-ca="Xóa ca" data-gio="" onclick="setQuickShiftMode(0, this)" title="Chọn chế độ xóa/tẩy ca">
                             <i class="bi bi-eraser-fill me-1"></i> Xóa ca
@@ -750,13 +772,26 @@
                         <input type="text" id="filterKeyword" class="form-control border-start-0 py-1" style="font-size: 0.76rem;"
                                placeholder="Tìm nhân viên..." oninput="applyFiltersInPlace()" />
                     </div>
-                    <select id="filterPhongBan" class="form-select form-select-sm py-1" style="width: 145px; font-size: 0.76rem;" onchange="applyFiltersInPlace()">
-                        <option value="">Tất cả bộ phận</option>
-                        @foreach (var pb in Model.DanhSachPhongBan)
-                        {
-                            <option value="@pb.MaPhongBan" selected="@(Model.SelectedPhongBanId == pb.MaPhongBan)">@pb.TenPhongBan</option>
-                        }
-                    </select>
+                    @if (Model.BiGioiHanTheoBoPhan)
+                    {
+                        @* Quản lý bị server ép về đúng bộ phận của mình. Hiện một dropdown
+                           chỉ có một lựa chọn sẽ khiến họ tưởng vẫn đổi được phạm vi, nên
+                           thay bằng nhãn khoá đọc rõ phạm vi đang xem. *@
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 d-inline-flex align-items-center"
+                              style="font-size: 0.74rem;" title="Phạm vi xếp ca của bạn được giới hạn theo bộ phận phụ trách">
+                            <i class="bi bi-lock-fill me-1"></i>@(Model.TenPhamViPhongBan ?? "Chưa xác định bộ phận")
+                        </span>
+                    }
+                    else
+                    {
+                        <select id="filterPhongBan" class="form-select form-select-sm py-1" style="width: 145px; font-size: 0.76rem;" onchange="applyFiltersInPlace()">
+                            <option value="">Tất cả bộ phận</option>
+                            @foreach (var pb in Model.DanhSachPhongBan)
+                            {
+                                <option value="@pb.MaPhongBan" selected="@(Model.SelectedPhongBanId == pb.MaPhongBan)">@pb.TenPhongBan</option>
+                            }
+                        </select>
+                    }
                     <select id="filterCa" class="form-select form-select-sm py-1" style="width: 120px; font-size: 0.76rem;" onchange="applyFiltersInPlace()">
                         <option value="">Tất cả ca</option>
                         @foreach (var ca in Model.DanhSachCa)
@@ -790,9 +825,25 @@
                                     <h5 class="mb-0 fw-bold text-dark font-serif" style="font-size: 1.05rem;">Cuốn Lịch Tháng @Model.Month / @Model.Year</h5>
                                 </div>
                                 <div class="d-flex flex-wrap align-items-center gap-2 small text-muted">
-                                    <span><span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2">☀️ Sáng</span> 06h-14h</span>
-                                    <span><span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle px-2">🌇 Chiều</span> 14h-22h</span>
-                                    <span><span class="badge bg-indigo bg-opacity-10 text-indigo border border-indigo-subtle px-2" style="background:#e0e7ff;color:#4338ca;">🌙 Đêm</span> 22h-06h (+30%)</span>
+                                    @foreach (var caLegend in Model.DanhSachCa)
+                                    {
+                                        var legendName = caLegend.TenCa.Contains('(')
+                                            ? caLegend.TenCa[..caLegend.TenCa.IndexOf('(')].Trim()
+                                            : caLegend.TenCa;
+                                        var legendKind = caLegend.SacThaiCa;
+                                        var legendStyle = legendKind == "office" ? "background:#d7f4f0;color:#0f766e;border-color:#99e0d8;"
+                                            : legendKind == "night" ? "background:#e0e7ff;color:#4338ca;border-color:#c7d2fe;"
+                                            : legendKind == "afternoon" ? "background:#fef3c7;color:#b45309;border-color:#fde68a;"
+                                            : "background:#e0f2fe;color:#0369a1;border-color:#bae6fd;";
+                                        var legendEmoji = legendKind == "office" ? "💼"
+                                            : legendKind == "night" ? "🌙"
+                                            : legendKind == "afternoon" ? "🌇" : "☀️";
+
+                                        <span title="@caLegend.TenCa">
+                                            <span class="badge border px-2" style="@legendStyle">@legendEmoji @legendName</span>
+                                            @caLegend.GioBatDau.ToString("HH")h-@caLegend.GioKetThuc.ToString("HH")h@(legendKind == "night" ? " (+30%)" : "")
+                                        </span>
+                                    }
                                     <span title="Số lượt phân ca thuộc nhân sự hết hạn / chưa hiệu lực hợp đồng lao động trong ngày">
                                         <span class="badge border px-2" style="background:#fff7ed;border-color:#fed7aa;color:#b45309;">⚠ n HĐ</span>
                                         <span class="text-muted" style="font-size:0.7rem;">hợp đồng hết hạn</span>
@@ -844,25 +895,28 @@
                                                         }
                                                     </div>
                                                     <div class="phanca-day-chips">
-                                                        @if (day.Sang > 0)
+                                                        @* Một chip cho mỗi ca CÓ người trực trong ngày, lấy từ
+                                                           từ điển theo MaCa. Ca không có ai thì bỏ qua, nên ô
+                                                           ngày hiếm khi chật dù danh mục có nhiều ca. *@
+                                                        @foreach (var caChip in Model.DanhSachCa)
                                                         {
-                                                            <div class="phanca-mini-chip phanca-mini-chip-morning">
-                                                                <span>☀️ Sáng</span>
-                                                                <span>@day.Sang</span>
-                                                            </div>
-                                                        }
-                                                        @if (day.Chieu > 0)
-                                                        {
-                                                            <div class="phanca-mini-chip phanca-mini-chip-afternoon">
-                                                                <span>🌇 Chiều</span>
-                                                                <span>@day.Chieu</span>
-                                                            </div>
-                                                        }
-                                                        @if (day.Dem > 0)
-                                                        {
-                                                            <div class="phanca-mini-chip phanca-mini-chip-night">
-                                                                <span>🌙 Đêm</span>
-                                                                <span>@day.Dem</span>
+                                                            if (!day.SoLuotTheoCa.TryGetValue(caChip.MaCa, out var soLuot) || soLuot <= 0)
+                                                            {
+                                                                continue;
+                                                            }
+
+                                                            var chipName = caChip.TenCa.Contains('(')
+                                                                ? caChip.TenCa[..caChip.TenCa.IndexOf('(')].Trim()
+                                                                : caChip.TenCa;
+                                                            var chipKind = caChip.SacThaiCa;
+                                                            var chipClass = "phanca-mini-chip phanca-mini-chip-" + chipKind;
+                                                            var chipEmoji = chipKind == "office" ? "💼"
+                                                                : chipKind == "night" ? "🌙"
+                                                                : chipKind == "afternoon" ? "🌇" : "☀️";
+
+                                                            <div class="@chipClass" title="@caChip.TenCa: @soLuot lượt">
+                                                                <span>@chipEmoji @chipName</span>
+                                                                <span>@soLuot</span>
                                                             </div>
                                                         }
                                                         @if (day.ExpiredContractCount > 0 && !day.IsOtherMonth)
@@ -882,6 +936,13 @@
 
                         <!-- BÊN PHẢI: NHẬT KÝ CA TRỰC THEO NGÀY ĐANG CHỌN (AGENDA) -->
                         <aside class="phanca-agenda-panel" id="phancaAgendaPanel">
+                            @{
+                                // Ca mở sẵn / ca gợi ý khi bấm "Thêm Ca Trực" là ca đứng đầu
+                                // danh mục. Trước đây khoá cứng vào MaCa == 1, đúng với bộ ba
+                                // Sáng/Chiều/Đêm nhưng sai ngay khi danh mục đổi thứ tự hoặc
+                                // thêm ca mới. 0 nghĩa là danh mục rỗng — JS bỏ qua bước chọn ca.
+                                var caMacDinh = Model.DanhSachCa.FirstOrDefault()?.MaCa ?? 0;
+                            }
                             <div class="phanca-agenda-header">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
@@ -894,7 +955,7 @@
                                         </p>
                                     </div>
                                     <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm hover-lift"
-                                            onclick="openAddShiftModalForDate('@Model.SelectedDate.ToString("yyyy-MM-dd")', 1)">
+                                            onclick="openAddShiftModalForDate('@Model.SelectedDate.ToString("yyyy-MM-dd")', @caMacDinh)">
                                         <i class="bi bi-plus-lg me-1"></i>+ Thêm Ca Trực
                                     </button>
                                 </div>
@@ -903,17 +964,13 @@
                             <div id="agendaShiftsContainer">
                                 @foreach (var shift in Model.SelectedAgenda.Shifts)
                                 {
-                                    // Suy ra lớp chấm màu trực tiếp từ tên ca. Trước đây ghép
-                                    // "phanca-shift-dot-" với shift.BadgeClass (vốn đã là
-                                    // "badge-morning") nên thành "phanca-shift-dot-badge-morning",
-                                    // không khớp CSS nào và chấm màu bị co về 0×0 (vô hình).
-                                    var dotKind = shift.TenCa.Contains("Đêm", StringComparison.OrdinalIgnoreCase)
-                                        ? "night"
-                                        : (shift.TenCa.Contains("Chiều", StringComparison.OrdinalIgnoreCase) ? "afternoon" : "morning");
-                                    var dotClass = "phanca-shift-dot-" + dotKind;
-                                    // Mặc định chỉ mở Ca Sáng (MaCa = 1); các ca còn lại thu gọn
-                                    // để nhật ký bên phải không kéo dài xuống dưới màn hình.
-                                    var startCollapsed = shift.MaCa != 1;
+                                    // Sắc thái chấm màu lấy từ danh mục ca (CaLamViec.SacThaiCa).
+                                    // Trước đây ghép "phanca-shift-dot-" với shift.BadgeClass
+                                    // (vốn đã là "badge-morning") nên thành
+                                    // "phanca-shift-dot-badge-morning", không khớp CSS nào và
+                                    // chấm màu co về 0×0 (vô hình).
+                                    var dotClass = "phanca-shift-dot-" + shift.SacThai;
+                                    var startCollapsed = shift.MaCa != caMacDinh;
                                     <div class="phanca-agenda-shift-card @(startCollapsed ? "is-collapsed" : "")" data-ma-ca="@shift.MaCa">
                                         <div class="phanca-agenda-shift-header">
                                             <div class="phanca-agenda-shift-title phanca-agenda-shift-toggle" onclick="toggleAgendaShiftCard(this)" title="Bấm để thu gọn / mở rộng nhóm ca này">
@@ -1015,10 +1072,22 @@
                             <h5 class="mb-0 fw-bold text-dark fs-6 font-serif">Ma Trận Phân Ca Tuần 24/7</h5>
                             <span class="badge bg-primary-subtle text-primary rounded-pill" id="badgeMatrixCount">@Model.Rows.Count nhân sự</span>
                         </div>
-                        <div class="d-flex align-items-center gap-2 small">
-                            <span class="d-inline-flex align-items-center gap-1"><span class="badge bg-primary" style="width:8px;height:8px;padding:0;border-radius:50%;">&nbsp;</span> Sáng (06h-14h)</span>
-                            <span class="d-inline-flex align-items-center gap-1 ms-2"><span class="badge bg-warning text-dark" style="width:8px;height:8px;padding:0;border-radius:50%;">&nbsp;</span> Chiều (14h-22h)</span>
-                            <span class="d-inline-flex align-items-center gap-1 ms-2"><span class="badge bg-dark text-warning border border-warning" style="width:8px;height:8px;padding:0;border-radius:50%;">&nbsp;</span> Đêm (22h-06h · +30%)</span>
+                        <div class="d-flex flex-wrap align-items-center gap-2 small">
+                            @foreach (var caMat in Model.DanhSachCa)
+                            {
+                                var matName = caMat.TenCa.Contains('(')
+                                    ? caMat.TenCa[..caMat.TenCa.IndexOf('(')].Trim()
+                                    : caMat.TenCa;
+                                var matKind = caMat.SacThaiCa;
+                                var matDot = matKind == "office" ? "#0f766e"
+                                    : matKind == "night" ? "#0f172a"
+                                    : matKind == "afternoon" ? "#f59e0b" : "#1d4ed8";
+
+                                <span class="d-inline-flex align-items-center gap-1" title="@caMat.TenCa">
+                                    <span class="badge" style="width:8px;height:8px;padding:0;border-radius:50%;background:@matDot;">&nbsp;</span>
+                                    @matName (@caMat.GioBatDau.ToString("HH")h-@caMat.GioKetThuc.ToString("HH")h@(matKind == "night" ? " · +30%" : ""))
+                                </span>
+                            }
                         </div>
                     </div>
 
@@ -1140,9 +1209,12 @@
                                                         {
                                                             @foreach (var shift in cell.Shifts)
                                                             {
-                                                                var isNight = shift.QuaDem || shift.TenCa.Contains("Đêm");
-                                                                var isAfternoon = shift.TenCa.Contains("Chiều");
-                                                                var pillClass = isNight ? "shift-pill-night" : (isAfternoon ? "shift-pill-afternoon" : "shift-pill-morning");
+                                                                var isOffice = shift.SacThai == "office";
+                                                                var isNight = shift.SacThai == "night";
+                                                                var isAfternoon = shift.SacThai == "afternoon";
+                                                                var pillClass = isOffice ? "shift-pill-office"
+                                                                    : isNight ? "shift-pill-night"
+                                                                    : (isAfternoon ? "shift-pill-afternoon" : "shift-pill-morning");
                                                                 var fullTenCa = shift.TenCa;
                                                                 var shortTenCa = fullTenCa.Contains("(") ? fullTenCa.Substring(0, fullTenCa.IndexOf("(")).Trim() : fullTenCa;
 
@@ -1150,7 +1222,11 @@
                                                                      data-ca-id="@shift.MaCa">
                                                                     <div class="d-flex align-items-center justify-content-between mb-1 gap-1">
                                                                         <strong class="d-inline-flex align-items-center gap-1 text-truncate" style="min-width: 0; font-size: 0.72rem;" title="@fullTenCa">
-                                                                            @if (isNight)
+                                                                            @if (isOffice)
+                                                                            {
+                                                                                <i class="bi bi-briefcase-fill flex-shrink-0"></i>
+                                                                            }
+                                                                            else if (isNight)
                                                                             {
                                                                                 <i class="bi bi-moon-stars-fill text-warning flex-shrink-0"></i>
                                                                             }
@@ -1249,7 +1325,7 @@
                                 <h5 class="fw-bold text-dark mb-1 font-serif">
                                     <i class="bi bi-clock-fill text-warning me-1"></i> Nhân Lực Đang Trực Ca Hôm Nay (@todayDate.ToString("dd/MM/yyyy"))
                                 </h5>
-                                <span class="small text-muted">Theo dõi trực quan 3 ca trực trong ngày phục vụ khách sạn</span>
+                                <span class="small text-muted">Theo dõi trực quan @Model.DanhSachCa.Count loại ca trực trong ngày phục vụ khách sạn</span>
                             </div>
                             <button type="button" class="btn btn-warning fw-bold btn-sm rounded-pill px-3 text-dark shadow-sm"
                                     data-bs-toggle="modal" data-bs-target="#modalCreatePhanCa">
@@ -1258,119 +1334,103 @@
                         </div>
 
                         <div class="row g-3">
-                            <div class="col-md-4 today-col-ca" data-ca-id="1">
-                                <div class="card border-0 rounded-4 shadow-sm bg-primary bg-opacity-10 h-100">
-                                    <div class="card-header bg-primary text-white py-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold"><i class="bi bi-brightness-high-fill me-1"></i> Ca Sáng (06:00 - 14:00)</span>
-                                        @{
-                                            var morningShifts = todayShifts.Where(p => p.CaLamViec?.TenCa.Contains("Sáng") == true).ToList();
-                                        }
-                                        <span class="badge bg-white text-primary fw-bold">@morningShifts.Count người</span>
-                                    </div>
-                                    <div class="card-body p-3">
-                                        @if (morningShifts.Any())
-                                        {
-                                            @foreach (var s in morningShifts)
-                                            {
-                                                <div class="today-shift-item p-2 mb-2 bg-white rounded-3 shadow-sm border d-flex align-items-center justify-content-between"
-                                                     data-phongban-id="@s.NhanVien?.MaPhongBan" 
-                                                     data-ca-id="@s.MaCa" 
-                                                     data-emp-name="@(s.NhanVien != null ? (s.NhanVien.Ho + " " + s.NhanVien.Ten).ToLowerInvariant() : "")">
-                                                    <div>
-                                                        <div class="fw-bold text-dark small">@s.NhanVien?.Ho @s.NhanVien?.Ten</div>
-                                                        <div class="small text-muted" style="font-size: 0.7rem;">@s.NhanVien?.PhongBan?.TenPhongBan &bull; @s.NhanVien?.ChucVu?.TenChucVu</div>
-                                                    </div>
-                                                    <span class="badge bg-success-subtle text-success border">Đang trực</span>
-                                                </div>
-                                            }
-                                        }
-                                        <div class="today-empty-db text-center py-4 text-muted small @(morningShifts.Any() ? "d-none" : "")">
-                                            <i class="bi bi-person-x fs-4 d-block mb-1 text-secondary"></i>
-                                            Chưa có nhân viên nào được xếp ca sáng hôm nay.
-                                        </div>
-                                        <div class="today-empty-filter text-center py-4 text-muted small d-none">
-                                            <i class="bi bi-funnel text-warning fs-4 d-block mb-1"></i>
-                                            Không có nhân viên nào của bộ phận này trong ca sáng hôm nay.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            @* Sinh một cột cho MỖI ca trong danh mục thay vì viết tay ba cột
+                               Sáng/Chiều/Đêm: trước đây ca thứ tư (ví dụ Ca Hành Chính
+                               07:00–17:00) bị bỏ rơi hoàn toàn trên bảng điều hành này. *@
+                            @{ var shiftList = Model.DanhSachCa.ToList();
+                               // Chia đều 12 cột cho số ca hiện có: 3 ca -> mỗi ca 4 cột
+                               // (col-md-4), 4 ca -> mỗi ca 3 cột (col-md-3). Trước đây
+                               // cứng col-md-4 nên ca thứ tư rơi xuống hàng dưới lẻ loi.
+                               var shiftColClass = shiftList.Count switch
+                               {
+                                   1 => "col-12",
+                                   2 => "col-md-6",
+                                   3 => "col-md-4",
+                                   4 => "col-md-3",
+                                   6 => "col-md-2",
+                                   _ => "col-md-3"
+                               }; }
+                            @for (int shiftIdx = 0; shiftIdx < shiftList.Count; shiftIdx++)
+                            {
+                                var ca = shiftList[shiftIdx];
+                                var caShifts = todayShifts.Where(p => p.MaCa == ca.MaCa).ToList();
+                                var isHanhChinh = ca.LoaiCa == ShiftWorkModes.HANH_CHINH;
+                                // Bảng màu chọn theo sắc thái của ca (CaLamViec.SacThaiCa),
+                                // không theo thứ tự trong danh mục: đổi thứ tự ca trên
+                                // màn hình ca làm việc không được phép đổi luôn màu của
+                                // cả bảng trực hôm nay.
+                                var shiftVariants = new Dictionary<string, (string Header, string Tint, string Count)>
+                                {
+                                    ["morning"]   = ("bg-primary text-white", "bg-primary bg-opacity-10", "bg-white text-primary"),
+                                    ["afternoon"] = ("bg-warning text-dark", "bg-warning bg-opacity-10", "bg-dark text-warning"),
+                                    ["night"]     = ("bg-dark text-warning border-warning", "bg-dark bg-opacity-10", "bg-warning text-dark"),
+                                    ["office"]    = ("bg-info text-dark", "bg-info bg-opacity-10", "bg-white text-info")
+                                };
+                                var variant = shiftVariants.TryGetValue(ca.SacThaiCa, out var v)
+                                    ? v
+                                    : shiftVariants["morning"];
+                                var headerClass = variant.Header;
+                                var tintClass = variant.Tint;
+                                var countBadgeClass = variant.Count;
+                                var iconClass = ca.SacThaiCa switch
+                                {
+                                    "office" => "bi-briefcase-fill",
+                                    "night" => "bi-moon-stars-fill",
+                                    "afternoon" => "bi-cloud-sun-fill",
+                                    _ => "bi-brightness-high-fill"
+                                };
+                                var itemBadge = isHanhChinh ? "bg-primary-subtle text-primary border"
+                                    : ca.QuaDem ? "bg-danger-subtle text-danger border"
+                                    : "bg-success-subtle text-success border";
+                                var itemBadgeText = isHanhChinh ? "Hành chính"
+                                    : ca.QuaDem ? "+30% Lương"
+                                    : "Đang trực";
 
-                            <div class="col-md-4 today-col-ca" data-ca-id="2">
-                                <div class="card border-0 rounded-4 shadow-sm bg-warning bg-opacity-10 h-100">
-                                    <div class="card-header bg-warning text-dark py-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold"><i class="bi bi-cloud-sun-fill me-1"></i> Ca Chiều (14:00 - 22:00)</span>
-                                        @{
-                                            var afternoonShifts = todayShifts.Where(p => p.CaLamViec?.TenCa.Contains("Chiều") == true).ToList();
-                                        }
-                                        <span class="badge bg-dark text-warning fw-bold">@afternoonShifts.Count người</span>
-                                    </div>
-                                    <div class="card-body p-3">
-                                        @if (afternoonShifts.Any())
-                                        {
-                                            @foreach (var s in afternoonShifts)
-                                            {
-                                                <div class="today-shift-item p-2 mb-2 bg-white rounded-3 shadow-sm border d-flex align-items-center justify-content-between"
-                                                     data-phongban-id="@s.NhanVien?.MaPhongBan" 
-                                                     data-ca-id="@s.MaCa" 
-                                                     data-emp-name="@(s.NhanVien != null ? (s.NhanVien.Ho + " " + s.NhanVien.Ten).ToLowerInvariant() : "")">
-                                                    <div>
-                                                        <div class="fw-bold text-dark small">@s.NhanVien?.Ho @s.NhanVien?.Ten</div>
-                                                        <div class="small text-muted" style="font-size: 0.7rem;">@s.NhanVien?.PhongBan?.TenPhongBan &bull; @s.NhanVien?.ChucVu?.TenChucVu</div>
-                                                    </div>
-                                                    <span class="badge bg-warning-subtle text-warning border">Cao điểm</span>
-                                                </div>
-                                            }
-                                        }
-                                        <div class="today-empty-db text-center py-4 text-muted small @(afternoonShifts.Any() ? "d-none" : "")">
-                                            <i class="bi bi-person-x fs-4 d-block mb-1 text-secondary"></i>
-                                            Chưa có nhân viên nào được xếp ca chiều hôm nay.
+                                <div class="@shiftColClass today-col-ca" data-ca-id="@ca.MaCa">
+                                    <div class="card border-0 rounded-4 shadow-sm @tintClass h-100">
+                                        <div class="card-header @headerClass py-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold">
+                                                <i class="bi @iconClass me-1"></i> @ca.TenCa
+                                                (@ca.GioBatDau.ToString("HH:mm") - @ca.GioKetThuc.ToString("HH:mm"))
+                                            </span>
+                                            <span class="badge @countBadgeClass fw-bold">@caShifts.Count người</span>
                                         </div>
-                                        <div class="today-empty-filter text-center py-4 text-muted small d-none">
-                                            <i class="bi bi-funnel text-warning fs-4 d-block mb-1"></i>
-                                            Không có nhân viên nào của bộ phận này trong ca chiều hôm nay.
+                                        <div class="card-body p-3">
+                                            <div class="small text-muted mb-2" style="font-size: 0.7rem;">
+                                                <i class="bi bi-hourglass-split me-1"></i>@ca.GioLamChuan.ToString("0.#") giờ làm
+                                                @if (ca.DoDaiKhungGio > ca.GioLamChuan)
+                                                {
+                                                    <text>· khung @ca.DoDaiKhungGio.ToString("0.#") giờ</text>
+                                                }
+                                            </div>
+                                            @if (caShifts.Any())
+                                            {
+                                                foreach (var s in caShifts)
+                                                {
+                                                    <div class="today-shift-item p-2 mb-2 bg-white rounded-3 shadow-sm border d-flex align-items-center justify-content-between"
+                                                         data-phongban-id="@s.NhanVien?.MaPhongBan"
+                                                         data-ca-id="@s.MaCa"
+                                                         data-emp-name="@(s.NhanVien != null ? (s.NhanVien.Ho + " " + s.NhanVien.Ten).ToLowerInvariant() : "")">
+                                                        <div>
+                                                            <div class="fw-bold text-dark small">@s.NhanVien?.Ho @s.NhanVien?.Ten</div>
+                                                            <div class="small text-muted" style="font-size: 0.7rem;">@s.NhanVien?.PhongBan?.TenPhongBan &bull; @s.NhanVien?.ChucVu?.TenChucVu</div>
+                                                        </div>
+                                                        <span class="badge @itemBadge">@itemBadgeText</span>
+                                                    </div>
+                                                }
+                                            }
+                                            <div class="today-empty-db text-center py-4 text-muted small @(caShifts.Any() ? "d-none" : "")">
+                                                <i class="bi bi-person-x fs-4 d-block mb-1 text-secondary"></i>
+                                                Chưa có nhân viên nào được xếp @ca.TenCa.ToLowerInvariant() hôm nay.
+                                            </div>
+                                            <div class="today-empty-filter text-center py-4 text-muted small d-none">
+                                                <i class="bi bi-funnel text-warning fs-4 d-block mb-1"></i>
+                                                Không có nhân viên nào của bộ phận này trong @ca.TenCa.ToLowerInvariant() hôm nay.
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="col-md-4 today-col-ca" data-ca-id="3">
-                                <div class="card border-0 rounded-4 shadow-sm bg-dark bg-opacity-10 h-100">
-                                    <div class="card-header bg-dark text-warning py-3 rounded-top-4 d-flex justify-content-between align-items-center border-warning">
-                                        <span class="fw-bold"><i class="bi bi-moon-stars-fill me-1 text-warning"></i> Ca Đêm (22:00 - 06:00)</span>
-                                        @{
-                                            var nightShifts = todayShifts.Where(p => p.CaLamViec?.QuaDem == true || p.CaLamViec?.TenCa.Contains("Đêm") == true).ToList();
-                                        }
-                                        <span class="badge bg-warning text-dark fw-bold">+30% · @nightShifts.Count người</span>
-                                    </div>
-                                    <div class="card-body p-3">
-                                        @if (nightShifts.Any())
-                                        {
-                                            @foreach (var s in nightShifts)
-                                            {
-                                                <div class="today-shift-item p-2 mb-2 bg-white rounded-3 shadow-sm border d-flex align-items-center justify-content-between"
-                                                     data-phongban-id="@s.NhanVien?.MaPhongBan" 
-                                                     data-ca-id="@s.MaCa" 
-                                                     data-emp-name="@(s.NhanVien != null ? (s.NhanVien.Ho + " " + s.NhanVien.Ten).ToLowerInvariant() : "")">
-                                                    <div>
-                                                        <div class="fw-bold text-dark small">@s.NhanVien?.Ho @s.NhanVien?.Ten</div>
-                                                        <div class="small text-muted" style="font-size: 0.7rem;">@s.NhanVien?.PhongBan?.TenPhongBan &bull; @s.NhanVien?.ChucVu?.TenChucVu</div>
-                                                    </div>
-                                                    <span class="badge bg-danger-subtle text-danger border">+30% Lương</span>
-                                                </div>
-                                            }
-                                        }
-                                        <div class="today-empty-db text-center py-4 text-muted small @(nightShifts.Any() ? "d-none" : "")">
-                                            <i class="bi bi-person-x fs-4 d-block mb-1 text-secondary"></i>
-                                            Chưa có nhân viên nào được xếp ca đêm hôm nay.
-                                        </div>
-                                        <div class="today-empty-filter text-center py-4 text-muted small d-none">
-                                            <i class="bi bi-funnel text-warning fs-4 d-block mb-1"></i>
-                                            Không có nhân viên nào của bộ phận này trong ca đêm hôm nay.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            }
                         </div>
                     </div>
                 </div>
@@ -1408,7 +1468,10 @@
                                         {
                                             var ca = p.CaLamViec;
                                             var nv = p.NhanVien;
-                                            var isNight = ca?.QuaDem == true || ca?.TenCa.Contains("Đêm") == true;
+                                            // Sắc thái ca (kể cả ca hành chính) do danh mục quyết
+                                            // định; chỉ riêng phụ cấp đêm mới xét QuaDem.
+                                            var sacThaiCa = ca?.SacThaiCa ?? "morning";
+                                            var isNight = sacThaiCa == "night";
 
                                             <tr class="list-phanca-row" 
                                                 data-phongban-id="@nv?.MaPhongBan" 
@@ -1428,7 +1491,13 @@
                                                     <span class="small text-muted">@p.NgayLamViec.ToString("dddd", new System.Globalization.CultureInfo("vi-VN"))</span>
                                                 </td>
                                                 <td>
-                                                    <span class="badge @(isNight ? "bg-dark text-warning border border-warning" : (ca?.TenCa.Contains("Chiều") == true ? "bg-warning text-dark" : "bg-primary")) px-2 py-1 rounded-pill">
+                                                    <span class="badge @(sacThaiCa switch
+                                                        {
+                                                            "office" => "phanca-shift-badge-hanhchinh",
+                                                            "night" => "bg-dark text-warning border border-warning",
+                                                            "afternoon" => "bg-warning text-dark",
+                                                            _ => "bg-primary"
+                                                        }) px-2 py-1 rounded-pill">
                                                         @ca?.TenCa
                                                     </span>
                                                     @if (isNight)
@@ -1574,12 +1643,19 @@
                             <div class="phanca-shift-seg">
                                 @foreach (var ca in Model.DanhSachCa)
                                 {
-                                    var isNight = ca.QuaDem || ca.TenCa.Contains("Đêm", StringComparison.OrdinalIgnoreCase);
-                                    var isAfternoon = ca.TenCa.Contains("Chiều", StringComparison.OrdinalIgnoreCase);
-                                    var shiftIcon = isNight ? "bi-moon-stars-fill text-warning" : isAfternoon ? "bi-cloud-sun-fill text-warning" : "bi-brightness-high-fill text-primary";
+                                    // Sắc thái ca do danh mục quyết định (CaLamViec.SacThaiCa),
+                                    // dùng chung cho vạch màu, icon và nhãn phụ cấp. Dò tên ca
+                                    // ở đây từng khiến Ca Hành Chính bị gắn "+30%" ca đêm.
+                                    var shiftKind = ca.SacThaiCa;
+                                    var isNight = shiftKind == "night";
+                                    var shiftIcon = shiftKind switch
+                                    {
+                                        "office" => "bi-briefcase-fill text-teal",
+                                        "night" => "bi-moon-stars-fill text-warning",
+                                        "afternoon" => "bi-cloud-sun-fill text-warning",
+                                        _ => "bi-brightness-high-fill text-primary"
+                                    };
                                     var isDefaultFirst = ca == Model.DanhSachCa.FirstOrDefault();
-                                    // Sắc thái ca để CSS tô vạch màu + icon riêng, tránh Sáng/Chiều lẫn màu nhau.
-                                    var shiftKind = isNight ? "night" : (isAfternoon ? "afternoon" : "morning");
                                     // Nhãn ngắn gọn cho thẻ ca: "Ca Sáng (Morning Shift)" -> "Ca Sáng".
                                     // Tên đầy đủ vẫn nằm trong thuộc tính title của thẻ.
                                     var tenCaNgan = ca.TenCa.Contains('(')
@@ -1685,13 +1761,24 @@
                                             <input type="text" id="modalEmpSearchInput" class="form-control border-start-0"
                                                    placeholder="Tìm theo tên hoặc mã nhân sự..." oninput="filterModalEmployees()" />
                                         </div>
-                                        <select id="modalDeptFilter" class="form-select form-select-sm" style="max-width: 165px;" onchange="filterModalEmployees()">
-                                            <option value="">Tất cả phòng ban</option>
-                                            @foreach (var dept in Model.DanhSachNhanVien.Where(e => e.PhongBan != null).Select(e => e.PhongBan!).DistinctBy(p => p.MaPhongBan))
-                                            {
-                                                <option value="@dept.MaPhongBan">@dept.TenPhongBan</option>
-                                            }
-                                        </select>
+                                        @if (Model.BiGioiHanTheoBoPhan)
+                                        {
+                                            <span class="badge bg-primary-subtle text-primary border rounded-pill px-2 py-1 text-truncate"
+                                                  style="max-width: 165px; font-size: 0.74rem;" title="Phạm vi: @(Model.TenPhamViPhongBan)">
+                                                <i class="bi bi-lock-fill me-1"></i>@(Model.TenPhamViPhongBan ?? "Bộ phận phụ trách")
+                                            </span>
+                                            <input type="hidden" id="modalDeptFilter" value="" />
+                                        }
+                                        else
+                                        {
+                                            <select id="modalDeptFilter" class="form-select form-select-sm" style="max-width: 165px;" onchange="filterModalEmployees()">
+                                                <option value="">Tất cả phòng ban</option>
+                                                @foreach (var dept in Model.DanhSachNhanVien.Where(e => e.PhongBan != null).Select(e => e.PhongBan!).DistinctBy(p => p.MaPhongBan))
+                                                {
+                                                    <option value="@dept.MaPhongBan">@dept.TenPhongBan</option>
+                                                }
+                                            </select>
+                                        }
                                     </div>
                                     <div class="d-flex align-items-center gap-1">
                                         <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-1" onclick="selectAllModalEmployees(true)" title="Chọn toàn bộ nhân sự đang hiển thị">
@@ -1869,26 +1956,28 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body p-4 bg-light bg-opacity-50">
-                <!-- Thống kê nhanh các ca trong ngày -->
-                <div class="row g-2 mb-3">
-                    <div class="col-4">
-                        <div class="p-2 rounded-3 bg-white border text-center shadow-sm">
-                            <div class="small text-muted" style="font-size: 0.72rem;">Ca Sáng (06-14h)</div>
-                            <div class="fw-bold text-primary fs-6 font-serif" id="dayRosterMorningCount">0 NV</div>
+                <!-- Thống kê nhanh: một thẻ cho mỗi ca trong danh mục. Trước đây
+                     gắn cứng ba thẻ Sáng/Chiều/Đêm nên ca Hành Chính không có
+                     thẻ đếm nào, dù bảng bên dưới có hiển thị nó. -->
+                <div class="row g-2 mb-3" id="dayRosterStatsRow">
+                    @foreach (var caStat in Model.DanhSachCa)
+                    {
+                        var statName = caStat.TenCa.Contains('(')
+                            ? caStat.TenCa[..caStat.TenCa.IndexOf('(')].Trim()
+                            : caStat.TenCa;
+                        var statKind = caStat.SacThaiCa;
+                        var statColor = statKind == "office" ? "#0f766e"
+                            : statKind == "night" ? "#b91c1c"
+                            : statKind == "afternoon" ? "#b45309" : "#1d4ed8";
+                        var statCol = Model.DanhSachCa.Count <= 3 ? "col-4" : "col-6 col-md-3";
+
+                        <div class="@statCol day-roster-stat" data-ca-id="@caStat.MaCa">
+                            <div class="p-2 rounded-3 bg-white border text-center shadow-sm">
+                                <div class="small text-muted" style="font-size: 0.72rem;">@statName (@caStat.GioBatDau.ToString("HH")-@caStat.GioKetThuc.ToString("HH")h)</div>
+                                <div class="fw-bold fs-6 font-serif" style="color:@statColor;">0 NV</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-2 rounded-3 bg-white border text-center shadow-sm">
-                            <div class="small text-muted" style="font-size: 0.72rem;">Ca Chiều (14-22h)</div>
-                            <div class="fw-bold text-warning-emphasis fs-6 font-serif" id="dayRosterAfternoonCount">0 NV</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-2 rounded-3 bg-white border text-center shadow-sm">
-                            <div class="small text-muted" style="font-size: 0.72rem;">Ca Đêm (+30%)</div>
-                            <div class="fw-bold text-danger fs-6 font-serif" id="dayRosterNightCount">0 NV</div>
-                        </div>
-                    </div>
+                    }
                 </div>
 
                 <!-- Danh sách chi tiết nhân sự theo từng ca -->
@@ -2565,9 +2654,10 @@
         // ==========================================
         // CỤM 2: CA TRỰC HÔM NAY (3 CỘT SÁNG, CHIỀU, ĐÊM)
         // ==========================================
-        ['1', '2', '3'].forEach(colCaId => {
-            const col = document.querySelector(`.today-col-ca[data-ca-id="${colCaId}"]`);
-            if (!col) return;
+        // Duyệt theo DOM thay vì danh sách mã ca cố định: danh mục ca có thể có
+        // thêm ca (Ca Hành Chính), lặp cứng ['1','2','3'] sẽ bỏ sót cột thứ tư.
+        document.querySelectorAll('.today-col-ca').forEach(col => {
+            const colCaId = col.getAttribute('data-ca-id') || '';
 
             // Nếu người dùng chọn lọc 1 ca cụ thể thì làm mờ các ca khác
             const matchColCa = !caVal || caVal === colCaId;
@@ -2647,7 +2737,7 @@
     const WEEK_SHIFTS_DATA = [
         @foreach (var p in Model.DanhSachPhanCa)
         {
-            <text>{ empId: @p.MaNhanVien, date: '@p.NgayLamViec.ToString("yyyy-MM-dd")', maCa: @p.MaCa, tenCa: '@Html.Raw(p.CaLamViec?.TenCa ?? "Ca trực")', time: '@(p.CaLamViec?.GioBatDau.ToString("HH:mm")) - @(p.CaLamViec?.GioKetThuc.ToString("HH:mm"))', empName: '@Html.Raw(p.NhanVien?.HoTen ?? "")', empCode: 'NV-@p.MaNhanVien', deptName: '@Html.Raw(p.NhanVien?.PhongBan?.TenPhongBan ?? "")', chucVu: '@Html.Raw(p.NhanVien?.ChucVu?.TenChucVu ?? "")' },</text>
+            <text>{ empId: @p.MaNhanVien, date: '@p.NgayLamViec.ToString("yyyy-MM-dd")', maCa: @p.MaCa, tenCa: '@Html.Raw(p.CaLamViec?.TenCa ?? "Ca trực")', time: '@(p.CaLamViec?.GioBatDau.ToString("HH:mm")) - @(p.CaLamViec?.GioKetThuc.ToString("HH:mm"))', sacThai: '@(p.CaLamViec?.SacThaiCa ?? "morning")', empName: '@Html.Raw(p.NhanVien?.HoTen ?? "")', empCode: 'NV-@p.MaNhanVien', deptName: '@Html.Raw(p.NhanVien?.PhongBan?.TenPhongBan ?? "")', chucVu: '@Html.Raw(p.NhanVien?.ChucVu?.TenChucVu ?? "")' },</text>
         }
     ];
 
@@ -2862,27 +2952,21 @@
         return tenCa.includes('(') ? tenCa.split('(')[0].trim() : tenCa;
     }
 
-    // Phân loại ca theo tên: 'morning' | 'afternoon' | 'night'.
-    // Dùng chung cho mọi chỗ hiển thị ca để Sáng / Chiều / Đêm luôn khác màu nhau.
-    function getShiftKind(tenCa, quaDem) {
-        const name = (tenCa || '').toLowerCase();
-        if (quaDem || name.includes('đêm')) return 'night';
-        if (name.includes('chiều')) return 'afternoon';
-        return 'morning';
-    }
-
-    // Lớp badge tương ứng, khớp với .phanca-shift-badge-{sang|chieu|dem} trong
-    // phanca-calendar.css (hậu tố tiếng Việt, không phải morning/afternoon/night).
-    function getShiftBadgeClass(tenCa, quaDem) {
-        const kind = getShiftKind(tenCa, quaDem);
+    // Sắc thái của ca ('morning' | 'afternoon' | 'night' | 'office') do MÁY CHỦ
+    // gửi xuống trong trường `sacThai`, lấy từ CaLamViec.SacThaiCa — nơi duy nhất
+    // đọc LoaiCa. Cố ý không suy lại từ tên ca: tên ca là dữ liệu người dùng đặt
+    // và sửa được, dò chữ Hán-Việt trong đó là đoán mò. Ca thứ tư trở đi (Ca Hành
+    // Chính) từng bị đoán nhầm thành ca đêm / ca sáng vì lý do đó.
+    function getShiftBadgeClassByKind(kind) {
+        if (kind === 'office') return 'phanca-shift-badge-hanhchinh';
         if (kind === 'night') return 'phanca-shift-badge-dem';
         if (kind === 'afternoon') return 'phanca-shift-badge-chieu';
         return 'phanca-shift-badge-sang';
     }
 
     // Icon đặc trưng của từng ca, tô đúng sắc thái thay vì dùng chung text-primary
-    function getShiftIconClass(tenCa, quaDem) {
-        const kind = getShiftKind(tenCa, quaDem);
+    function getShiftIconClassByKind(kind) {
+        if (kind === 'office') return 'bi-briefcase-fill text-teal';
         if (kind === 'night') return 'bi-moon-stars-fill text-warning';
         if (kind === 'afternoon') return 'bi-cloud-sun-fill text-warning';
         return 'bi-brightness-high-fill text-primary';
@@ -2994,14 +3078,16 @@
                     const dt = new Date(parts[0], parts[1] - 1, parts[2]);
                     const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
                     const dayName = days[dt.getDay()];
-                    const isNight = getShiftKind(s.tenCa, s.quaDem) === 'night';
+                    // Ca đêm mới được hưởng phụ cấp +30%; đọc sacThai của ca thay vì
+                    // dò tên để ca hành chính không bị gắn nhầm phụ cấp đêm.
+                    const isNight = s.sacThai === 'night';
 
                     const item = document.createElement('div');
                     item.className = 'p-3 rounded-3 border bg-light d-flex align-items-center justify-content-between';
                     item.innerHTML = `
                         <div class="d-flex align-items-center gap-3">
-                            <div class="badge ${getShiftBadgeClass(s.tenCa, s.quaDem)} rounded-pill px-3 py-2">
-                                <i class="bi ${getShiftIconClass(s.tenCa, s.quaDem)} me-1"></i> ${dayName}
+                            <div class="badge ${getShiftBadgeClassByKind(s.sacThai)} rounded-pill px-3 py-2">
+                                <i class="bi ${getShiftIconClassByKind(s.sacThai)} me-1"></i> ${dayName}
                             </div>
                             <div>
                                 <div class="fw-bold text-dark font-serif">${s.tenCa}</div>
@@ -3091,6 +3177,9 @@
                 gioBatDau: shiftObj.gioBatDau || '',
                 gioKetThuc: shiftObj.gioKetThuc || '',
                 quaDem: !!shiftObj.quaDem,
+                // Giữ sắc thái ca trong cache để lịch tháng/roster vừa cập nhật
+                // không rơi về màu mặc định khi tên ca không chứa "Sáng/Chiều/Đêm".
+                sacThai: shiftObj.sacThai || 'morning',
                 ngayLamViec: dateStr,
                 avatarColor: '#1e3a8a'
             };
@@ -3125,8 +3214,8 @@
 
         let html = '<div class="d-flex flex-column gap-1">';
         shiftsOnDate.forEach(s => {
-            const badgeClass = getShiftBadgeClass(s.tenCa, s.quaDem);
-            const iconClass = getShiftIconClass(s.tenCa, s.quaDem);
+            const badgeClass = getShiftBadgeClassByKind(s.sacThai);
+            const iconClass = getShiftIconClassByKind(s.sacThai);
             html += `
                 <div class="p-2 rounded-2 border d-flex align-items-center justify-content-between bg-light" style="font-size: 0.78rem;">
                     <div class="d-flex align-items-center gap-2">
@@ -3273,9 +3362,6 @@
         const titleEl = document.getElementById('modalDayRosterTitle');
         const subEl = document.getElementById('modalDayRosterSubtitle');
         const shiftsListEl = document.getElementById('dayRosterShiftsList');
-        const morningCountEl = document.getElementById('dayRosterMorningCount');
-        const afternoonCountEl = document.getElementById('dayRosterAfternoonCount');
-        const nightCountEl = document.getElementById('dayRosterNightCount');
         const totalSummaryEl = document.getElementById('dayRosterTotalSummary');
 
         if (titleEl) titleEl.textContent = 'Nhân Sự Trực ' + (dateLabel || dateStr);
@@ -3283,21 +3369,15 @@
 
         const dayShifts = WEEK_SHIFTS_DATA.filter(s => s.date === dateStr);
 
-        let morningCount = 0;
-        let afternoonCount = 0;
-        let nightCount = 0;
-
-        dayShifts.forEach(s => {
-            const lower = s.tenCa.toLowerCase();
-            if (lower.includes('sáng')) morningCount++;
-            else if (lower.includes('chiều')) afternoonCount++;
-            else if (lower.includes('đêm')) nightCount++;
-            else morningCount++;
+        // Đếm theo MaCa thay vì dò tên ca. Trước đây ca nào không chứa
+        // "sáng"/"chiều"/"đêm" đều bị cộng nhầm vào ô Ca Sáng.
+        document.querySelectorAll('.day-roster-stat').forEach(el => {
+            const maCa = Number(el.getAttribute('data-ca-id'));
+            const count = dayShifts.filter(s => Number(s.maCa) === maCa).length;
+            const valueEl = el.querySelector('.fw-bold');
+            if (valueEl) valueEl.textContent = count + ' NV';
         });
 
-        if (morningCountEl) morningCountEl.textContent = morningCount + ' NV';
-        if (afternoonCountEl) afternoonCountEl.textContent = afternoonCount + ' NV';
-        if (nightCountEl) nightCountEl.textContent = nightCount + ' NV';
         if (totalSummaryEl) totalSummaryEl.innerHTML = `<i class="bi bi-info-circle text-primary me-1"></i>Tổng cộng: <strong>${dayShifts.length}</strong> ca trực được phân bổ cho ngày này.`;
 
         if (shiftsListEl) {
@@ -3315,22 +3395,28 @@
             } else {
                 const groups = {};
                 dayShifts.forEach(s => {
-                    if (!groups[s.tenCa]) {
-                        groups[s.tenCa] = {
+                    // Gom theo MaCa, không theo tên ca: hai ca khác nhau có thể
+                    // trùng tên (người dùng đặt tự do), gộp theo tên sẽ trộn lẫn
+                    // hai khung giờ vào cùng một thẻ và cộng dồn sai số nhân sự.
+                    if (!groups[s.maCa]) {
+                        groups[s.maCa] = {
+                            maCa: s.maCa,
                             tenCa: s.tenCa,
                             time: s.time,
+                            sacThai: s.sacThai,
                             items: []
                         };
                     }
-                    groups[s.tenCa].items.push(s);
+                    groups[s.maCa].items.push(s);
                 });
 
                 let html = '';
                 Object.values(groups).forEach(g => {
-                    // Mỗi ca một sắc thái riêng để Sáng / Chiều / Đêm không lẫn màu nhau.
-                    const kind = getShiftKind(g.tenCa, g.items.some(i => i.quaDem));
-                    const badgeClass = getShiftBadgeClass(g.tenCa);
-                    const iconClass = getShiftIconClass(g.tenCa);
+                    // Màu badge/icon lấy từ sacThai do máy chủ tính sẵn, không dò
+                    // lại tên ca — tên ca là dữ liệu người dùng sửa được.
+                    const kind = g.sacThai;
+                    const badgeClass = getShiftBadgeClassByKind(kind);
+                    const iconClass = getShiftIconClassByKind(kind);
                     const headBg = kind === 'night' ? 'background:#0f172a;' : (kind === 'afternoon' ? 'background:#fffbeb;' : 'background:#eff6ff;');
                     html += `
                         <div class="card border-0 rounded-4 shadow-sm overflow-hidden bg-white">
@@ -3510,7 +3596,9 @@
 
         // Chống bấm nhầm: Nếu đang ở Chế độ xem an toàn (chưa kích hoạt ca nào)
         if (currentQuickShiftId === null) {
-            showQuickToast(`💡 Đang ở Chế độ xem an toàn. Vui lòng chọn Ca Sáng/Chiều/Đêm ở thanh trên nếu muốn gán nhanh.`);
+            // Không liệt kê tên ca cụ thể: danh mục ca thêm/bớt được, câu nhắc
+            // cố định "Sáng/Chiều/Đêm" sẽ sai ngay khi có ca mới.
+            showQuickToast(`💡 Đang ở Chế độ xem an toàn. Vui lòng chọn một ca ở thanh trên nếu muốn gán nhanh.`);
             return;
         }
 
@@ -3583,10 +3671,16 @@
                 syncModalShiftCache(maNhanVien, ngayLamViec, null);
                 showQuickToast(`Đã xóa ca trực của ${hoTen} ngày ${ngayLamViec}`);
             } else {
-                const isNight = data.quaDem || data.tenCa.includes('Đêm');
-                const isAfternoon = data.tenCa.includes('Chiều');
-                const pillClass = isNight ? 'shift-pill-night' : (isAfternoon ? 'shift-pill-afternoon' : 'shift-pill-morning');
-                const iconClass = isNight ? 'bi-moon-stars-fill text-warning' : (isAfternoon ? 'bi-cloud-sun-fill text-warning' : 'bi-brightness-high-fill text-primary');
+                const kind = data.sacThai || 'morning';
+                const isNight = kind === 'night';
+                const pillClass = kind === 'office' ? 'shift-pill-office'
+                    : isNight ? 'shift-pill-night'
+                    : (kind === 'afternoon' ? 'shift-pill-afternoon' : 'shift-pill-morning');
+                // Chỉ lấy tên icon: màu đã do .shift-pill-* quyết định, thêm
+                // text-warning/text-primary vào đây sẽ đè màu chữ của cả ô.
+                const iconClass = kind === 'office' ? 'bi-briefcase-fill'
+                    : isNight ? 'bi-moon-stars-fill'
+                    : (kind === 'afternoon' ? 'bi-cloud-sun-fill' : 'bi-brightness-high-fill');
                 const shortTenCa = (data.tenCa && data.tenCa.includes('(')) ? data.tenCa.split('(')[0].trim() : data.tenCa;
 
                 targetCell.innerHTML = `
@@ -3618,7 +3712,11 @@
                     time: `${data.gioBatDau} - ${data.gioKetThuc}`,
                     gioBatDau: data.gioBatDau,
                     gioKetThuc: data.gioKetThuc,
-                    quaDem: isNight,
+                    // quaDem là dữ liệu của ca, không phải kết luận "có phụ cấp đêm
+                    // hay không". Trước đây gán bằng isNight nên ca qua đêm không
+                    // tên "Đêm" bị mất cờ này.
+                    quaDem: !!data.quaDem,
+                    sacThai: kind,
                     empName: hoTen,
                     empCode: 'NV-' + maNhanVien
                 };
@@ -3837,9 +3935,8 @@
         selectedDate: '@Model.SelectedDate.ToString("yyyy-MM-dd")',
         days: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CalendarDays.Select(d => new {
             date = d.Date.ToString("yyyy-MM-dd"),
-            sang = d.Sang,
-            chieu = d.Chieu,
-            dem = d.Dem,
+            // Từ điển MaCa -> số lượt. Giữ khoá số để JS tra thẳng bằng maCa.
+            soLuotTheoCa = d.SoLuotTheoCa,
             tong = d.Tong,
             isOtherMonth = d.IsOtherMonth,
             isToday = d.IsToday,
@@ -3849,26 +3946,54 @@
             hasContractIssue = d.HasContractIssue,
             expiredContractCount = d.ExpiredContractCount
         }))),
-        shifts: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AllGridPhanCa.Select(p => new {
-            maPhanCa = p.MaPhanCa,
-            maNhanVien = p.MaNhanVien,
-            hoTen = p.NhanVien?.HoTen ?? ("NV #" + p.MaNhanVien),
-            maNhanVienHienThi = "NV-" + p.MaNhanVien,
-            tenChucVu = p.NhanVien?.ChucVu?.TenChucVu ?? "",
-            tenPhongBan = p.NhanVien?.PhongBan?.TenPhongBan ?? "",
-            maCa = p.MaCa,
-            tenCa = p.CaLamViec?.TenCa ?? ("Ca " + p.MaCa),
-            gioBatDau = p.CaLamViec != null ? p.CaLamViec.GioBatDau.ToString("HH:mm") : "",
-            gioKetThuc = p.CaLamViec != null ? p.CaLamViec.GioKetThuc.ToString("HH:mm") : "",
-            quaDem = p.CaLamViec != null && p.CaLamViec.QuaDem,
-            ngayLamViec = p.NgayLamViec.ToString("yyyy-MM-dd"),
-            avatarColor = "#1e3a8a"
+        shifts: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AllGridPhanCa.Select(p => {
+            var avatarColorPalette = new[] { "#1E3A8A", "#D97706", "#059669", "#7C3AED", "#DB2777", "#2563EB", "#0891B2" };
+            var color = avatarColorPalette[Math.Abs(p.MaNhanVien.GetHashCode()) % avatarColorPalette.Length];
+            var isValidContract = p.NhanVien != null && OvertimeHotel.HRM.Core.Policies.ContractAttendancePolicy.HasValidContractOn(p.NhanVien, p.NgayLamViec);
+            return new {
+                maPhanCa = p.MaPhanCa,
+                maNhanVien = p.MaNhanVien,
+                hoTen = p.NhanVien?.HoTen ?? ("NV #" + p.MaNhanVien),
+                maNhanVienHienThi = "NV-" + p.MaNhanVien,
+                maChucVu = p.NhanVien?.MaChucVu,
+                tenChucVu = p.NhanVien?.ChucVu?.TenChucVu ?? "",
+                maPhongBan = p.NhanVien?.MaPhongBan ?? p.NhanVien?.ChucVu?.MaPhongBan,
+                tenPhongBan = p.NhanVien?.PhongBan?.TenPhongBan ?? p.NhanVien?.ChucVu?.PhongBan?.TenPhongBan ?? "",
+                maCa = p.MaCa,
+                tenCa = p.CaLamViec?.TenCa ?? ("Ca " + p.MaCa),
+                gioBatDau = p.CaLamViec != null ? p.CaLamViec.GioBatDau.ToString("HH:mm") : "",
+                gioKetThuc = p.CaLamViec != null ? p.CaLamViec.GioKetThuc.ToString("HH:mm") : "",
+                quaDem = p.CaLamViec != null && p.CaLamViec.QuaDem,
+                // Sắc thái đi kèm từng lượt ca để modal/nhật ký khỏi dò lại tên ca.
+                sacThai = p.CaLamViec != null ? p.CaLamViec.SacThaiCa : "morning",
+                ngayLamViec = p.NgayLamViec.ToString("yyyy-MM-dd"),
+                avatarColor = color,
+                trangThai = p.TrangThai,
+                hasActiveContract = isValidContract,
+                disabledReason = !isValidContract ? $"Nhân viên {p.NhanVien?.HoTen} có hợp đồng hết hạn / chưa có hiệu lực vào ngày {p.NgayLamViec:dd/MM/yyyy}." : (string?)null
+            };
         }))),
-        caList: [
-            { maCa: 1, tenCa: "Ca Sáng (06:00 - 14:00)", gio: "06:00 - 14:00", badgeClass: "morning" },
-            { maCa: 2, tenCa: "Ca Chiều (14:00 - 22:00)", gio: "14:00 - 22:00", badgeClass: "afternoon" },
-            { maCa: 3, tenCa: "Ca Đêm (22:00 - 06:00)", gio: "22:00 - 06:00", badgeClass: "night" }
-        ]
+        caList: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DanhSachCa.Select(c => new {
+            maCa = c.MaCa,
+            tenCa = c.TenCa,
+            gio = c.GioBatDau.ToString("HH:mm") + " - " + c.GioKetThuc.ToString("HH:mm"),
+            // Sắc thái do máy chủ quyết định từ LoaiCa, JS không phải đoán lại
+            // từ tên ca (tên do người dùng đặt, đổi được bất cứ lúc nào).
+            sacThai = c.SacThaiCa,
+            loaiCa = c.LoaiCa,
+            quaDem = c.QuaDem,
+            gioLamChuan = c.GioLamChuan
+        }))),
+        dinhBienRules: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DinhBien.Rows
+            .Where(r => r.MucNenTheoCa.Any(kv => kv.Value > 0) || r.MucNgayTheoCa.Any(kv => kv.Value > 0))
+            .Select(r => new {
+                maChucVu = r.MaChucVu,
+                tenChucVu = r.TenChucVu,
+                maPhongBan = r.MaPhongBan,
+                tenPhongBan = r.TenPhongBan,
+                mucNenTheoCa = r.MucNenTheoCa,
+                mucNgayTheoCa = r.MucNgayTheoCa
+            })))
     };
 </script>
 <script src="~/js/phanca-calendar.js" asp-append-version="true"></script>

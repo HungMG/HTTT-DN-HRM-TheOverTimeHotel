@@ -705,17 +705,7 @@ public class GiaiTrinhChamCongController : Controller
         return scopeDeptId.Value > 0 && employeeDeptId == scopeDeptId.Value;
     }
 
-    private int? GetManagerDepartmentScope()
-    {
-        if (!User.IsInRole("Manager"))
-        {
-            return null;
-        }
-
-        return int.TryParse(User.FindFirstValue("DepartmentId"), out var departmentId) && departmentId > 0
-            ? departmentId
-            : -1;
-    }
+    private int? GetManagerDepartmentScope() => User.GetManagedDepartmentScope();
 
     private int? GetCurrentEmployeeId() =>
         int.TryParse(User.FindFirstValue("EmployeeId"), out var employeeId) ? employeeId : null;

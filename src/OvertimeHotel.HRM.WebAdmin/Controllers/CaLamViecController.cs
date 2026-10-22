@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Security;
@@ -30,6 +31,7 @@ public class CaLamViecController : Controller
 
         keyword = keyword?.Trim();
         var query = _context.CaLamViecs.AsNoTracking().Include(x => x.PhanCas).AsQueryable();
+        query = query.Where(x => !x.TenCa.StartsWith("EVT-") && !x.TenCa.StartsWith("TEST-"));
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var value = keyword.ToLower();
@@ -39,7 +41,7 @@ public class CaLamViecController : Controller
         ViewBag.Keyword = keyword;
         try
         {
-            ViewBag.Total = await _context.CaLamViecs.CountAsync();
+            ViewBag.Total = await _context.CaLamViecs.CountAsync(x => !x.TenCa.StartsWith("EVT-") && !x.TenCa.StartsWith("TEST-"));
             return View(await query.OrderBy(x => x.GioBatDau).ToListAsync());
         }
         catch (Exception ex)
@@ -126,6 +128,8 @@ public class CaLamViecController : Controller
         entity.GioBatDau = model.GioBatDau;
         entity.GioKetThuc = model.GioKetThuc;
         entity.QuaDem = model.QuaDem;
+        entity.GioLamChuan = model.GioLamChuan;
+        entity.LoaiCa = model.LoaiCa;
         try
         {
             await _context.SaveChangesAsync();
@@ -172,11 +176,18 @@ public class CaLamViecController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    /// <summary>
+    /// Dữ liệu dự phòng khi không kết nối được Supabase. Phải khớp với seed trong
+    /// migration 20261027 — nếu lệch, màn hình khi mất mạng sẽ không có ca hành
+    /// chính và người dùng tưởng tính năng chưa làm.
+    /// </summary>
     private static List<CaLamViec> GetFallbackItems() =>
     [
-        new() { MaCa = 1, TenCa = "Ca Sáng", GioBatDau = new TimeOnly(6, 0), GioKetThuc = new TimeOnly(14, 0), QuaDem = false, PhanCas = new List<PhanCa> { new(), new() } },
-        new() { MaCa = 2, TenCa = "Ca Chiều", GioBatDau = new TimeOnly(14, 0), GioKetThuc = new TimeOnly(22, 0), QuaDem = false, PhanCas = new List<PhanCa> { new() } },
-        new() { MaCa = 3, TenCa = "Ca Đêm", GioBatDau = new TimeOnly(22, 0), GioKetThuc = new TimeOnly(6, 0), QuaDem = true, PhanCas = new List<PhanCa> { new() } }
+        new() { MaCa = 1, TenCa = "Ca Sáng", GioBatDau = new TimeOnly(6, 0), GioKetThuc = new TimeOnly(14, 0), QuaDem = false, GioLamChuan = 8.00m, LoaiCa = ShiftWorkModes.XOAY_CA, PhanCas = new List<PhanCa> { new(), new() } },
+        new() { MaCa = 2, TenCa = "Ca Chiều", GioBatDau = new TimeOnly(14, 0), GioKetThuc = new TimeOnly(22, 0), QuaDem = false, GioLamChuan = 8.00m, LoaiCa = ShiftWorkModes.XOAY_CA, PhanCas = new List<PhanCa> { new() } },
+        new() { MaCa = 3, TenCa = "Ca Đêm", GioBatDau = new TimeOnly(22, 0), GioKetThuc = new TimeOnly(6, 0), QuaDem = true, GioLamChuan = 8.00m, LoaiCa = ShiftWorkModes.XOAY_CA, PhanCas = new List<PhanCa> { new() } },
+        // 07:00–17:00 chiếm 10 tiếng nhưng chỉ 8 tiếng làm — 2 tiếng chênh là nghỉ trưa.
+        new() { MaCa = 4, TenCa = "Ca Hành Chính", GioBatDau = new TimeOnly(7, 0), GioKetThuc = new TimeOnly(17, 0), QuaDem = false, GioLamChuan = 8.00m, LoaiCa = ShiftWorkModes.HANH_CHINH, PhanCas = new List<PhanCa>() }
     ];
 
     private async Task ValidateAsync(CaLamViec model, int? currentId = null)
@@ -198,6 +209,20 @@ public class CaLamViecController : Controller
                 crossesMidnight
                     ? "Ca có giờ kết thúc nhỏ hơn giờ bắt đầu phải được đánh dấu qua đêm."
                     : "Ca không qua ngày mới không nên được đánh dấu qua đêm.");
+
+        // Giờ làm chuẩn phải nằm trong (0, độ dài khung giờ]. Vượt khung nghĩa là
+        // nghỉ âm — dữ liệu vô nghĩa. Chặn ở đây để người dùng thấy thông báo rõ
+        // thay vì ăn lỗi 23514 của ràng buộc CSDL.
+        if (model.GioLamChuan <= 0)
+            ModelState.AddModelError(nameof(model.GioLamChuan), "Giờ làm chuẩn phải lớn hơn 0.");
+        else if (model.GioLamChuan > model.DoDaiKhungGio)
+            ModelState.AddModelError(nameof(model.GioLamChuan),
+                $"Giờ làm chuẩn ({model.GioLamChuan:0.##} giờ) không được vượt quá độ dài khung giờ " +
+                $"({model.DoDaiKhungGio:0.##} giờ). Phần chênh lệch chính là giờ nghỉ — " +
+                "hãy khai số giờ thực sự làm việc.");
+
+        if (!ShiftWorkModes.IsValid(model.LoaiCa))
+            ModelState.AddModelError(nameof(model.LoaiCa), "Loại ca không hợp lệ.");
     }
 
     private static void Normalize(CaLamViec model)

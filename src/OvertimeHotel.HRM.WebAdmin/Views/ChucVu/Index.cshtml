@@ -85,6 +85,7 @@
                     <col />
                     <col class="organization-col-department" />
                     <col class="organization-col-staff" />
+                    <col style="width: 150px" />
                     <col class="organization-col-description" />
                     <col class="organization-col-actions" />
                 </colgroup>
@@ -94,7 +95,8 @@
                         <th>Chức danh vị trí</th>
                         <th>Phòng ban trực thuộc</th>
                         <th>Nhân sự đảm nhiệm</th>
-                        <th>Mô tả trách nhiệm & Tiêu chuẩn</th>
+                        <th style="width: 150px">Chế độ làm việc</th>
+                        <th>Mô tả trách nhiệm &amp; Tiêu chuẩn</th>
                         <th class="text-end">Thao tác</th>
                     </tr>
                 </thead>
@@ -102,7 +104,7 @@
                 @if (Model.Count == 0)
                 {
                     <tr>
-                        <td colspan="6" class="catalog-empty">
+                        <td colspan="7" class="catalog-empty">
                             <div class="catalog-empty-state">
                                 <div class="catalog-empty-icon"><i class="bi bi-person-slash"></i></div>
                                 <h4>Không tìm thấy chức vụ phù hợp</h4>
@@ -209,6 +211,22 @@
                                     }
                                 </div>
                             </td>
+                            <td>
+                                @if (item.CheDoLamViec == ShiftWorkModes.HANH_CHINH)
+                                {
+                                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle px-2 py-1"
+                                          title="Chỉ xếp được vào ca giờ hành chính.">
+                                        <i class="bi bi-briefcase-fill me-1"></i>Giờ hành chính
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light text-dark border px-2 py-1"
+                                          title="Chỉ xếp được vào ca xoay 24/7 (sáng / chiều / đêm).">
+                                        <i class="bi bi-arrow-repeat me-1 text-primary"></i>Ca xoay 24/7
+                                    </span>
+                                }
+                            </td>
                             <td class="text-muted">
                                 <span class="organization-description" title="@item.MoTa">
                                     @(item.MoTa ?? "Chưa có mô tả tiêu chuẩn công việc.")
@@ -274,6 +292,17 @@
                             }
                         </select>
                         <label for="createMaPhongBan">Trực thuộc Phòng ban / Bộ phận</label>
+                    </div>
+                    <div class="form-floating mb-2">
+                        <select name="CheDoLamViec" class="form-select" id="createCheDoLamViec">
+                            <option value="@ShiftWorkModes.XOAY_CA" selected>@ShiftWorkModes.ToDisplayName(ShiftWorkModes.XOAY_CA)</option>
+                            <option value="@ShiftWorkModes.HANH_CHINH">@ShiftWorkModes.ToDisplayName(ShiftWorkModes.HANH_CHINH)</option>
+                        </select>
+                        <label for="createCheDoLamViec">Chế độ làm việc <span class="text-danger">*</span></label>
+                    </div>
+                    <div class="small text-muted mb-2">
+                        <i class="bi bi-signpost-split me-1"></i>
+                        Giờ hành chính chỉ xếp ca hành chính; Ca xoay 24/7 chỉ xếp ca sáng / chiều / đêm.
                     </div>
                     <div class="form-floating mb-2">
                         <textarea name="MoTa" class="form-control" placeholder="Mô tả nhiệm vụ" maxlength="255" style="height:110px"></textarea>

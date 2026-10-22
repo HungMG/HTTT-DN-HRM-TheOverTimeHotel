@@ -1,3 +1,5 @@
+using OvertimeHotel.HRM.Core.Constants;
+
 namespace OvertimeHotel.HRM.Core.Policies;
 
 /// <summary>Loại xung đột phát hiện được khi xếp một ca mới cho nhân viên.</summary>
@@ -10,7 +12,13 @@ public enum ShiftConflictKind
     Overlap = 1,
 
     /// <summary>Khoảng nghỉ giữa ca trước và ca sau ngắn hơn mức tối thiểu luật định.</summary>
-    InsufficientRest = 2
+    InsufficientRest = 2,
+
+    /// <summary>
+    /// Chế độ làm việc của chức danh không khớp loại ca — người hành chính bị xếp
+    /// vào ca xoay, hoặc người trực ca bị xếp vào khung giờ văn phòng.
+    /// </summary>
+    WorkModeMismatch = 3
 }
 
 /// <summary>
@@ -145,6 +153,68 @@ public static class ShiftSchedulingPolicy
         }
 
         return restConflict ?? ShiftConflict.None;
+    }
+
+    /// <summary>
+    /// Đối chiếu chế độ làm việc của chức danh với loại ca trước khi xếp.
+    ///
+    /// <para>
+    /// <b>Luật:</b> ca <c>HANH_CHINH</c> chỉ xếp được cho người <c>HANH_CHINH</c>,
+    /// và ngược lại. Hai khối này không hoán đổi được vì khác nhau ở điều khoản
+    /// hợp đồng chứ không phải ở khung giờ.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Vì sao chặn cứng mà không cảnh báo:</b> xếp Tổng Giám Đốc vào ca đêm
+    /// không phải "hơi bất thường" — đó là lịch sai, và nếu dữ liệu mẫu trong lúc
+    /// demo có cảnh đó thì người xem hiểu ngay là hệ thống không hiểu nghiệp vụ.
+    /// Ca xoay 24/7 vốn đã phủ được toàn bộ nhân sự trực ca, nên ngoại lệ không
+    /// cần thiết.
+    /// </para>
+    ///
+    /// <para>
+    /// Nhận <c>null</c>/rỗng là rơi về <c>XOAY_CA</c> để dữ liệu cũ chưa có cột
+    /// vẫn xếp ca được như trước.
+    /// </para>
+    /// </summary>
+    /// <param name="cheDoCuaChucDanh">Chế độ làm việc của người được xếp ca.</param>
+    /// <param name="loaiCuaCa">Loại của ca sắp xếp.</param>
+    /// <param name="tenChucDanh">Tên chức danh để ghép thông báo; có thể null.</param>
+    /// <param name="tenCa">Tên ca để ghép thông báo; có thể null.</param>
+    public static ShiftConflict ValidateWorkMode(
+        string? cheDoCuaChucDanh,
+        string? loaiCuaCa,
+        string? tenChucDanh,
+        string? tenCa)
+    {
+        var cheDo = string.IsNullOrWhiteSpace(cheDoCuaChucDanh)
+            ? ShiftWorkModes.XOAY_CA
+            : cheDoCuaChucDanh.Trim();
+        var loai = string.IsNullOrWhiteSpace(loaiCuaCa)
+            ? ShiftWorkModes.XOAY_CA
+            : loaiCuaCa.Trim();
+
+        if (string.Equals(cheDo, loai, StringComparison.OrdinalIgnoreCase))
+        {
+            return ShiftConflict.None;
+        }
+
+        var nguoi = string.IsNullOrWhiteSpace(tenChucDanh) ? "Nhân sự này" : $"“{tenChucDanh.Trim()}”";
+        var ca = string.IsNullOrWhiteSpace(tenCa) ? "ca đang chọn" : $"“{tenCa.Trim()}”";
+
+        // Nêu đúng hướng lệch để người dùng biết sửa bên nào: đổi chức danh, hay
+        // đổi ca. Câu chung chung "không khớp" bắt họ tự đoán.
+        var huongSua = cheDo == ShiftWorkModes.HANH_CHINH
+            ? "Chọn một ca giờ hành chính, hoặc đổi chế độ làm việc của chức danh nếu thực tế người này trực ca."
+            : "Chọn một ca xoay 24/7, hoặc đổi chế độ làm việc của chức danh nếu thực tế người này làm giờ hành chính.";
+
+        return new ShiftConflict(
+            ShiftConflictKind.WorkModeMismatch,
+            null,
+            null,
+            0,
+            $"{nguoi} làm {ShiftWorkModes.ToDisplayName(cheDo).ToLowerInvariant()} nên không xếp được vào {ca} " +
+            $"({ShiftWorkModes.ToDisplayName(loai).ToLowerInvariant()}). {huongSua}");
     }
 
     /// <summary>

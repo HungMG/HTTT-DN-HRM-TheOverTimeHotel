@@ -371,7 +371,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 s.CaLamViec is { QuaDem: true } &&
                 s.ChamCong is { GioCheckIn: not null, GioCheckOut: not null }).ToList();
 
-            var nightHours = nightShifts.Count * 8m; // Ca đêm chuẩn 8 tiếng
+            // Giờ đêm lấy theo giờ làm chuẩn của TỪNG ca, không nhân với hằng số 8.
+            // Trước đây hard-code 8 nên ca đêm 12 tiếng bị trả thiếu và ca đêm
+            // 6 tiếng bị trả thừa — sai lặng lẽ vì không có cảnh báo nào.
+            var nightHours = nightShifts.Sum(s => s.CaLamViec?.GioLamChuan ?? 8m);
             var tienCaDem = Math.Round(donGiaGio * nightHours * SalaryConstants.NIGHT_SHIFT_ALLOWANCE_RATE, MidpointRounding.AwayFromZero);
 
             if (nightHours > 0)
@@ -783,7 +786,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         // Ca đêm
         var nightShifts = empShifts.Where(s => s.CaLamViec is { QuaDem: true } && s.ChamCong is { GioCheckIn: not null, GioCheckOut: not null }).ToList();
-        var nightHours = nightShifts.Count * 8m;
+        // Cùng lý do với nhánh tính cả kỳ ở trên: giờ đêm theo ca, không hằng số 8.
+        var nightHours = nightShifts.Sum(s => s.CaLamViec?.GioLamChuan ?? 8m);
         var tienCaDem = Math.Round(donGiaGio * nightHours * SalaryConstants.NIGHT_SHIFT_ALLOWANCE_RATE, MidpointRounding.AwayFromZero);
         if (nightHours > 0) details.Add(new ChiTietPhieuLuong { MaLoaiOt = 4, LoaiKhoan = "PHU_CAP", LoaiKhoanLuu = "PHU_CAP", TenKhoanLuu = "Phụ cấp ca đêm (30%)", SoTien = tienCaDem, GhiChu = $"{nightShifts.Count} ca đêm ({nightHours}h)" });
 

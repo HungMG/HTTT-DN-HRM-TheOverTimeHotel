@@ -1086,6 +1086,7 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         await db.TaiKhoans.Where(a => accountIds.Contains(a.MaTaiKhoan)).ExecuteDeleteAsync();
         await db.NhanViens.Where(e => employeeIds.Contains(e.MaNhanVien)).ExecuteDeleteAsync();
         await db.PhongBans.Where(p => p.TenPhongBan.StartsWith(Prefix)).ExecuteDeleteAsync();
+        await db.CaLamViecs.Where(c => c.TenCa.StartsWith(Prefix)).ExecuteDeleteAsync();
         await transaction.CommitAsync();
     }
 }

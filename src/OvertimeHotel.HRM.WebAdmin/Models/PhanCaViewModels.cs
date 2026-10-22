@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 
 namespace OvertimeHotel.HRM.WebAdmin.Models;
@@ -13,6 +14,24 @@ public class PhanCaIndexViewModel
     public bool CanPublishWeek { get; set; }
     public bool CanViewEventDemand { get; set; }
     public bool EventDemandUnavailable { get; set; }
+
+    /// <summary>
+    /// Bộ phận thực sự đang được lọc trên màn hình. Với Quản lý đây luôn là bộ
+    /// phận của chính họ — kể cả khi họ sửa <c>phongBanId</c> trên thanh địa chỉ,
+    /// vì phạm vi được quyết định ở server chứ không dựa vào tham số của client.
+    /// <c>null</c> nghĩa là đang xem toàn khách sạn (Admin/HR/IT chưa chọn lọc).
+    /// </summary>
+    public int? PhamViPhongBanId { get; set; }
+
+    /// <summary>Tên bộ phận của phạm vi hiện tại, để hiển thị trên thanh công cụ.</summary>
+    public string? TenPhamViPhongBan { get; set; }
+
+    /// <summary>
+    /// Phiên đăng nhập bị ép về một bộ phận (Quản lý). Giao diện dùng cờ này để
+    /// thay ô chọn bộ phận bằng một nhãn khoá — hiện một dropdown chỉ có một lựa
+    /// chọn sẽ khiến người dùng tưởng mình vẫn đổi được phạm vi.
+    /// </summary>
+    public bool BiGioiHanTheoBoPhan { get; set; }
 
     // Thông tin hiển thị Cuốn Lịch (Calendar Notebook)
     public int Year { get; set; }
@@ -32,9 +51,6 @@ public class PhanCaIndexViewModel
 
     // Thống kê Bento
     public int TongSoCa { get; set; }
-    public int SoCaSang { get; set; }
-    public int SoCaChieu { get; set; }
-    public int SoCaDem { get; set; }
     public int SoNhanVienDuocPhan { get; set; }
     public int TongNhanVien { get; set; }
 
@@ -48,10 +64,23 @@ public class PhanCaIndexViewModel
 public class CalendarDaySummary
 {
     public DateOnly Date { get; set; }
-    public int Sang { get; set; }
-    public int Chieu { get; set; }
-    public int Dem { get; set; }
-    public int Tong => Sang + Chieu + Dem;
+
+    /// <summary>
+    /// Số lượt phân ca theo từng ca trong ngày, khoá là <c>MaCa</c>.
+    ///
+    /// <para>
+    /// Trước đây là ba thuộc tính cố định <c>Sang</c>/<c>Chieu</c>/<c>Dem</c>.
+    /// Cách đó khoá cứng giao diện vào đúng ba ca: khi danh mục có ca thứ tư
+    /// (Ca Hành Chính 07:00–17:00), ô lịch tháng không có chỗ hiển thị nó và
+    /// số lượt của ca này biến mất khỏi tổng. Dùng từ điển thì thêm/bớt ca
+    /// trong danh mục là giao diện tự theo, không phải sửa view.
+    /// </para>
+    /// </summary>
+    public Dictionary<int, int> SoLuotTheoCa { get; set; } = new();
+
+    /// <summary>Tổng lượt phân ca trong ngày, cộng từ mọi ca hiện có.</summary>
+    public int Tong => SoLuotTheoCa.Values.Sum();
+
     public bool IsOtherMonth { get; set; }
     public bool IsToday { get; set; }
     public bool IsWeekend { get; set; }
@@ -67,7 +96,28 @@ public class AgendaShiftGroup
     public int MaCa { get; set; }
     public string TenCa { get; set; } = string.Empty;
     public string Gio { get; set; } = string.Empty;
-    public string BadgeClass { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Loại ca của danh mục — dùng để chọn màu chấm nhận diện thay vì dò chuỗi
+    /// tên ca. Trước đây ca thứ tư (Ca Hành Chính) rơi vào nhánh mặc định và bị
+    /// tô màu ca đêm.
+    /// </summary>
+    public string LoaiCa { get; set; } = ShiftWorkModes.XOAY_CA;
+
+    /// <summary>
+    /// Sắc thái hiển thị lấy thẳng từ <see cref="CaLamViec.SacThaiCa"/>:
+    /// <c>office</c> / <c>night</c> / <c>afternoon</c> / <c>morning</c>.
+    ///
+    /// <para>
+    /// Thay cho thuộc tính <c>BadgeClass</c> cũ, vốn được controller suy ra bằng
+    /// cách dò chữ "Sáng"/"Chiều" trong tên ca — cùng một cách đoán sai như các
+    /// chỗ khác, và tên ca là dữ liệu người dùng sửa được.
+    /// </para>
+    /// </summary>
+    public string SacThai { get; set; } = "morning";
+
+    public bool QuaDem { get; set; }
+
     public List<AgendaEmployeeItem> Employees { get; set; } = new();
 
     /// <summary>
@@ -167,6 +217,16 @@ public class PhanCaItemDto
     public TimeOnly GioBatDau { get; set; }
     public TimeOnly GioKetThuc { get; set; }
     public bool QuaDem { get; set; }
+    /// <summary>Loại ca (XOAY_CA / HANH_CHINH) — quyết định màu thẻ ca trên ma trận tuần.</summary>
+    public string LoaiCa { get; set; } = ShiftWorkModes.XOAY_CA;
+
+    /// <summary>
+    /// Sắc thái hiển thị (<c>office</c>/<c>night</c>/<c>afternoon</c>/<c>morning</c>)
+    /// lấy từ <see cref="CaLamViec.SacThaiCa"/>. Razor dùng nó thay cho việc dò
+    /// chữ "Sáng"/"Chiều"/"Đêm" trong tên ca — cách dò đó gán nhầm màu cho mọi
+    /// ca không mang ba chữ ấy (Ca Hành Chính).
+    /// </summary>
+    public string SacThai { get; set; } = "morning";
     public string TrangThai { get; set; } = "DA_PHAN";
     public bool HasAttendance { get; set; }
     public bool IsCheckedIn { get; set; }

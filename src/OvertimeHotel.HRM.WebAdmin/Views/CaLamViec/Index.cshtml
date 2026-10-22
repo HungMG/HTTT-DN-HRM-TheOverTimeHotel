@@ -71,7 +71,7 @@
                         <th>Tên ca làm việc</th>
                         <th style="width: 130px">Giờ bắt đầu</th>
                         <th style="width: 130px">Giờ kết thúc</th>
-                        <th style="width: 140px">Thời lượng</th>
+                        <th style="width: 160px">Giờ làm chuẩn</th>
                         <th>Đặc điểm & Phụ cấp</th>
                         <th class="text-end" style="width: 140px">Thao tác</th>
                     </tr>
@@ -101,10 +101,17 @@
                 {
                     @foreach (var item in Model)
                     {
+                        var isAdministrative = item.LoaiCa == ShiftWorkModes.HANH_CHINH;
                         var isNight = item.QuaDem || item.TenCa.Contains("Đêm", StringComparison.OrdinalIgnoreCase);
                         var isAfternoon = item.TenCa.Contains("Chiều", StringComparison.OrdinalIgnoreCase);
-                        var shiftIcon = isNight ? "bi-moon-stars-fill" : isAfternoon ? "bi-sunset-fill" : "bi-sunrise-fill";
+                        var shiftIcon = isAdministrative ? "bi-briefcase-fill"
+                            : isNight ? "bi-moon-stars-fill" : isAfternoon ? "bi-sunset-fill" : "bi-sunrise-fill";
                         var shiftClass = isNight ? "catalog-icon--night" : isAfternoon ? "catalog-icon--afternoon" : "catalog-icon--morning";
+                        var shiftNote = isAdministrative
+                            ? "Khối văn phòng — khung giờ đã bao gồm giờ nghỉ trưa"
+                            : isNight ? "Trực ban đêm (Chống buồn ngủ, bảo vệ an ninh)"
+                            : isAfternoon ? "Ca chiều - phục vụ bữa tối & check-in"
+                            : "Ca sáng - phục vụ ăn sáng & check-out";
 
                         // Tính thời lượng ca
                         double durationHours;
@@ -128,9 +135,7 @@
                                     </span>
                                     <div>
                                         <strong class="d-block text-dark fs-6 font-serif">@item.TenCa</strong>
-                                        <small class="text-muted">
-                                            @(isNight ? "Trực ban đêm (Chống buồn ngủ, bảo vệ an ninh)" : isAfternoon ? "Ca chiều - phục vụ bữa tối & check-in" : "Ca sáng - phục vụ ăn sáng & check-out")
-                                        </small>
+                                        <small class="text-muted">@shiftNote</small>
                                     </div>
                                 </div>
                             </td>
@@ -147,12 +152,25 @@
                                 </div>
                             </td>
                             <td>
-                                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle fw-semibold px-2 py-1">
-                                    <i class="bi bi-hourglass-split me-1"></i>@durationHours.ToString("0.#") giờ
+                                @* Khung giờ và giờ làm là hai số khác nhau: ca hành chính
+                                   07:00–17:00 dài 10 tiếng nhưng chỉ tính 8 tiếng làm. *@
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle fw-semibold px-2 py-1"
+                                      title="Khung giờ dài @durationHours.ToString("0.#") giờ; giờ nghỉ @((durationHours - (double)item.GioLamChuan).ToString("0.#")) giờ.">
+                                    <i class="bi bi-hourglass-split me-1"></i>@item.GioLamChuan.ToString("0.#") giờ làm
                                 </span>
+                                @if (Math.Abs(durationHours - (double)item.GioLamChuan) >= 0.25)
+                                {
+                                    <small class="d-block text-muted mt-1">khung @durationHours.ToString("0.#") giờ</small>
+                                }
                             </td>
                             <td>
-                                @if (item.QuaDem)
+                                @if (item.LoaiCa == ShiftWorkModes.HANH_CHINH)
+                                {
+                                    <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle px-2 py-1">
+                                        <i class="bi bi-briefcase-fill me-1"></i>Giờ hành chính
+                                    </span>
+                                }
+                                else if (item.QuaDem)
                                 {
                                     <span class="badge bg-dark text-warning border border-warning px-2 py-1 shadow-sm">
                                         <i class="bi bi-moon-stars-fill me-1 text-warning"></i>Qua đêm · +30% Phụ cấp
@@ -226,6 +244,28 @@
                                 <label>Giờ kết thúc <span class="text-danger">*</span></label>
                             </div>
                         </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-5">
+                            <div class="form-floating">
+                                <input name="GioLamChuan" type="number" step="0.25" min="0.25" max="24" value="8.00" class="form-control" required />
+                                <label>Giờ làm chuẩn <span class="text-danger">*</span></label>
+                            </div>
+                        </div>
+                        <div class="col-7">
+                            <div class="form-floating">
+                                <select name="LoaiCa" class="form-select">
+                                    <option value="@ShiftWorkModes.XOAY_CA" selected>@ShiftWorkModes.ToDisplayName(ShiftWorkModes.XOAY_CA)</option>
+                                    <option value="@ShiftWorkModes.HANH_CHINH">@ShiftWorkModes.ToDisplayName(ShiftWorkModes.HANH_CHINH)</option>
+                                </select>
+                                <label>Loại ca <span class="text-danger">*</span></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="small text-muted mb-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Khai số giờ <strong>thực sự làm việc</strong>, không phải độ dài khung giờ — ca 07:00 – 17:00 khai 8 giờ,
+                        2 tiếng chênh là nghỉ trưa.
                     </div>
                     <div class="form-check form-switch bg-light border rounded-3 p-3 ps-5 mb-2">
                         <input name="QuaDem" value="true" class="form-check-input" type="checkbox" id="modalQuaDemSwitch" />

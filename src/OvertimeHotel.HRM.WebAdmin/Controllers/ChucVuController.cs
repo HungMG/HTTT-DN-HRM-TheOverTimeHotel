@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Security;
@@ -135,6 +136,7 @@ public class ChucVuController : Controller
         entity.TenChucVu = model.TenChucVu;
         entity.MaPhongBan = model.MaPhongBan;
         entity.MoTa = model.MoTa;
+        entity.CheDoLamViec = model.CheDoLamViec;
         try
         {
             await _context.SaveChangesAsync();
@@ -278,6 +280,11 @@ public class ChucVuController : Controller
 
         if (model.MoTa?.Length > 255)
             ModelState.AddModelError(nameof(model.MoTa), "Mô tả không vượt quá 255 ký tự.");
+
+        // Đổi chế độ làm việc sẽ khoá/mở việc xếp ca của toàn bộ nhân sự giữ chức
+        // danh này, nên phải là giá trị hợp lệ — không để chuỗi lạ lọt xuống CSDL.
+        if (!ShiftWorkModes.IsValid(model.CheDoLamViec))
+            ModelState.AddModelError(nameof(model.CheDoLamViec), "Chế độ làm việc không hợp lệ.");
     }
 
     private static void Normalize(ChucVu model)

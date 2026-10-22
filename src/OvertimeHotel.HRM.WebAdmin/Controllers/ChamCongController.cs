@@ -439,7 +439,11 @@ public class ChamCongController : Controller
                     p.ChamCong == null ? 0 : p.ChamCong.PhutDiTre,
                     p.ChamCong == null ? 0 : p.ChamCong.PhutVeSom,
                     p.ChamCong == null ? 0m : p.ChamCong.GioTangCaOt,
-                    p.ChamCong == null ? null : p.ChamCong.TrangThai))
+                    p.ChamCong == null ? null : p.ChamCong.TrangThai,
+                    // Giờ làm chuẩn của ca để chặn phần vượt khung do nghỉ trưa —
+                    // ca hành chính 07:00–17:00 quẹt đủ là 10 tiếng trên đồng hồ
+                    // nhưng chỉ 8 tiếng được tính công.
+                    p.CaLamViec == null ? null : (decimal?)p.CaLamViec.GioLamChuan))
                 .ToListAsync();
 
             var employeeIds = shifts.Select(s => s.EmployeeId).Distinct().ToList();
@@ -578,15 +582,5 @@ public class ChamCongController : Controller
     /// (HR/Admin/IT nhìn toàn khách sạn). <c>-1</c> = Manager nhưng thiếu claim
     /// phòng ban ⇒ không được thấy bộ phận nào.
     /// </summary>
-    private int? GetManagerDepartmentScope()
-    {
-        if (!User.IsInRole("Manager"))
-        {
-            return null;
-        }
-
-        return int.TryParse(User.FindFirstValue("DepartmentId"), out var departmentId) && departmentId > 0
-            ? departmentId
-            : -1;
-    }
+    private int? GetManagerDepartmentScope() => User.GetManagedDepartmentScope();
 }

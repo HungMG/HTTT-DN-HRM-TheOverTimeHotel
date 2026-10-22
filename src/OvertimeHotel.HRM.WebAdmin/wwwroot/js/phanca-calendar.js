@@ -47,6 +47,16 @@
     renderAgendaForDate(dateStr);
   };
 
+  var AVATAR_COLORS = ['#1E3A8A', '#D97706', '#059669', '#7C3AED', '#DB2777', '#2563EB', '#0891B2'];
+
+  function getAvatarColor(emp) {
+    if (emp && emp.avatarColor && emp.avatarColor.toLowerCase() !== '#1e3a8a') {
+      return emp.avatarColor;
+    }
+    var id = (emp && Number(emp.maNhanVien)) || 0;
+    return AVATAR_COLORS[Math.abs(id) % AVATAR_COLORS.length];
+  }
+
   // Render nội dung Agenda cho ngày được chọn từ dữ liệu có sẵn
   function renderAgendaForDate(dateStr) {
     var data = window.phancaCalendarData;
@@ -59,11 +69,15 @@
     var dateSubtitle = document.getElementById('agendaDateSubtitle');
     var shiftsContainer = document.getElementById('agendaShiftsContainer');
 
-    // Format ngày hiển thị tiếng Việt
-    var d = new Date(dateStr + 'T00:00:00');
-    var daysOfWeek = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+    // Format ngày hiển thị tiếng Việt chuẩn không phụ thuộc múi giờ
+    var parts = dateStr.split('-');
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    var day = parseInt(parts[2], 10);
+    var d = new Date(y, m - 1, day);
+    var daysOfWeek = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
     var dayName = daysOfWeek[d.getDay()];
-    var formattedDate = dayName + ', ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+    var formattedDate = dayName + ', ' + String(day).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + y;
 
     if (dateTitle) dateTitle.textContent = formattedDate;
 
@@ -74,21 +88,61 @@
       dateSubtitle.textContent = 'Tổng số: ' + totalStaff + ' lượt nhân sự trực trong ngày';
     }
 
+    // Cập nhật nút + Thêm Ca Trực trên tiêu đề Agenda sang ngày mới
+    var caList = data.caList || [];
+    var addMainShiftBtn = document.querySelector('.phanca-agenda-header button[onclick*="openAddShiftModalForDate"]');
+    var caMacDinh = (caList.length > 0 && caList[0].maCa) ? caList[0].maCa : 0;
+    if (addMainShiftBtn) {
+      addMainShiftBtn.setAttribute('onclick', 'openAddShiftModalForDate(\'' + dateStr + '\', ' + caMacDinh + ')');
+    }
+
     if (!shiftsContainer) return;
 
-    // Nhóm ca trực
-    var caList = data.caList || [
-      { maCa: 1, tenCa: 'Ca Sáng (06:00 - 14:00)', gio: '06:00 - 14:00', badgeClass: 'morning' },
-      { maCa: 2, tenCa: 'Ca Chiều (14:00 - 22:00)', gio: '14:00 - 22:00', badgeClass: 'afternoon' },
-      { maCa: 3, tenCa: 'Ca Đêm (22:00 - 06:00)', gio: '22:00 - 06:00', badgeClass: 'night' }
-    ];
-
     var html = '';
+    var tongCaThieuTrongNgay = 0;
+    var isSelectedDate = dateStr === data.selectedDate;
     caList.forEach(function (ca) {
       var empsInCa = dayShifts.filter(function (s) { return s.maCa === ca.maCa; });
-      var dotClass = 'phanca-shift-dot-' + (ca.badgeClass || (ca.tenCa.indexOf('Sáng') >= 0 ? 'morning' : (ca.tenCa.indexOf('Chiều') >= 0 ? 'afternoon' : 'night')));
-      // Mặc định chỉ mở Ca Sáng, các ca còn lại gấp lại cho nhật ký gọn gàng.
-      var startCollapsed = isShiftCollapsed(ca.maCa);
+      // Sắc thái lấy thẳng từ máy chủ (CaLamViec.SacThaiCa), không dò tên ca:
+      // tên ca là dữ liệu người dùng sửa được, dò chuỗi thì ca mới rơi vào
+      // nhánh mặc định và hiện màu ca đêm.
+      var dotClass = 'phanca-shift-dot-' + (ca.sacThai || 'morning');
+      var startCollapsed = isShiftCollapsed(ca.maCa, caList);
+
+      // Kiểm tra đối chiếu định biên (PRD 3.5)
+      var dinhBienList = [];
+      var rules = data.dinhBienRules || [];
+      rules.forEach(function (r) {
+        var toiThieu = 0;
+        if (isSelectedDate && r.mucNgayTheoCa && (r.mucNgayTheoCa[ca.maCa] !== undefined || r.mucNgayTheoCa[String(ca.maCa)] !== undefined)) {
+          toiThieu = r.mucNgayTheoCa[ca.maCa] !== undefined ? r.mucNgayTheoCa[ca.maCa] : r.mucNgayTheoCa[String(ca.maCa)];
+        } else if (r.mucNenTheoCa && (r.mucNenTheoCa[ca.maCa] !== undefined || r.mucNenTheoCa[String(ca.maCa)] !== undefined)) {
+          toiThieu = r.mucNenTheoCa[ca.maCa] !== undefined ? r.mucNenTheoCa[ca.maCa] : r.mucNenTheoCa[String(ca.maCa)];
+        }
+        toiThieu = parseInt(toiThieu || '0', 10);
+
+        if (toiThieu > 0) {
+          var hienCo = empsInCa.filter(function (e) {
+            if (e.trangThai === 'VANG_MAT') return false;
+            var matchRole = Number(e.maChucVu) === Number(r.maChucVu);
+            var matchDept = !r.maPhongBan || Number(e.maPhongBan) === Number(r.maPhongBan);
+            return matchRole && matchDept;
+          }).length;
+          var conThieu = Math.max(0, toiThieu - hienCo);
+          dinhBienList.push({
+            tenChucVu: r.tenChucVu,
+            tenPhongBan: r.tenPhongBan,
+            soNguoiHienCo: hienCo,
+            soNguoiToiThieu: toiThieu,
+            conThieu: conThieu
+          });
+        }
+      });
+      var thieuList = dinhBienList.filter(function (d) { return d.conThieu > 0; });
+      var tongConThieu = thieuList.reduce(function (sum, d) { return sum + d.conThieu; }, 0);
+      if (tongConThieu > 0) {
+        tongCaThieuTrongNgay++;
+      }
 
       html += '<div class="phanca-agenda-shift-card' + (startCollapsed ? ' is-collapsed' : '') + '" data-ma-ca="' + ca.maCa + '">';
       html += '  <div class="phanca-agenda-shift-header">';
@@ -96,6 +150,11 @@
       html += '      <span class="' + dotClass + '"></span>';
       html += '      <span>' + escapeHtml(ca.tenCa) + '</span>';
       html += '      <span class="badge bg-light text-dark border ms-1" style="font-size:10px;">' + empsInCa.length + ' NV</span>';
+      if (tongConThieu > 0) {
+        html += '      <span class="badge bg-danger ms-1" style="font-size:10px;" title="Thiếu ' + tongConThieu + ' người so với định biên tối thiểu">';
+        html += '        <i class="bi bi-exclamation-triangle-fill me-1"></i>Thiếu ' + tongConThieu;
+        html += '      </span>';
+      }
       html += '    </div>';
       html += '    <div class="phanca-agenda-shift-actions">';
       html += '      <button type="button" class="phanca-btn-add-to-shift" onclick="openAddShiftModalForDate(\'' + dateStr + '\', ' + ca.maCa + ')">';
@@ -109,6 +168,18 @@
       html += '  </div>';
 
       html += '  <div class="phanca-agenda-emp-list">';
+      if (thieuList.length > 0) {
+        html += '    <div class="phanca-dinh-bien-warning">';
+        html += '      <i class="bi bi-shield-exclamation"></i>';
+        html += '      <span>';
+        html += '        Thiếu định biên: ';
+        thieuList.forEach(function (d) {
+          var deptSuffix = d.tenPhongBan ? (' · ' + escapeHtml(d.tenPhongBan)) : '';
+          html += '<span class="phanca-dinh-bien-item">' + escapeHtml(d.tenChucVu) + deptSuffix + ' ' + d.soNguoiHienCo + '/' + d.soNguoiToiThieu + '</span> ';
+        });
+        html += '      </span>';
+        html += '    </div>';
+      }
       if (empsInCa.length === 0) {
         html += '    <div class="phanca-agenda-empty-shift">Chưa có nhân sự được phân ca này.</div>';
       } else {
@@ -118,7 +189,7 @@
 
           html += '    <div class="' + itemClass + '" id="agenda-item-' + emp.maPhanCa + '">';
           html += '      <div class="phanca-agenda-emp-info">';
-          html += '        <div class="phanca-agenda-avatar" style="background-color:' + (emp.avatarColor || '#1e3a8a') + ';">';
+          html += '        <div class="phanca-agenda-avatar" style="background-color:' + getAvatarColor(emp) + ';">';
           html += '          ' + escapeHtml((emp.hoTen || 'NV').slice(-1));
           html += '        </div>';
           html += '        <div>';
@@ -142,20 +213,35 @@
     });
 
     shiftsContainer.innerHTML = html;
+
+    // Cập nhật số ca thiếu trên badge nút "Định Biên Ca"
+    var badgeTongThieu = document.getElementById('dinhBienTongThieuBadge');
+    if (badgeTongThieu) {
+      if (tongCaThieuTrongNgay > 0) {
+        badgeTongThieu.textContent = tongCaThieuTrongNgay;
+        badgeTongThieu.classList.remove('d-none');
+        badgeTongThieu.setAttribute('title', 'Có ' + tongCaThieuTrongNgay + ' ca trong ngày đang thiếu người so với định biên');
+      } else {
+        badgeTongThieu.classList.add('d-none');
+      }
+    }
   }
 
-  // Ca Sáng (maCa = 1) là ca duy nhất mở sẵn; Ca Chiều và Ca Đêm gấp lại.
-  function isDefaultExpandedShift(maCa) {
-    return Number(maCa) === 1;
+  // Ca đầu tiên trong danh mục là ca mở sẵn; các ca còn lại gấp lại cho nhật ký
+  // gọn gàng. Trước đây chỗ này khoá cứng maCa === 1 — đúng với bộ ba Sáng/Chiều/
+  // Đêm nhưng sai ngay khi danh mục đổi thứ tự hoặc thêm ca mới.
+  function isDefaultExpandedShift(maCa, caList) {
+    if (!caList || caList.length === 0) return false;
+    return Number(maCa) === Number(caList[0].maCa);
   }
 
   // Ghi nhớ ca nào người dùng đã tự thu gọn / mở rộng, để khi nhật ký render lại
   // (sau khi thêm hoặc hủy một ca trực) trạng thái không bị nhảy về mặc định.
   var agendaCollapseState = {};
 
-  function isShiftCollapsed(maCa) {
+  function isShiftCollapsed(maCa, caList) {
     var saved = agendaCollapseState[maCa];
-    return saved === undefined ? !isDefaultExpandedShift(maCa) : saved;
+    return saved === undefined ? !isDefaultExpandedShift(maCa, caList) : saved;
   }
 
   // Thu gọn / mở rộng một nhóm ca trong nhật ký. Chỉ ẩn hiện danh sách nhân sự

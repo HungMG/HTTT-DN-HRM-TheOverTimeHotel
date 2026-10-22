@@ -584,3 +584,19 @@ table th,
     transform: none !important;
   }
 }
+
+/* Đảm bảo form lồng trong modal-dialog-scrollable luôn cho phép modal-body cuộn mượt mà */
+.modal-dialog-scrollable .modal-content > form,
+.modal-dialog-scrollable form.modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.modal-dialog-scrollable .modal-content > form > .modal-body,
+.modal-dialog-scrollable form.modal-content > .modal-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}

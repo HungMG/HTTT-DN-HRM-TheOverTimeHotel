@@ -20,7 +20,14 @@ public record MonthlyAttendanceShiftInput(
     int PhutDiTre,
     int PhutVeSom,
     decimal GioTangCaOt,
-    string? ChamCongTrangThai);
+    string? ChamCongTrangThai,
+    /// <summary>
+    /// Số giờ làm chuẩn của ca (<c>ca_lam_viec.gio_lam_chuan</c>). Dùng để chặn
+    /// phần vượt khung do giờ nghỉ trưa: ca hành chính 07:00–17:00 quẹt đủ là
+    /// 10 tiếng trên đồng hồ nhưng chỉ 8 tiếng được tính công.
+    /// <c>null</c> nghĩa là "không giới hạn" — dữ liệu cũ chưa có cột này.
+    /// </summary>
+    decimal? GioLamChuan = null);
 
 /// <summary>Tổng hợp công của một nhân viên trong kỳ (PRD 4.4).</summary>
 public record MonthlyAttendanceRowDto(

@@ -467,6 +467,8 @@
     const shiftEnd = container.querySelector("[data-shift-end-input]");
     const shiftNight = container.querySelector("[data-shift-night-switch]");
     const shiftName = container.querySelector("[data-shift-name-input]");
+    const shiftHours = container.querySelector("[data-shift-hours-input]");
+    const shiftMode = container.querySelector("[data-shift-mode-select]");
     const shiftHint = container.querySelector("#shiftAutoNightHint");
     const previewBox = container.querySelector("[data-shift-preview]");
 
@@ -498,10 +500,21 @@
       }
 
       const isNightActive = shiftNight?.checked || isOvernight;
-      const hours = (diffMin / 60).toFixed(1);
+      // Độ dài khung giờ KHÔNG phải giờ làm: ca 07:00–17:00 dài 10 tiếng nhưng chỉ
+      // làm 8 tiếng (2 tiếng nghỉ trưa). Hiển thị giờ làm chuẩn người dùng khai,
+      // còn khung giờ chỉ để suy ra ca đêm / buổi nào trong ngày.
+      const spanHours = diffMin / 60;
+      const declaredHours = parseFloat(shiftHours?.value);
+      const hasDeclaredHours = !Number.isNaN(declaredHours) && declaredHours > 0;
+      const hours = hasDeclaredHours ? declaredHours.toFixed(1) : spanHours.toFixed(1);
 
       const durEl = previewBox.querySelector("[data-preview-duration]");
-      if (durEl) durEl.innerHTML = `<i class="bi bi-hourglass-split me-1"></i>${hours} giờ`;
+      if (durEl) {
+        durEl.innerHTML = `<i class="bi bi-hourglass-split me-1"></i>${hours} giờ làm`;
+        durEl.title = hasDeclaredHours
+          ? `Khung giờ dài ${spanHours.toFixed(1)} giờ, thực làm ${hours} giờ (${(spanHours - declaredHours).toFixed(1)} giờ nghỉ).`
+          : `Chưa khai giờ làm chuẩn — đang tạm tính theo khung giờ (${spanHours.toFixed(1)} giờ).`;
+      }
 
       const titleEl = previewBox.querySelector("[data-preview-title]");
       if (titleEl) titleEl.textContent = nameVal;
@@ -518,6 +531,12 @@
           iconEl.className = "catalog-icon catalog-icon--night";
           iconEl.innerHTML = `<i class="bi bi-moon-stars-fill"></i>`;
         }
+      } else if (shiftMode?.value === "HANH_CHINH") {
+        if (badgeEl) badgeEl.innerHTML = `<span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle"><i class="bi bi-briefcase-fill me-1"></i>Giờ hành chính</span>`;
+        if (iconEl) {
+          iconEl.className = "catalog-icon catalog-icon--morning";
+          iconEl.innerHTML = `<i class="bi bi-briefcase-fill"></i>`;
+        }
       } else {
         const isAfternoon = nameVal.toLowerCase().includes("chiều") || (startH >= 12 && startH < 18);
         if (badgeEl) badgeEl.innerHTML = `<span class="badge bg-light text-dark border"><i class="bi bi-sun-fill me-1 text-warning"></i>Trong ngày</span>`;
@@ -533,6 +552,8 @@
       shiftEnd.addEventListener("input", updateShiftPreview);
       shiftName?.addEventListener("input", updateShiftPreview);
       shiftNight?.addEventListener("change", updateShiftPreview);
+      shiftHours?.addEventListener("input", updateShiftPreview);
+      shiftMode?.addEventListener("change", updateShiftPreview);
       updateShiftPreview();
     }
 
