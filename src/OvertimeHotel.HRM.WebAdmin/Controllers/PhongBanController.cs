@@ -78,8 +78,7 @@ public class PhongBanController : Controller
                 .FirstOrDefaultAsync(item => item.MaPhongBan == id);
             if (department == null) return NotFound();
 
-            var positions = await _context.ChucVus.AsNoTracking()
-                .Where(item => item.MaPhongBan == id || item.MaPhongBan == null)
+            var positions = await GetDepartmentPositions(department)
                 .OrderBy(item => item.TenChucVu).ToListAsync();
             return PartialView("_DepartmentDetails", new DepartmentDetailsViewModel
             {
@@ -101,9 +100,9 @@ public class PhongBanController : Controller
     {
         try
         {
-            if (!await _context.PhongBans.AnyAsync(item => item.MaPhongBan == id)) return NotFound();
-            if (!await _context.ChucVus.AnyAsync(item => item.MaChucVu == positionId &&
-                (item.MaPhongBan == id || item.MaPhongBan == null))) return NotFound();
+            var department = await _context.PhongBans.AsNoTracking().FirstOrDefaultAsync(item => item.MaPhongBan == id);
+            if (department == null) return NotFound();
+            if (!await GetDepartmentPositions(department).AnyAsync(item => item.MaChucVu == positionId)) return NotFound();
 
             var employees = await _context.NhanViens.AsNoTracking()
                 .Where(item => item.IsProfileComplete && item.MaPhongBan == id && item.MaChucVu == positionId && item.TrangThai == "DANG_LAM")
@@ -117,6 +116,14 @@ public class PhongBanController : Controller
             _logger.LogWarning(ex, "Không thể tải nhân viên phòng ban {DepartmentId}, chức vụ {PositionId}.", id, positionId);
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
+    }
+
+    private IQueryable<ChucVu> GetDepartmentPositions(PhongBan department)
+    {
+        // The board uses its own positions rather than shared operational roles.
+        var includeSharedPositions = !department.TenPhongBan.Trim().StartsWith("Ban Giám Đốc", StringComparison.OrdinalIgnoreCase);
+        return _context.ChucVus.AsNoTracking().Where(item => item.MaPhongBan == department.MaPhongBan ||
+            (includeSharedPositions && item.MaPhongBan == null));
     }
 
     [HttpGet]
