@@ -76,3 +76,4 @@ $RECYCLE.BIN/
 # Cong do trong giai doan (Chromium headless)
 .probe/
 .npmcache/
+.worktrees/
