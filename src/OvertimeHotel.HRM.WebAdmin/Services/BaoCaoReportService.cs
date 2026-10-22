@@ -731,7 +731,7 @@ public sealed class BaoCaoReportService
             MaNhanVien = n.MaNhanVien,
             TenPhongBan = n.TenPhongBan,
             TrinhDo = n.TrinhDo,
-            GioiTinh = n.GioiTinh,
+            GioiTinh = n.GioiTinh ?? string.Empty,
             TenChucVu = n.TenChucVu,
             NgayVaoLam = n.NgayVaoLam,
             NgayThoiViec = n.NgayThoiViec,

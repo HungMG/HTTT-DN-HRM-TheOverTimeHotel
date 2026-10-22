@@ -34,29 +34,6 @@ public class HopDongController : Controller
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 5, 50);
 
-        var query = _context.HopDongs.AsNoTracking().Include(contract => contract.NhanVien).AsQueryable();
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            var value = keyword.ToLower();
-            // Cột loai_hop_dong lưu mã ("XAC_DINH_THOI_HAN_1_NAM"), nhưng người
-            // dùng gõ "1 năm". Tra trước ra danh sách mã khớp rồi đẩy vào EF dưới
-            // dạng Contains — dịch được thành "= ANY(...)" của PostgreSQL.
-            // .ToArray() để EF chắc chắn nhận ra đây là tập hằng tham số hoá
-            // (= ANY(...) của PostgreSQL), không cố dịch IReadOnlyList thành SQL.
-            var maLoaiKhop = ContractTypes.MatchingCodes(keyword).ToArray();
-            query = query.Where(contract =>
-                contract.SoHopDong.ToLower().Contains(value) ||
-                maLoaiKhop.Contains(contract.LoaiHopDong) ||
-                contract.LoaiHopDong.ToLower().Contains(value) ||
-                (contract.NhanVien != null && (
-                    contract.NhanVien.Ho.ToLower().Contains(value) ||
-                    contract.NhanVien.Ten.ToLower().Contains(value) ||
-                    (contract.NhanVien.Ho + " " + contract.NhanVien.Ten).ToLower().Contains(value))));
-        }
-
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(contract => contract.TrangThai == status);
-
         var today = DateOnly.FromDateTime(DateTime.Today);
         try
         {
@@ -79,44 +56,6 @@ public class HopDongController : Controller
                 .OrderBy(cv => cv.TenChucVu)
                 .ToListAsync();
 
-            // Tự động đồng bộ các hợp đồng đã qua ngày kết thúc sang trạng thái HET_HAN trong CSDL
-            var expiredToUpdate = await _context.HopDongs
-                .Where(c => c.TrangThai == "HIEU_LUC" && c.NgayKetThuc != null && c.NgayKetThuc < today)
-                .ToListAsync();
-
-            if (expiredToUpdate.Any())
-            {
-                foreach (var c in expiredToUpdate)
-                {
-                    c.TrangThai = "HET_HAN";
-                }
-                await _context.SaveChangesAsync();
-
-                foreach (var contract in allContracts.Where(c => c.NgayKetThuc.HasValue && c.NgayKetThuc.Value < today && c.TrangThai == "HIEU_LUC"))
-                {
-                    contract.TrangThai = "HET_HAN";
-                }
-            }
-
-            // Tự động khôi phục các hợp đồng còn hạn nhưng bị lưu nhầm trạng thái HET_HAN sang HIEU_LUC
-            var validToRestore = await _context.HopDongs
-                .Where(c => c.TrangThai == "HET_HAN" && (c.NgayKetThuc == null || c.NgayKetThuc >= today))
-                .ToListAsync();
-
-            if (validToRestore.Any())
-            {
-                foreach (var c in validToRestore)
-                {
-                    c.TrangThai = "HIEU_LUC";
-                }
-                await _context.SaveChangesAsync();
-
-                foreach (var contract in allContracts.Where(c => (!c.NgayKetThuc.HasValue || c.NgayKetThuc.Value >= today) && c.TrangThai == "HET_HAN"))
-                {
-                    contract.TrangThai = "HIEU_LUC";
-                }
-            }
-
             // Lọc trên bộ nhớ máy chủ (0ms)
             var filtered = allContracts.AsEnumerable();
             if (!string.IsNullOrWhiteSpace(keyword))
@@ -131,9 +70,6 @@ public class HopDongController : Controller
                     contract.LoaiHopDong.ToLower().Contains(value) ||
                     (contract.NhanVien != null && (contract.NhanVien.Ho.ToLower().Contains(value) || contract.NhanVien.Ten.ToLower().Contains(value))));
             }
-
-            if (!string.IsNullOrWhiteSpace(status))
-                filtered = filtered.Where(contract => contract.TrangThai == status);
 
             var items = filtered.Select(contract =>
             {
@@ -150,23 +86,32 @@ public class HopDongController : Controller
                     PositionName = contract.NhanVien?.ChucVu?.TenChucVu ?? "Chưa phân bổ",
                     PersonalEmail = contract.NhanVien?.EmailCaNhan,
                     DaysRemaining = days,
-                    State = GetState(contract, days),
+                    State = ContractState.Classify(contract, today),
                     IsRenewed = isRenewed
                 };
             });
 
-            if (string.IsNullOrWhiteSpace(contractFilter))
+            if (!string.IsNullOrWhiteSpace(status))
+                items = items.Where(item => status switch
+                {
+                    "HIEU_LUC" => item.State is "HIEU_LUC" or "SAP_HET_HAN",
+                    "HET_HAN" => item.State == "DA_HET_HAN",
+                    "DA_CHAM_DUT" or "CHAM_DUT" => item.State == "DA_CHAM_DUT",
+                    _ => false
+                });
+
+            if (string.IsNullOrWhiteSpace(contractFilter) && string.IsNullOrWhiteSpace(status))
             {
                 // Mặc định ẩn hợp đồng đã hết hạn hoặc đã chấm dứt
                 items = items.Where(item => item.State != "DA_HET_HAN" && item.State != "DA_CHAM_DUT");
             }
             else if (contractFilter == "DA_HET_HAN")
             {
-                items = items.Where(item => item.State == "DA_HET_HAN" || item.Contract.TrangThai == "HET_HAN" || (item.DaysRemaining.HasValue && item.DaysRemaining.Value < 0));
+                items = items.Where(item => item.State == "DA_HET_HAN");
             }
             else if (contractFilter == "SAP_HET_HAN")
             {
-                items = items.Where(item => item.DaysRemaining is >= 0 and <= 30 && item.State != "DA_HET_HAN" && item.State != "DA_CHAM_DUT");
+                items = items.Where(item => item.State == "SAP_HET_HAN");
             }
             else if (contractFilter == "HIEU_LUC")
             {
@@ -174,7 +119,6 @@ public class HopDongController : Controller
             }
             // contractFilter == "TAT_CA" -> hiển thị toàn bộ không lọc trạng thái
 
-            var allDays = allContracts.Select(contract => contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null).ToList();
             var employeeOptions = allEmployees.Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien:D3}", item.MaNhanVien.ToString())).ToList();
             var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
             var positionOptions = allPositions.Select(cv => new SelectListItem(cv.TenChucVu + (cv.MaPhongBan == null ? " (Chung)" : ""), cv.MaChucVu.ToString())).ToList();
@@ -230,9 +174,9 @@ public class HopDongController : Controller
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalPages = totalPages,
-                ActiveContracts = allContracts.Count(contract => (contract.TrangThai == "HIEU_LUC" || string.IsNullOrEmpty(contract.TrangThai)) && (!contract.NgayKetThuc.HasValue || contract.NgayKetThuc.Value >= today)),
-                ExpiringContracts = allDays.Count(days => days is >= 0 and <= 30),
-                ExpiredContracts = allContracts.Count(contract => contract.TrangThai == "HET_HAN" || (contract.NgayKetThuc.HasValue && contract.NgayKetThuc.Value < today))
+                ActiveContracts = allContracts.Count(contract => ContractState.Classify(contract, today) == "HIEU_LUC"),
+                ExpiringContracts = allContracts.Count(contract => ContractState.Classify(contract, today) == "SAP_HET_HAN"),
+                ExpiredContracts = allContracts.Count(contract => ContractState.Classify(contract, today) == "DA_HET_HAN")
             };
 
             if (isPartial || Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -284,8 +228,9 @@ public class HopDongController : Controller
     public async Task<IActionResult> Create(HopDongFormViewModel model)
     {
         ViewBag.EmployeeOptions = await GetEmployeeOptionsAsync();
-        ModelState.Remove("EmployeeId");
+        if (model.EmployeeId == 0) model.EmployeeId = null;
         ModelState.Remove("Contract.MaNhanVien");
+        model.Contract.MaHopDong = 0;
 
         if (string.IsNullOrWhiteSpace(model.Contract.HinhThucHopDong))
         {
@@ -293,127 +238,31 @@ public class HopDongController : Controller
         }
 
         NhanVien? employee = null;
-
-        // 1. Nếu có EmployeeId hợp lệ thì tìm nhân viên đó
-        if (model.EmployeeId > 0)
+        if (model.EmployeeId.HasValue)
         {
-            employee = await _context.NhanViens
-                .Include(nv => nv.PhongBan)
-                .Include(nv => nv.ChucVu)
-                .FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
+            employee = await _context.NhanViens.FindAsync(model.EmployeeId.Value);
+            if (employee == null) ModelState.AddModelError("EmployeeId", "Nhân viên đã chọn không tồn tại.");
+        }
+        else if (string.IsNullOrWhiteSpace(model.EmployeeName))
+        {
+            ModelState.AddModelError("EmployeeName", "Vui lòng nhập họ và tên nhân viên.");
         }
 
-        // 2. Nếu chưa có EmployeeId, thử tìm theo tên nhân sự nhập tay
-        if (employee == null && !string.IsNullOrWhiteSpace(model.EmployeeName))
+        await ValidateOrganizationAsync(model);
+        if (employee == null && !model.EmployeeId.HasValue && !string.IsNullOrWhiteSpace(model.EmployeeName))
         {
-            var trimmedName = model.EmployeeName.Trim();
-            employee = await _context.NhanViens
-                .Include(nv => nv.PhongBan)
-                .Include(nv => nv.ChucVu)
-                .FirstOrDefaultAsync(item => (item.Ho + " " + item.Ten).ToLower() == trimmedName.ToLower() || item.Ten.ToLower() == trimmedName.ToLower());
+            var parts = model.EmployeeName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var ho = parts.Length > 1 ? string.Join(" ", parts.Take(parts.Length - 1)) : string.Empty;
+            var ten = parts.Last();
+            employee = new NhanVien
+            {
+                Ho = ho, Ten = ten, IsProfileComplete = false,
+                EmailCongVu = await GenerateUniqueWorkEmailAsync(ho, ten),
+                NgayVaoLam = model.Contract.NgayBatDau,
+                TrangThai = "DANG_LAM"
+            };
         }
-
-        // 3. Nếu vẫn chưa có nhân viên trong CSDL (nhân viên mới nhập tay hoàn toàn) ➔ Tự động tạo hồ sơ nhân viên mới
-        if (employee == null)
-        {
-            if (string.IsNullOrWhiteSpace(model.EmployeeName))
-            {
-                ModelState.AddModelError("EmployeeName", "Vui lòng nhập họ và tên nhân viên.");
-            }
-            else
-            {
-                var fullName = model.EmployeeName.Trim();
-                var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var ho = parts.Length > 1 ? string.Join(" ", parts.Take(parts.Length - 1)) : "Nhân viên";
-                var ten = parts.Last();
-                
-                var emailCongVu = await GenerateUniqueWorkEmailAsync(ho, ten);
-
-                // Xác định phòng ban hợp lệ
-                int? targetDeptId = model.DepartmentId;
-                if (!targetDeptId.HasValue || targetDeptId.Value <= 0)
-                {
-                    var firstDept = await _context.PhongBans.OrderBy(p => p.MaPhongBan).FirstOrDefaultAsync();
-                    targetDeptId = firstDept?.MaPhongBan ?? 1;
-                }
-
-                // Xác định chức vụ hợp lệ thuộc phòng ban (hoặc chức danh chung)
-                int targetPosId = model.PositionId ?? 0;
-                if (targetPosId <= 0)
-                {
-                    var defaultPos = await _context.ChucVus
-                        .Where(cv => cv.MaPhongBan == targetDeptId.Value || cv.MaPhongBan == null)
-                        .OrderBy(cv => cv.MaPhongBan == null ? 1 : 0)
-                        .ThenBy(cv => cv.MaChucVu)
-                        .FirstOrDefaultAsync();
-                    targetPosId = defaultPos?.MaChucVu ?? 0;
-                }
-                if (targetPosId <= 0)
-                {
-                    var anyPos = await _context.ChucVus.OrderBy(cv => cv.MaChucVu).FirstOrDefaultAsync();
-                    targetPosId = anyPos?.MaChucVu ?? 1;
-                }
-
-                employee = new NhanVien
-                {
-                    Ho = ho,
-                    Ten = ten,
-                    MaPhongBan = targetDeptId,
-                    MaChucVu = targetPosId,
-                    EmailCongVu = emailCongVu,
-                    EmailCaNhan = string.IsNullOrWhiteSpace(model.PersonalEmail) ? null : model.PersonalEmail.Trim(),
-                    DienThoai = "0900000000",
-                    GioiTinh = "NAM",
-                    NgaySinh = new DateOnly(2000, 1, 1),
-                    NgayVaoLam = model.Contract.NgayBatDau,
-                    TrinhDo = "Lao động phổ thông",
-                    TrangThai = "DANG_LAM"
-                };
-
-                _context.NhanViens.Add(employee);
-                await _context.SaveChangesAsync();
-            }
-        }
-        else
-        {
-            // Cập nhật email cá nhân nếu có thay đổi
-            if (!string.IsNullOrWhiteSpace(model.PersonalEmail) && employee.EmailCaNhan != model.PersonalEmail.Trim())
-            {
-                employee.EmailCaNhan = model.PersonalEmail.Trim();
-            }
-
-            // Cập nhật phòng ban nếu được chọn trên form
-            if (model.DepartmentId.HasValue && model.DepartmentId.Value > 0)
-            {
-                employee.MaPhongBan = model.DepartmentId.Value;
-            }
-
-            // Cập nhật chức vụ nếu được chọn trên form
-            if (model.PositionId.HasValue && model.PositionId.Value > 0)
-            {
-                employee.MaChucVu = model.PositionId.Value;
-            }
-            else if (!employee.MaChucVu.HasValue || employee.MaChucVu.Value <= 0)
-            {
-                var defPos = await _context.ChucVus
-                    .Where(cv => cv.MaPhongBan == employee.MaPhongBan || cv.MaPhongBan == null)
-                    .OrderBy(cv => cv.MaPhongBan == null ? 1 : 0)
-                    .ThenBy(cv => cv.MaChucVu)
-                    .FirstOrDefaultAsync();
-                if (defPos != null) employee.MaChucVu = defPos.MaChucVu;
-            }
-
-            await _context.SaveChangesAsync();
-        }
-
-        if (employee != null)
-        {
-            model.Contract.MaNhanVien = employee.MaNhanVien;
-            model.EmployeeId = employee.MaNhanVien;
-            model.EmployeeName = employee.HoTen;
-            model.DepartmentName = employee.PhongBan?.TenPhongBan ?? string.Empty;
-            model.PositionName = employee.ChucVu?.TenChucVu ?? string.Empty;
-        }
+        model.Contract.MaNhanVien = employee?.MaNhanVien ?? 0;
 
         // Tự động sinh mã hợp đồng nếu để trống theo hình thức hợp đồng
         if (string.IsNullOrWhiteSpace(model.Contract.SoHopDong))
@@ -457,6 +306,13 @@ public class HopDongController : Controller
 
         try
         {
+            if (employee != null)
+            {
+                employee.MaPhongBan = model.DepartmentId;
+                employee.MaChucVu = model.PositionId;
+                if (!string.IsNullOrWhiteSpace(model.PersonalEmail)) employee.EmailCaNhan = model.PersonalEmail.Trim();
+                model.Contract.NhanVien = employee;
+            }
             _context.HopDongs.Add(model.Contract);
             await _context.SaveChangesAsync();
 
@@ -547,6 +403,7 @@ public class HopDongController : Controller
         }
 
         await ValidateContractAsync(model.Contract, id);
+        await ValidateOrganizationAsync(model);
         var employee = await _context.NhanViens
             .Include(nv => nv.PhongBan)
             .Include(nv => nv.ChucVu)
@@ -580,7 +437,6 @@ public class HopDongController : Controller
                 employee.MaChucVu = model.PositionId.Value;
             }
 
-            await _context.SaveChangesAsync();
         }
 
         if (!ModelState.IsValid)
@@ -675,15 +531,7 @@ public class HopDongController : Controller
             ? (contract.NgayKetThuc.Value.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days
             : (int?)null;
 
-        var state = contract.TrangThai == "DA_CHAM_DUT"
-            ? "DA_CHAM_DUT"
-            : !contract.NgayKetThuc.HasValue
-                ? "HIEU_LUC"
-                : daysRemaining < 0
-                    ? "DA_HET_HAN"
-                    : daysRemaining <= 30
-                        ? "SAP_HET_HAN"
-                        : "HIEU_LUC";
+        var state = ContractState.Classify(contract, today);
 
         var isRenewed = await _context.HopDongs
             .AsNoTracking()
@@ -863,14 +711,14 @@ public class HopDongController : Controller
     private async Task<IReadOnlyList<SelectListItem>> GetEmployeeOptionsAsync() =>
         await _context.NhanViens.AsNoTracking().OrderBy(item => item.Ten).ThenBy(item => item.Ho).Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien:D3}", item.MaNhanVien.ToString())).ToListAsync();
 
-    private static string GetState(HopDong contract, int? daysRemaining)
+    private async Task ValidateOrganizationAsync(HopDongFormViewModel model)
     {
-        if (contract == null) return "CHUA_CO";
-        if (contract.TrangThai == "DA_CHAM_DUT") return "DA_CHAM_DUT";
-        if (daysRemaining.HasValue && daysRemaining.Value < 0) return "DA_HET_HAN";
-        if (contract.TrangThai == "HET_HAN" && (!daysRemaining.HasValue || daysRemaining.Value <= 0)) return "DA_HET_HAN";
-        if (daysRemaining is >= 0 and <= 30) return "SAP_HET_HAN";
-        return "HIEU_LUC";
+        if (!model.DepartmentId.HasValue || !await _context.PhongBans.AnyAsync(x => x.MaPhongBan == model.DepartmentId))
+            ModelState.AddModelError("DepartmentId", "Vui lòng chọn phòng ban hợp lệ.");
+        if (!model.PositionId.HasValue || !await _context.ChucVus.AnyAsync(x => x.MaChucVu == model.PositionId && (x.MaPhongBan == null || x.MaPhongBan == model.DepartmentId)))
+            ModelState.AddModelError("PositionId", "Vui lòng chọn chức vụ thuộc phòng ban đã chọn.");
+        if (!string.IsNullOrWhiteSpace(model.PersonalEmail) && !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.PersonalEmail))
+            ModelState.AddModelError("PersonalEmail", "Email cá nhân không đúng định dạng.");
     }
 
     private static string RemoveDiacritics(string text)

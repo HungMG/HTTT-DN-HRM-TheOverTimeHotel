@@ -4,7 +4,7 @@
     var contract = Model.LatestContract;
     var account = Model.Account;
     var initials = emp.Ten.Length > 0 ? emp.Ten.Substring(0, 1).ToUpper() : "N";
-    var age = DateTime.Today.Year - emp.NgaySinh.Year;
+    var age = emp.NgaySinh.HasValue ? DateTime.Today.Year - emp.NgaySinh.Value.Year : 0;
     if (emp.NgaySinh > DateOnly.FromDateTime(DateTime.Today.AddYears(-age))) age--;
 }
 
@@ -347,11 +347,11 @@
                         </div>
                         <div class="profile-prop-row">
                             <span class="text-muted">Giới tính:</span>
-                            <span class="fw-semibold text-dark">@(emp.GioiTinh == "NAM" ? "Nam" : "Nữ")</span>
+                            <span class="fw-semibold text-dark">@(emp.GioiTinh switch { "NAM" => "Nam", "NU" => "Nữ", "KHAC" => "Khác", _ => "Chưa cập nhật" })</span>
                         </div>
                         <div class="profile-prop-row">
                             <span class="text-muted">Ngày sinh:</span>
-                            <span class="fw-semibold text-dark">@emp.NgaySinh.ToString("dd/MM/yyyy") (@age tuổi)</span>
+                            <span class="fw-semibold text-dark">@(emp.NgaySinh?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật") @(emp.NgaySinh.HasValue ? $"({age} tuổi)" : "")</span>
                         </div>
                         <div class="profile-prop-row">
                             <span class="text-muted">Số điện thoại:</span>
@@ -440,6 +440,12 @@
                     <div>
                         @switch (Model.ContractState)
                         {
+                            case "DA_CHAM_DUT":
+                                <span class="badge bg-secondary rounded-pill px-3 py-2">Đã chấm dứt</span>
+                                break;
+                            case "CHUA_HIEU_LUC":
+                                <span class="badge bg-secondary rounded-pill px-3 py-2">Chưa hiệu lực</span>
+                                break;
                             case "DA_HET_HAN":
                                 <span class="badge bg-danger rounded-pill px-3 py-2">
                                     <i class="bi bi-exclamation-triangle-fill me-1"></i>Đã hết hạn
@@ -504,7 +510,10 @@
                                     <td>@h.NgayBatDau.ToString("dd/MM/yyyy") &rarr; @(h.NgayKetThuc.HasValue ? h.NgayKetThuc.Value.ToString("dd/MM/yyyy") : "Vô thời hạn")</td>
                                     <td class="text-primary fw-semibold font-monospace">@h.LuongCoBan.ToString("N0") đ</td>
                                     <td>
-                                        <span class="badge bg-light text-secondary border">@h.TrangThai</span>
+                                        @{ var historyState = OvertimeHotel.HRM.Core.Constants.ContractState.Classify(h, DateOnly.FromDateTime(DateTime.Today));
+                                               var historyLabel = historyState switch { "DA_CHAM_DUT" => "Đã chấm dứt", "DA_HET_HAN" => "Đã hết hạn", "CHUA_HIEU_LUC" => "Chưa hiệu lực", _ => "Hiệu lực" };
+                                               var historyColor = historyState == "DA_HET_HAN" ? "bg-danger" : historyState is "DA_CHAM_DUT" or "CHUA_HIEU_LUC" ? "bg-secondary" : "bg-success"; }
+                                        <span class="badge @historyColor">@historyLabel</span>
                                     </td>
                                 </tr>
                             }

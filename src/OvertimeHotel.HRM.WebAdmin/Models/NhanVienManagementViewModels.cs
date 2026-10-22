@@ -49,6 +49,8 @@ public class NhanVienProfileModalViewModel
 
 public class NhanVienFormViewModel
 {
+    public int? ContractId { get; set; }
+    public IReadOnlyList<HopDong> EligibleContracts { get; set; } = [];
     public NhanVien Employee { get; set; } = new();
     public IReadOnlyList<SelectListItem> DepartmentOptions { get; set; } = [];
     public IReadOnlyList<SelectListItem> PositionOptions { get; set; } = [];

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Models;
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
@@ -76,7 +77,7 @@ public class NhanVienController : Controller
             // Thực thi tuần tự trên cùng DbContext instance để đảm bảo an toàn đơn luồng (Thread-safe)
             var depts = await _context.PhongBans.AsNoTracking().OrderBy(item => item.TenPhongBan).ToListAsync();
             var poss = await _context.ChucVus.AsNoTracking().OrderBy(item => item.TenChucVu).ToListAsync();
-            var allEmployees = await _context.NhanViens.AsNoTracking()
+            var allEmployees = await _context.NhanViens.AsNoTracking().Where(employee => employee.IsProfileComplete)
                 .Include(employee => employee.PhongBan)
                 .Include(employee => employee.ChucVu)
                 .Include(employee => employee.HopDongs)
@@ -161,10 +162,10 @@ public class NhanVienController : Controller
                 {
                     Employee = new NhanVien
                     {
-                        NgaySinh = DateOnly.FromDateTime(DateTime.Today.AddYears(-25)),
                         NgayVaoLam = DateOnly.FromDateTime(DateTime.Today),
                         TrangThai = "DANG_LAM"
                     },
+                    EligibleContracts = await GetEligibleContractsAsync(),
                     DepartmentOptions = deptOptions,
                     PositionOptions = poss.Select(item => new SelectListItem(item.TenChucVu, item.MaChucVu.ToString())).ToList()
                 },
@@ -211,7 +212,6 @@ public class NhanVienController : Controller
                 {
                     Employee = new NhanVien
                     {
-                        NgaySinh = DateOnly.FromDateTime(DateTime.Today.AddYears(-25)),
                         NgayVaoLam = DateOnly.FromDateTime(DateTime.Today),
                         TrangThai = "DANG_LAM"
                     }
@@ -245,22 +245,33 @@ public class NhanVienController : Controller
             ModelState.Remove("Employee.TrinhDo");
         }
 
-        // Tự động sinh Email công vụ nếu chưa có (do form thêm mới đã bỏ trường này theo nghiệp vụ IT cấp tài khoản)
-        if (string.IsNullOrWhiteSpace(model.Employee.EmailCongVu))
-        {
-            model.Employee.EmailCongVu = await GenerateUniqueWorkEmailAsync(model.Employee.Ho, model.Employee.Ten);
-        }
-
-        await ValidateEmployeeAsync(model.Employee);
+        var contract = await _context.HopDongs.Include(x => x.NhanVien)
+            .FirstOrDefaultAsync(x => x.MaHopDong == model.ContractId);
+        var employee = contract?.NhanVien;
+        if (employee == null || employee.IsProfileComplete || ContractState.Classify(contract, DateOnly.FromDateTime(DateTime.Today)) is "DA_CHAM_DUT" or "DA_HET_HAN")
+            ModelState.AddModelError("ContractId", "Vui lòng chọn hợp đồng chưa có hồ sơ hoàn chỉnh và còn phù hợp để tiếp nhận.");
+        model.Employee.MaNhanVien = employee?.MaNhanVien ?? 0;
+        model.Employee.EmailCongVu = employee?.EmailCongVu ?? string.Empty;
+        await ValidateEmployeeAsync(model.Employee, employee?.MaNhanVien);
         if (!ModelState.IsValid)
         {
-            TempData["Error"] = ModelState.Values.SelectMany(item => item.Errors).FirstOrDefault()?.ErrorMessage ?? "Vui lòng kiểm tra lại thông tin hồ sơ.";
-            return RedirectToAction(nameof(Index));
+            return await InvalidCompletionFormAsync(model);
         }
 
         try
         {
-            _context.NhanViens.Add(model.Employee);
+            employee!.MaPhongBan = model.Employee.MaPhongBan;
+            employee.MaChucVu = model.Employee.MaChucVu;
+            employee.Ho = model.Employee.Ho;
+            employee.Ten = model.Employee.Ten;
+            employee.NgaySinh = model.Employee.NgaySinh;
+            employee.GioiTinh = model.Employee.GioiTinh;
+            employee.DienThoai = model.Employee.DienThoai;
+            employee.EmailCaNhan = model.Employee.EmailCaNhan;
+            employee.DiaChi = model.Employee.DiaChi;
+            employee.TrinhDo = model.Employee.TrinhDo;
+            employee.NgayVaoLam = model.Employee.NgayVaoLam;
+            employee.IsProfileComplete = true;
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã thêm hồ sơ nhân viên “{model.Employee.HoTen}”.";
             return RedirectToAction(nameof(Index));
@@ -268,16 +279,24 @@ public class NhanVienController : Controller
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Không thể tạo hồ sơ nhân viên {Email}.", model.Employee.EmailCongVu);
-            TempData["Error"] = "Không thể thêm hồ sơ. Vui lòng kiểm tra dữ liệu hoặc kết nối CSDL.";
-            return RedirectToAction(nameof(Index));
+            ModelState.AddModelError(string.Empty, "Không thể hoàn thiện hồ sơ. Hợp đồng có thể đã được sử dụng; vui lòng kiểm tra lại.");
+            return await InvalidCompletionFormAsync(model);
         }
+    }
+
+    private async Task<IActionResult> InvalidCompletionFormAsync(NhanVienFormViewModel model)
+    {
+        model.Employee.MaNhanVien = 0;
+        ModelState.Remove("Employee.MaNhanVien");
+        model.EligibleContracts = await GetEligibleContractsAsync();
+        return View("Create", await BuildEmployeeFormAsync(model));
     }
 
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
         var employee = await _context.NhanViens.AsNoTracking().FirstOrDefaultAsync(item => item.MaNhanVien == id);
-        return employee == null ? NotFound() : View(await BuildEmployeeFormAsync(new NhanVienFormViewModel { Employee = employee }));
+        return employee == null || !employee.IsProfileComplete ? NotFound() : View(await BuildEmployeeFormAsync(new NhanVienFormViewModel { Employee = employee }));
     }
 
     [HttpPost]
@@ -286,6 +305,7 @@ public class NhanVienController : Controller
     {
         if (id != model.Employee.MaNhanVien)
             return BadRequest();
+        if (!await _context.NhanViens.AnyAsync(x => x.MaNhanVien == id && x.IsProfileComplete)) return NotFound();
 
         Normalize(model.Employee);
         NormalizeEmployeeStatus(model.Employee);
@@ -411,7 +431,10 @@ public class NhanVienController : Controller
                 ModelState.AddModelError("Employee.MaChucVu", "Chức vụ này không thuộc phòng ban đã chọn.");
             }
         }
-        if (model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today)) ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
+        if (!model.NgaySinh.HasValue || model.NgaySinh == DateOnly.MinValue || model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today)) ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
+        if (model.GioiTinh is not ("NAM" or "NU" or "KHAC")) ModelState.AddModelError("Employee.GioiTinh", "Vui lòng chọn giới tính.");
+        if (string.IsNullOrWhiteSpace(model.DienThoai)) ModelState.AddModelError("Employee.DienThoai", "Vui lòng nhập điện thoại.");
+        if (model.NgayVaoLam == DateOnly.MinValue) ModelState.AddModelError("Employee.NgayVaoLam", "Vui lòng nhập ngày vào làm.");
         if (model.NgayThoiViec.HasValue && model.NgayThoiViec < model.NgayVaoLam) ModelState.AddModelError("Employee.NgayThoiViec", "Ngày thôi việc không được trước ngày vào làm.");
         if (!SupportedEmployeeStatuses.Contains(model.TrangThai)) ModelState.AddModelError("Employee.TrangThai", "Trạng thái nhân viên không hợp lệ.");
         if (!string.IsNullOrWhiteSpace(model.EmailCongVu))
@@ -494,12 +517,15 @@ public class NhanVienController : Controller
         return PartialView("_EmployeeProfileModalContent", model);
     }
 
-    private static string GetContractState(HopDong? contract, int? daysRemaining)
+    private static string GetContractState(HopDong? contract, int? daysRemaining) =>
+        ContractState.Classify(contract, DateOnly.FromDateTime(DateTime.Today));
+
+    private async Task<IReadOnlyList<HopDong>> GetEligibleContractsAsync()
     {
-        if (contract == null) return "CHUA_CO";
-        if (daysRemaining < 0) return "DA_HET_HAN";
-        if (daysRemaining <= 30) return "SAP_HET_HAN";
-        return contract.TrangThai;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return await _context.HopDongs.AsNoTracking().Include(x => x.NhanVien)
+            .Where(x => x.NhanVien != null && !x.NhanVien.IsProfileComplete && x.TrangThai != "DA_CHAM_DUT" && x.TrangThai != "CHAM_DUT" && (x.NgayKetThuc == null || x.NgayKetThuc >= today))
+            .OrderBy(x => x.SoHopDong).ToListAsync();
     }
 
     private static string RemoveDiacritics(string text)

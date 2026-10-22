@@ -79,7 +79,7 @@
                                        class="d-block text-dark fw-bold fs-6 font-serif text-decoration-none employee-name-link">
                                         @employee.HoTen
                                     </a>
-                                    <small class="text-muted">@(employee.GioiTinh == "NAM" ? "Nam" : "Nữ") &bull; Sinh: @employee.NgaySinh.ToString("dd/MM/yyyy")</small>
+                                    <small class="text-muted">@(employee.GioiTinh switch { "NAM" => "Nam", "NU" => "Nữ", "KHAC" => "Khác", _ => "Chưa cập nhật" }) &bull; Sinh: @(employee.NgaySinh?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</small>
                                 </div>
                             </div>
                         </td>

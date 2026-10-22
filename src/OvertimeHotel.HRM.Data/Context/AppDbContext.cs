@@ -87,8 +87,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.MaChucVu).HasColumnName("ma_chuc_vu");
             entity.Property(e => e.Ho).HasColumnName("ho").HasMaxLength(100).IsRequired();
             entity.Property(e => e.Ten).HasColumnName("ten").HasMaxLength(50).IsRequired();
-            entity.Property(e => e.NgaySinh).HasColumnName("ngay_sinh").IsRequired();
-            entity.Property(e => e.GioiTinh).HasColumnName("gioi_tinh").HasMaxLength(10).IsRequired();
+            entity.Property(e => e.IsProfileComplete).HasColumnName("is_profile_complete").HasDefaultValue(true).IsConcurrencyToken();
+            entity.Property(e => e.NgaySinh).HasColumnName("ngay_sinh");
+            entity.Property(e => e.GioiTinh).HasColumnName("gioi_tinh").HasMaxLength(10);
             entity.Property(e => e.DienThoai).HasColumnName("dien_thoai").HasMaxLength(20).IsRequired();
             entity.Property(e => e.EmailCongVu).HasColumnName("email").HasMaxLength(100).IsRequired();
             entity.Property(e => e.EmailCaNhan).HasColumnName("email_ca_nhan").HasMaxLength(100);

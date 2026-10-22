@@ -204,7 +204,7 @@
         </tr>
         <tr>
             <td><strong>Ngày tháng năm sinh:</strong></td>
-            <td>@emp.NgaySinh.ToString("dd/MM/yyyy") &nbsp;&nbsp;&nbsp;&nbsp; <strong>Giới tính:</strong> @(emp.GioiTinh == "NAM" ? "Nam" : "Nữ")</td>
+            <td>@(emp.NgaySinh?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật") &nbsp;&nbsp;&nbsp;&nbsp; <strong>Giới tính:</strong> @(emp.GioiTinh switch { "NAM" => "Nam", "NU" => "Nữ", "KHAC" => "Khác", _ => "Chưa cập nhật" })</td>
         </tr>
         <tr>
             <td><strong>Điện thoại liên hệ:</strong></td>

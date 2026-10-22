@@ -3,10 +3,26 @@
 <input asp-for="Employee.MaNhanVien" type="hidden" />
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 <div class="row g-3">
+    @if (Model.Employee.MaNhanVien == 0)
+    {
+        <div class="col-12">
+            <label asp-for="ContractId" class="form-label">Hợp đồng tiếp nhận *</label>
+            <select asp-for="ContractId" class="form-select" required aria-describedby="contractHelp">
+                <option value="">Chọn hợp đồng đã lập</option>
+                @foreach (var contract in Model.EligibleContracts)
+                {
+                    var person = contract.NhanVien!;
+                    <option value="@contract.MaHopDong" data-ho="@person.Ho" data-ten="@person.Ten" data-department="@person.MaPhongBan" data-position="@person.MaChucVu" data-email="@person.EmailCaNhan" data-start="@contract.NgayBatDau.ToString("yyyy-MM-dd")">@contract.SoHopDong — @person.HoTen</option>
+                }
+            </select>
+            <div id="contractHelp" class="form-text">Lập hợp đồng trước, sau đó chọn hợp đồng để hoàn thiện hồ sơ. Hợp đồng đã có hồ sơ hoàn chỉnh sẽ không xuất hiện.</div>
+            <span asp-validation-for="ContractId" class="text-danger small"></span>
+        </div>
+    }
     <div class="col-md-6"><label asp-for="Employee.Ho" class="form-label">Họ *</label><input asp-for="Employee.Ho" class="form-control" /><span asp-validation-for="Employee.Ho" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.Ten" class="form-label">Tên *</label><input asp-for="Employee.Ten" class="form-control" /><span asp-validation-for="Employee.Ten" class="text-danger small"></span></div>
     <div class="col-md-4"><label asp-for="Employee.NgaySinh" class="form-label">Ngày sinh *</label><input asp-for="Employee.NgaySinh" type="date" class="form-control" /><span asp-validation-for="Employee.NgaySinh" class="text-danger small"></span></div>
-    <div class="col-md-4"><label asp-for="Employee.GioiTinh" class="form-label">Giới tính</label><select asp-for="Employee.GioiTinh" class="form-select"><option value="NAM">Nam</option><option value="NU">Nữ</option><option value="KHAC">Khác</option></select></div>
+    <div class="col-md-4"><label asp-for="Employee.GioiTinh" class="form-label">Giới tính *</label><select asp-for="Employee.GioiTinh" class="form-select" required><option value="">Chọn giới tính</option><option value="NAM">Nam</option><option value="NU">Nữ</option><option value="KHAC">Khác</option></select></div>
     <div class="col-md-4">
         <label asp-for="Employee.TrinhDo" class="form-label">Trình độ chuyên môn</label>
         <select asp-for="Employee.TrinhDo" class="form-select">
@@ -75,6 +91,20 @@
 </div>
 <script>
     (function () {
+        var contractSelect = document.getElementById('ContractId');
+        if (contractSelect) contractSelect.addEventListener('change', function () {
+            var option = this.selectedOptions[0];
+            var form = this.closest('form');
+            var values = { Ho: 'ho', Ten: 'ten', MaPhongBan: 'department', MaChucVu: 'position', EmailCaNhan: 'email', NgayVaoLam: 'start' };
+            Object.keys(values).forEach(function (field) {
+                var input = form.querySelector('[name="Employee.' + field + '"]');
+                var value = option.dataset[values[field]] || '';
+                if (input && field === 'MaChucVu' && value && !Array.from(input.options).some(function (item) { return item.value === value; })) {
+                    input.add(new Option('Chức vụ theo hợp đồng', value));
+                }
+                if (input) input.value = value;
+            });
+        });
         function bindDepartmentChange() {
             var deptSelect = document.getElementById("Employee_MaPhongBan") || document.querySelector("select[name='Employee.MaPhongBan']");
             var posSelect = document.getElementById("Employee_MaChucVu") || document.querySelector("select[name='Employee.MaChucVu']");

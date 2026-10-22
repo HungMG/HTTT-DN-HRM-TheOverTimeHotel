@@ -39,7 +39,7 @@
                 <datalist id="employeeDatalist">
                     @foreach (var emp in employeeList)
                     {
-                        <option value="@emp.FullName" data-id="@emp.Id" data-dept-id="@emp.DepartmentId" data-dept-name="@emp.DepartmentName" data-pos-id="@emp.PositionId" data-pos-name="@emp.PositionName" data-email="@emp.PersonalEmail">
+                        <option value="@emp.Code — @emp.FullName" data-name="@emp.FullName" data-id="@emp.Id" data-dept-id="@emp.DepartmentId" data-dept-name="@emp.DepartmentName" data-pos-id="@emp.PositionId" data-pos-name="@emp.PositionName" data-email="@emp.PersonalEmail">
                             @emp.FullName (@emp.Code - @emp.DepartmentName - @emp.PositionName)
                         </option>
                     }

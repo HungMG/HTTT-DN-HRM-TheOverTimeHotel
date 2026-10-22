@@ -133,23 +133,27 @@
                             <strong class="text-primary font-monospace fs-6">@contract.LuongCoBan.ToString("N0") đ</strong>
                         </td>
                         <td>
-                            @if (contract.TrangThai == "DA_CHAM_DUT")
+                            @if (item.State == "DA_CHAM_DUT")
                             {
                                 <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle rounded-pill px-3 py-1">
                                     <i class="bi bi-archive-fill me-1"></i>Thanh lý
                                 </span>
                             }
-                            else if (contract.TrangThai == "HET_HAN" || (item.DaysRemaining.HasValue && item.DaysRemaining.Value < 0))
+                            else if (item.State == "DA_HET_HAN")
                             {
                                 <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle rounded-pill px-3 py-1">
                                     <i class="bi bi-exclamation-triangle-fill me-1"></i>Hết hạn
                                 </span>
                             }
-                            else if (item.DaysRemaining.HasValue && item.DaysRemaining.Value <= 30)
+                            else if (item.State == "SAP_HET_HAN")
                             {
                                 <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1">
                                     <i class="bi bi-hourglass-split me-1"></i>Sắp hết hạn
                                 </span>
+                            }
+                            else if (item.State == "CHUA_HIEU_LUC")
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis border rounded-pill px-3 py-1">Chưa hiệu lực</span>
                             }
                             else
                             {

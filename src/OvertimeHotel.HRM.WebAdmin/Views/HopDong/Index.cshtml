@@ -16,38 +16,19 @@
 <div class="catalog-page">
     <partial name="_CatalogAlerts" />
 
-    <!-- 3 MINI KPI SUMMARY STATS -->
     <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
-                <div class="catalog-kpi-icon"><i class="bi bi-file-earmark-text-fill"></i></div>
-                <div>
-                    <span class="catalog-kpi-label">Tổng hợp đồng</span>
-                    <h3 class="catalog-kpi-value">@Model.TotalContracts <small>hợp đồng</small></h3>
-                    <p class="catalog-kpi-desc">Tổng số hồ sơ lao động đang lưu trữ</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
-                <div class="catalog-kpi-icon"><i class="bi bi-file-earmark-check-fill"></i></div>
-                <div>
-                    <span class="catalog-kpi-label">Đang hiệu lực</span>
-                    <h3 class="catalog-kpi-value">@Model.ActiveContracts <small>hợp đồng</small></h3>
-                    <p class="catalog-kpi-desc">Đang còn giá trị thực thi theo quy định</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="catalog-kpi-card catalog-kpi-card--deduction shadow-sm">
-                <div class="catalog-kpi-icon"><i class="bi bi-hourglass-split"></i></div>
-                <div>
-                    <span class="catalog-kpi-label">Cần theo dõi</span>
-                    <h3 class="catalog-kpi-value">@(Model.ExpiringContracts + Model.ExpiredContracts) <small>hợp đồng</small></h3>
-                    <p class="catalog-kpi-desc">Sắp hết hạn và đã hết hạn cần xử lý</p>
-                </div>
-            </div>
-        </div>
+        <div class="col-md-4"><div class="catalog-kpi-card shadow-sm border border-success-subtle bg-success-subtle">
+            <div class="catalog-kpi-icon text-success"><i class="bi bi-file-earmark-check-fill" aria-hidden="true"></i></div>
+            <div><span class="catalog-kpi-label text-success-emphasis">Đang hiệu lực</span><h3 class="catalog-kpi-value text-success-emphasis">@Model.ActiveContracts <small>hợp đồng</small></h3><p class="catalog-kpi-desc">Đã bắt đầu, còn trên 30 ngày hoặc vô thời hạn</p></div>
+        </div></div>
+        <div class="col-md-4"><div class="catalog-kpi-card shadow-sm border border-warning-subtle bg-warning-subtle">
+            <div class="catalog-kpi-icon text-warning-emphasis"><i class="bi bi-hourglass-split" aria-hidden="true"></i></div>
+            <div><span class="catalog-kpi-label text-warning-emphasis">Sắp hết hạn</span><h3 class="catalog-kpi-value text-warning-emphasis">@Model.ExpiringContracts <small>hợp đồng</small></h3><p class="catalog-kpi-desc">Đã bắt đầu, còn từ 0 đến 30 ngày</p></div>
+        </div></div>
+        <div class="col-md-4"><div class="catalog-kpi-card shadow-sm border border-danger-subtle bg-danger-subtle">
+            <div class="catalog-kpi-icon text-danger"><i class="bi bi-file-earmark-x-fill" aria-hidden="true"></i></div>
+            <div><span class="catalog-kpi-label text-danger-emphasis">Đã hết hạn</span><h3 class="catalog-kpi-value text-danger-emphasis">@Model.ExpiredContracts <small>hợp đồng</small></h3><p class="catalog-kpi-desc">Đã qua ngày kết thúc, chưa chấm dứt</p></div>
+        </div></div>
     </div>
 
     <!-- TABLE WORKSPACE CARD -->
@@ -62,7 +43,7 @@
 
                 <div style="min-width: 150px; flex: 1;">
                     <select name="status" class="form-select">
-                        <option value="">-- Trạng thái lưu --</option>
+                        <option value="">-- Trạng thái --</option>
                         <option value="HIEU_LUC" selected="@(Model.Status == "HIEU_LUC")">Hiệu lực</option>
                         <option value="HET_HAN" selected="@(Model.Status == "HET_HAN")">Hết hạn</option>
                         <option value="DA_CHAM_DUT" selected="@(Model.Status == "DA_CHAM_DUT")">Thanh lý</option>
@@ -71,10 +52,10 @@
 
                 <div style="min-width: 170px; flex: 1;">
                     <select name="contractFilter" class="form-select">
-                        <option value="" selected="@(string.IsNullOrWhiteSpace(Model.ContractFilter))">-- Đang hiệu lực (Ẩn hết hạn) --</option>
+                        <option value="" selected="@(string.IsNullOrWhiteSpace(Model.ContractFilter))">-- Hợp đồng chưa kết thúc --</option>
                         <option value="DA_HET_HAN" selected="@(Model.ContractFilter == "DA_HET_HAN")">Đã hết hạn</option>
                         <option value="SAP_HET_HAN" selected="@(Model.ContractFilter == "SAP_HET_HAN")">Sắp hết hạn (&le; 30 ngày)</option>
-                        <option value="HIEU_LUC" selected="@(Model.ContractFilter == "HIEU_LUC")">Còn hiệu lực</option>
+                        <option value="HIEU_LUC" selected="@(Model.ContractFilter == "HIEU_LUC")">Đang hiệu lực (trên 30 ngày / vô thời hạn)</option>
                         <option value="TAT_CA" selected="@(Model.ContractFilter == "TAT_CA")">Tất cả hợp đồng</option>
                     </select>
                 </div>
@@ -354,8 +335,7 @@
                 // Tìm xem tên gõ vào có khớp với nhân viên nào đã có hồ sơ trong datalist không
                 const matched = options.find(opt => {
                     const optVal = opt.value.trim().toLowerCase();
-                    const optText = opt.innerText.trim().toLowerCase();
-                    return optVal === val || optText.includes(val);
+                    return optVal === val;
                 });
 
                 if (matched) {
@@ -662,7 +642,9 @@
     // =========================================================================
     function printContractDocument() {
         const soHopDong = (document.getElementById('contractSoHopDong')?.value || 'HDLD-2026/MAU').trim();
-        const hoTen = (document.getElementById('renewEmployeeNameDisplay')?.value || 
+        const employeeInput = document.getElementById('contractEmployeeInput');
+        const selectedEmployee = Array.from(document.querySelectorAll('#employeeDatalist option')).find(option => option.value === employeeInput?.value);
+        const hoTen = (document.getElementById('renewEmployeeNameDisplay')?.value || selectedEmployee?.dataset.name ||
                        document.getElementById('contractEmployeeInput')?.value || 
                        '..................................................').trim();
         const deptSelect = document.getElementById('contractDepartmentSelect');
