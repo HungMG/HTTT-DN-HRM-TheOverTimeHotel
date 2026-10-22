@@ -43,8 +43,7 @@ public class PhongBanController : Controller
                 .Select(item => new
                 {
                     Department = item,
-                    // Integration: also require employee.IsProfileComplete once the profile change lands.
-                    WorkingCount = item.NhanViens.Count(employee => employee.TrangThai == "DANG_LAM"),
+                    WorkingCount = item.NhanViens.Count(employee => employee.IsProfileComplete && employee.TrangThai == "DANG_LAM"),
                     AssignedCount = item.NhanViens.Count
                 }).ToListAsync();
             ViewBag.WorkingEmployeeCounts = departments.ToDictionary(item => item.Department.MaPhongBan, item => item.WorkingCount);
@@ -106,9 +105,8 @@ public class PhongBanController : Controller
             if (!await _context.ChucVus.AnyAsync(item => item.MaChucVu == positionId &&
                 (item.MaPhongBan == id || item.MaPhongBan == null))) return NotFound();
 
-            // Integration: also require item.IsProfileComplete once the profile change lands.
             var employees = await _context.NhanViens.AsNoTracking()
-                .Where(item => item.MaPhongBan == id && item.MaChucVu == positionId && item.TrangThai == "DANG_LAM")
+                .Where(item => item.IsProfileComplete && item.MaPhongBan == id && item.MaChucVu == positionId && item.TrangThai == "DANG_LAM")
                 .OrderBy(item => item.Ten).ThenBy(item => item.Ho).ThenBy(item => item.MaNhanVien)
                 .Select(item => new { id = item.MaNhanVien, name = (item.Ho + " " + item.Ten).Trim() })
                 .ToListAsync();

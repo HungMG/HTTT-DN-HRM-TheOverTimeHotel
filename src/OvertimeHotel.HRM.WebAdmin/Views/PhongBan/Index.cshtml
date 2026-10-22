@@ -131,7 +131,7 @@
                             badgeTheme = "catalog-icon--hr";
                         }
 
-                        var empCount = workingCounts?.GetValueOrDefault(item.MaPhongBan) ?? item.NhanViens.Count(employee => employee.TrangThai == "DANG_LAM");
+                        var empCount = workingCounts?.GetValueOrDefault(item.MaPhongBan) ?? item.NhanViens.Count(employee => employee.IsProfileComplete && employee.TrangThai == "DANG_LAM");
                         var assignedCount = assignedCounts?.GetValueOrDefault(item.MaPhongBan) ?? item.NhanViens.Count;
 
                         <tr>
