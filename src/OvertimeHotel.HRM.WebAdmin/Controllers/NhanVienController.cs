@@ -253,11 +253,6 @@ public class NhanVienController : Controller
         ModelState.Remove("Employee.EmailCongVu");
         ModelState.Remove("Employee.NgayThoiViec");
 
-        if (string.IsNullOrWhiteSpace(model.Employee.TrinhDo) || model.Employee.TrinhDo == "Chưa cập nhật")
-        {
-            ModelState.Remove("Employee.TrinhDo");
-        }
-
         if (employee == null || employee.IsProfileComplete || ContractState.Classify(contract, DateOnly.FromDateTime(DateTime.Today)) is "DA_CHAM_DUT" or "DA_HET_HAN")
             ModelState.AddModelError("ContractId", "Vui lòng chọn hợp đồng chưa có hồ sơ hoàn chỉnh và còn phù hợp để tiếp nhận.");
         model.Employee.MaNhanVien = employee?.MaNhanVien ?? 0;
@@ -321,11 +316,6 @@ public class NhanVienController : Controller
         }
 
         ModelState.Remove("Employee.EmailCongVu");
-
-        if (string.IsNullOrWhiteSpace(model.Employee.TrinhDo) || model.Employee.TrinhDo == "Chưa cập nhật")
-        {
-            ModelState.Remove("Employee.TrinhDo");
-        }
 
         // Nếu form không gửi Email công vụ (do readonly), nạp lại email công vụ hiện tại
         if (string.IsNullOrWhiteSpace(model.Employee.EmailCongVu))
@@ -421,6 +411,19 @@ public class NhanVienController : Controller
     private async Task ValidateEmployeeAsync(NhanVien model, int? currentId = null)
     {
         var emailFormat = new EmailAddressAttribute();
+        foreach (var (field, label, value, limit) in new (string, string, string?, int)[]
+        {
+            ("Ho", "Họ", model.Ho, 100),
+            ("Ten", "Tên", model.Ten, 50),
+            ("EmailCongVu", "Email công vụ", model.EmailCongVu, 100),
+            ("EmailCaNhan", "Email cá nhân", model.EmailCaNhan, 100),
+            ("DiaChi", "Địa chỉ", model.DiaChi, 255),
+            ("TrinhDo", "Trình độ", model.TrinhDo, 50)
+        })
+        {
+            if (value?.Length > limit)
+                ModelState.AddModelError($"Employee.{field}", $"{label} không được vượt quá {limit} ký tự.");
+        }
         if (string.IsNullOrWhiteSpace(model.Ho)) ModelState.AddModelError("Employee.Ho", "Vui lòng nhập họ.");
         if (string.IsNullOrWhiteSpace(model.Ten)) ModelState.AddModelError("Employee.Ten", "Vui lòng nhập tên.");
         if (model.MaPhongBan <= 0 || !await _context.PhongBans.AnyAsync(item => item.MaPhongBan == model.MaPhongBan)) ModelState.AddModelError("Employee.MaPhongBan", "Vui lòng chọn phòng ban hợp lệ.");
@@ -436,9 +439,17 @@ public class NhanVienController : Controller
                 ModelState.AddModelError("Employee.MaChucVu", "Chức vụ này không thuộc phòng ban đã chọn.");
             }
         }
-        if (!model.NgaySinh.HasValue || model.NgaySinh == DateOnly.MinValue || model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today)) ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
+        if (!model.NgaySinh.HasValue || model.NgaySinh == DateOnly.MinValue)
+            ModelState.AddModelError("Employee.NgaySinh", "Vui lòng nhập ngày sinh.");
+        else if (model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today))
+            ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
         if (model.GioiTinh is not ("NAM" or "NU" or "KHAC")) ModelState.AddModelError("Employee.GioiTinh", "Vui lòng chọn giới tính.");
         if (string.IsNullOrWhiteSpace(model.DienThoai)) ModelState.AddModelError("Employee.DienThoai", "Vui lòng nhập điện thoại.");
+        else if (model.DienThoai.Length > 12 || !Regex.IsMatch(model.DienThoai, @"\A" + NhanVienFormViewModel.MobilePhonePattern + @"\z", RegexOptions.CultureInvariant))
+            ModelState.AddModelError("Employee.DienThoai", "Số điện thoại phải có dạng 0912345678 hoặc +84912345678, không chứa khoảng trắng hay ký tự khác.");
+        if (string.IsNullOrWhiteSpace(model.DiaChi)) ModelState.AddModelError("Employee.DiaChi", "Vui lòng nhập địa chỉ.");
+        if (string.IsNullOrWhiteSpace(model.TrinhDo) || model.TrinhDo == "Chưa cập nhật")
+            ModelState.AddModelError("Employee.TrinhDo", "Vui lòng chọn trình độ chuyên môn.");
         if (model.NgayVaoLam == DateOnly.MinValue) ModelState.AddModelError("Employee.NgayVaoLam", "Vui lòng nhập ngày vào làm.");
         if (model.NgayThoiViec.HasValue && model.NgayThoiViec < model.NgayVaoLam) ModelState.AddModelError("Employee.NgayThoiViec", "Ngày thôi việc không được trước ngày vào làm.");
         if (!SupportedEmployeeStatuses.Contains(model.TrangThai)) ModelState.AddModelError("Employee.TrangThai", "Trạng thái nhân viên không hợp lệ.");
@@ -448,7 +459,7 @@ public class NhanVienController : Controller
             {
                 ModelState.AddModelError("Employee.EmailCongVu", "Email công vụ không đúng định dạng.");
             }
-            else if (await _context.NhanViens.AnyAsync(item => item.MaNhanVien != currentId && item.EmailCongVu.ToLower() == model.EmailCongVu.ToLower()))
+            else if (model.EmailCongVu.Length <= 100 && await _context.NhanViens.AnyAsync(item => item.MaNhanVien != currentId && item.EmailCongVu.ToLower() == model.EmailCongVu.ToLower()))
             {
                 ModelState.AddModelError("Employee.EmailCongVu", "Email công vụ đã được dùng cho nhân viên khác.");
             }
@@ -480,7 +491,7 @@ public class NhanVienController : Controller
         model.EmailCaNhan = string.IsNullOrWhiteSpace(model.EmailCaNhan) ? null : model.EmailCaNhan.Trim();
         model.DienThoai = model.DienThoai?.Trim() ?? string.Empty;
         model.DiaChi = string.IsNullOrWhiteSpace(model.DiaChi) ? null : model.DiaChi.Trim();
-        model.TrinhDo = string.IsNullOrWhiteSpace(model.TrinhDo) ? "Chưa cập nhật" : model.TrinhDo.Trim();
+        model.TrinhDo = model.TrinhDo?.Trim() ?? string.Empty;
     }
 
     [HttpGet]

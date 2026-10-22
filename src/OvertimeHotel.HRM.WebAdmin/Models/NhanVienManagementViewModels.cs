@@ -49,6 +49,7 @@ public class NhanVienProfileModalViewModel
 
 public class NhanVienFormViewModel
 {
+    public const string MobilePhonePattern = @"(?:0|\+84)[35789][0-9]{8}";
     public int? ContractId { get; set; }
     public IReadOnlyList<HopDong> EligibleContracts { get; set; } = [];
     public NhanVien Employee { get; set; } = new();
