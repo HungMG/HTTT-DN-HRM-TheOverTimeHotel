@@ -206,6 +206,26 @@ await Check("Both read-only staff views show the source shift, task and particip
     }
 });
 
+await Check("Hourly work corrections retain entered values and remain office-only", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true; item.TrangThai = "CHO_NGHIEM_THU";
+    item.PhanCongs = [new() { MaPhanCong = 1, MaNhanVien = 10, MaPhanCa = 55, TrangThaiThamGia = "DA_PHAN",
+        BatDau = item.NgayBatDau, KetThuc = item.NgayKetThuc,
+        CongThucTes = [new() { MaCong = 81, MaPhanCong = 1, BatDau = item.NgayBatDau, KetThuc = item.NgayBatDau.AddHours(1),
+            MaNguoiXacNhan = 5, NgayXacNhan = item.NgayBatDau.AddHours(2) }] }];
+    var work = JsonSerializer.Deserialize<EventWorkInput>("{\"WorkId\":81,\"AssignmentId\":1,\"Start\":\"2028-05-10T09:30:00\",\"End\":\"2028-05-10T10:00:00\",\"Reason\":\"Keep correction reason\"}")!;
+    var model = new EventDetailsViewModel { Event = item, IsOffice = true, CanManage = true, Work = work };
+    var state = new ModelStateDictionary(); state.AddModelError("Work.End", "Invalid work interval");
+    var html = await Render("_HourlyEventAcceptance", model, state);
+    Require(html.Contains("name=\"Work.WorkId\" value=\"81\"")
+        && html.Contains("2028-05-10T09:30") && html.Contains("Keep correction reason"),
+        "Office correction form lost the existing work ID or submitted values.");
+    model.IsOffice = false;
+    html = await Render("_HourlyEventAcceptance", model);
+    Require(!html.Contains("name=\"Work.WorkId\"") && !html.Contains("name=\"Work.Reason\""),
+        "Manager was offered an office correction form.");
+});
+
 if (args.Contains("--export"))
 {
     var export = Path.Combine(root, ".probe/codex-phase1-html");
@@ -220,6 +240,17 @@ if (args.Contains("--export"))
     {
         Year = 2028, Month = 5, SelectedDate = new(2028, 5, 10), Events = [Event()]
     }));
+    var hourly = Event(); hourly.TinhTheoGio = true; hourly.TrangThai = "CHO_NGHIEM_THU";
+    hourly.PhanCongs = [new() { MaPhanCong = 1, MaNhanVien = 10, MaPhanCa = 55, TrangThaiThamGia = "DA_PHAN",
+        NhanVien = new() { Ho = "Nguyễn", Ten = "An" }, BatDau = hourly.NgayBatDau, KetThuc = hourly.NgayKetThuc,
+        CongThucTes = [new() { MaCong = 81, MaPhanCong = 1, BatDau = hourly.NgayBatDau, KetThuc = hourly.NgayBatDau.AddHours(1),
+            MaNguoiXacNhan = 5, NgayXacNhan = hourly.NgayBatDau.AddHours(2) }] }];
+    var workModel = new EventDetailsViewModel { Event = hourly, IsOffice = true, CanManage = true, Tab = "acceptance" };
+    await File.WriteAllTextAsync(Path.Combine(export, "hourly-work.html"), await Render("_EventDetailsContent", workModel));
+    workModel.Work = new() { WorkId = 81, AssignmentId = 1, Start = new(2028, 5, 10, 9, 30, 0),
+        End = new(2028, 5, 10, 10, 0, 0), Reason = "Correct entry with evidence" };
+    var workState = new ModelStateDictionary(); workState.AddModelError("Work.End", "Review attendance evidence");
+    await File.WriteAllTextAsync(Path.Combine(export, "hourly-work-invalid.html"), await Render("_EventDetailsContent", workModel, workState));
 }
 Console.WriteLine($"Hotel event web tests: {passed} passed, {failures} failed");
 return failures == 0 ? 0 : 1;

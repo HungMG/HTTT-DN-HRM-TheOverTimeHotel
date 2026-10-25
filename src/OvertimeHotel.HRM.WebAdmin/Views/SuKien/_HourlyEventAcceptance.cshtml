@@ -11,10 +11,14 @@
 <div class="event-panel">
     <h3>Công sự kiện thực tế</h3>
     <p class="event-muted">Mỗi lần phục vụ là một đoạn công riêng trong phân công và ca nguồn. Quản lý ghi trong giờ vào/ra đã chấm công; HR/Admin xác nhận ngoại lệ bằng giải trình. Người vắng mặt được đánh dấu không tham gia.</p>
+    @if (!item.PhanCongs.Any(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY")))
+    {
+        <p class="alert alert-info" role="status">Chưa sắp xếp sự kiện. Cần có phân công từ Lịch làm việc trước khi ghi công thực tế.</p>
+    }
     @foreach (var assignment in item.PhanCongs.OrderBy(p => p.NhanVien?.HoTen).ThenBy(p => p.BatDau))
     {
-        var canceled = assignment.TrangThaiThamGia == "HUY_PHAN_CONG";
-        var preserve = Model.Work.AssignmentId == assignment.MaPhanCong;
+        var canceled = assignment.TrangThaiThamGia is "HUY_PHAN_CONG" or "DA_HUY";
+        var preserve = Model.Work.AssignmentId == assignment.MaPhanCong && Model.Work.WorkId == 0;
         var workStart = preserve ? Model.Work.Start : HotelEventRules.Local(assignment.BatDau);
         var workEnd = preserve ? Model.Work.End : HotelEventRules.Local(assignment.KetThuc);
         <section class="border rounded p-3 mt-3">
@@ -24,9 +28,30 @@
             {
                 <div class="border-top pt-2 mt-2">
                     <p>@HotelEventRules.Local(work.BatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(work.KetThuc).ToString("dd/MM/yyyy HH:mm") · @((work.KetThuc - work.BatDau).TotalMinutes.ToString("0.##")) phút</p>
+                    <p class="event-muted">Người xác nhận #@work.MaNguoiXacNhan · @HotelEventRules.Local(work.NgayXacNhan).ToString("dd/MM/yyyy HH:mm") · @(work.XacNhanNgoaiLe ? "HR/Admin đã xác minh ngoại lệ chấm công" : "Phù hợp chấm công")</p>
                     @if (!string.IsNullOrWhiteSpace(work.GiaiTrinh)) { <p class="event-preserve-lines">Giải trình: @work.GiaiTrinh</p> }
                     @if (Model.IsOffice && canRecord && !canceled)
                     {
+                        var preserveEdit = Model.Work.AssignmentId == assignment.MaPhanCong && Model.Work.WorkId == work.MaCong;
+                        var editStart = preserveEdit ? Model.Work.Start : HotelEventRules.Local(work.BatDau);
+                        var editEnd = preserveEdit ? Model.Work.End : HotelEventRules.Local(work.KetThuc);
+                        <details open="@(preserveEdit && !ViewData.ModelState.IsValid)"><summary>Sửa đoạn công</summary>
+                            <form asp-action="RecordWork" asp-route-id="@item.MaDuAn" method="post" data-event-time-form class="mt-2">
+                                <partial name="_EventContext" model="Model" />
+                                <input name="Work.Version" value="@item.Version" type="hidden" />
+                                <input name="Work.AssignmentId" value="@assignment.MaPhanCong" type="hidden" />
+                                <input name="Work.WorkId" value="@work.MaCong" type="hidden" />
+                                <label for="edit-work-start-@work.MaCong" class="form-label">Bắt đầu thực tế (UTC+7)</label>
+                                <input id="edit-work-start-@work.MaCong" name="Work.Start" value="@editStart.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control mb-2" data-event-start required />
+                                <label for="edit-work-end-@work.MaCong" class="form-label">Kết thúc thực tế (UTC+7)</label>
+                                <input id="edit-work-end-@work.MaCong" name="Work.End" value="@editEnd.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control mb-2" data-event-end required />
+                                <label for="edit-work-reason-@work.MaCong" class="form-label">Lý do sửa công</label>
+                                <textarea id="edit-work-reason-@work.MaCong" name="Work.Reason" class="form-control mb-2" maxlength="500" required>@(preserveEdit ? Model.Work.Reason : null)</textarea>
+                                <label for="edit-work-explanation-@work.MaCong" class="form-label">Giải trình xác nhận ngoại lệ chấm công</label>
+                                <textarea id="edit-work-explanation-@work.MaCong" name="Work.Explanation" class="form-control mb-2" maxlength="500">@(preserveEdit ? Model.Work.Explanation : work.GiaiTrinh)</textarea>
+                                <button type="submit" class="event-secondary-button">Lưu sửa công</button>
+                            </form>
+                        </details>
                         <details><summary>Xóa đoạn ghi sai</summary><form asp-action="DeleteWork" asp-route-id="@item.MaDuAn" method="post">
                             <partial name="_EventContext" model="Model" /><input name="version" value="@item.Version" type="hidden" /><input name="workId" value="@work.MaCong" type="hidden" />
                             <label for="delete-work-@work.MaCong" class="form-label">Lý do sửa công</label><input id="delete-work-@work.MaCong" name="reason" class="form-control" maxlength="500" required /><button type="submit" class="btn btn-sm btn-outline-danger mt-2">Xóa đoạn công</button>

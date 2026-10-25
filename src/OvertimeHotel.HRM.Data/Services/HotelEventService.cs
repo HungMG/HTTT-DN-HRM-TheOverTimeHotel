@@ -319,7 +319,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         var assignment = item.PhanCongs.SingleOrDefault(p => p.MaPhanCong == input.AssignmentId);
         Require(assignment != null, "Review.AssignmentId", "Không tìm thấy phân công trong sự kiện.");
         Require(input.Rating is "HOAN_THANH" or "XUAT_SAC" or "KHONG_THAM_GIA", "Review.Rating", "Chọn kết quả đánh giá hợp lệ.");
-        Require(assignment!.TrangThaiThamGia != "HUY_PHAN_CONG", "", "Phân công đã hủy; giữ lịch sử, không đánh giá trả tiền.");
+        Require(assignment!.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"), "", "Phân công đã hủy; giữ lịch sử, không đánh giá trả tiền.");
         if (item.TinhTheoGio)
         {
             Require(input.Rating != "KHONG_THAM_GIA" || assignment.CongThucTes.Count == 0, "", "Đã có công thực tế; HR cần đối soát công trước khi ghi vắng mặt.");
@@ -449,11 +449,11 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
     {
         if (!condition) throw new EventOperationException(field, message, forbidden);
     }
-    private void Audit(EventActor actor, DuAn item, string action, string message, string? reason = null, string? oldValues = null) => db.NhatKyQuanTris.Add(new NhatKyQuanTri
+    private void Audit(EventActor actor, DuAn item, string action, string message, string? reason = null, string? oldValues = null, string? newValues = null) => db.NhatKyQuanTris.Add(new NhatKyQuanTri
     {
         MaTaiKhoanThucHien = actor.AccountId, TenNguoiThucHien = actor.Name.Length <= 100 ? actor.Name : actor.Name[..100],
         TenTaiKhoanBiTacDong = $"SK-{item.MaDuAn}", HanhDong = action, NoiDung = message,
-        GiaTriCu = oldValues, GiaTriMoi = $"version={item.Version}; trang_thai={item.TrangThai}", LyDo = reason
+        GiaTriCu = oldValues, GiaTriMoi = newValues ?? $"version={item.Version}; trang_thai={item.TrangThai}", LyDo = reason
     });
 
     private async Task<T> Write<T>(Func<Task<T>> operation)

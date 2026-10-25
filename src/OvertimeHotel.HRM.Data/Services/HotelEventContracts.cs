@@ -65,9 +65,11 @@ public class EventWorkInput
 {
     public long Version { get; set; }
     public int AssignmentId { get; set; }
+    public int WorkId { get; set; }
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
     public string? Explanation { get; set; }
+    public string? Reason { get; set; }
 }
 
 public record EventPayRow(int EmployeeId, string EmployeeName, DateOnly WorkMonth, decimal Minutes,

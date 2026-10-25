@@ -15,7 +15,11 @@ Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng th�
 ### Công thực tế, bàn giao và nghiệm thu
 
 - Ghi nhiều đoạn công không trùng nhau, trong phân công và ca; không ghi công tương lai. Chấm công vào/ra ca là dữ liệu đối chiếu, không chứng minh đã làm sự kiện toàn bộ ca.
+- Kiểm tra trùng công của cùng nhân viên trên toàn bộ sự kiện, gồm công còn lưu trong lịch sử phân công đã hủy. Bảng xem trước cảnh báo để đối soát công trùng cũ; việc mở bảng không tự loại bỏ công hoặc tạo khoản chi trả.
 - Manager chỉ xác nhận công phù hợp chấm công. Thiếu/trái chấm công hoặc nghỉ đã duyệt cần HR/Admin xác minh, nhập giải trình; server lưu dấu xác nhận ngoại lệ. Xem trước kiểm tra lại bằng chứng trước nghiệm thu.
+- HR/Admin sửa trực tiếp từng đoạn công bằng lý do bắt buộc; giữ nguyên mã công và lưu đầy đủ dữ liệu trước/sau, người xác nhận và thời điểm trong cùng giao dịch. Thu hồi dòng ghi sai cũng giữ giải trình và dấu xác nhận ngoại lệ trong nhật ký.
+- Công phải thuộc đúng sự kiện, trong phân công và ca nguồn đã công bố còn hiệu lực; giờ chuẩn bị/thu dọn chỉ được ghi trong giới hạn sự kiện và ca. Công của phân công đã hủy vẫn được hiển thị để đối soát nếu đã phát sinh, kèm cảnh báo thay vì bị bỏ khỏi bảng xem trước.
+- Hợp đồng đã chấm dứt vẫn làm căn cứ cho công trong khoảng ngày đã ghi nhận. Hợp đồng chấm dứt thiếu ngày kết thúc cần bổ sung căn cứ; không tự suy ra thời gian còn hiệu lực hoặc dùng mức lương mới nhất.
 - Phân công chưa thực hiện được hủy và giữ lịch sử. Đã làm dùng **Kết thúc / bàn giao**; thêm người thay thế trước nếu phần thời gian tương lai thiếu vai trò. Không xóa công để thay người.
 - Hủy sự kiện chỉ khi còn lên kế hoạch và chưa có công. Đã thực hiện dùng **Dừng sự kiện**, lưu giờ dừng/lý do, giữ phần công đã làm rồi chuyển chờ nghiệm thu. Chuẩn bị và thu dọn chỉ tính tiền khi có nhiệm vụ và công được xác nhận trong ca.
 - Nút nghiệm thu dành cho HR/Admin sau khi xác nhận công/vắng mặt toàn bộ phân công hiệu lực. Xem trước hiển thị từng người, tháng phát sinh, phút, mức lương theo hợp đồng và tổng cộng. Không có hệ số đánh giá xuất sắc trong công thức mới.
@@ -45,6 +49,7 @@ Migration cộng thêm bảng/cột, khóa giao dịch dùng chung và trigger b
 dotnet run --project tests/HotelEvents/HotelEvents.csproj
 dotnet run --project tests/HotelEventsWeb/HotelEventsWeb.csproj -- --export
 python tests/hotel-events-needs.py
+python tests/hotel-events-work.py
 dotnet run --project tests/PayrollRules/PayrollRules.csproj
 node tests/hotel-events-ui.mjs
 dotnet build src/OvertimeHotel.HRM.WebAdmin/OvertimeHotel.HRM.WebAdmin.csproj

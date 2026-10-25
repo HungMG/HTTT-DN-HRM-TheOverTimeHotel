@@ -11,6 +11,19 @@ public record EventPaySlice(DateTimeOffset Start, DateTimeOffset End, decimal Mo
 
 public static class HourlyEventRules
 {
+    public static bool CanRecordWork(DuAn item, PhanCongDuAn assignment, DateTimeOffset start, DateTimeOffset end, DateTimeOffset now)
+    {
+        var shift = assignment.PhanCa;
+        return assignment.MaDuAn == item.MaDuAn && assignment.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY")
+            && shift != null && shift.DaCongBo && shift.TrangThai != "DA_HUY"
+            && assignment.MaPhanCa == shift.MaPhanCa && shift.MaNhanVien == assignment.MaNhanVien
+            && start < end && end <= now && start >= assignment.BatDau && end <= assignment.KetThuc
+            && start >= shift.BatDauDuKien && end <= shift.KetThucDuKien
+            && start >= item.NgayBatDau.AddMinutes(-item.PhutChuanBi)
+            && end <= item.NgayKetThuc.AddMinutes(item.PhutThuDon)
+            && (!item.KetThucThucTe.HasValue || end <= item.KetThucThucTe);
+    }
+
     public static DateOnly WeekStart(DateOnly date) => date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
     public static DateOnly WorkMonth(DateTimeOffset instant)
     { var local = HotelEventRules.Local(instant); return new(local.Year, local.Month, 1); }
@@ -48,10 +61,11 @@ public static class HourlyEventRules
         for (var from = start; from < end;)
         {
             var date = DateOnly.FromDateTime(HotelEventRules.Local(from));
-            var candidates = list.Where(h => h.TrangThai is "HIEU_LUC" or "HET_HAN" or "DA_KET_THUC"
+            var candidates = list.Where(h => h.TrangThai is "HIEU_LUC" or "HET_HAN" or "DA_KET_THUC" or "DA_CHAM_DUT" or "CHAM_DUT"
                 && h.NgayBatDau <= date && (!h.NgayKetThuc.HasValue || h.NgayKetThuc >= date))
                 .OrderByDescending(h => h.NgayBatDau).ToList();
             if (candidates.Count == 0 || candidates[0].LuongCoBan <= 0
+                || (candidates[0].TrangThai is "DA_CHAM_DUT" or "CHAM_DUT" && !candidates[0].NgayKetThuc.HasValue)
                 || candidates.Count(h => h.NgayBatDau == candidates[0].NgayBatDau) != 1)
                 throw new ArgumentException($"Thiếu hoặc trùng căn cứ lương ngày {date:dd/MM/yyyy}.");
             var nextDay = HotelEventRules.ToUtc(date.AddDays(1).ToDateTime(TimeOnly.MinValue));

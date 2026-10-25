@@ -3,7 +3,7 @@ using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Services;
 
-static class HourlyOperationsTests
+static partial class HourlyOperationsTests
 {
     private static readonly List<int> OwnedPeriods = [];
 
@@ -165,6 +165,7 @@ static class HourlyOperationsTests
             Require(await verify.PhieuLuongs.CountAsync(p => p.MaNhanVien == f.WorkerA && p.MaKyLuong == period) == 1,
                 "Concurrent payroll calculation created duplicate payslips.");
         });
+        await RunPhase2(f, check);
         await ScheduleGuards(f, check);
     }
 
@@ -344,8 +345,6 @@ static class HourlyOperationsTests
         {
             await db.PhanCongDuAns.Where(a => a.MaDuAn == item.MaDuAn).ExecuteUpdateAsync(p => p.SetProperty(a => a.TrangThaiThamGia, "DA_PHAN"));
             await db.PhanCas.Where(s => s.MaPhanCa == shift.MaPhanCa).ExecuteUpdateAsync(p => p.SetProperty(s => s.DaCongBo, true));
-            await db.NhuCauSuKiens.Where(n => n.MaDuAn == item.MaDuAn).ExecuteUpdateAsync(p => p
-                .SetProperty(n => n.BatDau, n => n.BatDau.AddDays(-366)).SetProperty(n => n.KetThuc, n => n.KetThuc.AddDays(-366)));
         }
         await f.SeedStatus(item.MaDuAn, "CHO_NGHIEM_THU");
     }
