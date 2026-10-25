@@ -1,70 +1,134 @@
 @model EventDetailsViewModel
 @using OvertimeHotel.HRM.Core.Policies
-@using System.Globalization
 @{
     var item = Model.Event;
-    var closed = item.TrangThai is "HOAN_THANH" or "HUY";
-    var summary = Model.StaffingSummary;
-    var departments = summary.Departments.ToList();
-    var groupedIds = departments.SelectMany(d => d.Assignments).Select(p => p.MaPhanCong).ToHashSet();
-    var otherAssignments = item.PhanCongs.Where(p => !groupedIds.Contains(p.MaPhanCong)).ToList();
-    if (otherAssignments.Count > 0)
-        departments.Add(new EventDepartmentStatus("OTHER", "Phòng ban khác", otherAssignments.Count, true, otherAssignments));
-    string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
+    var active = item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.TrangThaiThamGia != "DA_HUY").ToList();
+    var distinctEmployees = HotelEventRules.CountEffectiveStaff(item.PhanCongs);
+    var historyAssignments = item.PhanCongs.Where(p => p.TrangThaiThamGia is "HUY_PHAN_CONG" or "DA_HUY" or "DA_KET_THUC").ToList();
 }
-<div class="event-staff-heading">
-    <div><span class="event-eyebrow">ĐỘI NGŨ SỰ KIỆN</span><h3>@item.PhanCongs.Count nhân sự đồng hành</h3></div>
-    @if (item.TinhPhuCapKhiNghiemThu && item.TrangThai != "HOAN_THANH")
-    {
-        <span>Phụ cấp sẽ tính khi nghiệm thu</span>
-    }
-    else
-    {
-        <span>@(item.TinhPhuCapKhiNghiemThu ? "Phụ cấp đã chốt:" : "Phụ cấp dự kiến:") <strong>@Money(item.TinhPhuCapKhiNghiemThu ? item.NganSachPhuCap : item.PhanCongs.Sum(p => p.PhuCapDuKien))</strong></span>
-    }
+
+<div class="event-staff-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+        <span class="event-eyebrow">ĐỘI NGŨ SỰ KIỆN THEO LỊCH LÀM VIỆC</span>
+        <h3 class="mb-0">@(Model.StaffLoadFailed ? "Danh sách nhân sự" : $"{distinctEmployees} nhân sự tham gia")</h3>
+    </div>
+    <div>
+        <a asp-controller="PhanCa" asp-action="Index" asp-route-week="@DateOnly.FromDateTime(HotelEventRules.Local(item.NgayBatDau)).ToString("yyyy-MM-dd")" class="event-secondary-button">
+            <i class="bi bi-calendar3" aria-hidden="true"></i> Mở Lịch làm việc
+        </a>
+    </div>
 </div>
-<p class="alert @(closed || summary.IsFullyStaffed ? "alert-success" : "alert-warning")" role="status">@(closed ? "Dữ liệu sự kiện đã được khóa; giữ nguyên vai trò và phụ cấp đã ghi nhận." : summary.SummaryText)</p>
-<div class="event-department-list">
-    @foreach (var department in departments)
-    {
-        var roleGroups = department.Roles.ToList();
-        var mapped = roleGroups.SelectMany(r => r.Assignments).Select(p => p.MaPhanCong).ToHashSet();
-        foreach (var group in department.Assignments.Where(p => !mapped.Contains(p.MaPhanCong)).GroupBy(p => p.VaiTroDuAn))
-            roleGroups.Add(new EventRoleStaffingStatus(group.Key, 0, false, group.Count(), 0, 0, group.ToList()));
-        <section class="event-department-card" data-department-card="@department.Code">
-            <header>
-                <div><h4>@department.Name</h4><span class="event-muted">@department.AssignedCount người · @(closed ? "Đã ghi nhận" : item.SoKhachDuKien == 0 ? "Chưa xác định quy mô" : department.IsSufficient ? "Đủ vai trò" : $"Thiếu {department.MissingCount} người theo vai trò")</span></div>
-            </header>
-            @foreach (var role in roleGroups)
-            {
-                var known = department.Roles.Any(r => r.Name == role.Name);
-                <div class="event-role-group @(role.MissingCount > 0 ? "is-missing" : "")" data-event-role="@role.Name" data-role-missing="@role.MissingCount">
-                    <div class="event-role-heading">
-                        <strong>@role.Name</strong>
-                        <span>@(closed ? "Đã ghi nhận" : role.IsRequired ? $"Cần {role.RequiredCount} · Đã có {role.AssignedCount}" : known || role.Name.StartsWith(HotelEventRoleRules.OtherRolePrefix) ? "Vai trò bổ sung" : "Vai trò cũ cần phân công lại")</span>
-                    </div>
-                    @if (role.MissingCount > 0) { <p class="event-role-shortage">Thiếu @role.MissingCount người · Trực ít nhất @role.MinimumConcurrentCount người trong khung giờ sự kiện</p> }
-                    @foreach (var member in role.Assignments.OrderBy(p => p.NhanVien?.HoTen))
+
+@if (Model.StaffLoadFailed)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-octagon-fill me-2" aria-hidden="true"></i>
+        <strong>Không tải được danh sách nhân sự.</strong> Vui lòng tải lại trang hoặc kiểm tra kết nối hệ thống.
+    </div>
+}
+else if (active.Count == 0)
+{
+    <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2" role="alert">
+        <div>
+            <i class="bi bi-info-circle-fill me-2" aria-hidden="true"></i>
+            <strong>Chưa sắp xếp sự kiện.</strong> Sự kiện chưa có nhân sự nào được phân công từ bên Lịch làm việc.
+        </div>
+        <a asp-controller="PhanCa" asp-action="Index" asp-route-week="@DateOnly.FromDateTime(HotelEventRules.Local(item.NgayBatDau)).ToString("yyyy-MM-dd")" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-calendar3 me-1"></i> Bố trí ca bên Lịch làm việc
+        </a>
+    </div>
+}
+else
+{
+    <div class="table-responsive mb-4">
+        <table class="table table-hover align-middle event-table">
+            <thead class="table-light">
+                <tr>
+                    <th>Nhân sự</th>
+                    <th>Phòng ban</th>
+                    <th>Vai trò / Nhiệm vụ</th>
+                    <th>Ca nguồn</th>
+                    <th>Thời gian tham gia</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var member in active.OrderBy(p => p.BatDau).ThenBy(p => p.NhanVien?.HoTen))
+                {
+                    var deptCode = member.MaPhongBanSuKien ?? HotelEventRules.ResolveDepartmentCode(member.NhanVien);
+                    var statusLabel = member.TrangThaiThamGia switch
                     {
-                    <div class="event-assigned-member" data-assigned-member data-employee-id="@member.MaNhanVien">
-                        <div><strong>@member.NhanVien?.HoTen</strong><span>Vai trò: @member.VaiTroDuAn</span><small>@HotelEventRules.Local(member.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(member.KetThuc).ToString("dd/MM HH:mm")</small></div>
-                        <div class="event-member-actions">
-                            @if (!item.TinhPhuCapKhiNghiemThu) { <strong>@Money(member.PhuCapDuKien)</strong> }
-                        </div>
-                    </div>
-                    }
-                    @if (role.Assignments.Count == 0) { <p class="event-empty mb-0">Chưa có nhân viên đảm nhiệm.</p> }
-                </div>
-            }
-        </section>
-    }
-</div>
-@if (Model.Shifts.Count > 0)
+                        "DA_KET_THUC" => "Đã kết thúc",
+                        "DA_PHAN" => "Đang phân công",
+                        _ => member.TrangThaiThamGia
+                    };
+                    <tr data-assigned-member data-employee-id="@member.MaNhanVien">
+                        <td>
+                            <strong>@(member.NhanVien?.HoTen ?? $"NV #{member.MaNhanVien}")</strong>
+                        </td>
+                        <td>
+                            @HotelEventRules.DepartmentLabels.GetValueOrDefault(deptCode ?? "", deptCode ?? "Khác")
+                        </td>
+                        <td>
+                            <span>@member.VaiTroDuAn</span>
+                            @if (!string.IsNullOrWhiteSpace(member.NhiemVuCuThe))
+                            {
+                                <small class="text-muted d-block">@member.NhiemVuCuThe</small>
+                            }
+                        </td>
+                        <td>
+                            @if (member.MaPhanCa.HasValue)
+                            {
+                                <span class="badge bg-light text-dark border">Ca #@member.MaPhanCa</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
+                            <small>@HotelEventRules.Local(member.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(member.KetThuc).ToString("dd/MM HH:mm")</small>
+                        </td>
+                        <td>
+                            <span class="badge @(member.TrangThaiThamGia == "DA_PHAN" ? "bg-success" : "bg-secondary")">@statusLabel</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (historyAssignments.Count > 0)
 {
     <details class="event-panel mt-3">
-        <summary class="fw-semibold">Lịch ca liên quan</summary>
-        <div class="table-responsive mt-3"><table class="table event-table"><thead><tr><th>Nhân viên</th><th>Ca làm việc</th><th>Khung giờ (UTC+7)</th></tr></thead><tbody>
-        @foreach (var shift in Model.Shifts.OrderBy(s => s.BatDauDuKien)) { <tr><td>@shift.NhanVien?.HoTen</td><td>@shift.CaLamViec?.TenCa</td><td>@HotelEventRules.Local(shift.BatDauDuKien).ToString("dd/MM HH:mm") – @HotelEventRules.Local(shift.KetThucDuKien).ToString("dd/MM HH:mm")</td></tr> }
-        </tbody></table></div>
+        <summary class="fw-semibold text-secondary">Lịch sử phân công (@historyAssignments.Count bản ghi đã hủy / kết thúc)</summary>
+        <div class="table-responsive mt-2">
+            <table class="table table-sm text-muted align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Nhân sự</th>
+                        <th>Vai trò</th>
+                        <th>Khung giờ</th>
+                        <th>Trạng thái</th>
+                        <th>Lý do</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var h in historyAssignments.OrderByDescending(p => p.KetThuc))
+                    {
+                        <tr>
+                            <td>@(h.NhanVien?.HoTen ?? $"NV #{h.MaNhanVien}")</td>
+                            <td>@h.VaiTroDuAn</td>
+                            <td><small>@HotelEventRules.Local(h.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(h.KetThuc).ToString("dd/MM HH:mm")</small></td>
+                            <td>
+                                <span class="badge bg-secondary">@(h.TrangThaiThamGia is "HUY_PHAN_CONG" or "DA_HUY" ? "Đã hủy" : "Đã kết thúc")</span>
+                            </td>
+                            <td><small>@(h.LyDoKetThuc ?? "—")</small></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </details>
 }

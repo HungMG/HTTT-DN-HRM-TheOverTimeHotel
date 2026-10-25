@@ -148,7 +148,7 @@ public sealed partial class HotelEventService
         actor = await CurrentActor(actor);
         Require(actor.IsOffice, "", "Chỉ HR/Admin điều chỉnh nhu cầu sự kiện.", true);
         var item = await Editable(actor, id, input.Version);
-        Require(item.TinhTheoGio && item.TrangThai == "LEN_KE_HOACH", "", "Chỉ sửa nhu cầu trước khi bắt đầu sự kiện theo giờ.");
+        Require(item.TrangThai == "LEN_KE_HOACH", "", "Chỉ sửa nhu cầu trước khi bắt đầu sự kiện.");
         var start = Utc(input.Start, "Need.Start"); var end = Utc(input.End, "Need.End");
         Require(start < end && start >= item.NgayBatDau.AddMinutes(-item.PhutChuanBi)
             && end <= item.NgayKetThuc.AddMinutes(item.PhutThuDon), "Need.End", "Khung phải nằm trong thời gian chuẩn bị đến hết thu dọn.");

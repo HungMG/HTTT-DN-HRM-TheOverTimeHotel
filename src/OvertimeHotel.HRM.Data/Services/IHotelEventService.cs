@@ -6,6 +6,7 @@ public interface IHotelEventService
 {
     Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffset from, DateTimeOffset to);
     Task<DuAn?> GetAsync(EventActor actor, int id);
+    Task<DuAn?> GetOverviewAsync(EventActor actor, int id);
     Task<IReadOnlyList<NhanVien>> ManagersAsync();
     Task<IReadOnlyList<NhanVien>> EmployeesAsync();
     Task<IReadOnlyList<PhanCa>> ShiftsAsync(DuAn item);

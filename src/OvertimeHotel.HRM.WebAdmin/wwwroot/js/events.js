@@ -320,7 +320,8 @@
             const update = event.detail;
             const item = cards.find(card => card.id === Number(update.id));
             if (!item) return;
-            Object.assign(item, { count: Number(update.count), status: update.status, statusLabel: update.statusLabel });
+            Object.assign(item, { status: update.status, statusLabel: update.statusLabel });
+            if (update.count !== '' && update.count != null) item.count = Number(update.count);
             calendar.querySelectorAll('[data-event-link]').forEach(link => {
                 if (Number(link.dataset.eventId) !== item.id) return;
                 link.className = 'event-calendar-chip event-chip-' + item.status;

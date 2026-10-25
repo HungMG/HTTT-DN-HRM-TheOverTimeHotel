@@ -43,6 +43,8 @@ Migration cộng thêm bảng/cột, khóa giao dịch dùng chung và trigger b
 
 ```powershell
 dotnet run --project tests/HotelEvents/HotelEvents.csproj
+dotnet run --project tests/HotelEventsWeb/HotelEventsWeb.csproj -- --export
+python tests/hotel-events-needs.py
 dotnet run --project tests/PayrollRules/PayrollRules.csproj
 node tests/hotel-events-ui.mjs
 dotnet build src/OvertimeHotel.HRM.WebAdmin/OvertimeHotel.HRM.WebAdmin.csproj

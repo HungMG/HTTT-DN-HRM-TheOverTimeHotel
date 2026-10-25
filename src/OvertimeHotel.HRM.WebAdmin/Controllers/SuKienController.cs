@@ -169,7 +169,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     {
         var actor = await ActorAsync();
         if (actor == null) return Forbid();
-        var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, "staff");
+        var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, "staff", assignmentOptions: true);
         if (model == null) return NotFound();
         if (!model.CanManage || model.Event.TrangThai is not ("LEN_KE_HOACH" or "DANG_DIEN_RA")) return Forbid();
         if (employeeIds.Length == 0 || employeeIds.Distinct().Count() != employeeIds.Length
@@ -216,11 +216,11 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> SaveNeed(int id, EventDetailsViewModel model) =>
-        MutateAsync(id, model, "staff", a => events.SaveNeedAsync(a, id, model.Need));
+        MutateAsync(id, model, "overview", a => events.SaveNeedAsync(a, id, model.Need));
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> DeleteNeed(int id, int needId, long version, string reason, EventDetailsViewModel model) =>
-        MutateAsync(id, model, "staff", a => events.DeleteNeedAsync(a, id, needId, version, reason));
+        MutateAsync(id, model, "overview", a => events.DeleteNeedAsync(a, id, needId, version, reason));
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> RecordWork(int id, EventDetailsViewModel model) =>
@@ -317,7 +317,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
                 ModelState.AddModelError("", "Dữ liệu sự kiện vừa thay đổi hoặc có lịch trùng. Vui lòng tải lại trước khi thử lại.");
             }
         }
-        var result = await DetailsAsync(actor, id, model, model.ReturnYear, model.ReturnMonth, model.ReturnDate, tab);
+        var result = await DetailsAsync(actor, id, model, model.ReturnYear, model.ReturnMonth, model.ReturnDate, tab, assignmentOptions: assignmentPopup);
         if (result == null) return NotFound();
         result.IsPopup = model.IsPopup;
         return model.IsPopup ? PartialView(assignmentPopup ? "_AssignmentPopup" : "_EventDetailsContent", result) : View("Details", result);
@@ -331,21 +331,41 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     }
 
     private async Task<EventDetailsViewModel?> DetailsAsync(EventActor actor, int id, EventDetailsViewModel? previous,
-        int? returnYear, int? returnMonth, DateOnly? returnDate, string tab)
+        int? returnYear, int? returnMonth, DateOnly? returnDate, string tab, bool assignmentOptions = false)
     {
-        var item = await events.GetAsync(actor, id);
+        var item = await events.GetOverviewAsync(actor, id);
         if (item == null) return null;
-        var mutable = item.TrangThai is not ("HOAN_THANH" or "HUY");
+        var staffLoadFailed = false;
+        try
+        {
+            var complete = await events.GetAsync(actor, id);
+            if (complete == null) return null;
+            item = complete;
+        }
+        catch (Exception ex) when (ex is not EventOperationException && ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Không thể tải phân công nhân sự cho sự kiện {Id}.", id);
+            staffLoadFailed = true;
+        }
+        var mutable = !staffLoadFailed && item.TrangThai is not ("HOAN_THANH" or "HUY");
+        IReadOnlyList<NhanVien> employees = [];
+        IReadOnlyList<PhanCa> shifts = [];
+        if (mutable && assignmentOptions)
+        {
+            employees = await events.EmployeesAsync();
+            shifts = item.TinhTheoGio ? await events.AvailableShiftsAsync(actor, id) : await events.ShiftsAsync(item);
+        }
         var model = new EventDetailsViewModel
         {
-            Event = item, CanManage = mutable, CanEdit = actor.IsOffice && item.TrangThai == "LEN_KE_HOACH",
-            CanAccept = actor.IsOffice && item.TrangThai == "CHO_NGHIEM_THU",
-            Employees = mutable ? await events.EmployeesAsync() : [],
-            Shifts = item.TinhTheoGio && mutable ? await events.AvailableShiftsAsync(actor, id) : await events.ShiftsAsync(item),
+            Event = item, CanManage = mutable, CanEdit = mutable && actor.IsOffice && item.TrangThai == "LEN_KE_HOACH",
+            CanAccept = mutable && actor.IsOffice && item.TrangThai == "CHO_NGHIEM_THU",
+            StaffLoadFailed = staffLoadFailed,
+            Employees = employees,
+            Shifts = shifts,
             IsOffice = actor.IsOffice,
-            Need = previous?.Need ?? new EventNeedInput { Version = item.Version, Start = HotelEventRules.Local(item.NgayBatDau), End = HotelEventRules.Local(item.NgayKetThuc) },
+            Need = previous?.Need ?? new EventNeedInput { Version = item.Version, Count = 1, Start = HotelEventRules.Local(item.NgayBatDau), End = HotelEventRules.Local(item.NgayKetThuc) },
             Work = previous?.Work ?? new EventWorkInput { Version = item.Version },
-            PayPreview = item.TinhTheoGio ? await events.PreviewAsync(actor, id) : null,
+            PayPreview = item.TinhTheoGio && !staffLoadFailed ? await events.PreviewAsync(actor, id) : null,
             PaymentPeriods = actor.IsOffice ? await events.PaymentPeriodsAsync(actor) : [],
             History = await events.HistoryAsync(id), Tab = tab is "staff" or "acceptance" ? tab : "overview",
             Assignment = previous?.Assignment ?? new EventAssignmentInput

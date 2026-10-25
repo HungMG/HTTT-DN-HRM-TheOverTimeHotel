@@ -8,14 +8,16 @@ namespace OvertimeHotel.HRM.Data.Services;
 
 public sealed partial class HotelEventService(AppDbContext db) : IHotelEventService
 {
-    private IQueryable<DuAn> Events => db.DuAns.Include(e => e.NguoiQuanLy)
+    private IQueryable<DuAn> EventInformation => db.DuAns.Include(e => e.NguoiQuanLy)
+        .Include(e => e.NhuCaus).Include(e => e.QuyetToans).AsSplitQuery();
+    private IQueryable<DuAn> Events => EventInformation
         .Include(e => e.PhanCongs).ThenInclude(p => p.NhanVien).ThenInclude(n => n!.PhongBan)
         .Include(e => e.PhanCongs).ThenInclude(p => p.NhanVien).ThenInclude(n => n!.HopDongs)
         .Include(e => e.PhanCongs).ThenInclude(p => p.PhanCa).ThenInclude(p => p!.ChamCong)
-        .Include(e => e.PhanCongs).ThenInclude(p => p.CongThucTes)
-        .Include(e => e.NhuCaus).Include(e => e.QuyetToans).AsSplitQuery();
+        .Include(e => e.PhanCongs).ThenInclude(p => p.CongThucTes);
 
-        public async Task<int> AutoCancelExpiredEventsAsync()
+    public Task<int> AutoCancelExpiredEventsAsync() => Task.FromResult(0);
+    private async Task<int> DeprecatedAutoCancelExpiredEventsAsync()
     {
         var now = DateTimeOffset.UtcNow;
         var startOfTodayLocal = DateOnly.FromDateTime(HotelEventRules.Local(now)).ToDateTime(TimeOnly.MinValue);
@@ -71,7 +73,7 @@ public sealed partial class HotelEventService(AppDbContext db) : IHotelEventServ
 
 public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffset from, DateTimeOffset to)
     {
-        await AutoCancelExpiredEventsAsync();
+        // Auto-cancel on read removed per plan
         actor = await CurrentActor(actor);
         from = from.ToUniversalTime();
         to = to.ToUniversalTime();
@@ -82,9 +84,15 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
 
     public async Task<DuAn?> GetAsync(EventActor actor, int id)
     {
-        await AutoCancelExpiredEventsAsync();
+        // Auto-cancel on read removed per plan
         actor = await CurrentActor(actor);
         return await Scoped(Events.AsNoTracking(), actor).SingleOrDefaultAsync(e => e.MaDuAn == id);
+    }
+
+    public async Task<DuAn?> GetOverviewAsync(EventActor actor, int id)
+    {
+        actor = await CurrentActor(actor);
+        return await Scoped(EventInformation.AsNoTracking(), actor).SingleOrDefaultAsync(e => e.MaDuAn == id);
     }
 
     public async Task<IReadOnlyList<NhanVien>> ManagersAsync() => await db.NhanViens.AsNoTracking()
@@ -174,12 +182,12 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         Require(!sameVenue.Any(e => HotelEventRules.Overlaps(occupiedStart, occupiedEnd,
             e.NgayBatDau.AddMinutes(-e.PhutChuanBi), (e.KetThucThucTe ?? e.NgayKetThuc).AddMinutes(e.PhutThuDon))),
             "Input.Venue", "Địa điểm đã có sự kiện khác trong khoảng thời gian này.");
-        if (hourly && input.Id != 0 && item.NhuCaus.Count > 0)
+        if (input.Id != 0 && item.NhuCaus.Count > 0)
             Require(item.NhuCaus.Where(n => !n.LaMau).All(n => n.BatDau >= occupiedStart && n.KetThuc <= occupiedEnd
                 && HotelEventRules.GetRequiredDepartments(input.Type).Contains(n.MaPhongBan)
                 && HotelEventRoleRules.ResolveRole(input.Type, n.MaPhongBan, n.VaiTro, null) != null), "Input.Start",
                 "Khung nhu cầu không còn phù hợp. Điều chỉnh/xóa nhu cầu trước khi đổi loại hoặc thu ngắn thời gian.");
-        if (hourly && input.Id != 0 && (item.LoaiDuAn != input.Type || item.SoKhachDuKien != input.ExpectedGuests
+        if (input.Id != 0 && (item.LoaiDuAn != input.Type || item.SoKhachDuKien != input.ExpectedGuests
             || item.NgayBatDau != start || item.NgayKetThuc != end))
         {
             foreach (var old in item.NhuCaus.Where(n => n.LaMau).ToList()) { db.Remove(old); item.NhuCaus.Remove(old); }
@@ -205,11 +213,10 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         if (input.Id == 0)
         {
             db.DuAns.Add(item);
-            if (hourly)
-                foreach (var department in HotelEventRules.GetRequiredDepartments(item.LoaiDuAn))
-                    foreach (var role in HotelEventRoleRules.GetRoles(item.LoaiDuAn, department, item.SoKhachDuKien).Where(r => r.IsRequired))
-                        item.NhuCaus.Add(new NhuCauSuKien { TenKhung = "Phục vụ sự kiện (mẫu)", LaMau = true, MaPhongBan = department,
-                            VaiTro = role.Name, SoNguoi = role.RequiredCount, BatDau = start, KetThuc = end });
+            foreach (var department in HotelEventRules.GetRequiredDepartments(item.LoaiDuAn))
+                foreach (var role in HotelEventRoleRules.GetRoles(item.LoaiDuAn, department, item.SoKhachDuKien).Where(r => r.IsRequired))
+                    item.NhuCaus.Add(new NhuCauSuKien { TenKhung = "Phục vụ sự kiện (mẫu)", LaMau = true, MaPhongBan = department,
+                        VaiTro = role.Name, SoNguoi = role.RequiredCount, BatDau = start, KetThuc = end });
         }
         else item.Version++;
         await db.SaveChangesAsync(); // Identity is needed for the audit subject; still in the same transaction.
@@ -334,7 +341,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
 
     public async Task ChangeStatusAsync(EventActor actor, int id, long version, string status, string? reason = null)
     {
-        await AutoCancelExpiredEventsAsync();
+        // Auto-cancel on read removed per plan
         await Write(async () =>
         {
             actor = await CurrentActor(actor);

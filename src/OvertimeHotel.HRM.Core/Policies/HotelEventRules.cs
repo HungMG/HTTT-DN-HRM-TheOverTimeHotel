@@ -4,6 +4,10 @@ namespace OvertimeHotel.HRM.Core.Policies;
 
 public static class HotelEventRules
 {
+    public static int CountEffectiveStaff(IEnumerable<PhanCongDuAn> assignments) => assignments
+        .Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"))
+        .Select(p => p.MaNhanVien).Distinct().Count();
+
     public static readonly IReadOnlyDictionary<string, string> StatusLabels = new Dictionary<string, string>
     {
         ["LEN_KE_HOACH"] = "Lên kế hoạch", ["DANG_DIEN_RA"] = "Đang diễn ra",
@@ -98,7 +102,7 @@ public static class HotelEventRules
 
     public static EventStaffingSummary GetStaffingSummary(DuAn item, DateTimeOffset? coverageStart = null)
     {
-        if (item.TinhTheoGio) return DeclaredStaffing(item, coverageStart);
+        if (item.TinhTheoGio || item.NhuCaus.Count > 0) return DeclaredStaffing(item, coverageStart);
         var baseline = GetStaffingSummary(item.LoaiDuAn, item.PhanCongs);
         var start = coverageStart is { } from && from > item.NgayBatDau ? from : item.NgayBatDau;
         var missingRoles = new List<string>();
@@ -174,11 +178,12 @@ public static class HotelEventRules
         role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || role.Equals("HR", StringComparison.OrdinalIgnoreCase)
         || (role.Equals("Manager", StringComparison.OrdinalIgnoreCase) && employeeId == managerId);
     public const string AutoCancelReason = "Không liên lạc được với người tổ chức sự kiện";
+    public static bool NeedsLateConfirmationWarning(DuAn item, DateTimeOffset now) => item.TrangThai == "LEN_KE_HOACH" && now >= item.NgayBatDau;
     public static bool IsExpiredPlanning(DuAn item, DateTimeOffset now) =>
         item.TrangThai == "LEN_KE_HOACH" && DateOnly.FromDateTime(Local(item.NgayBatDau)) < DateOnly.FromDateTime(Local(now));
     public static bool CanTransition(string current, string next, DateTimeOffset start, DateTimeOffset end, DateTimeOffset now) =>
         current is ("LEN_KE_HOACH" or "DANG_DIEN_RA" or "CHO_NGHIEM_THU") && ((next == "HUY" && current == "LEN_KE_HOACH")
-        || (current == "LEN_KE_HOACH" && next == "DANG_DIEN_RA" && now >= start && DateOnly.FromDateTime(Local(start)) >= DateOnly.FromDateTime(Local(now)))
+        || (current == "LEN_KE_HOACH" && next == "DANG_DIEN_RA" && now >= start && now <= end)
         || (current == "DANG_DIEN_RA" && next == "CHO_NGHIEM_THU" && now >= end));
     public static bool ReviewsReady(IEnumerable<PhanCongDuAn> assignments, decimal budget)
     {

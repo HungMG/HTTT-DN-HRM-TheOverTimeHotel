@@ -145,6 +145,25 @@
             if (next && !next.disabled) { openAssignment(next); return; }
             const root = event.target.closest('[data-event-details]');
             if (!root) return;
+            const editNeed = event.target.closest('[data-edit-need], [data-new-need]');
+            if (editNeed) {
+                const form = root.querySelector('[data-need-form]');
+                if (!form) return;
+                const data = editNeed.dataset;
+                const field = name => form.elements.namedItem('Need.' + name);
+                field('NeedId').value = data.editNeed || '0';
+                field('Name').value = data.needName || 'Phục vụ sự kiện';
+                field('Department').value = data.needDepartment || field('Department').options[0]?.value || '';
+                field('Role').value = data.needRole || '';
+                field('Count').value = data.needCount || '1';
+                field('Start').value = data.needStart || form.dataset.defaultStart;
+                field('End').value = data.needEnd || form.dataset.defaultEnd;
+                field('Reason').value = '';
+                bootstrap.Collapse.getOrCreateInstance(root.querySelector('[data-need-editor]'), { toggle: false }).show();
+                root.querySelector('[data-new-need]').setAttribute('aria-expanded', 'true');
+                field('Reason').focus();
+                return;
+            }
             const section = event.target.closest('[data-details-section]');
             if (section) selectSection(root, section.dataset.detailsSection, true);
             const add = event.target.closest('[data-add-member]');

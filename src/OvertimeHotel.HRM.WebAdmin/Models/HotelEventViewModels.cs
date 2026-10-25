@@ -30,6 +30,8 @@ public class EventFormViewModel
 public class EventDetailsViewModel
 {
     public bool IsPopup { get; set; }
+    public bool StaffLoadFailed { get; set; }
+    public bool NeedsLateConfirmationWarning => OvertimeHotel.HRM.Core.Policies.HotelEventRules.NeedsLateConfirmationWarning(Event, DateTimeOffset.UtcNow);
     public DuAn Event { get; set; } = new();
     public IReadOnlyList<NhanVien> Employees { get; set; } = [];
     public IReadOnlyList<PhanCa> Shifts { get; set; } = [];

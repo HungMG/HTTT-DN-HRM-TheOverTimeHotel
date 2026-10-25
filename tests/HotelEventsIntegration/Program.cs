@@ -115,6 +115,7 @@ try
     }
 
     await HourlyOperationsTests.Run(f, Check);
+    await Phase1Tests.Run(f, Check);
 
     await Check("Creation rejects past dates but accepts today and future", async () =>
     {
@@ -657,7 +658,7 @@ try
         Require(item.TrangThai == "DANG_DIEN_RA", "Event failed to transition to DANG_DIEN_RA after full staffing.");
     });
 
-    await Check("Planned event whose day has passed is automatically cancelled with reason and unassigns staff", async () =>
+    await Check("Mở trang không làm hủy sự kiện của mình hoặc người khác", async () =>
     {
         var item = await f.Create(f.Input());
         await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA, 100)));
@@ -667,14 +668,13 @@ try
         await f.MoveToPast(item.MaDuAn);
 
         var refreshed = await f.Get(item.MaDuAn);
-        Require(refreshed.TrangThai == "HUY", $"Expired event was not automatically cancelled to HUY (was {refreshed.TrangThai}).");
-        Require(refreshed.LyDoHuy == HotelEventRules.AutoCancelReason, $"Cancellation reason mismatch: '{refreshed.LyDoHuy}'.");
-        Require(refreshed.PhanCongs.All(p => p.TrangThaiChiTra == "HUY_BO" && p.SoTienPhuCap == 0), "Assignments were not cancelled with zero pay.");
+        Require(refreshed.TrangThai == "LEN_KE_HOACH", $"Event whose day has passed must remain LEN_KE_HOACH, but was {refreshed.TrangThai}.");
+        Require(string.IsNullOrEmpty(refreshed.LyDoHuy), $"Cancellation reason should be empty, but was '{refreshed.LyDoHuy}'.");
+        Require(refreshed.PhanCongs.Any(p => p.MaNhanVien == f.WorkerA && p.TrangThaiChiTra != "HUY_BO"), "Assignments must remain intact.");
 
         var history = await f.With(s => s.HistoryAsync(item.MaDuAn));
         var autoCancelAudit = history.FirstOrDefault(h => h.HanhDong == "TU_DONG_HUY_SU_KIEN");
-        Require(autoCancelAudit != null, "Audit entry TU_DONG_HUY_SU_KIEN was not logged.");
-        Require(autoCancelAudit!.LyDo == HotelEventRules.AutoCancelReason, "Audit reason mismatch.");
+        Require(autoCancelAudit == null, "TU_DONG_HUY_SU_KIEN should NOT be logged when viewing an event.");
     });
 
     await Check("Ending a mandatory role is blocked even when another role has extra people", async () =>
@@ -998,10 +998,11 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
     public async Task MoveToOngoing(int id)
     {
         await using var db=Open();
-        var item=await db.DuAns.Include(e=>e.PhanCongs).SingleAsync(e=>e.MaDuAn==id && e.TenDuAn.StartsWith(Prefix));
+        var item=await db.DuAns.Include(e=>e.PhanCongs).Include(e=>e.NhuCaus).SingleAsync(e=>e.MaDuAn==id && e.TenDuAn.StartsWith(Prefix));
         var delta=DateTimeOffset.UtcNow.AddHours(-1)-item.NgayBatDau;
         item.NgayBatDau+=delta; item.NgayKetThuc+=delta;
         foreach(var assignment in item.PhanCongs) { assignment.BatDau+=delta; assignment.KetThuc+=delta; }
+        foreach(var need in item.NhuCaus) { need.BatDau+=delta; need.KetThuc+=delta; }
         await db.SaveChangesAsync();
     }
     public async Task MoveToPast(int id)
@@ -1016,6 +1017,9 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         await db.PhanCongDuAns.Where(p => p.MaDuAn == id && owned.Any()).ExecuteUpdateAsync(p => p
             .SetProperty(e => e.BatDau, e => e.BatDau.AddDays(-366))
             .SetProperty(e => e.KetThuc, e => e.KetThuc.AddDays(-366)));
+        await db.NhuCauSuKiens.Where(n => n.MaDuAn == id && owned.Any()).ExecuteUpdateAsync(p => p
+            .SetProperty(n => n.BatDau, n => n.BatDau.AddDays(-366))
+            .SetProperty(n => n.KetThuc, n => n.KetThuc.AddDays(-366)));
         await transaction.CommitAsync();
 
     }

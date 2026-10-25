@@ -34,9 +34,10 @@
             }
             else
             {
-            @foreach (var role in Model.AssignmentRoles)
+            @foreach (var role in HotelEventRoleRules.GetRoles(Model.Event.LoaiDuAn, Model.SelectedDepartment ?? "", Model.Event.SoKhachDuKien))
             {
-                <option value="@role.Name">@role.Name — @(role.IsRequired ? $"Cần {role.RequiredCount}, đã có {role.MinimumConcurrentCount}" : "Vai trò bổ sung")</option>
+                var staffing = Model.AssignmentRoles.FirstOrDefault(r => HotelEventRoleRules.Matches(role.Name, r.Name));
+                <option value="@role.Name">@role.Name — @(staffing is { IsRequired: true } ? $"Cần {staffing.RequiredCount}, đã có {staffing.MinimumConcurrentCount}" : "Vai trò bổ sung")</option>
             }
             }
             <option value="@HotelEventRoleRules.OtherRoleValue" data-custom-role>Vai trò khác</option>

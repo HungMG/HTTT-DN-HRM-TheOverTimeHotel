@@ -213,6 +213,7 @@ foreach (var test in tests)
 }
 failed += RoleStaffingTests.Run();
 failed += HourlyEventTests.Run();
+failed += PlanPhase1Tests.Run();
 if (failed != 0) Environment.Exit(1);
 
 static NhanVien Employee() => new()
