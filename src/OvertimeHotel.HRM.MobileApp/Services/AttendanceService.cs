@@ -93,7 +93,52 @@ public class AttendanceService : IAttendanceService
             return new TodayShiftDto(0, string.Empty, default, default, null, null);
         }
 
-        return ToTodayShift(rows[0]);
+        var baseShift = ToTodayShift(rows[0]);
+
+        try
+        {
+            var eventJson = await _rest.GetAsync(
+                $"phan_cong_du_an?select=ma_phan_cong,vai_tro_du_an,trang_thai_tham_gia,du_an(ten_du_an),cong_su_kien(bat_dau,ket_thuc)" +
+                $"&ma_phan_ca=eq.{baseShift.MaPhanCa}&trang_thai_tham_gia=neq.HUY_PHAN_CONG&limit=1");
+            var eventRows = PostgrstJson.ParseArray(eventJson);
+            if (eventRows.Length > 0)
+            {
+                var ev = eventRows[0];
+                var tenDuAn = PostgrstJson.ReadEmbeddedString(ev, "du_an", "ten_du_an");
+                var vaiTro = PostgrstJson.ReadNullableString(ev, "vai_tro_du_an");
+                decimal? hours = null;
+                if (ev.TryGetProperty("cong_su_kien", out var congProp) && congProp.ValueKind == JsonValueKind.Array)
+                {
+                    decimal totalHours = 0m;
+                    foreach (var c in congProp.EnumerateArray())
+                    {
+                        var start = PostgrstJson.ReadTimestamp(c, "bat_dau");
+                        var end = PostgrstJson.ReadTimestamp(c, "ket_thuc");
+                        if (end > start)
+                        {
+                            totalHours += (decimal)(end - start).TotalHours;
+                        }
+                    }
+                    if (totalHours > 0m)
+                    {
+                        hours = Math.Round(totalHours, 2);
+                    }
+                }
+
+                return baseShift with
+                {
+                    TenSuKien = tenDuAn,
+                    VaiTroSuKien = vaiTro,
+                    SoGioSuKien = hours
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể tải phân công sự kiện cho ca #{MaPhanCa}", baseShift.MaPhanCa);
+        }
+
+        return baseShift;
     }
 
     public Task<CheckInResponse> CheckInAsync(int maPhanCa, string? toaDo, string? thietBi) =>

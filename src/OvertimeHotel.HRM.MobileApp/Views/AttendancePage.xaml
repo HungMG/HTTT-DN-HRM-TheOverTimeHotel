@@ -192,6 +192,39 @@
                                 <Label Text="{Binding GioOtText}" FontFamily="SegoeUIBold" FontSize="15" TextColor="#059669" HorizontalOptions="Center" />
                             </VerticalStackLayout>
                         </Grid>
+
+                        <!-- Khung thông tin sự kiện phân công trong ca (nếu có) -->
+                        <Border IsVisible="{Binding HasEventToday}"
+                                Stroke="#FDE047"
+                                StrokeThickness="1"
+                                StrokeShape="RoundRectangle 14"
+                                BackgroundColor="#FEFCE8"
+                                Padding="12,10">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalOptions="Center">
+                                <Label Text="★"
+                                       FontFamily="SegoeUIBold"
+                                       FontSize="18"
+                                       TextColor="#D4AF37"
+                                       VerticalOptions="Center" />
+                                <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                    <Label Text="{Binding EventTitle}"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="13"
+                                           TextColor="#854D0E" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Label Text="{Binding EventRoleText}"
+                                               FontFamily="SegoeUI"
+                                               FontSize="11"
+                                               TextColor="#A16207" />
+                                        <Label Grid.Column="1"
+                                               Text="{Binding EventHoursText}"
+                                               FontFamily="SegoeUIBold"
+                                               FontSize="11"
+                                               TextColor="#B45309" />
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
                     </VerticalStackLayout>
                 </Border>
 
@@ -309,7 +342,7 @@
                                             Padding="4,7">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer
-                                                Command="{Binding BindingContext.FilterStatusCommand, Source={x:Reference attendancePage}, x:DataType=ContentPage}"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AttendanceViewModel}}, Path=FilterStatusCommand}"
                                                 CommandParameter="{Binding .}" />
                                         </Border.GestureRecognizers>
                                         <VerticalStackLayout Spacing="1">

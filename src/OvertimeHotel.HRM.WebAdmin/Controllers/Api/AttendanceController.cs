@@ -98,7 +98,13 @@ public class AttendanceController : ControllerBase
                 return Ok(new TodayShiftDto(0, string.Empty, default, default, null, null));
             }
 
-            return Ok(ToTodayShiftDto(phanCa));
+            var eventAssignment = await _context.PhanCongDuAns
+                .Include(p => p.DuAn)
+                .Include(p => p.CongThucTes)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.MaPhanCa == phanCa.MaPhanCa && p.TrangThaiThamGia != "HUY_PHAN_CONG");
+
+            return Ok(ToTodayShiftDto(phanCa, eventAssignment));
         }
         catch (Exception ex) when (IsDatabaseUnavailable(ex))
         {
@@ -427,9 +433,13 @@ public class AttendanceController : ControllerBase
             .Include(p => p.CaLamViec)
             .FirstOrDefaultAsync(p => p.MaPhanCa == maPhanCa && p.MaNhanVien == maNhanVien);
 
-    private static TodayShiftDto ToTodayShiftDto(Core.Models.PhanCa phanCa)
+    private static TodayShiftDto ToTodayShiftDto(Core.Models.PhanCa phanCa, Core.Models.PhanCongDuAn? eventAssignment = null)
     {
         var chamCong = phanCa.ChamCong;
+        var eventHours = eventAssignment != null && eventAssignment.CongThucTes.Count > 0
+            ? Math.Round((decimal)eventAssignment.CongThucTes.Sum(c => (c.KetThuc - c.BatDau).TotalHours), 2)
+            : (decimal?)null;
+
         return new TodayShiftDto(
             MaPhanCa: phanCa.MaPhanCa,
             TenCa: phanCa.CaLamViec?.TenCa ?? string.Empty,
@@ -440,7 +450,10 @@ public class AttendanceController : ControllerBase
             PhutDiTre: chamCong?.PhutDiTre ?? 0,
             PhutVeSom: chamCong?.PhutVeSom ?? 0,
             GioOt: chamCong?.GioTangCaOt ?? 0m,
-            TrangThai: chamCong?.TrangThai);
+            TrangThai: chamCong?.TrangThai,
+            TenSuKien: eventAssignment?.DuAn?.TenDuAn,
+            VaiTroSuKien: eventAssignment?.VaiTroDuAn,
+            SoGioSuKien: eventHours);
     }
 
     /// <summary>

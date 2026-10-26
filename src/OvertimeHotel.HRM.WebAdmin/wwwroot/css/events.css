@@ -1642,3 +1642,602 @@ dialog.event-assignment-dialog::backdrop {
     align-items: center;
   }
 }
+
+
+/* ==========================================================================
+   THE OVERTIME HOTEL 5★ — LUXURY EVENT STAFF ASSIGNMENT UI ENHANCEMENTS
+   Palette: Royal Navy (#1E3A8A, #0F172A), Champagne Gold (#D4AF37, #B68B44),
+            Clean Slate (#FFFFFF, #F8FAFC), Soft Border (#E2E8F0)
+   ========================================================================== */
+
+:root {
+  --hotel-navy: #1e3a8a;
+  --hotel-navy-dark: #0f172a;
+  --hotel-navy-light: #2563eb;
+  --hotel-gold: #d4af37;
+  --hotel-gold-dark: #b68b44;
+  --hotel-gold-light: #fdf8ed;
+  --hotel-gold-border: #e8d7a5;
+  --hotel-slate-bg: #f8fafc;
+  --hotel-border: #e2e8f0;
+  --hotel-border-hover: #cbd5e1;
+  --hotel-text-main: #0f172a;
+  --hotel-text-muted: #64748b;
+  --hotel-emerald: #059669;
+  --hotel-emerald-bg: #ecfdf5;
+  --hotel-amber: #d97706;
+  --hotel-amber-bg: #fffbeb;
+  --hotel-danger: #dc2626;
+  --hotel-danger-bg: #fef2f2;
+}
+
+.text-navy {
+  color: var(--hotel-navy-dark) !important;
+}
+
+.text-gold {
+  color: var(--hotel-gold) !important;
+}
+
+.text-gold-dark {
+  color: var(--hotel-gold-dark) !important;
+}
+
+.bg-slate-subtle {
+  background-color: #f8fafc !important;
+}
+
+.bg-emerald-subtle {
+  background-color: #ecfdf5 !important;
+}
+
+.text-emerald-dark {
+  color: #065f46 !important;
+}
+
+.border-emerald-subtle {
+  border-color: #a7f3d0 !important;
+}
+
+.bg-amber-subtle {
+  background-color: #fffbeb !important;
+}
+
+.text-amber-dark {
+  color: #92400e !important;
+}
+
+.border-amber-subtle {
+  border-color: #fde68a !important;
+}
+
+.bg-blue-subtle {
+  background-color: #eff6ff !important;
+}
+
+.text-blue-dark {
+  color: #1e40af !important;
+}
+
+.event-staff-toolbar {
+  background: #ffffff;
+  border: 1px solid var(--hotel-border);
+  border-radius: 14px;
+  padding: 18px 22px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+}
+
+.event-staff-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--hotel-navy-dark);
+  letter-spacing: -0.015em;
+}
+
+.event-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.event-badge--gold {
+  background: linear-gradient(135deg, #fffdf5 0%, #fbf3dc 100%);
+  border: 1px solid var(--hotel-gold-border);
+  color: var(--hotel-gold-dark);
+}
+
+.event-badge--blue {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.event-badge--active {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+}
+
+.event-badge--ended {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+}
+
+.event-badge--canceled {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+/* Department Cards */
+.event-department-card {
+  background: #ffffff;
+  border: 1px solid var(--hotel-border);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.event-department-card:hover {
+  border-color: var(--hotel-border-hover);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.event-department-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.department-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  color: var(--hotel-gold);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+}
+
+.event-assigned-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 767px) {
+  .event-assigned-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Member Cards */
+.event-assigned-member-card {
+  background: #f8fafc;
+  border: 1px solid var(--hotel-border);
+  border-left: 4px solid var(--hotel-navy);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+
+.event-assigned-member-card:hover {
+  background: #ffffff;
+  border-color: var(--hotel-border-hover);
+  border-left-color: var(--hotel-gold);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+}
+
+.event-assigned-member-card--muted {
+  background: #f8fafc;
+  border-left-color: #cbd5e1;
+  opacity: 0.8;
+}
+
+.member-card-body {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.member-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+  border: 2px solid var(--hotel-gold);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.member-avatar--sm {
+  width: 36px;
+  height: 36px;
+  font-size: 12px;
+  border-width: 1.5px;
+}
+
+.member-avatar--muted {
+  background: #94a3b8;
+  border-color: #cbd5e1;
+}
+
+.avatar-initials {
+  user-select: none;
+}
+
+.avatar-initials--xs {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #d4af37;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.member-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.member-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--hotel-navy-dark);
+}
+
+.member-code {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.member-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.event-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.event-shift-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.event-allowance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fffdf5;
+  border: 1px solid var(--hotel-gold-border);
+  color: var(--hotel-gold-dark);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.member-time-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #475569;
+}
+
+/* Action Buttons */
+.event-primary-button--sm,
+.event-secondary-button--sm {
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+.event-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  line-height: 1.35;
+}
+
+.event-action-btn--secondary {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.event-action-btn--secondary:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.event-action-btn--danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.event-action-btn--danger:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
+/* Navigation Tabs */
+.event-details-navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.event-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.event-nav-tab:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.event-nav-tab[aria-pressed="true"] {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  border-color: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.14);
+}
+
+.event-nav-counter {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.event-nav-tab[aria-pressed="true"] .event-nav-counter {
+  background: var(--hotel-gold);
+  color: var(--hotel-navy-dark);
+}
+
+/* Standalone container */
+.event-standalone-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.event-standalone-card {
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  border-color: var(--hotel-border);
+}
+
+/* Toast Notifications */
+.hotel-toast-stack {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1095;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.hotel-toast {
+  pointer-events: auto;
+  min-width: 320px;
+  max-width: 440px;
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid #1e3a8a;
+  border-radius: 14px;
+  padding: 14px 18px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.28);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: hotelToastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.hotel-toast.is-leaving {
+  opacity: 0;
+  transform: translateY(12px) scale(0.96);
+}
+
+.hotel-toast--success {
+  border-left: 4px solid var(--hotel-gold);
+}
+
+.hotel-toast--success > i {
+  color: var(--hotel-gold);
+  font-size: 20px;
+}
+
+.hotel-toast--danger {
+  border-left: 4px solid #ef4444;
+}
+
+.hotel-toast--danger > i {
+  color: #ef4444;
+  font-size: 20px;
+}
+
+.hotel-toast-body {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.hotel-toast-close {
+  background: transparent;
+  border: 0;
+  color: #94a3b8;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px;
+  transition: color 0.15s ease;
+}
+
+.hotel-toast-close:hover {
+  color: #ffffff;
+}
+
+@keyframes hotelToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modal Confirmation for Gỡ / Đổi vai trò */
+.hotel-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1080;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: hotelFadeIn 0.18s ease;
+}
+
+.hotel-confirm-card {
+  background: #ffffff;
+  border-radius: 16px;
+  max-width: 460px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.22);
+  border: 1px solid var(--hotel-border);
+  animation: hotelScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hotel-confirm-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.hotel-confirm-card__icon--danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.hotel-confirm-card__icon--primary {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  color: var(--hotel-gold);
+}
+
+@keyframes hotelFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hotelScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

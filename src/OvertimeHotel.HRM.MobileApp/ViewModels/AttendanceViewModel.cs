@@ -36,6 +36,12 @@ public class AttendanceViewModel : INotifyPropertyChanged
     private string _statusBgColor = "#F1F5F9";
     private string _statusTextColor = "#475569";
 
+    // Phân công sự kiện theo giờ (Hourly Event Work)
+    private bool _hasEventToday;
+    private string _eventTitle = string.Empty;
+    private string _eventRoleText = string.Empty;
+    private string _eventHoursText = string.Empty;
+
     // Trạng thái tải và thao tác
     private bool _isLoading = true;
     private bool _isBusy;
@@ -191,6 +197,30 @@ public class AttendanceViewModel : INotifyPropertyChanged
     {
         get => _statusTextColor;
         private set => SetProperty(ref _statusTextColor, value);
+    }
+
+    public bool HasEventToday
+    {
+        get => _hasEventToday;
+        private set => SetProperty(ref _hasEventToday, value);
+    }
+
+    public string EventTitle
+    {
+        get => _eventTitle;
+        private set => SetProperty(ref _eventTitle, value);
+    }
+
+    public string EventRoleText
+    {
+        get => _eventRoleText;
+        private set => SetProperty(ref _eventRoleText, value);
+    }
+
+    public string EventHoursText
+    {
+        get => _eventHoursText;
+        private set => SetProperty(ref _eventHoursText, value);
     }
 
     public bool IsLoading
@@ -408,6 +438,10 @@ public class AttendanceViewModel : INotifyPropertyChanged
             ShiftTimeText = "Hôm nay bạn không được phân ca. Vui lòng liên hệ quản lý.";
             DaCheckIn = false;
             DaCheckOut = false;
+            HasEventToday = false;
+            EventTitle = string.Empty;
+            EventRoleText = string.Empty;
+            EventHoursText = string.Empty;
             ApplyStatusStyle(null, hasCheckedIn: false);
             UpdateActionButton();
             return;
@@ -417,6 +451,13 @@ public class AttendanceViewModel : INotifyPropertyChanged
         _gioKetThuc = shift.GioKetThuc;
         ShiftName = string.IsNullOrWhiteSpace(shift.TenCa) ? "Ca Làm Việc" : shift.TenCa;
         ShiftTimeText = $"{FormatTime(shift.GioBatDau)} – {FormatTime(shift.GioKetThuc)}";
+
+        HasEventToday = !string.IsNullOrWhiteSpace(shift.TenSuKien);
+        EventTitle = shift.TenSuKien ?? string.Empty;
+        EventRoleText = string.IsNullOrWhiteSpace(shift.VaiTroSuKien) ? string.Empty : $"Vai trò: {shift.VaiTroSuKien}";
+        EventHoursText = shift.SoGioSuKien.HasValue
+            ? $"{shift.SoGioSuKien.Value:0.##} giờ công sự kiện"
+            : (shift.DaCheckOut.HasValue ? "Đã đối soát" : "Tính theo giờ quẹt thẻ");
 
         DaCheckIn = shift.DaCheckIn.HasValue;
         DaCheckOut = shift.DaCheckOut.HasValue;

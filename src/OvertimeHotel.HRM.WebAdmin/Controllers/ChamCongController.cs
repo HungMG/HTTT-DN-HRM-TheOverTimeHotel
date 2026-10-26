@@ -142,6 +142,18 @@ public class ChamCongController : Controller
                 .ThenBy(p => p.BatDauDuKien)
                 .ToListAsync();
 
+            var allShiftIds = allShifts.Select(p => p.MaPhanCa).ToList();
+            var eventAssignments = await _context.PhanCongDuAns
+                .Include(p => p.DuAn)
+                .Include(p => p.CongThucTes)
+                .Where(p => p.MaPhanCa.HasValue && allShiftIds.Contains(p.MaPhanCa.Value) && p.TrangThaiThamGia != "HUY_PHAN_CONG")
+                .AsNoTracking()
+                .ToListAsync();
+
+            var eventByShift = eventAssignments
+                .GroupBy(p => p.MaPhanCa!.Value)
+                .ToDictionary(g => g.Key, g => g.First());
+
             var nowUtc = DateTimeOffset.UtcNow;
 
             // 3. Chuyển đổi sang danh sách Item ViewModel và phân tích trạng thái
@@ -149,6 +161,13 @@ public class ChamCongController : Controller
             {
                 var c = p.ChamCong;
                 var status = EvaluateShiftAttendanceStatus(p, c, nowUtc);
+                eventByShift.TryGetValue(p.MaPhanCa, out var ev);
+
+                decimal? actualEventHours = null;
+                if (ev != null && ev.CongThucTes.Count > 0)
+                {
+                    actualEventHours = Math.Round((decimal)ev.CongThucTes.Sum(ct => (ct.KetThuc - ct.BatDau).TotalHours), 2);
+                }
 
                 return new ChamCongItemViewModel
                 {
@@ -174,7 +193,11 @@ public class ChamCongController : Controller
                     PhuongThucCheckIn = c?.PhuongThucCheckIn,
                     ToaDoCheckIn = c?.ToaDoCheckIn,
                     ThietBiCheckIn = c?.ThietBiCheckIn,
-                    TrangThai = status
+                    TrangThai = status,
+                    CoSuKien = ev != null,
+                    TenSuKien = ev?.DuAn?.TenDuAn,
+                    VaiTroSuKien = ev?.VaiTroDuAn,
+                    SoGioSuKienThucTe = actualEventHours
                 };
             }).ToList();
 
@@ -197,6 +220,7 @@ public class ChamCongController : Controller
             }
             model.TongGioLamThucTe = Math.Round((decimal)totalHours, 1);
             model.TongGioOt = allItems.Sum(i => i.GioTangCaOt);
+            model.TongGioSuKien = allItems.Sum(i => i.SoGioSuKienThucTe ?? 0m);
 
             // 5. Lọc theo Keyword và Trạng thái
             var filtered = allItems.AsEnumerable();

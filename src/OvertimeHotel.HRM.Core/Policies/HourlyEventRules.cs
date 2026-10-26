@@ -42,6 +42,25 @@ public static class HourlyEventRules
         return from < to ? (from, to) : null;
     }
 
+    /// <summary>
+    /// Tính khoảng thời gian làm việc thực tế cho sự kiện từ phân công, ca nguồn và bản ghi chấm công.
+    /// Giới hạn chặt chẽ theo giờ hết ca nguồn (không phát sinh OT ngoài ca) và đối soát giờ quẹt thẻ thực tế.
+    /// </summary>
+    public static (DateTimeOffset Start, DateTimeOffset End)? ResolveActualWindow(
+        DateTimeOffset assignmentStart, DateTimeOffset assignmentEnd,
+        DateTimeOffset shiftStart, DateTimeOffset shiftEnd,
+        DateTimeOffset? checkIn, DateTimeOffset? checkOut)
+    {
+        if (!checkIn.HasValue || !checkOut.HasValue || checkOut.Value <= checkIn.Value)
+            return null;
+
+        var shiftWindow = Intersect(assignmentStart, assignmentEnd, shiftStart, shiftEnd);
+        if (!shiftWindow.HasValue)
+            return null;
+
+        return Intersect(shiftWindow.Value.Start, shiftWindow.Value.End, checkIn.Value, checkOut.Value);
+    }
+
     public static decimal Amount(IEnumerable<EventPaySlice> work)
     {
         var slices = work.OrderBy(s => s.Start).ToList();

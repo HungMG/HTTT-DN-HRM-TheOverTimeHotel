@@ -116,6 +116,9 @@
                     <h3 class="h3 mb-0 fw-bold font-serif" id="kpiTongGioLam" style="color: #b45309;">@Model.TongGioLamThucTe.ToString("N1")</h3>
                     <span class="small text-muted font-sans">giờ</span>
                     <span class="badge bg-warning text-dark rounded-pill fw-bold @(Model.TongGioOt > 0 ? "" : "d-none")" id="kpiOtBadge" style="font-size: 0.65rem;">+@Model.TongGioOt.ToString("0.#")h OT</span>
+                    <span class="badge rounded-pill fw-bold @(Model.TongGioSuKien > 0 ? "" : "d-none")" id="kpiEventHoursBadge" style="font-size: 0.65rem; background: #fffbeb; color: #b45309; border: 1px solid #fde047;">
+                        <i class="bi bi-star-fill text-warning me-1"></i><span id="kpiEventHoursText">@Model.TongGioSuKien.ToString("0.#")</span>h SK
+                    </span>
                 </div>
                 <div class="small text-muted mt-1" style="font-size: 0.72rem;">
                     Thực tế ghi nhận qua quẹt thẻ
@@ -530,6 +533,18 @@
                 elOtBadge.textContent = `+${ot}h OT`;
             } else {
                 elOtBadge.classList.add('d-none');
+            }
+        }
+
+        const eventHours = parseFloat(meta.getAttribute('data-event-hours')) || 0;
+        const elEventBadge = document.getElementById('kpiEventHoursBadge');
+        const elEventText = document.getElementById('kpiEventHoursText');
+        if (elEventBadge) {
+            if (eventHours > 0) {
+                elEventBadge.classList.remove('d-none');
+                if (elEventText) elEventText.textContent = eventHours.toFixed(1);
+            } else {
+                elEventBadge.classList.add('d-none');
             }
         }
 

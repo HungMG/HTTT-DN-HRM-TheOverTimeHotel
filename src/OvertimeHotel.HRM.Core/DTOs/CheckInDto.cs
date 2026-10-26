@@ -32,7 +32,10 @@ public record TodayShiftDto(
     int PhutDiTre = 0,
     int PhutVeSom = 0,
     decimal GioOt = 0m,
-    string? TrangThai = null
+    string? TrangThai = null,
+    string? TenSuKien = null,
+    string? VaiTroSuKien = null,
+    decimal? SoGioSuKien = null
 );
 
 /// <summary>

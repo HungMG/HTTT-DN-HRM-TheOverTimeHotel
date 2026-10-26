@@ -66,19 +66,19 @@ static Task<EventDetailsViewModel?> Load(SuKienController controller)
     if (method.GetParameters().Length == 8) values = [..values, false];
     return (Task<EventDetailsViewModel?>)method.Invoke(controller, values)!;
 }
-async Task<string> Render(string view, object model, ModelStateDictionary? state = null)
+async Task<string> Render(string view, object model, ModelStateDictionary? state = null, string controller = "SuKien")
 {
     await using var scope = app.Services.CreateAsyncScope();
     var http = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
     http.Request.Scheme = "http";
     http.Request.Host = new HostString("phase1.test");
     var routes = new RouteData();
-    routes.Values["controller"] = "SuKien";
+    routes.Values["controller"] = controller;
     routes.Values["action"] = "Details";
     routes.Routers.Add(new TestRouter());
     var context = new ActionContext(http, routes, new ActionDescriptor(), state ?? new());
     var engine = scope.ServiceProvider.GetRequiredService<ICompositeViewEngine>();
-    var result = engine.GetView(null, "/Views/SuKien/" + view + ".cshtml", false);
+    var result = engine.GetView(null, "/Views/" + controller + "/" + view + ".cshtml", false);
     Require(result.Success, "Razor view missing: " + string.Join(", ", result.SearchedLocations ?? []));
     var data = new ViewDataDictionary(new EmptyModelMetadataProvider(), context.ModelState) { Model = model };
     var tempData = new TempDataDictionary(http, scope.ServiceProvider.GetRequiredService<ITempDataProvider>());
@@ -279,6 +279,33 @@ await Check("Event form uses the hotel and only event start and end", async () =
         Require(html.Contains("name=\"Input.Start\"") && html.Contains("name=\"Input.End\"")
             && html.Contains("name=\"Input.ExpectedGuests\""), "Form lost event duration or guest count.");
     }
+});
+
+await Check("Payroll confirmation never executes employee names as script", async () =>
+{
+    var html = System.Net.WebUtility.HtmlDecode(await Render("Index", new BangLuongIndexViewModel
+    {
+        IsHR = true, CanCalculate = true, ShowPayrollData = true,
+        CurrentPeriod = new() { TrangThai = "MO" },
+        Items = [new() { MaPhieuLuong = 41, HoTen = "O'Brien');window.injected=true;//", TienSuKien = 100m }]
+    }, controller: "BangLuong"));
+    Require(!Regex.Matches(html, "onclick=\"([^\"]*)\"").Any(m => m.Value.Contains("window.injected")),
+        "Employee name entered an executable confirmation handler.");
+});
+await Check("Payroll partial forms return to a complete payslip page", async () =>
+{
+    var html = await Render("_PayslipDetailBody", new PhieuLuongDetailViewModel
+    { MaPhieuLuong = 41, CanEdit = true }, controller: "BangLuong");
+    var targets = Regex.Matches(html, "name=\"returnUrl\" value=\"([^\"]*)\"");
+    Require(targets.Count > 0 && targets.All(m => m.Groups[1].Value.Contains("Detail") && !m.Groups[1].Value.Contains("Partial")),
+        "A payroll action can redirect to partial HTML instead of the full page.");
+});
+await Check("Payroll event explanation does not invent a fixed settlement multiplier", async () =>
+{
+    var html = System.Net.WebUtility.HtmlDecode(await Render("_PayslipDetailBody", new PhieuLuongDetailViewModel
+    { EventAllowances = [new() { TenKhoan = "Saved event payment", SoTien = 307692m }] }, controller: "BangLuong"));
+    Require(!html.Contains("+100%") && !html.Contains("+1.0x") && !html.Contains("x2"),
+        "Payroll displays a hardcoded multiplier instead of the saved settlement.");
 });
 
 if (args.Contains("--export"))

@@ -12,12 +12,13 @@ static partial class HourlyOperationsTests
         await check("Merge compatibility approved MO payroll rejects detail changes and recalculation", async () =>
         {
             var month = new DateOnly(2032, 1, 1);
+            var periodId = await Period(f, month);
             int payslipId, detailId;
             await using (var db = f.Open())
             {
-                var period = new KyLuong { Thang = month.Month, Nam = month.Year, TuNgay = month,
-                    DenNgay = month.AddMonths(1).AddDays(-1), TrangThai = "MO",
-                    NgayGuiDuyet = DateTimeOffset.UtcNow.AddHours(-1), NgayDuyet = DateTimeOffset.UtcNow };
+                var period = await db.KyLuongs.SingleAsync(k => k.MaKyLuong == periodId);
+                period.NgayGuiDuyet = DateTimeOffset.UtcNow.AddHours(-1);
+                period.NgayDuyet = DateTimeOffset.UtcNow;
                 var payslip = new PhieuLuong { MaNhanVien = f.WorkerA, KyLuong = period, TrangThai = "DA_DUYET" };
                 var detail = new ChiTietPhieuLuong { PhieuLuong = payslip, TenKhoanLuu = "Approved amount",
                     LoaiKhoanLuu = "THUONG", LoaiKhoan = "THUONG", SoTien = 123_456m };

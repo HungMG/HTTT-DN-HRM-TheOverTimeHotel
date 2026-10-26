@@ -10,7 +10,8 @@
      data-late="@Model.SoDiTre"
      data-early="@Model.SoVeSom"
      data-hours="@Model.TongGioLamThucTe.ToString("N1", System.Globalization.CultureInfo.InvariantCulture)"
-     data-ot="@Model.TongGioOt.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)"></div>
+     data-ot="@Model.TongGioOt.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)"
+     data-event-hours="@Model.TongGioSuKien.ToString("N1", System.Globalization.CultureInfo.InvariantCulture)"></div>
 
 <div class="table-responsive">
     <table class="table table-hover align-middle mb-0 attendance-data-table" style="font-size: 0.84rem;">
@@ -65,10 +66,22 @@
                                 {
                                     <span class="badge bg-danger-subtle text-danger border rounded-pill" style="font-size: 0.65rem;">+30% Đêm</span>
                                 }
+                                @if (item.CoSuKien)
+                                {
+                                    <span class="badge rounded-pill" style="font-size: 0.65rem; background: #fef3c7; color: #92400e; border: 1px solid #fde047;" title="Phân công sự kiện: @item.TenSuKien - @item.VaiTroSuKien">
+                                        <i class="bi bi-star-fill text-warning me-1"></i>Sự kiện
+                                    </span>
+                                }
                             </div>
                             <div class="small text-muted font-monospace" style="font-size: 0.75rem;">
                                 <i class="bi bi-calendar3 me-1"></i>@item.NgayLamViec.ToString("dd/MM/yyyy") &bull; @item.GioBatDauCaDisplay - @item.GioKetThucCaDisplay
                             </div>
+                            @if (item.CoSuKien && !string.IsNullOrEmpty(item.TenSuKien))
+                            {
+                                <div class="small fw-semibold mt-1" style="font-size: 0.72rem; color: #b45309;">
+                                    <i class="bi bi-calendar-event me-1"></i>@item.TenSuKien (@item.VaiTroSuKien)
+                                </div>
+                            }
                         </td>
                         <td class="text-center">
                             @if (item.DaCheckIn)
@@ -138,6 +151,14 @@
                                 <span class="badge bg-warning text-dark fw-bold rounded-pill" style="font-size: 0.65rem;">
                                     <i class="bi bi-lightning-fill text-danger me-1"></i>+@item.GioTangCaOt.ToString("0.#")h OT
                                 </span>
+                            }
+                            @if (item.SoGioSuKienThucTe.HasValue && item.SoGioSuKienThucTe.Value > 0)
+                            {
+                                <div class="mt-1">
+                                    <span class="badge rounded-pill" style="font-size: 0.65rem; background: #fffbeb; color: #b45309; border: 1px solid #fde047;" title="Giờ công sự kiện thực tế">
+                                        <i class="bi bi-star-fill text-warning me-1"></i>@item.SoGioSuKienThucTe.Value.ToString("0.##")h sự kiện
+                                    </span>
+                                </div>
                             }
                         </td>
                         <td class="text-center">
