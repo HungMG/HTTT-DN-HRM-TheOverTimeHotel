@@ -52,6 +52,10 @@ public static class DatabaseSchemaInitializer
             ALTER TABLE phieu_luong DROP CONSTRAINT IF EXISTS phieu_luong_trang_thai_check;
             ALTER TABLE phieu_luong ADD CONSTRAINT phieu_luong_trang_thai_check 
                 CHECK (trang_thai IN ('NHAP', 'CHO_DUYET', 'DA_DUYET', 'DA_THANH_TOAN'));
+
+            ALTER TABLE nhan_vien
+                ADD COLUMN IF NOT EXISTS so_nguoi_phu_thuoc INT NOT NULL DEFAULT 0;
+
             """;
 
         return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);

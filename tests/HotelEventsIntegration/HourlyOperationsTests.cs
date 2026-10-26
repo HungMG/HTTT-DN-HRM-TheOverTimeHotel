@@ -119,7 +119,7 @@ static partial class HourlyOperationsTests
             var period = await Period(f, month);
             var preview = await f.With(s => s.PreviewAsync(f.HR, item.MaDuAn));
             Require(preview.Warnings.Count == 0 && preview.Rows.Count == 1 && preview.Rows[0].Minutes == 120
-                && preview.Rows[0].Amount == 76_923m, "Two hours at salary 8,000,000 must preview 76,923 (salary/26/8), rounded once.");
+                && preview.Rows[0].Amount == 153_846m, "Two hours at salary 8,000,000 must preview 153,846 (salary/26/8 × 2.0), rounded once.");
             await using (var db = f.Open())
                 Require(!await db.QuyetToanSuKiens.AnyAsync(q => q.MaDuAn == item.MaDuAn), "Preview created a settlement.");
             await using (var db = f.Open())
@@ -152,7 +152,7 @@ static partial class HourlyOperationsTests
             await using (var beforePayroll = f.Open())
             {
                 var frozen = await beforePayroll.QuyetToanSuKiens.SingleAsync(q => q.MaDuAn == item.MaDuAn);
-                Require(frozen.SoPhut == 120 && frozen.SoTien == 76_923m && frozen.MaKyChiTra == period
+                Require(frozen.SoPhut == 120 && frozen.SoTien == 153_846m && frozen.MaKyChiTra == period
                     && frozen.ThangPhatSinh == month && frozen.MaChiTiet is null && frozen.CanCuTinh.Length > 2,
                     "Acceptance must freeze one auditable settlement, leaving the payroll link for calculation.");
             }
@@ -165,10 +165,10 @@ static partial class HourlyOperationsTests
             await Task.WhenAll(Calculate(), Calculate());
             await using var verify = f.Open();
             var settlement = await verify.QuyetToanSuKiens.SingleAsync(q => q.MaDuAn == item.MaDuAn);
-            Require(settlement.SoTien == 76_923m && settlement.MaChiTiet.HasValue,
+            Require(settlement.SoTien == 153_846m && settlement.MaChiTiet.HasValue,
                 "Concurrent payroll calculation must link the frozen amount without repricing it after salary changes.");
             var detail = await verify.ChiTietPhieuLuongs.SingleAsync(d => d.MaChiTiet == settlement.MaChiTiet);
-            Require(detail.SoTien == 76_923m, "Payroll detail differs from the accepted preview.");
+            Require(detail.SoTien == 153_846m, "Payroll detail differs from the accepted preview.");
             Require(await verify.PhieuLuongs.CountAsync(p => p.MaNhanVien == f.WorkerA && p.MaKyLuong == period) == 1,
                 "Concurrent payroll calculation created duplicate payslips.");
         });
@@ -375,6 +375,9 @@ static partial class HourlyOperationsTests
         else
         {
             period.TrangThai = "MO";
+            period.NgayGuiDuyet = null;
+            period.NgayDuyet = null;
+            period.LyDoTuChoi = null;
             await db.SaveChangesAsync();
         }
         OwnedPeriods.Add(period.MaKyLuong);

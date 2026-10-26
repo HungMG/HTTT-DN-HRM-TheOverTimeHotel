@@ -1,6 +1,6 @@
 # PRD 05: Quy Trình & Công Thức Tính Lương Khách Sạn 2 Tầng (Gross → Net)
 
-> Cập nhật sự kiện 23/10/2026: sự kiện Web tạo mới cộng thêm **lương cơ bản có hiệu lực / 26 / 8 × số giờ sự kiện thực tế đã duyệt**, hệ số cộng thêm **1**. Lương ca vẫn tính theo chấm công; không cộng lại trong khoản sự kiện. Giờ làm nằm trong ca đã công bố. Ví dụ 8.000.000đ và hai giờ được cộng **76.923đ**. Các ma trận thưởng cố định/hệ số xuất sắc bên dưới chỉ còn áp dụng dữ liệu theo chính sách cũ; không dùng để tính sự kiện theo giờ. Nghiệm thu khóa căn cứ và tiền, kết chuyển theo kỳ HR chọn, tách công qua tháng theo giờ Việt Nam. Chi tiết luồng, ngoại lệ và đối soát dữ liệu cũ ở [docs/hotel-events.md](../docs/hotel-events.md).
+> Cập nhật sự kiện 26/10/2026: sự kiện Web tạo mới cộng thêm **lương cơ bản có hiệu lực / 26 / 8 × số giờ sự kiện thực tế đã duyệt × hệ số thưởng sự kiện** (mặc định **2.0**, HR/Admin sửa tại Cấu hình lương & Phụ cấp → Thưởng, dòng `ma_khoan = 35`). Lương ca vẫn tính theo chấm công; không cộng lại trong khoản sự kiện. Giờ làm nằm trong ca đã công bố. Ví dụ 8.000.000đ và hai giờ với hệ số 2.0 được cộng **153.846đ**. Ma trận 27 định mức sự kiện trong `cau_hinh_khoan_luong` đã được xóa; không còn dùng để tính sự kiện. Nghiệm thu khóa căn cứ và tiền, kết chuyển theo kỳ HR chọn, tách công qua tháng theo giờ Việt Nam. Chi tiết luồng, ngoại lệ và đối soát dữ liệu cũ ở [docs/hotel-events.md](../docs/hotel-events.md).
 
 ## 1. Công Thức Tính Lương Chuẩn Khách Sạn
 
@@ -31,12 +31,12 @@ $$\text{Gross} = \text{Lương Ngày Công} + \text{Tiền Tăng Ca (OT)} + \tex
 
 4. **Phụ Cấp Ăn Ca & Phụ Cấp Khác:**
    - **Phụ cấp ăn ca:** 30.000 VNĐ / ngày công thực tế có mặt tại khách sạn (khoản không chịu thuế TNCN theo quy định).
-   - **Phụ cấp khác:** Phụ cấp trách nhiệm, phụ cấp điện thoại, phụ cấp độc hại (nếu có theo cấu hình `cau_hinh_phu_cap`).
+   - **Phụ cấp khác:** Phụ cấp trách nhiệm quản lý, phụ cấp độc hại buồng phòng (theo cấu hình `cau_hinh_phu_cap`). *Chính sách khách sạn không áp dụng phụ cấp điện thoại.*
 
 5. **Thưởng Dự Án / Sự Kiện Khách Sạn (Event / Project Bonus):**
    - Tiền thưởng chi trả cho nhân viên khi được điều động tham gia phục vụ các sự kiện, tiệc cưới, hội nghị (MICE), gala dinner, festival ẩm thực, hoặc đón đoàn VIP của khách sạn ngoài ca định biên tiêu chuẩn.
-   - Khoản thưởng này được phân loại là **`THUONG`**, cấu hình trong bảng **`cau_hinh_khoan_luong`** theo ma trận 2 chiều: **[Loại Dự Án] $\times$ [Phòng Ban Tham Gia]**.
-   - Chi tiết về nguồn dữ liệu quét, ma trận 27 định mức, cơ chế snapshot liên kết hai chiều và tính chất thuế TNCN được đặc tả tại **Mục 1.1**.
+   - Khoản thu nhập này được phân loại là **`THUONG`** và tính theo công thức giờ: **Lương tháng ÷ 26 ÷ 8 × Số giờ tham gia × Hệ số**. Hệ số mặc định **2.0**, lưu tại `cau_hinh_khoan_luong` dòng `ma_khoan = 35` để HR/Admin sửa trong màn hình Cấu hình lương & Phụ cấp → Thưởng. Không còn ma trận định mức theo loại dự án × phòng ban.
+   - Chi tiết về nguồn dữ liệu quét, công thức, cơ chế snapshot liên kết hai chiều và tính chất thuế TNCN được đặc tả tại **Mục 1.1**.
 
 6. **Tiền Thưởng Khác & Phí Phục Vụ (Service Charge & Chuyên Cần):**
    - **Phí phục vụ (Service Charge):** 1.000.000 VNĐ / tháng chia đều cho nhân sự toàn khách sạn (`ma_khoan = 5` trong `cau_hinh_khoan_luong`).
@@ -45,90 +45,64 @@ $$\text{Gross} = \text{Lương Ngày Công} + \text{Tiền Tăng Ca (OT)} + \tex
 
 ---
 
-### 1.1. Đặc Tả Cơ Chế Tính & Quyết Toán Tiền Thưởng Dự Án / Sự Kiện Khách Sạn
+### 1.1. Đặc Tả Cơ Chế Tính & Quyết Toán Tiền Sự Kiện Theo Giờ
 
-Trong mô hình vận hành khách sạn 5 sao The OverTime Hotel, ngoài các ca làm việc cố định 24/7 (Sáng, Chiều, Đêm), khách sạn thường xuyên tổ chức các sự kiện quy mô lớn: tiệc cưới hoàng gia, hội nghị quốc tế MICE, tiệc gala tri ân, festival buffet ẩm thực, đón tiếp đoàn khách VIP nguyên thủ...
+Trong mô hình vận hành khách sạn 5 sao The OverTime Hotel, ngoài các ca làm việc cố định 24/7 (Sáng, Chiều, Đêm), khách sạn thường xuyên tổ chức các sự kiện quy mô lớn: tiệc cưới, hội nghị quốc tế MICE, tiệc gala tri ân, festival buffet ẩm thực, đón tiếp đoàn khách VIP...
 
-Nhân sự các phòng ban (ẩm thực F&B, bếp, buồng phòng, tiền sảnh, an ninh, kỹ thuật, CNTT) được điều động tham gia phục vụ các sự kiện này được hưởng **tiền thưởng sự kiện theo phân loại dự án và phòng ban tham gia**, cấu hình tập trung trong bảng CSDL **`cau_hinh_khoan_luong`**.
+Nhân sự được điều động tham gia phục vụ các sự kiện này được hưởng **thu nhập cộng thêm theo số giờ thực tế đã làm**. Chính sách này **không dùng ma trận định mức cố định** theo loại dự án × phòng ban; ma trận cũ (27 dòng `ma_khoan` 8–34 trong `cau_hinh_khoan_luong`) đã được xóa khỏi CSDL.
 
-#### 1. Nguồn Dữ Liệu & Điều Kiện Quét Quyết Toán
+#### 1. Công Thức
+
+$$\text{Tiền sự kiện} = \frac{\text{Lương cơ bản tháng}}{26 \times 8} \times \text{Số giờ tham gia sự kiện} \times \text{Hệ số thưởng sự kiện}$$
+
+- Hệ số mặc định **2.0**, đọc từ `cau_hinh_khoan_luong` dòng `ma_khoan = 35` (`loai_khoan = 'THUONG'`) qua `EventRateConfig.ReadAsync`. HR/Admin sửa giá trị này tại **Cấu hình lương & Phụ cấp → Thưởng**; đây là dòng tham số, chỉ sửa giá trị chứ không xóa.
+- Khi dòng cấu hình bị thiếu hoặc giá trị không hợp lệ, hệ thống fallback về `SalaryConstants.EVENT_HOURLY_RATE` (2.00) để bảng lương không bị chặn. Công thức áp dụng trong `HourlyEventRules`.
+- Hệ số được chụp (snapshot) vào `can_cu_tinh` của từng dòng quyết toán, nên sửa cấu hình về sau không làm thay đổi tiền sự kiện đã nghiệm thu.
+- `Lương cơ bản tháng` là lương theo hợp đồng có hiệu lực tại **ngày làm việc thực tế**. Hợp đồng thay đổi giữa các ngày thì tách phần theo ngày và theo từng hợp đồng.
+- `Số giờ tham gia sự kiện` là số giờ thực tế đã được xác nhận, chỉ tính phần giao với ca chính thức (không vượt quá ca nguồn).
+- Lương ca thông thường vẫn tính qua chấm công; dòng tiền sự kiện **không cộng lại lương ca**.
+- Ví dụ: lương 8.000.000đ và tham gia 2 giờ → `8.000.000 ÷ 26 ÷ 8 × 2 × 2.0 = 153.846đ`.
+- Tính bằng `decimal`, giữ nguyên độ chính xác trung gian và chỉ làm tròn một lần ở bước tổng hợp theo nhân viên/sự kiện/tháng phát sinh.
+
+#### 2. Nguồn Dữ Liệu & Điều Kiện Quyết Toán
 Khi chạy tiến trình tính lương kỳ tháng cho từng nhân viên, hệ thống tự động quét các phân công dự án từ bảng `phan_cong_du_an` thỏa mãn đầy đủ các điều kiện:
 - `ma_nhan_vien = @MaNhanVien`: Bản ghi phân công thuộc về nhân viên đang được tính lương.
-- `trang_thai_chi_tra = 'CHUA_CHI_TRA'`: Khoản thù lao/thưởng chưa từng được kết chuyển hoặc chi trả ở bất kỳ kỳ lương nào trước đó.
-- `danh_gia IN ('HOAN_THANH', 'XUAT_SAC')`: Nhân viên đã hoàn thành nhiệm vụ trong sự kiện và được Quản lý sự kiện / Trưởng bộ phận phụ trách xác nhận đánh giá đạt chuẩn.
-- **Ràng buộc loại trừ:** Các phân công mang trạng thái `danh_gia = 'CHUA_DANH_GIA'` hoặc `danh_gia = 'KHONG_DAT'` **tuyệt đối không được kết chuyển chi trả**.
-
-#### 2. Ma Trận Tiền Thưởng Theo Loại Dự Án & Phòng Ban (`cau_hinh_khoan_luong`)
-Tiền thưởng sự kiện của The OverTime Hotel **không tính theo hệ số phần trăm tùy ý (+10%)**, mà được **cấu hình cố định và minh bạch trong bảng `cau_hinh_khoan_luong`** với `loai_khoan = 'THUONG'`.
-
-Trong mỗi loại dự án, mỗi phòng ban tham gia trực tiếp có mức tiền thưởng khác nhau tương ứng với khối lượng công việc, kỹ năng chuyên môn và tính chất cống hiến:
-
-##### Bảng Ma Trận Ngang Tổng Hợp (Cross-Tabulation Matrix)
-
-| Loại Dự Án Khách Sạn | Tiền sảnh (FO) | Buồng phòng (HK) | Ẩm thực (F&B) | Bếp (Kitchen) | Kỹ thuật (ENG) | An ninh (SEC) | CNTT (IT) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Đoàn VIP (`DOAN_VIP`)** | 600.000 đ | 600.000 đ | 700.000 đ | **800.000 đ** | — | 700.000 đ | — |
-| **Festival ẩm thực (`FESTIVAL_AM_THUC`)** | — | 400.000 đ | 500.000 đ | **700.000 đ** | 500.000 đ | 400.000 đ | — |
-| **Gala Dinner (`GALA_DINNER`)** | 400.000 đ | — | 600.000 đ | **700.000 đ** | 600.000 đ | 400.000 đ | — |
-| **Hội nghị MICE (`HOI_NGHI_MICE`)** | 400.000 đ | — | 400.000 đ | 500.000 đ | 600.000 đ | 400.000 đ | **700.000 đ** |
-| **Tiệc cưới (`TIEC_CUOI`)** | 400.000 đ | 300.000 đ | 500.000 đ | **600.000 đ** | 500.000 đ | 400.000 đ | — |
-
-##### Danh Mục 27 Định Mức Cấu Hình Chi Tiết Trong `cau_hinh_khoan_luong`
-
-| STT | Mã Khoản | Loại Dự Án | Phòng Ban Tham Gia | Tên Khoản Trong Cấu Hình | Mức Thưởng (VNĐ) | Mô Tả Quy Định |
-| :---: | :---: | :--- | :--- | :--- | :---: | :--- |
-| 1 | 8 | Đoàn VIP | Bộ phận Tiền sảnh (FO) | `Thưởng Đoàn VIP - Tiền sảnh` | 600.000 | Nhân viên hoàn thành sự kiện |
-| 2 | 9 | Đoàn VIP | Bộ phận Buồng phòng (HK) | `Thưởng Đoàn VIP - Buồng phòng` | 600.000 | Nhân viên hoàn thành sự kiện |
-| 3 | 10 | Đoàn VIP | Bộ phận Ẩm thực (F&B) | `Thưởng Đoàn VIP - F&B` | 700.000 | Nhân viên hoàn thành sự kiện |
-| 4 | 11 | Đoàn VIP | Bộ phận Bếp (Kitchen) | `Thưởng Đoàn VIP - Bếp` | 800.000 | Nhân viên hoàn thành sự kiện |
-| 5 | 12 | Đoàn VIP | Bộ phận An ninh (Security) | `Thưởng Đoàn VIP - An ninh` | 700.000 | Nhân viên hoàn thành sự kiện |
-| 6 | 13 | Festival ẩm thực | Bộ phận Buồng phòng (HK) | `Thưởng Festival ẩm thực - Buồng phòng` | 400.000 | Nhân viên hoàn thành sự kiện |
-| 7 | 14 | Festival ẩm thực | Bộ phận Ẩm thực (F&B) | `Thưởng Festival ẩm thực - F&B` | 500.000 | Nhân viên hoàn thành sự kiện |
-| 8 | 15 | Festival ẩm thực | Bộ phận Bếp (Kitchen) | `Thưởng Festival ẩm thực - Bếp` | 700.000 | Nhân viên hoàn thành sự kiện |
-| 9 | 16 | Festival ẩm thực | Bộ phận Kỹ thuật (ENG) | `Thưởng Festival ẩm thực - Kỹ thuật` | 500.000 | Nhân viên hoàn thành sự kiện |
-| 10 | 17 | Festival ẩm thực | Bộ phận An ninh (Security) | `Thưởng Festival ẩm thực - An ninh` | 400.000 | Nhân viên hoàn thành sự kiện |
-| 11 | 18 | Gala Dinner | Bộ phận Tiền sảnh (FO) | `Thưởng Gala Dinner - Tiền sảnh` | 400.000 | Nhân viên hoàn thành sự kiện |
-| 12 | 19 | Gala Dinner | Bộ phận Ẩm thực (F&B) | `Thưởng Gala Dinner - F&B` | 600.000 | Nhân viên hoàn thành sự kiện |
-| 13 | 20 | Gala Dinner | Bộ phận Bếp (Kitchen) | `Thưởng Gala Dinner - Bếp` | 700.000 | Nhân viên hoàn thành sự kiện |
-| 14 | 21 | Gala Dinner | Bộ phận Kỹ thuật (ENG) | `Thưởng Gala Dinner - Kỹ thuật` | 600.000 | Nhân viên hoàn thành sự kiện |
-| 15 | 22 | Gala Dinner | Bộ phận An ninh (Security) | `Thưởng Gala Dinner - An ninh` | 400.000 | Nhân viên hoàn thành sự kiện |
-| 16 | 23 | Hội nghị MICE | Bộ phận Tiền sảnh (FO) | `Thưởng MICE - Tiền sảnh` | 400.000 | Nhân viên hoàn thành sự kiện |
-| 17 | 24 | Hội nghị MICE | Bộ phận Ẩm thực (F&B) | `Thưởng MICE - F&B` | 400.000 | Nhân viên hoàn thành sự kiện |
-| 18 | 25 | Hội nghị MICE | Bộ phận Bếp (Kitchen) | `Thưởng MICE - Bếp` | 500.000 | Nhân viên hoàn thành sự kiện |
-| 19 | 26 | Hội nghị MICE | Bộ phận Kỹ thuật (ENG) | `Thưởng MICE - Kỹ thuật` | 600.000 | Nhân viên hoàn thành sự kiện |
-| 20 | 27 | Hội nghị MICE | Bộ phận An ninh (Security) | `Thưởng MICE - An ninh` | 400.000 | Nhân viên hoàn thành sự kiện |
-| 21 | 28 | Hội nghị MICE | Bộ phận CNTT (IT) | `Thưởng MICE - IT` | 700.000 | Nhân viên hoàn thành sự kiện |
-| 22 | 29 | Tiệc cưới | Bộ phận Tiền sảnh (FO) | `Thưởng Tiệc cưới - Tiền sảnh` | 400.000 | Nhân viên hoàn thành sự kiện |
-| 23 | 30 | Tiệc cưới | Bộ phận Buồng phòng (HK) | `Thưởng Tiệc cưới - Buồng phòng` | 300.000 | Nhân viên hoàn thành sự kiện |
-| 24 | 31 | Tiệc cưới | Bộ phận Ẩm thực (F&B) | `Thưởng Tiệc cưới - F&B` | 500.000 | Nhân viên hoàn thành sự kiện |
-| 25 | 32 | Tiệc cưới | Bộ phận Bếp (Kitchen) | `Thưởng Tiệc cưới - Bếp` | 600.000 | Nhân viên hoàn thành sự kiện |
-| 26 | 33 | Tiệc cưới | Bộ phận Kỹ thuật (ENG) | `Thưởng Tiệc cưới - Kỹ thuật` | 500.000 | Nhân viên hoàn thành sự kiện |
-| 27 | 34 | Tiệc cưới | Bộ phận An ninh (Security) | `Thưởng Tiệc cưới - An ninh` | 400.000 | Nhân viên hoàn thành sự kiện |
+- Sự kiện có `du_an.tinh_theo_gio = TRUE`: sự kiện tạo mới trên Web luôn dùng chính sách theo giờ.
+- `trang_thai_chi_tra = 'CHUA_CHI_TRA'`: khoản thu nhập chưa từng được kết chuyển hoặc chi trả ở bất kỳ kỳ lương nào trước đó.
+- Đã nghiệm thu và khóa căn cứ tại bước **Xem trước → Nghiệm thu**: phân công đã được xác nhận công thực tế, đánh giá **HOÀN THÀNH**. Phân công `KHONG_THAM_GIA` hoặc chưa xác nhận công **không được kết chuyển chi trả**.
+- **Ràng buộc loại trừ:** sự kiện cũ (`tinh_theo_gio = FALSE`) không đi qua công thức mới; nếu còn khoản cũ chưa trả, HR/Admin đối soát thủ công theo số tiền đã chốt trước đó.
 
 #### 3. Cơ Chế Snapshot Bất Biến & Chốt Trạng Thái (Financial Immutability)
 Để đảm bảo nguyên tắc bất biến lịch sử tài chính doanh nghiệp và ngăn chặn triệt để gian lận hoặc chi trả trùng lặp (double payout):
 1. **Tạo dòng Snapshot trong `chi_tiet_phieu_luong`:**
-   Với mỗi phân công sự kiện được duyệt chi trả, hệ thống tự động sinh một dòng chi tiết phiếu lương tương ứng:
+   Với mỗi khoản sự kiện được duyệt chi trả, hệ thống sinh một dòng chi tiết phiếu lương tương ứng:
    - `ma_phieu_luong`: Mã phiếu lương tháng của nhân viên.
-   - `ma_khoan`: Khóa ngoại trỏ đến `cau_hinh_khoan_luong.ma_khoan` (ví dụ: `32` cho Thưởng Tiệc cưới - Bếp).
-   - `ten_khoan_luu`: Lấy theo tên cấu hình hoặc tên sự kiện kèm vai trò (ví dụ: *"Thưởng Tiệc cưới - Bếp"*).
+   - `ma_khoan`: `NULL` (không còn trỏ tới ma trận định mức cũ; số tiền và tên khoản đã được snapshot).
+   - `ten_khoan_luu`: Theo tên sự kiện, ví dụ *"Tiền sự kiện SK-323"*.
    - `loai_khoan_luu`: `'THUONG'` (Khoản thưởng chịu thuế).
    - `loai_khoan`: `'THUONG'`.
-   - `so_tien`: Mức tiền thưởng định mức tra cứu từ cấu hình `GiaTriMacDinh` (ví dụ: 600.000 VNĐ).
-   - `ghi_chu`: Ghi rõ tên dự án thực tế, đánh giá và mã phân công (ví dụ: *"Thưởng dự án (Đám cưới). Đánh giá: XUAT_SAC. Mã phân công: #1024"*).
+   - `so_tien`: Số tiền đã chốt tại bước nghiệm thu (từ `quyet_toan_su_kien.so_tien`), **không định giá lại** khi bảng lương chạy sau đó.
+   - `ghi_chu`: Ghi rõ mã quyết toán, mã sự kiện và tháng phát sinh.
 2. **Cập nhật ngược lại trạng thái phân công dự án:**
    Ngay trong cùng transaction cơ sở dữ liệu khi tạo dòng chi tiết phiếu lương, hệ thống cập nhật bản ghi tương ứng trong `phan_cong_du_an`:
    - `phan_cong_du_an.trang_thai_chi_tra = 'DA_KET_CHUYEN_LUONG'`.
-   - `phan_cong_du_an.ma_chi_tiet = chi_tiet_phieu_luong.ma_chi_tiet` (Lưu khóa ngoại để liên kết truy vết hai chiều).
+   - `phan_cong_du_an.ma_chi_tiet = chi_tiet_phieu_luong.ma_chi_tiet` (khóa ngoại truy vết hai chiều).
 3. **Cơ chế Hoàn Tác (Rollback / Recalculate):**
-   Nếu kỳ lương chưa khóa sổ (`da_khoa_so = FALSE` hoặc `trang_thai != 'KHOA_SO'`) mà Quản trị viên/HR thực hiện xóa tính lại lương:
+   Nếu kỳ lương chưa khóa sổ (`trang_thai = 'MO'`) mà HR thực hiện xóa tính lại lương:
    - Hệ thống xóa các dòng tương ứng trong `chi_tiet_phieu_luong`.
-   - Đồng thời khôi phục trạng thái bản ghi `phan_cong_du_an`: gán lại `trang_thai_chi_tra = 'CHUA_CHI_TRA'` và `ma_chi_tiet = NULL` để sẵn sàng cho lần quét tính toán tiếp theo.
+   - Đồng thời khôi phục `phan_cong_du_an.trang_thai_chi_tra = 'CHUA_CHI_TRA'` và `ma_chi_tiet = NULL` để sẵn sàng cho lần quét tiếp theo.
+   - Kỳ đã `KHOA_SO` giữ nguyên snapshot, không tính lại.
 
 #### 4. Tính Chất Thuế Thu Nhập Cá Nhân (TNCN)
-- Căn cứ quy định của Luật Thuế TNCN: Tiền thưởng theo dự án, sự kiện hoặc hiệu quả công việc phát sinh trong quan hệ lao động đều là thu nhập chịu thuế 100%.
-- Khoản **Thưởng Dự Án / Sự Kiện Khách Sạn** (`loai_khoan = 'THUONG'`) **BẮT BUỘC CHỊU THUẾ TNCN** (`chiu_thue_tncn = TRUE`).
-- Do đó: Toàn bộ tiền thưởng được **cộng vào Tổng Thu Nhập (Gross)** và tính vào **Thu Nhập Chịu Thuế** của nhân viên trong kỳ tính lương.
+- Căn cứ quy định của Luật Thuế TNCN: thu nhập từ tiền công, tiền thưởng phát sinh trong quan hệ lao động là thu nhập chịu thuế.
+- Khoản **thu nhập sự kiện** (`loai_khoan = 'THUONG'`) **chịu thuế TNCN 100%**.
+- Do đó toàn bộ tiền sự kiện được **cộng vào Tổng Thu Nhập (Gross)** và tính vào **Thu Nhập Chịu Thuế** của nhân viên trong kỳ tính lương.
+
+#### 5. Dữ Liệu Cũ & Migration
+- Ma trận 27 định mức sự kiện (`ma_khoan` 8–34) đã bị xóa bằng migration `20261026_remove_legacy_event_bonus_matrix.sql`.
+- Hệ số thưởng sự kiện được thêm bằng migration `20261026_add_event_hourly_rate_config.sql` với `ma_khoan = 35` (`loai_khoan = 'THUONG'`). Khi dựng database mới, chạy seed cũ → migration thêm hệ số → migration xóa ma trận.
+- Các dòng `chi_tiet_phieu_luong` lịch sử từng trỏ tới ma trận được giữ nguyên tên khoản và số tiền; cột `ma_khoan` được đặt `NULL` trước khi xóa để không vi phạm khóa ngoại.
+- Ba khoản còn lại trong bảng `cau_hinh_khoan_luong` là `ma_khoan = 4` (thưởng chuyên cần), `ma_khoan = 5` (phí phục vụ) và `ma_khoan = 35` (hệ số thưởng sự kiện theo giờ) — **không thuộc ma trận sự kiện**, vẫn dùng bình thường.
 
 ---
 
@@ -161,7 +135,7 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 - Nếu $\text{Thu nhập tính thuế} \leq 0$ → **Tiền thuế = 0** (không phát sinh nghĩa vụ nộp, không cấp âm).
 - **Phụ cấp ăn ca (30.000đ/ngày) là khoản không chịu thuế** — đã được cờ `chiu_thue_tncn = FALSE` trong bảng `CAU_HINH_PHU_CAP`. Vì vậy khoản này **vẫn cộng vào Gross** (mục 4 Tầng 1) nhưng **không đưa vào Thu nhập chịu thuế**. Đây là lý do dòng "Phụ cấp ăn ca" phải in trên phiếu lương ở bảng Thu Nhập chứ không nằm ở bảng Khấu Trừ.
 - **Phụ cấp Dự án / Thù Lao Sự Kiện Khách Sạn là khoản thu nhập chịu thuế TNCN 100%:** Khoản thù lao này phát sinh từ việc nhân viên tham gia phục vụ sự kiện, tiệc cưới, hội nghị của khách sạn, mang tính chất tiền công / tiền thù lao trực tiếp nên **bắt buộc chịu thuế TNCN** (`chiu_thue_tncn = TRUE`). Do đó, khoản phụ cấp này **thuộc Thu nhập chịu thuế** và không được trừ ra khỏi Gross khi tính toán thu nhập chịu thuế.
-- Các khoản cộng/trừ vào thu nhập chịu thuế ngoài các bảo hiểm bắt buộc (vd: phụ cấp trách nhiệm quản lý, phụ cấp điện thoại — cờ `chiu_thue_tncn = TRUE`) **chưa chốt cụ thể, cần xác minh**.
+- Các khoản cộng/trừ vào thu nhập chịu thuế ngoài các bảo hiểm bắt buộc: Phụ cấp trách nhiệm quản lý (`chiu_thue_tncn = TRUE`). *Lưu ý: Khách sạn đã loại bỏ phụ cấp điện thoại và tạm ứng lương.*
 
 #### 3.2. Bảng thuế suất TNCN lũy tiến từng phần
 
@@ -230,8 +204,8 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
      | 2 | Tiền OT | `(Lương CB / 26 / 8) × Số giờ OT × Hệ số` — tách dòng theo hệ số 1.5 / 2.0 / 3.0 nếu kỳ lương có cả 3 loại |
      | 3 | Phụ cấp ca đêm 30% | `(Lương CB / 26 / 8) × Số giờ ca đêm × 0.30` |
      | 4 | **Phụ cấp ăn ca** | `30.000đ × Số ngày công thực tế` (khoản miễn thuế TNCN) |
-     | 5 | Phụ cấp khác | Phụ cấp trách nhiệm / điện thoại / độc hại theo HĐLĐ hoặc cấu hình (nếu có) |
-     | 6 | **Phụ cấp Dự án / Sự kiện** | Thù lao sự kiện từ `phan_cong_du_an` (tách từng dòng sự kiện: *Tên sự kiện - Vai trò*, hoặc dòng gộp tổng có diễn giải chi tiết kèm thưởng xuất sắc nếu có) |
+     | 5 | Phụ cấp khác | Phụ cấp trách nhiệm quản lý / độc hại buồng phòng theo HĐLĐ hoặc cấu hình (bỏ phụ cấp điện thoại) |
+     | 6 | **Phụ cấp Dự án / Sự kiện** | Thu nhập sự kiện từ `quyet_toan_su_kien` (tách từng dòng sự kiện: *Tiền sự kiện SK-&lt;mã&gt;*), số tiền = Lương tháng ÷ 26 ÷ 8 × Số giờ tham gia × Hệ số thưởng sự kiện (mặc định 2.0, cấu hình `ma_khoan = 35`), đã chốt khi nghiệm thu |
      | 7 | Tiền thưởng | Thưởng doanh thu buồng phòng / sự kiện / KPI |
      | | **TỔNG GROSS** | **= Tổng các dòng thu nhập trên** |
 
@@ -244,16 +218,16 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
      | 3 | BHTN | `1% × Lương cơ bản` |
      | 4 | **Thuế TNCN** | Khấu trừ theo biểu lũy tiến từng phần — xem mục *3.1 & 3.2* |
      | 5 | Phạt vi phạm | Gom từ các khoản phạt đi trễ / về sớm / bỏ ca trong kỳ |
-     | 6 | Tạm ứng lương | Gom từ khoản tạm ứng trong kỳ (nếu phát sinh `loai_khoan_tru = 'TAM_UNG'`) |
+     | 6 | Khấu trừ khác | Gom từ khoản khấu trừ thủ công khác trong kỳ (nếu có; bỏ tạm ứng lương) |
      | | **TỔNG KHẤU TRỪ** | **= Tổng các dòng khấu trừ trên** |
 
    - **Điều kiện cân bằng (Bất biến toàn vẹn bắt buộc kiểm chứng trước khi sinh PDF):**
      $$\text{Tổng Gross in} = \text{Lương công thực tế} + \text{Tiền OT} + \text{Phụ cấp ca đêm} + \text{Phụ cấp ăn ca} + \text{Phụ cấp khác} + \text{Phụ cấp Dự án / Sự kiện} + \text{Tiền thưởng}$$
-     $$\text{Tổng Khấu Trừ in} = \text{BHXH} + \text{BHYT} + \text{BHTN} + \text{Thuế TNCN} + \text{Phạt vi phạm} \ (+ \text{Tạm ứng nếu có})$$
+     $$\text{Tổng Khấu Trừ in} = \text{BHXH} + \text{BHYT} + \text{BHTN} + \text{Thuế TNCN} + \text{Phạt vi phạm} \ (+ \text{Khấu trừ khác nếu có})$$
      $$\text{Lương Net in} = \text{Tổng Gross in} - \text{Tổng Khấu Trừ in}$$
      - **Bất biến cân bằng bắt buộc:** $\text{Lương Net in} = \text{Tổng Gross in} - \text{Tổng Khấu Trừ in}$. Số tiền Net in đậm cuối phiếu lương **bắt buộc phải bằng đúng phép trừ số học** giữa hai tổng hiển thị trên phiếu lương. Bất kỳ sai lệch nào (dù chỉ 1 đồng) cũng sẽ khiến trình tạo file QuestPDF ném ngoại lệ (`InvalidOperationException`) và từ chối phát hành phiếu lương.
      - Thiếu dòng **Phụ cấp ăn ca**, dòng **Phụ cấp Dự án / Sự kiện** (thuộc Gross) hoặc dòng **Thuế TNCN** (thuộc khấu trừ) sẽ làm phiếu lương **không cân bằng** — các dòng này bắt buộc phải có trên mẫu phiếu lương nếu phát sinh (hoặc hiển thị 0đ nếu không phát sinh).
-     - *Ngoại lệ:* nếu bật tính năng **Tạm ứng lương** (`loai_khoan_tru = 'TAM_UNG'`, có sẵn trong bảng `CAU_HINH_KHAU_TRU`), dòng này là dòng thứ 6 của bảng Khấu Trừ và **được tính vào Tổng Khấu Trừ in** để bảo đảm tính cân bằng.
+     - *Chính sách Tạm ứng lương:* Khách sạn **không áp dụng chính sách tạm ứng lương** trong kỳ. Bảng khấu trừ chỉ bao gồm Bảo hiểm, Thuế TNCN, Phạt vi phạm kỷ luật và Khấu trừ khác do HR điều chỉnh nếu có.
    - **Dòng tổng kết:** Lương Net in đậm kèm số tiền viết bằng chữ.
 
 ---
@@ -262,8 +236,8 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 
 1. **Kiểu dữ liệu bắt buộc:**
    - Toàn bộ tiền lương, phụ cấp, thù lao sự kiện, phạt, bảo hiểm và thuế tính bằng kiểu **`decimal`** (C#) và cột `DECIMAL(15,2)` (PostgreSQL).
-   - **Tuyệt đối không dùng `float` / `double`** ở bất kỳ bước trung gian nào. Sai số dấu phẩy động sẽ tích luỹ qua nhiều phép nhân/chia với hệ số 1.5 / 2.0 / 3.0, tỷ lệ ca đêm 0.30 và hệ số thưởng đánh giá sự kiện (1.10m, 1.20m), gây lệch tiền thật.
-   - Hệ số OT (1.5, 2.0, 3.0), ca đêm (0.30m), bảo hiểm xã hội 10.5% (BHXH 0.08m, BHYT 0.015m, BHTN 0.01m), hệ số thưởng xuất sắc dự án (+10% / +20%) khai báo dạng `decimal` có hậu tố `m` trong `SalaryConstants.cs`, đúng theo quy chuẩn viết code của dự án.
+   - **Tuyệt đối không dùng `float` / `double`** ở bất kỳ bước trung gian nào. Sai số dấu phẩy động sẽ tích luỹ qua nhiều phép nhân/chia với hệ số 1.5 / 2.0 / 3.0, tỷ lệ ca đêm 0.30 và hệ số sự kiện theo giờ 2.0, gây lệch tiền thật.
+   - Hệ số OT (1.5, 2.0, 3.0), ca đêm (0.30m), bảo hiểm xã hội 10.5% (BHXH 0.08m, BHYT 0.015m, BHTN 0.01m), hệ số sự kiện theo giờ (mặc định 2.0, đọc từ cấu hình `ma_khoan = 35`) khai báo dạng `decimal` có hậu tố `m` trong `SalaryConstants.cs`, đúng theo quy chuẩn viết code của dự án.
 
 2. **Chỉ làm tròn MỘT LẦN duy nhất — tại bước hiển thị:**
    - Mọi phép tính giữa chừng **giữ nguyên độ chính xác `decimal`**, không làm tròn về 0 hay 2 chữ số ở các bước trung gian.

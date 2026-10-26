@@ -35,13 +35,13 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 | **15** | `ky_luong` | Chu kỳ khóa sổ tính lương theo tháng (Tháng/Năm, trạng thái MO/DANG_TINH/KHOA_SO) | `ma_ky_luong` | — |
 | **16** | `cau_hinh_khoan_luong`| Tham số định mức tiền thưởng (Bonus) và tương thích ngược Legacy | `ma_khoan` | — |
 | **17** | `cau_hinh_phu_cap` | Tham số phụ cấp (ăn ca, đêm, đi lại, trách nhiệm) kèm cờ chịu thuế TNCN | `ma_phu_cap` | — |
-| **18** | `cau_hinh_khau_tru` | Tham số khoản khấu trừ (BHXH, BHYT, BHTN, thuế TNCN, vi phạm, tạm ứng) | `ma_khoan_tru` | — |
+| **18** | `cau_hinh_khau_tru` | Tham số khoản khấu trừ (BHXH, BHYT, BHTN, thuế TNCN, vi phạm) | `ma_khoan_tru` | — |
 | **19** | `cau_hinh_tang_ca` | Danh mục loại tăng ca kèm hệ số nhân tiền lương theo giờ OT | `ma_loai_ot` | — |
 | **20** | `phieu_luong` | Bảng tổng hợp lương tháng: Lương công, OT, Phụ cấp, Thưởng, Khấu trừ, Net | `ma_phieu_luong` | `ma_nhan_vien`, `ma_ky_luong` |
 | **21** | `chi_tiet_phieu_luong`| Bản ghi chi tiết từng dòng thu chi (Snapshot tên khoản và loại khoản bất biến) | `ma_chi_tiet` | `ma_phieu_luong`, `ma_khoan`, `ma_loai_ot`, `ma_phu_cap`, `ma_khoan_tru` |
 | **22** | `chi_tiet_tru_bao_hiem` | Khai báo 3 khoản bảo hiểm bắt buộc BHXH 8% + BHYT 1.5% + BHTN 1% từng dòng | `ma_chi_tiet_bh` | `ma_chi_tiet` (1-1) |
 | **23** | `chi_tiet_tru_thue_tncn` | Bảng tính thuế TNCN 5 bậc lũy tiến từng dòng chi tiết | `ma_chi_tiet_thue` | `ma_chi_tiet` (1-1) |
-| **24** | `chi_tiet_tru_vi_pham_tam_ung` | Bảng ghi khấu trừ vi phạm (đi trễ, về sớm, kỷ luật) và tạm ứng | `ma_chi_tiet_vp` | `ma_chi_tiet` (1-1) |
+| **24** | `chi_tiet_tru_vi_pham_tam_ung` | Bảng ghi khấu trừ vi phạm kỷ luật (đi trễ, về sớm, bỏ ca) và khấu trừ khác (bỏ tạm ứng) | `ma_chi_tiet_vp` | `ma_chi_tiet` (1-1) |
 | **25** | `nhat_ky_quan_tri` | Nhật ký thao tác quản trị (Audit Log: ai làm gì, lúc nào, giá trị cũ/mới, IP) | `ma_nhat_ky` | `ma_tai_khoan_thuc_hien`, `ma_tai_khoan_bi_tac_dong` |
 | **26** | `du_an` | Danh mục Dự án / Sự kiện Khách sạn (Tiệc cưới, MICE, Gala, Hội nghị, Bảo trì...) | `ma_du_an` | `ma_nguoi_quan_ly` (FK -> `nhan_vien`) |
 | **27** | `phan_cong_du_an` | Phân công nhân sự & Thù lao sự kiện, liên kết kết chuyển lương tháng | `ma_phan_cong` | `ma_du_an`, `ma_nhan_vien`, `ma_chi_tiet` (FK -> `chi_tiet_phieu_luong`) |
@@ -213,7 +213,7 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 
 ### Bảng 18: `cau_hinh_khau_tru` (Cấu hình khoản khấu trừ)
 - `ma_khoan_tru` (SERIAL, PK): Mã khoản khấu trừ.
-- `ten_khoan_tru` (VARCHAR(150), NOT NULL, UNIQUE): BHXH 8%, BHYT 1.5%, BHTN 1%, Thuế TNCN, Phạt đi trễ, Phạt về sớm, Tạm ứng lương...
+- `ten_khoan_tru` (VARCHAR(150), NOT NULL, UNIQUE): BHXH 8%, BHYT 1.5%, BHTN 1%, Thuế TNCN, Phạt đi trễ, Phạt về sớm, Bỏ ca... (không áp dụng tạm ứng lương).
 - `loai_khoan_tru` (VARCHAR(30), NOT NULL, CHECK in ('BAO_HIEM', 'THUE', 'VI_PHAM', 'TAM_UNG')): Nhóm phân loại khấu trừ.
 - `ty_le_hoac_dinh_muc` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tỷ lệ phần trăm (%) áp dụng hoặc định mức tiền phạt/khấu trừ cố định.
 - `mo_ta` (VARCHAR(255), NULL): Diễn giải căn cứ pháp lý và nội quy khách sạn.
@@ -234,7 +234,7 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `tien_tang_ca` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng tiền làm thêm giờ đã duyệt trong kỳ.
 - `tong_phu_cap` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng các khoản phụ cấp (ăn ca, đêm, đi lại, thù lao dự án...).
 - `tong_thuong` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng tiền thưởng hiệu suất KPI / lễ tết trong kỳ.
-- `tong_khau_tru` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng các khoản khấu trừ (Bảo hiểm 10.5%, Thuế TNCN, vi phạm, tạm ứng).
+- `tong_khau_tru` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng các khoản khấu trừ (Bảo hiểm 10.5%, Thuế TNCN, vi phạm kỷ luật).
 - `thuc_nhan` (DECIMAL(15,2), NOT NULL): Lương Net thực chuyển khoản = (Tiền lương công + Tăng ca + Phụ cấp + Thưởng) - Khấu trừ.
 - `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'NHAP', CHECK in ('NHAP', 'DA_DUYET', 'DA_THANH_TOAN')): Trạng thái duyệt và chi trả.
 - *Ràng buộc:* `UNIQUE (ma_nhan_vien, ma_ky_luong)` — Mỗi nhân viên chỉ có đúng một phiếu lương tổng hợp cho mỗi kỳ tính lương.
@@ -274,10 +274,10 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `thu_nhap_tinh_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Thu nhập tính thuế sau giảm trừ.
 - `tien_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Số tiền thuế TNCN trích nộp theo biểu lũy tiến từng phần.
 
-### Bảng 24: `chi_tiet_tru_vi_pham_tam_ung` (Chi tiết khấu trừ vi phạm & tạm ứng)
+### Bảng 24: `chi_tiet_tru_vi_pham_tam_ung` (Chi tiết khấu trừ vi phạm & khấu trừ khác - bỏ tạm ứng)
 - `ma_chi_tiet_vp` (SERIAL, PK): Mã bản ghi vi phạm / tạm ứng.
 - `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NOT NULL, ON DELETE CASCADE): Dòng chi tiết lương chủ (Quan hệ 1-1).
-- `loai_tru` (VARCHAR(30), NOT NULL, CHECK in ('DI_TRE', 'VE_SOM', 'KY_LUAT', 'LAM_HONG', 'TAM_UNG')): Phân loại vi phạm kỷ luật hoặc tạm ứng lương.
+- `loai_tru` (VARCHAR(30), NOT NULL, CHECK in ('DI_TRE', 'VE_SOM', 'KY_LUAT', 'LAM_HONG', 'TAM_UNG')): Phân loại vi phạm kỷ luật hoặc khấu trừ khác (chính sách hiện tại không áp dụng tạm ứng).
 - `so_phut_vi_pham` (INT, NOT NULL, DEFAULT 0, CHECK >= 0): Số phút vi phạm áp dụng đối với lỗi đi trễ / về sớm.
 - `so_tien_tru` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Số tiền thực tế khấu trừ vào lương.
 - `ly_do_chi_tiet` (VARCHAR(255), NOT NULL): Diễn giải cụ thể căn cứ trừ tiền.

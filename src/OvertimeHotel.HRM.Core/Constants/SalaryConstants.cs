@@ -16,6 +16,10 @@ public static class SalaryConstants
     public const decimal BHTN_RATE = 0.01m;                  // BHTN 1.0%
     public const decimal TOTAL_INSURANCE_RATE = 0.105m;      // Tổng cộng 10.5%
 
+    // Mức trần tiền lương đóng bảo hiểm theo luật
+    public const decimal MAX_INSURANCE_SALARY_BASE = 46800000m;              // 20 lần lương cơ sở (2.340.000đ x 20) cho BHXH, BHYT
+    public const decimal MAX_UNEMPLOYMENT_INSURANCE_SALARY_BASE = 99200000m; // 20 lần lương tối thiểu vùng 1 (4.960.000đ x 20) cho BHTN
+
     // Định mức phụ cấp ăn ca miễn thuế TNCN
     public const decimal MEAL_ALLOWANCE_PER_DAY = 30000m;    // 30.000 VNĐ / ngày công thực tế
 
@@ -30,15 +34,21 @@ public static class SalaryConstants
     public const decimal FINE_ABSENCE_PENALTY = 200000m;     // Phạt bổ sung bỏ ca: 200.000 VNĐ/lần
 
     // Hệ số thù lao sự kiện khách sạn
-    public const decimal EVENT_EXCELLENT_BONUS_RATE = 0.10m; // Thưởng đánh giá xuất sắc +10%
+    // Tiền sự kiện = Lương tháng / 26 / 8 × Số giờ tham gia sự kiện × 2.0
+    // Hệ số đọc từ cấu hình khoản lương (ma_khoan = 35); hằng số dưới đây là mặc định dự phòng.
+    public const int EVENT_HOURLY_RATE_CONFIG_ID = 35;       // Dòng "Hệ số thưởng sự kiện theo giờ" trong cau_hinh_khoan_luong
+    public const decimal EVENT_HOURLY_RATE = 2.00m;          // Hệ số nhân đơn giá giờ cho giờ tham gia sự kiện
+    public const decimal EVENT_EXCELLENT_BONUS_RATE = 0.10m; // [Legacy] Thưởng đánh giá xuất sắc +10% (chính sách cũ)
 
-    // Trạng thái kỳ lương
+    // Trạng thái kỳ lương (Chỉ gồm 2 trạng thái duy nhất: MO và KHOA_SO)
     public const string PERIOD_OPEN = "MO";
-    public const string PERIOD_DRAFT = "NHAP";
-    public const string PERIOD_PENDING_APPROVAL = "CHO_DUYET";
-    public const string PERIOD_APPROVED = "DA_DUYET";
-    public const string PERIOD_REJECTED = "TU_CHOI";
     public const string PERIOD_LOCKED = "KHOA_SO";
+
+    // Tương thích ngược: toàn bộ giai đoạn chưa khóa sổ đều thuộc trạng thái MO
+    public const string PERIOD_DRAFT = "MO";
+    public const string PERIOD_PENDING_APPROVAL = "MO";
+    public const string PERIOD_APPROVED = "MO";
+    public const string PERIOD_REJECTED = "MO";
 
     // Trạng thái phiếu lương
     public const string PAYSLIP_DRAFT = "NHAP";

@@ -8,6 +8,7 @@ public interface IHotelEventService
     Task<DuAn?> GetAsync(EventActor actor, int id);
     Task<DuAn?> GetOverviewAsync(EventActor actor, int id);
     Task<IReadOnlyList<NhanVien>> ManagersAsync();
+    Task<decimal> HourlyEventRateAsync();
     Task<IReadOnlyList<NhanVien>> EmployeesAsync();
     Task<IReadOnlyList<PhanCa>> ShiftsAsync(DuAn item);
     Task<IReadOnlyList<NhatKyQuanTri>> HistoryAsync(int id);

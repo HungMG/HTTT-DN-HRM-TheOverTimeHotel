@@ -214,6 +214,16 @@ await Check("Both read-only staff views show the source shift, task and particip
     }
 });
 
+await Check("Frozen event explanation uses saved basis rather than the current multiplier", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true; item.TrangThai = "HOAN_THANH"; item.PhanCongs = [];
+    var basis = new OvertimeHotel.HRM.Core.Policies.EventPaySlice(item.NgayBatDau, item.NgayBatDau.AddHours(2), 8_000_000m, 1, 4m);
+    var model = new EventDetailsViewModel { Event = item, HourlyEventRate = 2m,
+        PayPreview = new(1, [new(10, "Frozen worker", new(2028, 5, 1), 120m, 307_692m, [basis])], [], "") };
+    var html = System.Net.WebUtility.HtmlDecode(await Render("_HourlyEventAcceptance", model));
+    Require(!html.Contains("× hệ số 2.00") && html.Contains("× 4.00"),
+        "A frozen event is explained using the current multiplier instead of its saved rate.");
+});
 await Check("Hourly work corrections retain entered values and remain office-only", async () =>
 {
     var item = Event(); item.TinhTheoGio = true; item.TrangThai = "CHO_NGHIEM_THU";
@@ -315,6 +325,7 @@ public class StaffServiceStub : DispatchProxy
             : FailStaff ? Task.FromException<DuAn?>(new IOException("Assignment query unavailable")) : Task.FromResult<DuAn?>(OutOfScope ? null : Item),
         "EmployeesAsync" => FailPicker ? Task.FromException<IReadOnlyList<NhanVien>>(new IOException("Picker unavailable")) : Task.FromResult<IReadOnlyList<NhanVien>>([]),
         "ManagersAsync" => Task.FromResult<IReadOnlyList<NhanVien>>([]),
+        "HourlyEventRateAsync" => Task.FromResult(2m),
         "VenuesAsync" => Task.FromException<IReadOnlyList<DiaDiemSuKien>>(new IOException("Venue catalog unavailable")),
         "ShiftsAsync" or "AvailableShiftsAsync" => Task.FromResult<IReadOnlyList<PhanCa>>([]),
         "HistoryAsync" => Task.FromResult<IReadOnlyList<NhatKyQuanTri>>([]),

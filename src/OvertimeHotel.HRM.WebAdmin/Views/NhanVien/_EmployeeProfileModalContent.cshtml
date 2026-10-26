@@ -404,6 +404,13 @@
                             <span class="text-dark text-end" style="max-width: 60%;">@(string.IsNullOrWhiteSpace(emp.DiaChi) ? "Chưa cập nhật" : emp.DiaChi)</span>
                         </div>
                         <div class="profile-prop-row">
+                            <span class="text-muted">Số người phụ thuộc:</span>
+                            <span class="fw-semibold text-dark">
+                                @emp.SoNguoiPhuThuoc người
+                                <span class="text-muted fw-normal small">(giảm trừ @((emp.SoNguoiPhuThuoc * 4400000m).ToString("N0")) đ/tháng)</span>
+                            </span>
+                        </div>
+                        <div class="profile-prop-row">
                             <span class="text-muted">Ngày thôi việc:</span>
                             @if (emp.NgayThoiViec.HasValue)
                             {

@@ -330,6 +330,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     private async Task<EventFormViewModel> FormAsync(EventFormViewModel model)
     {
         model.Managers = (await events.ManagersAsync()).Select(x => new SelectListItem(x.HoTen, x.MaNhanVien.ToString())).ToList();
+        model.HourlyEventRate = await events.HourlyEventRateAsync();
         return model;
     }
 
@@ -361,6 +362,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         var model = new EventDetailsViewModel
         {
             Event = item, CanManage = mutable, CanEdit = mutable && actor.IsOffice && item.TrangThai == "LEN_KE_HOACH",
+            HourlyEventRate = await events.HourlyEventRateAsync(),
             CanAccept = mutable && actor.IsOffice && item.TrangThai == "CHO_NGHIEM_THU",
             StaffLoadFailed = staffLoadFailed,
             Employees = employees,

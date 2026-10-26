@@ -1,5 +1,13 @@
 -- Approved fixed bonuses per employee/event. No excellent-rating multiplier.
 -- Additive and rerunnable: preserve existing configuration and payroll history.
+--
+-- [ĐÃ THAY THẾ 26/10/2026] Chính sách thưởng sự kiện chuyển sang tính theo giờ
+-- (Lương tháng / 26 / 8 × số giờ × hệ số, mặc định 2.0). Ma trận 27 định mức do
+-- migration này nạp sẽ bị xóa bởi 20261026_remove_legacy_event_bonus_matrix.sql.
+-- Khi dựng database mới, chạy SAU migration này theo thứ tự:
+--   1. 20261026_add_event_hourly_rate_config.sql  (thêm dòng hệ số ma_khoan = 35)
+--   2. 20261026_remove_legacy_event_bonus_matrix.sql (xóa ma trận ma_khoan 8–34)
+-- để ma trận không tồn tại lại và vẫn có dòng hệ số cho công thức giờ.
 BEGIN;
 SELECT pg_advisory_xact_lock(2026101602);
 LOCK TABLE public.cau_hinh_khoan_luong IN SHARE ROW EXCLUSIVE MODE;

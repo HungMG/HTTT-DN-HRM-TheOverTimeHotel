@@ -82,14 +82,21 @@
 </div>
 <div class="event-panel mt-4">
     <h3>@(item.TrangThai == "HOAN_THANH" ? "Quyết toán đã khóa" : "Xem trước thu nhập cộng thêm")</h3>
-    <p>Tiền cộng thêm = Lương cơ bản tháng / 26 / 8 × thời lượng từ giờ bắt đầu đến giờ kết thúc tham gia. Tiền được tổng hợp theo tháng phát sinh và trả vào kỳ HR chọn.</p>
+    @if (item.TrangThai == "HOAN_THANH")
+    {
+        <p>Tiền sự kiện đã chốt theo giờ tham gia và hệ số được lưu trong căn cứ từng khoản. Thay đổi cấu hình sau nghiệm thu không làm thay đổi quyết toán.</p>
+    }
+    else
+    {
+        <p>Tiền cộng thêm = Lương cơ bản tháng / 26 / 8 × hệ số @Model.HourlyEventRate.ToString("0.00") × thời lượng từ giờ bắt đầu đến giờ kết thúc tham gia. Tiền được tổng hợp theo tháng phát sinh và trả vào kỳ HR chọn.</p>
+    }
     @if (preview != null)
     {
         @foreach (var warning in preview.Warnings) { <p class="alert alert-warning" role="alert">@warning</p> }
         <div class="table-responsive"><table class="table event-table"><thead><tr><th scope="col">Nhân viên</th><th scope="col">Tháng phát sinh</th><th scope="col">Phút</th><th scope="col">Thu nhập thêm</th><th scope="col">Căn cứ</th></tr></thead><tbody>
             @foreach (var row in preview.Rows)
             {
-                <tr><td>@row.EmployeeName</td><td>@row.WorkMonth.ToString("MM/yyyy")</td><td>@row.Minutes.ToString("0.##")</td><td>@Money(row.Amount)</td><td><details><summary>Chi tiết giờ và lương</summary>@foreach (var basis in row.Basis) { <p>@HotelEventRules.Local(basis.Start).ToString("dd/MM HH:mm") – @HotelEventRules.Local(basis.End).ToString("dd/MM HH:mm")<br />HĐ #@basis.ContractId · Lương tháng @Money(basis.MonthlySalary) / 26 / 8 = @Money(basis.HourlyRate)/giờ · @basis.Minutes.ToString("0.##") phút</p> }</details></td></tr>
+                <tr><td>@row.EmployeeName</td><td>@row.WorkMonth.ToString("MM/yyyy")</td><td>@row.Minutes.ToString("0.##")</td><td>@Money(row.Amount)</td><td><details><summary>Chi tiết giờ và lương</summary>@foreach (var basis in row.Basis) { <p>@HotelEventRules.Local(basis.Start).ToString("dd/MM HH:mm") – @HotelEventRules.Local(basis.End).ToString("dd/MM HH:mm")<br />HĐ #@basis.ContractId · Lương tháng @Money(basis.MonthlySalary) / 26 / 8 × @basis.Rate.ToString("0.00") = @Money(basis.HourlyRate)/giờ · @basis.Minutes.ToString("0.##") phút</p> }</details></td></tr>
             }
         </tbody><tfoot><tr><th scope="row" colspan="3">Tổng cộng</th><td colspan="2"><strong>@Money(preview.Total)</strong></td></tr></tfoot></table></div>
         @if (Model.CanAccept)

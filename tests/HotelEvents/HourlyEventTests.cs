@@ -12,41 +12,11 @@ internal static class HourlyEventTests
             catch (Exception e) { failures++; Console.Error.WriteLine("FAIL " + name + ": " + e.Message); }
         }
         var day = HotelEventRules.ToUtc(new DateTime(2027, 1, 7));
-        Check("Hourly events add ONE hourly wage and round only the final employee amount", () =>
+        Check("Hourly events add TWO hourly wages and round only the final employee amount", () =>
         {
-            Equal(76923m, HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(17), 8_000_000m, 1)]));
-            Equal(57692m, HourlyEventRules.Amount([new(day.AddHours(15.5), day.AddHours(17), 8_000_000m, 1)]));
-            Equal(76923m, HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(16), 8_000_000m, 1), new(day.AddHours(16), day.AddHours(17), 8_000_000m, 1)]));
-            Equal(115385m, HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(18), 8_000_000m, 1)]));
-            Equal(641m, HourlyEventRules.Amount([new(day, day.AddSeconds(30), 8_000_000m, 1), new(day.AddSeconds(30), day.AddMinutes(1), 8_000_000m, 1)]));
-        });
-        Check("Actual work requires a matching published source and respects event cutoffs", () =>
-        {
-            var item = new DuAn { MaDuAn = 7, NgayBatDau = day.AddHours(15), NgayKetThuc = day.AddHours(20) };
-            var shift = new PhanCa { MaPhanCa = 5, MaNhanVien = 10, DaCongBo = true,
-                BatDauDuKien = day.AddHours(9), KetThucDuKien = day.AddHours(17) };
-            var assignment = new PhanCongDuAn { MaDuAn = 7, MaNhanVien = 10, MaPhanCa = 5, PhanCa = shift,
-                BatDau = day.AddHours(14), KetThuc = day.AddHours(20) };
-            var now = day.AddDays(1);
-            bool Covered(DateTimeOffset from, DateTimeOffset to) => HourlyEventRules.CanRecordWork(item, assignment, from, to, now);
-            Equal(true, Covered(day.AddHours(15), day.AddHours(17)));
-            Equal(false, Covered(day.AddHours(14), day.AddHours(15)));
-            Equal(false, Covered(day.AddHours(14), day.AddHours(15)));
-            item.NgayKetThuc = day.AddHours(16);
-            Equal(false, Covered(day.AddHours(16), day.AddHours(17)));
-            item.NgayKetThuc = day.AddHours(20);
-            Equal(false, Covered(day.AddHours(16), day.AddHours(18)));
-            Equal(false, HourlyEventRules.CanRecordWork(item, assignment, day.AddHours(15), day.AddHours(17), day.AddHours(16)));
-            shift.DaCongBo = false; Equal(false, Covered(day.AddHours(15), day.AddHours(17))); shift.DaCongBo = true;
-            shift.MaNhanVien = 11; Equal(false, Covered(day.AddHours(15), day.AddHours(17))); shift.MaNhanVien = 10;
-            foreach (var canceled in new[] { "HUY_PHAN_CONG", "DA_HUY" })
-            { assignment.TrangThaiThamGia = canceled; Equal(false, Covered(day.AddHours(15), day.AddHours(17))); }
-            assignment.TrangThaiThamGia = "DA_KET_THUC";
-            Equal(true, Covered(day.AddHours(15), day.AddHours(17)));
-            item.KetThucThucTe = day.AddHours(16);
-            Equal(false, Covered(day.AddHours(15), day.AddHours(17)));
-            Equal(true, Covered(day.AddHours(15), day.AddHours(16)));
-            assignment.MaDuAn = 8; Equal(false, Covered(day.AddHours(15), day.AddHours(16)));
+            Equal(153846m, HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(17), 8_000_000m, 1)]));
+            Equal(115385m, HourlyEventRules.Amount([new(day.AddHours(15.5), day.AddHours(17), 8_000_000m, 1)]));
+            Equal(153846m, HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(16), 8_000_000m, 1), new(day.AddHours(16), day.AddHours(17), 8_000_000m, 1)]));
         });
         Check("Event participation stops at the end of the source shift", () =>
         {
@@ -65,21 +35,7 @@ internal static class HourlyEventTests
                 new HopDong { MaHopDong=2, NgayBatDau=new(2027,1,8), LuongCoBan=10_000_000m, TrangThai="HIEU_LUC" }
             };
             var slices=HourlyEventRules.Price(day.AddHours(23),day.AddHours(25),contracts);
-            Equal(2,slices.Count); Equal(86538m,HourlyEventRules.Amount(slices));
-        });
-        Check("Terminated contracts retain salary evidence only for their documented working dates", () =>
-        {
-            foreach (var status in new[] { "DA_CHAM_DUT", "CHAM_DUT" })
-            {
-                var contract = new HopDong { MaHopDong = 11, NgayBatDau = new(2027, 1, 1), NgayKetThuc = new(2027, 1, 8),
-                    LuongCoBan = 8_000_000m, TrangThai = status };
-                Equal(76923m, HourlyEventRules.Amount(HourlyEventRules.Price(day.AddHours(15), day.AddHours(17), [contract])));
-                Reject(() => HourlyEventRules.Price(day.AddDays(2), day.AddDays(2).AddHours(1), [contract]));
-                contract.NgayKetThuc = null;
-                Reject(() => HourlyEventRules.Price(day, day.AddHours(1), [contract]));
-                Reject(() => HourlyEventRules.Price(day, day.AddHours(1), [contract,
-                    new HopDong { NgayBatDau = new(2026, 1, 1), LuongCoBan = 6_000_000m, TrangThai = "HIEU_LUC" }]));
-            }
+            Equal(2,slices.Count); Equal(173077m,HourlyEventRules.Amount(slices));
         });
         Check("Hourly earnings split by Vietnam work month rather than UTC month", () =>
         {

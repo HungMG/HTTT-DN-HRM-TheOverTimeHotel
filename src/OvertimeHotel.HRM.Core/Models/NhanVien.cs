@@ -39,6 +39,12 @@ public class NhanVien
     public DateOnly? NgayThoiViec { get; set; }
     public string TrangThai { get; set; } = "DANG_LAM";
 
+    /// <summary>
+    /// Số người phụ thuộc đăng ký giảm trừ gia cảnh thuế TNCN.
+    /// Mặc định là 0 (chưa có người phụ thuộc).
+    /// </summary>
+    public int SoNguoiPhuThuoc { get; set; } = 0;
+
     // Tiện ích tính nhanh họ tên hiển thị
     public string HoTen => $"{Ho} {Ten}".Trim();
 

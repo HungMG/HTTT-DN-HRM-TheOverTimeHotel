@@ -73,14 +73,12 @@ public class BangLuongController(
         }
 
         var periodStatus = currentPeriod?.TrangThai ?? SalaryConstants.PERIOD_OPEN;
+        var isLocked = periodStatus == SalaryConstants.PERIOD_LOCKED;
+        var isApproved = !isLocked && (currentPeriod?.NgayDuyet != null || periodStatus == "DA_DUYET");
+        var isPendingApproval = !isLocked && !isApproved && currentPeriod?.NgayGuiDuyet != null && currentPeriod?.NgayDuyet == null && string.IsNullOrEmpty(currentPeriod?.LyDoTuChoi);
+        var isOpenOrDraft = !isLocked && !isPendingApproval && !isApproved;
 
-        // Phân định hiển thị bảng lương theo yêu cầu:
-        // - Tài khoản HR: luôn thấy bảng lương nháp để rà soát, đối chiếu và sửa sai sót.
-        // - Tài khoản Admin: ban đầu KHÔNG hiện bảng lương, CHỈ hiển thị sau khi HR đã kiểm tra và bấm "Gửi duyệt"
-        //   (Tức là khi trạng thái kỳ lương đã chuyển sang CHO_DUYET, DA_DUYET hoặc KHOA_SO).
-        var showPayrollData = IsHR || (periodStatus is SalaryConstants.PERIOD_PENDING_APPROVAL
-                                                    or SalaryConstants.PERIOD_APPROVED
-                                                    or SalaryConstants.PERIOD_LOCKED);
+        var showPayrollData = IsHR || isPendingApproval || isApproved || isLocked;
 
         var rows = showPayrollData ? query.Select(p => new PhieuLuongRowViewModel
         {
@@ -110,11 +108,11 @@ public class BangLuongController(
             SearchKeyword = keyword,
             DepartmentFilter = department,
             Departments = departments,
-            CanCalculate = IsHR && periodStatus != SalaryConstants.PERIOD_LOCKED,
-            CanSubmitApproval = IsHR && (periodStatus is SalaryConstants.PERIOD_DRAFT or SalaryConstants.PERIOD_REJECTED or SalaryConstants.PERIOD_OPEN) && query.Any(),
-            CanApprove = IsBoss && periodStatus == SalaryConstants.PERIOD_PENDING_APPROVAL,
-            CanLock = IsBoss && periodStatus == SalaryConstants.PERIOD_APPROVED,
-            CanPublishAndExport = (IsBoss || IsHR) && periodStatus == SalaryConstants.PERIOD_LOCKED,
+            CanCalculate = IsHR && !isLocked && !isPendingApproval && !isApproved,
+            CanSubmitApproval = IsHR && isOpenOrDraft && query.Any(),
+            CanApprove = IsBoss && isPendingApproval,
+            CanLock = IsBoss && isApproved,
+            CanPublishAndExport = (IsBoss || IsHR) && isLocked,
             IsHR = IsHR,
             IsAdminOrBoss = IsBoss,
             ShowPayrollData = showPayrollData,
@@ -182,8 +180,9 @@ public class BangLuongController(
         var ky = payslip.KyLuong;
         var periodStatus = ky?.TrangThai ?? SalaryConstants.PERIOD_OPEN;
 
-        // Nếu là Admin/Sếp và bảng lương chưa được HR gửi duyệt (vẫn là NHAP, MO, hoặc TU_CHOI):
-        if (!IsHR && periodStatus is SalaryConstants.PERIOD_OPEN or SalaryConstants.PERIOD_DRAFT or SalaryConstants.PERIOD_REJECTED)
+        var isLockedPeriod = periodStatus == SalaryConstants.PERIOD_LOCKED;
+        var isPendingOrApproved = isLockedPeriod || (ky?.NgayGuiDuyet != null && string.IsNullOrEmpty(ky?.LyDoTuChoi));
+        if (!IsHR && !isPendingOrApproved)
         {
             TempData["Error"] = $"Bảng lương tháng {ky?.Thang:D2}/{ky?.Nam} đang ở giai đoạn rà soát nội bộ của bộ phận HR. Ban Giám Đốc chỉ xem chi tiết sau khi HR bấm 'Gửi duyệt'.";
             return (RedirectToAction(nameof(Index), new { thang = ky?.Thang, nam = ky?.Nam }), null);
@@ -354,7 +353,8 @@ public class BangLuongController(
             ThucNhan = payslip.ThucNhan,
             ThucNhanBangChu = VietnameseNumberToWords.ConvertToWords(payslip.ThucNhan),
             AdjustInput = new AdjustSalaryItemInput { MaPhieuLuong = payslip.MaPhieuLuong },
-            CanEdit = IsHR && (ky?.TrangThai is SalaryConstants.PERIOD_DRAFT or SalaryConstants.PERIOD_REJECTED or SalaryConstants.PERIOD_OPEN),
+            CanEdit = IsHR && ky != null && ky.TrangThai != SalaryConstants.PERIOD_LOCKED && ky.TrangThai != "DA_DUYET"
+                && !ky.NgayGuiDuyet.HasValue && !ky.NgayDuyet.HasValue,
             IsHR = IsHR,
             SuccessMessage = TempData["Success"]?.ToString(),
             ErrorMessage = TempData["Error"]?.ToString()

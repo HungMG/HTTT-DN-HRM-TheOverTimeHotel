@@ -107,6 +107,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.NgayVaoLam).HasColumnName("ngay_vao_lam").IsRequired();
             entity.Property(e => e.NgayThoiViec).HasColumnName("ngay_thoi_viec");
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("DANG_LAM").IsRequired();
+            entity.Property(e => e.SoNguoiPhuThuoc).HasColumnName("so_nguoi_phu_thuoc").HasDefaultValue(0).IsRequired();
 
             entity.Ignore(e => e.HoTen);
             entity.HasIndex(e => e.EmailCongVu).IsUnique();

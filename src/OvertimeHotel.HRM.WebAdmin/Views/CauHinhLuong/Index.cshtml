@@ -3,6 +3,7 @@
 @{
     var title = CauHinhLuongLabels.Title(Model.Category);
     var types = CauHinhLuongLabels.Types(Model.Category);
+    var columnCount = Model.Category == CauHinhLuongCategory.PhuCap ? 8 : 7;
     ViewData["Title"] = "Cấu hình " + title.ToLower();
 }
 <link rel="stylesheet" href="~/css/payroll.css" asp-append-version="true" />
@@ -10,6 +11,30 @@
     @if (TempData["Success"] is string success) { <div class="alert alert-success" role="status">@success</div> }
     @if (TempData["Error"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
     <section class="catalog-card">
+        <!-- TỔNG QUAN 2 TẦNG GROSS → NET (PRD 05): giữ nguyên khi chuyển tab -->
+        <div class="payroll-flow" aria-label="Tổng quan công thức lương Gross sang Net">
+            <div class="payroll-flow-tier">
+                <span class="payroll-flow-label">Tầng 1 · Tổng thu nhập (Gross)</span>
+                <p class="payroll-flow-items">
+                    Lương ngày công
+                    <span>+</span> <a asp-action="Index" asp-route-category="@CauHinhLuongCategory.TangCa">Tăng ca / ca đêm</a>
+                    <span>+</span> <a asp-action="Index" asp-route-category="@CauHinhLuongCategory.PhuCap">Phụ cấp ăn ca &amp; phụ cấp khác</a>
+                    <span>+</span> <a asp-action="Index" asp-route-category="@CauHinhLuongCategory.Thuong">Thưởng / sự kiện</a>
+                </p>
+            </div>
+            <div class="payroll-flow-tier is-deduction">
+                <span class="payroll-flow-label">Tầng 2 · Tổng khấu trừ</span>
+                <p class="payroll-flow-items">
+                    <a asp-action="Index" asp-route-category="@CauHinhLuongCategory.KhauTru">BHXH 8% + BHYT 1,5% + BHTN 1%</a>
+                    <span>+</span> <a asp-action="Index" asp-route-category="@CauHinhLuongCategory.KhauTru">Thuế TNCN lũy tiến</a>
+                    <span>+</span> <a asp-action="Index" asp-route-category="@CauHinhLuongCategory.KhauTru">Phạt vi phạm</a>
+                </p>
+            </div>
+            <div class="payroll-flow-net">
+                <i class="bi bi-cash-coin" aria-hidden="true"></i>
+                <span>Lương Net = Tổng Gross − Tổng khấu trừ</span>
+            </div>
+        </div>
         <!-- TAB DANH MỤC NẰM TRONG THẺ: chuyển tab tại chỗ, chỉ vùng bên dưới đổi -->
         <nav class="payroll-category-tabs" aria-label="Danh mục cấu hình lương">
             @foreach (var category in Enum.GetValues<CauHinhLuongCategory>())
@@ -23,102 +48,203 @@
         <!-- data-payroll-page-title đi kèm vùng được nạp tại chỗ: thanh tiêu đề nằm
              ngoài panel nên khi chuyển tab phải cập nhật lại tiêu đề cho khớp danh mục. -->
         <div data-payroll-category-panel data-payroll-page-title="Cấu hình @title.ToLower()">
-        @if (Model.Category == CauHinhLuongCategory.Thuong)
-        {
-            <p class="text-muted payroll-category-note">Danh mục thưởng tiếp tục sử dụng dữ liệu hiện có. Phụ cấp và khấu trừ được quản lý ở các danh mục riêng.</p>
-        }
-        @if (Model.Category == CauHinhLuongCategory.KhauTru)
-        {
-            <p class="text-muted payroll-category-note">Bảo hiểm nhập tỷ lệ %; vi phạm nhập VNĐ/phút. Thuế TNCN dùng thuật toán lũy tiến, định mức tại đây chỉ là tham chiếu.</p>
-        }
-        <div class="catalog-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <form asp-action="Index" method="get" class="catalog-filter-form d-flex flex-wrap align-items-center gap-2 flex-grow-1">
-                <input name="category" type="hidden" value="@Model.Category" data-catalog-preserve />
-                <div class="catalog-search-wrapper payroll-search">
-                    <i class="bi bi-search catalog-search-icon" aria-hidden="true"></i>
-                    <input id="keyword" name="keyword" value="@Model.Keyword" class="form-control catalog-search"
-                           placeholder="Tìm theo tên hoặc mô tả..." aria-label="Tìm kiếm cấu hình @title.ToLower()" maxlength="150" />
-                    <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
+
+            <!-- ĐẦU DANH MỤC: mô tả + thống kê nhanh -->
+            <div class="payroll-config-intro">
+                <div class="payroll-config-intro-text">
+                    <p class="payroll-eyebrow">
+                        <i class="bi bi-sliders" aria-hidden="true"></i>
+                        <span>Cấu hình lương</span><span>@title</span>
+                    </p>
+                    <h2 class="payroll-config-title">@title trong công thức tính lương</h2>
+                    <p class="payroll-config-desc">@CauHinhLuongLabels.Description(Model.Category)</p>
                 </div>
-                @if (types.Count > 0)
-                {
-                    <div class="payroll-type-filter">
-                        <label for="type" class="visually-hidden">Loại @title.ToLower()</label>
-                        <select id="type" name="type" class="form-select">
-                            <option value="">Tất cả loại</option>
-                            @foreach (var type in types)
-                            {
-                                <option value="@type.Key" selected="@(type.Key == Model.Type)">@type.Value</option>
-                            }
-                        </select>
+                <div class="payroll-config-stats" role="list" aria-label="Thống kê cấu hình @title.ToLower()">
+                    <div class="payroll-config-stat" role="listitem">
+                        <strong>@Model.Items.Count</strong>
+                        <span>cấu hình</span>
                     </div>
-                }
-                <button type="button" class="btn btn-outline-secondary rounded-3 text-nowrap @(string.IsNullOrWhiteSpace(Model.Keyword) && string.IsNullOrWhiteSpace(Model.Type) ? "d-none" : "")"
-                        data-catalog-reset aria-label="Đặt lại tìm kiếm và bộ lọc">
-                    <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Đặt lại
-                </button>
-            </form>
-            <a asp-action="Create" asp-route-category="@Model.Category" class="btn btn-hotel-primary text-nowrap">
-                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Thêm @title.ToLower()
-            </a>
-        </div>
-        <div class="catalog-loading" data-catalog-loading role="status" aria-hidden="true">
-            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-            <strong>Đang cập nhật danh sách...</strong>
-        </div>
-        <div data-catalog-results aria-label="Kết quả cấu hình @title.ToLower()" aria-busy="false">
-            <p class="payroll-result-count mb-0" role="status">@Model.Items.Count cấu hình trong kết quả</p>
-            @if (Model.Error != null) { <div class="alert alert-danger mx-3" role="alert">@Model.Error</div> }
-            <div class="table-responsive">
-                <table class="table catalog-table payroll-table">
-                    <caption class="visually-hidden">Danh sách cấu hình @title.ToLower()</caption>
-                    <thead><tr><th scope="col">Tên cấu hình</th><th scope="col">Loại</th><th scope="col">Định mức</th>
-                        @if (Model.Category == CauHinhLuongCategory.PhuCap) { <th scope="col">Chịu thuế TNCN</th> }
-                        <th scope="col" class="text-end">Thao tác</th></tr></thead>
-                    <tbody>
-                        @foreach (var item in Model.Items)
-                        {
-                            <tr data-config-id="@item.Id">
-                                <td class="payroll-name"><strong>@item.Name</strong><div class="text-muted small mt-1">@item.Description</div></td>
-                                <td>@(types.TryGetValue(item.Type, out var label) ? label : title)</td>
-                                <td class="text-nowrap payroll-amount">@item.Value.ToString("N2") @CauHinhLuongLabels.Unit(Model.Category, item.Type)</td>
-                                @if (Model.Category == CauHinhLuongCategory.PhuCap) { <td>@(item.Taxable ? "Có" : "Không")</td> }
-                                <td class="text-end text-nowrap">
-                                    <a asp-action="Edit" asp-route-category="@Model.Category" asp-route-id="@item.Id"
-                                       class="btn btn-sm btn-outline-primary rounded-3 me-1 payroll-action-button" title="Chỉnh sửa thông tin" aria-label="Sửa @item.Name">
-                                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
-                                    </a>
-                                    @if (item.Used)
-                                    {
-                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 opacity-50 payroll-action-button"
-                                                disabled title="Đang được sử dụng trong phiếu lương, không thể xóa" aria-label="Không thể xóa @item.Name: đang được sử dụng trong phiếu lương">
-                                            <i class="bi bi-lock-fill" aria-hidden="true"></i>
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <form asp-action="Delete" asp-route-category="@Model.Category" asp-route-id="@item.Id"
-                                              method="post" class="d-inline catalog-delete-form" data-catalog-name="@item.Name">
-                                            <button class="btn btn-sm btn-outline-danger rounded-3 payroll-action-button" type="submit" title="Xóa cấu hình" aria-label="Xóa @item.Name">
-                                                <i class="bi bi-trash3" aria-hidden="true"></i>
-                                            </button>
-                                        </form>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                        @if (Model.Items.Count == 0 && Model.Error == null)
-                        {
-                            <tr><td colspan="@(Model.Category == CauHinhLuongCategory.PhuCap ? 5 : 4)" class="catalog-empty">
-                                <h2 class="h5">Không tìm thấy cấu hình phù hợp</h2>
-                                <p class="text-muted">Thử đổi từ khóa hoặc đặt lại bộ lọc.</p>
-                                <button class="btn btn-outline-secondary btn-sm rounded-3" type="button" data-catalog-reset>Đặt lại bộ lọc</button>
-                            </td></tr>
-                        }
-                    </tbody>
-                </table>
+                    <div class="payroll-config-stat" role="listitem">
+                        <strong>@Model.UsedCount</strong>
+                        <span>đang dùng</span>
+                    </div>
+                    <div class="payroll-config-stat" role="listitem">
+                        <strong>@Model.TotalUsageCount</strong>
+                        <span>lượt trong phiếu lương</span>
+                    </div>
+                </div>
             </div>
-        </div>
+
+            <!-- KHỐI CÔNG THỨC & THAM SỐ ĐANG ÁP DỤNG (PRD 05) -->
+            <section class="payroll-guide" aria-labelledby="payroll-guide-title">
+                <div class="payroll-guide-head">
+                    <span class="payroll-guide-icon" aria-hidden="true"><i class="bi bi-calculator-fill"></i></span>
+                    <div>
+                        <h3 class="payroll-guide-title" id="payroll-guide-title">Công thức &amp; tham số áp dụng</h3>
+                        <p class="payroll-guide-formula">@Model.Guide.Formula</p>
+                        @if (!string.IsNullOrWhiteSpace(Model.Guide.FormulaNote))
+                        {
+                            <p class="payroll-guide-note">@Model.Guide.FormulaNote</p>
+                        }
+                    </div>
+                </div>
+                @if (Model.Guide.Parameters.Count > 0)
+                {
+                    <dl class="payroll-guide-params">
+                        @foreach (var parameter in Model.Guide.Parameters)
+                        {
+                            <div class="payroll-guide-param">
+                                <dt>@parameter.Label</dt>
+                                <dd>
+                                    <strong>@parameter.Value</strong>
+                                    @if (!string.IsNullOrWhiteSpace(parameter.Unit)) { <span class="payroll-guide-unit">@parameter.Unit</span> }
+                                    @if (!string.IsNullOrWhiteSpace(parameter.Hint)) { <small>@parameter.Hint</small> }
+                                </dd>
+                            </div>
+                        }
+                    </dl>
+                }
+                @if (Model.Guide.Rules.Count > 0)
+                {
+                    <ul class="payroll-guide-rules">
+                        @foreach (var rule in Model.Guide.Rules)
+                        {
+                            <li><i class="bi bi-check2" aria-hidden="true"></i><span>@rule</span></li>
+                        }
+                    </ul>
+                }
+            </section>
+
+            <div class="catalog-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <form asp-action="Index" method="get" class="catalog-filter-form d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+                    <input name="category" type="hidden" value="@Model.Category" data-catalog-preserve />
+                    <div class="catalog-search-wrapper payroll-search">
+                        <i class="bi bi-search catalog-search-icon" aria-hidden="true"></i>
+                        <input id="keyword" name="keyword" value="@Model.Keyword" class="form-control catalog-search"
+                               placeholder="Tìm theo tên hoặc mô tả..." aria-label="Tìm kiếm cấu hình @title.ToLower()" maxlength="150" />
+                        <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
+                    </div>
+                    @if (types.Count > 0)
+                    {
+                        <div class="payroll-type-filter">
+                            <label for="type" class="visually-hidden">Loại @title.ToLower()</label>
+                            <select id="type" name="type" class="form-select">
+                                <option value="">Tất cả loại</option>
+                                @foreach (var type in types)
+                                {
+                                    <option value="@type.Key" selected="@(type.Key == Model.Type)">@type.Value</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    <button type="button" class="btn btn-outline-secondary rounded-3 text-nowrap @(string.IsNullOrWhiteSpace(Model.Keyword) && string.IsNullOrWhiteSpace(Model.Type) ? "d-none" : "")"
+                            data-catalog-reset aria-label="Đặt lại tìm kiếm và bộ lọc">
+                        <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Đặt lại
+                    </button>
+                </form>
+                <a asp-action="Create" asp-route-category="@Model.Category" class="btn btn-hotel-primary text-nowrap">
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Thêm @title.ToLower()
+                </a>
+            </div>
+            <div class="catalog-loading" data-catalog-loading role="status" aria-hidden="true">
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <strong>Đang cập nhật danh sách...</strong>
+            </div>
+            <div data-catalog-results aria-label="Kết quả cấu hình @title.ToLower()" aria-busy="false">
+                <p class="payroll-result-count mb-0" role="status">@Model.Items.Count cấu hình trong kết quả</p>
+                @if (Model.Error != null) { <div class="alert alert-danger mx-3" role="alert">@Model.Error</div> }
+                <div class="table-responsive">
+                    <table class="table catalog-table payroll-table payroll-config-table">
+                        <caption class="visually-hidden">Danh sách cấu hình @title.ToLower() kèm cách tính và giá trị hiệu lực</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="payroll-col-code">Mã</th>
+                                <th scope="col">Tên cấu hình</th>
+                                <th scope="col">Phân loại</th>
+                                <th scope="col">Cách tính</th>
+                                <th scope="col">Giá trị hiệu lực</th>
+                                @if (Model.Category == CauHinhLuongCategory.PhuCap) { <th scope="col">Chịu thuế TNCN</th> }
+                                <th scope="col">Sử dụng</th>
+                                <th scope="col" class="text-end">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Items)
+                            {
+                                <tr data-config-id="@item.Id">
+                                    <td class="payroll-col-code"><span class="payroll-code-badge">#@item.Id</span></td>
+                                    <td class="payroll-name">
+                                        <strong>@item.Name</strong>
+                                        @if (item.IsParameter)
+                                        {
+                                            <span class="badge rounded-pill text-bg-info ms-1 align-middle" title="Tham số tính lương: chỉ sửa giá trị, không xóa">Tham số</span>
+                                        }
+                                        <div class="text-muted small mt-1">@item.Description</div>
+                                    </td>
+                                    <td>
+                                        <span class="payroll-type-badge">@CauHinhLuongLabels.TypeLabel(Model.Category, item.Type)</span>
+                                    </td>
+                                    <td class="payroll-formula-cell">
+                                        <span class="payroll-formula-text">@CauHinhLuongLabels.AppliedFormula(Model.Category, item.Type)</span>
+                                        <small class="text-muted d-block">Đơn vị: @CauHinhLuongLabels.Unit(Model.Category, item.Type)</small>
+                                    </td>
+                                    <td class="text-nowrap payroll-amount">
+                                        <strong>@CauHinhLuongLabels.ValueText(Model.Category, item.Type, item.Value)</strong>
+                                    </td>
+                                    @if (Model.Category == CauHinhLuongCategory.PhuCap) { <td>@(item.Taxable ? "Có" : "Không")</td> }
+                                    <td class="payroll-usage-cell">
+                                        @if (item.Used)
+                                        {
+                                            <span class="payroll-usage is-used"><i class="bi bi-check2-circle" aria-hidden="true"></i> Đang dùng · @item.UsageCount phiếu</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="payroll-usage"><i class="bi bi-dash-circle" aria-hidden="true"></i> Chưa dùng</span>
+                                        }
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <a asp-action="Edit" asp-route-category="@Model.Category" asp-route-id="@item.Id"
+                                           class="btn btn-sm btn-outline-primary rounded-3 me-1 payroll-action-button" title="Chỉnh sửa thông tin" aria-label="Sửa @item.Name">
+                                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                        </a>
+                                        @if (item.Used || item.IsParameter)
+                                        {
+                                            var lockReason = item.IsParameter
+                                                ? "Tham số hệ số thưởng sự kiện: chỉ được sửa giá trị, không thể xóa"
+                                                : "Đang được sử dụng trong phiếu lương, không thể xóa";
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 opacity-50 payroll-action-button"
+                                                    disabled title="@lockReason" aria-label="Không thể xóa @item.Name: @lockReason">
+                                                <i class="bi bi-lock-fill" aria-hidden="true"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="Delete" asp-route-category="@Model.Category" asp-route-id="@item.Id"
+                                                  method="post" class="d-inline catalog-delete-form" data-catalog-name="@item.Name">
+                                                <button class="btn btn-sm btn-outline-danger rounded-3 payroll-action-button" type="submit" title="Xóa cấu hình" aria-label="Xóa @item.Name">
+                                                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (Model.Items.Count == 0 && Model.Error == null)
+                            {
+                                <tr><td colspan="@columnCount" class="catalog-empty">
+                                    <h2 class="h5">Không tìm thấy cấu hình phù hợp</h2>
+                                    <p class="text-muted">Thử đổi từ khóa hoặc đặt lại bộ lọc.</p>
+                                    <button class="btn btn-outline-secondary btn-sm rounded-3" type="button" data-catalog-reset>Đặt lại bộ lọc</button>
+                                </td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="payroll-config-footnote">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    Thay đổi cấu hình chỉ áp dụng cho kỳ lương chưa khóa sổ. Phiếu lương đã chốt giữ nguyên số tiền snapshot tại thời điểm tính.
+                </p>
+            </div>
         </div>
     </section>
 </div>

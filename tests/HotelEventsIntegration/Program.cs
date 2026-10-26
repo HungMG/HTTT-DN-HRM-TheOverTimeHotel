@@ -159,6 +159,7 @@ try
         Require((await f.Get(item.MaDuAn)).MaNguoiQuanLy == f.HR.EmployeeId, "Rejected edit changed the manager.");
     });
 
+    await HourlyOperationsTests.RunMergeCompatibility(f, Check);
     await EventReportTests.Run(f, Check);
     await HourlyOperationsTests.Run(f, Check);
     await Phase1Tests.Run(f, Check);

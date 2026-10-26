@@ -42,7 +42,7 @@ static partial class HourlyOperationsTests
             await Reject(() => f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, work)));
             var preview = await f.With(s => s.PreviewAsync(f.HR, item.MaDuAn));
             Require(preview.Warnings.Count == 0 && preview.Rows.Single().Minutes == 90
-                && preview.Total == 57_692m && (await f.Get(item.MaDuAn)).PhanCongs.Single().CongThucTes.Count == 1,
+                && preview.Total == 115_385m && (await f.Get(item.MaDuAn)).PhanCongs.Single().CongThucTes.Count == 1,
                 "Participation did not use one continuous ninety-minute interval.");
             item = await f.Get(item.MaDuAn); work.Version = item.Version;
             work.End = end.AddMinutes(1);
@@ -105,7 +105,7 @@ static partial class HourlyOperationsTests
                 && after.RootElement.GetProperty("MaNguoiXacNhan").GetInt32() == f.HR.EmployeeId
                 && audit.LyDo == "Correct actual arrival using attendance sheet", "Correction lacks before/after evidence.");
             var preview = await f.With(s => s.PreviewAsync(f.HR, item.MaDuAn));
-            Require(preview.Warnings.Count == 0 && preview.Total == 57_692m, "Corrected ninety minutes have the wrong price.");
+            Require(preview.Warnings.Count == 0 && preview.Total == 115_385m, "Corrected ninety minutes have the wrong price.");
             await f.With(s => s.DeleteWorkAsync(f.HR, item.MaDuAn, corrected.MaCong, item.Version, "Remove mistaken entry after checking"));
             history = await f.With(s => s.HistoryAsync(item.MaDuAn));
             var deletion = history.First(h => h.HanhDong == "SUA_CONG_SU_KIEN");
@@ -185,7 +185,7 @@ static partial class HourlyOperationsTests
             await f.With(s => s.StopAsync(f.HR, item.MaDuAn, item.Version, input.End, "Customer closed the event early"));
             var preview = await f.With(s => s.PreviewAsync(f.HR, item.MaDuAn));
             item = await f.Get(item.MaDuAn);
-            Require(preview.Warnings.Count == 0 && preview.Rows.Single().Minutes == 60 && preview.Total == 38_462m
+            Require(preview.Warnings.Count == 0 && preview.Rows.Single().Minutes == 60 && preview.Total == 76_923m
                 && item.PhanCongs.Single().CongThucTes.Single().MaCong == workId,
                 "Stopping counted unworked time or discarded performed work.");
         });

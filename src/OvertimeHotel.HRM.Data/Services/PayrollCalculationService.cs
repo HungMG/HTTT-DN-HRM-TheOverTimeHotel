@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Constants;
@@ -64,8 +65,12 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
     private static void EnsureWritablePeriod(KyLuong period)
     {
-        if (period.TrangThai is not (SalaryConstants.PERIOD_OPEN or SalaryConstants.PERIOD_DRAFT or SalaryConstants.PERIOD_REJECTED))
-            throw new InvalidOperationException("Chỉ kỳ lương mở, nháp hoặc bị từ chối mới được phép tính lại và điều chỉnh.");
+        if (period.TrangThai == SalaryConstants.PERIOD_LOCKED)
+            throw new InvalidOperationException("Kỳ lương đã khóa sổ, không được phép tính lại hoặc chỉnh sửa.");
+        if (period.NgayDuyet.HasValue || period.TrangThai == "DA_DUYET")
+            throw new InvalidOperationException("Bảng lương đã được duyệt, không thể tính lại hoặc chỉnh sửa.");
+        if (period.NgayGuiDuyet.HasValue && !period.NgayDuyet.HasValue && string.IsNullOrEmpty(period.LyDoTuChoi))
+            throw new InvalidOperationException("Bảng lương đang chờ Ban Giám Đốc duyệt, không thể tính lại hoặc chỉnh sửa.");
     }
 
     private IQueryable<QuyetToanSuKien> OutstandingSettlements(int periodId) =>
@@ -202,6 +207,540 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .FirstOrDefaultAsync(p => p.MaPhieuLuong == maPhieuLuong, cancellationToken);
     }
 
+    private sealed class PayrollConfigContext
+    {
+        public decimal OtNormalRate { get; set; } = SalaryConstants.OVERTIME_NORMAL_RATE;
+        public decimal OtWeekendRate { get; set; } = SalaryConstants.OVERTIME_WEEKEND_RATE;
+        public decimal OtHolidayRate { get; set; } = SalaryConstants.OVERTIME_HOLIDAY_RATE;
+        public decimal NightShiftRate { get; set; } = SalaryConstants.NIGHT_SHIFT_ALLOWANCE_RATE;
+
+        public decimal BhxhRate { get; set; } = SalaryConstants.BHXH_RATE;
+        public decimal BhytRate { get; set; } = SalaryConstants.BHYT_RATE;
+        public decimal BhtnRate { get; set; } = SalaryConstants.BHTN_RATE;
+
+        public decimal FinePerMinuteLate { get; set; } = SalaryConstants.FINE_PER_MINUTE_LATE;
+        public decimal FineEarlyDeparture { get; set; } = 50000m;
+        public decimal FineAbsencePenalty { get; set; } = SalaryConstants.FINE_ABSENCE_PENALTY;
+
+        public decimal MealAllowancePerDay { get; set; } = SalaryConstants.MEAL_ALLOWANCE_PER_DAY;
+        public decimal ManagerResponsibilityAllowance { get; set; } = 1000000m;
+        public decimal HousekeepingHazardAllowancePerDay { get; set; } = 20000m;
+
+        public decimal AttendanceBonus { get; set; } = 500000m;
+        public decimal ServiceChargePool { get; set; } = 1000000m;
+    }
+
+    private async Task<PayrollConfigContext> LoadPayrollConfigAsync(CancellationToken cancellationToken)
+    {
+        var config = new PayrollConfigContext();
+
+        var tangCas = await _context.CauHinhTangCas.AsNoTracking().ToListAsync(cancellationToken);
+        if (tangCas.FirstOrDefault(x => x.MaLoaiOt == 1) is { HeSo: > 0 } ot1) config.OtNormalRate = ot1.HeSo;
+        if (tangCas.FirstOrDefault(x => x.MaLoaiOt == 2) is { HeSo: > 0 } ot2) config.OtWeekendRate = ot2.HeSo;
+        if (tangCas.FirstOrDefault(x => x.MaLoaiOt == 3) is { HeSo: > 0 } ot3) config.OtHolidayRate = ot3.HeSo;
+        if (tangCas.FirstOrDefault(x => x.MaLoaiOt == 4) is { HeSo: > 0 } ot4) config.NightShiftRate = ot4.HeSo;
+
+        var khauTrus = await _context.CauHinhKhauTrus.AsNoTracking().ToListAsync(cancellationToken);
+        if (khauTrus.FirstOrDefault(x => x.MaKhoanTru == 1) is { TyLeHoacDinhMuc: > 0 } kt1)
+            config.BhxhRate = kt1.TyLeHoacDinhMuc > 1m ? kt1.TyLeHoacDinhMuc / 100m : kt1.TyLeHoacDinhMuc;
+        if (khauTrus.FirstOrDefault(x => x.MaKhoanTru == 2) is { TyLeHoacDinhMuc: > 0 } kt2)
+            config.BhytRate = kt2.TyLeHoacDinhMuc > 1m ? kt2.TyLeHoacDinhMuc / 100m : kt2.TyLeHoacDinhMuc;
+        if (khauTrus.FirstOrDefault(x => x.MaKhoanTru == 3) is { TyLeHoacDinhMuc: > 0 } kt3)
+            config.BhtnRate = kt3.TyLeHoacDinhMuc > 1m ? kt3.TyLeHoacDinhMuc / 100m : kt3.TyLeHoacDinhMuc;
+        if (khauTrus.FirstOrDefault(x => x.MaKhoanTru == 5) is { TyLeHoacDinhMuc: > 0 } kt5)
+            config.FinePerMinuteLate = kt5.TyLeHoacDinhMuc;
+
+        var khoanLuongs = await _context.CauHinhKhoanLuongs.AsNoTracking().ToListAsync(cancellationToken);
+
+        if (khauTrus.FirstOrDefault(x => x.TenKhoanTru.Contains("về sớm", StringComparison.OrdinalIgnoreCase)) is { TyLeHoacDinhMuc: > 0 } ktEarly)
+            config.FineEarlyDeparture = ktEarly.TyLeHoacDinhMuc;
+        else if (khoanLuongs.FirstOrDefault(x => x.TenKhoan.Contains("về sớm", StringComparison.OrdinalIgnoreCase)) is { GiaTriMacDinh: > 0 } klEarly)
+            config.FineEarlyDeparture = klEarly.GiaTriMacDinh;
+
+        var phuCaps = await _context.CauHinhPhuCaps.AsNoTracking().ToListAsync(cancellationToken);
+        if (phuCaps.FirstOrDefault(x => x.MaPhuCap == 1) is { MucDinhMuc: > 0 } pc1) config.MealAllowancePerDay = pc1.MucDinhMuc;
+        if (phuCaps.FirstOrDefault(x => x.MaPhuCap == 2) is { MucDinhMuc: > 0 } pc2) config.ManagerResponsibilityAllowance = pc2.MucDinhMuc;
+        if (phuCaps.FirstOrDefault(x => x.MaPhuCap == 4) is { MucDinhMuc: > 0 } pc4) config.HousekeepingHazardAllowancePerDay = pc4.MucDinhMuc;
+
+        if (khoanLuongs.FirstOrDefault(x => x.MaKhoan == 4) is { GiaTriMacDinh: > 0 } kl4) config.AttendanceBonus = kl4.GiaTriMacDinh;
+        if (khoanLuongs.FirstOrDefault(x => x.MaKhoan == 5) is { GiaTriMacDinh: > 0 } kl5) config.ServiceChargePool = kl5.GiaTriMacDinh;
+
+        return config;
+    }
+
+    private PhieuLuong BuildEmployeePayslip(
+        NhanVien nv,
+        HopDong validContract,
+        KyLuong period,
+        List<PhanCa> empShifts,
+        List<DonTu> empLeaves,
+        List<QuyetToanSuKien> empSettlements,
+        PayrollConfigContext config,
+        out List<(QuyetToanSuKien Settlement, ChiTietPhieuLuong Detail)> settlementsToLink)
+    {
+        var luongCoBan = validContract.LuongCoBan;
+        var donGiaNgay = luongCoBan / (decimal)SalaryConstants.STANDARD_WORKING_DAYS;
+        var donGiaGio = donGiaNgay / (decimal)SalaryConstants.STANDARD_WORKING_HOURS_PER_DAY;
+
+        var summary = AttendanceSummaryCalculator.Calculate(
+            nv.MaNhanVien, nv.HoTen, period.TuNgay, period.DenNgay, empShifts,
+            empLeaves.Where(r => r.LoaiDon?.CoHuongLuong == true));
+
+        var ngayCongThucTe = (decimal)summary.TotalCreditedDays;
+        var workedDays = (decimal)summary.WorkedDays;
+
+        var tienLuongCong = Math.Round(donGiaNgay * ngayCongThucTe, MidpointRounding.AwayFromZero);
+
+        var details = new List<ChiTietPhieuLuong>();
+
+        // 1. Phụ cấp đi làm ngày Lễ, Tết (+200% cho giờ trong ca chuẩn để đạt tổng 300%)
+        var holidayWorkShifts = empShifts
+            .Where(s => IsHoliday(s.NgayLamViec) && s.ChamCong is { GioCheckIn: not null, GioCheckOut: not null })
+            .ToList();
+        var holidayWorkHours = holidayWorkShifts.Sum(s => s.CaLamViec?.GioLamChuan ?? 8m);
+        var tienLamNgayLe = Math.Round(donGiaGio * holidayWorkHours * 2.0m, MidpointRounding.AwayFromZero);
+        if (holidayWorkHours > 0)
+        {
+            details.Add(new ChiTietPhieuLuong
+            {
+                MaLoaiOt = 3,
+                LoaiKhoan = "PHU_CAP",
+                LoaiKhoanLuu = "PHU_CAP",
+                TenKhoanLuu = "Phụ cấp đi làm ngày Lễ, Tết (+200%)",
+                SoTien = tienLamNgayLe,
+                GhiChu = $"{holidayWorkShifts.Count} ca ({holidayWorkHours:N1}h) x đơn giá x 2.0 (tổng đạt 300%)"
+            });
+        }
+
+        // 2. Tăng ca (OT)
+        var otHoursNormal = 0m;
+        var otHoursWeekend = 0m;
+        var otHoursHoliday = 0m;
+
+        foreach (var shift in empShifts.Where(s => s.ChamCong is { GioTangCaOt: > 0 }))
+        {
+            var ot = shift.ChamCong!.GioTangCaOt;
+            if (IsHoliday(shift.NgayLamViec))
+            {
+                otHoursHoliday += ot;
+            }
+            else if (shift.NgayLamViec.DayOfWeek == DayOfWeek.Sunday)
+            {
+                otHoursWeekend += ot;
+            }
+            else
+            {
+                otHoursNormal += ot;
+            }
+        }
+
+        var tienOtNormal = Math.Round(donGiaGio * otHoursNormal * config.OtNormalRate, MidpointRounding.AwayFromZero);
+        var tienOtWeekend = Math.Round(donGiaGio * otHoursWeekend * config.OtWeekendRate, MidpointRounding.AwayFromZero);
+        var tienOtHoliday = Math.Round(donGiaGio * otHoursHoliday * config.OtHolidayRate, MidpointRounding.AwayFromZero);
+        var tienTangCa = tienOtNormal + tienOtWeekend + tienOtHoliday;
+
+        // Tính phần chênh lệch làm thêm giờ được miễn thuế theo Luật Thuế TNCN (Thông tư 111/2013/TT-BTC)
+        var tienMienThueOtNormal = Math.Round(donGiaGio * otHoursNormal * Math.Max(0m, config.OtNormalRate - 1.0m), MidpointRounding.AwayFromZero);
+        var tienMienThueOtWeekend = Math.Round(donGiaGio * otHoursWeekend * Math.Max(0m, config.OtWeekendRate - 1.0m), MidpointRounding.AwayFromZero);
+        var tienMienThueOtHoliday = Math.Round(donGiaGio * otHoursHoliday * Math.Max(0m, config.OtHolidayRate - 1.0m), MidpointRounding.AwayFromZero);
+        var tienMienThueOt = tienMienThueOtNormal + tienMienThueOtWeekend + tienMienThueOtHoliday;
+
+        if (otHoursNormal > 0)
+        {
+            details.Add(new ChiTietPhieuLuong
+            {
+                MaLoaiOt = 1,
+                LoaiKhoan = "TANG_CA",
+                LoaiKhoanLuu = "TANG_CA",
+                TenKhoanLuu = $"Làm thêm ngày thường ({config.OtNormalRate * 100:N0}%)",
+                SoTien = tienOtNormal,
+                GhiChu = $"{otHoursNormal:N1} giờ x đơn giá x {config.OtNormalRate:N1}"
+            });
+        }
+        if (otHoursWeekend > 0)
+        {
+            details.Add(new ChiTietPhieuLuong
+            {
+                MaLoaiOt = 2,
+                LoaiKhoan = "TANG_CA",
+                LoaiKhoanLuu = "TANG_CA",
+                TenKhoanLuu = $"Làm thêm ngày nghỉ tuần ({config.OtWeekendRate * 100:N0}%)",
+                SoTien = tienOtWeekend,
+                GhiChu = $"{otHoursWeekend:N1} giờ x đơn giá x {config.OtWeekendRate:N1}"
+            });
+        }
+        if (otHoursHoliday > 0)
+        {
+            details.Add(new ChiTietPhieuLuong
+            {
+                MaLoaiOt = 3,
+                LoaiKhoan = "TANG_CA",
+                LoaiKhoanLuu = "TANG_CA",
+                TenKhoanLuu = $"Làm thêm ngày Lễ, Tết ({config.OtHolidayRate * 100:N0}%)",
+                SoTien = tienOtHoliday,
+                GhiChu = $"{otHoursHoliday:N1} giờ x đơn giá x {config.OtHolidayRate:N1}"
+            });
+        }
+
+        // 3. Phụ cấp ca đêm (30%)
+        var nightShifts = empShifts.Where(s =>
+            s.CaLamViec is { QuaDem: true } &&
+            s.ChamCong is { GioCheckIn: not null, GioCheckOut: not null }).ToList();
+        var nightHours = nightShifts.Sum(s => s.CaLamViec?.GioLamChuan ?? 8m);
+        var tienCaDem = Math.Round(donGiaGio * nightHours * config.NightShiftRate, MidpointRounding.AwayFromZero);
+
+        if (nightHours > 0)
+        {
+            details.Add(new ChiTietPhieuLuong
+            {
+                MaLoaiOt = 4,
+                LoaiKhoan = "PHU_CAP",
+                LoaiKhoanLuu = "PHU_CAP",
+                TenKhoanLuu = $"Phụ cấp ca đêm ({config.NightShiftRate * 100:N0}%)",
+                SoTien = tienCaDem,
+                GhiChu = $"{nightShifts.Count} ca đêm ({nightHours:N0}h) x {config.NightShiftRate * 100:N0}%"
+            });
+        }
+
+        // 4. Phụ cấp ăn ca (Miễn thuế TNCN)
+        var tienAnCa = Math.Round(workedDays * config.MealAllowancePerDay, MidpointRounding.AwayFromZero);
+        if (workedDays > 0 && config.MealAllowancePerDay > 0)
+        {
+            details.Add(new ChiTietPhieuLuong
+            {
+                MaPhuCap = 1,
+                LoaiKhoan = "PHU_CAP",
+                LoaiKhoanLuu = "PHU_CAP",
+                TenKhoanLuu = "Phụ cấp ăn ca",
+                SoTien = tienAnCa,
+                GhiChu = $"{workedDays:N0} ngày công thực tế x {config.MealAllowancePerDay:N0}đ (miễn thuế)"
+            });
+        }
+
+        // 5. Phụ cấp quản lý & Phụ cấp độc hại buồng phòng
+        var chucVuTen = nv.ChucVu?.TenChucVu ?? "";
+        var phongBanTen = nv.PhongBan?.TenPhongBan ?? "";
+        var isManager = chucVuTen.Contains("Trưởng") || chucVuTen.Contains("Giám sát") || chucVuTen.Contains("Quản lý") || chucVuTen.Contains("Giám đốc");
+
+        if (isManager && ngayCongThucTe > 0)
+        {
+            var congHuongPhuCap = Math.Min((decimal)SalaryConstants.STANDARD_WORKING_DAYS, ngayCongThucTe);
+            var phanTramCong = congHuongPhuCap / (decimal)SalaryConstants.STANDARD_WORKING_DAYS;
+
+            if (config.ManagerResponsibilityAllowance > 0)
+            {
+                var tienTrachNhiem = Math.Round(config.ManagerResponsibilityAllowance * phanTramCong, MidpointRounding.AwayFromZero);
+                if (tienTrachNhiem > 0)
+                {
+                    details.Add(new ChiTietPhieuLuong
+                    {
+                        MaPhuCap = 2,
+                        LoaiKhoan = "PHU_CAP",
+                        LoaiKhoanLuu = "PHU_CAP",
+                        TenKhoanLuu = "Phụ cấp trách nhiệm quản lý",
+                        SoTien = tienTrachNhiem,
+                        GhiChu = ngayCongThucTe >= SalaryConstants.STANDARD_WORKING_DAYS
+                            ? $"Chức vụ: {chucVuTen}"
+                            : $"Chức vụ: {chucVuTen} (Phân bổ {tienTrachNhiem:N0}đ theo {ngayCongThucTe:N1}/{SalaryConstants.STANDARD_WORKING_DAYS} công)"
+                    });
+                }
+            }
+
+        }
+
+        var isHousekeeping = phongBanTen.Contains("Buồng") || phongBanTen.Contains("Housekeeping");
+        var tienDocHai = 0m;
+        if (isHousekeeping && workedDays > 0 && config.HousekeepingHazardAllowancePerDay > 0)
+        {
+            tienDocHai = Math.Round(workedDays * config.HousekeepingHazardAllowancePerDay, MidpointRounding.AwayFromZero);
+            details.Add(new ChiTietPhieuLuong
+            {
+                MaPhuCap = 4,
+                LoaiKhoan = "PHU_CAP",
+                LoaiKhoanLuu = "PHU_CAP",
+                TenKhoanLuu = "Phụ cấp độc hại buồng phòng",
+                SoTien = tienDocHai,
+                GhiChu = $"{workedDays:N0} ngày x {config.HousekeepingHazardAllowancePerDay:N0}đ (miễn thuế)"
+            });
+        }
+
+        // 6. Sự kiện khách sạn
+        var eventDetails = empSettlements
+            .Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
+        details.AddRange(eventDetails.Select(x => x.Detail));
+        settlementsToLink = eventDetails;
+        var tienThuongSuKien = eventDetails.Sum(x => x.Detail.SoTien);
+
+        // 7. Thưởng chuyên cần & Phí phục vụ (Service Charge)
+        var tongThuong = tienThuongSuKien;
+        var hasLate = empShifts.Any(s => s.ChamCong is { PhutDiTre: > 0 });
+        var hasEarly = empShifts.Any(s => s.ChamCong is { PhutVeSom: > 15 });
+        var hasAbsence = empShifts.Any(s =>
+        {
+            var cc = s.ChamCong;
+            var isShiftEnded = s.KetThucDuKien <= DateTimeOffset.UtcNow ||
+                               s.NgayLamViec < DateOnly.FromDateTime(DateTime.Today) ||
+                               (period.DenNgay < DateOnly.FromDateTime(DateTime.Today) && s.NgayLamViec <= period.DenNgay);
+            var hasNoPunch = cc == null || (!cc.GioCheckIn.HasValue && !cc.GioCheckOut.HasValue);
+            var isUnattendedScheduled = isShiftEnded && s.TrangThai == "DA_PHAN" && hasNoPunch;
+            var isAbsent = s.TrangThai == "VANG_MAT" || cc?.TrangThai == "VANG_MAT" || isUnattendedScheduled;
+            var hasApprovedLeave = empLeaves.Any(l => l.TuNgay <= s.NgayLamViec && l.DenNgay >= s.NgayLamViec);
+            return isAbsent && !hasApprovedLeave;
+        });
+
+        var hasViolations = hasLate || hasEarly || hasAbsence;
+
+        if (ngayCongThucTe >= 25 && !hasViolations && config.AttendanceBonus > 0)
+        {
+            details.Add(new ChiTietPhieuLuong
+            {
+                MaKhoan = 4,
+                LoaiKhoan = "THUONG",
+                LoaiKhoanLuu = "THUONG",
+                TenKhoanLuu = "Tiền thưởng chuyên cần",
+                SoTien = config.AttendanceBonus,
+                GhiChu = $"Đạt {ngayCongThucTe:N1}/26 ngày công và không vi phạm giờ giấc / kỷ luật"
+            });
+            tongThuong += config.AttendanceBonus;
+        }
+
+        // Phân bổ phí phục vụ theo ngày công thực tế (tối đa bằng mức quy định khi đạt đủ 26 ngày công)
+        if (config.ServiceChargePool > 0)
+        {
+            var serviceCharge = workedDays > 0
+                ? Math.Round(config.ServiceChargePool * Math.Min(1m, workedDays / (decimal)SalaryConstants.STANDARD_WORKING_DAYS), MidpointRounding.AwayFromZero)
+                : 0m;
+            if (serviceCharge > 0)
+            {
+                details.Add(new ChiTietPhieuLuong
+                {
+                    MaKhoan = 5,
+                    LoaiKhoan = "THUONG",
+                    LoaiKhoanLuu = "THUONG",
+                    TenKhoanLuu = "Tiền phí phục vụ (Service Charge)",
+                    SoTien = serviceCharge,
+                    GhiChu = $"{workedDays:N0}/{SalaryConstants.STANDARD_WORKING_DAYS} ngày công thực tế x {config.ServiceChargePool:N0}đ"
+                });
+                tongThuong += serviceCharge;
+            }
+        }
+
+        // Tổng phụ cấp & Tổng Gross (Tầng 1)
+        var tongPhuCap = details.Where(d => d.LoaiKhoan == "PHU_CAP").Sum(d => d.SoTien);
+        var tongGross = tienLuongCong + tienTangCa + tongPhuCap + tongThuong;
+
+        // 8. Khấu trừ bảo hiểm bắt buộc có trần (Theo Luật BHXH 2014 & BLLĐ 2019)
+        // Điều kiện trích đóng bảo hiểm:
+        // 1. Không áp dụng cho Hợp đồng thử việc (THU_VIEC).
+        // 2. Không áp dụng nếu số ngày công thực tế < 14 ngày trong tháng (Khoản 3 Điều 85 Luật BHXH).
+        var isProbation = (validContract.HinhThucHopDong?.Contains("THU_VIEC", StringComparison.OrdinalIgnoreCase) == true) ||
+                          (validContract.LoaiHopDong?.Contains("thử việc", StringComparison.OrdinalIgnoreCase) == true) ||
+                          (validContract.LoaiHopDong?.Contains("THU_VIEC", StringComparison.OrdinalIgnoreCase) == true);
+
+        var isEligibleForInsurance = !isProbation && ngayCongThucTe >= 14m;
+
+        var luongDongBh = isEligibleForInsurance ? Math.Min(luongCoBan, SalaryConstants.MAX_INSURANCE_SALARY_BASE) : 0m;
+        var luongDongBhtn = isEligibleForInsurance ? Math.Min(luongCoBan, SalaryConstants.MAX_UNEMPLOYMENT_INSURANCE_SALARY_BASE) : 0m;
+
+        var tienBhxh = isEligibleForInsurance ? Math.Round(luongDongBh * config.BhxhRate, MidpointRounding.AwayFromZero) : 0m;
+        var tienBhyt = isEligibleForInsurance ? Math.Round(luongDongBh * config.BhytRate, MidpointRounding.AwayFromZero) : 0m;
+        var tienBhtn = isEligibleForInsurance ? Math.Round(luongDongBhtn * config.BhtnRate, MidpointRounding.AwayFromZero) : 0m;
+        var tongBaoHiem = tienBhxh + tienBhyt + tienBhtn;
+        var tongTyLeBh = (config.BhxhRate + config.BhytRate + config.BhtnRate) * 100m;
+
+        if (isEligibleForInsurance && tongBaoHiem > 0)
+        {
+            var insuranceDetail = new ChiTietPhieuLuong
+            {
+                MaKhoanTru = 1,
+                LoaiKhoan = "KHAU_TRU",
+                LoaiKhoanLuu = "KHAU_TRU",
+                TenKhoanLuu = $"Bảo hiểm bắt buộc ({tongTyLeBh:N1}%)",
+                SoTien = tongBaoHiem,
+                GhiChu = $"BHXH {config.BhxhRate * 100:N1}%: {tienBhxh:N0}đ, BHYT {config.BhytRate * 100:N1}%: {tienBhyt:N0}đ, BHTN {config.BhtnRate * 100:N1}%: {tienBhtn:N0}đ",
+                ChiTietTruBaoHiems = new List<ChiTietTruBaoHiem>
+                {
+                    new()
+                    {
+                        LuongDongBaoHiem = luongDongBh,
+                        TyLeBhxh = config.BhxhRate * 100m,
+                        TienBhxh = tienBhxh,
+                        TyLeBhyt = config.BhytRate * 100m,
+                        TienBhyt = tienBhyt,
+                        TyLeBhtn = config.BhtnRate * 100m,
+                        TienBhtn = tienBhtn,
+                        TongBaoHiem = tongBaoHiem
+                    }
+                }
+            };
+            details.Add(insuranceDetail);
+        }
+        else
+        {
+            var lyDoKhongDong = isProbation
+                ? "HĐ thử việc - Không thuộc đối tượng đóng BH bắt buộc"
+                : $"Ngày công ({ngayCongThucTe:N1}) < 14 ngày - Miễn đóng BH (Khoản 3 Điều 85 Luật BHXH)";
+
+            var insuranceDetail = new ChiTietPhieuLuong
+            {
+                MaKhoanTru = 1,
+                LoaiKhoan = "KHAU_TRU",
+                LoaiKhoanLuu = "KHAU_TRU",
+                TenKhoanLuu = "Bảo hiểm bắt buộc (Miễn đóng)",
+                SoTien = 0m,
+                GhiChu = lyDoKhongDong,
+                ChiTietTruBaoHiems = new List<ChiTietTruBaoHiem>
+                {
+                    new()
+                    {
+                        LuongDongBaoHiem = 0m,
+                        TyLeBhxh = 0m,
+                        TienBhxh = 0m,
+                        TyLeBhyt = 0m,
+                        TienBhyt = 0m,
+                        TyLeBhtn = 0m,
+                        TienBhtn = 0m,
+                        TongBaoHiem = 0m
+                    }
+                }
+            };
+            details.Add(insuranceDetail);
+        }
+
+        // 9. Phạt vi phạm kỷ luật & chấm công (Bao gồm Bỏ ca 200k)
+        var fineDetails = new List<ChiTietTruViPhamTamUng>();
+        var tongTienPhat = 0m;
+
+        foreach (var shift in empShifts)
+        {
+            var cc = shift.ChamCong;
+            if (cc != null)
+            {
+                if (cc.PhutDiTre > 0)
+                {
+                    var fine = cc.PhutDiTre * config.FinePerMinuteLate;
+                    tongTienPhat += fine;
+                    fineDetails.Add(new ChiTietTruViPhamTamUng
+                    {
+                        LoaiTru = "DI_TRE",
+                        SoPhutViPham = cc.PhutDiTre,
+                        SoTienTru = fine,
+                        LyDoChiTiet = $"Đi trễ {cc.PhutDiTre} phút ngày {shift.NgayLamViec:dd/MM/yyyy} ({cc.PhutDiTre}p x {config.FinePerMinuteLate:N0}đ)"
+                    });
+                }
+
+                if (cc.PhutVeSom > 15)
+                {
+                    var fine = config.FineEarlyDeparture;
+                    tongTienPhat += fine;
+                    fineDetails.Add(new ChiTietTruViPhamTamUng
+                    {
+                        LoaiTru = "VE_SOM",
+                        SoPhutViPham = cc.PhutVeSom,
+                        SoTienTru = fine,
+                        LyDoChiTiet = $"Về sớm {cc.PhutVeSom} phút ngày {shift.NgayLamViec:dd/MM/yyyy} (>15p định mức {config.FineEarlyDeparture:N0}đ)"
+                    });
+                }
+            }
+
+            // Kiểm tra bỏ ca (Vắng mặt không phép)
+            // 1. Quản lý hoặc hệ thống đã đánh dấu VANG_MAT
+            // 2. HOẶC ca làm việc đã kết thúc (ngày làm việc đã qua hoặc ca đã hết giờ),
+            //    nhân viên không có chấm công vào/ra và trạng thái vẫn là DA_PHAN
+            var isShiftEnded = shift.KetThucDuKien <= DateTimeOffset.UtcNow ||
+                               shift.NgayLamViec < DateOnly.FromDateTime(DateTime.Today) ||
+                               (period.DenNgay < DateOnly.FromDateTime(DateTime.Today) && shift.NgayLamViec <= period.DenNgay);
+            var hasNoPunch = cc == null || (!cc.GioCheckIn.HasValue && !cc.GioCheckOut.HasValue);
+            var isUnattendedScheduled = isShiftEnded && shift.TrangThai == "DA_PHAN" && hasNoPunch;
+
+            var isAbsent = shift.TrangThai == "VANG_MAT" || cc?.TrangThai == "VANG_MAT" || isUnattendedScheduled;
+            var hasApprovedLeave = empLeaves.Any(l => l.TuNgay <= shift.NgayLamViec && l.DenNgay >= shift.NgayLamViec);
+            if (isAbsent && !hasApprovedLeave)
+            {
+                var fine = config.FineAbsencePenalty;
+                tongTienPhat += fine;
+                fineDetails.Add(new ChiTietTruViPhamTamUng
+                {
+                    LoaiTru = "BO_CA",
+                    SoPhutViPham = 480,
+                    SoTienTru = fine,
+                    LyDoChiTiet = $"Bỏ ca làm việc không phép ngày {shift.NgayLamViec:dd/MM/yyyy}"
+                });
+            }
+        }
+
+        if (tongTienPhat > 0)
+        {
+            var fineDetail = new ChiTietPhieuLuong
+            {
+                MaKhoanTru = 5,
+                LoaiKhoan = "KHAU_TRU",
+                LoaiKhoanLuu = "KHAU_TRU",
+                TenKhoanLuu = "Phạt vi phạm kỷ luật lao động & chấm công",
+                SoTien = tongTienPhat,
+                GhiChu = $"{fineDetails.Count} lần vi phạm trong kỳ",
+                ChiTietTruViPhamTamUngs = fineDetails
+            };
+            details.Add(fineDetail);
+        }
+
+        // 10. Thuế TNCN lũy tiến từng phần (sau khi loại trừ các khoản thu nhập được miễn thuế theo Thông tư 111/2013/TT-BTC)
+        // Các khoản miễn thuế: Ăn ca, Độc hại buồng phòng, Phụ cấp làm việc ngày Lễ (+200%), Phụ cấp ca đêm (30%), và phần chênh lệch làm thêm giờ
+        var tongThuNhapMienThue = tienAnCa + tienDocHai + tienLamNgayLe + tienCaDem + tienMienThueOt;
+        var thuNhapChiuThue = Math.Max(0m, tongGross - tongThuNhapMienThue);
+        var giamTruBanThan = SalaryConstants.PERSONAL_TAX_DEDUCTION;
+        var soNguoiPhuThuoc = Math.Max(0, nv.SoNguoiPhuThuoc);
+        var giamTruPhuThuoc = soNguoiPhuThuoc * SalaryConstants.DEPENDENT_TAX_DEDUCTION;
+
+        var thuNhapTinhThue = Math.Max(0m, thuNhapChiuThue - tongBaoHiem - giamTruBanThan - giamTruPhuThuoc);
+        var tienThue = PersonalIncomeTaxCalculator.CalculateTax(thuNhapTinhThue);
+
+        var taxDetail = new ChiTietPhieuLuong
+        {
+            MaKhoanTru = 4,
+            LoaiKhoan = "KHAU_TRU",
+            LoaiKhoanLuu = "KHAU_TRU",
+            TenKhoanLuu = "Thuế thu nhập cá nhân (TNCN)",
+            SoTien = tienThue,
+            GhiChu = tienThue > 0
+                ? $"Thu nhập tính thuế: {thuNhapTinhThue:N0}đ (Miễn thuế: {tongThuNhapMienThue:N0}đ)"
+                : $"Không phát sinh nghĩa vụ nộp thuế (Miễn thuế: {tongThuNhapMienThue:N0}đ)",
+            ChiTietTruThueTncns = new List<ChiTietTruThueTncn>
+            {
+                new()
+                {
+                    ThuNhapChiuThue = thuNhapChiuThue,
+                    GiamTruBanThan = giamTruBanThan,
+                    SoNguoiPhuThuoc = soNguoiPhuThuoc,
+                    GiamTruPhuThuoc = giamTruPhuThuoc,
+                    ThuNhapTinhThue = thuNhapTinhThue,
+                    TienThue = tienThue
+                }
+            }
+        };
+        details.Add(taxDetail);
+
+        // 11. Tổng Khấu Trừ & Thực Nhận (Net)
+        var tongKhauTru = details.Where(d => d.LoaiKhoan == "KHAU_TRU").Sum(d => d.SoTien);
+        var thucNhan = tongGross - tongKhauTru;
+
+        return new PhieuLuong
+        {
+            MaNhanVien = nv.MaNhanVien,
+            MaKyLuong = period.MaKyLuong,
+            LuongCoBan = luongCoBan,
+            NgayCongThucTe = ngayCongThucTe,
+            TienLuongCong = tienLuongCong,
+            TienTangCa = tienTangCa,
+            TongPhuCap = tongPhuCap,
+            TongThuong = tongThuong,
+            TongKhauTru = tongKhauTru,
+            ThucNhan = thucNhan,
+            TrangThai = SalaryConstants.PAYSLIP_DRAFT,
+            ChiTietPhieuLuongs = details
+        };
+    }
+
     public Task<KyLuong> CalculatePayrollAsync(int thang, int nam, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
         ExecutePayrollWriteAsync(() => CalculatePayrollCoreAsync(thang, nam, nguoiThucHien, maTaiKhoan, cancellationToken), cancellationToken);
 
@@ -243,16 +782,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             await _context.PhieuLuongs.Where(p => p.MaKyLuong == period.MaKyLuong).ExecuteDeleteAsync(cancellationToken);
         }
 
-        // 2. Lấy danh sách nhân viên đang làm việc và có hợp đồng hiệu lực
-        var employees = await _context.NhanViens
-            .AsNoTracking()
-            .Where(e => e.TrangThai == "DANG_LAM")
-            .Include(e => e.PhongBan)
-            .Include(e => e.ChucVu)
-            .Include(e => e.HopDongs)
-            .ToListAsync(cancellationToken);
-
-        // 3. Tải trước toàn bộ phân ca, chấm công và đơn từ trong kỳ
+        // 2. Tải trước toàn bộ phân ca, chấm công và đơn từ trong kỳ
         var allShifts = await _context.PhanCas
             .AsNoTracking()
             .Where(s => s.TrangThai != "DA_HUY" && s.NgayLamViec >= period.TuNgay && s.NgayLamViec <= period.DenNgay)
@@ -260,9 +790,22 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .Include(s => s.CaLamViec)
             .ToListAsync(cancellationToken);
 
+        var activeEmployeeIdsWithShifts = allShifts.Select(s => s.MaNhanVien).Distinct().ToList();
+
+        // 3. Lấy danh sách nhân viên: đang làm việc HOẶC đã thôi việc nhưng thôi việc trong/sau kỳ, HOẶC có ca làm việc trong kỳ
+        var employees = await _context.NhanViens
+            .AsNoTracking()
+            .Where(e => e.TrangThai == "DANG_LAM" ||
+                        (e.NgayThoiViec.HasValue && e.NgayThoiViec.Value >= period.TuNgay) ||
+                        activeEmployeeIdsWithShifts.Contains(e.MaNhanVien))
+            .Include(e => e.PhongBan)
+            .Include(e => e.ChucVu)
+            .Include(e => e.HopDongs)
+            .ToListAsync(cancellationToken);
+
         var allLeaves = await _context.DonTus
             .AsNoTracking()
-            .Where(r => r.TrangThai == "DA_DUYET" && r.LoaiDon != null && r.LoaiDon.CoHuongLuong &&
+            .Where(r => r.TrangThai == "DA_DUYET" &&
                         r.TuNgay <= period.DenNgay && r.DenNgay >= period.TuNgay)
             .Include(r => r.LoaiDon)
             .ToListAsync(cancellationToken);
@@ -270,369 +813,40 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         await EnsureLegacyReconciledAsync(null, cancellationToken);
         var settlements = await OutstandingSettlements(period.MaKyLuong).ToListAsync(cancellationToken);
 
-        var allowancesConfig = await _context.CauHinhPhuCaps.AsNoTracking().ToListAsync(cancellationToken);
+        var config = await LoadPayrollConfigAsync(cancellationToken);
         var newPayslips = new List<PhieuLuong>();
         var settlementsToLink = new List<(QuyetToanSuKien Settlement, ChiTietPhieuLuong Detail)>();
+        var skippedWithoutContract = new List<string>();
 
         foreach (var nv in employees)
         {
             var validContract = nv.HopDongs
-                .Where(h => h.TrangThai == "HIEU_LUC" && h.NgayBatDau <= period.DenNgay &&
+                .Where(h => (h.TrangThai == "HIEU_LUC" || (h.NgayKetThuc.HasValue && h.NgayKetThuc.Value >= period.TuNgay)) &&
+                            h.NgayBatDau <= period.DenNgay &&
                             (h.NgayKetThuc == null || h.NgayKetThuc >= period.TuNgay))
                 .OrderByDescending(h => h.NgayBatDau)
                 .FirstOrDefault();
 
-            if (validContract == null) continue; // Nhân viên chưa có hợp đồng hiệu lực
+            if (validContract == null)
+            {
+                var hasShifts = allShifts.Any(s => s.MaNhanVien == nv.MaNhanVien);
+                if (hasShifts)
+                {
+                    skippedWithoutContract.Add($"{nv.HoTen} (#{nv.MaNhanVien})");
+                }
+                continue;
+            }
 
-            var luongCoBan = validContract.LuongCoBan;
-            var donGiaNgay = luongCoBan / SalaryConstants.STANDARD_WORKING_DAYS;
-            var donGiaGio = donGiaNgay / SalaryConstants.STANDARD_WORKING_HOURS_PER_DAY;
-
-            // Chấm công
             var empShifts = allShifts.Where(s => s.MaNhanVien == nv.MaNhanVien).ToList();
             var empLeaves = allLeaves.Where(r => r.MaNhanVien == nv.MaNhanVien).ToList();
+            var empSettlements = settlements.Where(q => q.MaNhanVien == nv.MaNhanVien).ToList();
 
-            var summary = AttendanceSummaryCalculator.Calculate(
-                nv.MaNhanVien, nv.HoTen, period.TuNgay, period.DenNgay, empShifts, empLeaves);
-
-            var ngayCongThucTe = (decimal)summary.TotalCreditedDays;
-            var workedDays = (decimal)summary.WorkedDays;
-
-            var tienLuongCong = Math.Round(donGiaNgay * ngayCongThucTe, MidpointRounding.AwayFromZero);
-
-            var details = new List<ChiTietPhieuLuong>();
-
-            // --- TĂNG CA (OT) ---
-            var otHoursNormal = 0m;
-            var otHoursWeekend = 0m;
-            var otHoursHoliday = 0m;
-
-            foreach (var shift in empShifts.Where(s => s.ChamCong is { GioTangCaOt: > 0 }))
-            {
-                var ot = shift.ChamCong!.GioTangCaOt;
-                if (IsHoliday(shift.NgayLamViec))
-                {
-                    otHoursHoliday += ot;
-                }
-                else if (shift.NgayLamViec.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
-                {
-                    otHoursWeekend += ot;
-                }
-                else
-                {
-                    otHoursNormal += ot;
-                }
-            }
-
-            var tienOtNormal = Math.Round(donGiaGio * otHoursNormal * SalaryConstants.OVERTIME_NORMAL_RATE, MidpointRounding.AwayFromZero);
-            var tienOtWeekend = Math.Round(donGiaGio * otHoursWeekend * SalaryConstants.OVERTIME_WEEKEND_RATE, MidpointRounding.AwayFromZero);
-            var tienOtHoliday = Math.Round(donGiaGio * otHoursHoliday * SalaryConstants.OVERTIME_HOLIDAY_RATE, MidpointRounding.AwayFromZero);
-            var tienTangCa = tienOtNormal + tienOtWeekend + tienOtHoliday;
-
-            if (otHoursNormal > 0)
-            {
-                details.Add(new ChiTietPhieuLuong
-                {
-                    MaLoaiOt = 1,
-                    LoaiKhoan = "TANG_CA",
-                    LoaiKhoanLuu = "TANG_CA",
-                    TenKhoanLuu = "Làm thêm ngày thường (150%)",
-                    SoTien = tienOtNormal,
-                    GhiChu = $"{otHoursNormal:N1} giờ x đơn giá x 1.5"
-                });
-            }
-            if (otHoursWeekend > 0)
-            {
-                details.Add(new ChiTietPhieuLuong
-                {
-                    MaLoaiOt = 2,
-                    LoaiKhoan = "TANG_CA",
-                    LoaiKhoanLuu = "TANG_CA",
-                    TenKhoanLuu = "Làm thêm ngày nghỉ tuần (200%)",
-                    SoTien = tienOtWeekend,
-                    GhiChu = $"{otHoursWeekend:N1} giờ x đơn giá x 2.0"
-                });
-            }
-            if (otHoursHoliday > 0)
-            {
-                details.Add(new ChiTietPhieuLuong
-                {
-                    MaLoaiOt = 3,
-                    LoaiKhoan = "TANG_CA",
-                    LoaiKhoanLuu = "TANG_CA",
-                    TenKhoanLuu = "Làm thêm ngày Lễ, Tết (300%)",
-                    SoTien = tienOtHoliday,
-                    GhiChu = $"{otHoursHoliday:N1} giờ x đơn giá x 3.0"
-                });
-            }
-
-            // --- PHỤ CẤP CA ĐÊM (30%) ---
-            var nightShifts = empShifts.Where(s =>
-                s.CaLamViec is { QuaDem: true } &&
-                s.ChamCong is { GioCheckIn: not null, GioCheckOut: not null }).ToList();
-
-            // Giờ đêm lấy theo giờ làm chuẩn của TỪNG ca, không nhân với hằng số 8.
-            // Trước đây hard-code 8 nên ca đêm 12 tiếng bị trả thiếu và ca đêm
-            // 6 tiếng bị trả thừa — sai lặng lẽ vì không có cảnh báo nào.
-            var nightHours = nightShifts.Sum(s => s.CaLamViec?.GioLamChuan ?? 8m);
-            var tienCaDem = Math.Round(donGiaGio * nightHours * SalaryConstants.NIGHT_SHIFT_ALLOWANCE_RATE, MidpointRounding.AwayFromZero);
-
-            if (nightHours > 0)
-            {
-                details.Add(new ChiTietPhieuLuong
-                {
-                    MaLoaiOt = 4,
-                    LoaiKhoan = "PHU_CAP",
-                    LoaiKhoanLuu = "PHU_CAP",
-                    TenKhoanLuu = "Phụ cấp ca đêm (30%)",
-                    SoTien = tienCaDem,
-                    GhiChu = $"{nightShifts.Count} ca đêm ({nightHours:N0}h) x 30%"
-                });
-            }
-
-            // --- PHỤ CẤP ĂN CA (Miễn thuế TNCN) ---
-            var tienAnCa = Math.Round(workedDays * SalaryConstants.MEAL_ALLOWANCE_PER_DAY, MidpointRounding.AwayFromZero);
-            if (workedDays > 0)
-            {
-                details.Add(new ChiTietPhieuLuong
-                {
-                    MaPhuCap = 1,
-                    LoaiKhoan = "PHU_CAP",
-                    LoaiKhoanLuu = "PHU_CAP",
-                    TenKhoanLuu = "Phụ cấp ăn ca",
-                    SoTien = tienAnCa,
-                    GhiChu = $"{workedDays:N0} ngày công thực tế x 30.000đ (miễn thuế)"
-                });
-            }
-
-            // --- PHỤ CẤP KHÁC THEO CẤU HÌNH ---
-            var chucVuTen = nv.ChucVu?.TenChucVu ?? "";
-            var phongBanTen = nv.PhongBan?.TenPhongBan ?? "";
-            var isManager = chucVuTen.Contains("Trưởng") || chucVuTen.Contains("Giám sát") || chucVuTen.Contains("Quản lý") || chucVuTen.Contains("Giám đốc");
-
-            if (isManager)
-            {
-                var pcTrachNhiem = allowancesConfig.FirstOrDefault(a => a.MaPhuCap == 2)?.MucDinhMuc ?? 1000000m;
-                details.Add(new ChiTietPhieuLuong
-                {
-                    MaPhuCap = 2,
-                    LoaiKhoan = "PHU_CAP",
-                    LoaiKhoanLuu = "PHU_CAP",
-                    TenKhoanLuu = "Phụ cấp trách nhiệm quản lý",
-                    SoTien = pcTrachNhiem,
-                    GhiChu = $"Chức vụ: {chucVuTen}"
-                });
-
-                var pcDienThoai = allowancesConfig.FirstOrDefault(a => a.MaPhuCap == 3)?.MucDinhMuc ?? 300000m;
-                details.Add(new ChiTietPhieuLuong
-                {
-                    MaPhuCap = 3,
-                    LoaiKhoan = "PHU_CAP",
-                    LoaiKhoanLuu = "PHU_CAP",
-                    TenKhoanLuu = "Phụ cấp điện thoại & liên lạc",
-                    SoTien = pcDienThoai,
-                    GhiChu = "Hỗ trợ liên lạc điều hành"
-                });
-            }
-
-            var isHousekeeping = phongBanTen.Contains("Buồng") || phongBanTen.Contains("Housekeeping");
-            var tienDocHai = 0m;
-            if (isHousekeeping && workedDays > 0)
-            {
-                var dinhMucDocHai = allowancesConfig.FirstOrDefault(a => a.MaPhuCap == 4)?.MucDinhMuc ?? 20000m;
-                tienDocHai = Math.Round(workedDays * dinhMucDocHai, MidpointRounding.AwayFromZero);
-                details.Add(new ChiTietPhieuLuong
-                {
-                    MaPhuCap = 4,
-                    LoaiKhoan = "PHU_CAP",
-                    LoaiKhoanLuu = "PHU_CAP",
-                    TenKhoanLuu = "Phụ cấp độc hại buồng phòng",
-                    SoTien = tienDocHai,
-                    GhiChu = $"{workedDays:N0} ngày x {dinhMucDocHai:N0}đ"
-                });
-            }
-
-            var eventDetails = settlements.Where(q => q.MaNhanVien == nv.MaNhanVien)
-                .Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
-            details.AddRange(eventDetails.Select(x => x.Detail));
-            settlementsToLink.AddRange(eventDetails);
-            var tienThuongSuKien = eventDetails.Sum(x => x.Detail.SoTien);
-
-            // --- THƯỞNG ---
-            var tongThuong = tienThuongSuKien;
-            // Thưởng chuyên cần: nếu công >= 25 và không đi trễ
-            var lateCount = empShifts.Count(s => s.ChamCong is { PhutDiTre: > 0 });
-            if (ngayCongThucTe >= 25 && lateCount == 0)
-            {
-                var thuongChuyenCan = 500000m;
-                details.Add(new ChiTietPhieuLuong
-                {
-                    MaKhoan = 4,
-                    LoaiKhoan = "THUONG",
-                    LoaiKhoanLuu = "THUONG",
-                    TenKhoanLuu = "Tiền thưởng chuyên cần",
-                    SoTien = thuongChuyenCan,
-                    GhiChu = "Đạt trên 25 ngày công và không vi phạm giờ giấc"
-                });
-                tongThuong += thuongChuyenCan;
-            }
-
-            // Phí phục vụ (Service Charge)
-            var serviceCharge = 1000000m;
-            details.Add(new ChiTietPhieuLuong
-            {
-                MaKhoan = 5,
-                LoaiKhoan = "THUONG",
-                LoaiKhoanLuu = "THUONG",
-                TenKhoanLuu = "Tiền phí phục vụ (Service Charge)",
-                SoTien = serviceCharge,
-                GhiChu = "Chia đều quỹ phí phục vụ từ du khách khách sạn"
-            });
-            tongThuong += serviceCharge;
-
-            // Tổng Phụ Cấp (bao gồm cả ăn ca, ca đêm, sự kiện...)
-            var tongPhuCap = details.Where(d => d.LoaiKhoan == "PHU_CAP").Sum(d => d.SoTien);
-
-            // --- TỔNG GROSS (TẦNG 1) ---
-            var tongGross = tienLuongCong + tienTangCa + tongPhuCap + tongThuong;
-
-            // --- KHẤU TRỪ BẢO HIỂM 10.5% (TẦNG 2) ---
-            var tienBhxh = Math.Round(luongCoBan * SalaryConstants.BHXH_RATE, MidpointRounding.AwayFromZero);
-            var tienBhyt = Math.Round(luongCoBan * SalaryConstants.BHYT_RATE, MidpointRounding.AwayFromZero);
-            var tienBhtn = Math.Round(luongCoBan * SalaryConstants.BHTN_RATE, MidpointRounding.AwayFromZero);
-            var tongBaoHiem = tienBhxh + tienBhyt + tienBhtn;
-
-            var insuranceDetail = new ChiTietPhieuLuong
-            {
-                MaKhoanTru = 1,
-                LoaiKhoan = "KHAU_TRU",
-                LoaiKhoanLuu = "KHAU_TRU",
-                TenKhoanLuu = "Bảo hiểm bắt buộc (10.5%)",
-                SoTien = tongBaoHiem,
-                GhiChu = $"BHXH 8%: {tienBhxh:N0}đ, BHYT 1.5%: {tienBhyt:N0}đ, BHTN 1%: {tienBhtn:N0}đ",
-                ChiTietTruBaoHiems = new List<ChiTietTruBaoHiem>
-                {
-                    new()
-                    {
-                        LuongDongBaoHiem = luongCoBan,
-                        TyLeBhxh = 8.00m,
-                        TienBhxh = tienBhxh,
-                        TyLeBhyt = 1.50m,
-                        TienBhyt = tienBhyt,
-                        TyLeBhtn = 1.00m,
-                        TienBhtn = tienBhtn,
-                        TongBaoHiem = tongBaoHiem
-                    }
-                }
-            };
-            details.Add(insuranceDetail);
-
-            // --- PHẠT VI PHẠM KỶ LUẬT CHẤM CÔNG ---
-            var fineDetails = new List<ChiTietTruViPhamTamUng>();
-            var tongTienPhat = 0m;
-
-            foreach (var shift in empShifts.Where(s => s.ChamCong != null))
-            {
-                var cc = shift.ChamCong!;
-                if (cc.PhutDiTre > 0)
-                {
-                    var fine = cc.PhutDiTre * SalaryConstants.FINE_PER_MINUTE_LATE;
-                    tongTienPhat += fine;
-                    fineDetails.Add(new ChiTietTruViPhamTamUng
-                    {
-                        LoaiTru = "DI_TRE",
-                        SoPhutViPham = cc.PhutDiTre,
-                        SoTienTru = fine,
-                        LyDoChiTiet = $"Đi trễ {cc.PhutDiTre} phút ngày {shift.NgayLamViec:dd/MM/yyyy} ({cc.PhutDiTre}p x {SalaryConstants.FINE_PER_MINUTE_LATE:N0}đ)"
-                    });
-                }
-
-                if (cc.PhutVeSom > 15)
-                {
-                    var fine = 50000m;
-                    tongTienPhat += fine;
-                    fineDetails.Add(new ChiTietTruViPhamTamUng
-                    {
-                        LoaiTru = "VE_SOM",
-                        SoPhutViPham = cc.PhutVeSom,
-                        SoTienTru = fine,
-                        LyDoChiTiet = $"Về sớm {cc.PhutVeSom} phút ngày {shift.NgayLamViec:dd/MM/yyyy}"
-                    });
-                }
-            }
-
-            if (tongTienPhat > 0)
-            {
-                var fineDetail = new ChiTietPhieuLuong
-                {
-                    MaKhoanTru = 5,
-                    LoaiKhoan = "KHAU_TRU",
-                    LoaiKhoanLuu = "KHAU_TRU",
-                    TenKhoanLuu = "Phạt vi phạm kỷ luật lao động & chấm công",
-                    SoTien = tongTienPhat,
-                    GhiChu = $"{fineDetails.Count} lần vi phạm trong kỳ",
-                    ChiTietTruViPhamTamUngs = fineDetails
-                };
-                details.Add(fineDetail);
-            }
-
-            // --- THUẾ TNCN LŨY TIẾN ---
-            // Thu nhập chịu thuế: Gross trừ các khoản không chịu thuế (Ăn ca 30k, Độc hại)
-            var thuNhapChiuThue = Math.Max(0m, tongGross - tienAnCa - tienDocHai);
-            var giamTruBanThan = SalaryConstants.PERSONAL_TAX_DEDUCTION;
-            var soNguoiPhuThuoc = 0; // Mặc định 0 nếu chưa kê khai
-            var giamTruPhuThuoc = soNguoiPhuThuoc * SalaryConstants.DEPENDENT_TAX_DEDUCTION;
-
-            // Thu nhập tính thuế = Thu nhập chịu thuế - Các khoản bảo hiểm - Giảm trừ gia cảnh
-            var thuNhapTinhThue = Math.Max(0m, thuNhapChiuThue - tongBaoHiem - giamTruBanThan - giamTruPhuThuoc);
-            var tienThue = PersonalIncomeTaxCalculator.CalculateTax(thuNhapTinhThue);
-
-            var taxDetail = new ChiTietPhieuLuong
-            {
-                MaKhoanTru = 4,
-                LoaiKhoan = "KHAU_TRU",
-                LoaiKhoanLuu = "KHAU_TRU",
-                TenKhoanLuu = "Thuế thu nhập cá nhân (TNCN)",
-                SoTien = tienThue,
-                GhiChu = tienThue > 0 ? $"Thu nhập tính thuế: {thuNhapTinhThue:N0}đ" : "Không phát sinh nghĩa vụ nộp thuế",
-                ChiTietTruThueTncns = new List<ChiTietTruThueTncn>
-                {
-                    new()
-                    {
-                        ThuNhapChiuThue = thuNhapChiuThue,
-                        GiamTruBanThan = giamTruBanThan,
-                        SoNguoiPhuThuoc = soNguoiPhuThuoc,
-                        GiamTruPhuThuoc = giamTruPhuThuoc,
-                        ThuNhapTinhThue = thuNhapTinhThue,
-                        TienThue = tienThue
-                    }
-                }
-            };
-            details.Add(taxDetail);
-
-            // --- TỔNG KHẤU TRỪ (TẦNG 2) ---
-            var tongKhauTru = details.Where(d => d.LoaiKhoan == "KHAU_TRU").Sum(d => d.SoTien);
-
-            // --- THỰC NHẬN (NET) ---
-            var thucNhan = tongGross - tongKhauTru;
-
-            var payslip = new PhieuLuong
-            {
-                MaNhanVien = nv.MaNhanVien,
-                MaKyLuong = period.MaKyLuong,
-                LuongCoBan = luongCoBan,
-                NgayCongThucTe = ngayCongThucTe,
-                TienLuongCong = tienLuongCong,
-                TienTangCa = tienTangCa,
-                TongPhuCap = tongPhuCap,
-                TongThuong = tongThuong,
-                TongKhauTru = tongKhauTru,
-                ThucNhan = thucNhan,
-                TrangThai = SalaryConstants.PAYSLIP_DRAFT,
-                ChiTietPhieuLuongs = details
-            };
+            var payslip = BuildEmployeePayslip(
+                nv, validContract, period, empShifts, empLeaves, empSettlements, config,
+                out var empSettlementsToLink);
 
             newPayslips.Add(payslip);
+            settlementsToLink.AddRange(empSettlementsToLink);
         }
 
         foreach (var group in settlements.Where(q => newPayslips.All(p => p.MaNhanVien != q.MaNhanVien)).GroupBy(q => q.MaNhanVien))
@@ -643,7 +857,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         }
 
         _context.PhieuLuongs.AddRange(newPayslips);
-        period.TrangThai = SalaryConstants.PERIOD_DRAFT;
+        period.TrangThai = SalaryConstants.PERIOD_OPEN;
+        period.NgayGuiDuyet = null;
+        period.NgayDuyet = null;
+        period.LyDoTuChoi = null;
 
         // Lưu trước để có ID chi tiết phiếu lương
         await _context.SaveChangesAsync(cancellationToken);
@@ -653,13 +870,17 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             settlement.MaChiTiet = detail.MaChiTiet;
 
         // Ghi nhật ký quản trị
+        var warningNote = skippedWithoutContract.Count > 0
+            ? $". Cảnh báo {skippedWithoutContract.Count} nhân viên có công nhưng thiếu HĐLĐ hiệu lực: {string.Join(", ", skippedWithoutContract)}"
+            : "";
+
         _context.NhatKyQuanTris.Add(new NhatKyQuanTri
         {
             MaTaiKhoanThucHien = maTaiKhoan,
             TenNguoiThucHien = nguoiThucHien ?? "Hệ thống tự động",
             TenTaiKhoanBiTacDong = $"KY_LUONG_{period.Thang}_{period.Nam}",
             HanhDong = "TINH_LUONG_TU_DONG",
-            NoiDung = $"Chạy tính toán bảng lương kỳ {period.Thang:D2}/{period.Nam} cho {newPayslips.Count} nhân viên",
+            NoiDung = $"Chạy tính toán bảng lương kỳ {period.Thang:D2}/{period.Nam} cho {newPayslips.Count} nhân viên{warningNote}",
             GiaTriMoi = $"Tổng quỹ Gross: {newPayslips.Sum(p => p.TienLuongCong + p.TienTangCa + p.TongPhuCap + p.TongThuong):N0} VNĐ, Thực chi Net: {newPayslips.Sum(p => p.ThucNhan):N0} VNĐ"
         });
 
@@ -717,14 +938,19 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         if (nv == null) throw new InvalidOperationException("Không tìm thấy nhân viên để tính lại lương.");
 
         var validContract = nv.HopDongs
-            .Where(h => h.TrangThai == "HIEU_LUC" && h.NgayBatDau <= period.DenNgay &&
+            .Where(h => (h.TrangThai == "HIEU_LUC" || (h.NgayKetThuc.HasValue && h.NgayKetThuc.Value >= period.TuNgay)) &&
+                        h.NgayBatDau <= period.DenNgay &&
                         (h.NgayKetThuc == null || h.NgayKetThuc >= period.TuNgay))
             .OrderByDescending(h => h.NgayBatDau)
             .FirstOrDefault();
 
+        var isEligibleEmployee = nv.TrangThai == "DANG_LAM" ||
+                                (nv.NgayThoiViec.HasValue && nv.NgayThoiViec.Value >= period.TuNgay) ||
+                                await _context.PhanCas.AnyAsync(s => s.MaNhanVien == employeeId && s.NgayLamViec >= period.TuNgay && s.NgayLamViec <= period.DenNgay && s.TrangThai != "DA_HUY", cancellationToken);
+
         var settlements = await OutstandingSettlements(period.MaKyLuong)
             .Where(q => q.MaNhanVien == employeeId).ToListAsync(cancellationToken);
-        if (validContract == null || nv.TrangThai != "DANG_LAM")
+        if (validContract == null || !isEligibleEmployee)
         {
             if (settlements.Count == 0)
                 throw new InvalidOperationException("Nhân viên không có hợp đồng hiệu lực hoặc quyết toán sự kiện trong kỳ; cần HR đối soát phiếu lương.");
@@ -742,9 +968,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             return true;
         }
 
-        var luongCoBan = validContract.LuongCoBan;
-        var donGiaNgay = luongCoBan / SalaryConstants.STANDARD_WORKING_DAYS;
-        var donGiaGio = donGiaNgay / SalaryConstants.STANDARD_WORKING_HOURS_PER_DAY;
+        var config = await LoadPayrollConfigAsync(cancellationToken);
 
         var empShifts = await _context.PhanCas.AsNoTracking()
             .Where(s => s.TrangThai != "DA_HUY" && s.MaNhanVien == nv.MaNhanVien && s.NgayLamViec >= period.TuNgay && s.NgayLamViec <= period.DenNgay)
@@ -752,148 +976,12 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         var empLeaves = await _context.DonTus.AsNoTracking()
             .Where(r => r.MaNhanVien == nv.MaNhanVien && r.TrangThai == "DA_DUYET" &&
-                        r.LoaiDon != null && r.LoaiDon.CoHuongLuong &&
                         r.TuNgay <= period.DenNgay && r.DenNgay >= period.TuNgay)
             .Include(r => r.LoaiDon).ToListAsync(cancellationToken);
 
-        var summary = AttendanceSummaryCalculator.Calculate(
-            nv.MaNhanVien, nv.HoTen, period.TuNgay, period.DenNgay, empShifts, empLeaves);
-
-        var ngayCongThucTe = (decimal)summary.TotalCreditedDays;
-        var workedDays = (decimal)summary.WorkedDays;
-        var tienLuongCong = Math.Round(donGiaNgay * ngayCongThucTe, MidpointRounding.AwayFromZero);
-
-        var details = new List<ChiTietPhieuLuong>();
-
-        // OT
-        var otNormal = 0m; var otWeekend = 0m; var otHoliday = 0m;
-        foreach (var s in empShifts.Where(s => s.ChamCong is { GioTangCaOt: > 0 }))
-        {
-            var ot = s.ChamCong!.GioTangCaOt;
-            if (IsHoliday(s.NgayLamViec)) otHoliday += ot;
-            else if (s.NgayLamViec.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) otWeekend += ot;
-            else otNormal += ot;
-        }
-
-        var tienOtNormal = Math.Round(donGiaGio * otNormal * SalaryConstants.OVERTIME_NORMAL_RATE, MidpointRounding.AwayFromZero);
-        var tienOtWeekend = Math.Round(donGiaGio * otWeekend * SalaryConstants.OVERTIME_WEEKEND_RATE, MidpointRounding.AwayFromZero);
-        var tienOtHoliday = Math.Round(donGiaGio * otHoliday * SalaryConstants.OVERTIME_HOLIDAY_RATE, MidpointRounding.AwayFromZero);
-        var tienTangCa = tienOtNormal + tienOtWeekend + tienOtHoliday;
-
-        if (otNormal > 0) details.Add(new ChiTietPhieuLuong { MaLoaiOt = 1, LoaiKhoan = "TANG_CA", LoaiKhoanLuu = "TANG_CA", TenKhoanLuu = "Làm thêm ngày thường (150%)", SoTien = tienOtNormal, GhiChu = $"{otNormal:N1}h x 1.5" });
-        if (otWeekend > 0) details.Add(new ChiTietPhieuLuong { MaLoaiOt = 2, LoaiKhoan = "TANG_CA", LoaiKhoanLuu = "TANG_CA", TenKhoanLuu = "Làm thêm ngày nghỉ tuần (200%)", SoTien = tienOtWeekend, GhiChu = $"{otWeekend:N1}h x 2.0" });
-        if (otHoliday > 0) details.Add(new ChiTietPhieuLuong { MaLoaiOt = 3, LoaiKhoan = "TANG_CA", LoaiKhoanLuu = "TANG_CA", TenKhoanLuu = "Làm thêm ngày Lễ, Tết (300%)", SoTien = tienOtHoliday, GhiChu = $"{otHoliday:N1}h x 3.0" });
-
-        // Ca đêm
-        var nightShifts = empShifts.Where(s => s.CaLamViec is { QuaDem: true } && s.ChamCong is { GioCheckIn: not null, GioCheckOut: not null }).ToList();
-        // Cùng lý do với nhánh tính cả kỳ ở trên: giờ đêm theo ca, không hằng số 8.
-        var nightHours = nightShifts.Sum(s => s.CaLamViec?.GioLamChuan ?? 8m);
-        var tienCaDem = Math.Round(donGiaGio * nightHours * SalaryConstants.NIGHT_SHIFT_ALLOWANCE_RATE, MidpointRounding.AwayFromZero);
-        if (nightHours > 0) details.Add(new ChiTietPhieuLuong { MaLoaiOt = 4, LoaiKhoan = "PHU_CAP", LoaiKhoanLuu = "PHU_CAP", TenKhoanLuu = "Phụ cấp ca đêm (30%)", SoTien = tienCaDem, GhiChu = $"{nightShifts.Count} ca đêm ({nightHours}h)" });
-
-        // Ăn ca
-        var tienAnCa = Math.Round(workedDays * SalaryConstants.MEAL_ALLOWANCE_PER_DAY, MidpointRounding.AwayFromZero);
-        if (workedDays > 0) details.Add(new ChiTietPhieuLuong { MaPhuCap = 1, LoaiKhoan = "PHU_CAP", LoaiKhoanLuu = "PHU_CAP", TenKhoanLuu = "Phụ cấp ăn ca", SoTien = tienAnCa, GhiChu = $"{workedDays} ngày x 30k" });
-
-        // Quản lý
-        var chucVuTen = nv.ChucVu?.TenChucVu ?? "";
-        if (chucVuTen.Contains("Trưởng") || chucVuTen.Contains("Giám sát") || chucVuTen.Contains("Quản lý") || chucVuTen.Contains("Giám đốc"))
-        {
-            details.Add(new ChiTietPhieuLuong { MaPhuCap = 2, LoaiKhoan = "PHU_CAP", LoaiKhoanLuu = "PHU_CAP", TenKhoanLuu = "Phụ cấp trách nhiệm quản lý", SoTien = 1000000m });
-            details.Add(new ChiTietPhieuLuong { MaPhuCap = 3, LoaiKhoan = "PHU_CAP", LoaiKhoanLuu = "PHU_CAP", TenKhoanLuu = "Phụ cấp điện thoại & liên lạc", SoTien = 300000m });
-        }
-
-        var settlementsToLink = settlements.Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
-        details.AddRange(settlementsToLink.Select(x => x.Detail));
-        var tienThuongSuKien = settlementsToLink.Sum(x => x.Detail.SoTien);
-
-        // Thưởng khác (Service Charge, Chuyên cần)
-        var tongThuong = tienThuongSuKien + 1000000m;
-        details.Add(new ChiTietPhieuLuong { MaKhoan = 5, LoaiKhoan = "THUONG", LoaiKhoanLuu = "THUONG", TenKhoanLuu = "Tiền phí phục vụ (Service Charge)", SoTien = 1000000m });
-        if (ngayCongThucTe >= 25 && !empShifts.Any(s => s.ChamCong is { PhutDiTre: > 0 }))
-        {
-            details.Add(new ChiTietPhieuLuong { MaKhoan = 4, LoaiKhoan = "THUONG", LoaiKhoanLuu = "THUONG", TenKhoanLuu = "Tiền thưởng chuyên cần", SoTien = 500000m });
-            tongThuong += 500000m;
-        }
-
-        var tongPhuCap = details.Where(d => d.LoaiKhoan == "PHU_CAP").Sum(d => d.SoTien);
-        var tongGross = tienLuongCong + tienTangCa + tongPhuCap + tongThuong;
-
-        // Bảo hiểm
-        var tienBhxh = Math.Round(luongCoBan * SalaryConstants.BHXH_RATE, MidpointRounding.AwayFromZero);
-        var tienBhyt = Math.Round(luongCoBan * SalaryConstants.BHYT_RATE, MidpointRounding.AwayFromZero);
-        var tienBhtn = Math.Round(luongCoBan * SalaryConstants.BHTN_RATE, MidpointRounding.AwayFromZero);
-        var tongBh = tienBhxh + tienBhyt + tienBhtn;
-        details.Add(new ChiTietPhieuLuong
-        {
-            MaKhoanTru = 1, LoaiKhoan = "KHAU_TRU", LoaiKhoanLuu = "KHAU_TRU",
-            TenKhoanLuu = "Bảo hiểm bắt buộc (10.5%)", SoTien = tongBh,
-            ChiTietTruBaoHiems = [new() { LuongDongBaoHiem = luongCoBan, TienBhxh = tienBhxh, TienBhyt = tienBhyt, TienBhtn = tienBhtn, TongBaoHiem = tongBh }]
-        });
-
-        // Phạt
-        var fineTotal = 0m;
-        var fines = new List<ChiTietTruViPhamTamUng>();
-        foreach (var s in empShifts.Where(s => s.ChamCong is { PhutDiTre: > 0 }))
-        {
-            var p = s.ChamCong!.PhutDiTre * SalaryConstants.FINE_PER_MINUTE_LATE;
-            fineTotal += p;
-            fines.Add(new() { 
-                LoaiTru = "DI_TRE", 
-                SoPhutViPham = s.ChamCong.PhutDiTre, 
-                SoTienTru = p, 
-                LyDoChiTiet = $"Đi trễ {s.ChamCong.PhutDiTre} phút ({s.ChamCong.PhutDiTre}p x {SalaryConstants.FINE_PER_MINUTE_LATE:N0}đ)" 
-            });
-        }
-        foreach (var s in empShifts.Where(s => s.ChamCong is { PhutVeSom: > 15 }))
-        {
-            var p = 50000m;
-            fineTotal += p;
-            fines.Add(new() {
-                LoaiTru = "VE_SOM",
-                SoPhutViPham = s.ChamCong!.PhutVeSom,
-                SoTienTru = p,
-                LyDoChiTiet = $"Về sớm {s.ChamCong.PhutVeSom} phút ngày {s.NgayLamViec:dd/MM/yyyy}"
-            });
-        }
-        if (fineTotal > 0)
-        {
-            details.Add(new ChiTietPhieuLuong
-            {
-                MaKhoanTru = 5, LoaiKhoan = "KHAU_TRU", LoaiKhoanLuu = "KHAU_TRU",
-                TenKhoanLuu = "Phạt vi phạm kỷ luật lao động & chấm công", SoTien = fineTotal, ChiTietTruViPhamTamUngs = fines
-            });
-        }
-
-        // Thuế TNCN
-        var thuNhapChiuThue = Math.Max(0m, tongGross - tienAnCa);
-        var thuNhapTinhThue = Math.Max(0m, thuNhapChiuThue - tongBh - SalaryConstants.PERSONAL_TAX_DEDUCTION);
-        var tienThue = PersonalIncomeTaxCalculator.CalculateTax(thuNhapTinhThue);
-        details.Add(new ChiTietPhieuLuong
-        {
-            MaKhoanTru = 4, LoaiKhoan = "KHAU_TRU", LoaiKhoanLuu = "KHAU_TRU",
-            TenKhoanLuu = "Thuế thu nhập cá nhân (TNCN)", SoTien = tienThue,
-            ChiTietTruThueTncns = [new() { ThuNhapChiuThue = thuNhapChiuThue, GiamTruBanThan = SalaryConstants.PERSONAL_TAX_DEDUCTION, ThuNhapTinhThue = thuNhapTinhThue, TienThue = tienThue }]
-        });
-
-        var tongKhauTru = details.Where(d => d.LoaiKhoan == "KHAU_TRU").Sum(d => d.SoTien);
-        var thucNhan = tongGross - tongKhauTru;
-
-        var newP = new PhieuLuong
-        {
-            MaNhanVien = nv.MaNhanVien,
-            MaKyLuong = period.MaKyLuong,
-            LuongCoBan = luongCoBan,
-            NgayCongThucTe = ngayCongThucTe,
-            TienLuongCong = tienLuongCong,
-            TienTangCa = tienTangCa,
-            TongPhuCap = tongPhuCap,
-            TongThuong = tongThuong,
-            TongKhauTru = tongKhauTru,
-            ThucNhan = thucNhan,
-            TrangThai = SalaryConstants.PAYSLIP_DRAFT,
-            ChiTietPhieuLuongs = details
-        };
+        var newP = BuildEmployeePayslip(
+            nv, validContract, period, empShifts, empLeaves, settlements, config,
+            out var settlementsToLink);
 
         _context.PhieuLuongs.Add(newP);
         await _context.SaveChangesAsync(cancellationToken);
@@ -922,6 +1010,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         var payslip = await _context.PhieuLuongs
             .Include(p => p.KyLuong)
             .Include(p => p.ChiTietPhieuLuongs)
+                .ThenInclude(c => c.ChiTietTruThueTncns)
             .FirstOrDefaultAsync(p => p.MaPhieuLuong == maPhieuLuong, cancellationToken);
 
         if (payslip == null || payslip.KyLuong == null) return false;
@@ -970,6 +1059,9 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         var item = await _context.ChiTietPhieuLuongs
             .Include(c => c.PhieuLuong)
                 .ThenInclude(p => p!.KyLuong)
+            .Include(c => c.PhieuLuong)
+                .ThenInclude(p => p!.ChiTietPhieuLuongs)
+                    .ThenInclude(c => c.ChiTietTruThueTncns)
             .FirstOrDefaultAsync(c => c.MaChiTiet == maChiTiet, cancellationToken);
 
         if (item == null || item.PhieuLuong == null || item.PhieuLuong.KyLuong == null) return false;
@@ -986,7 +1078,6 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 .SetProperty(p => p.MaChiTiet, (int?)null), cancellationToken);
 
         var payslip = item.PhieuLuong;
-        await _context.Entry(payslip).Collection(p => p.ChiTietPhieuLuongs).LoadAsync(cancellationToken);
         _context.ChiTietPhieuLuongs.Remove(item);
         payslip.ChiTietPhieuLuongs.Remove(item);
 
@@ -1014,16 +1105,44 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         // Cập nhật lại thuế TNCN nếu có dòng thuế
         var taxItem = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaKhoanTru == 4);
-        var tienAnCa = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaPhuCap == 1)?.SoTien ?? 0m;
         var tongBh = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaKhoanTru == 1)?.SoTien ?? 0m;
 
         if (taxItem != null)
         {
-            var thuNhapChiuThue = Math.Max(0m, tongGross - tienAnCa);
-            var thuNhapTinhThue = Math.Max(0m, thuNhapChiuThue - tongBh - SalaryConstants.PERSONAL_TAX_DEDUCTION);
+            var tienAnCa = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaPhuCap == 1)?.SoTien ?? 0m;
+            var tienDocHai = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaPhuCap == 4)?.SoTien ?? 0m;
+            var tienLamNgayLe = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaPhuCap == 5 || (c.LoaiKhoan == "PHU_CAP" && c.TenKhoanLuu.Contains("ngày Lễ")))?.SoTien ?? 0m;
+            var tienCaDem = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 4 || (c.LoaiKhoan == "PHU_CAP" && c.TenKhoanLuu.Contains("ca đêm")))?.SoTien ?? 0m;
+
+            var tienOtNormal = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 1 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
+            var tienOtWeekend = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 2 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
+            var tienOtHoliday = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 3 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
+
+            var tienMienThueOt = Math.Round(tienOtNormal / 3m, MidpointRounding.AwayFromZero)
+                               + Math.Round(tienOtWeekend / 2m, MidpointRounding.AwayFromZero)
+                               + Math.Round(tienOtHoliday * 2m / 3m, MidpointRounding.AwayFromZero);
+
+            var tongThuNhapMienThue = tienAnCa + tienDocHai + tienLamNgayLe + tienCaDem + tienMienThueOt;
+            var thuNhapChiuThue = Math.Max(0m, tongGross - tongThuNhapMienThue);
+
+            var subTax = taxItem.ChiTietTruThueTncns?.FirstOrDefault();
+            var giamTruBanThan = subTax?.GiamTruBanThan ?? SalaryConstants.PERSONAL_TAX_DEDUCTION;
+            var giamTruPhuThuoc = subTax?.GiamTruPhuThuoc ?? 0m;
+
+            var thuNhapTinhThue = Math.Max(0m, thuNhapChiuThue - tongBh - giamTruBanThan - giamTruPhuThuoc);
             var tienThue = PersonalIncomeTaxCalculator.CalculateTax(thuNhapTinhThue);
+
             taxItem.SoTien = tienThue;
-            taxItem.GhiChu = tienThue > 0 ? $"Thu nhập tính thuế: {thuNhapTinhThue:N0}đ" : "Không phát sinh nghĩa vụ nộp thuế";
+            taxItem.GhiChu = tienThue > 0
+                ? $"Thu nhập tính thuế: {thuNhapTinhThue:N0}đ (Miễn thuế: {tongThuNhapMienThue:N0}đ)"
+                : $"Không phát sinh nghĩa vụ nộp thuế (Miễn thuế: {tongThuNhapMienThue:N0}đ)";
+
+            if (subTax != null)
+            {
+                subTax.ThuNhapChiuThue = thuNhapChiuThue;
+                subTax.ThuNhapTinhThue = thuNhapTinhThue;
+                subTax.TienThue = tienThue;
+            }
         }
 
         payslip.TongKhauTru = payslip.ChiTietPhieuLuongs.Where(c => c.LoaiKhoan == "KHAU_TRU").Sum(c => c.SoTien);
@@ -1081,12 +1200,12 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .FirstOrDefaultAsync(k => k.MaKyLuong == maKyLuong, cancellationToken);
 
         if (period == null) return false;
-        if (period.TrangThai != SalaryConstants.PERIOD_PENDING_APPROVAL)
+        if (!period.NgayGuiDuyet.HasValue || period.NgayDuyet.HasValue || !string.IsNullOrEmpty(period.LyDoTuChoi))
         {
             throw new InvalidOperationException("Chỉ bảng lương ở trạng thái Chờ duyệt mới được phép phê duyệt.");
         }
 
-        period.TrangThai = SalaryConstants.PERIOD_APPROVED;
+        period.TrangThai = SalaryConstants.PERIOD_OPEN;
         period.NgayDuyet = DateTimeOffset.UtcNow;
         period.NguoiDuyet = nguoiDuyet;
         period.LyDoTuChoi = null;
@@ -1124,15 +1243,16 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .FirstOrDefaultAsync(k => k.MaKyLuong == maKyLuong, cancellationToken);
 
         if (period == null) return false;
-        if (period.TrangThai != SalaryConstants.PERIOD_PENDING_APPROVAL)
+        if (!period.NgayGuiDuyet.HasValue || period.NgayDuyet.HasValue || !string.IsNullOrEmpty(period.LyDoTuChoi))
         {
             throw new InvalidOperationException("Chỉ bảng lương ở trạng thái Chờ duyệt mới có thể từ chối.");
         }
 
-        period.TrangThai = SalaryConstants.PERIOD_REJECTED;
+        period.TrangThai = SalaryConstants.PERIOD_OPEN;
         period.LyDoTuChoi = lyDo.Trim();
         period.NguoiDuyet = nguoiTuChoi;
-        period.NgayDuyet = DateTimeOffset.UtcNow;
+        period.NgayDuyet = null;
+        period.NgayGuiDuyet = null;
 
         foreach (var p in period.PhieuLuongs)
         {
@@ -1163,7 +1283,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .FirstOrDefaultAsync(k => k.MaKyLuong == maKyLuong, cancellationToken);
 
         if (period == null) return false;
-        if (period.TrangThai != SalaryConstants.PERIOD_APPROVED)
+        if (!period.NgayDuyet.HasValue)
         {
             throw new InvalidOperationException("Bảng lương phải được phê duyệt trước khi khóa sổ.");
         }
@@ -1274,13 +1394,46 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return (fileName, bytes);
     }
 
+    private static readonly ChineseLunisolarCalendar LunarCalendar = new();
+
     private static bool IsHoliday(DateOnly date)
     {
-        // Danh mục ngày lễ cơ bản tại Việt Nam
-        if (date.Month == 1 && date.Day == 1) return true; // Tết Tây
-        if (date.Month == 4 && date.Day == 30) return true; // 30/4
-        if (date.Month == 5 && date.Day == 1) return true; // 1/5
+        // 1. Danh mục ngày lễ Dương lịch cơ bản tại Việt Nam
+        if (date.Month == 1 && date.Day == 1) return true; // Tết Dương lịch
+        if (date.Month == 4 && date.Day == 30) return true; // Ngày Chiến thắng 30/4
+        if (date.Month == 5 && date.Day == 1) return true; // Quốc tế Lao động 1/5
         if (date.Month == 9 && (date.Day == 1 || date.Day == 2 || date.Day == 3)) return true; // Quốc khánh 2/9
+
+        // 2. Danh mục ngày lễ Âm lịch (Giỗ Tổ Hùng Vương 10/3 ÂL & Tết Nguyên Đán)
+        try
+        {
+            var dt = date.ToDateTime(TimeOnly.MinValue);
+            var lYear = LunarCalendar.GetYear(dt);
+            var lMonth = LunarCalendar.GetMonth(dt);
+            var lDay = LunarCalendar.GetDayOfMonth(dt);
+            var leapMonth = LunarCalendar.GetLeapMonth(lYear);
+
+            var actualMonth = lMonth;
+            if (leapMonth > 0 && lMonth >= leapMonth)
+            {
+                if (lMonth == leapMonth)
+                    actualMonth = -1; // Tháng nhuận không tính lễ chính
+                else
+                    actualMonth = lMonth - 1;
+            }
+
+            // Giỗ Tổ Hùng Vương: 10/3 Âm lịch
+            if (actualMonth == 3 && lDay == 10) return true;
+
+            // Tết Nguyên Đán: 29, 30 tháng Chạp đến hết mùng 5 tháng Giêng
+            if (actualMonth == 12 && lDay >= 29) return true;
+            if (actualMonth == 1 && lDay is >= 1 and <= 5) return true;
+        }
+        catch
+        {
+            // Tránh ngắt tiến trình tính lương nếu ngày vượt quá biên hỗ trợ của ChineseLunisolarCalendar
+        }
+
         return false;
     }
 }

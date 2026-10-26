@@ -85,6 +85,8 @@ var tests = new (string Name, Action Run)[]
         Equal(0.105m, SalaryConstants.TOTAL_INSURANCE_RATE);
         Equal(11_000_000m, SalaryConstants.PERSONAL_TAX_DEDUCTION);
         Equal(4_400_000m, SalaryConstants.DEPENDENT_TAX_DEDUCTION);
+        Equal(46_800_000m, SalaryConstants.MAX_INSURANCE_SALARY_BASE);
+        Equal(99_200_000m, SalaryConstants.MAX_UNEMPLOYMENT_INSURANCE_SALARY_BASE);
     }),
 
     ("Fines: Đúng các mức phạt chấm công theo PRD 05", () =>
@@ -222,58 +224,72 @@ var tests = new (string Name, Action Run)[]
         Equal(700_000m, soTienMice);
     }),
 
-    // --- PART 6: WORKFLOW STATE MACHINE (4 BƯỚC THEO QUY TRÌNH NGƯỜI DÙNG) ---
-    ("Workflow: Thứ tự chuyển trạng thái chuẩn (NHAP -> CHO_DUYET -> DA_DUYET -> KHOA_SO)", () =>
+    // --- PART 6: WORKFLOW STATE MACHINE (2 TRẠNG THÁI MO / KHOA_SO & 4 BƯỚC QUY TRÌNH) ---
+    ("Workflow: Thứ tự chuyển trạng thái chuẩn (MO -> Gửi duyệt -> Sếp duyệt -> KHOA_SO)", () =>
     {
-        var ky = new KyLuong { TrangThai = SalaryConstants.PERIOD_DRAFT };
+        var ky = new KyLuong { TrangThai = SalaryConstants.PERIOD_OPEN };
 
-        // Bước 1: Hệ thống tự tính xong -> Trạng thái là NHAP
-        Equal("NHAP", ky.TrangThai);
+        // Bước 1: Hệ thống tự tính xong -> Trạng thái là MO, chưa gửi duyệt
+        Equal("MO", ky.TrangThai);
+        Assert(ky.NgayGuiDuyet == null, "Bước 1 chưa có NgayGuiDuyet");
 
-        // Bước 2: HR gửi duyệt -> Trạng thái sang CHO_DUYET
-        ky.TrangThai = SalaryConstants.PERIOD_PENDING_APPROVAL;
+        // Bước 2: HR gửi duyệt -> Trạng thái vẫn là MO trong DB, ghi nhận timestamp gửi duyệt
+        ky.TrangThai = SalaryConstants.PERIOD_OPEN;
         ky.NgayGuiDuyet = DateTimeOffset.UtcNow;
         ky.NguoiGuiDuyet = "HR User";
-        Equal("CHO_DUYET", ky.TrangThai);
+        ky.LyDoTuChoi = null;
+        Equal("MO", ky.TrangThai);
+        Assert(ky.NgayGuiDuyet != null && ky.NgayDuyet == null && string.IsNullOrEmpty(ky.LyDoTuChoi), "Đang ở bước Chờ duyệt");
 
-        // Bước 3: Sếp duyệt -> Trạng thái sang DA_DUYET
-        ky.TrangThai = SalaryConstants.PERIOD_APPROVED;
+        // Bước 3: Sếp duyệt -> Trạng thái vẫn là MO, ghi nhận timestamp duyệt
+        ky.TrangThai = SalaryConstants.PERIOD_OPEN;
         ky.NgayDuyet = DateTimeOffset.UtcNow;
         ky.NguoiDuyet = "Manager User";
-        Equal("DA_DUYET", ky.TrangThai);
+        ky.LyDoTuChoi = null;
+        Equal("MO", ky.TrangThai);
+        Assert(ky.NgayDuyet != null, "Đã được sếp phê duyệt");
 
-        // Bước 4: Khóa sổ -> Trạng thái sang KHOA_SO
+        // Bước 4: Khóa sổ -> Trạng thái đổi sang KHOA_SO
         ky.TrangThai = SalaryConstants.PERIOD_LOCKED;
         ky.NgayKhoaSo = DateTimeOffset.UtcNow;
         ky.NguoiKhoaSo = "Manager User";
         Equal("KHOA_SO", ky.TrangThai);
+        Assert(ky.NgayKhoaSo != null, "Đã khóa sổ");
     }),
 
-    ("Workflow: Từ chối yêu cầu lý do bắt buộc và trả về HR để sửa", () =>
+    ("Workflow: Từ chối yêu cầu lý do bắt buộc và trả về HR để sửa (vẫn giữ MO)", () =>
     {
-        var ky = new KyLuong { TrangThai = SalaryConstants.PERIOD_PENDING_APPROVAL };
+        var ky = new KyLuong
+        {
+            TrangThai = SalaryConstants.PERIOD_OPEN,
+            NgayGuiDuyet = DateTimeOffset.UtcNow,
+            NguoiGuiDuyet = "HR User"
+        };
 
         // Sếp từ chối không có lý do -> Bị chặn
         string? emptyReason = "";
         Assert(string.IsNullOrWhiteSpace(emptyReason), "Reason cannot be empty");
 
-        // Sếp từ chối có lý do -> Chuyển thành TU_CHOI
+        // Sếp từ chối có lý do -> Giữ MO nhưng lưu LyDoTuChoi và reset NgayGuiDuyet
         string validReason = "Số giờ OT ca đêm của bộ phận Lễ tân chưa khớp với bảng phân ca.";
-        ky.TrangThai = SalaryConstants.PERIOD_REJECTED;
+        ky.TrangThai = SalaryConstants.PERIOD_OPEN;
         ky.LyDoTuChoi = validReason;
-        ky.NgayDuyet = DateTimeOffset.UtcNow;
+        ky.NgayDuyet = null;
+        ky.NgayGuiDuyet = null;
         ky.NguoiDuyet = "Manager User";
 
-        Equal("TU_CHOI", ky.TrangThai);
+        Equal("MO", ky.TrangThai);
         Equal(validReason, ky.LyDoTuChoi);
+        Assert(ky.NgayGuiDuyet == null, "Sau khi từ chối thì trạng thái quay về để HR chỉnh sửa");
 
-        // HR chỉnh sửa xong, bấm Gửi duyệt lại -> Lại thành CHO_DUYET
-        ky.TrangThai = SalaryConstants.PERIOD_PENDING_APPROVAL;
+        // HR chỉnh sửa xong, bấm Gửi duyệt lại -> Cập nhật NgayGuiDuyet và xóa LyDoTuChoi
+        ky.TrangThai = SalaryConstants.PERIOD_OPEN;
         ky.NgayGuiDuyet = DateTimeOffset.UtcNow;
         ky.NguoiGuiDuyet = "HR User";
         ky.LyDoTuChoi = null; // Reset lý do sau khi gửi lại
-        Equal("CHO_DUYET", ky.TrangThai);
+        Equal("MO", ky.TrangThai);
         Assert(ky.LyDoTuChoi == null, "LyDoTuChoi must be cleared after resubmission");
+        Assert(ky.NgayGuiDuyet != null, "Đã gửi duyệt lại");
     }),
 
     ("Workflow: Khóa sổ rồi mới được xuất file chuyển khoản và gửi phiếu lương", () =>
@@ -451,6 +467,217 @@ var tests = new (string Name, Action Run)[]
         string approvedStatus = SalaryConstants.PERIOD_APPROVED;
         bool canAdminLock = isBoss && approvedStatus == SalaryConstants.PERIOD_APPROVED;
         Equal(true, canAdminLock); // Admin ĐƯỢC khóa sổ bảng lương
+    }),
+
+    // --- PART 8: CẢI TIẾN QUY TẮC TÍNH LƯƠNG & CHÍNH SÁCH MỚI ---
+    ("Service Charge Proration: Phân bổ phí phục vụ theo ngày công thực tế", () =>
+    {
+        decimal serviceChargePool = 1_000_000m;
+        // Nhân viên làm 26/26 ngày: nhận đủ 1.000.000đ
+        decimal scFull = Math.Round(serviceChargePool * Math.Min(1m, 26m / 26m), 0, MidpointRounding.AwayFromZero);
+        Equal(1_000_000m, scFull);
+
+        // Nhân viên làm 13/26 ngày: nhận 500.000đ
+        decimal scHalf = Math.Round(serviceChargePool * Math.Min(1m, 13m / 26m), 0, MidpointRounding.AwayFromZero);
+        Equal(500_000m, scHalf);
+
+        // Nhân viên làm 1/26 ngày: nhận 38.462đ
+        decimal sc1Day = Math.Round(serviceChargePool * Math.Min(1m, 1m / 26m), 0, MidpointRounding.AwayFromZero);
+        Equal(38_462m, sc1Day);
+    }),
+
+    ("Holiday Shift Pay: Đi làm ca ngày Lễ được cộng thêm 200% để đạt tổng 300%", () =>
+    {
+        decimal hourlyRate = 50_000m;
+        decimal shiftHours = 8m;
+        // Lương ngày công tiêu chuẩn: 50.000 x 8 = 400.000đ (100%)
+        decimal regularPay = hourlyRate * shiftHours;
+        // Phụ cấp làm ngày Lễ: 50.000 x 8 x 2.0 = 800.000đ (+200%)
+        decimal holidayAllowance = Math.Round(hourlyRate * shiftHours * 2.0m, 0, MidpointRounding.AwayFromZero);
+        // Tổng thu nhập ngày lễ: 400.000 + 800.000 = 1.200.000đ (300%)
+        Equal(400_000m, regularPay);
+        Equal(800_000m, holidayAllowance);
+        Equal(1_200_000m, regularPay + holidayAllowance);
+    }),
+
+    ("Insurance Ceiling: Lương đóng bảo hiểm không vượt quá mức trần luật định", () =>
+    {
+        decimal highSalary = 80_000_000m; // Lương cơ bản cấp quản lý 80 triệu
+        decimal luongDongBh = Math.Min(highSalary, SalaryConstants.MAX_INSURANCE_SALARY_BASE); // Trần 46.8M
+        decimal luongDongBhtn = Math.Min(highSalary, SalaryConstants.MAX_UNEMPLOYMENT_INSURANCE_SALARY_BASE); // Trần 99.2M -> lấy 80M
+
+        Equal(46_800_000m, luongDongBh);
+        Equal(80_000_000m, luongDongBhtn);
+
+        decimal bhxh = Math.Round(luongDongBh * SalaryConstants.BHXH_RATE, 0, MidpointRounding.AwayFromZero); // 46.8M * 8% = 3,744,000đ (thay vì 6.4M nếu không có trần)
+        Equal(3_744_000m, bhxh);
+    }),
+
+    ("Unexcused Absence: Bỏ ca không phép phạt bổ sung 200.000đ", () =>
+    {
+        decimal absenceFine = SalaryConstants.FINE_ABSENCE_PENALTY;
+        Equal(200_000m, absenceFine);
+    }),
+
+    ("Tax Exemption: Miễn thuế TNCN cho phần chênh lệch làm thêm giờ & ca đêm (Thông tư 111/2013/TT-BTC)", () =>
+    {
+        decimal donGiaGio = 50_000m;
+        decimal otHoursNormal = 10m;  // 10h x 50k x 1.5 = 750,000đ
+        decimal otHoursWeekend = 8m;  // 8h x 50k x 2.0 = 800,000đ
+        decimal nightHours = 8m;      // 8h x 50k x 0.3 = 120,000đ
+        decimal holidayHours = 8m;    // 8h x 50k x 2.0 = 800,000đ
+
+        decimal tienOtNormal = donGiaGio * otHoursNormal * 1.5m;    // 750,000
+        decimal tienOtWeekend = donGiaGio * otHoursWeekend * 2.0m;  // 800,000
+        decimal tienCaDem = donGiaGio * nightHours * 0.3m;          // 120,000
+        decimal tienLamNgayLe = donGiaGio * holidayHours * 2.0m;    // 800,000
+
+        // Phần chênh lệch trả cao hơn được miễn thuế TNCN
+        decimal mienThueOtNormal = donGiaGio * otHoursNormal * (1.5m - 1.0m);  // 250,000
+        decimal mienThueOtWeekend = donGiaGio * otHoursWeekend * (2.0m - 1.0m); // 400,000
+        decimal mienThueCaDem = tienCaDem;                                     // 120,000
+        decimal mienThueNgayLe = tienLamNgayLe;                                // 800,000
+
+        Equal(250_000m, mienThueOtNormal);
+        Equal(400_000m, mienThueOtWeekend);
+        Equal(120_000m, mienThueCaDem);
+        Equal(800_000m, mienThueNgayLe);
+
+        decimal tongMienThue = mienThueOtNormal + mienThueOtWeekend + mienThueCaDem + mienThueNgayLe;
+        Equal(1_570_000m, tongMienThue);
+    }),
+
+    ("Insurance Eligibility: Ngày công < 14 ngày thì không trích đóng bảo hiểm (K3 Đ85 Luật BHXH)", () =>
+    {
+        decimal luongCoBan = 10_400_000m;
+        decimal ngayCongThucTe = 10m; // Làm 10 ngày (< 14 ngày)
+        bool isEligible = ngayCongThucTe >= 14m;
+        Assert(!isEligible, "Dưới 14 ngày công không được đóng bảo hiểm bắt buộc.");
+
+        decimal tienBhxh = isEligible ? luongCoBan * SalaryConstants.BHXH_RATE : 0m;
+        decimal tienBhyt = isEligible ? luongCoBan * SalaryConstants.BHYT_RATE : 0m;
+        decimal tienBhtn = isEligible ? luongCoBan * SalaryConstants.BHTN_RATE : 0m;
+        Equal(0m, tienBhxh + tienBhyt + tienBhtn);
+    }),
+
+    ("Insurance Eligibility: Hợp đồng thử việc (THU_VIEC) được miễn đóng bảo hiểm bắt buộc", () =>
+    {
+        string loaiHopDong = "Hợp đồng thử việc (2 tháng)";
+        bool isProbation = loaiHopDong.Contains("thử việc", StringComparison.OrdinalIgnoreCase);
+        Assert(isProbation, "Nhận diện đúng hợp đồng thử việc.");
+
+        decimal ngayCongThucTe = 26m; // Đủ 26 ngày công nhưng là thử việc
+        bool isEligible = !isProbation && ngayCongThucTe >= 14m;
+        Assert(!isEligible, "Hợp đồng thử việc không thuộc đối tượng đóng bảo hiểm bắt buộc.");
+    }),
+
+    ("PIT: Giảm trừ gia cảnh theo số người phụ thuộc (SoNguoiPhuThuoc * 4.400.000đ)", () =>
+    {
+        var nv = new NhanVien { Ho = "Nguyen", Ten = "Van A", SoNguoiPhuThuoc = 2 };
+        Equal(2, nv.SoNguoiPhuThuoc);
+
+        decimal thuNhapChiuThue = 18_000_000m;
+        decimal tongBaoHiem = 10_400_000m * SalaryConstants.TOTAL_INSURANCE_RATE; // 1,092,000đ
+        decimal giamTruBanThan = SalaryConstants.PERSONAL_TAX_DEDUCTION;            // 11,000,000đ
+        decimal giamTruPhuThuoc = nv.SoNguoiPhuThuoc * SalaryConstants.DEPENDENT_TAX_DEDUCTION; // 8,800,000đ
+
+        Equal(8_800_000m, giamTruPhuThuoc);
+
+        // Thu nhập tính thuế = 18,000,000 - 1,092,000 - 11,000,000 - 8,800,000 = -2,892,000 (<= 0 => Tax = 0)
+        decimal thuNhapTinhThue = Math.Max(0m, thuNhapChiuThue - tongBaoHiem - giamTruBanThan - giamTruPhuThuoc);
+        Equal(0m, thuNhapTinhThue);
+        Equal(0m, PersonalIncomeTaxCalculator.CalculateTax(thuNhapTinhThue));
+    }),
+
+    ("Fines: Khấu trừ vi phạm về sớm (> 15 phút) áp dụng định mức cấu hình", () =>
+    {
+        decimal earlyDepartureFineConfig = 50_000m;
+        int phutVeSom = 25; // Về sớm 25 phút (> 15 phút)
+        decimal fine = phutVeSom > 15 ? earlyDepartureFineConfig : 0m;
+        Equal(50_000m, fine);
+    }),
+
+    ("Resignation Payroll Eligibility: Nhân viên thôi việc giữa kỳ vẫn được tính lương cho ngày công đã làm", () =>
+    {
+        var periodFrom = new DateOnly(2026, 10, 1);
+        var periodTo = new DateOnly(2026, 10, 31);
+        var nvResigned = new NhanVien
+        {
+            MaNhanVien = 99,
+            Ho = "Tran",
+            Ten = "Thoi Viec",
+            TrangThai = "DA_THOI_VIEC",
+            NgayThoiViec = new DateOnly(2026, 10, 20)
+        };
+
+        // Điều kiện tính lương: thôi việc trong hoặc sau kỳ
+        bool isEligible = nvResigned.TrangThai == "DANG_LAM" ||
+                          (nvResigned.NgayThoiViec.HasValue && nvResigned.NgayThoiViec.Value >= periodFrom);
+        Assert(isEligible, "Nhân viên thôi việc giữa tháng phải đủ điều kiện tính lương.");
+
+        // Hợp đồng kết thúc ngày 20/10 vẫn được khớp
+        var hopDong = new HopDong
+        {
+            MaHopDong = 999,
+            MaNhanVien = 99,
+            NgayBatDau = new DateOnly(2025, 1, 1),
+            NgayKetThuc = new DateOnly(2026, 10, 20),
+            TrangThai = "DA_CHAM_DUT",
+            LuongCoBan = 10_400_000m
+        };
+
+        bool isContractMatched = (hopDong.TrangThai == "HIEU_LUC" || (hopDong.NgayKetThuc.HasValue && hopDong.NgayKetThuc.Value >= periodFrom)) &&
+                                 hopDong.NgayBatDau <= periodTo &&
+                                 (hopDong.NgayKetThuc == null || hopDong.NgayKetThuc >= periodFrom);
+        Assert(isContractMatched, "Hợp đồng đã chấm dứt nhưng có hiệu lực trong kỳ phải được dùng để tính lương.");
+    }),
+
+    ("Manager Allowance Proration: Phụ cấp quản lý phân bổ theo ngày công thực tế (0 công = 0đ, 13 công = 50%, 26 công = 100%)", () =>
+    {
+        decimal allowanceConfig = 1_000_000m;
+        decimal standardDays = SalaryConstants.STANDARD_WORKING_DAYS; // 26
+
+        static decimal CalcManagerAllowance(decimal allowance, decimal days, decimal std)
+        {
+            if (days <= 0) return 0m;
+            var congHuong = Math.Min(std, days);
+            return Math.Round(allowance * (congHuong / std), 0, MidpointRounding.AwayFromZero);
+        }
+
+        // 1. Không đi làm ngày nào (0 công): 0đ
+        Equal(0m, CalcManagerAllowance(allowanceConfig, 0m, standardDays));
+
+        // 2. Làm nửa tháng (13 công): 500.000đ (50%)
+        Equal(500_000m, CalcManagerAllowance(allowanceConfig, 13m, standardDays));
+
+        // 3. Đủ 26 công: 1.000.000đ (100%)
+        Equal(1_000_000m, CalcManagerAllowance(allowanceConfig, 26m, standardDays));
+
+        // 4. Làm vượt công (27 công): Vẫn tối đa 1.000.000đ
+        Equal(1_000_000m, CalcManagerAllowance(allowanceConfig, 27m, standardDays));
+    }),
+
+    ("Attendance Bonus Strict Rules: Không thưởng chuyên cần khi có vi phạm về sớm (>15p) hoặc bỏ ca", () =>
+    {
+        static bool IsEligibleForAttendanceBonus(decimal days, bool hasLate, bool hasEarly, bool hasAbsence)
+        {
+            return days >= 25 && !hasLate && !hasEarly && !hasAbsence;
+        }
+
+        // Đủ 26 công, không vi phạm -> Nhận thưởng 500k
+        Assert(IsEligibleForAttendanceBonus(26m, false, false, false), "Đạt đủ công và không vi phạm.");
+
+        // Đủ 26 công nhưng đi trễ -> Bị loại
+        Assert(!IsEligibleForAttendanceBonus(26m, true, false, false), "Đi trễ không được thưởng.");
+
+        // Đủ 26 công nhưng về sớm > 15p -> Bị loại
+        Assert(!IsEligibleForAttendanceBonus(26m, false, true, false), "Về sớm không được thưởng.");
+
+        // Đủ 25 công nhưng có 1 ca bỏ ca không phép -> Bị loại
+        Assert(!IsEligibleForAttendanceBonus(25m, false, false, true), "Bỏ ca không được thưởng.");
+
+        // Dưới 25 công (24 công) dù không vi phạm -> Bị loại
+        Assert(!IsEligibleForAttendanceBonus(24m, false, false, false), "Không đủ 25 ngày công.");
     })
 };
 

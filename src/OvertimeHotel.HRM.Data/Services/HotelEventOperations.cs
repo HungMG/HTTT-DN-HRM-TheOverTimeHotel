@@ -85,11 +85,15 @@ public sealed partial class HotelEventService
             .Contains(HotelEventRules.ResolveDepartmentCode(s.NhanVien) ?? "")).ToList();
     }
 
+    private IQueryable<KyLuong> OpenEventPaymentPeriods => db.KyLuongs.Where(k =>
+        (k.TrangThai == "MO" || k.TrangThai == "NHAP" || k.TrangThai == "TU_CHOI")
+        && !k.NgayDuyet.HasValue && (!k.NgayGuiDuyet.HasValue || !string.IsNullOrEmpty(k.LyDoTuChoi)));
+
     public async Task<IReadOnlyList<KyLuong>> PaymentPeriodsAsync(EventActor actor)
     {
         actor = await CurrentActor(actor);
         if (!actor.IsOffice) return [];
-        return await db.KyLuongs.AsNoTracking().Where(k => k.TrangThai == "MO" || k.TrangThai == "NHAP" || k.TrangThai == "TU_CHOI")
+        return await OpenEventPaymentPeriods.AsNoTracking()
             .OrderBy(k => k.Nam).ThenBy(k => k.Thang).ToListAsync();
     }
 
@@ -101,7 +105,7 @@ public sealed partial class HotelEventService
         var period = await db.KyLuongs.SingleOrDefaultAsync(k => k.Thang == month && k.Nam == year);
         if (period != null)
         {
-            Require(period.TrangThai is "MO" or "NHAP" or "TU_CHOI", "", "Kỳ đã gửi duyệt/đã khóa; chọn kỳ mở khác.");
+            Require(await OpenEventPaymentPeriods.AnyAsync(k => k.MaKyLuong == period.MaKyLuong), "", "Kỳ đã gửi duyệt/đã khóa; chọn kỳ mở khác.");
             return period.MaKyLuong;
         }
         period = new KyLuong { Thang = month, Nam = year, TuNgay = new(year,month,1), DenNgay = new(year,month,DateTime.DaysInMonth(year,month)), TrangThai = "MO" };
@@ -120,8 +124,8 @@ public sealed partial class HotelEventService
         Require(item != null && item.Version == version, "", "Sự kiện không tồn tại hoặc đã thay đổi.");
         Require(!item!.TinhTheoGio && item.TrangThai == "HOAN_THANH", "", "Chỉ đối soát sự kiện chính sách cũ đã hoàn thành.");
         reason = Text(reason, 500, "reason", "Căn cứ đối soát số tiền đã chốt");
-        var period = await db.KyLuongs.SingleOrDefaultAsync(k => k.MaKyLuong == paymentPeriodId);
-        Require(period != null && period.TrangThai is "MO" or "NHAP" or "TU_CHOI", "paymentPeriodId", "Chọn kỳ còn sửa được.");
+        var period = await OpenEventPaymentPeriods.SingleOrDefaultAsync(k => k.MaKyLuong == paymentPeriodId);
+        Require(period != null, "paymentPeriodId", "Chọn kỳ còn sửa được, chưa gửi duyệt hoặc đã từ chối.");
         var month = HourlyEventRules.WorkMonth(item.KetThucThucTe ?? item.NgayKetThuc);
         Require(new DateOnly(period!.Nam,period.Thang,1) >= month, "", "Kỳ trả không được trước tháng phát sinh.");
         Require(item.QuyetToans.Count == 0, "", "Đã đối soát, không tạo khoản trùng.");
@@ -344,6 +348,18 @@ public sealed partial class HotelEventService
         return await BuildPreview(item!);
     }
 
+    private static IReadOnlyList<EventPaySlice> ReadFrozenBasis(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind == JsonValueKind.Null) return [];
+        return document.RootElement.EnumerateArray().Select(node =>
+        {
+            var slice = node.Deserialize<EventPaySlice>()!;
+            // Snapshots created before configurable rates used x1.
+            return node.TryGetProperty(nameof(EventPaySlice.Rate), out _) ? slice : slice with { Rate = 1m };
+        }).ToList();
+    }
+
     private async Task<EventPayPreview> BuildPreview(DuAn item)
     {
         var warnings = new List<string>(); var rows = new List<EventPayRow>();
@@ -352,10 +368,11 @@ public sealed partial class HotelEventService
         {
             rows.AddRange(item.QuyetToans.OrderBy(q => q.MaNhanVien).ThenBy(q => q.ThangPhatSinh).Select(q => new EventPayRow(
                 q.MaNhanVien, item.PhanCongs.FirstOrDefault(p => p.MaNhanVien == q.MaNhanVien)?.NhanVien?.HoTen ?? $"#{q.MaNhanVien}",
-                q.ThangPhatSinh, q.SoPhut, q.SoTien, JsonSerializer.Deserialize<List<EventPaySlice>>(q.CanCuTinh) ?? [])));
+                q.ThangPhatSinh, q.SoPhut, q.SoTien, ReadFrozenBasis(q.CanCuTinh))));
         }
         else
         {
+            var hourlyRate = await EventRateConfig.ReadAsync(db);
             if (HotelEventRules.CountEffectiveStaff(item.PhanCongs) == 0)
                 warnings.Add("Chưa có phân công hiệu lực từ Lịch làm việc để đối chiếu công sự kiện.");
             var recorded = item.PhanCongs.SelectMany(p => p.CongThucTes).ToList();
@@ -386,7 +403,7 @@ public sealed partial class HotelEventService
                                 warnings.Add($"{name}: ca/phân công/thời gian sự kiện không còn hợp lệ cho công #{work.MaCong}; cần kiểm tra lại nguồn phân công.");
                         }
                     }
-                    var slices = group.SelectMany(p => p.CongThucTes.SelectMany(c => HourlyEventRules.Price(c.BatDau, c.KetThuc, p.NhanVien!.HopDongs))).ToList();
+                    var slices = group.SelectMany(p => p.CongThucTes.SelectMany(c => HourlyEventRules.Price(c.BatDau, c.KetThuc, p.NhanVien!.HopDongs, hourlyRate))).ToList();
                     _ = HourlyEventRules.Amount(slices);
                     foreach (var month in slices.GroupBy(s => HourlyEventRules.WorkMonth(s.Start)).OrderBy(g => g.Key))
                         rows.Add(new(group.Key, name, month.Key, month.Sum(s => s.Minutes), HourlyEventRules.Amount(month), month.ToList()));
@@ -408,8 +425,8 @@ public sealed partial class HotelEventService
         var preview = await BuildPreview(item);
         Require(preview.Warnings.Count == 0, "", string.Join(" ", preview.Warnings));
         Require(!string.IsNullOrEmpty(previewToken) && preview.Token == previewToken, "", "Căn cứ lương/công đã thay đổi. Xem lại bảng tiền trước khi nghiệm thu.");
-        var period = await db.KyLuongs.SingleOrDefaultAsync(k => k.MaKyLuong == paymentPeriodId);
-        Require(period != null && period.TrangThai is "MO" or "NHAP" or "TU_CHOI", "paymentPeriodId", "Chọn kỳ còn mở/nháp/từ chối; không nhận tiền vào kỳ đã gửi duyệt.");
+        var period = await OpenEventPaymentPeriods.SingleOrDefaultAsync(k => k.MaKyLuong == paymentPeriodId);
+        Require(period != null, "paymentPeriodId", "Chọn kỳ còn mở/nháp/từ chối; không nhận tiền vào kỳ đã gửi duyệt hoặc đã duyệt.");
         var periodMonth = new DateOnly(period!.Nam, period.Thang, 1);
         Require(preview.Rows.All(r => r.WorkMonth <= periodMonth), "paymentPeriodId", "Kỳ trả không được trước tháng phát sinh công.");
         Require(!await db.QuyetToanSuKiens.AnyAsync(q => q.MaDuAn == id), "", "Sự kiện đã có quyết toán; không tạo trùng.");

@@ -95,6 +95,8 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         return await Scoped(EventInformation.AsNoTracking(), actor).SingleOrDefaultAsync(e => e.MaDuAn == id);
     }
 
+    public Task<decimal> HourlyEventRateAsync() => EventRateConfig.ReadAsync(db);
+
     public async Task<IReadOnlyList<NhanVien>> ManagersAsync() => await db.NhanViens.AsNoTracking()
         .Where(n => n.TrangThai == "DANG_LAM" && n.TaiKhoan != null && n.TaiKhoan.TrangThai
             && n.TaiKhoan.VaiTro != null && n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() == "HR")

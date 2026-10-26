@@ -1,12 +1,19 @@
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 
 namespace OvertimeHotel.HRM.Core.Policies;
 
-public record EventPaySlice(DateTimeOffset Start, DateTimeOffset End, decimal MonthlySalary, int ContractId)
+public record EventPaySlice(DateTimeOffset Start, DateTimeOffset End, decimal MonthlySalary, int ContractId,
+    decimal Rate = SalaryConstants.EVENT_HOURLY_RATE)
 {
     public decimal Minutes => (decimal)(End - Start).Ticks / TimeSpan.TicksPerMinute;
-    public decimal HourlyRate => MonthlySalary / 26m / 8m;
-    public decimal UnroundedAmount => MonthlySalary * Minutes / (26m * 8m * 60m);
+
+    // Tiền sự kiện = Lương tháng / 26 / 8 × Số giờ tham gia sự kiện × hệ số (lưu kèm căn cứ để không hồi tố)
+    public decimal HourlyRate => MonthlySalary / SalaryConstants.STANDARD_WORKING_DAYS
+        / SalaryConstants.STANDARD_WORKING_HOURS_PER_DAY * Rate;
+
+    public decimal UnroundedAmount => MonthlySalary * Rate * Minutes
+        / (SalaryConstants.STANDARD_WORKING_DAYS * SalaryConstants.STANDARD_WORKING_HOURS_PER_DAY * 60m);
 }
 
 public static class HourlyEventRules
@@ -52,9 +59,11 @@ public static class HourlyEventRules
         return rounded;
     }
 
-    public static IReadOnlyList<EventPaySlice> Price(DateTimeOffset start, DateTimeOffset end, IEnumerable<HopDong> contracts)
+    public static IReadOnlyList<EventPaySlice> Price(DateTimeOffset start, DateTimeOffset end, IEnumerable<HopDong> contracts,
+        decimal? rate = null)
     {
         if (start >= end) throw new ArgumentException("Khoảng công phải có thời lượng lớn hơn 0.");
+        var hourlyRate = rate is > 0 ? rate.Value : SalaryConstants.EVENT_HOURLY_RATE;
         var list = contracts.ToList();
         var result = new List<EventPaySlice>();
         for (var from = start; from < end;)
@@ -69,7 +78,7 @@ public static class HourlyEventRules
                 throw new ArgumentException($"Thiếu hoặc trùng căn cứ lương ngày {date:dd/MM/yyyy}.");
             var nextDay = HotelEventRules.ToUtc(date.AddDays(1).ToDateTime(TimeOnly.MinValue));
             var to = nextDay < end ? nextDay : end;
-            result.Add(new(from, to, candidates[0].LuongCoBan, candidates[0].MaHopDong));
+            result.Add(new(from, to, candidates[0].LuongCoBan, candidates[0].MaHopDong, hourlyRate));
             from = to;
         }
         return result;
