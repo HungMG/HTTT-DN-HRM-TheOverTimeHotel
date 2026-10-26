@@ -84,15 +84,28 @@ public class BangLuongController(
         {
             MaPhieuLuong = p.MaPhieuLuong,
             MaNhanVien = p.MaNhanVien,
-            HoTen = p.NhanVien?.HoTen ?? "N/A",
-            PhongBan = p.NhanVien?.PhongBan?.TenPhongBan ?? "N/A",
-            ChucVu = p.NhanVien?.ChucVu?.TenChucVu ?? "N/A",
+            HoTen = p.NhanVien != null ? p.NhanVien.HoTen : "N/A",
+            PhongBan = p.NhanVien != null && p.NhanVien.PhongBan != null ? p.NhanVien.PhongBan.TenPhongBan : "N/A",
+            ChucVu = p.NhanVien != null && p.NhanVien.ChucVu != null ? p.NhanVien.ChucVu.TenChucVu : "N/A",
             LuongCoBan = p.LuongCoBan,
             NgayCongThucTe = p.NgayCongThucTe,
             TienLuongCong = p.TienLuongCong,
             TienTangCa = p.TienTangCa,
             TongPhuCap = p.TongPhuCap,
             TongThuong = p.TongThuong,
+            TienSuKien = p.ChiTietPhieuLuongs
+                .Where(d => (d.LoaiKhoan == "PHU_CAP" && d.TenKhoanLuu.StartsWith("Phụ cấp sự kiện"))
+                         || (d.LoaiKhoan == "THUONG" && (d.TenKhoanLuu.StartsWith("Thưởng sự kiện")
+                                                      || d.TenKhoanLuu.StartsWith("Tiền sự kiện")
+                                                      || d.TenKhoanLuu.StartsWith("Thưởng Tiệc cưới")
+                                                      || d.TenKhoanLuu.StartsWith("Thưởng Đoàn VIP")
+                                                      || d.TenKhoanLuu.StartsWith("Thưởng Gala Dinner")
+                                                      || d.TenKhoanLuu.StartsWith("Thưởng MICE")
+                                                      || d.TenKhoanLuu.StartsWith("Thưởng Festival")
+                                                      || d.TenKhoanLuu.StartsWith("Thưởng dự án")
+                                                      || (d.GhiChu != null && d.GhiChu.Contains("phân công"))
+                                                      || (d.GhiChu != null && d.GhiChu.Contains("Quyết toán sự kiện")))))
+                .Sum(d => (decimal?)d.SoTien) ?? 0m,
             TongKhauTru = p.TongKhauTru,
             ThucNhan = p.ThucNhan,
             TrangThai = p.TrangThai
@@ -209,13 +222,15 @@ public class BangLuongController(
         var eventItems = details
             .Where(d => (d.LoaiKhoan == "PHU_CAP" && d.TenKhoanLuu.StartsWith("Phụ cấp sự kiện"))
                      || (d.LoaiKhoan == "THUONG" && (d.TenKhoanLuu.StartsWith("Thưởng sự kiện")
+                                                  || d.TenKhoanLuu.StartsWith("Tiền sự kiện")
                                                   || d.TenKhoanLuu.StartsWith("Thưởng Tiệc cưới")
                                                   || d.TenKhoanLuu.StartsWith("Thưởng Đoàn VIP")
                                                   || d.TenKhoanLuu.StartsWith("Thưởng Gala Dinner")
                                                   || d.TenKhoanLuu.StartsWith("Thưởng MICE")
                                                   || d.TenKhoanLuu.StartsWith("Thưởng Festival")
                                                   || d.TenKhoanLuu.StartsWith("Thưởng dự án")
-                                                  || d.GhiChu?.Contains("phân công") == true)))
+                                                  || d.GhiChu?.Contains("phân công") == true
+                                                  || d.GhiChu?.Contains("Quyết toán sự kiện") == true)))
             .Select(d => new ChiTietKhoanItemViewModel
             {
                 MaChiTiet = d.MaChiTiet,
@@ -382,18 +397,18 @@ public class BangLuongController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Adjust(AdjustSalaryItemInput input)
+    public async Task<IActionResult> Adjust(AdjustSalaryItemInput input, string? returnUrl = null)
     {
         if (!IsHR)
         {
             TempData["Error"] = "Chỉ tài khoản Chuyên viên Nhân sự (HR) mới có quyền kiểm tra, đối soát và điều chỉnh số liệu bảng lương nháp.";
-            return RedirectToAction(nameof(Detail), new { id = input.MaPhieuLuong });
+            return RedirectBack(returnUrl, input.MaPhieuLuong);
         }
 
         if (!ModelState.IsValid)
         {
             TempData["Error"] = "Dữ liệu điều chỉnh không hợp lệ. Vui lòng kiểm tra lại.";
-            return RedirectToAction(nameof(Detail), new { id = input.MaPhieuLuong });
+            return RedirectBack(returnUrl, input.MaPhieuLuong);
         }
 
         try
@@ -415,16 +430,16 @@ public class BangLuongController(
             TempData["Error"] = $"Không thể điều chỉnh: {ex.Message}";
         }
 
-        return RedirectToAction(nameof(Detail), new { id = input.MaPhieuLuong });
+        return RedirectBack(returnUrl, input.MaPhieuLuong);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteAdjust(int chiTietId, int phieuLuongId)
+    public async Task<IActionResult> DeleteAdjust(int chiTietId, int phieuLuongId, string? returnUrl = null)
     {
         if (!IsHR)
         {
             TempData["Error"] = "Chỉ tài khoản Chuyên viên Nhân sự (HR) mới có quyền xóa khoản điều chỉnh.";
-            return RedirectToAction(nameof(Detail), new { id = phieuLuongId });
+            return RedirectBack(returnUrl, phieuLuongId);
         }
 
         try
@@ -438,16 +453,16 @@ public class BangLuongController(
             TempData["Error"] = $"Không thể xóa: {ex.Message}";
         }
 
-        return RedirectToAction(nameof(Detail), new { id = phieuLuongId });
+        return RedirectBack(returnUrl, phieuLuongId);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> RecalculateEmployee(int id)
+    public async Task<IActionResult> RecalculateEmployee(int id, string? returnUrl = null)
     {
         if (!IsHR)
         {
             TempData["Error"] = "Chỉ tài khoản Chuyên viên Nhân sự (HR) mới có quyền tính lại số liệu nhân viên trong giai đoạn rà soát đối chiếu.";
-            return RedirectToAction(nameof(Detail), new { id });
+            return RedirectBack(returnUrl, id);
         }
 
         try
@@ -461,7 +476,16 @@ public class BangLuongController(
             TempData["Error"] = $"Không thể tính lại: {ex.Message}";
         }
 
-        return RedirectToAction(nameof(Detail), new { id });
+        return RedirectBack(returnUrl, id);
+    }
+
+    private IActionResult RedirectBack(string? returnUrl, int phieuLuongId)
+    {
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return Redirect(returnUrl);
+        }
+        return RedirectToAction(nameof(Detail), new { id = phieuLuongId });
     }
 
     [HttpPost, ValidateAntiForgeryToken]

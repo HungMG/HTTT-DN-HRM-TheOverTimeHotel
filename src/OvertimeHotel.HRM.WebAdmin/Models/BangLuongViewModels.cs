@@ -20,6 +20,8 @@ public class BangLuongIndexViewModel
     public decimal TotalGross => Items.Sum(i => i.TongGross);
     public decimal TotalDeductions => Items.Sum(i => i.TongKhauTru);
     public decimal TotalNet => Items.Sum(i => i.ThucNhan);
+    public decimal TotalEventBonus => Items.Sum(i => i.TienSuKien);
+    public int TotalEventStaffCount => Items.Count(i => i.TienSuKien > 0);
 
     // Quyền hạn thao tác
     public bool CanCalculate { get; set; }
@@ -53,6 +55,7 @@ public class PhieuLuongRowViewModel
     public decimal TienTangCa { get; set; }
     public decimal TongPhuCap { get; set; }
     public decimal TongThuong { get; set; }
+    public decimal TienSuKien { get; set; }
     public decimal TongGross => TienLuongCong + TienTangCa + TongPhuCap + TongThuong;
     public decimal TongKhauTru { get; set; }
     public decimal ThucNhan { get; set; }

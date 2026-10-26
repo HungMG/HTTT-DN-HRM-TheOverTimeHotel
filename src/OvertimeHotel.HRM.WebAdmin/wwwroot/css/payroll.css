@@ -602,3 +602,24 @@
   .payroll-flow { grid-template-columns: 1fr; }
   .payroll-flow-net { justify-content: center; }
 }
+
+/* --- 5★ LUXURY HOTEL EVENT ALLOWANCES & GOLD ACCENTS --- */
+.text-gold-dark { color: #b45309 !important; }
+.last-border-0:last-child { border-bottom: 0 !important; }
+.badge-gold {
+  background: rgba(212, 175, 55, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  font-weight: 600;
+}
+.event-allowance-card {
+  border-radius: 12px;
+  background: #fdfcfa;
+  border: 1px solid #f2e8cf;
+  transition: all 0.2s ease;
+}
+.event-allowance-card:hover {
+  background: #ffffff;
+  border-color: #d4af37;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
+}

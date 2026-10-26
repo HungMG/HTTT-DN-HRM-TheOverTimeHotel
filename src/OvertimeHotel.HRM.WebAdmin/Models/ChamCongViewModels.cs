@@ -33,6 +33,7 @@ public class ChamCongIndexViewModel
     public int SoVangMat { get; set; }
     public decimal TongGioLamThucTe { get; set; }
     public decimal TongGioOt { get; set; }
+    public decimal TongGioSuKien { get; set; }
 
     // Phân trang
     public int PageNumber { get; set; } = 1;
@@ -129,4 +130,10 @@ public class ChamCongItemViewModel
             return "0h 00p";
         }
     }
+
+    // Phân công sự kiện theo giờ (Hourly Event Work)
+    public bool CoSuKien { get; set; }
+    public string? TenSuKien { get; set; }
+    public string? VaiTroSuKien { get; set; }
+    public decimal? SoGioSuKienThucTe { get; set; }
 }

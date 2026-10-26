@@ -278,6 +278,77 @@ public sealed partial class HotelEventService
         return 0;
     });
 
+    public Task<int> AutoSyncWorkFromAttendanceAsync(EventActor actor, int id, long version) => Write(async () =>
+    {
+        actor = await CurrentActor(actor);
+        var item = await Editable(actor, id, version);
+        Require(item.TinhTheoGio && item.TrangThai is "DANG_DIEN_RA" or "CHO_NGHIEM_THU", "", "Chỉ đối soát công cho sự kiện theo giờ đang thực hiện hoặc chờ nghiệm thu.");
+
+        var count = 0;
+        foreach (var assignment in item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG"))
+        {
+            var shift = assignment.PhanCa;
+            if (shift == null) continue;
+
+            if (shift.TrangThai == "VANG_MAT")
+            {
+                if (assignment.DanhGia != "KHONG_THAM_GIA")
+                {
+                    assignment.DanhGia = "KHONG_THAM_GIA";
+                    assignment.NgayDanhGia = DateTimeOffset.UtcNow;
+                    count++;
+                }
+                continue;
+            }
+
+            var attendance = shift.ChamCong;
+            if (attendance?.GioCheckIn is { } checkIn && attendance.GioCheckOut is { } checkOut)
+            {
+                var actualWindow = HourlyEventRules.ResolveActualWindow(
+                    assignment.BatDau, assignment.KetThuc,
+                    shift.BatDauDuKien, shift.KetThucDuKien,
+                    checkIn, checkOut);
+
+                if (actualWindow.HasValue && actualWindow.Value.Start < actualWindow.Value.End)
+                {
+                    var existingWork = assignment.CongThucTes.ToList();
+                    var overlaps = existingWork.Any(c => HotelEventRules.Overlaps(actualWindow.Value.Start, actualWindow.Value.End, c.BatDau, c.KetThuc));
+                    if (!overlaps)
+                    {
+                        var localIn = HotelEventRules.Local(checkIn).ToString("HH:mm");
+                        var localOut = HotelEventRules.Local(checkOut).ToString("HH:mm");
+                        assignment.CongThucTes.Add(new CongSuKien
+                        {
+                            BatDau = actualWindow.Value.Start,
+                            KetThuc = actualWindow.Value.End,
+                            GiaiTrinh = $"Tự động đối soát từ Chấm công (Vào: {localIn}, Ra: {localOut})",
+                            XacNhanNgoaiLe = false,
+                            MaNguoiXacNhan = actor.EmployeeId,
+                            NgayXacNhan = DateTimeOffset.UtcNow
+                        });
+                        assignment.DanhGia = "HOAN_THANH";
+                        assignment.NgayDanhGia = DateTimeOffset.UtcNow;
+                        count++;
+                    }
+                }
+                else if (assignment.CongThucTes.Count == 0 && assignment.DanhGia == "CHUA_DANH_GIA")
+                {
+                    assignment.DanhGia = "KHONG_THAM_GIA";
+                    assignment.NgayDanhGia = DateTimeOffset.UtcNow;
+                    count++;
+                }
+            }
+        }
+
+        if (count > 0)
+        {
+            item.Version++;
+            Audit(actor, item, "DONG_BO_CONG_CHAM_CONG", $"Tự động đối soát chấm công cho {count} phân công sự kiện.");
+        }
+
+        return count;
+    });
+
     public Task DeleteWorkAsync(EventActor actor, int id, int workId, long version, string reason) => Write(async () =>
     {
         actor = await CurrentActor(actor);

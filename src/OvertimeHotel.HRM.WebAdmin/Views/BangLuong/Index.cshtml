@@ -371,9 +371,15 @@
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <!-- HEADER BẢNG VỚI BỘ LỌC TÌM KIẾM -->
         <div class="card-header bg-white p-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
                 <h5 class="fw-bold mb-0 text-dark">Bảng chi tiết lương nhân viên</h5>
                 <span class="badge bg-light text-dark rounded-pill" data-payroll-count>@Model.Items.Count nhân viên</span>
+                @if (Model.TotalEventBonus > 0)
+                {
+                    <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle rounded-pill py-1 px-2.5" title="Chính sách sự kiện 5★: Hệ số x2 trong ca trực chính thức">
+                        <i class="bi bi-stars text-warning me-1"></i>Thù lao sự kiện: @Model.TotalEventBonus.ToString("N0") đ (@Model.TotalEventStaffCount nhân sự)
+                    </span>
+                }
             </div>
 
             <!-- TÌM KIẾM & LỌC THEO PHÒNG BAN: chọn xong tự nạp lại CHỈ danh sách bên dưới -->
@@ -464,6 +470,7 @@
                                 data-payslip-code="@row.MaNvFormatted"
                                 data-payslip-dept="@row.PhongBan"
                                 data-payslip-role="@row.ChucVu"
+                                data-payslip-page="@Url.Action("Detail", "BangLuong", new { id = row.MaPhieuLuong })"
                                 data-payslip-print="@Url.Action("Print", "BangLuong", new { id = row.MaPhieuLuong })"
                                 title="Nhấn để xem chi tiết phiếu lương">
                                 <td class="ps-4">
@@ -495,7 +502,20 @@
                                 </td>
                                 <td class="text-end font-monospace">@row.TongPhuCap.ToString("N0")</td>
                                 <td class="text-end font-monospace">
-                                    @(row.TongThuong > 0 ? row.TongThuong.ToString("N0") : "-")
+                                    @if (row.TongThuong > 0)
+                                    {
+                                        <div class="fw-semibold">@row.TongThuong.ToString("N0")</div>
+                                        @if (row.TienSuKien > 0)
+                                        {
+                                            <div class="small text-warning-emphasis fw-semibold" style="font-size: 0.72rem;" title="Bao gồm @row.TienSuKien.ToString("N0")đ thù lao sự kiện (+100% lương giờ trong ca)">
+                                                <i class="bi bi-stars text-warning"></i> SK: @row.TienSuKien.ToString("N0")
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
                                 </td>
                                 <td class="text-end font-monospace fw-bold text-success">@row.TongGross.ToString("N0")</td>
                                 <td class="text-end font-monospace fw-bold text-danger">@row.TongKhauTru.ToString("N0")</td>
@@ -513,9 +533,22 @@
                                     </span>
                                 </td>
                                 <td class="text-end pe-4">
-                                    <a asp-action="Print" asp-route-id="@row.MaPhieuLuong" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" title="In phiếu lương / Xuất PDF" onclick="event.stopPropagation();">
-                                        <i class="bi bi-printer"></i>
-                                    </a>
+                                    <div class="d-inline-flex align-items-center gap-1.5" onclick="event.stopPropagation();">
+                                        @if (Model.CanCalculate)
+                                        {
+                                            <form method="post" asp-action="RecalculateEmployee" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@row.MaPhieuLuong" />
+                                                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                                <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0.5" title="Tính lại phiếu lương nhân viên này" onclick="return confirm('Tính lại số liệu chấm công, sự kiện và khấu trừ của @row.HoTen?');">
+                                                    <i class="bi bi-arrow-clockwise"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                        <a asp-action="Print" asp-route-id="@row.MaPhieuLuong" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5" title="In phiếu lương / Xuất PDF">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -609,7 +642,10 @@
                         </h5>
                     </div>
                 </div>
-                <div class="payslip-modal-actions d-flex align-items-center">
+                <div class="payslip-modal-actions d-flex align-items-center gap-2">
+                    <a href="#" class="btn btn-sm btn-outline-light rounded-pill px-3 d-none" data-payslip-page-link target="_blank" title="Mở trang chi tiết phiếu lương riêng">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Trang riêng
+                    </a>
                     <button type="button" class="btn btn-sm btn-light rounded-pill px-3 d-none" data-payslip-print>
                         <i class="bi bi-printer me-1"></i> In / PDF
                     </button>

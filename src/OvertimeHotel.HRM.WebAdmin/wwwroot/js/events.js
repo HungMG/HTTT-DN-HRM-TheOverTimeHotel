@@ -129,9 +129,72 @@
             filterEmployees(true);
         });
     }
-    if (typeof module !== 'undefined' && module.exports) module.exports = { moveDate, calendarUrl, createUrl, handleDayInteraction, validTimeRange, toggleDate, selectionRange, responseError, canCreateSelection, selectedOccurrences, bindDepartmentEmployeeFiltering };
+    function showToast(message, type = 'success') {
+        let stack = document.querySelector('.hotel-toast-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.className = 'hotel-toast-stack';
+            stack.setAttribute('aria-live', 'polite');
+            document.body.appendChild(stack);
+        }
+        const toast = document.createElement('div');
+        toast.className = `hotel-toast hotel-toast--${type}`;
+        toast.setAttribute('role', type === 'success' ? 'status' : 'alert');
+
+        const icon = document.createElement('i');
+        icon.className = `bi ${type === 'success' ? 'bi-check-circle-fill' : type === 'warning' ? 'bi-exclamation-triangle-fill' : 'bi-x-circle-fill'}`;
+
+        const body = document.createElement('div');
+        body.className = 'hotel-toast-body';
+        body.textContent = message;
+
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'hotel-toast-close';
+        close.innerHTML = '<i class="bi bi-x-lg"></i>';
+        close.setAttribute('aria-label', 'Đóng thông báo');
+
+        function dismiss() {
+            toast.classList.add('is-leaving');
+            window.setTimeout(() => toast.remove(), 240);
+        }
+
+        close.addEventListener('click', dismiss);
+        toast.append(icon, body, close);
+        stack.appendChild(toast);
+        window.setTimeout(dismiss, 4500);
+    }
+    function showConfirm({ title, message, confirmText = 'Xác nhận', cancelText = 'Hủy bỏ', danger = false }) {
+        return new Promise(resolve => {
+            const backdrop = document.createElement('div');
+            backdrop.className = 'hotel-confirm-backdrop';
+            backdrop.innerHTML = `
+                <div class="hotel-confirm-card" role="dialog" aria-modal="true">
+                    <div class="hotel-confirm-card__icon ${danger ? 'hotel-confirm-card__icon--danger' : 'hotel-confirm-card__icon--primary'}">
+                        <i class="bi ${danger ? 'bi-exclamation-triangle' : 'bi-arrow-repeat'}"></i>
+                    </div>
+                    <h5 class="fw-bold text-navy mb-2">${title}</h5>
+                    <p class="text-muted small mb-4">${message}</p>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="event-secondary-button event-secondary-button--sm" data-modal-cancel>${cancelText}</button>
+                        <button type="button" class="${danger ? 'event-action-btn event-action-btn--danger' : 'event-primary-button event-primary-button--sm'}" data-modal-confirm>${confirmText}</button>
+                    </div>
+                </div>
+            `;
+            function cleanup(result) {
+                backdrop.remove();
+                resolve(result);
+            }
+            backdrop.querySelector('[data-modal-confirm]').addEventListener('click', () => cleanup(true));
+            backdrop.querySelector('[data-modal-cancel]').addEventListener('click', () => cleanup(false));
+            backdrop.addEventListener('click', e => { if (e.target === backdrop) cleanup(false); });
+            document.body.appendChild(backdrop);
+            backdrop.querySelector('[data-modal-confirm]').focus();
+        });
+    }
+    if (typeof module !== 'undefined' && module.exports) module.exports = { moveDate, calendarUrl, createUrl, handleDayInteraction, validTimeRange, toggleDate, selectionRange, responseError, canCreateSelection, selectedOccurrences, bindDepartmentEmployeeFiltering, showToast, showConfirm };
     if (typeof document === 'undefined') return;
-    window.HotelEventUI = { responseError, bindTimeForms };
+    window.HotelEventUI = { responseError, bindTimeForms, showToast, showConfirm };
     document.addEventListener('DOMContentLoaded', function () {
         bindTimeForms(document);
         bindDepartmentEmployeeFiltering(document);

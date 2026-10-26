@@ -192,6 +192,7 @@
         var headerRole = modal.querySelector("[data-payslip-role]");
         var avatar = modal.querySelector("[data-payslip-avatar]");
         var printBtn = modal.querySelector("[data-payslip-print]");
+        var pageLink = modal.querySelector("[data-payslip-page-link]");
         if (!body || !printBtn) return;
 
         var bootstrapModal = window.bootstrap && window.bootstrap.Modal
@@ -214,6 +215,14 @@
                 printBtn.classList.remove("d-none");
             } else {
                 printBtn.classList.add("d-none");
+            }
+
+            var pageUrl = row.getAttribute("data-payslip-page");
+            if (pageLink && pageUrl) {
+                pageLink.setAttribute("href", pageUrl);
+                pageLink.classList.remove("d-none");
+            } else if (pageLink) {
+                pageLink.classList.add("d-none");
             }
         }
 

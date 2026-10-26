@@ -22,6 +22,7 @@ public interface IHotelEventService
     Task SaveNeedAsync(EventActor actor, int id, EventNeedInput input);
     Task DeleteNeedAsync(EventActor actor, int id, int needId, long version, string reason);
     Task RecordWorkAsync(EventActor actor, int id, EventWorkInput input);
+    Task<int> AutoSyncWorkFromAttendanceAsync(EventActor actor, int id, long version);
     Task DeleteWorkAsync(EventActor actor, int id, int workId, long version, string reason);
     Task EndParticipationAsync(EventActor actor, int id, int assignmentId, long version, DateTime end, string reason);
     Task StopAsync(EventActor actor, int id, long version, DateTime end, string reason);

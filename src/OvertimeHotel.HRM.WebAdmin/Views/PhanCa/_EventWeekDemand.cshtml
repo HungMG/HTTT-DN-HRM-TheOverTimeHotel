@@ -12,38 +12,127 @@
 @if (Model.CanViewEventDemand)
 {
     <section class="shift-workspace-card p-3 mb-3" aria-labelledby="event-week-heading">
-        <h2 id="event-week-heading" class="h5">Nhu cầu nhân sự theo khung giờ · Tuần @Model.WeekStart.ToString("dd/MM") – @Model.WeekEnd.ToString("dd/MM/yyyy")</h2>
-        <p class="@(Model.PublishedWeek == null || hasDraft ? "text-warning" : "text-success")" role="status">@(Model.PublishedWeek == null ? "Lịch tuần đang dự thảo. Chưa dùng để phân công sự kiện." : hasDraft ? "Có thay đổi chưa công bố lại. Chỉ các ca vẫn còn hiệu lực công bố mới được dùng cho sự kiện." : "Lịch tuần đã công bố lúc " + HotelEventRules.Local(Model.PublishedWeek.NgayCongBo).ToString("dd/MM/yyyy HH:mm") + " (UTC+7).")</p>
-        <p class="alert alert-warning" data-week-publication-warning role="status" hidden="@(!hasDraft)">Có ca dự thảo theo bộ lọc hiện tại. Ca mới hoặc vừa thay đổi cần công bố trước khi dùng phân công sự kiện. Tải lại để xem nhu cầu mới nhất.</p>
-        <p class="text-muted">Xếp ca từ nhu cầu bên dưới, công bố lịch tuần rồi mở sự kiện để chọn nhân viên từ các ca chính thức. Công bố thông thường vào thứ Bảy; công bố ngày khác cần lý do.</p>
-        @if (Model.EventDemand.Count == 0) { <p class="text-muted">Chưa có sự kiện trong tuần thuộc phạm vi của bạn.</p> }
-        @foreach (var item in Model.EventDemand)
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+            <h2 id="event-week-heading" class="h5 mb-0 text-navy fw-bold">
+                <i class="bi bi-calendar3-range text-gold me-2"></i>Nhu cầu nhân sự theo khung giờ · Tuần @Model.WeekStart.ToString("dd/MM") – @Model.WeekEnd.ToString("dd/MM/yyyy")
+            </h2>
+            @if (Model.CanPublishWeek)
+            {
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-bold shadow-xs hover-lift d-inline-flex align-items-center gap-1.5"
+                        style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); border: 1px solid #d4af37;"
+                        data-bs-toggle="modal" data-bs-target="#modalPublishWeek">
+                    <i class="bi bi-megaphone-fill text-gold"></i>
+                    @(Model.PublishedWeek == null ? "Công bố lịch tuần" : "Công bố lại lịch tuần")
+                </button>
+            }
+        </div>
+
+        <div class="alert alert-light border rounded-3 p-2.5 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-2xs"
+             style="background: #faf8f5; border-color: #f2e8cf !important;">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-calendar2-week text-gold fs-5"></i>
+                <span class="small text-navy">
+                    <strong>Quy định vận hành 5★:</strong> Thứ Bảy hằng tuần là thời điểm Quản lý bắt đầu lập và chốt lịch trực cho tuần sau.
+                </span>
+            </div>
+            <span class="badge @(Model.PublishedWeek == null || hasDraft ? "bg-warning-subtle text-warning-emphasis border border-warning-subtle" : "bg-success-subtle text-success border border-success-subtle") rounded-pill px-3 py-1">
+                <i class="bi @(Model.PublishedWeek == null || hasDraft ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-1"></i>
+                @(Model.PublishedWeek == null ? "Lịch tuần đang dự thảo" : hasDraft ? "Có thay đổi chưa công bố lại" : "Lịch tuần đã công bố chính thức")
+            </span>
+        </div>
+
+        <p class="text-muted small mb-3">Xếp ca từ nhu cầu bên dưới, công bố lịch tuần rồi bấm nút "Phân công việc" để phân công nhân sự trực tiếp qua popup mà không rời khỏi trang.</p>
+
+        @if (Model.EventDemand.Count == 0)
         {
-            <div class="border rounded p-3 mb-3">
-                <a class="fw-semibold" asp-controller="SuKien" asp-action="Details" asp-route-id="@item.MaDuAn" asp-route-tab="staff">@item.TenDuAn</a><span> · @item.DiaDiem</span>
-                @if (item.NhuCaus.Count == 0) { <p class="text-warning mt-2 mb-0">Chưa khai báo nhu cầu vai trò / thời gian.</p> }
-                <div class="table-responsive"><table class="table table-sm mt-2 mb-0"><thead><tr><th scope="col">Khung giờ (UTC+7)</th><th scope="col">Bộ phận / vai trò</th><th scope="col">Cần</th><th scope="col">Phân công sự kiện</th><th scope="col">Dự báo ca theo bộ lọc (trong tuần)</th></tr></thead><tbody>
-                @foreach (var need in item.NhuCaus.Where(n => n.BatDau < weekTo && n.KetThuc > weekFrom).OrderBy(n => n.BatDau))
-                {
-                    var from = need.BatDau > weekFrom ? need.BatDau : weekFrom;
-                    var to = need.KetThuc < weekTo ? need.KetThuc : weekTo;
-                    var assignments = item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.MaPhongBanSuKien == need.MaPhongBan && HotelEventRoleRules.Matches(need.VaiTro, p.VaiTroDuAn));
-                    var confirmed = HotelEventRoleRules.MinimumConcurrentCount(assignments, from, to);
-                    var draftShifts = Model.DanhSachPhanCa.Where(s => s.TrangThai != "DA_HUY" && s.TrangThai != "VANG_MAT" && s.NhanVien != null && HotelEventRules.ResolveDepartmentCode(s.NhanVien) == need.MaPhongBan)
-                        .Select(s => new OvertimeHotel.HRM.Core.Models.PhanCongDuAn { MaNhanVien = s.MaNhanVien, BatDau = s.BatDauDuKien, KetThuc = s.KetThucDuKien });
-                    var forecast = HotelEventRoleRules.MinimumConcurrentCount(draftShifts, from, to);
-                    <tr><td>@need.TenKhung<br />@HotelEventRules.Local(need.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(need.KetThuc).ToString("dd/MM HH:mm")</td><td>@HotelEventRules.DepartmentLabels.GetValueOrDefault(need.MaPhongBan, need.MaPhongBan)<br />@need.VaiTro</td><td>@need.SoNguoi</td><td class="@(confirmed < need.SoNguoi ? "text-danger" : "text-success")">@confirmed/@need.SoNguoi · Thiếu @Math.Max(0, need.SoNguoi - confirmed)</td><td>@forecast người liên tục<br /><small class="text-muted">Chưa xác nhận vai trò hay khả năng điều phối</small></td></tr>
-                }
-                </tbody></table></div>
+            <div class="text-center py-4 text-muted bg-white border rounded-3">
+                <i class="bi bi-calendar-x display-6 text-muted opacity-50 d-block mb-2"></i>
+                Chưa có sự kiện trong tuần thuộc phạm vi quản lý của bạn.
             </div>
         }
-        @if (Model.CanPublishWeek)
+        @foreach (var item in Model.EventDemand)
         {
-            <form asp-action="PublishWeek" method="post" class="row g-2 align-items-end">
-                <input name="weekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" type="hidden" /><input name="version" value="@(Model.PublishedWeek?.Version ?? 0)" type="hidden" />
-                <div class="col-md-9"><label for="publish-week-reason" class="form-label">Lý do công bố / điều chỉnh (bắt buộc trừ công bố tuần kế tiếp vào thứ Bảy)</label><input id="publish-week-reason" name="reason" class="form-control" maxlength="500" required="@(HotelEventRules.Local(DateTimeOffset.UtcNow).DayOfWeek != DayOfWeek.Saturday || Model.WeekStart != HourlyEventRules.WeekStart(DateOnly.FromDateTime(HotelEventRules.Local(DateTimeOffset.UtcNow))).AddDays(7))" /></div>
-                <div class="col-md-3"><button type="submit" class="btn btn-primary w-100">@(Model.PublishedWeek == null ? "Công bố lịch tuần" : "Công bố lại lịch tuần")</button></div>
-            </form>
+            <div class="event-demand-card border rounded-3 p-3 mb-3 bg-white shadow-sm">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2 pb-2 border-bottom">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="fw-bold text-navy fs-6 d-inline-flex align-items-center gap-1">
+                            <i class="bi bi-calendar-event text-gold me-1"></i>@item.TenDuAn
+                        </span>
+                        <span class="badge bg-slate-subtle text-slate-dark border">SK-@item.MaDuAn.ToString("D4")</span>
+                        <span class="text-muted small"><i class="bi bi-geo-alt text-gold"></i> @item.DiaDiem</span>
+                        <span class="text-muted small">· @HotelEventRules.Local(item.NgayBatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(item.NgayKetThuc).ToString("dd/MM HH:mm")</span>
+                    </div>
+                    <div>
+                        <a class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1 fw-bold rounded-pill px-3 py-1 shadow-xs hover-lift"
+                           style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); border: 1px solid #d4af37;"
+                           asp-controller="SuKien"
+                           asp-action="Details"
+                           asp-route-id="@item.MaDuAn"
+                           asp-route-tab="staff"
+                           data-event-link
+                           data-event-id="@item.MaDuAn"
+                           data-event-name="@item.TenDuAn"
+                           title="Mở popup phân công việc">
+                            <i class="bi bi-person-check-fill text-gold me-1"></i> Phân công việc
+                        </a>
+                    </div>
+                </div>
+
+                @if (item.NhuCaus.Count == 0)
+                {
+                    <p class="text-warning small mb-0"><i class="bi bi-exclamation-circle me-1"></i>Chưa khai báo nhu cầu vai trò / thời gian cho sự kiện này.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mt-2 mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">Khung giờ (UTC+7)</th>
+                                    <th scope="col">Bộ phận / vai trò</th>
+                                    <th scope="col" class="text-center">Cần</th>
+                                    <th scope="col">Phân công sự kiện</th>
+                                    <th scope="col">Dự báo ca theo bộ lọc (trong tuần)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var need in item.NhuCaus.Where(n => n.BatDau < weekTo && n.KetThuc > weekFrom).OrderBy(n => n.BatDau))
+                            {
+                                var from = need.BatDau > weekFrom ? need.BatDau : weekFrom;
+                                var to = need.KetThuc < weekTo ? need.KetThuc : weekTo;
+                                var assignments = item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.MaPhongBanSuKien == need.MaPhongBan && HotelEventRoleRules.Matches(need.VaiTro, p.VaiTroDuAn));
+                                var confirmed = HotelEventRoleRules.MinimumConcurrentCount(assignments, from, to);
+                                var draftShifts = Model.DanhSachPhanCa.Where(s => s.TrangThai != "DA_HUY" && s.TrangThai != "VANG_MAT" && s.NhanVien != null && HotelEventRules.ResolveDepartmentCode(s.NhanVien) == need.MaPhongBan)
+                                    .Select(s => new OvertimeHotel.HRM.Core.Models.PhanCongDuAn { MaNhanVien = s.MaNhanVien, BatDau = s.BatDauDuKien, KetThuc = s.KetThucDuKien });
+                                var forecast = HotelEventRoleRules.MinimumConcurrentCount(draftShifts, from, to);
+                                var isShortage = confirmed < need.SoNguoi;
+
+                                <tr>
+                                    <td>
+                                        <strong>@need.TenKhung</strong><br />
+                                        <small class="text-muted">@HotelEventRules.Local(need.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(need.KetThuc).ToString("dd/MM HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-slate-subtle text-slate-dark border">@HotelEventRules.DepartmentLabels.GetValueOrDefault(need.MaPhongBan, need.MaPhongBan)</span><br />
+                                        <span class="small fw-semibold">@need.VaiTro</span>
+                                    </td>
+                                    <td class="text-center fw-bold">@need.SoNguoi</td>
+                                    <td>
+                                        <span class="badge @(isShortage ? "bg-danger-subtle text-danger border border-danger-subtle" : "bg-success-subtle text-success border border-success-subtle")">
+                                            @confirmed/@need.SoNguoi · @(isShortage ? $"Thiếu {need.SoNguoi - confirmed}" : "Đủ định mức")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="fw-semibold">@forecast người liên tục</span><br />
+                                        <small class="text-muted">Chưa xác nhận vai trò hay khả năng điều phối</small>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
         }
     </section>
 }

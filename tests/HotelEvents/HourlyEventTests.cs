@@ -24,6 +24,35 @@ internal static class HourlyEventTests
             Equal(day.AddHours(15), window!.Value.Start); Equal(day.AddHours(17), window.Value.End);
             Equal(true, HourlyEventRules.Intersect(day.AddHours(15), day.AddHours(20), day.AddHours(20), day.AddHours(28)) is null);
         });
+        Check("ResolveActualWindow calculates mathematical intersection with punch-in/out and caps at shift end", () =>
+        {
+            var assignStart = day.AddHours(14);
+            var assignEnd = day.AddHours(18);
+            var shiftStart = day.AddHours(13);
+            var shiftEnd = day.AddHours(17);
+
+            var actual1 = HourlyEventRules.ResolveActualWindow(
+                assignStart, assignEnd, shiftStart, shiftEnd,
+                day.AddHours(13.8), day.AddHours(17.2));
+            Equal(assignStart, actual1!.Value.Start);
+            Equal(shiftEnd, actual1.Value.End);
+
+            var actual2 = HourlyEventRules.ResolveActualWindow(
+                assignStart, assignEnd, shiftStart, shiftEnd,
+                day.AddHours(14.5), day.AddHours(17));
+            Equal(day.AddHours(14.5), actual2!.Value.Start);
+            Equal(shiftEnd, actual2.Value.End);
+
+            var actual3 = HourlyEventRules.ResolveActualWindow(
+                assignStart, assignEnd, shiftStart, shiftEnd,
+                day.AddHours(13.8), day.AddHours(16.5));
+            Equal(assignStart, actual3!.Value.Start);
+            Equal(day.AddHours(16.5), actual3.Value.End);
+
+            Equal(true, HourlyEventRules.ResolveActualWindow(assignStart, assignEnd, shiftStart, shiftEnd, null, null) is null);
+            Equal(true, HourlyEventRules.ResolveActualWindow(assignStart, assignEnd, shiftStart, shiftEnd, day.AddHours(14), null) is null);
+            Equal(true, HourlyEventRules.ResolveActualWindow(assignStart, assignEnd, shiftStart, shiftEnd, day.AddHours(10), day.AddHours(12)) is null);
+        });
         Check("Hourly work cannot count the same minute twice", () =>
         {
             Reject(() => HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(17), 8_000_000m, 1), new(day.AddHours(16), day.AddHours(18), 8_000_000m, 1)]));

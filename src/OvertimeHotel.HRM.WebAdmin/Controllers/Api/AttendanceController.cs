@@ -98,7 +98,13 @@ public class AttendanceController : ControllerBase
                 return Ok(new TodayShiftDto(0, string.Empty, default, default, null, null));
             }
 
-            return Ok(ToTodayShiftDto(phanCa));
+            var eventAssignment = await _context.PhanCongDuAns
+                .Include(p => p.DuAn)
+                .Include(p => p.CongThucTes)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.MaPhanCa == phanCa.MaPhanCa && p.TrangThaiThamGia != "HUY_PHAN_CONG");
+
+            return Ok(ToTodayShiftDto(phanCa, eventAssignment));
         }
         catch (Exception ex) when (IsDatabaseUnavailable(ex))
         {
@@ -284,6 +290,9 @@ public class AttendanceController : ControllerBase
             // Ca đã quẹt đủ thẻ vào và thẻ ra thì đánh dấu hoàn thành trên lịch phân ca.
             phanCa.TrangThai = "HOAN_THANH";
 
+            // Tự động đối soát và ghi nhận công sự kiện nếu ca trực này có phân công sự kiện
+            await AutoRecordEventWorkOnCheckOutAsync(phanCa.MaPhanCa, chamCong.GioCheckIn.Value, gioCheckOut, maNhanVien.Value);
+
             await _context.SaveChangesAsync();
 
             _logger.LogInformation(
@@ -427,9 +436,13 @@ public class AttendanceController : ControllerBase
             .Include(p => p.CaLamViec)
             .FirstOrDefaultAsync(p => p.MaPhanCa == maPhanCa && p.MaNhanVien == maNhanVien);
 
-    private static TodayShiftDto ToTodayShiftDto(Core.Models.PhanCa phanCa)
+    private static TodayShiftDto ToTodayShiftDto(Core.Models.PhanCa phanCa, Core.Models.PhanCongDuAn? eventAssignment = null)
     {
         var chamCong = phanCa.ChamCong;
+        var eventHours = eventAssignment != null && eventAssignment.CongThucTes.Count > 0
+            ? Math.Round((decimal)eventAssignment.CongThucTes.Sum(c => (c.KetThuc - c.BatDau).TotalHours), 2)
+            : (decimal?)null;
+
         return new TodayShiftDto(
             MaPhanCa: phanCa.MaPhanCa,
             TenCa: phanCa.CaLamViec?.TenCa ?? string.Empty,
@@ -440,7 +453,72 @@ public class AttendanceController : ControllerBase
             PhutDiTre: chamCong?.PhutDiTre ?? 0,
             PhutVeSom: chamCong?.PhutVeSom ?? 0,
             GioOt: chamCong?.GioTangCaOt ?? 0m,
-            TrangThai: chamCong?.TrangThai);
+            TrangThai: chamCong?.TrangThai,
+            TenSuKien: eventAssignment?.DuAn?.TenDuAn,
+            VaiTroSuKien: eventAssignment?.VaiTroDuAn,
+            SoGioSuKien: eventHours);
+    }
+
+    private async Task AutoRecordEventWorkOnCheckOutAsync(int maPhanCa, DateTimeOffset checkIn, DateTimeOffset checkOut, int employeeId)
+    {
+        try
+        {
+            var assignments = await _context.PhanCongDuAns
+                .Include(p => p.DuAn)
+                .Include(p => p.PhanCa)
+                .Include(p => p.CongThucTes)
+                .Where(p => p.MaPhanCa == maPhanCa && p.TrangThaiThamGia != "HUY_PHAN_CONG")
+                .ToListAsync();
+
+            foreach (var assignment in assignments)
+            {
+                if (assignment.DuAn == null || !assignment.DuAn.TinhTheoGio
+                    || assignment.DuAn.TrangThai is not ("DANG_DIEN_RA" or "CHO_NGHIEM_THU"))
+                {
+                    continue;
+                }
+
+                var shift = assignment.PhanCa;
+                if (shift == null) continue;
+
+                var actualWindow = HourlyEventRules.ResolveActualWindow(
+                    assignment.BatDau, assignment.KetThuc,
+                    shift.BatDauDuKien, shift.KetThucDuKien,
+                    checkIn, checkOut);
+
+                if (actualWindow.HasValue && actualWindow.Value.Start < actualWindow.Value.End)
+                {
+                    var alreadyOverlaps = assignment.CongThucTes.Any(c => HotelEventRules.Overlaps(actualWindow.Value.Start, actualWindow.Value.End, c.BatDau, c.KetThuc));
+                    if (!alreadyOverlaps)
+                    {
+                        var localIn = HotelEventRules.Local(checkIn).ToString("HH:mm");
+                        var localOut = HotelEventRules.Local(checkOut).ToString("HH:mm");
+                        assignment.CongThucTes.Add(new Core.Models.CongSuKien
+                        {
+                            BatDau = actualWindow.Value.Start,
+                            KetThuc = actualWindow.Value.End,
+                            GiaiTrinh = $"Tự động đối soát khi quẹt thẻ ra ca (Check-in: {localIn}, Check-out: {localOut})",
+                            XacNhanNgoaiLe = false,
+                            MaNguoiXacNhan = employeeId,
+                            NgayXacNhan = DateTimeOffset.UtcNow
+                        });
+                        assignment.DanhGia = "HOAN_THANH";
+                        assignment.NgayDanhGia = DateTimeOffset.UtcNow;
+                        assignment.DuAn.Version++;
+                    }
+                }
+                else if (assignment.CongThucTes.Count == 0 && assignment.DanhGia == "CHUA_DANH_GIA")
+                {
+                    assignment.DanhGia = "KHONG_THAM_GIA";
+                    assignment.NgayDanhGia = DateTimeOffset.UtcNow;
+                    assignment.DuAn.Version++;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Lỗi khi tự động đối soát công sự kiện lúc Check-out cho ca {MaPhanCa}", maPhanCa);
+        }
     }
 
     /// <summary>

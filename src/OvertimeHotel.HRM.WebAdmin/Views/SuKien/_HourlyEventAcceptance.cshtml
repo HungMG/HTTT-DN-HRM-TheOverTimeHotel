@@ -11,6 +11,23 @@
 <div class="event-panel">
     <h3>Công sự kiện thực tế</h3>
     <p class="event-muted">Mỗi lần phục vụ là một đoạn công riêng trong phân công và ca nguồn. Quản lý ghi trong giờ vào/ra đã chấm công; HR/Admin xác nhận ngoại lệ bằng giải trình. Người vắng mặt được đánh dấu không tham gia.</p>
+    @if (canRecord)
+    {
+        <div class="d-flex justify-content-between align-items-center p-3 mb-3 bg-light rounded-3 border">
+            <div>
+                <div class="fw-bold text-navy"><i class="bi bi-magic text-warning me-1"></i> Tự động đối soát từ Chấm công</div>
+                <div class="small text-muted">Lấy phần giao giữa giờ phân công sự kiện và giờ quẹt thẻ Check-in / Check-out thực tế của từng nhân viên.</div>
+            </div>
+            <form asp-action="AutoSyncAttendance" asp-route-id="@item.MaDuAn" method="post" class="m-0">
+                @Html.AntiForgeryToken()
+                <partial name="_EventContext" model="Model" />
+                <input name="version" value="@item.Version" type="hidden" />
+                <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs">
+                    <i class="bi bi-arrow-repeat me-1"></i> Tự động chốt công toàn bộ
+                </button>
+            </form>
+        </div>
+    }
     @foreach (var assignment in item.PhanCongs.OrderBy(p => p.NhanVien?.HoTen).ThenBy(p => p.BatDau))
     {
         var canceled = assignment.TrangThaiThamGia == "HUY_PHAN_CONG";

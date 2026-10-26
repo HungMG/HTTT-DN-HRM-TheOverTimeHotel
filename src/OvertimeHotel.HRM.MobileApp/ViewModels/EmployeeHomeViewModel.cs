@@ -93,7 +93,9 @@ public class EmployeeHomeViewModel : HomeViewModelBase
             }
 
             ShiftTimeText = $"{FormatTime(shift.GioBatDau)} – {FormatTime(shift.GioKetThuc)}";
-            ShiftTaskText = string.IsNullOrWhiteSpace(shift.TenCa) ? "Ca làm việc" : shift.TenCa;
+            ShiftTaskText = string.IsNullOrWhiteSpace(shift.TenSuKien)
+                ? (string.IsNullOrWhiteSpace(shift.TenCa) ? "Ca làm việc" : shift.TenCa)
+                : $"{shift.TenCa} • {shift.TenSuKien}";
             NightBadgeText = IsNightShift(shift.GioBatDau, shift.GioKetThuc)
                 ? "Ca Đêm (+30%)"
                 : "Ca Làm Việc";

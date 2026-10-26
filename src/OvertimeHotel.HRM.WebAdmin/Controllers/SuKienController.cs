@@ -227,6 +227,16 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         MutateAsync(id, model, "acceptance", a => events.RecordWorkAsync(a, id, model.Work));
 
     [HttpPost, ValidateAntiForgeryToken]
+    public Task<IActionResult> AutoSyncAttendance(int id, long version, EventDetailsViewModel model) =>
+        MutateAsync(id, model, "acceptance", async a =>
+        {
+            var count = await events.AutoSyncWorkFromAttendanceAsync(a, id, version);
+            TempData["Success"] = count > 0
+                ? $"Đã tự động đối soát và ghi nhận công cho {count} phân công từ dữ liệu Chấm công."
+                : "Dữ liệu công sự kiện đã được đồng bộ đầy đủ với Chấm công.";
+        });
+
+    [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> DeleteWork(int id, int workId, long version, string reason, EventDetailsViewModel model) =>
         MutateAsync(id, model, "acceptance", a => events.DeleteWorkAsync(a, id, workId, version, reason));
 
