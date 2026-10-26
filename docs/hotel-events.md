@@ -14,10 +14,10 @@ Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng th�
 
 ### Công thực tế, bàn giao và nghiệm thu
 
-- Ghi nhiều đoạn công không trùng nhau, trong phân công và ca; không ghi công tương lai. Chấm công vào/ra ca là dữ liệu đối chiếu, không chứng minh đã làm sự kiện toàn bộ ca.
+- Mỗi phân công nhập một khoảng **Tham gia từ — đến**; tiền cộng thêm tính theo toàn bộ thời lượng của khoảng giờ đó. Không phân loại đi trễ/về sớm, không chia đoạn để trừ khoảng nghỉ và không đối chiếu giờ vào/ra ca để tính tiền sự kiện. Giờ tham gia vẫn phải nằm trong sự kiện, phân công và ca nguồn, không ở tương lai.
 - Kiểm tra trùng công của cùng nhân viên trên toàn bộ sự kiện, gồm công còn lưu trong lịch sử phân công đã hủy. Bảng xem trước cảnh báo để đối soát công trùng cũ; việc mở bảng không tự loại bỏ công hoặc tạo khoản chi trả.
-- Manager chỉ xác nhận công phù hợp chấm công. Thiếu/trái chấm công hoặc nghỉ đã duyệt cần HR/Admin xác minh, nhập giải trình; server lưu dấu xác nhận ngoại lệ. Xem trước kiểm tra lại bằng chứng trước nghiệm thu.
-- HR/Admin sửa trực tiếp từng đoạn công bằng lý do bắt buộc; giữ nguyên mã công và lưu đầy đủ dữ liệu trước/sau, người xác nhận và thời điểm trong cùng giao dịch. Thu hồi dòng ghi sai cũng giữ giải trình và dấu xác nhận ngoại lệ trong nhật ký.
+- Manager xác nhận giờ bắt đầu và kết thúc tham gia; server lưu người xác nhận và thời điểm. Thiếu hoặc thay đổi dữ liệu chấm công ca không làm thay đổi tiền sự kiện.
+- HR/Admin sửa khoảng giờ bằng lý do bắt buộc; giữ nguyên mã công và lưu đầy đủ dữ liệu trước/sau, người xác nhận và thời điểm trong cùng giao dịch. Dữ liệu, giải trình và quyết toán lịch sử đã có được giữ lại.
 - Công phải thuộc đúng sự kiện, trong phân công và ca nguồn đã công bố còn hiệu lực; giờ chuẩn bị/thu dọn chỉ được ghi trong giới hạn sự kiện và ca. Công của phân công đã hủy vẫn được hiển thị để đối soát nếu đã phát sinh, kèm cảnh báo thay vì bị bỏ khỏi bảng xem trước.
 - Hợp đồng đã chấm dứt vẫn làm căn cứ cho công trong khoảng ngày đã ghi nhận. Hợp đồng chấm dứt thiếu ngày kết thúc cần bổ sung căn cứ; không tự suy ra thời gian còn hiệu lực hoặc dùng mức lương mới nhất.
 - Phân công chưa thực hiện được hủy và giữ lịch sử. Đã làm dùng **Kết thúc / bàn giao**; thêm người thay thế trước nếu phần thời gian tương lai thiếu vai trò. Không xóa công để thay người.

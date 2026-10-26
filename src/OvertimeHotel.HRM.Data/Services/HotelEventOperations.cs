@@ -256,6 +256,7 @@ public sealed partial class HotelEventService
         Require(input.WorkId >= 0, "Work.WorkId", "Mã công không hợp lệ.");
         var editing = input.WorkId > 0;
         Require(!editing || actor.IsOffice, "", "Chỉ HR/Admin sửa công đã xác nhận.", true);
+        Require(editing || assignment!.CongThucTes.Count == 0, "Work.WorkId", "Phân công đã có giờ tham gia. HR/Admin sửa khoảng giờ đã lưu.");
         var reason = editing ? Text(input.Reason, 500, "Work.Reason", "Lý do sửa công") : null;
         var work = editing ? assignment!.CongThucTes.SingleOrDefault(c => c.MaCong == input.WorkId) : new CongSuKien { MaPhanCong = assignment!.MaPhanCong };
         Require(work != null, "Work.WorkId", "Không tìm thấy đoạn công trong phân công này.");
@@ -263,27 +264,16 @@ public sealed partial class HotelEventService
         var start = Utc(input.Start, "Work.Start"); var end = Utc(input.End, "Work.End");
         Require(HourlyEventRules.CanRecordWork(item, assignment!, start, end, DateTimeOffset.UtcNow), "Work.End",
             "Công phải nằm trong sự kiện, phân công và ca nguồn đã công bố còn hiệu lực; không ghi công tương lai. Kiểm tra lại Lịch làm việc nếu dữ liệu nguồn thay đổi.");
-        var shift = assignment!.PhanCa;
         Require(!await db.CongSuKiens.AnyAsync(c => c.PhanCong!.MaNhanVien == assignment.MaNhanVien
             && c.MaCong != input.WorkId && c.BatDau < end && c.KetThuc > start), "", "Công thực tế trùng khoảng đã xác nhận của nhân viên, kể cả ở sự kiện khác.");
-        var attendance = shift!.ChamCong;
-        var matches = attendance?.GioCheckIn is { } checkIn && attendance.GioCheckOut is { } checkOut && checkIn <= start && checkOut >= end;
-        string? explanation = null;
-        var exception = !matches || shift.TrangThai == "VANG_MAT" || await HasLeave(assignment.MaNhanVien, start, end);
-        if (exception)
-        {
-            Require(actor.IsOffice, "", "Thiếu/trái chấm công hoặc có nghỉ đã duyệt: cần HR/Admin xác minh giải trình.", true);
-            explanation = Text(input.Explanation, 500, "Work.Explanation", "Giải trình xác nhận công ngoại lệ");
-        }
-        else if (!string.IsNullOrWhiteSpace(input.Explanation)) explanation = Text(input.Explanation, 500, "Work.Explanation", "Giải trình");
-        work!.BatDau = start; work.KetThuc = end; work.GiaiTrinh = explanation;
-        work.XacNhanNgoaiLe = exception; work.MaNguoiXacNhan = actor.EmployeeId; work.NgayXacNhan = DateTimeOffset.UtcNow;
+        work!.BatDau = start; work.KetThuc = end; work.GiaiTrinh = null;
+        work.XacNhanNgoaiLe = false; work.MaNguoiXacNhan = actor.EmployeeId; work.NgayXacNhan = DateTimeOffset.UtcNow;
         if (!editing) assignment.CongThucTes.Add(work);
         assignment.DanhGia = "HOAN_THANH"; assignment.NgayDanhGia = DateTimeOffset.UtcNow;
         item.Version++;
         if (!editing) await db.SaveChangesAsync();
         Audit(actor, item, editing ? "SUA_CONG_SU_KIEN" : "XAC_NHAN_CONG_SU_KIEN",
-            $"Nhân viên #{assignment.MaNhanVien}: {input.Start:g}–{input.End:g}.", reason ?? explanation, oldWork, WorkSnapshot(work, assignment));
+            $"Nhân viên #{assignment.MaNhanVien}: {input.Start:g}–{input.End:g}.", reason, oldWork, WorkSnapshot(work, assignment));
         return 0;
     });
 
@@ -395,15 +385,10 @@ public sealed partial class HotelEventService
                 {
                     foreach (var assignment in group)
                     {
-                        var shift = assignment.PhanCa;
                         foreach (var work in assignment.CongThucTes)
                         {
                             if (!HourlyEventRules.CanRecordWork(item, assignment, work.BatDau, work.KetThuc, DateTimeOffset.UtcNow))
                                 warnings.Add($"{name}: ca/phân công/thời gian sự kiện không còn hợp lệ cho công #{work.MaCong}; cần kiểm tra lại nguồn phân công.");
-                            var attendance = shift?.ChamCong;
-                            var matches = attendance?.GioCheckIn is { } from && attendance.GioCheckOut is { } to && from <= work.BatDau && to >= work.KetThuc;
-                            if ((!matches || await HasLeave(group.Key,work.BatDau,work.KetThuc) || shift?.TrangThai == "VANG_MAT") && !work.XacNhanNgoaiLe)
-                                warnings.Add($"{name}: công #{work.MaCong} cần HR đối soát lại vì chấm công/nghỉ đã thay đổi.");
                         }
                     }
                     var slices = group.SelectMany(p => p.CongThucTes.SelectMany(c => HourlyEventRules.Price(c.BatDau, c.KetThuc, p.NhanVien!.HopDongs))).ToList();

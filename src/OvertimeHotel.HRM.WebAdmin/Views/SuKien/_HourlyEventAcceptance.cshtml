@@ -9,8 +9,8 @@
     string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
 }
 <div class="event-panel">
-    <h3>Công sự kiện thực tế</h3>
-    <p class="event-muted">Mỗi lần phục vụ là một đoạn công riêng trong phân công và ca nguồn. Quản lý ghi trong giờ vào/ra đã chấm công; HR/Admin xác nhận ngoại lệ bằng giải trình. Người vắng mặt được đánh dấu không tham gia.</p>
+    <h3>Giờ tham gia sự kiện</h3>
+    <p class="event-muted">Nhập giờ bắt đầu và kết thúc tham gia để tính tiền cộng thêm theo thời lượng. Mỗi phân công ghi một khoảng thời gian trong ca nguồn.</p>
     @if (!item.PhanCongs.Any(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY")))
     {
         <p class="alert alert-info" role="status">Chưa sắp xếp sự kiện. Cần có phân công từ Lịch làm việc trước khi ghi công thực tế.</p>
@@ -28,47 +28,44 @@
             {
                 <div class="border-top pt-2 mt-2">
                     <p>@HotelEventRules.Local(work.BatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(work.KetThuc).ToString("dd/MM/yyyy HH:mm") · @((work.KetThuc - work.BatDau).TotalMinutes.ToString("0.##")) phút</p>
-                    <p class="event-muted">Người xác nhận #@work.MaNguoiXacNhan · @HotelEventRules.Local(work.NgayXacNhan).ToString("dd/MM/yyyy HH:mm") · @(work.XacNhanNgoaiLe ? "HR/Admin đã xác minh ngoại lệ chấm công" : "Phù hợp chấm công")</p>
-                    @if (!string.IsNullOrWhiteSpace(work.GiaiTrinh)) { <p class="event-preserve-lines">Giải trình: @work.GiaiTrinh</p> }
+                    <p class="event-muted">Người xác nhận #@work.MaNguoiXacNhan · @HotelEventRules.Local(work.NgayXacNhan).ToString("dd/MM/yyyy HH:mm")</p>
+                    @if (!string.IsNullOrWhiteSpace(work.GiaiTrinh)) { <p class="event-preserve-lines">Ghi chú xác nhận cũ: @work.GiaiTrinh</p> }
                     @if (Model.IsOffice && canRecord && !canceled)
                     {
                         var preserveEdit = Model.Work.AssignmentId == assignment.MaPhanCong && Model.Work.WorkId == work.MaCong;
                         var editStart = preserveEdit ? Model.Work.Start : HotelEventRules.Local(work.BatDau);
                         var editEnd = preserveEdit ? Model.Work.End : HotelEventRules.Local(work.KetThuc);
-                        <details open="@(preserveEdit && !ViewData.ModelState.IsValid)"><summary>Sửa đoạn công</summary>
+                        <details open="@(preserveEdit && !ViewData.ModelState.IsValid)"><summary>Sửa giờ tham gia</summary>
                             <form asp-action="RecordWork" asp-route-id="@item.MaDuAn" method="post" data-event-time-form class="mt-2">
                                 <partial name="_EventContext" model="Model" />
                                 <input name="Work.Version" value="@item.Version" type="hidden" />
                                 <input name="Work.AssignmentId" value="@assignment.MaPhanCong" type="hidden" />
                                 <input name="Work.WorkId" value="@work.MaCong" type="hidden" />
-                                <label for="edit-work-start-@work.MaCong" class="form-label">Bắt đầu thực tế (UTC+7)</label>
+                                <label for="edit-work-start-@work.MaCong" class="form-label">Tham gia từ (UTC+7)</label>
                                 <input id="edit-work-start-@work.MaCong" name="Work.Start" value="@editStart.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control mb-2" data-event-start required />
-                                <label for="edit-work-end-@work.MaCong" class="form-label">Kết thúc thực tế (UTC+7)</label>
+                                <label for="edit-work-end-@work.MaCong" class="form-label">Đến (UTC+7)</label>
                                 <input id="edit-work-end-@work.MaCong" name="Work.End" value="@editEnd.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control mb-2" data-event-end required />
                                 <label for="edit-work-reason-@work.MaCong" class="form-label">Lý do sửa công</label>
                                 <textarea id="edit-work-reason-@work.MaCong" name="Work.Reason" class="form-control mb-2" maxlength="500" required>@(preserveEdit ? Model.Work.Reason : null)</textarea>
-                                <label for="edit-work-explanation-@work.MaCong" class="form-label">Giải trình xác nhận ngoại lệ chấm công</label>
-                                <textarea id="edit-work-explanation-@work.MaCong" name="Work.Explanation" class="form-control mb-2" maxlength="500">@(preserveEdit ? Model.Work.Explanation : work.GiaiTrinh)</textarea>
-                                <button type="submit" class="event-secondary-button">Lưu sửa công</button>
+                                <button type="submit" class="event-secondary-button">Lưu sửa giờ</button>
                             </form>
                         </details>
-                        <details><summary>Xóa đoạn ghi sai</summary><form asp-action="DeleteWork" asp-route-id="@item.MaDuAn" method="post">
+                        <details><summary>Thu hồi giờ tham gia ghi sai</summary><form asp-action="DeleteWork" asp-route-id="@item.MaDuAn" method="post">
                             <partial name="_EventContext" model="Model" /><input name="version" value="@item.Version" type="hidden" /><input name="workId" value="@work.MaCong" type="hidden" />
-                            <label for="delete-work-@work.MaCong" class="form-label">Lý do sửa công</label><input id="delete-work-@work.MaCong" name="reason" class="form-control" maxlength="500" required /><button type="submit" class="btn btn-sm btn-outline-danger mt-2">Xóa đoạn công</button>
+                            <label for="delete-work-@work.MaCong" class="form-label">Lý do thu hồi</label><input id="delete-work-@work.MaCong" name="reason" class="form-control" maxlength="500" required /><button type="submit" class="btn btn-sm btn-outline-danger mt-2">Thu hồi giờ tham gia</button>
                         </form></details>
                     }
                 </div>
             }
-            @if (canRecord && !canceled)
+            @if (canRecord && !canceled && assignment.CongThucTes.Count == 0)
             {
-                <details class="mt-3" open="@(preserve && !ViewData.ModelState.IsValid)"><summary>Ghi thêm đoạn công thực tế</summary>
+                <details class="mt-3" open="@(preserve && !ViewData.ModelState.IsValid)"><summary>Nhập giờ tham gia</summary>
                     <form asp-action="RecordWork" asp-route-id="@item.MaDuAn" method="post" data-event-time-form class="mt-3">
                         <partial name="_EventContext" model="Model" /><input name="Work.Version" value="@item.Version" type="hidden" /><input name="Work.AssignmentId" value="@assignment.MaPhanCong" type="hidden" />
                         <div class="row g-2">
-                            <div class="col-md-6"><label for="work-start-@assignment.MaPhanCong" class="form-label">Bắt đầu thực tế (UTC+7)</label><input id="work-start-@assignment.MaPhanCong" name="Work.Start" value="@workStart.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control" data-event-start required /></div>
-                            <div class="col-md-6"><label for="work-end-@assignment.MaPhanCong" class="form-label">Kết thúc thực tế (UTC+7)</label><input id="work-end-@assignment.MaPhanCong" name="Work.End" value="@workEnd.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control" data-event-end required /></div>
-                            @if (Model.IsOffice) { <div class="col-12"><label for="explanation-@assignment.MaPhanCong" class="form-label">HR/Admin xác nhận ngoại lệ chấm công (bắt buộc nếu thiếu giờ vào/ra hoặc ngoài khoảng đã chấm)</label><textarea id="explanation-@assignment.MaPhanCong" name="Work.Explanation" class="form-control" maxlength="500" rows="2">@(preserve ? Model.Work.Explanation : null)</textarea></div> }
-                        </div><button type="submit" class="event-secondary-button mt-2">Xác nhận đoạn công</button>
+                            <div class="col-md-6"><label for="work-start-@assignment.MaPhanCong" class="form-label">Tham gia từ (UTC+7)</label><input id="work-start-@assignment.MaPhanCong" name="Work.Start" value="@workStart.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control" data-event-start required /></div>
+                            <div class="col-md-6"><label for="work-end-@assignment.MaPhanCong" class="form-label">Đến (UTC+7)</label><input id="work-end-@assignment.MaPhanCong" name="Work.End" value="@workEnd.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control" data-event-end required /></div>
+                        </div><button type="submit" class="event-secondary-button mt-2">Lưu giờ tham gia</button>
                     </form>
                 </details>
             }
@@ -86,7 +83,7 @@
 </div>
 <div class="event-panel mt-4">
     <h3>@(item.TrangThai == "HOAN_THANH" ? "Quyết toán đã khóa" : "Xem trước thu nhập cộng thêm")</h3>
-    <p>Lương cơ bản tháng / 26 / 8 × số giờ sự kiện thực tế. Lương ca thường vẫn giữ nguyên. Mỗi giờ chỉ tính một lần; tiền được tách theo tháng phát sinh và trả vào kỳ HR chọn.</p>
+    <p>Tiền cộng thêm = Lương cơ bản tháng / 26 / 8 × thời lượng từ giờ bắt đầu đến giờ kết thúc tham gia. Tiền được tổng hợp theo tháng phát sinh và trả vào kỳ HR chọn.</p>
     @if (preview != null)
     {
         @foreach (var warning in preview.Warnings) { <p class="alert alert-warning" role="alert">@warning</p> }

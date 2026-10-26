@@ -27,20 +27,22 @@ static partial class HourlyOperationsTests
 
     private static async Task RunPhase2(Fixture f, Func<string, Func<Task>, Task> check)
     {
-        await check("Phase 2 actual segments exclude breaks and reject invalid or overlapping work", async () =>
+        await check("Phase 2 one participation interval prices its duration without separate break segments", async () =>
         {
             var (item, work) = await WorkFixture(f);
             var end = work.End;
-            work.End = work.Start.AddMinutes(30);
+            var originalStart = work.Start;
+            work.Start = work.Start.AddMinutes(30);
             await f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, work));
             item = await f.Get(item.MaDuAn);
             work.Version = item.Version;
             await Reject(() => f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, work)));
-            work.Start = work.Start.AddHours(1); work.End = end;
-            await f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, work));
+            work.End = work.Start; work.Start = originalStart;
+            await Reject(() => f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, work)));
             var preview = await f.With(s => s.PreviewAsync(f.HR, item.MaDuAn));
             Require(preview.Warnings.Count == 0 && preview.Rows.Single().Minutes == 90
-                && preview.Total == 57_692m, "Break time was paid or ninety minutes were priced incorrectly.");
+                && preview.Total == 57_692m && (await f.Get(item.MaDuAn)).PhanCongs.Single().CongThucTes.Count == 1,
+                "Participation did not use one continuous ninety-minute interval.");
             item = await f.Get(item.MaDuAn); work.Version = item.Version;
             work.End = end.AddMinutes(1);
             await Reject(() => f.With(s => s.RecordWorkAsync(f.HR, item.MaDuAn, work)));
@@ -51,13 +53,12 @@ static partial class HourlyOperationsTests
                 && item.PhanCongs.All(p => p.MaChiTiet == null), "Recording/previewing work created a payment.");
         });
 
-        await check("Phase 2 unpublished source shift blocks recording even with an office explanation", async () =>
+        await check("Phase 2 unpublished source shift blocks participation recording", async () =>
         {
             var (item, work) = await WorkFixture(f);
             await using (var db = f.Open())
                 await db.PhanCas.Where(s => s.MaPhanCa == item.PhanCongs.Single().MaPhanCa)
                     .ExecuteUpdateAsync(p => p.SetProperty(s => s.DaCongBo, false));
-            work.Explanation = "HR explanation cannot publish a source shift";
             await Reject(() => f.With(s => s.RecordWorkAsync(f.HR, item.MaDuAn, work)));
             Require((await f.Get(item.MaDuAn)).PhanCongs.Single().CongThucTes.Count == 0,
                 "Unpublished source created actual work.");
@@ -70,7 +71,6 @@ static partial class HourlyOperationsTests
                 await db.PhanCongDuAns.Where(p => p.MaDuAn == item.MaDuAn)
                     .ExecuteUpdateAsync(p => p.SetProperty(a => a.BatDau, item.NgayBatDau.AddHours(-1)));
             work.End = work.Start; work.Start = work.Start.AddMinutes(-30);
-            work.Explanation = "Attendance explanation does not extend the event";
             await Reject(() => f.With(s => s.RecordWorkAsync(f.HR, item.MaDuAn, work)));
         });
 

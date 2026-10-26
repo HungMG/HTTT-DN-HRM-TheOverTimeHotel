@@ -38,7 +38,7 @@ with sync_playwright() as p:
     edit.locator('[name="Work.Start"]').fill('2028-05-10T09:30')
     edit.locator('[name="Work.Reason"]').fill('Correct entry with evidence')
     edit.locator('button[type="submit"]').click()
-    expect(body.locator('.validation-summary-errors')).to_contain_text('Review attendance evidence')
+    expect(body.locator('.validation-summary-errors')).to_contain_text('Review participation time')
     edit = body.locator('input[name="Work.WorkId"][value="81"]').locator('xpath=ancestor::details[1]')
     expect(edit.locator('[name="Work.Start"]')).to_have_value('2028-05-10T09:30')
     expect(edit.locator('[name="Work.Reason"]')).to_have_value('Correct entry with evidence')

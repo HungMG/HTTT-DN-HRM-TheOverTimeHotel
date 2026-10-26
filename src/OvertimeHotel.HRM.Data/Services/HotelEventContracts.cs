@@ -68,7 +68,6 @@ public class EventWorkInput
     public int WorkId { get; set; }
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
-    public string? Explanation { get; set; }
     public string? Reason { get; set; }
 }
 

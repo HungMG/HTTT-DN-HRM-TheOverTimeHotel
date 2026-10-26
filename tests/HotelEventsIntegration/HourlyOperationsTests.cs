@@ -101,15 +101,13 @@ static partial class HourlyOperationsTests
             await Salary(f, f.WorkerA, 8_000_000m);
             var work = new EventWorkInput { Version = item.Version, AssignmentId = assignment.MaPhanCong,
                 Start = HotelEventRules.Local(assignment.BatDau), End = HotelEventRules.Local(assignment.KetThuc) };
-            await Reject(() => f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, work)));
-            await Reject(() => f.With(s => s.RecordWorkAsync(f.HR, item.MaDuAn, work)));
+            await f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, work));
             await using (var db = f.Open())
             {
                 db.ChamCongs.Add(new ChamCong { MaPhanCa = shift.MaPhanCa, GioCheckIn = assignment.BatDau,
                     GioCheckOut = assignment.KetThuc, TrangThai = "DUNG_GIO" });
                 await db.SaveChangesAsync();
             }
-            await f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, work));
             var month = new DateOnly(HotelEventRules.Local(assignment.BatDau).Year, HotelEventRules.Local(assignment.BatDau).Month, 1);
             var period = await Period(f, month);
             var preview = await f.With(s => s.PreviewAsync(f.HR, item.MaDuAn));
@@ -120,7 +118,9 @@ static partial class HourlyOperationsTests
             await using (var db = f.Open())
                 await db.ChamCongs.Where(c => c.MaPhanCa == shift.MaPhanCa)
                     .ExecuteUpdateAsync(p => p.SetProperty(c => c.GioCheckOut, assignment.KetThuc.AddMinutes(-30)));
-            await Reject(() => f.With(s => s.AcceptHourlyAsync(f.HR, item.MaDuAn, preview.Version, period, preview.Token)));
+            var unchanged = await f.With(s => s.PreviewAsync(f.HR, item.MaDuAn));
+            Require(unchanged.Warnings.Count == 0 && unchanged.Total == preview.Total && unchanged.Token == preview.Token,
+                "Shift attendance changed event participation pay.");
             await using (var db = f.Open())
                 await db.ChamCongs.Where(c => c.MaPhanCa == shift.MaPhanCa)
                     .ExecuteUpdateAsync(p => p.SetProperty(c => c.GioCheckOut, assignment.KetThuc));
@@ -236,7 +236,7 @@ static partial class HourlyOperationsTests
 
     private static async Task OfficeAttendanceCorrection(Fixture f, Func<string, Func<Task>, Task> check)
     {
-        await check("Hourly missing attendance requires an explicit office explanation", async () =>
+        await check("Hourly participation needs only start and end without shift attendance", async () =>
         {
             var item = await f.Create(await Input(f));
             var shift = await Shift(f, item, f.WorkerA);
@@ -247,14 +247,12 @@ static partial class HourlyOperationsTests
             item = await f.Get(item.MaDuAn);
             var assignment = item.PhanCongs.Single();
             var input = new EventWorkInput { Version = item.Version, AssignmentId = assignment.MaPhanCong,
-                Start = HotelEventRules.Local(assignment.BatDau), End = HotelEventRules.Local(assignment.KetThuc),
-                Explanation = "Attendance device was offline; HR verified the signed attendance sheet." };
-            await Reject(() => f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, input)));
-            await f.With(s => s.RecordWorkAsync(f.HR, item.MaDuAn, input));
+                Start = HotelEventRules.Local(assignment.BatDau), End = HotelEventRules.Local(assignment.KetThuc) };
+            await f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, input));
             await using var db = f.Open();
             var actual = await db.CongSuKiens.SingleAsync(c => c.MaPhanCong == assignment.MaPhanCong);
-            Require(actual.GiaiTrinh == input.Explanation && actual.MaNguoiXacNhan == f.HR.EmployeeId,
-                "Office attendance correction must retain its explanation and approving employee.");
+            Require(actual.GiaiTrinh == null && !actual.XacNhanNgoaiLe && actual.MaNguoiXacNhan == f.Manager.EmployeeId,
+                "Participation incorrectly required attendance-exception approval.");
         });
     }
 

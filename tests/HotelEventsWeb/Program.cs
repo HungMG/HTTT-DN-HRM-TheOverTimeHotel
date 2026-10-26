@@ -226,6 +226,21 @@ await Check("Hourly work corrections retain entered values and remain office-onl
         "Manager was offered an office correction form.");
 });
 
+await Check("Participation forms request only start and end without attendance exceptions or additional segments", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true; item.TrangThai = "CHO_NGHIEM_THU";
+    item.PhanCongs = [new() { MaPhanCong = 1, MaNhanVien = 10, BatDau = item.NgayBatDau, KetThuc = item.NgayKetThuc }];
+    var model = new EventDetailsViewModel { Event = item, CanManage = true, IsOffice = true };
+    var html = await Render("_HourlyEventAcceptance", model);
+    Require(!html.Contains("name=\"Work.Explanation\""), "Participation still requests an attendance explanation.");
+    Require(Regex.Matches(html, "name=\"Work.Start\"").Count == 1 && Regex.Matches(html, "name=\"Work.End\"").Count == 1,
+        "New participation must expose exactly one start/end pair.");
+    item.PhanCongs.Single().CongThucTes.Add(new() { MaCong = 81, BatDau = item.NgayBatDau, KetThuc = item.NgayKetThuc });
+    model.IsOffice = false;
+    html = await Render("_HourlyEventAcceptance", model);
+    Require(!html.Contains("name=\"Work.Start\""), "Recorded participation still offers additional break segments.");
+});
+
 if (args.Contains("--export"))
 {
     var export = Path.Combine(root, ".probe/codex-phase1-html");
@@ -249,7 +264,7 @@ if (args.Contains("--export"))
     await File.WriteAllTextAsync(Path.Combine(export, "hourly-work.html"), await Render("_EventDetailsContent", workModel));
     workModel.Work = new() { WorkId = 81, AssignmentId = 1, Start = new(2028, 5, 10, 9, 30, 0),
         End = new(2028, 5, 10, 10, 0, 0), Reason = "Correct entry with evidence" };
-    var workState = new ModelStateDictionary(); workState.AddModelError("Work.End", "Review attendance evidence");
+    var workState = new ModelStateDictionary(); workState.AddModelError("Work.End", "Review participation time");
     await File.WriteAllTextAsync(Path.Combine(export, "hourly-work-invalid.html"), await Render("_EventDetailsContent", workModel, workState));
 }
 Console.WriteLine($"Hotel event web tests: {passed} passed, {failures} failed");
