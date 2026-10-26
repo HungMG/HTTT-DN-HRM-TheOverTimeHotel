@@ -145,6 +145,17 @@
             if (next && !next.disabled) { openAssignment(next); return; }
             const root = event.target.closest('[data-event-details]');
             if (!root) return;
+            const confirmAcceptance = event.target.closest('[data-acceptance-confirm], [data-acceptance-cancel]');
+            if (confirmAcceptance) {
+                const confirmation = confirmAcceptance.closest('[data-acceptance-dialog]');
+                const acceptanceForm = confirmation.closest('form');
+                confirmation.close();
+                if (confirmAcceptance.matches('[data-acceptance-confirm]')) {
+                    acceptanceForm.dataset.acceptanceConfirmed = 'true';
+                    acceptanceForm.requestSubmit();
+                }
+                return;
+            }
             const editNeed = event.target.closest('[data-edit-need], [data-new-need]');
             if (editNeed) {
                 const form = root.querySelector('[data-need-form]');
@@ -175,6 +186,9 @@
             options.forEach(option => option.hidden = !normalize(option.dataset.memberName).includes(query));
             picker.querySelector('[data-member-empty]').hidden = options.some(option => !option.hidden);
         });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && event.target.closest('[data-acceptance-dialog][open]')) event.stopPropagation();
+        }, true);
         document.addEventListener('change', event => {
             if (event.target.matches('[data-choose-member]')) {
                 const picker = event.target.closest('[data-member-picker]');
@@ -196,6 +210,16 @@
             if (saving) return;
             form.querySelectorAll('details').forEach(detail => detail.open = true);
             if (!form.reportValidity()) return;
+            if (form.matches('[data-event-acceptance-form]')) {
+                if (form.dataset.acceptanceConfirmed !== 'true') {
+                    const confirmation = form.querySelector('[data-acceptance-dialog]');
+                    confirmation.querySelector('[data-acceptance-period]').textContent = form.elements.namedItem('paymentPeriodId').selectedOptions[0].textContent;
+                    confirmation.showModal();
+                    confirmation.querySelector('[data-acceptance-cancel]').focus();
+                    return;
+                }
+                delete form.dataset.acceptanceConfirmed;
+            }
             saving = true;
             originBody = isAssignment ? originBody : form.closest('[data-event-standalone]') || detailsBody;
             const body = isAssignment ? assignmentBody : originBody;

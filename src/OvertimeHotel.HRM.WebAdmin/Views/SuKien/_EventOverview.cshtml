@@ -13,8 +13,14 @@
     <div class="alert alert-warning mb-3 d-flex align-items-center gap-2" role="alert">
         <i class="bi bi-exclamation-triangle-fill fs-4" aria-hidden="true"></i>
         <div>
-            <strong>Cảnh báo chưa xác nhận thực hiện:</strong> Sự kiện đã quá thời gian bắt đầu dự kiến (@start.ToString("dd/MM/yyyy HH:mm")) nhưng vẫn đang ở trạng thái <em>Lên kế hoạch</em>.
-            <br /><small>Hệ thống không tự động hủy sự kiện. Vui lòng kiểm tra thực tế và xác nhận bắt đầu sự kiện hoặc hủy bỏ nếu sự kiện không diễn ra.</small>
+            @if (item.NgayKetThuc <= DateTimeOffset.UtcNow)
+            {
+                <strong>Cần đối soát thực hiện:</strong><span> Sự kiện đã quá giờ kết thúc nhưng vẫn đang ở trạng thái Lên kế hoạch. HR/Admin cần kiểm tra thực tế và đối soát hồ sơ.</span>
+            }
+            else
+            {
+                <strong>Đang chờ tự bắt đầu:</strong><span> Sự kiện đã đến giờ bắt đầu dự kiến (@start.ToString("dd/MM/yyyy HH:mm")). Kiểm tra số khách, nhân sự và ca nguồn; hệ thống sẽ tự bắt đầu khi đủ điều kiện.</span>
+            }
         </div>
     </div>
 }
@@ -41,30 +47,28 @@
                         <li class="@(item.TrangThai == "CHO_NGHIEM_THU" ? "is-current" : "")">Chờ nghiệm thu <small>Đánh giá nhân sự, xác nhận phụ cấp</small></li>
                         <li class="@(item.TrangThai == "HOAN_THANH" ? "is-current" : "")">Hoàn thành <small>HR/Admin nghiệm thu và khóa dữ liệu</small></li>
                     </ol>
-                    @if (Model.CanManage && item.TrangThai is "LEN_KE_HOACH" or "DANG_DIEN_RA")
+                    @if (item.TrangThai == "LEN_KE_HOACH")
                     {
                         var summary = Model.StaffingSummary;
+                        <p data-event-auto-start>Hệ thống tự bắt đầu sự kiện khi đến giờ và đã đủ thông tin, nhân sự hợp lệ.</p>
+                        @if (!summary.IsFullyStaffed)
+                        {
+                            <div class="alert alert-warning mb-3"><strong>Cần bổ sung nhân sự.</strong> @summary.SummaryText</div>
+                        }
+                        @if (item.TinhTheoGio)
+                        {
+                            <p class="form-text">Cần có số khách lớn hơn 0 và đủ vai trò bắt buộc. Phân công phải gắn ca nguồn đã công bố, nhân viên có hợp đồng hiệu lực, không trùng lịch hoặc nghỉ đã duyệt và bảo đảm định biên bộ phận nguồn.</p>
+                        }
+                        <p class="form-text">Tải lại trang để cập nhật trạng thái mới nhất.</p>
+                    }
+                    else if (Model.CanManage && item.TrangThai == "DANG_DIEN_RA")
+                    {
                         <form asp-action="Status" asp-route-id="@item.MaDuAn" method="post">
                             <partial name="_EventContext" model="Model" />
                             <input name="version" type="hidden" value="@item.Version" />
-                            <input name="status" type="hidden" value="@(item.TrangThai == "LEN_KE_HOACH" ? "DANG_DIEN_RA" : "CHO_NGHIEM_THU")" />
-                            @if (item.TrangThai == "LEN_KE_HOACH" && !summary.IsFullyStaffed)
-                            {
-                                <div class="alert alert-warning mb-3">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                    <strong>Chưa thể bắt đầu sự kiện.</strong> @summary.SummaryText
-                                </div>
-                                <button class="event-primary-button opacity-50" type="submit" disabled title="Chưa đủ nhân sự tất cả phòng ban bắt buộc">
-                                    Bắt đầu sự kiện <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="event-primary-button" type="submit">
-                                    @(item.TrangThai == "LEN_KE_HOACH" ? "Bắt đầu sự kiện" : "Chuyển chờ nghiệm thu") <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                                </button>
-                            }
-                            <p class="form-text">Chuyển trạng thái sau khi đến giờ @(item.TrangThai == "LEN_KE_HOACH" ? "bắt đầu" : "kết thúc") dự kiến.</p>
+                            <input name="status" type="hidden" value="CHO_NGHIEM_THU" />
+                            <button class="event-primary-button" type="submit">Chuyển chờ nghiệm thu <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+                            <p class="form-text">Chuyển chờ nghiệm thu sau khi đến giờ kết thúc dự kiến.</p>
                         </form>
                     }
                 </div>

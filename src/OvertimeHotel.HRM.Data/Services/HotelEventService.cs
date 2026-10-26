@@ -329,14 +329,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         var operationEnd = item.NgayKetThuc;
         Require(HotelEventRules.CanTransition(item.TrangThai, status, operationStart, operationEnd, DateTimeOffset.UtcNow), "", "Chuyển trạng thái không hợp lệ hoặc chưa đến thời gian thực hiện.");
         if (item.TrangThai == "LEN_KE_HOACH" && status == "DANG_DIEN_RA")
-        {
-            Require(item.SoKhachDuKien > 0, "", "Nhập số khách dự kiến lớn hơn 0 trước khi bắt đầu sự kiện.");
-            var summary = HotelEventRules.GetStaffingSummary(item);
-            Require(summary.IsFullyStaffed, "",
-                $"Chưa thể bắt đầu sự kiện vì còn thiếu vai trò bắt buộc: {string.Join("; ", summary.MissingRoleDescriptions)}.");
-            if (item.TinhTheoGio)
-                foreach (var assignment in item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG")) await ValidateSource(item, assignment);
-        }
+            await EnsureReadyToStart(item);
         var oldStatus = item.TrangThai;
         if (status == "HUY")
         {

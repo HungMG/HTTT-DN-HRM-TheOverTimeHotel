@@ -4,6 +4,25 @@
 
 Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng thêm được tính bằng **lương cơ bản tháng / 26 / 8 × số giờ sự kiện thực tế được duyệt × hệ số thưởng sự kiện** (mặc định **2.0**). Lương ca thông thường vẫn tính qua chấm công; không cộng lại lương ca trong dòng tiền sự kiện. Lương 8.000.000đ và hai giờ thực tế được cộng thêm **153.846đ**. Hệ số lưu tại `cau_hinh_khoan_luong` dòng `ma_khoan = 35`, sửa được tại **Cấu hình lương & Phụ cấp → Thưởng**; code đọc qua `EventRateConfig` và fallback về `SalaryConstants.EVENT_HOURLY_RATE` nếu thiếu dòng. Không dùng ma trận định mức cố định của chính sách cũ. Dùng số chính xác để tính và làm tròn đến đồng sau khi tổng hợp theo nhân viên/sự kiện/tháng phát sinh.
 
+### Tự bắt đầu sự kiện
+
+Web Admin kiểm tra ngay khi khởi động và mỗi 15 giây. Sự kiện đang `LEN_KE_HOACH`, đã đến giờ bắt đầu và chưa đến giờ kết thúc sẽ tự chuyển sang `DANG_DIEN_RA` khi số khách lớn hơn 0, có phân công hiệu lực và đủ nhu cầu vai trò bắt buộc. Với sự kiện theo giờ, ca nguồn phải đã công bố, nhân viên/hợp đồng hợp lệ, không trùng nhiệm vụ hoặc nghỉ đã duyệt và không làm thiếu định biên bộ phận nguồn. Dùng chung kiểm tra với API bắt đầu hiện có; tab Nhân sự vẫn chỉ đọc.
+
+Mỗi lần bắt đầu thành công tăng phiên bản và ghi nhật ký `TU_DONG_BAT_DAU_SU_KIEN` với người thực hiện là Hệ thống. Khóa giao dịch dùng chung bảo đảm nhiều tiến trình chỉ bắt đầu một lần. Hồ sơ chưa hợp lệ được giữ nguyên để bổ sung; lỗi kết nối được ghi log và thử lại. Tác vụ không tự ghi giờ thực tế, tạo tiền, nghiệm thu hoặc hủy sự kiện. Sự kiện đã quá giờ kết thúc vẫn cần HR/Admin đối soát thực tế; không tự khẳng định sự kiện đã diễn ra khi máy chủ ngừng hoạt động suốt khoảng tổ chức.
+
+Máy chủ Web Admin phải đang chạy để tác vụ hoạt động. Trang đang mở cần tải lại để thấy trạng thái mới; trên giao diện không còn yêu cầu bấm Bắt đầu. Chuyển Chờ nghiệm thu, xác nhận giờ và nghiệm thu tiền tiếp tục do người có quyền thực hiện.
+
+### Nghiệm thu và kết chuyển vào bảng lương
+
+Tab **Đánh giá & nghiệm thu** gồm ba phần: giờ tham gia/kết quả, bảng tiền xem trước, nghiệm thu/kỳ chi trả. Tổng hợp đếm nhân viên khác nhau; một người chỉ được tính xác nhận đầy đủ khi mọi phân công liên quan đã xử lý. Phân công đã hủy nhưng còn công thực tế vẫn phải đối soát. Không dùng check-in/check-out để tự chốt tiền sự kiện.
+
+- Lưu giờ tham gia hợp lệ đồng thời xác nhận hoàn thành. Không tham gia phải không còn công tính tiền; dữ liệu mâu thuẫn chặn nghiệm thu. Sửa/thu hồi công cần lý do và giữ nhật ký nội bộ.
+- HR/Admin chỉ chốt khi sự kiện đã kết thúc, ở trạng thái chờ nghiệm thu và không còn cảnh báo. Kỳ trả phải còn mở, chưa gửi duyệt/được duyệt/khóa và không sớm hơn tháng phát sinh muộn nhất. Trước khi gửi, hộp xác nhận hiển thị sự kiện, số người có tiền/không tham gia, tổng tiền và kỳ đã chọn. Hủy hoặc Escape không gửi yêu cầu nghiệm thu.
+- Nếu tất cả không tham gia, nghiệm thu tổng 0đ và không tạo khoản tiền để kết chuyển. Chọn kỳ trả vẫn được ghi trong nhật ký nghiệm thu; không tạo quyết toán giả để lưu một khoản 0đ.
+- Sau chốt, bảng tiền đọc căn cứ và số tiền đã lưu. Thay đổi hợp đồng hoặc hệ số không tính lại quyết toán. Bấm hai lần/nghiệm thu đồng thời chỉ một lần thành công; lỗi lưu hoàn tác cả sự kiện, quyết toán và nhật ký cùng giao dịch.
+- Quyết toán hiển thị **Đã nghiệm thu — chưa kết chuyển**, **Đã kết chuyển vào phiếu lương** hoặc **Kỳ lương đã khóa** theo liên kết chi tiết phiếu và kỳ thực tế. HR/Admin có liên kết mở phiếu. Khóa sổ không xác nhận đã chuyển khoản cho nhân viên.
+- Nghiệm thu không tự tính lại lương. HR tính/tính lại kỳ đã chọn để nhận khoản đã chốt đúng một lần; còn quyết toán chưa kết chuyển thì không gửi duyệt kỳ lương. Khoản sự kiện cũ giữ số tiền đã chốt, không tự quy đổi sang x2.
+
 ### Sự kiện đặt trước lịch tuần
 
 1. HR/Admin đặt sự kiện và địa điểm, khai báo nhu cầu theo phòng ban, vai trò và số người cho toàn sự kiện. Người quản lý được chọn khi tạo/sửa phải là HR đang làm việc, có tài khoản hoạt động. Người quản lý của sự kiện cũ được giữ nguyên đến khi sửa thông tin. Mẫu theo số khách được sinh sẵn; chỉnh một dòng sẽ giữ dòng đó khỏi cập nhật mẫu tự động về sau.

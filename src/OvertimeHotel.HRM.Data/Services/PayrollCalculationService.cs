@@ -661,7 +661,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 tongTienPhat += fine;
                 fineDetails.Add(new ChiTietTruViPhamTamUng
                 {
-                    LoaiTru = "BO_CA",
+                    LoaiTru = "KY_LUAT",
                     SoPhutViPham = 480,
                     SoTienTru = fine,
                     LyDoChiTiet = $"Bỏ ca làm việc không phép ngày {shift.NgayLamViec:dd/MM/yyyy}"

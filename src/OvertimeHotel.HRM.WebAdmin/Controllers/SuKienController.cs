@@ -152,13 +152,14 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     }
 
     [HttpGet]
-    public async Task<IActionResult> Details(int id, int? returnYear, int? returnMonth, DateOnly? returnDate, string tab = "overview", bool popup = false)
+    public async Task<IActionResult> Details(int id, int? returnYear, int? returnMonth, DateOnly? returnDate, string tab = "overview", bool popup = false, int? paymentPeriodId = null)
     {
         var actor = await ActorAsync();
         if (actor == null) return Forbid();
         var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, tab);
         if (model == null) return NotFound();
         model.IsPopup = popup;
+        model.PaymentPeriodId = paymentPeriodId;
         return popup ? PartialView("_EventDetailsContent", model) : View(model);
     }
 
@@ -243,7 +244,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> EnsurePaymentPeriod(int id, int month, int year, EventDetailsViewModel model) =>
-        MutateAsync(id, model, "acceptance", async a => { await events.EnsurePaymentPeriodAsync(a, month, year); });
+        MutateAsync(id, model, "acceptance", async a => { model.PaymentPeriodId = await events.EnsurePaymentPeriodAsync(a, month, year); });
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> ReconcileLegacy(int id, long version, int paymentPeriodId, string reason, EventDetailsViewModel model) =>
@@ -304,11 +305,12 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
                     var updated = await DetailsAsync(actor, id, null, model.ReturnYear, model.ReturnMonth, model.ReturnDate, tab);
                     if (updated == null) return NotFound();
                     updated.IsPopup = true;
+                    updated.PaymentPeriodId = model.PaymentPeriodId;
                     ViewData["EventSuccess"] = "Đã cập nhật sự kiện.";
                     return PartialView("_EventDetailsContent", updated);
                 }
                 TempData["Success"] = "Đã cập nhật sự kiện.";
-                return RedirectToAction(nameof(Details), new { id, model.ReturnYear, model.ReturnMonth, returnDate = model.ReturnDate.ToString("yyyy-MM-dd"), tab });
+                return RedirectToAction(nameof(Details), new { id, model.ReturnYear, model.ReturnMonth, returnDate = model.ReturnDate.ToString("yyyy-MM-dd"), tab, paymentPeriodId = model.PaymentPeriodId });
             }
             catch (EventOperationException ex)
             {
@@ -372,6 +374,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             Work = previous?.Work ?? new EventWorkInput { Version = item.Version },
             PayPreview = item.TinhTheoGio && !staffLoadFailed ? await events.PreviewAsync(actor, id) : null,
             PaymentPeriods = actor.IsOffice ? await events.PaymentPeriodsAsync(actor) : [],
+            PaymentPeriodId = previous?.PaymentPeriodId,
             Tab = tab is "staff" or "acceptance" ? tab : "overview",
             Assignment = previous?.Assignment ?? new EventAssignmentInput
             {

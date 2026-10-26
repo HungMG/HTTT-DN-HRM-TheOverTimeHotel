@@ -18,6 +18,7 @@ using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.WebAdmin.Controllers;
 using OvertimeHotel.HRM.WebAdmin.Models;
+using OvertimeHotel.HRM.WebAdmin.Services;
 
 var root = Directory.GetCurrentDirectory();
 var webRoot = Path.Combine(root, "src/OvertimeHotel.HRM.WebAdmin");
@@ -308,6 +309,127 @@ await Check("Payroll event explanation does not invent a fixed settlement multip
         "Payroll displays a hardcoded multiplier instead of the saved settlement.");
 });
 
+await Check("Phase 3 readiness counts distinct people across assignments and flags unresolved work", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true; item.TrangThai = "CHO_NGHIEM_THU";
+    item.PhanCongs = [
+        new() { MaPhanCong = 1, MaNhanVien = 10, DanhGia = "HOAN_THANH", NgayDanhGia = DateTimeOffset.UtcNow,
+            CongThucTes = [new() { BatDau = item.NgayBatDau, KetThuc = item.NgayBatDau.AddHours(1) }] },
+        new() { MaPhanCong = 2, MaNhanVien = 10, DanhGia = "CHUA_DANH_GIA" },
+        new() { MaPhanCong = 3, MaNhanVien = 11, DanhGia = "KHONG_THAM_GIA", NgayDanhGia = DateTimeOffset.UtcNow },
+        new() { MaPhanCong = 4, MaNhanVien = 12, TrangThaiThamGia = "DA_HUY" }
+    ];
+    var html = await Render("_HourlyEventAcceptance", new EventDetailsViewModel { Event = item });
+    Require(html.Contains("data-acceptance-staff=\"2\"") && html.Contains("data-acceptance-ready=\"1\"")
+        && html.Contains("data-acceptance-missing-work=\"1\"") && html.Contains("data-acceptance-unreviewed=\"1\""),
+        "Readiness summary counts rows or hides incomplete employees.");
+});
+await Check("Phase 3 acceptance filters early payment periods and retains selection with a confirmation summary", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true; item.TrangThai = "CHO_NGHIEM_THU";
+    item.NgayBatDau = item.NgayBatDau.AddYears(-4); item.NgayKetThuc = item.NgayKetThuc.AddYears(-4);
+    var model = new EventDetailsViewModel { Event = item, CanAccept = true, IsOffice = true,
+        PayPreview = new(item.Version, [new(10, "Worker", new(2028,6,1), 120, 153846, [])], [], "token"),
+        PaymentPeriods = [new() { MaKyLuong = 1, Thang = 5, Nam = 2028, TrangThai = "MO" },
+            new() { MaKyLuong = 2, Thang = 6, Nam = 2028, TrangThai = "MO" }] };
+    var html = await Render("_HourlyEventAcceptance", model);
+    model.PaymentPeriodId = 2;
+    html = await Render("_HourlyEventAcceptance", model);
+    var options = Regex.Match(html, "<select[^>]*name=\"paymentPeriodId\"[^>]*>(.*?)</select>", RegexOptions.Singleline).Groups[1].Value;
+    Require(!options.Contains("value=\"1\"") && options.Contains("value=\"2\""), "A payment month precedes the latest work month.");
+    Require(Regex.IsMatch(options,"value=\"2\"[^>]*selected"),"The chosen eligible period was discarded.");
+    Require(html.Contains("data-event-acceptance-form") && html.Contains("data-acceptance-confirm")
+        && html.Contains("153.846") && html.Contains("data-acceptance-period"), "Missing explicit confirmation of the exact settlement and period.");
+});
+await Check("Phase 3 planned events cannot offer final acceptance even with a forged UI flag", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true;
+    var html = await Render("_HourlyEventAcceptance", new EventDetailsViewModel { Event = item, CanAccept = true, IsOffice = true,
+        PayPreview = new(item.Version, [], [], "token"), PaymentPeriods = [new() { MaKyLuong = 2, Thang=6, Nam=2028, TrangThai="MO" }] });
+    Require(!html.Contains("data-event-acceptance-form") && !Regex.IsMatch(html, "<form[^>]*action=\"[^\"]*AcceptHourly"), "Planned event exposes acceptance.");
+});
+
+await Check("Phase 3 frozen settlements distinguish pending links, payslips and locked periods", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true; item.TrangThai = "HOAN_THANH";
+    var model = new EventDetailsViewModel { Event=item, IsOffice=true, PayPreview=new(item.Version,[
+        new(10,"Pending",new(2024,5,1),120,153846,[],new(41,6,2024,"MO",null,null)),
+        new(11,"Linked",new(2024,5,1),120,153846,[],new(41,6,2024,"MO",71,81)),
+        new(12,"Locked",new(2024,5,1),120,153846,[],new(42,7,2024,"KHOA_SO",72,82))
+    ],[],"saved") };
+    var html = System.Net.WebUtility.HtmlDecode(await Render("_HourlyEventAcceptance", model));
+    Require(html.Contains("data-transfer-status=\"pending\"") && html.Contains("data-transfer-status=\"linked\"")
+        && html.Contains("data-transfer-status=\"locked\"") && html.Contains("data-payslip-id=\"81\"")
+        && html.Contains("06/2024"), "Frozen settlement lost its actual payroll stage, period or payslip link.");
+    Require(!html.Contains("data-event-acceptance-form") && !html.Contains("data-acceptance-confirm"), "Frozen event can be accepted again.");
+});
+await Check("Phase 3 zero settlement has no invented payment or paid status", async () =>
+{
+    var item=Event(); item.TinhTheoGio=true; item.TrangThai="HOAN_THANH";
+    item.MaNguoiNghiemThu=1; item.NgayNghiemThu=DateTimeOffset.UtcNow;
+    item.PhanCongs=[new() { MaNhanVien=10, DanhGia="KHONG_THAM_GIA", NgayDanhGia=DateTimeOffset.UtcNow }];
+    var html=await Render("_HourlyEventAcceptance",new EventDetailsViewModel { Event=item, PayPreview=new(item.Version,[],[],"saved") });
+    Require(html.Contains("data-zero-settlement") && !html.Contains("data-payslip-id") && !html.Contains("data-transfer-status=\"paid\""),
+        "Zero settlement invents a payroll entry or claims payment.");
+});
+
+await Check("Phase 3 zero acceptance remains available while closed payment periods are excluded", async () =>
+{
+    var item=Event(); item.TinhTheoGio=true; item.TrangThai="CHO_NGHIEM_THU";
+    item.NgayBatDau=item.NgayBatDau.AddYears(-4); item.NgayKetThuc=item.NgayKetThuc.AddYears(-4);
+    item.PhanCongs=[new() { MaNhanVien=10, DanhGia="KHONG_THAM_GIA", NgayDanhGia=DateTimeOffset.UtcNow }];
+    var model=new EventDetailsViewModel { Event=item, CanAccept=true, IsOffice=true, PayPreview=new(item.Version,[],[],"zero"),
+        PaymentPeriods=[new() { MaKyLuong=1,Nam=2024,Thang=5,TrangThai="MO" },
+            new() { MaKyLuong=2,Nam=2024,Thang=5,TrangThai="MO",NgayGuiDuyet=DateTimeOffset.UtcNow },
+            new() { MaKyLuong=3,Nam=2024,Thang=5,TrangThai="MO",NgayDuyet=DateTimeOffset.UtcNow },
+            new() { MaKyLuong=4,Nam=2024,Thang=5,TrangThai="KHOA_SO" }] };
+    Require(model.CanFinalizeAcceptance && model.EligiblePaymentPeriods.Select(k=>k.MaKyLuong).SequenceEqual([1]),
+        "Zero approval is blocked or a sent/approved/locked period is offered.");
+    var html=await Render("_HourlyEventAcceptance",model);
+    var form=Regex.Match(html,"<form[^>]*data-event-acceptance-form[^>]*>(.*?)</form>",RegexOptions.Singleline).Groups[1].Value;
+    Require(form.Contains("data-acceptance-confirm") && !Regex.IsMatch(form,"<button[^>]*type=\"submit\"[^>]*disabled"),
+        "Zero approval cannot reach its confirmation.");
+});
+
+await Check("Completed participation is a read-only record without pending confirmation labels", async () =>
+{
+    var item=Event(); item.TinhTheoGio=true; item.TrangThai="HOAN_THANH";
+    var html=System.Net.WebUtility.HtmlDecode(await Render("_HourlyEventAcceptance",new EventDetailsViewModel {
+        Event=item, IsOffice=true, CanManage=true, CanAccept=true, PayPreview=new(item.Version,[],[],"saved") }));
+    Require(!html.Contains("Nhân viên cần xác nhận") && !html.Contains("Chưa đánh giá") && !html.Contains("<form"),
+        "Completed event still asks for employee confirmation.");
+    Require(html.Contains("data-acceptance-closed"), "Completed participation lacks a read-only explanation.");
+});
+await Check("Imported completion without reviews or settlement warns instead of claiming zero acceptance", async () =>
+{
+    var item=Event(); item.TinhTheoGio=true; item.TrangThai="HOAN_THANH";
+    var html=await Render("_HourlyEventAcceptance",new EventDetailsViewModel {
+        Event=item, PayPreview=new(item.Version,[],[],"saved") });
+    Require(html.Contains("data-acceptance-reconciliation") && !html.Contains("data-zero-settlement"),
+        "Incomplete historical data is incorrectly presented as an approved zero payment.");
+});
+
+await Check("Participation uses exactly one combined table per employee across source assignments", async () =>
+{
+    var item=Event(); item.TinhTheoGio=true; item.TrangThai="CHO_NGHIEM_THU";
+    item.PhanCongs=[
+        new() { MaPhanCong=1,MaNhanVien=10,MaPhanCa=55,NhanVien=new(){Ho="Nguyễn",Ten="An"},
+            VaiTroDuAn="Vai trò đầu",BatDau=item.NgayBatDau,KetThuc=item.NgayBatDau.AddHours(2),
+            CongThucTes=[new(){MaCong=81,BatDau=item.NgayBatDau,KetThuc=item.NgayBatDau.AddHours(1)}] },
+        new() { MaPhanCong=2,MaNhanVien=10,MaPhanCa=56,VaiTroDuAn="Vai trò sau",BatDau=item.NgayBatDau.AddHours(2),KetThuc=item.NgayKetThuc },
+        new() { MaPhanCong=3,MaNhanVien=11,MaPhanCa=57,VaiTroDuAn="Vai trò khác",BatDau=item.NgayBatDau,KetThuc=item.NgayKetThuc }
+    ];
+    var html=System.Net.WebUtility.HtmlDecode(await Render("_HourlyEventAcceptance",new EventDetailsViewModel {
+        Event=item,CanManage=true,IsOffice=true }));
+    Require(Regex.Matches(html,"data-participation-person=\"10\"").Count==1
+        && Regex.Matches(html,"data-participation-person=\"11\"").Count==1
+        && Regex.Matches(html,"data-participation-table").Count==2,
+        "One person is split into multiple participation tables.");
+    var first=Regex.Match(html,"<section[^>]*data-participation-person=\"10\"[^>]*>(.*?)</section>",RegexOptions.Singleline).Groups[1].Value;
+    foreach(var text in new[]{"Vai trò đầu","Vai trò sau","Ca #55","Ca #56","Giờ phân công","Giờ thực tế","Kết quả","name=\"Work.WorkId\" value=\"81\"","name=\"Review.AssignmentId\" value=\"2\""})
+        Require(first.Contains(text),"Combined employee table omitted "+text);
+});
+
 if (args.Contains("--export"))
 {
     var export = Path.Combine(root, ".probe/codex-phase1-html");
@@ -333,7 +455,53 @@ if (args.Contains("--export"))
         End = new(2028, 5, 10, 10, 0, 0), Reason = "Correct entry with evidence" };
     var workState = new ModelStateDictionary(); workState.AddModelError("Work.End", "Review participation time");
     await File.WriteAllTextAsync(Path.Combine(export, "hourly-work-invalid.html"), await Render("_EventDetailsContent", workModel, workState));
+    var acceptedItem = Event(); acceptedItem.TinhTheoGio = true; acceptedItem.TrangThai = "CHO_NGHIEM_THU";
+    acceptedItem.NgayBatDau = acceptedItem.NgayBatDau.AddYears(-4); acceptedItem.NgayKetThuc = acceptedItem.NgayKetThuc.AddYears(-4);
+    acceptedItem.PhanCongs = [new() { MaPhanCong=1, MaNhanVien=10, DanhGia="HOAN_THANH", NgayDanhGia=DateTimeOffset.UtcNow,
+        BatDau=acceptedItem.NgayBatDau, KetThuc=acceptedItem.NgayKetThuc,
+        CongThucTes=[new() { BatDau=acceptedItem.NgayBatDau, KetThuc=acceptedItem.NgayBatDau.AddHours(2) }] }];
+    var acceptModel = new EventDetailsViewModel { Event=acceptedItem, CanManage=true, CanAccept=true, IsOffice=true, Tab="acceptance",
+        PayPreview=new(acceptedItem.Version,[new(10,"Worker",new(2024,5,1),120,153846,[])],[],"saved-preview"),
+        PaymentPeriods=[new() { MaKyLuong=41, Thang=5, Nam=2024, TrangThai="MO" }] };
+    await File.WriteAllTextAsync(Path.Combine(export,"hourly-acceptance.html"), await Render("_EventDetailsContent",acceptModel));
+
 }
+await Check("Auto start overview explains readiness without requiring a manual start button", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true;
+    var html = System.Net.WebUtility.HtmlDecode(await Render("_EventOverview", new EventDetailsViewModel
+        { Event = item, CanManage = true, IsOffice = true }));
+    Require(html.Contains("Hệ thống tự bắt đầu") && !Regex.IsMatch(html, "name=\"status\"[^>]*value=\"DANG_DIEN_RA\""),
+        "Planned event still requires pressing Start instead of explaining automatic readiness.");
+    item.NgayBatDau = DateTimeOffset.UtcNow.AddHours(-4); item.NgayKetThuc = DateTimeOffset.UtcNow.AddHours(-2);
+    html = System.Net.WebUtility.HtmlDecode(await Render("_EventOverview", new EventDetailsViewModel
+        { Event = item, CanManage = true, IsOffice = true }));
+    Require(html.Contains("đã quá giờ kết thúc") && html.Contains("đối soát"),
+        "An expired planned event incorrectly promises automatic start.");
+});
+
+await Check("Auto start worker runs without page requests and retries after a failed scan", async () =>
+{
+    var service = DispatchProxy.Create<IHotelEventService, StaffServiceStub>();
+    var stub = (StaffServiceStub)(object)service;
+    var calls = 0;
+    var retried = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    stub.AutoStart = cancellationToken =>
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (Interlocked.Increment(ref calls) == 1) throw new IOException("Temporary database failure");
+        retried.TrySetResult();
+        return Task.FromResult(0);
+    };
+    await using var services = new ServiceCollection().AddScoped<IHotelEventService>(_ => service).BuildServiceProvider();
+    using var worker = new HotelEventAutoStartWorker(services.GetRequiredService<IServiceScopeFactory>(),
+        NullLogger<HotelEventAutoStartWorker>.Instance);
+    await worker.StartAsync(CancellationToken.None);
+    try { await retried.Task.WaitAsync(TimeSpan.FromSeconds(25)); }
+    finally { await worker.StopAsync(CancellationToken.None); }
+    Require(calls >= 2, "Worker requires an HTTP request or stopped retrying after a database error.");
+});
+
 Console.WriteLine($"Hotel event web tests: {passed} passed, {failures} failed");
 return failures == 0 ? 0 : 1;
 
@@ -341,8 +509,10 @@ public class StaffServiceStub : DispatchProxy
 {
     public DuAn Item = null!;
     public bool FailPicker, FailStaff, ForbidStaff, OutOfScope;
+    public Func<CancellationToken, Task<int>> AutoStart = _ => Task.FromResult(0);
     protected override object? Invoke(MethodInfo? method, object?[]? args) => method!.Name switch
     {
+        "AutoStartReadyEventsAsync" => AutoStart((CancellationToken)args![0]!),
         "GetOverviewAsync" => Task.FromResult<DuAn?>(OutOfScope ? null : new DuAn
         {
             MaDuAn = Item.MaDuAn, LoaiDuAn = Item.LoaiDuAn, TrangThai = Item.TrangThai,

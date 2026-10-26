@@ -70,7 +70,8 @@ public class EventWorkInput
 }
 
 public record EventPayRow(int EmployeeId, string EmployeeName, DateOnly WorkMonth, decimal Minutes,
-    decimal Amount, IReadOnlyList<OvertimeHotel.HRM.Core.Policies.EventPaySlice> Basis);
+    decimal Amount, IReadOnlyList<OvertimeHotel.HRM.Core.Policies.EventPaySlice> Basis, EventPayTransfer? Transfer = null);
+public record EventPayTransfer(int PeriodId, int Month, int Year, string PeriodStatus, int? DetailId, int? PayslipId);
 public record EventPayPreview(long Version, IReadOnlyList<EventPayRow> Rows, IReadOnlyList<string> Warnings, string Token)
 {
     public decimal Total => Rows.Sum(r => r.Amount);

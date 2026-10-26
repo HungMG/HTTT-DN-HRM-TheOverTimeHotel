@@ -28,11 +28,17 @@ with sync_playwright() as p:
 
     page.route('http://phase2.test/**', respond)
     page.goto('http://phase2.test/')
+    page.add_style_tag(path=str(web / 'lib/bootstrap/dist/css/bootstrap.min.css'))
+    page.add_style_tag(path=str(web / 'css/events.css'))
     for script in ['lib/bootstrap/dist/js/bootstrap.bundle.min.js', 'js/events.js', 'js/event-details.js']:
         page.add_script_tag(path=str(web / script))
     page.evaluate("document.dispatchEvent(new Event('DOMContentLoaded'))")
     page.locator('[data-event-link][data-event-id="17"]').first.click()
     body = page.locator('[data-event-details-body]')
+    person = body.locator('[data-participation-person="10"]')
+    expect(person.locator('table')).to_have_count(1)
+    expect(person.locator('[name="Review.AssignmentId"]')).to_have_value('1')
+    person.screenshot(path=str(root / '.probe/event-phase3/participation-person.png'))
     edit = body.locator('input[name="Work.WorkId"][value="81"]').locator('xpath=ancestor::details[1]')
     edit.locator('summary').click()
     edit.locator('[name="Work.Start"]').fill('2028-05-10T09:30')

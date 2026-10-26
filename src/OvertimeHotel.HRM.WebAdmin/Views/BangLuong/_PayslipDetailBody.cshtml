@@ -251,6 +251,8 @@
                             </div>
                             <div class="small text-muted mt-1">
                                 Khoản cộng thêm cho thời gian tham gia sự kiện trong ca trực. Số tiền và hệ số được lưu khi nghiệm thu; thay đổi cấu hình sau đó không làm tính lại khoản đã chốt.
+                                @if (Model.EventAllowances.Count > 0)
+                                { <span class="d-block">Khoản đã kết chuyển vào phiếu lương. Khóa sổ kỳ lương không xác nhận đã chuyển khoản cho nhân viên.</span> }
                             </div>
                         </div>
                         <div class="font-monospace fw-bold fs-6 @(Model.EventAllowances.Count > 0 ? "text-primary" : "text-muted")">

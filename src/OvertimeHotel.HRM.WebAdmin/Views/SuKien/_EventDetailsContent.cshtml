@@ -27,7 +27,7 @@
     <div asp-validation-summary="All" class="text-danger event-validation" role="alert"></div>
     @if (item.TrangThai is "HOAN_THANH" or "HUY")
     {
-        <div class="event-info-note mb-3">@(item.TrangThai == "HOAN_THANH" ? "Sự kiện đã nghiệm thu. Thông tin và phụ cấp đã được khóa." : "Sự kiện đã hủy. " + item.LyDoHuy)</div>
+        <div class="event-info-note mb-3">@(item.TrangThai == "HOAN_THANH" ? item.NgayNghiemThu.HasValue || item.QuyetToans.Count > 0 ? "Sự kiện đã nghiệm thu. Thông tin và phụ cấp đã được khóa." : "Sự kiện đã được đánh dấu hoàn thành. Dữ liệu chỉ xem; hồ sơ nghiệm thu cần được đối soát." : "Sự kiện đã hủy. " + item.LyDoHuy)</div>
     }
     <nav class="event-details-navigation" aria-label="Nội dung sự kiện">
         <button type="button" class="event-secondary-button" data-details-section="overview" aria-pressed="@(Model.Tab == "overview" ? "true" : "false")"><i class="bi bi-arrow-left" aria-hidden="true"></i> Thông tin sự kiện</button>

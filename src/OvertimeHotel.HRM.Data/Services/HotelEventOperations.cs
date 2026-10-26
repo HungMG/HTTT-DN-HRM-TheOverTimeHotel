@@ -366,9 +366,17 @@ public sealed partial class HotelEventService
         if (!item.TinhTheoGio) return new(item.Version, rows, ["Sự kiện theo chính sách cũ."], "");
         if (item.TrangThai == "HOAN_THANH")
         {
+            var periodIds = item.QuyetToans.Select(q => q.MaKyChiTra).Distinct().ToArray();
+            var periods = await db.KyLuongs.AsNoTracking().Where(k => periodIds.Contains(k.MaKyLuong))
+                .ToDictionaryAsync(k => k.MaKyLuong);
+            var detailIds = item.QuyetToans.Where(q => q.MaChiTiet.HasValue).Select(q => q.MaChiTiet!.Value).ToArray();
+            var payslips = await db.ChiTietPhieuLuongs.AsNoTracking().Where(d => detailIds.Contains(d.MaChiTiet))
+                .Select(d => new { d.MaChiTiet, d.MaPhieuLuong }).ToDictionaryAsync(d => d.MaChiTiet, d => d.MaPhieuLuong);
             rows.AddRange(item.QuyetToans.OrderBy(q => q.MaNhanVien).ThenBy(q => q.ThangPhatSinh).Select(q => new EventPayRow(
                 q.MaNhanVien, item.PhanCongs.FirstOrDefault(p => p.MaNhanVien == q.MaNhanVien)?.NhanVien?.HoTen ?? $"#{q.MaNhanVien}",
-                q.ThangPhatSinh, q.SoPhut, q.SoTien, ReadFrozenBasis(q.CanCuTinh))));
+                q.ThangPhatSinh, q.SoPhut, q.SoTien, ReadFrozenBasis(q.CanCuTinh),
+                periods.TryGetValue(q.MaKyChiTra, out var period) ? new(q.MaKyChiTra, period.Thang, period.Nam, period.TrangThai,
+                    q.MaChiTiet, q.MaChiTiet is { } detailId && payslips.TryGetValue(detailId, out var payslipId) ? payslipId : null) : null)));
         }
         else
         {
@@ -393,6 +401,8 @@ public sealed partial class HotelEventService
                     warnings.Add($"{name}: phân công đã hủy nhưng còn công thực tế; cần đối soát, không tự bỏ công đã làm.");
                 if (group.Any(p => !p.NgayDanhGia.HasValue || p.DanhGia == "CHUA_DANH_GIA")) warnings.Add($"{name}: còn phân công chưa xác nhận công/vắng mặt.");
                 if (group.Any(p => p.DanhGia != "KHONG_THAM_GIA" && p.CongThucTes.Count == 0)) warnings.Add($"{name}: thiếu công thực tế.");
+                if (group.Any(p => p.DanhGia == "KHONG_THAM_GIA" && p.CongThucTes.Count > 0))
+                    warnings.Add($"{name}: đánh dấu không tham gia nhưng còn công thực tế; HR cần đối soát trước khi nghiệm thu.");
                 try
                 {
                     foreach (var assignment in group)

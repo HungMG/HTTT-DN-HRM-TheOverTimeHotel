@@ -47,6 +47,29 @@ public class EventDetailsViewModel
     public EventWorkInput Work { get; set; } = new();
     public EventPayPreview? PayPreview { get; set; }
     public IReadOnlyList<KyLuong> PaymentPeriods { get; set; } = [];
+    public int? PaymentPeriodId { get; set; }
+    public IReadOnlyList<PhanCongDuAn> AcceptanceAssignments => Event.PhanCongs
+        .Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY") || p.CongThucTes.Count > 0).ToList();
+    public int AcceptanceStaffCount => AcceptanceAssignments.Select(p => p.MaNhanVien).Distinct().Count();
+    public int ConfirmedStaffCount => AcceptanceAssignments.GroupBy(p => p.MaNhanVien).Count(g => g.All(p =>
+        p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY") && p.NgayDanhGia.HasValue
+        && (p.DanhGia == "KHONG_THAM_GIA" ? p.CongThucTes.Count == 0
+            : p.DanhGia is "HOAN_THANH" or "XUAT_SAC" && p.CongThucTes.Count > 0)));
+    public int MissingWorkStaffCount => AcceptanceAssignments.Where(p => p.DanhGia != "KHONG_THAM_GIA" && p.CongThucTes.Count == 0)
+        .Select(p => p.MaNhanVien).Distinct().Count();
+    public int UnreviewedStaffCount => AcceptanceAssignments.Where(p => !p.NgayDanhGia.HasValue || p.DanhGia == "CHUA_DANH_GIA")
+        .Select(p => p.MaNhanVien).Distinct().Count();
+    public int AbsentStaffCount => AcceptanceAssignments.GroupBy(p => p.MaNhanVien).Count(g =>
+        g.All(p => p.DanhGia == "KHONG_THAM_GIA" && p.NgayDanhGia.HasValue && p.CongThucTes.Count == 0));
+    public IReadOnlyList<KyLuong> EligiblePaymentPeriods => PaymentPeriods.Where(k =>
+        (k.TrangThai is "MO" or "NHAP" or "TU_CHOI") && !k.NgayDuyet.HasValue
+        && (!k.NgayGuiDuyet.HasValue || !string.IsNullOrEmpty(k.LyDoTuChoi))
+        && (PayPreview?.Rows.Count is not > 0 || new DateOnly(k.Nam, k.Thang, 1) >= PayPreview.Rows.Max(r => r.WorkMonth))).ToList();
+    public bool CanFinalizeAcceptance => CanAccept && IsOffice && !StaffLoadFailed
+        && Event.TrangThai == "CHO_NGHIEM_THU" && (Event.KetThucThucTe ?? Event.NgayKetThuc) <= DateTimeOffset.UtcNow
+        && OvertimeHotel.HRM.Core.Policies.HotelEventRules.CountEffectiveStaff(Event.PhanCongs) > 0
+        && PayPreview != null && PayPreview.Version == Event.Version && PayPreview.Warnings.Count == 0
+        && ConfirmedStaffCount == AcceptanceStaffCount && EligiblePaymentPeriods.Count > 0;
     public EventAssignmentInput Assignment { get; set; } = new();
     public List<EventAssignmentInput> Assignments { get; set; } = [];
     public EventReviewInput Review { get; set; } = new();

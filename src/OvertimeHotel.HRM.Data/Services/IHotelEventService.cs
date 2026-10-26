@@ -36,4 +36,5 @@ public interface IHotelEventService
     Task PublishWeekAsync(EventActor actor, DateOnly weekStart, long version, string? reason);
     Task<CongBoLichTuan?> PublishedWeekAsync(DateOnly weekStart);
     Task<int> AutoCancelExpiredEventsAsync();
+    Task<int> AutoStartReadyEventsAsync(CancellationToken cancellationToken = default);
 }

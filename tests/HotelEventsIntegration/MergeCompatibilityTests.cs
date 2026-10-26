@@ -99,6 +99,7 @@ static partial class HourlyOperationsTests
             }
             await using var verify = f.Open();
             Require(!await verify.QuyetToanSuKiens.AnyAsync(q => q.MaDuAn == item.MaDuAn), "Rejected approval created a payment.");
+            await Period(f, HourlyEventRules.WorkMonth(item.NgayBatDau));
         });
 
         await check("Merge compatibility keeps x1 evidence for frozen snapshots without a rate", async () =>
