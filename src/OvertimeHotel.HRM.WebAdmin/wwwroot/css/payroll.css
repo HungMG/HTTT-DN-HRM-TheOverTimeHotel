@@ -447,3 +447,158 @@
     display: none !important;
   }
 }
+
+/* ====================================================================
+   CẤU HÌNH LƯƠNG: CHI TIẾT CÔNG THỨC, THAM SỐ & CÁCH TÍNH
+   Bám theo PRD 05 — Quy trình & công thức tính lương (Gross → Net).
+   ==================================================================== */
+.payroll-config-intro {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 1rem 1.5rem; padding: 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.payroll-config-intro-text { flex: 1 1 420px; min-width: 0; }
+.payroll-config-title {
+  font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.35rem;
+  line-height: 1.25; color: #0f172a; margin: 0 0 .35rem;
+}
+.payroll-config-desc { color: #475569; font-size: .88rem; line-height: 1.55; max-width: 760px; margin: 0; }
+.payroll-config-stats { display: flex; flex-wrap: wrap; gap: .5rem; }
+.payroll-config-stat {
+  min-width: 104px; padding: .6rem .85rem;
+  border: 1px solid #e2e8f0; border-radius: 14px;
+  background: linear-gradient(160deg, #ffffff, #f1f5fd);
+}
+.payroll-config-stat strong { display: block; font-size: 1.2rem; line-height: 1.1; color: var(--hotel-blue); font-variant-numeric: tabular-nums; }
+.payroll-config-stat span { display: block; margin-top: .2rem; font-size: .68rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #64748b; }
+
+.payroll-guide {
+  margin: 1.25rem; padding: 1.1rem 1.25rem;
+  border: 1px solid #dbe4f3; border-radius: 18px;
+  background: linear-gradient(145deg, #f8fafc 0%, #eef4ff 100%);
+}
+.payroll-guide-head { display: flex; align-items: flex-start; gap: .85rem; }
+.payroll-guide-icon {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 42px; height: 42px; border-radius: 12px;
+  background: var(--hotel-blue); color: #fff; font-size: 1.15rem;
+}
+.payroll-guide-title {
+  margin: 0 0 .3rem; font-size: .75rem; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: #475569;
+}
+.payroll-guide-formula {
+  margin: 0; font-family: 'Fraunces', serif; font-weight: 600;
+  font-size: 1.02rem; line-height: 1.45; color: #0f172a;
+}
+.payroll-guide-note { margin: .3rem 0 0; color: #475569; font-size: .8rem; line-height: 1.5; }
+.payroll-guide-params {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: .6rem; margin: .9rem 0 0; padding: 0;
+}
+.payroll-guide-param { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: .6rem .75rem; }
+.payroll-guide-param dt {
+  margin-bottom: .2rem; font-size: .68rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: #64748b;
+}
+.payroll-guide-param dd { margin: 0; }
+.payroll-guide-param dd strong { color: #0f172a; font-size: 1rem; font-variant-numeric: tabular-nums; }
+.payroll-guide-unit { margin-left: .25rem; color: #1d4ed8; font-size: .76rem; font-weight: 600; }
+.payroll-guide-param dd small { display: block; margin-top: .25rem; color: #64748b; font-size: .72rem; line-height: 1.4; }
+.payroll-guide-rules {
+  display: grid; gap: .4rem; margin: .9rem 0 0; padding: .75rem 0 0;
+  border-top: 1px dashed #cbd5e1; list-style: none;
+}
+.payroll-guide-rules li { display: flex; gap: .45rem; color: #334155; font-size: .8rem; line-height: 1.5; }
+.payroll-guide-rules i { flex: 0 0 auto; margin-top: .1rem; color: #16a34a; }
+
+.payroll-config-table { min-width: 860px; }
+.payroll-col-code { width: 70px; }
+.payroll-code-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 42px; padding: .2rem .45rem; border-radius: 8px;
+  background: #eef2ff; color: #1e3a8a; font-size: .74rem; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.payroll-type-badge {
+  display: inline-block; padding: .25rem .55rem; border-radius: 999px;
+  background: #f1f5f9; border: 1px solid #e2e8f0; color: #334155;
+  font-size: .74rem; font-weight: 600; white-space: nowrap;
+}
+.payroll-formula-cell { min-width: 180px; font-size: .8rem; }
+.payroll-formula-text { display: block; color: #0f172a; font-weight: 500; }
+.payroll-usage-cell { white-space: nowrap; }
+.payroll-usage { display: inline-flex; align-items: center; gap: .25rem; color: #94a3b8; font-size: .76rem; }
+.payroll-usage.is-used { color: #15803d; }
+.payroll-config-footnote {
+  display: flex; align-items: flex-start; gap: .4rem;
+  margin: 0; padding: .85rem 1.25rem 1.1rem;
+  color: #64748b; font-size: .78rem; line-height: 1.5;
+}
+.payroll-config-footnote i { margin-top: .15rem; }
+
+/* Form thêm/sửa cấu hình lương */
+.payroll-form-card { padding: 1.5rem; }
+.payroll-form-section + .payroll-form-section {
+  margin-top: .5rem; padding-top: 1.25rem; border-top: 1px dashed #e2e8f0;
+}
+.payroll-form-heading {
+  display: flex; align-items: center; gap: .45rem;
+  margin-bottom: .9rem; color: #475569; font-size: .76rem; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.payroll-form-heading i { color: var(--hotel-blue); }
+.payroll-value-input .input-group-text {
+  min-width: 120px; justify-content: center;
+  background: #f8fafc; color: #334155; font-weight: 600;
+}
+.payroll-form-preview {
+  display: grid; gap: .55rem; padding: .8rem .95rem;
+  border: 1px solid #dbe4f3; border-radius: 14px; background: #f8fafc;
+}
+.payroll-form-preview-row {
+  display: grid; grid-template-columns: 92px 1fr; gap: .6rem;
+  align-items: start; font-size: .85rem; line-height: 1.5;
+}
+.payroll-form-preview-label {
+  padding-top: .1rem; color: #64748b; font-size: .68rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+@media (max-width: 767.98px) {
+  .payroll-config-intro { align-items: flex-start; }
+  .payroll-config-stats { width: 100%; }
+  .payroll-config-stat { flex: 1 1 100px; min-width: 0; }
+  .payroll-guide { margin: 1rem; padding: 1rem; }
+  .payroll-form-card { padding: 1rem; }
+  .payroll-form-preview-row { grid-template-columns: 1fr; gap: .1rem; }
+}
+
+/* Tổng quan 2 tầng Gross → Net, giữ cố định phía trên các tab danh mục. */
+.payroll-flow {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: .65rem; align-items: stretch;
+  padding: 1.1rem 1.25rem .25rem;
+}
+.payroll-flow-tier {
+  border: 1px solid #dbe4f3; border-left: 4px solid var(--hotel-blue);
+  border-radius: 12px; background: #f8fafc; padding: .6rem .8rem;
+}
+.payroll-flow-tier.is-deduction { border-left-color: #dc2626; }
+.payroll-flow-label {
+  display: block; margin-bottom: .2rem; color: #475569;
+  font-size: .66rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+}
+.payroll-flow-items { margin: 0; color: #334155; font-size: .8rem; line-height: 1.55; }
+.payroll-flow-items span { margin: 0 .15rem; color: #94a3b8; }
+.payroll-flow-items a { color: var(--hotel-blue); text-decoration: none; font-weight: 600; }
+.payroll-flow-items a:hover { text-decoration: underline; }
+.payroll-flow-net {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .6rem .9rem; border-radius: 12px;
+  background: var(--hotel-blue); color: #fff; font-weight: 700; font-size: .82rem;
+  white-space: nowrap;
+}
+@media (max-width: 991.98px) {
+  .payroll-flow { grid-template-columns: 1fr; }
+  .payroll-flow-net { justify-content: center; }
+}

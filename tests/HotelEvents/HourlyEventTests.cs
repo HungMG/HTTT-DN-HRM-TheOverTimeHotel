@@ -12,11 +12,11 @@ internal static class HourlyEventTests
             catch (Exception e) { failures++; Console.Error.WriteLine("FAIL " + name + ": " + e.Message); }
         }
         var day = HotelEventRules.ToUtc(new DateTime(2027, 1, 7));
-        Check("Hourly events add ONE hourly wage and round only the final employee amount", () =>
+        Check("Hourly events add TWO hourly wages and round only the final employee amount", () =>
         {
-            Equal(76923m, HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(17), 8_000_000m, 1)]));
-            Equal(57692m, HourlyEventRules.Amount([new(day.AddHours(15.5), day.AddHours(17), 8_000_000m, 1)]));
-            Equal(76923m, HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(16), 8_000_000m, 1), new(day.AddHours(16), day.AddHours(17), 8_000_000m, 1)]));
+            Equal(153846m, HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(17), 8_000_000m, 1)]));
+            Equal(115385m, HourlyEventRules.Amount([new(day.AddHours(15.5), day.AddHours(17), 8_000_000m, 1)]));
+            Equal(153846m, HourlyEventRules.Amount([new(day.AddHours(15), day.AddHours(16), 8_000_000m, 1), new(day.AddHours(16), day.AddHours(17), 8_000_000m, 1)]));
         });
         Check("Event participation stops at the end of the source shift", () =>
         {
@@ -35,7 +35,7 @@ internal static class HourlyEventTests
                 new HopDong { MaHopDong=2, NgayBatDau=new(2027,1,8), LuongCoBan=10_000_000m, TrangThai="HIEU_LUC" }
             };
             var slices=HourlyEventRules.Price(day.AddHours(23),day.AddHours(25),contracts);
-            Equal(2,slices.Count); Equal(86538m,HourlyEventRules.Amount(slices));
+            Equal(2,slices.Count); Equal(173077m,HourlyEventRules.Amount(slices));
         });
         Check("Hourly earnings split by Vietnam work month rather than UTC month", () =>
         {

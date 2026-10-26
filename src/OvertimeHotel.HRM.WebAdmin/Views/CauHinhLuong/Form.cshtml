@@ -1,55 +1,114 @@
+@using OvertimeHotel.HRM.Core.Constants
 @using OvertimeHotel.HRM.WebAdmin.Models
 @model CauHinhLuongFormViewModel
 @{
     var title = CauHinhLuongLabels.Title(Model.Category);
     var action = Model.Id == 0 ? "Create" : "Edit";
     var types = CauHinhLuongLabels.Types(Model.Category);
+    var isEventRateParameter = Model.Category == CauHinhLuongCategory.Thuong
+        && Model.Id == SalaryConstants.EVENT_HOURLY_RATE_CONFIG_ID;
     ViewData["Title"] = (Model.Id == 0 ? "Thêm " : "Sửa ") + title.ToLower();
 }
 <link rel="stylesheet" href="~/css/payroll.css" asp-append-version="true" />
 <div class="catalog-page payroll-workspace">
-    <form asp-action="@action" asp-route-id="@(Model.Id == 0 ? (int?)null : Model.Id)" method="post" class="catalog-card catalog-form-card">
+    <div class="payroll-config-intro">
+        <div class="payroll-config-intro-text">
+            <p class="payroll-eyebrow">
+                <i class="bi bi-sliders" aria-hidden="true"></i>
+                <span>Cấu hình lương</span><span>@title</span>
+            </p>
+            <h2 class="payroll-config-title">@(Model.Id == 0 ? "Thêm" : "Chỉnh sửa") @title.ToLower()</h2>
+            <p class="payroll-config-desc">@CauHinhLuongLabels.Description(Model.Category)</p>
+        </div>
+    </div>
+    <form asp-action="@action" asp-route-id="@(Model.Id == 0 ? (int?)null : Model.Id)" method="post" class="catalog-card catalog-form-card payroll-form-card">
         <input asp-for="Id" type="hidden" />
         <input asp-for="Category" type="hidden" />
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
-        <div class="mb-3">
-            <label asp-for="Name" class="form-label">Tên @title.ToLower()</label>
-            <input asp-for="Name" class="form-control" maxlength="@(Model.Category == CauHinhLuongCategory.TangCa ? 100 : 150)" required />
-            <span asp-validation-for="Name" class="text-danger"></span>
-        </div>
-        @if (types.Count > 0)
+        @if (isEventRateParameter)
         {
+            <div class="alert alert-info d-flex gap-2 align-items-start" role="note">
+                <i class="bi bi-info-circle-fill mt-1" aria-hidden="true"></i>
+                <div>
+                    <strong>Tham số dùng chung cho công thức thưởng sự kiện.</strong>
+                    <div class="small">Hệ số này nhân vào đơn giá giờ khi tính tiền sự kiện. Chỉ sửa giá trị; không thể xóa dòng cấu hình.</div>
+                </div>
+            </div>
+        }
+
+        <div class="payroll-form-section">
+            <h3 class="payroll-form-heading"><i class="bi bi-tag" aria-hidden="true"></i>Thông tin cấu hình</h3>
             <div class="mb-3">
-                <label asp-for="Type" class="form-label">@(Model.Category == CauHinhLuongCategory.PhuCap ? "Cách tính" : "Loại khấu trừ")</label>
-                <select asp-for="Type" class="form-select">
-                    @foreach (var type in types) { <option value="@type.Key">@type.Value</option> }
-                </select>
-                <span asp-validation-for="Type" class="text-danger"></span>
+                <label asp-for="Name" class="form-label">Tên @title.ToLower()</label>
+                <input asp-for="Name" class="form-control" maxlength="@(Model.Category == CauHinhLuongCategory.TangCa ? 100 : 150)" required
+                       readonly="@isEventRateParameter"
+                       placeholder="@(Model.Category == CauHinhLuongCategory.TangCa ? "Ví dụ: Làm thêm ngày Lễ, Tết (300%)" : "Ví dụ: Phụ cấp trách nhiệm quản lý")" />
+                <span asp-validation-for="Name" class="text-danger"></span>
             </div>
-        }
-        <div class="mb-3">
-            <label asp-for="Value" class="form-label">@(Model.Category == CauHinhLuongCategory.TangCa ? "Hệ số" : "Tỷ lệ hoặc định mức") (<span id="value-unit">@CauHinhLuongLabels.Unit(Model.Category, Model.Type)</span>)</label>
-            <input asp-for="Value" type="number" min="@(Model.Category == CauHinhLuongCategory.TangCa ? "0.01" : "0")"
-                   max="@(Model.Category == CauHinhLuongCategory.TangCa ? "99.99" : "9999999999999.99")" step="0.01" class="form-control" required aria-describedby="value-help" />
-            <span asp-validation-for="Value" class="text-danger"></span>
-            <div id="value-help" class="form-text">
-                @if (Model.Category == CauHinhLuongCategory.TangCa) { <span>Ví dụ: 1.50 là hệ số 150%; 0.30 là phần cộng thêm 30% cho ca đêm.</span> }
-                else if (Model.Category == CauHinhLuongCategory.KhauTru) { <span>Bảo hiểm nhập %, vi phạm nhập VNĐ/phút. Thuế TNCN được tính lũy tiến; định mức thuế tại đây là giá trị tham chiếu (không áp dụng tạm ứng lương).</span> }
-                else { <span>Nhập tối đa hai chữ số thập phân.</span> }
+            @if (types.Count > 0)
+            {
+                <div class="mb-3">
+                    <label asp-for="Type" class="form-label">@(Model.Category == CauHinhLuongCategory.PhuCap ? "Cách tính" : "Loại khấu trừ")</label>
+                    <select asp-for="Type" class="form-select">
+                        @foreach (var type in types) { <option value="@type.Key">@type.Value</option> }
+                    </select>
+                    <span asp-validation-for="Type" class="text-danger"></span>
+                </div>
+            }
+            else
+            {
+                @* Giữ nguyên loại hiển thị của dòng (ví dụ HE_SO_SU_KIEN) khi submit form *@
+                <input asp-for="Type" type="hidden" />
+            }
+        </div>
+
+        <div class="payroll-form-section">
+            <h3 class="payroll-form-heading"><i class="bi bi-123" aria-hidden="true"></i>Giá trị &amp; cách áp dụng</h3>
+            <div class="mb-3">
+                <label asp-for="Value" class="form-label">@(Model.Category == CauHinhLuongCategory.TangCa || isEventRateParameter ? "Hệ số" : "Tỷ lệ hoặc định mức")</label>
+                <div class="input-group payroll-value-input">
+                    <input asp-for="Value" type="number" min="@(Model.Category == CauHinhLuongCategory.TangCa || isEventRateParameter ? "0.01" : "0")"
+                           max="@(Model.Category == CauHinhLuongCategory.TangCa || isEventRateParameter ? "99.99" : "9999999999999.99")" step="0.01" class="form-control" required aria-describedby="value-help" />
+                    <span class="input-group-text" id="value-unit">@CauHinhLuongLabels.Unit(Model.Category, Model.Type)</span>
+                </div>
+                <span asp-validation-for="Value" class="text-danger"></span>
+                <div id="value-help" class="form-text">
+                    @if (Model.Category == CauHinhLuongCategory.TangCa) { <span>Ví dụ: 1.50 là hệ số 150%; 0.30 là phần cộng thêm 30% cho ca đêm.</span> }
+                    else if (isEventRateParameter) { <span>Hệ số nhân vào đơn giá giờ sự kiện, ví dụ 2.00 = trả gấp đôi đơn giá giờ thường. Phạm vi 0,01 – 99,99.</span> }
+                    else if (Model.Category == CauHinhLuongCategory.KhauTru) { <span>Bảo hiểm nhập %, vi phạm nhập VNĐ/phút. Thuế TNCN được tính lũy tiến; định mức thuế tại đây là giá trị tham chiếu (không áp dụng tạm ứng lương).</span> }
+                    else { <span>Nhập tối đa hai chữ số thập phân.</span> }
+                </div>
+            </div>
+            @if (Model.Category == CauHinhLuongCategory.PhuCap)
+            {
+                <div class="form-check mb-3">
+                    <input asp-for="Taxable" class="form-check-input" />
+                    <label asp-for="Taxable" class="form-check-label">Phụ cấp chịu thuế TNCN</label>
+                    <div class="form-text">Bỏ chọn với khoản miễn thuế như phụ cấp ăn ca, phụ cấp độc hại buồng phòng.</div>
+                </div>
+            }
+            <div class="payroll-form-preview" aria-live="polite">
+                <div class="payroll-form-preview-row">
+                    <span class="payroll-form-preview-label">Công thức</span>
+                    <strong id="formula-preview">@Model.FormulaHint</strong>
+                </div>
+                <div class="payroll-form-preview-row">
+                    <span class="payroll-form-preview-label">Ước tính</span>
+                    <span id="value-preview">Nhập giá trị để xem ví dụ tính tiền.</span>
+                </div>
             </div>
         </div>
-        @if (Model.Category == CauHinhLuongCategory.PhuCap)
-        {
-            <div class="form-check mb-3">
-                <input asp-for="Taxable" class="form-check-input" />
-                <label asp-for="Taxable" class="form-check-label">Phụ cấp chịu thuế TNCN</label>
+
+        <div class="payroll-form-section">
+            <h3 class="payroll-form-heading"><i class="bi bi-journal-text" aria-hidden="true"></i>Ghi chú</h3>
+            <div class="mb-4">
+                <label asp-for="Description" class="form-label">Mô tả / điều kiện áp dụng</label>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="255"
+                          placeholder="Ví dụ: Áp dụng cho nhân viên buồng phòng, miễn thuế TNCN."></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
             </div>
-        }
-        <div class="mb-4">
-            <label asp-for="Description" class="form-label">Mô tả</label>
-            <textarea asp-for="Description" class="form-control" rows="3" maxlength="255"></textarea>
-            <span asp-validation-for="Description" class="text-danger"></span>
         </div>
+
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-hotel-primary">Lưu cấu hình</button>
             <a asp-action="Index" asp-route-category="@Model.Category" class="btn btn-outline-secondary">Hủy</a>
@@ -59,19 +118,97 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        const typeSelect = document.getElementById("Type");
-        if (typeSelect) {
+        (() => {
             const category = document.getElementById("Category").value;
+            const typeSelect = document.getElementById("Type");
             const unit = document.getElementById("value-unit");
-            const value = document.getElementById("Value");
-            const updateUnit = () => {
-                unit.textContent = category === "PhuCap"
-                    ? (typeSelect.value === "THEO_NGAY_CONG" ? "VNĐ/ngày công" : "VNĐ/tháng")
-                    : (typeSelect.value === "BAO_HIEM" ? "%" : typeSelect.value === "VI_PHAM" ? "VNĐ/phút" : "VNĐ");
-                value.max = category === "KhauTru" && typeSelect.value === "BAO_HIEM" ? "100" : "9999999999999.99";
+            const formulaPreview = document.getElementById("formula-preview");
+            const valuePreview = document.getElementById("value-preview");
+            const valueInput = document.getElementById("Value");
+            const exampleBase = 10000000;
+            const money = (amount) =>
+                window.Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(Math.max(0, amount)) + " đ";
+
+            const describe = () => {
+                const type = typeSelect?.value;
+                const value = Number(valueInput.value) || 0;
+                const hourRate = exampleBase / 26 / 8;
+
+                if (category === "TangCa") {
+                    unit.textContent = "hệ số";
+                    formulaPreview.textContent = "Tiền OT = (Lương CB ÷ 26 ÷ 8) × Số giờ OT × Hệ số";
+                    valuePreview.textContent = value > 0
+                        ? `Lương CB ${money(exampleBase)}: 1 giờ tăng ca ≈ ${money(hourRate * value)}; 8 giờ ≈ ${money(hourRate * value * 8)}.`
+                        : "Nhập hệ số để xem ví dụ tính tiền.";
+                    return;
+                }
+
+                if (category === "Thuong" && type === "HE_SO_SU_KIEN") {
+                    unit.textContent = "hệ số";
+                    valueInput.min = "0.01";
+                    valueInput.max = "99.99";
+                    formulaPreview.textContent = "Tiền sự kiện = (Lương tháng ÷ 26 ÷ 8) × Số giờ sự kiện × Hệ số";
+                    valuePreview.textContent = value > 0
+                        ? `Lương tháng ${money(exampleBase)}: 8 giờ sự kiện ≈ ${money(hourRate * value * 8)}.`
+                        : "Nhập hệ số để xem ví dụ tính tiền.";
+                    return;
+                }
+
+                if (category === "PhuCap") {
+                    if (type === "THEO_NGAY_CONG") {
+                        unit.textContent = "VNĐ/ngày công";
+                        formulaPreview.textContent = "Số tiền = Định mức × Ngày công thực tế";
+                        valuePreview.textContent = value > 0
+                            ? `1 ngày công = ${money(value)}; 26 ngày công = ${money(value * 26)}.`
+                            : "Nhập định mức để xem ví dụ tính tiền.";
+                    } else {
+                        unit.textContent = "VNĐ/tháng";
+                        formulaPreview.textContent = "Số tiền = Định mức × (Ngày công thực tế ÷ 26)";
+                        valuePreview.textContent = value > 0
+                            ? `Đủ 26 ngày công = ${money(value)}; 20 ngày công = ${money(value * 20 / 26)}.`
+                            : "Nhập định mức để xem ví dụ tính tiền.";
+                    }
+                    return;
+                }
+
+                if (category === "KhauTru") {
+                    valueInput.max = "9999999999999.99";
+                    if (type === "BAO_HIEM") {
+                        unit.textContent = "%";
+                        valueInput.max = "100";
+                        formulaPreview.textContent = "Số tiền = Lương cơ bản × Tỷ lệ %";
+                        valuePreview.textContent = value > 0
+                            ? `Lương CB ${money(exampleBase)}: khấu trừ ≈ ${money(exampleBase * value / 100)}.`
+                            : "Nhập tỷ lệ % để xem ví dụ tính tiền.";
+                    } else if (type === "VI_PHAM") {
+                        unit.textContent = "VNĐ/phút";
+                        valueInput.max = "9999999999999.99";
+                        formulaPreview.textContent = "Số tiền = Số phút vi phạm × Định mức";
+                        valuePreview.textContent = value > 0
+                            ? `10 phút vi phạm = ${money(value * 10)}; 30 phút = ${money(value * 30)}.`
+                            : "Nhập định mức để xem ví dụ tính tiền.";
+                    } else if (type === "THUE") {
+                        unit.textContent = "tham chiếu";
+                        formulaPreview.textContent = "Thuế TNCN = Biểu thuế lũy tiến từng phần";
+                        valuePreview.textContent = "Thuế được tính tự động sau giảm trừ gia cảnh; định mức này chỉ để tham chiếu.";
+                    } else {
+                        unit.textContent = "VNĐ";
+                        formulaPreview.textContent = "Số tiền = Khấu trừ theo phát sinh thực tế";
+                        valuePreview.textContent = "Khoản khấu trừ khác do HR nhập khi chốt kỳ lương.";
+                    }
+                    return;
+                }
+
+                unit.textContent = "VNĐ";
+                formulaPreview.textContent = "Số tiền = Định mức cấu hình (snapshot khi chốt phiếu lương)";
+                valuePreview.textContent = value > 0
+                    ? `Mỗi lần chi thưởng theo định mức = ${money(value)}.`
+                    : "Nhập định mức để xem ví dụ tính tiền.";
             };
-            typeSelect.addEventListener("change", updateUnit);
-            updateUnit();
-        }
+
+            typeSelect?.addEventListener("change", describe);
+            valueInput?.addEventListener("input", describe);
+            describe();
+        })();
     </script>
 }

@@ -20,6 +20,8 @@ public class EventFormViewModel
     public EventInput Input { get; set; } = new();
     public IReadOnlyList<SelectListItem> Managers { get; set; } = [];
     public IReadOnlyList<DiaDiemSuKien> Venues { get; set; } = [];
+    /// <summary>Hệ số thưởng sự kiện theo giờ đang áp dụng (đọc từ cấu hình khoản lương).</summary>
+    public decimal HourlyEventRate { get; set; } = OvertimeHotel.HRM.Core.Constants.SalaryConstants.EVENT_HOURLY_RATE;
     public string VenueName { get; set; } = "";
     public int VenueCapacity { get; set; }
     public int ReturnYear { get; set; }
@@ -31,6 +33,8 @@ public class EventDetailsViewModel
 {
     public bool IsPopup { get; set; }
     public DuAn Event { get; set; } = new();
+    /// <summary>Hệ số thưởng sự kiện theo giờ đang áp dụng (đọc từ cấu hình khoản lương).</summary>
+    public decimal HourlyEventRate { get; set; } = OvertimeHotel.HRM.Core.Constants.SalaryConstants.EVENT_HOURLY_RATE;
     public IReadOnlyList<NhanVien> Employees { get; set; } = [];
     public IReadOnlyList<PhanCa> Shifts { get; set; } = [];
     public IReadOnlyList<NhatKyQuanTri> History { get; set; } = [];

@@ -2,7 +2,7 @@
 
 ## Chính sách mới (23/10/2026)
 
-Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng thêm được tính bằng **lương cơ bản tháng / 26 / 8 × số giờ sự kiện thực tế được duyệt** (hệ số cộng thêm **1**, không phải 2). Lương ca thông thường vẫn tính qua chấm công; không cộng lại lương ca trong dòng tiền sự kiện. Lương 8.000.000đ và hai giờ thực tế được cộng thêm **76.923đ**. Dùng số chính xác để tính và làm tròn đến đồng sau khi tổng hợp theo nhân viên/sự kiện/tháng phát sinh.
+Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng thêm được tính bằng **lương cơ bản tháng / 26 / 8 × số giờ sự kiện thực tế được duyệt × hệ số thưởng sự kiện** (mặc định **2.0**). Lương ca thông thường vẫn tính qua chấm công; không cộng lại lương ca trong dòng tiền sự kiện. Lương 8.000.000đ và hai giờ thực tế được cộng thêm **153.846đ**. Hệ số lưu tại `cau_hinh_khoan_luong` dòng `ma_khoan = 35`, sửa được tại **Cấu hình lương & Phụ cấp → Thưởng**; code đọc qua `EventRateConfig` và fallback về `SalaryConstants.EVENT_HOURLY_RATE` nếu thiếu dòng. Không dùng ma trận định mức cố định của chính sách cũ. Dùng số chính xác để tính và làm tròn đến đồng sau khi tổng hợp theo nhân viên/sự kiện/tháng phát sinh.
 
 ### Sự kiện đặt trước lịch tuần
 
@@ -61,7 +61,9 @@ Các mô tả dưới đây áp dụng cho sự kiện trước chính sách the
 
 Sự kiện tạo mới không nhập ngân sách phụ cấp. Trong chi tiết sự kiện, **Thêm người** mở popup chọn nhân viên theo phòng ban, sau đó chọn vai trò và thời gian tham gia. Nhân sự được đánh giá **Hoàn thành** hoặc **Xuất sắc** sẽ nhận mức thưởng theo cấu hình khoản lương của loại sự kiện và phòng ban tại lúc phân công (hoặc định mức chuẩn khi không có cấu hình); **Không tham gia** nhận 0 đ. HR/Admin nghiệm thu sau khi đánh giá toàn bộ nhân sự; lúc đó hệ thống chốt tiền từng người, cộng thành ngân sách trả nhân viên và khóa sự kiện. Kết chuyển lương lấy số tiền đã chốt. Sự kiện đã có trước bản cập nhật giữ cách nhập ngân sách/phụ cấp cũ.
 
-Cần áp dụng `src/OvertimeHotel.HRM.Data/migrations/20261021_event_acceptance_budget.sql` trước khi chạy bản web mới; migration thêm cờ với mặc định `false` để giữ nguyên dữ liệu sự kiện cũ và cột lưu phòng ban tại lúc phân công. Migration không tự chạy khi khởi động.
+> **Đã thay thế (26/10/2026):** chính sách ma trận định mức nêu trên không còn áp dụng. Sự kiện mới tính theo giờ với hệ số thưởng sự kiện (mặc định 2.0, cấu hình `ma_khoan = 35`). Migration `20261026_remove_legacy_event_bonus_matrix.sql` xóa 27 dòng ma trận (`ma_khoan` 8–34) trong `cau_hinh_khoan_luong`; các dòng `chi_tiet_phieu_luong` lịch sử giữ nguyên tên khoản và số tiền với `ma_khoan = NULL`.
+
+Cần áp dụng `src/OvertimeHotel.HRM.Data/migrations/20261021_event_acceptance_budget.sql` trước khi chạy bản web mới; migration thêm cờ với mặc định `false` để giữ nguyên dữ liệu sự kiện cũ và cột lưu phòng ban tại lúc phân công. Với cấu hình hệ số thưởng sự kiện, chạy `src/OvertimeHotel.HRM.Data/migrations/20261026_add_event_hourly_rate_config.sql` (thêm dòng `ma_khoan = 35`) trước `20261026_remove_legacy_event_bonus_matrix.sql`. Migration không tự chạy khi khởi động.
 
 Mở `/SuKien` hoặc mục **Sự kiện khách sạn** trên menu. Admin và HR tạo sự kiện; Manager chỉ thấy và điều hành sự kiện được giao phụ trách. IT không có quyền quản lý mặc định.
 

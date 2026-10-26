@@ -327,6 +327,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     {
         model.Managers = (await events.ManagersAsync()).Select(x => new SelectListItem(x.HoTen, x.MaNhanVien.ToString())).ToList();
         model.Venues = await events.VenuesAsync();
+        model.HourlyEventRate = await EventRateConfig.ReadAsync(db);
         return model;
     }
 
@@ -339,6 +340,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         var model = new EventDetailsViewModel
         {
             Event = item, CanManage = mutable, CanEdit = actor.IsOffice && item.TrangThai == "LEN_KE_HOACH",
+            HourlyEventRate = await EventRateConfig.ReadAsync(db),
             CanAccept = actor.IsOffice && item.TrangThai == "CHO_NGHIEM_THU",
             Employees = mutable ? await events.EmployeesAsync() : [],
             Shifts = item.TinhTheoGio && mutable ? await events.AvailableShiftsAsync(actor, id) : await events.ShiftsAsync(item),

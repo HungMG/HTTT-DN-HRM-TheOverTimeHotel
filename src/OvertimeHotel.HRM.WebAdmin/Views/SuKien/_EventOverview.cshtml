@@ -6,6 +6,7 @@
     var start = HotelEventRules.Local(item.NgayBatDau);
     var end = HotelEventRules.Local(item.NgayKetThuc);
     string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
+    var eventRate = Model.HourlyEventRate.ToString("0.00");
 }
             <div class="event-form-grid">
                 <div class="event-panel">
@@ -14,7 +15,7 @@
                     <dl class="event-description-list">
                         <div><dt>Người quản lý</dt><dd>@(item.NguoiQuanLy?.HoTen ?? "Chưa cập nhật")</dd></div>
                         <div><dt>Khách dự kiến</dt><dd>@item.SoKhachDuKien người</dd></div>
-                        <div><dt>@(item.TinhTheoGio ? "Thu nhập cộng thêm" : item.TinhPhuCapKhiNghiemThu ? "Ngân sách trả nhân viên" : "Ngân sách phụ cấp")</dt><dd>@(item.TinhTheoGio && item.TrangThai != "HOAN_THANH" ? "Lương cơ bản / 26 / 8 × giờ thực tế được xác nhận" : item.TinhPhuCapKhiNghiemThu && item.TrangThai != "HOAN_THANH" ? "Tính khi nghiệm thu" : Money(item.NganSachPhuCap))</dd></div>
+                        <div><dt>@(item.TinhTheoGio ? "Thu nhập cộng thêm" : item.TinhPhuCapKhiNghiemThu ? "Ngân sách trả nhân viên" : "Ngân sách phụ cấp")</dt><dd>@(item.TinhTheoGio && item.TrangThai != "HOAN_THANH" ? "Lương cơ bản / 26 / 8 × hệ số " + eventRate + " × giờ thực tế được xác nhận" : item.TinhPhuCapKhiNghiemThu && item.TrangThai != "HOAN_THANH" ? "Tính khi nghiệm thu" : Money(item.NganSachPhuCap))</dd></div>
                         <div><dt>Thời gian</dt><dd>@start.ToString("dd/MM/yyyy HH:mm")<br />@end.ToString("dd/MM/yyyy HH:mm") <small>(UTC+7)</small></dd></div>
                     </dl>
                     <hr />

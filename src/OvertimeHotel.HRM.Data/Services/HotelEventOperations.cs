@@ -356,6 +356,7 @@ public sealed partial class HotelEventService
         }
         else
         {
+            var hourlyRate = await EventRateConfig.ReadAsync(db);
             foreach (var group in item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG").GroupBy(p => p.MaNhanVien).OrderBy(g => g.Key))
             {
                 var name = group.First().NhanVien?.HoTen ?? $"#{group.Key}";
@@ -378,7 +379,7 @@ public sealed partial class HotelEventService
                                 warnings.Add($"{name}: công #{work.MaCong} cần HR đối soát lại vì chấm công/nghỉ đã thay đổi.");
                         }
                     }
-                    var slices = group.SelectMany(p => p.CongThucTes.SelectMany(c => HourlyEventRules.Price(c.BatDau, c.KetThuc, p.NhanVien!.HopDongs))).ToList();
+                    var slices = group.SelectMany(p => p.CongThucTes.SelectMany(c => HourlyEventRules.Price(c.BatDau, c.KetThuc, p.NhanVien!.HopDongs, hourlyRate))).ToList();
                     _ = HourlyEventRules.Amount(slices);
                     foreach (var month in slices.GroupBy(s => HourlyEventRules.WorkMonth(s.Start)).OrderBy(g => g.Key))
                         rows.Add(new(group.Key, name, month.Key, month.Sum(s => s.Minutes), HourlyEventRules.Amount(month), month.ToList()));

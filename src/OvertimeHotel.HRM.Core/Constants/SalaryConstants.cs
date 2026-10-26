@@ -34,7 +34,11 @@ public static class SalaryConstants
     public const decimal FINE_ABSENCE_PENALTY = 200000m;     // Phạt bổ sung bỏ ca: 200.000 VNĐ/lần
 
     // Hệ số thù lao sự kiện khách sạn
-    public const decimal EVENT_EXCELLENT_BONUS_RATE = 0.10m; // Thưởng đánh giá xuất sắc +10%
+    // Tiền sự kiện = Lương tháng / 26 / 8 × Số giờ tham gia sự kiện × 2.0
+    // Hệ số đọc từ cấu hình khoản lương (ma_khoan = 35); hằng số dưới đây là mặc định dự phòng.
+    public const int EVENT_HOURLY_RATE_CONFIG_ID = 35;       // Dòng "Hệ số thưởng sự kiện theo giờ" trong cau_hinh_khoan_luong
+    public const decimal EVENT_HOURLY_RATE = 2.00m;          // Hệ số nhân đơn giá giờ cho giờ tham gia sự kiện
+    public const decimal EVENT_EXCELLENT_BONUS_RATE = 0.10m; // [Legacy] Thưởng đánh giá xuất sắc +10% (chính sách cũ)
 
     // Trạng thái kỳ lương (Chỉ gồm 2 trạng thái duy nhất: MO và KHOA_SO)
     public const string PERIOD_OPEN = "MO";
