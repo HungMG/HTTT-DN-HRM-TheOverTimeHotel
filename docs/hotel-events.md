@@ -6,11 +6,11 @@ Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng th�
 
 ### Sự kiện đặt trước lịch tuần
 
-1. HR/Admin đặt sự kiện và địa điểm, khai báo nhu cầu theo phòng ban, vai trò, khung giờ. Mẫu theo số khách được sinh sẵn; chỉnh một dòng sẽ giữ dòng đó khỏi cập nhật mẫu tự động về sau.
+1. HR/Admin đặt sự kiện và địa điểm, khai báo nhu cầu theo phòng ban, vai trò và số người cho toàn sự kiện. Người quản lý được chọn khi tạo/sửa phải là HR đang làm việc, có tài khoản hoạt động. Người quản lý của sự kiện cũ được giữ nguyên đến khi sửa thông tin. Mẫu theo số khách được sinh sẵn; chỉnh một dòng sẽ giữ dòng đó khỏi cập nhật mẫu tự động về sau.
 2. Màn hình `/PhanCa` hiển thị nhu cầu của tuần kể cả chưa có người được phân công. Dự báo ca chỉ là số người có lịch giao giờ theo bộ lọc, chưa xác nhận vai trò hoặc khả năng điều động.
 3. Xếp ca cân đối trực thường và sự kiện. HR/Admin công bố lịch tuần vào thứ Bảy cho tuần kế tiếp; công bố ngoài lịch thông thường cần lý do. Sửa ca làm ca đó chưa công bố lại.
 4. Chọn nhân viên từ ca chính thức, chọn ca nguồn và vai trò. Backend lấy phần giao giữa khoảng nhiệm vụ và ca. Tiệc 15h–20h với ca kết thúc 17h chỉ phân công 15h–17h. Đủ người đầu buổi không bù được khoảng thiếu cuối buổi.
-5. Manager chỉ điều hành sự kiện được giao. Backend kiểm tra hợp đồng, nghỉ đã duyệt, nhiệm vụ trùng và định biên bộ phận nguồn trước khi giao/bắt đầu. Nhu cầu chỉ HR/Admin sửa trước khi sự kiện bắt đầu, có lý do.
+5. Manager chỉ điều hành sự kiện được giao. Backend kiểm tra hợp đồng, nghỉ đã duyệt, nhiệm vụ trùng và định biên bộ phận nguồn trước khi giao/bắt đầu. Nhu cầu chỉ HR/Admin sửa trước khi sự kiện bắt đầu, có lý do; mỗi phòng ban/vai trò có một dòng nhu cầu áp dụng theo thời gian sự kiện.
 
 ### Công thực tế, bàn giao và nghiệm thu
 
@@ -29,13 +29,25 @@ Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng th�
 
 ### Địa điểm và thay đổi ca
 
-Sự kiện tổ chức cố định **Khách sạn The Overtime**. Biểu mẫu không chọn sảnh/khu, không nhập sức chứa hoặc số phút chuẩn bị/thu dọn; vẫn nhập số khách dự kiến để sinh định mức nhân sự. Server cố định địa điểm, không gắn mã sảnh và lưu hai khoảng đệm bằng 0 kể cả khi client cũ gửi các trường này. Khách sạn là địa điểm chung, không phải một sảnh độc quyền nên có thể tạo nhiều sự kiện trùng giờ; kiểm tra trùng nhân sự/giờ tham gia vẫn được giữ.
+Sự kiện tổ chức cố định **Khách sạn The Overtime**. Biểu mẫu không chọn sảnh/khu, không nhập sức chứa hoặc số phút chuẩn bị/thu dọn; vẫn nhập số khách dự kiến để sinh định mức nhân sự. Server cố định địa điểm và bỏ qua mã sảnh/giờ đệm client cũ gửi lên; các cột mã sảnh và giờ đệm đã được loại khỏi bảng sự kiện. Khách sạn là địa điểm chung, không phải một sảnh độc quyền nên có thể tạo nhiều sự kiện trùng giờ; kiểm tra trùng nhân sự/giờ tham gia vẫn được giữ.
 
 Khi đổi/hủy ca tương lai, phân công sự kiện từ ca đó được hủy hiệu lực và lưu lịch sử, sự kiện tăng phiên bản để quản lý bố trí lại. Ca đã có lịch sử công thực hiện không được sửa/xóa làm mất căn cứ; ca nguồn có lịch sử được giữ bằng trạng thái `DA_HUY` thay vì xóa vật lý. Ca hủy không tính vào lịch hoạt động/chấm công/lương. Trạng thái chấm công thường như hoàn thành không tự coi là thay lịch ca.
 
 ### Dữ liệu cũ
 
 Migration không chuyển tiền lịch sử sang chính sách giờ. Sự kiện cũ tiếp tục nghiệm thu theo chính sách cũ, nhưng **không được kết chuyển trước nghiệm thu hoặc định giá lại theo cấu hình mới**. Với khoản cũ chưa vào lương, HR/Admin dùng đối soát để xác nhận số tiền đã lưu, căn cứ và kỳ trả; không sửa số tiền gốc. Các khoản cũ đã kết chuyển được bảo vệ, không tự xóa/tính lại. Nếu còn quyền lợi cũ chưa đối soát, bảng lương báo rõ để xử lý thay vì trả vào kỳ bất kỳ.
+
+### Thu gọn cấu trúc sự kiện (26/10/2026)
+
+Giữ năm bảng lõi, giữ nguyên cột tiền và liên kết lương lịch sử. Nhu cầu chỉ còn sự kiện, phòng ban, vai trò, số người và cờ mẫu; thời gian lấy từ sự kiện. Khi đổi giờ sự kiện, nhu cầu tùy chỉnh theo giờ mới, số người đã sửa được giữ nguyên. Không tạo thêm dòng trùng phòng ban/vai trò.
+
+Áp dụng `20261026_event_schema_cleanup.sql` sau các migration cũ và trước khi chạy bản web này. Dừng web, sao lưu dữ liệu/schema rồi chạy migration trong giao dịch. Migration bỏ 3 cột địa điểm/giờ đệm của `du_an`, 3 cột tên/giờ khung nhu cầu và 2 cột ngoại lệ công. Các giá trị lịch sử có ý nghĩa được lưu trong `nhat_ky_quan_tri` với hành động `TINH_GON_CAU_TRUC_SU_KIEN` và căn cứ JSON. Tên địa điểm lịch sử trong `du_an.dia_diem` giữ nguyên. Bản migration không có cập nhật tiền hay tạo quyết toán mới.
+
+Migration dừng toàn bộ nếu có vai trò nhu cầu trùng hoặc khung nhu cầu khác giờ sự kiện; cần đối soát dữ liệu đó trước, không tự gộp hay bỏ. Chạy lại migration không tạo nhật ký trùng. Không chạy lại các migration cũ sau bước thu gọn vì chúng có thể thêm lại cột cũ.
+
+Khi cần quay lại bản web cũ, dừng web mới và chạy `20261026_event_schema_cleanup.rollback.sql`. Script khôi phục cột và giá trị đã lưu cho những dòng còn tồn tại. Nhu cầu tạo sau thu gọn dùng thời gian sự kiện hiện tại; công mới không có giải trình ngoại lệ cũ. Các bản lưu trong nhật ký vẫn được giữ. Bản sao lưu là căn cứ phục hồi đầy đủ nếu đã thay đổi dữ liệu sau triển khai.
+
+Báo cáo sự kiện theo giờ cộng tiền từ `quyet_toan_su_kien`, mỗi khoản một lần dù nhân viên có nhiều phân công. Báo cáo sự kiện cũ giữ số tiền lịch sử ở phân công; không cộng thêm lần nữa từ quyết toán đối soát.
 
 ### Migration và kiểm chứng
 

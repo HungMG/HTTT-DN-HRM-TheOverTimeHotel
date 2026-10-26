@@ -11,15 +11,14 @@ internal static class EventOperationsConfiguration
     {
         var needs = Table<NhuCauSuKien>(model, "nhu_cau_su_kien");
         needs.HasKey(e => e.MaNhuCau);
+        needs.HasIndex(e => new { e.MaDuAn, e.MaPhongBan, e.VaiTro }).IsUnique().HasDatabaseName("uq_event_need_role");
         needs.HasOne(e => e.DuAn).WithMany(e => e.NhuCaus).HasForeignKey(e => e.MaDuAn).OnDelete(DeleteBehavior.Cascade);
-        needs.Property(e => e.TenKhung).HasMaxLength(100);
         needs.Property(e => e.MaPhongBan).HasMaxLength(30);
         needs.Property(e => e.VaiTro).HasMaxLength(100);
 
         var work = Table<CongSuKien>(model, "cong_su_kien");
         work.HasKey(e => e.MaCong);
         work.HasOne(e => e.PhanCong).WithMany(e => e.CongThucTes).HasForeignKey(e => e.MaPhanCong).OnDelete(DeleteBehavior.Restrict);
-        work.Property(e => e.GiaiTrinh).HasMaxLength(500);
 
         var settlement = Table<QuyetToanSuKien>(model, "quyet_toan_su_kien");
         settlement.HasKey(e => e.MaQuyetToan);
@@ -43,14 +42,10 @@ internal static class EventOperationsConfiguration
 
         var events = model.Entity<DuAn>();
         events.Property(e => e.TinhTheoGio).HasColumnName("tinh_theo_gio");
-        events.Property(e => e.MaDiaDiem).HasColumnName("ma_dia_diem");
-        events.Property(e => e.PhutChuanBi).HasColumnName("phut_chuan_bi");
-        events.Property(e => e.PhutThuDon).HasColumnName("phut_thu_don");
         events.Property(e => e.KetThucThucTe).HasColumnName("ket_thuc_thuc_te");
         events.Property(e => e.LyDoDung).HasColumnName("ly_do_dung").HasMaxLength(500);
         events.Property(e => e.MaNguoiNghiemThu).HasColumnName("ma_nguoi_nghiem_thu");
         events.Property(e => e.NgayNghiemThu).HasColumnName("ngay_nghiem_thu");
-        events.HasOne<DiaDiemSuKien>().WithMany().HasForeignKey(e => e.MaDiaDiem).OnDelete(DeleteBehavior.Restrict);
 
         var assignment = model.Entity<PhanCongDuAn>();
         assignment.Property(e => e.MaPhanCa).HasColumnName("ma_phan_ca");

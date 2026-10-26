@@ -366,11 +366,11 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             Employees = employees,
             Shifts = shifts,
             IsOffice = actor.IsOffice,
-            Need = previous?.Need ?? new EventNeedInput { Version = item.Version, Count = 1, Start = HotelEventRules.Local(item.NgayBatDau), End = HotelEventRules.Local(item.NgayKetThuc) },
+            Need = previous?.Need ?? new EventNeedInput { Version = item.Version, Count = 1 },
             Work = previous?.Work ?? new EventWorkInput { Version = item.Version },
             PayPreview = item.TinhTheoGio && !staffLoadFailed ? await events.PreviewAsync(actor, id) : null,
             PaymentPeriods = actor.IsOffice ? await events.PaymentPeriodsAsync(actor) : [],
-            History = await events.HistoryAsync(id), Tab = tab is "staff" or "acceptance" ? tab : "overview",
+            Tab = tab is "staff" or "acceptance" ? tab : "overview",
             Assignment = previous?.Assignment ?? new EventAssignmentInput
             {
                 Start = HotelEventRules.Local(item.NgayBatDau),

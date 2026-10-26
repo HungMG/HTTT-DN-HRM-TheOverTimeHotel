@@ -142,10 +142,10 @@ public static class HotelEventRules
         {
             var name = DepartmentLabels.GetValueOrDefault(group.Key, group.Key);
             var members = active.Where(p => (p.MaPhongBanSuKien ?? ResolveDepartmentCode(p.NhanVien)) == group.Key).ToList();
-            var roles = group.OrderBy(n => n.BatDau).Select(need =>
+            var roles = group.OrderBy(n => n.VaiTro).Select(need =>
             {
-                var from = coverageStart is { } start && start > need.BatDau ? start : need.BatDau;
-                var to = item.KetThucThucTe is { } stopped && stopped < need.KetThuc ? stopped : need.KetThuc;
+                var from = coverageStart is { } start && start > item.NgayBatDau ? start : item.NgayBatDau;
+                var to = item.KetThucThucTe is { } stopped && stopped < item.NgayKetThuc ? stopped : item.NgayKetThuc;
                 var assigned = members.Where(p => HotelEventRoleRules.Matches(need.VaiTro, p.VaiTroDuAn)).ToList();
                 var concurrent = from >= to ? need.SoNguoi : HotelEventRoleRules.MinimumConcurrentCount(assigned, from, to);
                 var shortfall = Math.Max(0, need.SoNguoi - concurrent);
@@ -159,8 +159,8 @@ public static class HotelEventRules
         var satisfied = departments.Count(d => d.IsSufficient);
         var full = departments.Count > 0 && item.NhuCaus.Any(n => n.SoNguoi > 0) && missing.Count == 0;
         var message = item.NhuCaus.Count == 0 ? "Chưa khai báo nhu cầu nhân sự."
-            : full ? "Đã đủ nhân sự theo các khung nhiệm vụ."
-            : $"Đã ghi nhận nhu cầu; đủ {satisfied}/{departments.Count} phòng ban. Chờ bố trí ca/phân công cho các khung còn thiếu.";
+            : full ? "Đã đủ nhân sự cho toàn sự kiện."
+            : $"Đã ghi nhận nhu cầu; đủ {satisfied}/{departments.Count} phòng ban. Chờ bố trí ca/phân công cho các vai trò còn thiếu.";
         return new EventStaffingSummary(departments.Count, satisfied, full,
             departments.Where(d => !d.IsSufficient).Select(d => d.Name).ToList(), departments, message)
             { MissingRoleDescriptions = missing };

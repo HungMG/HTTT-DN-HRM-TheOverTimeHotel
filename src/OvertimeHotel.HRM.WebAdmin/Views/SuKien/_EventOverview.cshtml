@@ -81,18 +81,17 @@
                         </button>
                     }
                 </div>
-                <p class="event-muted mb-3">Định mức nhân sự được sinh tự động theo loại sự kiện và số khách. HR/Admin được điều chỉnh số lượng hoặc bổ sung vai trò kèm lý do.</p>
+                <p class="event-muted mb-3">Định mức nhân sự được sinh tự động theo loại sự kiện và số khách, áp dụng cho toàn sự kiện. HR/Admin được điều chỉnh số lượng hoặc bổ sung vai trò kèm lý do.</p>
 
                 @if (Model.CanEdit && item.TrangThai == "LEN_KE_HOACH")
                 {
                     <div class="collapse mb-4 @(Model.Need.NeedId > 0 || !ViewData.ModelState.IsValid ? "show" : "")" id="addCustomNeedForm" data-need-editor>
                         <div class="card card-body bg-light">
                             <h5 class="card-title h6 mb-3">Biểu mẫu điều chỉnh yêu cầu nhân sự</h5>
-                            <form asp-action="SaveNeed" asp-route-id="@item.MaDuAn" method="post" data-need-form data-default-start="@start.ToString("yyyy-MM-ddTHH:mm")" data-default-end="@end.ToString("yyyy-MM-ddTHH:mm")">
+                            <form asp-action="SaveNeed" asp-route-id="@item.MaDuAn" method="post" data-need-form>
                                 <partial name="_EventContext" model="Model" />
                                 <input type="hidden" name="Need.Version" value="@item.Version" />
                                 <input asp-for="Need.NeedId" type="hidden" />
-                                <input asp-for="Need.Name" type="hidden" />
                                 <div class="row g-3">
                                     <div class="col-md-3">
                                         <label asp-for="Need.Department" class="form-label">Phòng ban <span class="text-danger">*</span></label>
@@ -110,14 +109,6 @@
                                     <div class="col-md-2">
                                         <label asp-for="Need.Count" class="form-label">Số người cần <span class="text-danger">*</span></label>
                                         <input asp-for="Need.Count" class="form-control form-control-sm" min="0" max="100000" required />
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label asp-for="Need.Start" class="form-label">Bắt đầu</label>
-                                        <input asp-for="Need.Start" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control form-control-sm" required />
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label asp-for="Need.End" class="form-label">Kết thúc</label>
-                                        <input asp-for="Need.End" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control form-control-sm" required />
                                     </div>
                                     <div class="col-12">
                                         <label asp-for="Need.Reason" class="form-label">Lý do điều chỉnh <span class="text-danger">*</span></label>
@@ -145,7 +136,6 @@
                                     <th>Phòng ban</th>
                                     <th>Vai trò bắt buộc</th>
                                     <th class="text-center">Số người cần</th>
-                                    <th>Khung giờ yêu cầu</th>
                                     <th>Loại yêu cầu</th>
                                     @if (Model.CanEdit && item.TrangThai == "LEN_KE_HOACH")
                                     {
@@ -165,9 +155,6 @@
                                             <span class="badge bg-secondary fs-6">@need.SoNguoi</span>
                                         </td>
                                         <td>
-                                            <small>@HotelEventRules.Local(need.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(need.KetThuc).ToString("dd/MM HH:mm")</small>
-                                        </td>
-                                        <td>
                                             @if (need.LaMau)
                                             {
                                                 <span class="badge bg-info text-dark">Theo định mức mẫu</span>
@@ -181,8 +168,7 @@
                                         {
                                             <td class="text-end">
                                                 <button type="button" class="btn btn-xs btn-outline-secondary me-1" data-edit-need="@need.MaNhuCau"
-                                                        data-need-department="@need.MaPhongBan" data-need-role="@need.VaiTro" data-need-count="@need.SoNguoi" data-need-name="@need.TenKhung"
-                                                        data-need-start="@HotelEventRules.Local(need.BatDau).ToString("yyyy-MM-ddTHH:mm")" data-need-end="@HotelEventRules.Local(need.KetThuc).ToString("yyyy-MM-ddTHH:mm")">
+                                                        data-need-department="@need.MaPhongBan" data-need-role="@need.VaiTro" data-need-count="@need.SoNguoi">
                                                     Sửa
                                                 </button>
                                                 @if (!need.LaMau)
@@ -202,33 +188,6 @@
                             </tbody>
                         </table>
                     </div>
-                }
-            </div>
-            <div class="event-panel mt-4">
-                <span class="event-eyebrow">NHẬT KÝ SỰ KIỆN</span>
-                <h3>Lịch sử thay đổi</h3>
-                @if (Model.History.Count == 0)
-                {
-                    <p class="event-muted">Chưa có thay đổi được ghi nhận.</p>
-                }
-                else
-                {
-                    <ul class="event-history">
-                        @foreach (var entry in Model.History)
-                        {
-                            <li>
-                                <time>@HotelEventRules.Local(entry.ThoiGian).ToString("dd/MM/yyyy HH:mm")</time>
-                                <div>
-                                    <strong>@entry.TenNguoiThucHien</strong> · @entry.HanhDong
-                                    <p>@entry.NoiDung</p>
-                                    @if (!string.IsNullOrWhiteSpace(entry.LyDo))
-                                    {
-                                        <small>Lý do: @entry.LyDo</small>
-                                    }
-                                </div>
-                            </li>
-                        }
-                    </ul>
                 }
             </div>
             @if (Model.CanManage)

@@ -50,8 +50,7 @@ static DuAn Event() => new()
         new() { MaPhanCong = 2, MaNhanVien = 10, TrangThaiThamGia = "DA_KET_THUC" },
         new() { MaPhanCong = 3, MaNhanVien = 11, TrangThaiThamGia = "HUY_PHAN_CONG" }],
     NhuCaus = [new() { MaNhuCau = 21, MaPhongBan = "KY_THUAT", VaiTro = "Phụ trách âm thanh và micro",
-        TenKhung = "Chuẩn bị & phục vụ", SoNguoi = 2, BatDau = new DateTimeOffset(2028, 5, 10, 2, 0, 0, TimeSpan.Zero),
-        KetThuc = new DateTimeOffset(2028, 5, 10, 10, 0, 0, TimeSpan.Zero), LaMau = true }]
+        SoNguoi = 2, LaMau = true }]
 };
 static (SuKienController Controller, StaffServiceStub Stub) Controller()
 {
@@ -130,16 +129,25 @@ await Check("Calendar and event details count distinct people and omit cancelled
     var details = await Render("_EventDetailsContent", new EventDetailsViewModel { Event = item });
     Require(details.Contains("data-event-count=\"1\""), "Event details has a different staff count.");
 });
+await Check("Staffing need form applies to the whole event without separate windows", async () =>
+{
+    var model = new EventDetailsViewModel { Event = Event(), CanEdit = true, IsOffice = true };
+    var html = await Render("_EventOverview", model);
+    Require(!html.Contains("name=\"Need.Start\"") && !html.Contains("name=\"Need.End\"")
+        && !html.Contains("name=\"Need.Name\""), "Need editor still requests a separate staffing window.");
+    Require(html.Contains("name=\"Need.Count\"") && html.Contains("name=\"Need.Reason\""),
+        "Whole-event staffing lost the count or change reason.");
+});
 await Check("Validation response preserves the edited need and entered values", async () =>
 {
     var model = new EventDetailsViewModel
     {
         Event = Event(), CanEdit = true,
-        Need = new() { NeedId = 21, Name = "Giữ tên khung", Department = "KY_THUAT", Role = "Phụ trách âm thanh và micro",
-            Count = 7, Start = new(2028, 5, 10, 9, 30, 0), End = new(2028, 5, 10, 17, 0, 0), Reason = "Cần thêm kỹ thuật" }
+        Need = new() { NeedId = 21, Department = "KY_THUAT", Role = "Phụ trách âm thanh và micro",
+            Count = 7, Reason = "Cần thêm kỹ thuật" }
     };
     var state = new ModelStateDictionary();
-    state.AddModelError("Need.End", "Khung giờ không hợp lệ.");
+    state.AddModelError("Need.Count", "Số người không hợp lệ.");
     var html = await Render("_EventOverview", model, state);
     Require(Regex.IsMatch(html, "<input[^>]*name=\"Need.NeedId\"[^>]*value=\"21\""), "Edited need ID was reset to a new row.");
     Require(Regex.IsMatch(html, "<input[^>]*name=\"Need.Count\"[^>]*value=\"7\""), "Entered count was discarded.");
@@ -270,7 +278,7 @@ if (args.Contains("--export"))
     await File.WriteAllTextAsync(Path.Combine(export, "details.html"), await Render("_EventDetailsContent", new EventDetailsViewModel
     {
         Event = Event(), CanEdit = true, CanManage = true,
-        Need = new() { Start = new(2028, 5, 10, 9, 0, 0), End = new(2028, 5, 10, 17, 0, 0) }
+        Need = new() { Count = 1 }
     }));
     await File.WriteAllTextAsync(Path.Combine(export, "dialogs.html"), await Render("_EventDialogs", new EventDetailsViewModel()));
     await File.WriteAllTextAsync(Path.Combine(export, "calendar.html"), await Render("Index", new EventCalendarViewModel

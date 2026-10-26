@@ -19,7 +19,7 @@ internal static class PlanPhase1Tests
             {
                 LoaiDuAn = "HOI_NGHI_MICE", SoKhachDuKien = 40, NgayBatDau = start, NgayKetThuc = end,
                 NhuCaus = [new() { MaPhongBan = "KY_THUAT", VaiTro = "Phụ trách âm thanh và micro",
-                    SoNguoi = 7, BatDau = start, KetThuc = end, LaMau = false }]
+                    SoNguoi = 7, LaMau = false }]
             };
             void AddMember(int id) => item.PhanCongs.Add(new()
             {

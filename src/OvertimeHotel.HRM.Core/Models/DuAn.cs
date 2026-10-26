@@ -11,9 +11,6 @@ public class DuAn
     public decimal NganSachPhuCap { get; set; }
     public bool TinhPhuCapKhiNghiemThu { get; set; }
     public bool TinhTheoGio { get; set; }
-    public int? MaDiaDiem { get; set; }
-    public int PhutChuanBi { get; set; }
-    public int PhutThuDon { get; set; }
     public DateTimeOffset? KetThucThucTe { get; set; }
     public string? LyDoDung { get; set; }
     public int? MaNguoiNghiemThu { get; set; }

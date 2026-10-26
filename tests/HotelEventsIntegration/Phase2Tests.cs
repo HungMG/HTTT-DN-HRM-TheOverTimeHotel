@@ -9,6 +9,7 @@ static partial class HourlyOperationsTests
     private static async Task<(DuAn Event, EventWorkInput Work)> WorkFixture(Fixture f)
     {
         var item = await f.Create(await Input(f));
+        await f.SeedLegacyManager(item.MaDuAn, f.Manager.EmployeeId);
         var shift = await Shift(f, item, f.WorkerA);
         await Publish(f, shift);
         await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, Assignment(f, item, shift)));
@@ -109,8 +110,8 @@ static partial class HourlyOperationsTests
             history = await f.With(s => s.HistoryAsync(item.MaDuAn));
             var deletion = history.First(h => h.HanhDong == "SUA_CONG_SU_KIEN");
             using var deleted = JsonDocument.Parse(deletion.GiaTriCu!);
-            Require(deleted.RootElement.TryGetProperty("XacNhanNgoaiLe", out _)
-                && deleted.RootElement.TryGetProperty("GiaiTrinh", out _) && deletion.GiaTriMoi == "null",
+            Require(deleted.RootElement.GetProperty("MaCong").GetInt32() == corrected.MaCong
+                && deleted.RootElement.TryGetProperty("MaNguoiXacNhan", out _) && deletion.GiaTriMoi == "null",
                 "Deletion lost the complete work evidence.");
         });
 
@@ -136,6 +137,7 @@ static partial class HourlyOperationsTests
             var (item, input) = await WorkFixture(f);
             await f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, input));
             var other = await f.Create(await Input(f));
+            await f.SeedLegacyManager(other.MaDuAn, f.Manager.EmployeeId);
             var source = item.PhanCongs.Single();
             await using (var db = f.Open())
             {

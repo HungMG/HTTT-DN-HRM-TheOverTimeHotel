@@ -149,24 +149,20 @@ public sealed partial class HotelEventService
         Require(actor.IsOffice, "", "Chỉ HR/Admin điều chỉnh nhu cầu sự kiện.", true);
         var item = await Editable(actor, id, input.Version);
         Require(item.TrangThai == "LEN_KE_HOACH", "", "Chỉ sửa nhu cầu trước khi bắt đầu sự kiện.");
-        var start = Utc(input.Start, "Need.Start"); var end = Utc(input.End, "Need.End");
-        Require(start < end && start >= item.NgayBatDau
-            && end <= item.NgayKetThuc, "Need.End", "Nhu cầu phải nằm trong giờ bắt đầu đến kết thúc sự kiện.");
         Require(HotelEventRules.GetRequiredDepartments(item.LoaiDuAn).Contains(input.Department), "Need.Department", "Phòng ban không phù hợp loại sự kiện.");
         var role = HotelEventRoleRules.ResolveRole(item.LoaiDuAn, input.Department, input.Role, null);
         Require(role != null, "Need.Role", "Chọn vai trò có trong danh mục.");
         Require(input.Count is >= 0 and <= 100000, "Need.Count", "Số người phải từ 0 đến 100.000.");
-        Require(!item.NhuCaus.Any(n => n.MaNhuCau != input.NeedId && n.MaPhongBan == input.Department && n.VaiTro == role
-            && HotelEventRules.Overlaps(start, end, n.BatDau, n.KetThuc)), "", "Khung cùng phòng ban/vai trò không được chồng giờ; hãy gộp nhu cầu.");
+        Require(!item.NhuCaus.Any(n => n.MaNhuCau != input.NeedId && n.MaPhongBan == input.Department && n.VaiTro == role), "Need.Role", "Phòng ban/vai trò đã có nhu cầu; hãy sửa số người trên dòng hiện có.");
         var reason = Text(input.Reason, 500, "Need.Reason", "Lý do điều chỉnh nhu cầu");
         var need = input.NeedId == 0 ? new NhuCauSuKien { MaDuAn = id } : item.NhuCaus.SingleOrDefault(n => n.MaNhuCau == input.NeedId);
         Require(need != null, "", "Không tìm thấy nhu cầu.");
-        var oldNeed = input.NeedId == 0 ? null : JsonSerializer.Serialize(new { need!.TenKhung, need.MaPhongBan, need.VaiTro, need.SoNguoi, need.BatDau, need.KetThuc });
-        need!.TenKhung = Text(input.Name, 100, "Need.Name", "Tên khung"); need.MaPhongBan = input.Department;
-        need.VaiTro = role!; need.SoNguoi = input.Count; need.BatDau = start; need.KetThuc = end; need.LaMau = false;
+        var oldNeed = input.NeedId == 0 ? null : JsonSerializer.Serialize(new { need!.MaPhongBan, need.VaiTro, need.SoNguoi, need.LaMau });
+        need!.MaPhongBan = input.Department;
+        need.VaiTro = role!; need.SoNguoi = input.Count; need.LaMau = false;
         if (input.NeedId == 0) item.NhuCaus.Add(need);
         item.Version++;
-        Audit(actor, item, "NHU_CAU_SU_KIEN", $"{need.TenKhung}: {need.VaiTro}; {need.SoNguoi} người; {input.Start:g}–{input.End:g}.", reason, oldNeed);
+        Audit(actor, item, "NHU_CAU_SU_KIEN", $"{need.MaPhongBan}: {need.VaiTro}; {need.SoNguoi} người cho toàn sự kiện.", reason, oldNeed);
         return 0;
     });
 
@@ -178,9 +174,9 @@ public sealed partial class HotelEventService
         Require(item.TrangThai == "LEN_KE_HOACH", "", "Nhu cầu đã được sử dụng; không xóa sau khi bắt đầu.");
         var need = item.NhuCaus.SingleOrDefault(n => n.MaNhuCau == needId);
         Require(need != null, "", "Không tìm thấy nhu cầu.");
-        var oldNeed = JsonSerializer.Serialize(new { need!.TenKhung, need.MaPhongBan, need.VaiTro, need.SoNguoi, need.BatDau, need.KetThuc });
+        var oldNeed = JsonSerializer.Serialize(new { need!.MaPhongBan, need.VaiTro, need.SoNguoi, need.LaMau });
         db.Remove(need); item.Version++;
-        Audit(actor, item, "XOA_NHU_CAU_SU_KIEN", $"Xóa khung #{needId}.", Text(reason, 500, "reason", "Lý do"), oldNeed);
+        Audit(actor, item, "XOA_NHU_CAU_SU_KIEN", $"Xóa nhu cầu #{needId}.", Text(reason, 500, "reason", "Lý do"), oldNeed);
         return 0;
     });
 
@@ -266,8 +262,7 @@ public sealed partial class HotelEventService
             "Công phải nằm trong sự kiện, phân công và ca nguồn đã công bố còn hiệu lực; không ghi công tương lai. Kiểm tra lại Lịch làm việc nếu dữ liệu nguồn thay đổi.");
         Require(!await db.CongSuKiens.AnyAsync(c => c.PhanCong!.MaNhanVien == assignment.MaNhanVien
             && c.MaCong != input.WorkId && c.BatDau < end && c.KetThuc > start), "", "Công thực tế trùng khoảng đã xác nhận của nhân viên, kể cả ở sự kiện khác.");
-        work!.BatDau = start; work.KetThuc = end; work.GiaiTrinh = null;
-        work.XacNhanNgoaiLe = false; work.MaNguoiXacNhan = actor.EmployeeId; work.NgayXacNhan = DateTimeOffset.UtcNow;
+        work!.BatDau = start; work.KetThuc = end; work.MaNguoiXacNhan = actor.EmployeeId; work.NgayXacNhan = DateTimeOffset.UtcNow;
         if (!editing) assignment.CongThucTes.Add(work);
         assignment.DanhGia = "HOAN_THANH"; assignment.NgayDanhGia = DateTimeOffset.UtcNow;
         item.Version++;
@@ -295,8 +290,8 @@ public sealed partial class HotelEventService
 
     private static string WorkSnapshot(CongSuKien work, PhanCongDuAn assignment) => JsonSerializer.Serialize(new
     {
-        work.MaCong, work.MaPhanCong, assignment.MaNhanVien, work.BatDau, work.KetThuc, work.GiaiTrinh,
-        work.XacNhanNgoaiLe, work.MaNguoiXacNhan, work.NgayXacNhan
+        work.MaCong, work.MaPhanCong, assignment.MaNhanVien, work.BatDau, work.KetThuc,
+        work.MaNguoiXacNhan, work.NgayXacNhan
     });
 
     public Task EndParticipationAsync(EventActor actor, int id, int assignmentId, long version, DateTime end, string reason) => Write(async () =>

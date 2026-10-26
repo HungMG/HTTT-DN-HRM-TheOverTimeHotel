@@ -89,6 +89,16 @@ try
     fixture = new Fixture(ReadConnection(), password: previewPassword);
     var f = fixture;
     await f.Initialize();
+    if (args.Contains("--verify-schema-cleanup"))
+    {
+        await Check("Schema cleanup removes exactly the eight obsolete columns", () => SchemaCleanupTests.VerifySchema(f));
+        return failed == 0 ? 0 : 1;
+    }
+    if (args.Contains("--schema-cleanup-migration"))
+    {
+        await Check("Schema cleanup archives removed values and preserves paid legacy links", () => SchemaCleanupTests.RunMigration(f, RepositoryRoot()));
+        return failed == 0 ? 0 : 1;
+    }
     if (previewPassword is not null)
     {
         var pastEvent = await f.Create(f.Input());
@@ -114,6 +124,42 @@ try
         return 0;
     }
 
+    await Check("HR-only event manager picker excludes other roles and unavailable HR", async () =>
+    {
+        var people = await f.With(s => s.ManagersAsync());
+        Require(people.Any(n => n.MaNhanVien == f.HR.EmployeeId), "Active HR is missing.");
+        Require(!people.Any(n => new[] { f.Manager.EmployeeId, f.OtherManager.EmployeeId, f.Admin.EmployeeId, f.IT.EmployeeId, f.WorkerA }.Contains(n.MaNhanVien)),
+            "Non-HR employees are available as event managers.");
+        await using var db = f.Open();
+        var ids = people.Select(n => n.MaNhanVien).ToArray();
+        Require(!await db.NhanViens.AnyAsync(n => ids.Contains(n.MaNhanVien)
+            && (n.TrangThai != "DANG_LAM" || n.TaiKhoan == null || !n.TaiKhoan.TrangThai
+                || n.TaiKhoan.VaiTro == null || n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() != "HR")), "Unavailable HR was offered.");
+    });
+    await Check("HR-only event manager rejects forged non-HR selection on create", async () =>
+    {
+        foreach (var person in new[] { f.Manager.EmployeeId, f.Admin.EmployeeId, f.IT.EmployeeId, f.WorkerA })
+        {
+            var input = f.Input();
+            input.ManagerId = person;
+            await Reject(() => f.With(s => s.SaveAsync(f.Admin, input)), field: "Input.ManagerId");
+            await using var db = f.Open();
+            Require(!await db.DuAns.AnyAsync(e => e.TenDuAn == input.Name), "Invalid manager was persisted.");
+        }
+    });
+    await Check("HR-only event manager saves HR and rejects non-HR on edit", async () =>
+    {
+        var input = f.Input();
+        input.ManagerId = f.HR.EmployeeId;
+        var item = await f.Create(input);
+        Require(item.MaNguoiQuanLy == f.HR.EmployeeId, "HR manager was not saved.");
+        var edit = f.Edit(item);
+        edit.ManagerId = f.Manager.EmployeeId;
+        await Reject(() => f.With(s => s.SaveAsync(f.HR, edit)), field: "Input.ManagerId");
+        Require((await f.Get(item.MaDuAn)).MaNguoiQuanLy == f.HR.EmployeeId, "Rejected edit changed the manager.");
+    });
+
+    await EventReportTests.Run(f, Check);
     await HourlyOperationsTests.Run(f, Check);
     await Phase1Tests.Run(f, Check);
 
@@ -141,7 +187,7 @@ try
         var input = f.Input();
         var item = await f.Create(input);
         Require(item.NgayBatDau == new DateTimeOffset(input.Start, TimeSpan.FromHours(7)), "Start lost Vietnam timezone.");
-        Require(item.MaNguoiQuanLy == f.Manager.EmployeeId && item.Version > 0, "Manager or version missing.");
+        Require(item.MaNguoiQuanLy == f.HR.EmployeeId && item.Version > 0, "Manager or version missing.");
         var history = await f.With(s => s.HistoryAsync(item.MaDuAn));
         Require(history.Any(h => h.TenTaiKhoanBiTacDong == $"SK-{item.MaDuAn}"), "Create audit was not committed.");
     });
@@ -149,6 +195,7 @@ try
     await Check("Historical events remain readable after creation dates are restricted", async () =>
     {
         var item = await f.Create(f.Input());
+        await f.SeedLegacyManager(item.MaDuAn, f.Manager.EmployeeId);
         await f.MoveToPast(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
         Require(item.NgayBatDau < DateTimeOffset.UtcNow.AddDays(-1), "Fixture must be historical.");
@@ -177,7 +224,7 @@ try
         overlap.Start = original.Start.AddMinutes(30);
         overlap.End = original.End;
         var simultaneous = await f.Create(overlap);
-        Require(simultaneous.DiaDiem == "Khách sạn The Overtime" && simultaneous.MaDiaDiem == null,
+        Require(simultaneous.DiaDiem == "Khách sạn The Overtime",
             "Simultaneous hotel events unexpectedly require a hall.");
         overlap.Name += "-adjacent";
         overlap.Start = original.End;
@@ -200,8 +247,8 @@ try
     await Check("Manager cannot read or mutate another manager's event", async () =>
     {
         var input = f.Input();
-        input.ManagerId = f.OtherManager.EmployeeId;
         var item = await f.Create(input);
+        await f.SeedLegacyManager(item.MaDuAn, f.OtherManager.EmployeeId);
         Require(await f.With(s => s.GetAsync(f.Manager, item.MaDuAn)) is null, "Foreign event details leaked.");
         await Reject(() => f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "HUY", "Test")), true);
         var from = item.NgayBatDau.AddDays(-1);
@@ -227,7 +274,7 @@ try
     await Check("Cross-department assignment persists without an implicit payroll entry", async () =>
     {
         var item = await f.Create(f.Input());
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA, 125.50m)));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerA, 125.50m)));
         var row = (await f.Get(item.MaDuAn)).PhanCongs.Single();
         Require(row.MaNhanVien == f.WorkerA && row.PhuCapDuKien == 125.50m, "Assignment was not stored.");
         Require(row.SoTienPhuCap == 0 && row.MaChiTiet is null && row.TrangThaiChiTra == "CHUA_CHI_TRA", "Assignment created payment prematurely.");
@@ -236,20 +283,20 @@ try
     await Check("Multiple assignments save together and reject invalid groups atomically", async () =>
     {
         var item = await f.Create(f.Input());
-        await Reject(() => f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version,
+        await Reject(() => f.With(s => s.AssignManyAsync(f.HR, item.MaDuAn, item.Version,
             [f.Assignment(item, f.WorkerA), f.Assignment(item, f.InactiveWorker)])));
         Require((await f.Get(item.MaDuAn)).PhanCongs.Count == 0, "Invalid batch partially assigned staff.");
-        await Reject(() => f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version,
+        await Reject(() => f.With(s => s.AssignManyAsync(f.HR, item.MaDuAn, item.Version,
             [f.Assignment(item, f.WorkerA), f.Assignment(item, f.WorkerA)])));
-        await Reject(() => f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version, [])));
+        await Reject(() => f.With(s => s.AssignManyAsync(f.HR, item.MaDuAn, item.Version, [])));
         var second = f.Assignment(item, f.WorkerB);
         second.Role = HotelEventRoleRules.GetRoles(item.LoaiDuAn, "KY_THUAT", item.SoKhachDuKien)[1].Name;
-        await f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version, [f.Assignment(item, f.WorkerA), second]));
+        await f.With(s => s.AssignManyAsync(f.HR, item.MaDuAn, item.Version, [f.Assignment(item, f.WorkerA), second]));
         var after = await f.Get(item.MaDuAn);
         Require(after.PhanCongs.Count == 2 && after.Version == item.Version + 1
             && after.PhanCongs.Single(p => p.MaNhanVien == f.WorkerB).VaiTroDuAn == second.Role,
             "Batch did not save individual roles together.");
-        await Reject(() => f.With(s => s.AssignManyAsync(f.Manager, item.MaDuAn, item.Version,
+        await Reject(() => f.With(s => s.AssignManyAsync(f.HR, item.MaDuAn, item.Version,
             [f.Assignment(item, f.WorkerA)])));
         await Reject(() => f.With(s => s.AssignManyAsync(f.OtherManager, item.MaDuAn, after.Version,
             [f.Assignment(after, f.WorkerB)])), forbidden: true);
@@ -258,9 +305,9 @@ try
     await Check("Duplicate employee assignment is rejected", async () =>
     {
         var item = await f.Create(f.Input());
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA)));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerA)));
         item = await f.Get(item.MaDuAn);
-        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA))));
+        await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerA))));
         Require((await f.Get(item.MaDuAn)).PhanCongs.Count == 1, "Duplicate row persisted.");
     });
 
@@ -268,7 +315,7 @@ try
     {
         var item = await f.Create(f.Input());
         foreach (var worker in new[] { f.InactiveWorker, f.ExpiredWorker })
-            await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, worker))));
+            await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, worker))));
         Require((await f.Get(item.MaDuAn)).PhanCongs.Count == 0, "Invalid staffing persisted.");
     });
 
@@ -278,7 +325,7 @@ try
         input.End = input.Start.AddDays(1);
         var item = await f.Create(input);
         await f.SetContractEnd(f.BoundaryWorker, DateOnly.FromDateTime(input.Start));
-        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.BoundaryWorker))));
+        await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.BoundaryWorker))));
     });
 
     await Check("Midnight participation accepts a contract ending on the previous day", async () =>
@@ -288,7 +335,7 @@ try
         var item = await f.Create(input);
         await f.SetContractEnd(f.BoundaryWorker, DateOnly.FromDateTime(input.Start));
         var assignment = f.Assignment(item, f.BoundaryWorker);
-        try { await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, assignment)); }
+        try { await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, assignment)); }
         catch (EventOperationException)
         {
             Console.Error.WriteLine(await f.CoverageDiagnostic(f.BoundaryWorker, item, assignment));
@@ -304,8 +351,8 @@ try
         other.Start = input.Start;
         other.End = input.End;
         var b = await f.Create(other);
-        await f.With(s => s.AssignAsync(f.Manager, a.MaDuAn, f.Assignment(a, f.WorkerA)));
-        await Reject(() => f.With(s => s.AssignAsync(f.Manager, b.MaDuAn, f.Assignment(b, f.WorkerA))));
+        await f.With(s => s.AssignAsync(f.HR, a.MaDuAn, f.Assignment(a, f.WorkerA)));
+        await Reject(() => f.With(s => s.AssignAsync(f.HR, b.MaDuAn, f.Assignment(b, f.WorkerA))));
     });
 
     await Check("Planned allowance cannot exceed event budget", async () =>
@@ -313,27 +360,27 @@ try
         var input = f.Input();
         input.Budget = 100;
         var item = await f.Create(input);
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA, 60)));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerA, 60)));
         item = await f.Get(item.MaDuAn);
-        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerB, 40.01m))));
+        await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerB, 40.01m))));
         Require((await f.Get(item.MaDuAn)).PhanCongs.Count == 1, "Over-budget assignment persisted.");
     });
 
     await Check("Review requires waiting state and event end", async () =>
     {
         var item = await f.Create(f.Input());
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA)));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerA)));
         item = await f.Get(item.MaDuAn);
-        await Reject(() => f.With(s => s.ReviewAsync(f.Manager, item.MaDuAn, f.Review(item))));
+        await Reject(() => f.With(s => s.ReviewAsync(f.HR, item.MaDuAn, f.Review(item))));
         var future = f.Input();
         future.Start = DateTime.Today.AddDays(5).AddHours(8);
         future.End = future.Start.AddHours(2);
         var upcoming = await f.Create(future);
-        await Reject(() => f.With(s => s.ChangeStatusAsync(f.Manager, upcoming.MaDuAn, upcoming.Version, "DANG_DIEN_RA")));
-        await f.With(s => s.AssignAsync(f.Manager, upcoming.MaDuAn, f.Assignment(upcoming, f.WorkerB)));
+        await Reject(() => f.With(s => s.ChangeStatusAsync(f.HR, upcoming.MaDuAn, upcoming.Version, "DANG_DIEN_RA")));
+        await f.With(s => s.AssignAsync(f.HR, upcoming.MaDuAn, f.Assignment(upcoming, f.WorkerB)));
         await f.SeedStatus(upcoming.MaDuAn, "CHO_NGHIEM_THU");
         upcoming = await f.Get(upcoming.MaDuAn);
-        await Reject(() => f.With(s => s.ReviewAsync(f.Manager, upcoming.MaDuAn, f.Review(upcoming))));
+        await Reject(() => f.With(s => s.ReviewAsync(f.HR, upcoming.MaDuAn, f.Review(upcoming))));
     });
 
     await Check("Lifecycle reaches waiting state only after the event ends", async () =>
@@ -343,11 +390,11 @@ try
         item = await f.Get(item.MaDuAn);
         await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
-        await f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
+        await f.With(s => s.ChangeStatusAsync(f.HR, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
         item = await f.Get(item.MaDuAn);
         await f.MoveToPast(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
-        await f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "CHO_NGHIEM_THU"));
+        await f.With(s => s.ChangeStatusAsync(f.HR, item.MaDuAn, item.Version, "CHO_NGHIEM_THU"));
         Require((await f.Get(item.MaDuAn)).TrangThai == "CHO_NGHIEM_THU", "Lifecycle did not persist.");
     });
 
@@ -355,12 +402,12 @@ try
     {
         var item = await f.WaitingWithAssignment(100);
         var review = f.Review(item, 100.01m);
-        await Reject(() => f.With(s => s.ReviewAsync(f.Manager, item.MaDuAn, review)));
+        await Reject(() => f.With(s => s.ReviewAsync(f.HR, item.MaDuAn, review)));
         review.ActualAllowance = -1;
-        await Reject(() => f.With(s => s.ReviewAsync(f.Manager, item.MaDuAn, review)));
+        await Reject(() => f.With(s => s.ReviewAsync(f.HR, item.MaDuAn, review)));
         review.ActualAllowance = 1;
         review.Rating = "KHONG_THAM_GIA";
-        await Reject(() => f.With(s => s.ReviewAsync(f.Manager, item.MaDuAn, review)));
+        await Reject(() => f.With(s => s.ReviewAsync(f.HR, item.MaDuAn, review)));
         Require((await f.Get(item.MaDuAn)).PhanCongs.Single().DanhGia == "CHUA_DANH_GIA", "Invalid review persisted.");
     });
 
@@ -379,9 +426,9 @@ try
         input.Name = f.Prefix + new string('X', 200 - f.Prefix.Length);
         var item = await f.Create(input);
         Require(item.TinhPhuCapKhiNghiemThu && item.NganSachPhuCap == 0, "New event kept a creation budget.");
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA, 123)));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerA, 123)));
         item = await f.Get(item.MaDuAn);
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerB, 123)));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerB, 123)));
         item = await f.Get(item.MaDuAn);
         Require(item.PhanCongs.All(p => p.PhuCapDuKien == 0 && p.MaPhongBanSuKien == "KY_THUAT"),
             "Automatic event did not snapshot the workers' department without planned allowances.");
@@ -391,12 +438,12 @@ try
         var review = new EventReviewInput { Version = item.Version,
             AssignmentId = item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerA).MaPhanCong,
             Rating = "HOAN_THANH", ActualAllowance = 987 };
-        await f.With(s => s.ReviewAsync(f.Manager, item.MaDuAn, review));
+        await f.With(s => s.ReviewAsync(f.HR, item.MaDuAn, review));
         item = await f.Get(item.MaDuAn);
         review = new EventReviewInput { Version = item.Version,
             AssignmentId = item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerB).MaPhanCong,
             Rating = "KHONG_THAM_GIA", ActualAllowance = 987 };
-        await f.With(s => s.ReviewAsync(f.Manager, item.MaDuAn, review));
+        await f.With(s => s.ReviewAsync(f.HR, item.MaDuAn, review));
         item = await f.Get(item.MaDuAn);
         Require(item.PhanCongs.All(p => p.SoTienPhuCap == 0), "Review paid staff before acceptance.");
         int? originalDepartment;
@@ -533,7 +580,7 @@ try
         async Task<bool> Assign(DuAn item)
         {
             await gate.Task;
-            return await Succeeds(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA))));
+            return await Succeeds(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerA))));
         }
         var left = Assign(a);
         var right = Assign(b);
@@ -566,9 +613,9 @@ try
         var item = await f.Create(f.Input());
         var input = f.Assignment(item, f.WorkerA);
         input.Role = "Tiếp nhận đăng ký";
-        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, input)), field: "Assignment.Role");
+        await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, input)), field: "Assignment.Role");
         input.Role = "Role forged by client";
-        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, input)), field: "Assignment.Role");
+        await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, input)), field: "Assignment.Role");
     });
 
     await Check("Custom roles retain their prefix and new assignments have no task", async () =>
@@ -576,9 +623,9 @@ try
         var item = await f.Create(f.Input());
         var input = f.Assignment(item, f.WorkerA);
         input.Role = "__OTHER__";
-        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, input)), field: "Assignment.Role");
+        await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, input)), field: "Assignment.Role");
         input.OtherRole = "Custom support";
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, input));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, input));
         var stored = (await f.Get(item.MaDuAn)).PhanCongs.Single();
         Require(stored.VaiTroDuAn == "Khác: Custom support" && stored.NhiemVuCuThe is null, "Custom role or empty task was not preserved.");
     });
@@ -589,12 +636,12 @@ try
         foreach (var dept in HotelEventRules.GetRequiredDepartments(item.LoaiDuAn))
             foreach (var worker in f.RoleWorkers[dept].Take(2))
             {
-                await f.With(s => s.AssignAsync(f.Manager,item.MaDuAn,f.Assignment(item,worker)));
+                await f.With(s => s.AssignAsync(f.HR,item.MaDuAn,f.Assignment(item,worker)));
                 item = await f.Get(item.MaDuAn);
             }
         await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
-        await Reject(() => f.With(s => s.ChangeStatusAsync(f.Manager,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
+        await Reject(() => f.With(s => s.ChangeStatusAsync(f.HR,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
     });
 
     await Check("A zero-guest event cannot start with an otherwise complete team", async () =>
@@ -605,7 +652,7 @@ try
         await f.With(s => s.SaveAsync(f.Admin,edit));
         await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
-        await Reject(() => f.With(s => s.ChangeStatusAsync(f.Manager,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
+        await Reject(() => f.With(s => s.ChangeStatusAsync(f.HR,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
     });
 
     await Check("Changing guests keeps existing assignments but increases role demand", async () =>
@@ -618,13 +665,13 @@ try
         await f.MoveToOngoing(item.MaDuAn);
         item=await f.Get(item.MaDuAn);
         Require(item.PhanCongs.Count==oldCount,"Changing guests silently removed assignments.");
-        await Reject(()=>f.With(s=>s.ChangeStatusAsync(f.Manager,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
+        await Reject(()=>f.With(s=>s.ChangeStatusAsync(f.HR,item.MaDuAn,item.Version,"DANG_DIEN_RA")));
     });
 
     await Check("Staffing rejects employees belonging to disallowed departments", async () =>
     {
         var item = await f.Create(f.Input()); // HOI_NGHI_MICE
-        await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerUnrelated))), field: "Assignment.EmployeeId");
+        await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerUnrelated))), field: "Assignment.EmployeeId");
     });
 
     await Check("Starting an event is blocked when any mandatory department is missing", async () =>
@@ -633,7 +680,7 @@ try
         // Assign 5 departments, leaving out AN_NINH
         foreach (var worker in new[] { f.WorkerFO, f.WorkerFB, f.WorkerKitchen, f.WorkerA, f.WorkerIT })
         {
-            await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, worker)));
+            await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, worker)));
             item = await f.Get(item.MaDuAn);
         }
 
@@ -641,7 +688,7 @@ try
         item = await f.Get(item.MaDuAn);
         try
         {
-            await f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
+            await f.With(s => s.ChangeStatusAsync(f.HR, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
             throw new InvalidOperationException("Event started while missing mandatory department.");
         }
         catch (EventOperationException ex)
@@ -656,7 +703,7 @@ try
         item = await f.StaffFully(item);
         await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
-        await f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
+        await f.With(s => s.ChangeStatusAsync(f.HR, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
         item = await f.Get(item.MaDuAn);
         Require(item.TrangThai == "DANG_DIEN_RA", "Event failed to transition to DANG_DIEN_RA after full staffing.");
     });
@@ -664,7 +711,7 @@ try
     await Check("Mở trang không làm hủy sự kiện của mình hoặc người khác", async () =>
     {
         var item = await f.Create(f.Input());
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerA, 100)));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerA, 100)));
         item = await f.Get(item.MaDuAn);
         Require(item.TrangThai == "LEN_KE_HOACH", "Fixture should start in LEN_KE_HOACH.");
 
@@ -685,15 +732,15 @@ try
         var item = await f.Create(f.Input());
         item = await f.StaffFully(item);
         var spare = f.RoleWorkers["KY_THUAT"][2];
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, spare)));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, spare)));
         await f.MoveToOngoing(item.MaDuAn);
         item = await f.Get(item.MaDuAn);
-        await f.With(s => s.ChangeStatusAsync(f.Manager, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
+        await f.With(s => s.ChangeStatusAsync(f.HR, item.MaDuAn, item.Version, "DANG_DIEN_RA"));
         item = await f.Get(item.MaDuAn);
 
         var assignB = item.PhanCongs.Single(p => p.MaNhanVien == spare);
         var handover = HotelEventRules.Local(DateTimeOffset.UtcNow);
-        await f.With(s => s.EndParticipationAsync(f.Manager, item.MaDuAn, assignB.MaPhanCong, item.Version, handover,
+        await f.With(s => s.EndParticipationAsync(f.HR, item.MaDuAn, assignB.MaPhanCong, item.Version, handover,
             "Spare technician handed over after completing their work."));
         item = await f.Get(item.MaDuAn);
         Require(item.PhanCongs.Single(p => p.MaPhanCong == assignB.MaPhanCong).TrangThaiThamGia == "DA_KET_THUC",
@@ -701,14 +748,14 @@ try
 
         // WorkerB still covers support, but cannot substitute for WorkerA's primary role.
         var assignA = item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerA);
-        await Reject(() => f.With(s => s.EndParticipationAsync(f.Manager, item.MaDuAn, assignA.MaPhanCong, item.Version,
+        await Reject(() => f.With(s => s.EndParticipationAsync(f.HR, item.MaDuAn, assignA.MaPhanCong, item.Version,
             HotelEventRules.Local(DateTimeOffset.UtcNow), "Attempted handover without a replacement")));
     });
 
     await Check("Changing event type is rejected if assigned staff are incompatible with new type", async () =>
     {
         var item = await f.Create(f.Input()); // HOI_NGHI_MICE allows IT
-        await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, f.Assignment(item, f.WorkerIT)));
+        await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, f.Assignment(item, f.WorkerIT)));
         item = await f.Get(item.MaDuAn);
 
         var edit = f.Edit(item);
@@ -717,7 +764,7 @@ try
 
         // After removing WorkerIT, changing to TIEC_CUOI succeeds
         var assignIT = item.PhanCongs.Single(p => p.MaNhanVien == f.WorkerIT);
-        await f.With(s => s.RemoveAssignmentAsync(f.Manager, item.MaDuAn, assignIT.MaPhanCong, item.Version));
+        await f.With(s => s.RemoveAssignmentAsync(f.HR, item.MaDuAn, assignIT.MaPhanCong, item.Version));
         item = await f.Get(item.MaDuAn);
 
         edit.Version = item.Version;
@@ -957,7 +1004,7 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
                 {
                     var worker=RoleWorkers[d].First(id=>item.PhanCongs.All(p=>p.MaNhanVien!=id));
                     var input=Assignment(item,worker); input.Role=role.Name;
-                    await With(s => s.AssignAsync(Manager,item.MaDuAn,input));
+                    await With(s => s.AssignAsync(HR,item.MaDuAn,input));
                     item=await Get(item.MaDuAn);
                 }
         }
@@ -970,7 +1017,7 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         return new EventInput
         {
             Name = $"{Prefix}-event-{index}", Venue = $"{Prefix}-venue-{index}",
-            Start = start, End = start.AddHours(2), ManagerId = Manager.EmployeeId, ExpectedGuests = 40, Budget = 1000
+            Start = start, End = start.AddHours(2), ManagerId = HR.EmployeeId, ExpectedGuests = 40, Budget = 1000
         };
     }
     public async Task<DuAn> Create(EventInput input) => await Get(await With(s => s.SaveAsync(Admin, input)));
@@ -993,6 +1040,14 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         End = item.NgayKetThuc.ToOffset(TimeSpan.FromHours(7)).DateTime, ManagerId = item.MaNguoiQuanLy,
         ExpectedGuests = item.SoKhachDuKien, Budget = item.NganSachPhuCap, Description = item.MoTa
     };
+    // Historical fixtures retain Manager ownership to cover access to events created under the old policy.
+    public async Task SeedLegacyManager(int id, int employeeId)
+    {
+        await using var db = Open();
+        var changed = await db.DuAns.Where(e => e.MaDuAn == id && e.TenDuAn.StartsWith(Prefix))
+            .ExecuteUpdateAsync(p => p.SetProperty(e => e.MaNguoiQuanLy, employeeId));
+        if (changed != 1) throw new InvalidOperationException("Expected one owned historical event.");
+    }
     public async Task SeedStatus(int id, string status)
     {
         await using var db = Open();
@@ -1005,7 +1060,6 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         var delta=DateTimeOffset.UtcNow.AddHours(-1)-item.NgayBatDau;
         item.NgayBatDau+=delta; item.NgayKetThuc+=delta;
         foreach(var assignment in item.PhanCongs) { assignment.BatDau+=delta; assignment.KetThuc+=delta; }
-        foreach(var need in item.NhuCaus) { need.BatDau+=delta; need.KetThuc+=delta; }
         await db.SaveChangesAsync();
     }
     public async Task MoveToPast(int id)
@@ -1020,9 +1074,6 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         await db.PhanCongDuAns.Where(p => p.MaDuAn == id && owned.Any()).ExecuteUpdateAsync(p => p
             .SetProperty(e => e.BatDau, e => e.BatDau.AddDays(-366))
             .SetProperty(e => e.KetThuc, e => e.KetThuc.AddDays(-366)));
-        await db.NhuCauSuKiens.Where(n => n.MaDuAn == id && owned.Any()).ExecuteUpdateAsync(p => p
-            .SetProperty(n => n.BatDau, n => n.BatDau.AddDays(-366))
-            .SetProperty(n => n.KetThuc, n => n.KetThuc.AddDays(-366)));
         await transaction.CommitAsync();
 
     }
@@ -1047,7 +1098,7 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
         var input = Input();
         input.Budget = budget;
         var item = await Create(input);
-        await With(s => s.AssignAsync(Manager, item.MaDuAn, Assignment(item, WorkerA, Math.Min(50, budget))));
+        await With(s => s.AssignAsync(HR, item.MaDuAn, Assignment(item, WorkerA, Math.Min(50, budget))));
         await MoveToPast(item.MaDuAn);
         await SeedStatus(item.MaDuAn, "CHO_NGHIEM_THU");
         return await Get(item.MaDuAn);
@@ -1055,7 +1106,7 @@ sealed class Fixture(string connection, string? prefix = null, string? password 
     public async Task<DuAn> ReadyForAcceptance()
     {
         var item = await WaitingWithAssignment();
-        await With(s => s.ReviewAsync(Manager, item.MaDuAn, Review(item)));
+        await With(s => s.ReviewAsync(HR, item.MaDuAn, Review(item)));
         return await Get(item.MaDuAn);
     }
     public async Task Cleanup()

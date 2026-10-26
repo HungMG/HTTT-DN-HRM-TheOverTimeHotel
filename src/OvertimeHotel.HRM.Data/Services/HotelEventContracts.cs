@@ -53,12 +53,9 @@ public class EventNeedInput
 {
     public long Version { get; set; }
     public int NeedId { get; set; }
-    public string Name { get; set; } = "Phục vụ sự kiện";
     public string Department { get; set; } = "";
     public string Role { get; set; } = "";
     public int Count { get; set; }
-    public DateTime Start { get; set; }
-    public DateTime End { get; set; }
     public string Reason { get; set; } = "";
 }
 

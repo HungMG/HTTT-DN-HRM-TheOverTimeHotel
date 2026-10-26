@@ -152,12 +152,9 @@
                 const data = editNeed.dataset;
                 const field = name => form.elements.namedItem('Need.' + name);
                 field('NeedId').value = data.editNeed || '0';
-                field('Name').value = data.needName || 'Phục vụ sự kiện';
                 field('Department').value = data.needDepartment || field('Department').options[0]?.value || '';
                 field('Role').value = data.needRole || '';
                 field('Count').value = data.needCount || '1';
-                field('Start').value = data.needStart || form.dataset.defaultStart;
-                field('End').value = data.needEnd || form.dataset.defaultEnd;
                 field('Reason').value = '';
                 bootstrap.Collapse.getOrCreateInstance(root.querySelector('[data-need-editor]'), { toggle: false }).show();
                 root.querySelector('[data-new-need]').setAttribute('aria-expanded', 'true');

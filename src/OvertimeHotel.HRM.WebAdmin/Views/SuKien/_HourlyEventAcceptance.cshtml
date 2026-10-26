@@ -29,7 +29,6 @@
                 <div class="border-top pt-2 mt-2">
                     <p>@HotelEventRules.Local(work.BatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(work.KetThuc).ToString("dd/MM/yyyy HH:mm") · @((work.KetThuc - work.BatDau).TotalMinutes.ToString("0.##")) phút</p>
                     <p class="event-muted">Người xác nhận #@work.MaNguoiXacNhan · @HotelEventRules.Local(work.NgayXacNhan).ToString("dd/MM/yyyy HH:mm")</p>
-                    @if (!string.IsNullOrWhiteSpace(work.GiaiTrinh)) { <p class="event-preserve-lines">Ghi chú xác nhận cũ: @work.GiaiTrinh</p> }
                     @if (Model.IsOffice && canRecord && !canceled)
                     {
                         var preserveEdit = Model.Work.AssignmentId == assignment.MaPhanCong && Model.Work.WorkId == work.MaCong;

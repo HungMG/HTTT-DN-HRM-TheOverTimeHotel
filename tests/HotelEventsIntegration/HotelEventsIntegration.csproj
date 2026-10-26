@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/OvertimeHotel.HRM.Data/OvertimeHotel.HRM.Data.csproj" />
+    <ProjectReference Include="../../src/OvertimeHotel.HRM.WebAdmin/OvertimeHotel.HRM.WebAdmin.csproj" />
   </ItemGroup>
 </Project>

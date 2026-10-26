@@ -16,13 +16,12 @@ static partial class HourlyOperationsTests
             var item = await f.Create(input);
             Require(item.TinhTheoGio && item.PhanCongs.Count == 0 && item.NhuCaus.Count > 0,
                 "Booking should create editable staffing needs without requiring assigned employees.");
-            Require(item.DiaDiem == "Khách sạn The Overtime" && item.MaDiaDiem == null, "Booking still requires a hall or venue catalog.");
+            Require(item.DiaDiem == "Khách sạn The Overtime", "Booking still requires a hall or venue catalog.");
             var edit = f.Edit(item); edit.VenueId = int.MaxValue; edit.Venue = "Off-site venue";
             edit.SetupMinutes = 60; edit.TeardownMinutes = 45;
             await f.With(s => s.SaveAsync(f.HR, edit));
             item = await f.Get(item.MaDuAn);
-            Require(item.DiaDiem == "Khách sạn The Overtime" && item.MaDiaDiem == null
-                && item.PhutChuanBi == 0 && item.PhutThuDon == 0, "Client input restored removed venue or buffer settings.");
+            Require(item.DiaDiem == "Khách sạn The Overtime", "Client input restored removed venue or buffer settings.");
             await Reject(() => f.With(s => s.SaveVenueAsync(f.Manager, f.Prefix + "-forged-venue", 50)), forbidden: true);
             var tooLarge = await Input(f);
             tooLarge.ExpectedGuests = 101;
@@ -30,9 +29,9 @@ static partial class HourlyOperationsTests
             var need = item.NhuCaus.First(n => n.MaPhongBan == "KY_THUAT");
             await f.With(s => s.SaveNeedAsync(f.HR, item.MaDuAn, new EventNeedInput
             {
-                Version = item.Version, NeedId = need.MaNhuCau, Name = "Technical setup",
+                Version = item.Version, NeedId = need.MaNhuCau,
                 Department = "KY_THUAT", Role = need.VaiTro, Count = 2,
-                Start = input.Start, End = input.End, Reason = "Two technicians requested by customer"
+                Reason = "Two technicians requested by customer"
             }));
             item = await f.Get(item.MaDuAn);
             Require(item.NhuCaus.Any(n => n.MaNhuCau == need.MaNhuCau && n.SoNguoi == 2), "Edited need was not stored.");
@@ -43,14 +42,14 @@ static partial class HourlyOperationsTests
             var item = await f.Create(await Input(f));
             var shift = await Shift(f, item, f.WorkerA);
             var assignment = Assignment(f, item, shift);
-            await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, assignment)));
+            await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, assignment)));
             await Publish(f, shift);
-            var available = await f.With(s => s.AvailableShiftsAsync(f.Manager, item.MaDuAn));
+            var available = await f.With(s => s.AvailableShiftsAsync(f.HR, item.MaDuAn));
             Require(available.Any(s => s.MaPhanCa == shift.MaPhanCa), "Published matching shift is unavailable.");
             assignment.EmployeeId = f.WorkerB;
-            await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, assignment)));
+            await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, assignment)));
             assignment.EmployeeId = f.WorkerA;
-            await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, assignment));
+            await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, assignment));
             item = await f.Get(item.MaDuAn);
             var stored = item.PhanCongs.Single();
             Require(stored.MaPhanCa == shift.MaPhanCa && stored.BatDau == item.NgayBatDau
@@ -67,16 +66,16 @@ static partial class HourlyOperationsTests
             await Publish(f, shift);
             var first = Assignment(f, item, shift);
             first.End = first.Start.AddHours(1);
-            await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, first));
+            await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, first));
             item = await f.Get(item.MaDuAn);
             var second = Assignment(f, item, shift);
             second.Start = second.Start.AddHours(1);
             second.End = second.Start.AddHours(1);
-            await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, second));
+            await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, second));
             item = await f.Get(item.MaDuAn);
             Require(item.PhanCongs.Count == 2, "Adjacent segments for one employee were collapsed or rejected.");
             var overlap = Assignment(f, item, shift);
-            await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, overlap)));
+            await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, overlap)));
             var oldVersion = item.Version;
             await using (var db = f.Open())
             {
@@ -101,7 +100,7 @@ static partial class HourlyOperationsTests
             var item = await f.Create(await Input(f));
             var shift = await Shift(f, item, f.WorkerA);
             await Publish(f, shift);
-            await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, Assignment(f, item, shift)));
+            await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, Assignment(f, item, shift)));
             item = await f.Get(item.MaDuAn);
             await Historical(f, item, shift);
             item = await f.Get(item.MaDuAn);
@@ -109,7 +108,7 @@ static partial class HourlyOperationsTests
             await Salary(f, f.WorkerA, 8_000_000m);
             var work = new EventWorkInput { Version = item.Version, AssignmentId = assignment.MaPhanCong,
                 Start = HotelEventRules.Local(assignment.BatDau), End = HotelEventRules.Local(assignment.KetThuc) };
-            await f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, work));
+            await f.With(s => s.RecordWorkAsync(f.HR, item.MaDuAn, work));
             await using (var db = f.Open())
             {
                 db.ChamCongs.Add(new ChamCong { MaPhanCa = shift.MaPhanCa, GioCheckIn = assignment.BatDau,
@@ -226,7 +225,7 @@ static partial class HourlyOperationsTests
             await Publish(f, source);
             await using (var db = f.Open())
                 await db.NhanViens.Where(n => n.MaNhanVien == f.WorkerB).ExecuteUpdateAsync(p => p.SetProperty(n => n.TrangThai, "NGHI_PHEP"));
-            await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, Assignment(f, item, source))));
+            await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, Assignment(f, item, source))));
             await using (var db = f.Open())
             {
                 await db.NhanViens.Where(n => n.MaNhanVien == f.WorkerB).ExecuteUpdateAsync(p => p.SetProperty(n => n.TrangThai, "DANG_LAM"));
@@ -235,10 +234,10 @@ static partial class HourlyOperationsTests
                     DenNgay = source.NgayLamViec, TrangThai = "DA_DUYET", LyDo = "Synthetic approved leave", MaNguoiDuyet = f.HR.EmployeeId });
                 await db.SaveChangesAsync();
             }
-            await Reject(() => f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, Assignment(f, item, source))));
+            await Reject(() => f.With(s => s.AssignAsync(f.HR, item.MaDuAn, Assignment(f, item, source))));
             await using (var db = f.Open())
                 await db.DonTus.Where(d => d.MaNhanVien == f.WorkerB && d.LoaiDon!.TenLoaiDon == f.Prefix + "-leave").ExecuteDeleteAsync();
-            await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, Assignment(f, item, source)));
+            await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, Assignment(f, item, source)));
         });
     }
 
@@ -249,17 +248,17 @@ static partial class HourlyOperationsTests
             var item = await f.Create(await Input(f));
             var shift = await Shift(f, item, f.WorkerA);
             await Publish(f, shift);
-            await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, Assignment(f, item, shift)));
+            await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, Assignment(f, item, shift)));
             item = await f.Get(item.MaDuAn);
             await Historical(f, item, shift);
             item = await f.Get(item.MaDuAn);
             var assignment = item.PhanCongs.Single();
             var input = new EventWorkInput { Version = item.Version, AssignmentId = assignment.MaPhanCong,
                 Start = HotelEventRules.Local(assignment.BatDau), End = HotelEventRules.Local(assignment.KetThuc) };
-            await f.With(s => s.RecordWorkAsync(f.Manager, item.MaDuAn, input));
+            await f.With(s => s.RecordWorkAsync(f.HR, item.MaDuAn, input));
             await using var db = f.Open();
             var actual = await db.CongSuKiens.SingleAsync(c => c.MaPhanCong == assignment.MaPhanCong);
-            Require(actual.GiaiTrinh == null && !actual.XacNhanNgoaiLe && actual.MaNguoiXacNhan == f.Manager.EmployeeId,
+            Require(actual.MaNguoiXacNhan == f.HR.EmployeeId,
                 "Participation incorrectly required attendance-exception approval.");
         });
     }
@@ -271,15 +270,15 @@ static partial class HourlyOperationsTests
             var item = await f.Create(await Input(f));
             var shift = await Shift(f, item, f.WorkerA);
             await Publish(f, shift);
-            await f.With(s => s.AssignAsync(f.Manager, item.MaDuAn, Assignment(f, item, shift)));
+            await f.With(s => s.AssignAsync(f.HR, item.MaDuAn, Assignment(f, item, shift)));
             item = await f.Get(item.MaDuAn);
             await Historical(f, item, shift);
             await f.SeedStatus(item.MaDuAn, "DANG_DIEN_RA");
             item = await f.Get(item.MaDuAn);
             var assignment = item.PhanCongs.Single();
             var end = HotelEventRules.Local(assignment.BatDau).AddHours(1);
-            await Reject(() => f.With(s => s.EndParticipationAsync(f.Manager, item.MaDuAn, assignment.MaPhanCong, item.Version, end, "")));
-            await f.With(s => s.EndParticipationAsync(f.Manager, item.MaDuAn, assignment.MaPhanCong, item.Version, end, "Employee became ill"));
+            await Reject(() => f.With(s => s.EndParticipationAsync(f.HR, item.MaDuAn, assignment.MaPhanCong, item.Version, end, "")));
+            await f.With(s => s.EndParticipationAsync(f.HR, item.MaDuAn, assignment.MaPhanCong, item.Version, end, "Employee became ill"));
             item = await f.Get(item.MaDuAn);
             Require(item.PhanCongs.Single().TrangThaiThamGia == "DA_KET_THUC"
                 && item.PhanCongs.Single().LyDoKetThuc == "Employee became ill", "Early participation end removed its historical record or reason.");

@@ -826,36 +826,6 @@
   margin-top: 5px;
 }
 
-.event-history {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.event-history li {
-  display: flex;
-  gap: 24px;
-  padding: 14px 0;
-  border-bottom: 1px solid #eee8dc;
-  font-size: 11px;
-  line-height: 1.8;
-}
-
-.event-history li:last-child {
-  border: 0;
-}
-
-.event-history time {
-  color: #9a958b;
-  min-width: 112px;
-  font-size: 10px;
-}
-
-.event-history p {
-  margin: 3px 0;
-  color: #8b918c;
-}
-
 .event-cancel-panel {
   margin-top: 24px;
   border: 1px solid #ead9d3;
@@ -1240,10 +1210,6 @@
   }
   .event-tabs .nav-link i {
     display: none;
-  }
-  .event-history li {
-    gap: 5px;
-    flex-direction: column;
   }
   .event-budget-grid {
     gap: 10px;

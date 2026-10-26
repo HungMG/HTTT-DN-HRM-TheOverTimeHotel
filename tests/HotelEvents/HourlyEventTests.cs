@@ -31,9 +31,8 @@ internal static class HourlyEventTests
             bool Covered(DateTimeOffset from, DateTimeOffset to) => HourlyEventRules.CanRecordWork(item, assignment, from, to, now);
             Equal(true, Covered(day.AddHours(15), day.AddHours(17)));
             Equal(false, Covered(day.AddHours(14), day.AddHours(15)));
-            item.PhutChuanBi = 60;
             Equal(false, Covered(day.AddHours(14), day.AddHours(15)));
-            item.NgayKetThuc = day.AddHours(16); item.PhutThuDon = 60;
+            item.NgayKetThuc = day.AddHours(16);
             Equal(false, Covered(day.AddHours(16), day.AddHours(17)));
             item.NgayKetThuc = day.AddHours(20);
             Equal(false, Covered(day.AddHours(16), day.AddHours(18)));
@@ -104,14 +103,13 @@ internal static class HourlyEventTests
             Equal("KY_THUAT",HotelEventRules.ResolveDepartmentCode(2,"Kỹ thuật"));
             Equal<string?>(null,HotelEventRules.ResolveDepartmentCode(2,"Hành chính nhân sự"));
         });
-        Check("Role coverage follows declared windows and the department saved at assignment", () =>
+        Check("Role coverage uses the whole event and the department saved at assignment", () =>
         {
-            var e=new DuAn { TinhTheoGio=true, LoaiDuAn="HOI_NGHI_MICE", NgayBatDau=day.AddHours(8), NgayKetThuc=day.AddDays(2).AddHours(17), SoKhachDuKien=40 };
-            e.NhuCaus.Add(new NhuCauSuKien { MaPhongBan="AM_THUC", VaiTro="Phục vụ tiệc trà",SoNguoi=1,BatDau=day.AddHours(8),KetThuc=day.AddHours(17) });
-            e.NhuCaus.Add(new NhuCauSuKien { MaPhongBan="AM_THUC", VaiTro="Phục vụ tiệc trà",SoNguoi=1,BatDau=day.AddDays(2).AddHours(8),KetThuc=day.AddDays(2).AddHours(17) });
-            e.PhanCongs.Add(new PhanCongDuAn { MaNhanVien=1,MaPhongBanSuKien="AM_THUC",VaiTroDuAn="Phục vụ tiệc trà",BatDau=day.AddHours(8),KetThuc=day.AddHours(17),NhanVien=new NhanVien { MaPhongBan=5 } });
+            var e=new DuAn { TinhTheoGio=true, LoaiDuAn="HOI_NGHI_MICE", NgayBatDau=day.AddHours(8), NgayKetThuc=day.AddHours(17), SoKhachDuKien=40 };
+            e.NhuCaus.Add(new NhuCauSuKien { MaPhongBan="AM_THUC", VaiTro="Phục vụ tiệc trà",SoNguoi=1 });
+            e.PhanCongs.Add(new PhanCongDuAn { MaNhanVien=1,MaPhongBanSuKien="AM_THUC",VaiTroDuAn="Phục vụ tiệc trà",BatDau=day.AddHours(8),KetThuc=day.AddHours(12),NhanVien=new NhanVien { MaPhongBan=5 } });
             Equal(false,HotelEventRules.GetStaffingSummary(e).IsFullyStaffed);
-            e.PhanCongs.Add(new PhanCongDuAn { MaNhanVien=2,MaPhongBanSuKien="AM_THUC",VaiTroDuAn="Phục vụ tiệc trà",BatDau=day.AddDays(2).AddHours(8),KetThuc=day.AddDays(2).AddHours(17) });
+            e.PhanCongs.Add(new PhanCongDuAn { MaNhanVien=2,MaPhongBanSuKien="AM_THUC",VaiTroDuAn="Phục vụ tiệc trà",BatDau=day.AddHours(12),KetThuc=day.AddHours(17) });
             Equal(true,HotelEventRules.GetStaffingSummary(e).IsFullyStaffed);
             e.PhanCongs.Last().TrangThaiThamGia="HUY_PHAN_CONG";
             Equal(false,HotelEventRules.GetStaffingSummary(e).IsFullyStaffed);
