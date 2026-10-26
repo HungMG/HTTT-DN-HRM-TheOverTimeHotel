@@ -34,7 +34,7 @@
             <span asp-validation-for="Value" class="text-danger"></span>
             <div id="value-help" class="form-text">
                 @if (Model.Category == CauHinhLuongCategory.TangCa) { <span>Ví dụ: 1.50 là hệ số 150%; 0.30 là phần cộng thêm 30% cho ca đêm.</span> }
-                else if (Model.Category == CauHinhLuongCategory.KhauTru) { <span>Bảo hiểm nhập %, vi phạm nhập VNĐ/phút. Thuế TNCN được tính lũy tiến; định mức thuế và tạm ứng tại đây là giá trị tham chiếu.</span> }
+                else if (Model.Category == CauHinhLuongCategory.KhauTru) { <span>Bảo hiểm nhập %, vi phạm nhập VNĐ/phút. Thuế TNCN được tính lũy tiến; định mức thuế tại đây là giá trị tham chiếu (không áp dụng tạm ứng lương).</span> }
                 else { <span>Nhập tối đa hai chữ số thập phân.</span> }
             </div>
         </div>

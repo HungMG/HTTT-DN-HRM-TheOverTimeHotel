@@ -65,16 +65,13 @@
 
     <!-- 2. STEPPER TIẾN TRÌNH KỲ LƯƠNG + THANH TRẠNG THÁI -->
     @{
-        // Vị trí hiện tại trên tiến trình 5 bước. Bị từ chối thì dừng ngay ở bước HR kiểm tra.
-        var currentStep = status switch
-        {
-            "MO" => 1,
-            "NHAP" or "TU_CHOI" => 2,
-            "CHO_DUYET" => 3,
-            "DA_DUYET" => 4,
-            "KHOA_SO" => 5,
-            _ => 1
-        };
+        var isLocked = status == "KHOA_SO";
+        var isApproved = !isLocked && Model.CurrentPeriod?.NgayDuyet.HasValue == true;
+        var isRejected = !isLocked && !string.IsNullOrEmpty(Model.CurrentPeriod?.LyDoTuChoi);
+        var isPendingApproval = !isLocked && Model.CurrentPeriod?.NgayGuiDuyet.HasValue == true && !isApproved && !isRejected;
+
+        // Vị trí hiện tại trên tiến trình 5 bước.
+        var currentStep = isLocked ? 5 : (isApproved ? 4 : (isPendingApproval ? 3 : (Model.Items.Count > 0 ? 2 : 1)));
 
         var steps = new (string Title, string Desc)[]
         {
@@ -90,10 +87,10 @@
         @for (int i = 0; i < steps.Length; i++)
         {
             var stepNumber = i + 1;
-            var isStep5Done = stepNumber == 5 && status == "KHOA_SO" && Model.ArePayslipsPublished;
+            var isStep5Done = stepNumber == 5 && isLocked && Model.ArePayslipsPublished;
             var isActive = stepNumber == currentStep && !isStep5Done;
-            var isRejectedStep = status == "TU_CHOI" && stepNumber == currentStep;
-            var isCompleted = (stepNumber < currentStep || isStep5Done) && !(status == "TU_CHOI" && stepNumber >= currentStep);
+            var isRejectedStep = isRejected && stepNumber == currentStep;
+            var isCompleted = (stepNumber < currentStep || isStep5Done) && !(isRejected && stepNumber >= currentStep);
             var stateClass = isRejectedStep ? "rejected" : (isActive ? "active" : (isCompleted ? "completed" : ""));
             var iconClass = isRejectedStep ? "bi-x-lg" : (isCompleted ? "bi-check-lg" : stepNumber.ToString());
 
@@ -126,16 +123,12 @@
     <div class="payroll-status-bar">
         <div class="payroll-status-meta">
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="badge @(status == "TU_CHOI" ? "bg-danger" : (status == "CHO_DUYET" ? "bg-warning text-dark" : (status == "DA_DUYET" ? "bg-primary" : (status == "KHOA_SO" ? "bg-success" : "bg-secondary")))) rounded-pill px-3 py-1">
-                    @(status switch
-                    {
-                        "NHAP" => "Bản nháp HR đang kiểm tra",
-                        "CHO_DUYET" => "Đang chờ Ban Giám Đốc duyệt",
-                        "DA_DUYET" => "Ban Giám Đốc đã phê duyệt",
-                        "TU_CHOI" => "Bị từ chối duyệt",
-                        "KHOA_SO" => "Đã khóa sổ tài chính",
-                        _ => "Kỳ lương mở (Chưa tính)"
-                    })
+                <span class="badge @(isRejected ? "bg-danger" : (isPendingApproval ? "bg-warning text-dark" : (isApproved ? "bg-primary" : (isLocked ? "bg-success" : (Model.Items.Count > 0 ? "bg-info text-dark" : "bg-secondary"))))) rounded-pill px-3 py-1">
+                    @(isLocked ? "Đã khóa sổ (KHOA_SO)" :
+                      (isApproved ? "Ban Giám Đốc đã duyệt (MO)" :
+                      (isPendingApproval ? "Đang chờ Ban Giám Đốc duyệt (MO)" :
+                      (isRejected ? "Bị từ chối duyệt (MO)" :
+                      (Model.Items.Count > 0 ? "Kỳ lương mở - Đang kiểm tra (MO)" : "Kỳ lương mở - Chưa tính (MO)")))))
                 </span>
 
                 @if (Model.IsHR)
@@ -159,7 +152,7 @@
                 }
             </div>
 
-            @if (status == "TU_CHOI")
+            @if (isRejected)
             {
                 <div class="mt-2 text-danger fw-semibold">
                     <i class="bi bi-x-circle-fill me-1"></i>

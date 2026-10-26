@@ -25,7 +25,7 @@ public static class CauHinhLuongLabels
         CauHinhLuongCategory.KhauTru => new Dictionary<string, string>
         {
             ["BAO_HIEM"] = "Bảo hiểm", ["THUE"] = "Thuế TNCN",
-            ["VI_PHAM"] = "Vi phạm", ["TAM_UNG"] = "Tạm ứng"
+            ["VI_PHAM"] = "Vi phạm", ["TAM_UNG"] = "Khấu trừ khác"
         },
         _ => new Dictionary<string, string>()
     };

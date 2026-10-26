@@ -67,6 +67,7 @@ public class AttendanceViewModel : INotifyPropertyChanged
         ClosePopupCommand = new Command(ExecuteClosePopup);
         PreviousMonthCommand = new Command(() => ShiftMonth(-1));
         NextMonthCommand = new Command(() => ShiftMonth(1));
+        FilterStatusCommand = new Command<AttendanceStatusFilter>(ApplyStatusFilter);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -299,12 +300,46 @@ public class AttendanceViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _popupBorderColor, value);
     }
 
+    /// <summary>
+    /// Danh sách đang hiển thị — đã qua bộ lọc trạng thái. Giữ nguyên tên cũ để
+    /// CollectionView không phải sửa binding.
+    /// </summary>
     public ObservableCollection<AttendanceRecord> MonthlyRecords { get; } = new();
+
+    /// <summary>
+    /// Toàn bộ bản ghi của tháng, chưa lọc. Bộ lọc chỉ chiếu lại từ danh sách này
+    /// nên mỗi lần bấm nút không phải gọi lại máy chủ.
+    /// </summary>
+    private readonly List<AttendanceRecord> _allMonthlyRecords = new();
+
+    /// <summary>Bốn nút lọc trạng thái, bind qua BindableLayout vào Grid 4 cột.</summary>
+    public ObservableCollection<AttendanceStatusFilter> StatusFilters { get; } = new()
+    {
+        new AttendanceStatusFilter { Code = FilterAll, Name = "Tất cả", ColumnIndex = 0, IsSelected = true },
+        new AttendanceStatusFilter { Code = FilterOnTime, Name = "Đúng giờ", ColumnIndex = 1 },
+        new AttendanceStatusFilter { Code = FilterLate, Name = "Trễ/Sớm", ColumnIndex = 2 },
+        new AttendanceStatusFilter { Code = FilterAbsent, Name = "Vắng", ColumnIndex = 3 }
+    };
+
+    private const string FilterAll = "ALL";
+    private const string FilterOnTime = "DUNG_GIO";
+    private const string FilterLate = "TRE_SOM";
+    private const string FilterAbsent = "VANG_MAT";
+
+    private string _activeStatusFilter = FilterAll;
 
     public bool HasMonthlyRecords => MonthlyRecords.Count > 0;
 
-    /// <summary>Trạng thái nghịch đảo, dùng để ẩn CollectionView khi tháng chưa có dữ liệu.</summary>
+    /// <summary>Trạng thái nghịch đảo, dùng để ẩn CollectionView khi danh sách rỗng.</summary>
     public bool HasNoMonthlyRecords => MonthlyRecords.Count == 0;
+
+    /// <summary>
+    /// Câu báo khi danh sách rỗng. Tách hai trường hợp để người dùng không tưởng
+    /// tháng đó mất dữ liệu chỉ vì bộ lọc đang chọn không khớp ngày nào.
+    /// </summary>
+    public string HistoryEmptyMessage => _allMonthlyRecords.Count == 0
+        ? "Chưa có dữ liệu chấm công trong tháng này"
+        : "Không có ngày nào khớp bộ lọc đã chọn";
 
     public bool CanGoNextMonth => _monthLabelYear < DateTime.Now.Year
                                   || (_monthLabelYear == DateTime.Now.Year && _monthLabelMonth < DateTime.Now.Month);
@@ -321,6 +356,9 @@ public class AttendanceViewModel : INotifyPropertyChanged
     public ICommand ClosePopupCommand { get; }
     public ICommand PreviousMonthCommand { get; }
     public ICommand NextMonthCommand { get; }
+
+    /// <summary>Nhận <see cref="AttendanceStatusFilter"/> từ nút được bấm.</summary>
+    public ICommand FilterStatusCommand { get; }
 
     #endregion
 
@@ -397,15 +435,78 @@ public class AttendanceViewModel : INotifyPropertyChanged
     {
         var records = await _attendanceService.GetMonthlyAttendanceAsync(_monthLabelYear, _monthLabelMonth);
 
-        MonthlyRecords.Clear();
+        _allMonthlyRecords.Clear();
         foreach (var record in records)
         {
-            MonthlyRecords.Add(ToAttendanceRecord(record));
+            _allMonthlyRecords.Add(ToAttendanceRecord(record));
+        }
+
+        RefreshFilterCounts();
+        ApplyStatusFilter(StatusFilters.First(f => f.Code == _activeStatusFilter));
+    }
+
+    /// <summary>
+    /// Cập nhật số ngày trên từng nút lọc. "Trễ/Sớm" gộp cả ba trạng thái
+    /// DI_TRE, VE_SOM, TRE_VA_SOM vì trên điện thoại bốn nút chia đều không đủ
+    /// chỗ cho từng loại riêng, mà người dùng cũng chỉ cần biết "ngày có vấn đề".
+    /// </summary>
+    private void RefreshFilterCounts()
+    {
+        foreach (var filter in StatusFilters)
+        {
+            filter.Count = filter.Code switch
+            {
+                FilterAll => _allMonthlyRecords.Count,
+                FilterOnTime => _allMonthlyRecords.Count(r => r.TrangThaiCode == AttendanceCalculator.STATUS_DUNG_GIO),
+                FilterLate => _allMonthlyRecords.Count(r => r.TrangThaiCode
+                    is AttendanceCalculator.STATUS_DI_TRE
+                    or AttendanceCalculator.STATUS_VE_SOM
+                    or AttendanceCalculator.STATUS_TRE_VA_SOM),
+                FilterAbsent => _allMonthlyRecords.Count(r => r.TrangThaiCode == AttendanceCalculator.STATUS_VANG),
+                _ => 0
+            };
+        }
+    }
+
+    /// <summary>
+    /// Đổ lại danh sách hiển thị theo nút lọc vừa bấm. Bấm lại nút đang chọn
+    /// không bỏ lọc — người dùng có nút "Tất cả" riêng để làm việc đó.
+    /// </summary>
+    private void ApplyStatusFilter(AttendanceStatusFilter? filter)
+    {
+        if (filter is null)
+        {
+            return;
+        }
+
+        _activeStatusFilter = filter.Code;
+
+        foreach (var item in StatusFilters)
+        {
+            item.IsSelected = ReferenceEquals(item, filter);
+        }
+
+        MonthlyRecords.Clear();
+        foreach (var record in _allMonthlyRecords.Where(MatchesActiveFilter))
+        {
+            MonthlyRecords.Add(record);
         }
 
         OnPropertyChanged(nameof(HasMonthlyRecords));
         OnPropertyChanged(nameof(HasNoMonthlyRecords));
+        OnPropertyChanged(nameof(HistoryEmptyMessage));
     }
+
+    private bool MatchesActiveFilter(AttendanceRecord record) => _activeStatusFilter switch
+    {
+        FilterOnTime => record.TrangThaiCode == AttendanceCalculator.STATUS_DUNG_GIO,
+        FilterLate => record.TrangThaiCode
+            is AttendanceCalculator.STATUS_DI_TRE
+            or AttendanceCalculator.STATUS_VE_SOM
+            or AttendanceCalculator.STATUS_TRE_VA_SOM,
+        FilterAbsent => record.TrangThaiCode == AttendanceCalculator.STATUS_VANG,
+        _ => true
+    };
 
     /// <summary>
     /// Quẹt thẻ vào ca, tự lấy toạ độ và tên thiết bị trước khi gửi lên máy chủ.
@@ -651,6 +752,13 @@ public class AttendanceViewModel : INotifyPropertyChanged
 
     private static AttendanceRecord ToAttendanceRecord(MonthlyAttendanceDto dto)
     {
+        // Ngày chưa có dòng cham_cong (chưa quẹt thẻ) trả về chuỗi rỗng, nhưng badge
+        // vẫn hiện "Vắng mặt" ở nhánh default. Quy về đúng mã VANG_MAT để bộ đếm
+        // trên các nút lọc khớp với những gì người dùng nhìn thấy trên từng dòng.
+        var trangThai = string.IsNullOrWhiteSpace(dto.TrangThai)
+            ? AttendanceCalculator.STATUS_VANG
+            : dto.TrangThai;
+
         var record = new AttendanceRecord
         {
             NgayLamViec = dto.NgayLamViec.ToString("dd/MM/yyyy"),
@@ -660,10 +768,10 @@ public class AttendanceViewModel : INotifyPropertyChanged
             PhutDiTreText = dto.PhutDiTre > 0 ? $"{dto.PhutDiTre} phút" : "0 phút",
             PhutVeSomText = dto.PhutVeSom > 0 ? $"{dto.PhutVeSom} phút" : "0 phút",
             GioOtText = dto.GioOt > 0m ? $"{dto.GioOt:0.##} giờ" : "0 giờ",
-            TrangThaiCode = dto.TrangThai
+            TrangThaiCode = trangThai
         };
 
-        (record.TrangThaiText, record.TrangThaiBgColor, record.TrangThaiTextColor) = dto.TrangThai switch
+        (record.TrangThaiText, record.TrangThaiBgColor, record.TrangThaiTextColor) = trangThai switch
         {
             AttendanceCalculator.STATUS_DUNG_GIO => ("Đúng giờ", "#ECFDF5", "#059669"),
             AttendanceCalculator.STATUS_DI_TRE => ("Đi trễ", "#FEF3C7", "#B45309"),

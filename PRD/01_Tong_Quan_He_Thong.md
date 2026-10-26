@@ -155,7 +155,7 @@ Nhằm đáp ứng toàn diện bài toán quản trị nhân lực đặc thù 
 ### 5.6. Phân Hệ 6: Tính Toán Lương Tự Động Hàng Tháng & Phiếu Lương PDF
 - **Công thức tính toán 2 tầng (Gross -> Net):**
   * Tầng 1: Tổng thu nhập (Gross) = Lương ngày công thực tế + Tiền làm thêm giờ (OT 1.5 - 3.0) + Phụ cấp ca đêm (+30%) + Phụ cấp ăn ca + Các khoản phụ cấp trách nhiệm/độc hại + Tiền thưởng KPI/buồng phòng/Lễ Tết + Thù lao dự án/sự kiện.
-  * Tầng 2: Thu nhập thực nhận (Net) = Gross - Tổng các khoản khấu trừ (Bảo hiểm bắt buộc 10.5% gồm BHXH 8%, BHYT 1.5%, BHTN 1% + Tiền phạt vi phạm trễ/sớm + Tạm ứng + Thuế thu nhập cá nhân TNCN theo biểu lũy tiến từng phần).
+  * Tầng 2: Thu nhập thực nhận (Net) = Gross - Tổng các khoản khấu trừ (Bảo hiểm bắt buộc 10.5% gồm BHXH 8%, BHYT 1.5%, BHTN 1% + Tiền phạt vi phạm trễ/sớm/bỏ ca + Thuế thu nhập cá nhân TNCN theo biểu lũy tiến từng phần; không áp dụng tạm ứng).
 - **Quy trình khóa sổ kỳ lương (Payroll Lock):** Đóng kỳ lương để bảo toàn dữ liệu lịch sử, ngăn chặn mọi sửa đổi trái phép sau khi đã đối soát hoàn tất.
 - **Xuất phiếu lương tiêu chuẩn QuestPDF:** Sinh file PDF phiếu lương chi tiết từng tháng với layout sang trọng, đầy đủ chi tiết thu chi, mã vạch tra cứu; hỗ trợ xuất bảng tổng hợp thu nhập năm phục vụ quyết toán thuế TNCN.
 - **Tra cứu di động:** Nhân viên tra cứu tức thì phiếu lương chi tiết của mình trên ứng dụng di động ngay khi kỳ lương được ban hành.
@@ -163,7 +163,7 @@ Nhằm đáp ứng toàn diện bài toán quản trị nhân lực đặc thù 
 ### 5.7. Phân Hệ 7: Quản Lý Phụ Cấp
 - **Phụ cấp ca đêm pháp lý (+30%):** Tự động tính toán phụ trội 30% mức lương theo giờ cho toàn bộ các giờ làm việc nằm trong khung ca đêm (22:00 – 06:00).
 - **Phụ cấp ăn ca định mức (30.000 VNĐ/ngày):** Tự động cộng dồn theo số ngày công làm việc thực tế của nhân viên trong tháng.
-- **Các khoản phụ cấp cố định theo chức danh:** Phụ cấp trách nhiệm quản lý, phụ cấp độc hại (khu vực giặt ủi hóa chất, kho lạnh F&B), phụ cấp trang phục/đồng phục, phụ cấp xăng xe đi lại và điện thoại liên lạc.
+- **Các khoản phụ cấp cố định theo chức danh:** Phụ cấp trách nhiệm quản lý, phụ cấp độc hại (khu vực giặt ủi hóa chất, kho lạnh F&B), phụ cấp trang phục/đồng phục (không áp dụng phụ cấp điện thoại liên lạc).
 - **Gắn cờ miễn/chịu thuế TNCN:** Tự động phân định khoản phụ cấp nào được miễn thuế (ăn ca trong định mức, trang phục trong định mức) và khoản nào tính vào thu nhập chịu thuế theo đúng Thông tư của Bộ Tài chính.
 
 ### 5.8. Phân Hệ 8: Quản Lý Tiền Thưởng
@@ -253,7 +253,7 @@ Cơ sở dữ liệu của hệ thống HRM The OverTime Hotel được thiết 
 | **23** | `chi_tiet_phieu_luong` | Phân hệ 6 | `ma_chi_tiet` | FK -> `phieu_luong`, `cau_hinh_khoan_luong`. Bản ghi chi tiết thu chi. |
 | **24** | `chi_tiet_tru_bao_hiem` | Phân hệ 6 | `ma_chi_tiet_bh` | FK -> `chi_tiet_phieu_luong` (1-1). Tách 3 khoản BHXH, BHYT, BHTN. |
 | **25** | `chi_tiet_tru_thue_tncn` | Phân hệ 6 | `ma_chi_tiet_thue` | FK -> `chi_tiet_phieu_luong` (1-1). Tính thuế theo biểu lũy tiến từng phần. |
-| **26** | `chi_tiet_tru_vi_pham_tam_ung` | Phân hệ 6 | `ma_chi_tiet_vp` | FK -> `chi_tiet_phieu_luong` (1-1). Khấu trừ vi phạm trễ/sớm và tạm ứng. |
+| **26** | `chi_tiet_tru_vi_pham_tam_ung` | Phân hệ 6 | `ma_chi_tiet_vp` | FK -> `chi_tiet_phieu_luong` (1-1). Khấu trừ vi phạm trễ/sớm/bỏ ca và khấu trừ khác (bỏ tạm ứng). |
 | **27** | `nhat_ky_quan_tri` | Phân hệ 11 | `ma_nhat_ky` | FK -> `tai_khoan`. Nhật ký kiểm toán thao tác hệ thống (Audit Log). |
 | **28** | `dinh_bien_ca` | Phân hệ 3 | `ma_dinh_bien` | FK -> `ca_lam_viec`, `chuc_vu`. Số người tối thiểu mỗi ca × chức vụ để cảnh báo thiếu người khi xếp ca. |
 | **29** | `giai_trinh_cham_cong` | Phân hệ 3 & 4 | `ma_giai_trinh` | FK -> `phan_ca`, `nhan_vien` (người gửi, quản lý xác minh, HR xác nhận). Giải trình sai lệch giờ quẹt thẻ, duyệt 2 cấp. |

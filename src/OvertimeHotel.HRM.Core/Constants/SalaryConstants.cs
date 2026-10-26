@@ -16,6 +16,10 @@ public static class SalaryConstants
     public const decimal BHTN_RATE = 0.01m;                  // BHTN 1.0%
     public const decimal TOTAL_INSURANCE_RATE = 0.105m;      // Tổng cộng 10.5%
 
+    // Mức trần tiền lương đóng bảo hiểm theo luật
+    public const decimal MAX_INSURANCE_SALARY_BASE = 46800000m;              // 20 lần lương cơ sở (2.340.000đ x 20) cho BHXH, BHYT
+    public const decimal MAX_UNEMPLOYMENT_INSURANCE_SALARY_BASE = 99200000m; // 20 lần lương tối thiểu vùng 1 (4.960.000đ x 20) cho BHTN
+
     // Định mức phụ cấp ăn ca miễn thuế TNCN
     public const decimal MEAL_ALLOWANCE_PER_DAY = 30000m;    // 30.000 VNĐ / ngày công thực tế
 
@@ -32,13 +36,15 @@ public static class SalaryConstants
     // Hệ số thù lao sự kiện khách sạn
     public const decimal EVENT_EXCELLENT_BONUS_RATE = 0.10m; // Thưởng đánh giá xuất sắc +10%
 
-    // Trạng thái kỳ lương
+    // Trạng thái kỳ lương (Chỉ gồm 2 trạng thái duy nhất: MO và KHOA_SO)
     public const string PERIOD_OPEN = "MO";
-    public const string PERIOD_DRAFT = "NHAP";
-    public const string PERIOD_PENDING_APPROVAL = "CHO_DUYET";
-    public const string PERIOD_APPROVED = "DA_DUYET";
-    public const string PERIOD_REJECTED = "TU_CHOI";
     public const string PERIOD_LOCKED = "KHOA_SO";
+
+    // Tương thích ngược: toàn bộ giai đoạn chưa khóa sổ đều thuộc trạng thái MO
+    public const string PERIOD_DRAFT = "MO";
+    public const string PERIOD_PENDING_APPROVAL = "MO";
+    public const string PERIOD_APPROVED = "MO";
+    public const string PERIOD_REJECTED = "MO";
 
     // Trạng thái phiếu lương
     public const string PAYSLIP_DRAFT = "NHAP";

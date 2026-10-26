@@ -31,7 +31,7 @@ $$\text{Gross} = \text{Lương Ngày Công} + \text{Tiền Tăng Ca (OT)} + \tex
 
 4. **Phụ Cấp Ăn Ca & Phụ Cấp Khác:**
    - **Phụ cấp ăn ca:** 30.000 VNĐ / ngày công thực tế có mặt tại khách sạn (khoản không chịu thuế TNCN theo quy định).
-   - **Phụ cấp khác:** Phụ cấp trách nhiệm, phụ cấp điện thoại, phụ cấp độc hại (nếu có theo cấu hình `cau_hinh_phu_cap`).
+   - **Phụ cấp khác:** Phụ cấp trách nhiệm quản lý, phụ cấp độc hại buồng phòng (theo cấu hình `cau_hinh_phu_cap`). *Chính sách khách sạn không áp dụng phụ cấp điện thoại.*
 
 5. **Thưởng Dự Án / Sự Kiện Khách Sạn (Event / Project Bonus):**
    - Tiền thưởng chi trả cho nhân viên khi được điều động tham gia phục vụ các sự kiện, tiệc cưới, hội nghị (MICE), gala dinner, festival ẩm thực, hoặc đón đoàn VIP của khách sạn ngoài ca định biên tiêu chuẩn.
@@ -161,7 +161,7 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 - Nếu $\text{Thu nhập tính thuế} \leq 0$ → **Tiền thuế = 0** (không phát sinh nghĩa vụ nộp, không cấp âm).
 - **Phụ cấp ăn ca (30.000đ/ngày) là khoản không chịu thuế** — đã được cờ `chiu_thue_tncn = FALSE` trong bảng `CAU_HINH_PHU_CAP`. Vì vậy khoản này **vẫn cộng vào Gross** (mục 4 Tầng 1) nhưng **không đưa vào Thu nhập chịu thuế**. Đây là lý do dòng "Phụ cấp ăn ca" phải in trên phiếu lương ở bảng Thu Nhập chứ không nằm ở bảng Khấu Trừ.
 - **Phụ cấp Dự án / Thù Lao Sự Kiện Khách Sạn là khoản thu nhập chịu thuế TNCN 100%:** Khoản thù lao này phát sinh từ việc nhân viên tham gia phục vụ sự kiện, tiệc cưới, hội nghị của khách sạn, mang tính chất tiền công / tiền thù lao trực tiếp nên **bắt buộc chịu thuế TNCN** (`chiu_thue_tncn = TRUE`). Do đó, khoản phụ cấp này **thuộc Thu nhập chịu thuế** và không được trừ ra khỏi Gross khi tính toán thu nhập chịu thuế.
-- Các khoản cộng/trừ vào thu nhập chịu thuế ngoài các bảo hiểm bắt buộc (vd: phụ cấp trách nhiệm quản lý, phụ cấp điện thoại — cờ `chiu_thue_tncn = TRUE`) **chưa chốt cụ thể, cần xác minh**.
+- Các khoản cộng/trừ vào thu nhập chịu thuế ngoài các bảo hiểm bắt buộc: Phụ cấp trách nhiệm quản lý (`chiu_thue_tncn = TRUE`). *Lưu ý: Khách sạn đã loại bỏ phụ cấp điện thoại và tạm ứng lương.*
 
 #### 3.2. Bảng thuế suất TNCN lũy tiến từng phần
 
@@ -230,7 +230,7 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
      | 2 | Tiền OT | `(Lương CB / 26 / 8) × Số giờ OT × Hệ số` — tách dòng theo hệ số 1.5 / 2.0 / 3.0 nếu kỳ lương có cả 3 loại |
      | 3 | Phụ cấp ca đêm 30% | `(Lương CB / 26 / 8) × Số giờ ca đêm × 0.30` |
      | 4 | **Phụ cấp ăn ca** | `30.000đ × Số ngày công thực tế` (khoản miễn thuế TNCN) |
-     | 5 | Phụ cấp khác | Phụ cấp trách nhiệm / điện thoại / độc hại theo HĐLĐ hoặc cấu hình (nếu có) |
+     | 5 | Phụ cấp khác | Phụ cấp trách nhiệm quản lý / độc hại buồng phòng theo HĐLĐ hoặc cấu hình (bỏ phụ cấp điện thoại) |
      | 6 | **Phụ cấp Dự án / Sự kiện** | Thù lao sự kiện từ `phan_cong_du_an` (tách từng dòng sự kiện: *Tên sự kiện - Vai trò*, hoặc dòng gộp tổng có diễn giải chi tiết kèm thưởng xuất sắc nếu có) |
      | 7 | Tiền thưởng | Thưởng doanh thu buồng phòng / sự kiện / KPI |
      | | **TỔNG GROSS** | **= Tổng các dòng thu nhập trên** |
@@ -244,16 +244,16 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
      | 3 | BHTN | `1% × Lương cơ bản` |
      | 4 | **Thuế TNCN** | Khấu trừ theo biểu lũy tiến từng phần — xem mục *3.1 & 3.2* |
      | 5 | Phạt vi phạm | Gom từ các khoản phạt đi trễ / về sớm / bỏ ca trong kỳ |
-     | 6 | Tạm ứng lương | Gom từ khoản tạm ứng trong kỳ (nếu phát sinh `loai_khoan_tru = 'TAM_UNG'`) |
+     | 6 | Khấu trừ khác | Gom từ khoản khấu trừ thủ công khác trong kỳ (nếu có; bỏ tạm ứng lương) |
      | | **TỔNG KHẤU TRỪ** | **= Tổng các dòng khấu trừ trên** |
 
    - **Điều kiện cân bằng (Bất biến toàn vẹn bắt buộc kiểm chứng trước khi sinh PDF):**
      $$\text{Tổng Gross in} = \text{Lương công thực tế} + \text{Tiền OT} + \text{Phụ cấp ca đêm} + \text{Phụ cấp ăn ca} + \text{Phụ cấp khác} + \text{Phụ cấp Dự án / Sự kiện} + \text{Tiền thưởng}$$
-     $$\text{Tổng Khấu Trừ in} = \text{BHXH} + \text{BHYT} + \text{BHTN} + \text{Thuế TNCN} + \text{Phạt vi phạm} \ (+ \text{Tạm ứng nếu có})$$
+     $$\text{Tổng Khấu Trừ in} = \text{BHXH} + \text{BHYT} + \text{BHTN} + \text{Thuế TNCN} + \text{Phạt vi phạm} \ (+ \text{Khấu trừ khác nếu có})$$
      $$\text{Lương Net in} = \text{Tổng Gross in} - \text{Tổng Khấu Trừ in}$$
      - **Bất biến cân bằng bắt buộc:** $\text{Lương Net in} = \text{Tổng Gross in} - \text{Tổng Khấu Trừ in}$. Số tiền Net in đậm cuối phiếu lương **bắt buộc phải bằng đúng phép trừ số học** giữa hai tổng hiển thị trên phiếu lương. Bất kỳ sai lệch nào (dù chỉ 1 đồng) cũng sẽ khiến trình tạo file QuestPDF ném ngoại lệ (`InvalidOperationException`) và từ chối phát hành phiếu lương.
      - Thiếu dòng **Phụ cấp ăn ca**, dòng **Phụ cấp Dự án / Sự kiện** (thuộc Gross) hoặc dòng **Thuế TNCN** (thuộc khấu trừ) sẽ làm phiếu lương **không cân bằng** — các dòng này bắt buộc phải có trên mẫu phiếu lương nếu phát sinh (hoặc hiển thị 0đ nếu không phát sinh).
-     - *Ngoại lệ:* nếu bật tính năng **Tạm ứng lương** (`loai_khoan_tru = 'TAM_UNG'`, có sẵn trong bảng `CAU_HINH_KHAU_TRU`), dòng này là dòng thứ 6 của bảng Khấu Trừ và **được tính vào Tổng Khấu Trừ in** để bảo đảm tính cân bằng.
+     - *Chính sách Tạm ứng lương:* Khách sạn **không áp dụng chính sách tạm ứng lương** trong kỳ. Bảng khấu trừ chỉ bao gồm Bảo hiểm, Thuế TNCN, Phạt vi phạm kỷ luật và Khấu trừ khác do HR điều chỉnh nếu có.
    - **Dòng tổng kết:** Lương Net in đậm kèm số tiền viết bằng chữ.
 
 ---

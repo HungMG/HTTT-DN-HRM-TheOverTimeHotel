@@ -60,6 +60,12 @@
     <div class="col-md-6"><label asp-for="Employee.EmailCaNhan" class="form-label">Email cá nhân</label><input asp-for="Employee.EmailCaNhan" type="email" class="form-control" placeholder="Không bắt buộc" readonly="@completingProfile" maxlength="100" /><span class="form-text">Chỉ lưu hồ sơ, không dùng đăng nhập.</span><span asp-validation-for="Employee.EmailCaNhan" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.DienThoai" class="form-label">Điện thoại *</label><input asp-for="Employee.DienThoai" type="tel" inputmode="tel" autocomplete="tel" class="form-control" required maxlength="12" pattern="@OvertimeHotel.HRM.WebAdmin.Models.NhanVienFormViewModel.MobilePhonePattern" data-val="true" data-val-required="Vui lòng nhập điện thoại." data-val-regex="Số điện thoại phải có dạng 0912345678 hoặc +84912345678." data-val-regex-pattern="@OvertimeHotel.HRM.WebAdmin.Models.NhanVienFormViewModel.MobilePhonePattern" title="Nhập số di động như 0912345678 hoặc +84912345678" aria-describedby="employeePhoneHelp" /><div id="employeePhoneHelp" class="form-text">Ví dụ: 0912345678 hoặc +84912345678. Không nhập khoảng trắng.</div><span asp-validation-for="Employee.DienThoai" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.NgayVaoLam" class="form-label">Ngày vào làm *</label><input asp-for="Employee.NgayVaoLam" type="date" class="form-control" readonly="@completingProfile" /><span asp-validation-for="Employee.NgayVaoLam" class="text-danger small"></span></div>
+    <div class="col-md-6">
+        <label asp-for="Employee.SoNguoiPhuThuoc" class="form-label">Số người phụ thuộc (thuế TNCN)</label>
+        <input asp-for="Employee.SoNguoiPhuThuoc" type="number" min="0" max="20" class="form-control" />
+        <span class="form-text text-muted">Giảm trừ 4.400.000 đ/người/tháng khi tính thuế TNCN.</span>
+        <span asp-validation-for="Employee.SoNguoiPhuThuoc" class="text-danger small"></span>
+    </div>
     @if (Model.Employee.MaNhanVien > 0)
     {
         <div class="col-md-6">

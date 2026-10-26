@@ -5,6 +5,7 @@
              xmlns:models="clr-namespace:OvertimeHotel.HRM.MobileApp.Models"
              x:Class="OvertimeHotel.HRM.MobileApp.Views.AttendancePage"
              x:DataType="vm:AttendanceViewModel"
+             x:Name="attendancePage"
              BackgroundColor="#F8FAFC"
              NavigationPage.HasNavigationBar="False"
              Shell.NavBarIsVisible="False">
@@ -291,6 +292,46 @@
                         Stroke="#E2E8F0"
                         BackgroundColor="#FFFFFF">
                     <VerticalStackLayout>
+                        <!-- BỘ LỌC TRẠNG THÁI: 4 nút chia đều, kèm số ngày khớp.
+                             BindableLayout chèn từng Border vào Grid theo thứ tự nên mỗi
+                             nút tự khai báo Grid.Column qua thuộc tính ColumnIndex. -->
+                        <Grid ColumnDefinitions="*,*,*,*"
+                              ColumnSpacing="6"
+                              Padding="12,12,12,6"
+                              BindableLayout.ItemsSource="{Binding StatusFilters}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:AttendanceStatusFilter">
+                                    <Border Grid.Column="{Binding ColumnIndex}"
+                                            BackgroundColor="{Binding BackgroundColor}"
+                                            Stroke="{Binding BorderColor}"
+                                            StrokeThickness="{Binding BorderWidth}"
+                                            StrokeShape="RoundRectangle 12"
+                                            Padding="4,7">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding BindingContext.FilterStatusCommand, Source={x:Reference attendancePage}, x:DataType=ContentPage}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <VerticalStackLayout Spacing="1">
+                                            <Label Text="{Binding Name}"
+                                                   FontFamily="{Binding NameFontFamily}"
+                                                   FontSize="10"
+                                                   CharacterSpacing="0.4"
+                                                   TextColor="{Binding TextColor}"
+                                                   HorizontalOptions="Center"
+                                                   MaxLines="1"
+                                                   LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding Count}"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="16"
+                                                   TextColor="{Binding CountColor}"
+                                                   HorizontalOptions="Center" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </Grid>
+
                         <CollectionView ItemsSource="{Binding MonthlyRecords}"
                                     IsVisible="{Binding HasMonthlyRecords}"
                                     SelectionMode="None">
@@ -345,7 +386,7 @@
                             </CollectionView.ItemTemplate>
                         </CollectionView>
 
-                        <Label Text="Chưa có dữ liệu chấm công trong tháng này"
+                        <Label Text="{Binding HistoryEmptyMessage}"
                                IsVisible="{Binding HasNoMonthlyRecords}"
                                FontFamily="SegoeUI"
                                FontSize="12"

@@ -300,7 +300,7 @@ Bảng đối chiếu khẳng định tính đồng bộ tuyệt đối giữa h
 | 21 | `chi_tiet_phieu_luong` | **D5** | Tiền lương & Thu chi | Chi tiết phân rã từng khoản mục thu nhập và khấu trừ cấu thành phiếu lương. |
 | 22 | `chi_tiet_tru_bao_hiem` | **D5** | Tiền lương & Thu chi | Phân rã 3 khoản bảo hiểm trích từ lương người lao động: BHXH (8%), BHYT (1.5%), BHTN (1%). |
 | 23 | `chi_tiet_tru_thue_tncn` | **D5** | Tiền lương & Thu chi | Bản ghi tính thuế TNCN theo biểu thuế lũy tiến từng phần sau khi trừ các khoản giảm trừ gia cảnh. |
-| 24 | `chi_tiet_tru_vi_pham_tam_ung` | **D5** | Tiền lương & Thu chi | Khấu trừ tiền phạt kỷ luật (đi trễ, về sớm, bỏ ca trực) và hoàn trả các khoản tạm ứng lương trong tháng. |
+| 24 | `chi_tiet_tru_vi_pham_tam_ung` | **D5** | Tiền lương & Thu chi | Khấu trừ tiền phạt kỷ luật (đi trễ, về sớm, bỏ ca trực) và các khoản khấu trừ khác (bỏ tạm ứng). |
 | 25 | `nhat_ky_quan_tri` | **D6** | Nhật ký & Kiểm toán | Ghi vết kiểm toán quản trị hệ thống: thời điểm, tài khoản thao tác, loại hành động và dữ liệu thay đổi. |
 | **26** | **`du_an`** | **D9** | **Quản lý Dự án & Sự kiện** | **Lưu trữ thông tin dự án/sự kiện đặc thù (tiệc cưới gala, hội nghị, lễ hội ẩm thực), ngân sách thù lao, thời gian và quản lý phụ trách.** |
 | **27** | **`phan_cong_du_an`** | **D9** | **Quản lý Dự án & Sự kiện** | **Quản lý phân công nhân sự tham gia dự án, vai trò nhiệm vụ, số giờ làm việc, mức thù lao/phụ cấp sự kiện nghiệm thu để đổ vào lương.** |

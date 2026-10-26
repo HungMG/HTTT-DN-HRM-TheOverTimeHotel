@@ -271,6 +271,7 @@ public class NhanVienController : Controller
             employee.DiaChi = model.Employee.DiaChi;
             employee.TrinhDo = model.Employee.TrinhDo;
             employee.NgayVaoLam = contract!.NgayBatDau;
+            employee.SoNguoiPhuThuoc = Math.Max(0, model.Employee.SoNguoiPhuThuoc);
             employee.IsProfileComplete = true;
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã thêm hồ sơ nhân viên “{model.Employee.HoTen}”.";
@@ -349,6 +350,7 @@ public class NhanVienController : Controller
         employee.NgayVaoLam = model.Employee.NgayVaoLam;
         employee.NgayThoiViec = model.Employee.NgayThoiViec;
         employee.TrangThai = model.Employee.TrangThai;
+        employee.SoNguoiPhuThuoc = Math.Max(0, model.Employee.SoNguoiPhuThuoc);
 
         try
         {

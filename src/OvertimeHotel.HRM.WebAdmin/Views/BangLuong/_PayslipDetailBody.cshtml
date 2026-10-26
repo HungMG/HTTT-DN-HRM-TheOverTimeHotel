@@ -395,7 +395,7 @@
                 @if (Model.AdvanceItems.Count > 0)
                 {
                     <div class="py-2">
-                        <div class="fw-semibold text-dark mb-1">4. Tạm ứng &amp; Khấu trừ khác</div>
+                        <div class="fw-semibold text-dark mb-1">4. Khấu trừ khác</div>
                         <div class="bg-light rounded-3 p-2 small">
                             @foreach (var ad in Model.AdvanceItems)
                             {
@@ -409,7 +409,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="chiTietId" value="@ad.MaChiTiet" />
                                                 <input type="hidden" name="phieuLuongId" value="@Model.MaPhieuLuong" />
-                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng tạm ứng" onclick="return confirm('Xóa dòng tạm ứng này?');">
+                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng khấu trừ" onclick="return confirm('Xóa dòng khấu trừ này?');">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
@@ -439,7 +439,7 @@
                         <i class="bi bi-pencil-square text-primary"></i> HR điều chỉnh &amp; sửa sai sót thủ công
                     </h5>
                     <p class="text-muted small mb-0 mt-1">
-                        Nếu phát hiện sai sót chấm công, thiếu phụ cấp sự kiện hoặc cần thưởng đột xuất / tạm ứng, HR có thể bổ sung trực tiếp tại đây. Hệ thống sẽ tự động cập nhật lại toàn bộ Gross, Khấu trừ, Thuế TNCN và Thực nhận Net.
+                        Nếu phát hiện sai sót chấm công, thiếu phụ cấp sự kiện hoặc cần thưởng đột xuất / khấu trừ khác, HR có thể bổ sung trực tiếp tại đây. Hệ thống sẽ tự động cập nhật lại toàn bộ Gross, Khấu trừ, Thuế TNCN và Thực nhận Net.
                     </p>
                 </div>
                 <div class="card-body p-3 p-md-4">
@@ -452,7 +452,7 @@
                             <select name="LoaiKhoan" class="form-select rounded-3">
                                 <option value="PHU_CAP">Phụ cấp (Cộng vào Gross)</option>
                                 <option value="THUONG">Tiền thưởng (Cộng vào Gross)</option>
-                                <option value="KHAU_TRU">Khấu trừ / Tạm ứng (Trừ vào Net)</option>
+                                <option value="KHAU_TRU">Khấu trừ khác (Trừ vào Net)</option>
                             </select>
                         </div>
 

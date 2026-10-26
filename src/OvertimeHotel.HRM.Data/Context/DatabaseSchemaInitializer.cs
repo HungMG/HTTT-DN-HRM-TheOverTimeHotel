@@ -52,6 +52,37 @@ public static class DatabaseSchemaInitializer
             ALTER TABLE phieu_luong DROP CONSTRAINT IF EXISTS phieu_luong_trang_thai_check;
             ALTER TABLE phieu_luong ADD CONSTRAINT phieu_luong_trang_thai_check 
                 CHECK (trang_thai IN ('NHAP', 'CHO_DUYET', 'DA_DUYET', 'DA_THANH_TOAN'));
+
+            ALTER TABLE nhan_vien
+                ADD COLUMN IF NOT EXISTS so_nguoi_phu_thuoc INT NOT NULL DEFAULT 0;
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM nhan_vien WHERE so_nguoi_phu_thuoc > 0) THEN
+                    UPDATE nhan_vien
+                    SET so_nguoi_phu_thuoc = CASE ma_nhan_vien
+                        WHEN 1 THEN 2
+                        WHEN 2 THEN 1
+                        WHEN 3 THEN 1
+                        WHEN 5 THEN 2
+                        WHEN 7 THEN 1
+                        WHEN 8 THEN 1
+                        WHEN 11 THEN 3
+                        WHEN 12 THEN 1
+                        WHEN 14 THEN 2
+                        WHEN 15 THEN 1
+                        WHEN 17 THEN 2
+                        ELSE 0
+                    END
+                    WHERE ma_nhan_vien BETWEEN 1 AND 20;
+                END IF;
+            END $$;
+
+            DELETE FROM chi_tiet_phieu_luong WHERE ma_phu_cap = 3;
+            DELETE FROM cau_hinh_phu_cap WHERE ma_phu_cap = 3 OR ten_phu_cap ILIKE '%điện thoại%';
+
+            DELETE FROM chi_tiet_phieu_luong WHERE ma_khoan_tru = 6;
+            DELETE FROM cau_hinh_khau_tru WHERE ma_khoan_tru = 6 OR loai_khoan_tru = 'TAM_UNG' OR ten_khoan_tru ILIKE '%tạm ứng%';
             """;
 
         return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);

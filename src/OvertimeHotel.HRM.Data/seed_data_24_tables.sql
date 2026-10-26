@@ -139,13 +139,13 @@ SELECT setval('loai_don_ma_loai_don_seq', (SELECT MAX(ma_loai_don) FROM LOAI_DON
 
 -- 8. NẠP BẢNG CAU_HINH_KHOAN_LUONG (7 Khoản định mức thu chi)
 INSERT INTO CAU_HINH_KHOAN_LUONG (ma_khoan, ten_khoan, loai_khoan, gia_tri_mac_dinh, mo_ta) VALUES
-(1, 'Phụ cấp ăn ca', 'PHU_CAP', 730000.00, 'Hỗ trợ ăn trưa/tối tại khách sạn (730.000 đ/tháng)'),
+(1, 'Phụ cấp ăn ca', 'PHU_CAP', 30000.00, 'Hỗ trợ ăn ca theo ngày công thực tế (30.000 đ/ngày, miễn thuế TNCN)'),
 (2, 'Phụ cấp ca đêm (30%)', 'PHU_CAP', 0.00, 'Cộng thêm 30% lương theo số giờ làm ca đêm thực tế'),
-(3, 'Phụ cấp trách nhiệm quản lý', 'PHU_CAP', 1500000.00, 'Phụ cấp điều hành dành cho cấp Trưởng bộ phận & Giám sát'),
+(3, 'Phụ cấp trách nhiệm quản lý', 'PHU_CAP', 1000000.00, 'Phụ cấp điều hành dành cho cấp Trưởng bộ phận & Giám sát (1.000.000 đ/tháng)'),
 (4, 'Tiền thưởng chuyên cần', 'THUONG', 500000.00, 'Thưởng nhân viên làm việc đủ công và không đi trễ/về sớm'),
 (5, 'Tiền phí phục vụ (Service Charge)', 'THUONG', 1000000.00, 'Phí dịch vụ khách sạn chia đều hàng tháng cho nhân sự'),
 (6, 'Khấu trừ BHXH, BHYT, BHTN (10.5%)', 'KHAU_TRU', 0.00, 'Trích nộp 10.5% lương cơ bản theo quy định bảo hiểm Nhà nước'),
-(7, 'Phạt vi phạm đi trễ / về sớm', 'KHAU_TRU', 50000.00, 'Khấu trừ 50.000 đ cho mỗi lần vi phạm giờ giấc không phép')
+(7, 'Phạt vi phạm đi trễ / về sớm', 'KHAU_TRU', 2000.00, 'Khấu trừ 2.000 đ cho mỗi phút vi phạm giờ giấc không phép')
 ON CONFLICT (ma_khoan) DO UPDATE 
 SET ten_khoan = EXCLUDED.ten_khoan, loai_khoan = EXCLUDED.loai_khoan, gia_tri_mac_dinh = EXCLUDED.gia_tri_mac_dinh, mo_ta = EXCLUDED.mo_ta;
 
@@ -161,29 +161,29 @@ SET tu_ngay = EXCLUDED.tu_ngay, den_ngay = EXCLUDED.den_ngay, trang_thai = EXCLU
 SELECT setval('ky_luong_ma_ky_luong_seq', (SELECT MAX(ma_ky_luong) FROM KY_LUONG));
 
 -- 10. NẠP BẢNG NHAN_VIEN (20 Nhân viên mẫu - tách ho và ten)
-INSERT INTO NHAN_VIEN (ma_nhan_vien, ma_phong_ban, ma_chuc_vu, ho, ten, ngay_sinh, gioi_tinh, dien_thoai, email, dia_chi, trinh_do, ngay_vao_lam, trang_thai) VALUES
-(1, 1, 1, 'Nguyễn Đình', 'Cường', '1985-05-12', 'NAM', '0901234567', 'cuong.nguyen@overtimehotel.com', '123 Nguyễn Huệ, Q.1, TP.HCM', 'Thạc sĩ Quản trị Khách sạn', '2022-01-01', 'DANG_LAM'),
-(2, 8, 10, 'Võ Huỳnh Minh', 'Sang', '1992-08-20', 'NAM', '0912345678', 'sang.vo@overtimehotel.com', '45 Lê Duẩn, Q.1, TP.HCM', 'Đại học Quản trị Nhân sự', '2024-03-01', 'DANG_LAM'),
-(3, 2, 2, 'Nguyễn Hoàng', 'Long', '1990-11-15', 'NAM', '0923456789', 'long.nguyen@overtimehotel.com', '78 Hai Bà Trưng, Q.3, TP.HCM', 'Đại học Du lịch', '2023-06-15', 'DANG_LAM'),
-(4, 2, 4, 'Châu Quốc', 'Bảo', '1996-03-25', 'NAM', '0934567890', 'bao.chau@overtimehotel.com', '12 Võ Văn Tần, Q.3, TP.HCM', 'Cao đẳng Lễ tân', '2025-01-01', 'DANG_LAM'),
-(5, 3, 2, 'Trần Thị', 'Mai', '1988-09-10', 'NU', '0945678901', 'mai.tran@overtimehotel.com', '89 CMT8, Q.10, TP.HCM', 'Đại học Kinh tế', '2023-08-01', 'DANG_LAM'),
-(6, 3, 5, 'Lê Văn', 'Hùng', '1997-04-18', 'NAM', '0956789012', 'hung.le@overtimehotel.com', '34 Hoàng Hoa Thám, Bình Thạnh', 'Trung cấp Nghề', '2025-02-01', 'DANG_LAM'),
-(7, 3, 5, 'Phạm Thị', 'Lan', '1998-12-05', 'NU', '0967890123', 'lan.pham@overtimehotel.com', '56 Phan Đăng Lưu, Phú Nhuận', 'Trung cấp Nghề', '2025-02-15', 'DANG_LAM'),
-(8, 4, 2, 'Vũ Minh', 'Tuấn', '1987-07-22', 'NAM', '0978901234', 'tuan.vu@overtimehotel.com', '102 Nguyễn Trãi, Q.5, TP.HCM', 'Đại học Du lịch', '2023-05-01', 'DANG_LAM'),
-(9, 4, 3, 'Hoàng Thị', 'Thảo', '1994-01-30', 'NU', '0989012345', 'thao.hoang@overtimehotel.com', '215 Lý Thường Kiệt, Q.11', 'Cao đẳng F&B', '2024-10-01', 'DANG_LAM'),
-(10, 4, 7, 'Đỗ Thành', 'Đạt', '2001-06-14', 'NAM', '0990123456', 'dat.do@overtimehotel.com', '77 Trường Chinh, Tân Bình', 'Trung cấp Phục vụ', '2026-08-01', 'DANG_LAM'),
-(11, 5, 6, 'Bùi Văn', 'Nam', '1983-02-28', 'NAM', '0902345678', 'nam.bui@overtimehotel.com', '91 Nam Kỳ Khởi Nghĩa, Q.3', 'Chứng chỉ Bếp Trưởng Quốc tế', '2023-04-01', 'DANG_LAM'),
-(12, 5, 3, 'Đặng Văn', 'Kiên', '1993-10-17', 'NAM', '0913456789', 'kien.dang@overtimehotel.com', '180 Ung Văn Khiêm, Bình Thạnh', 'Cao đẳng Chế biến Món ăn', '2024-11-01', 'DANG_LAM'),
-(13, 5, 7, 'Ngô Thị', 'Bích', '1999-05-08', 'NU', '0924567890', 'bich.ngo@overtimehotel.com', '42 Đinh Bộ Lĩnh, Bình Thạnh', 'Trung cấp Bếp', '2025-03-01', 'DANG_LAM'),
-(14, 6, 2, 'Trương Quốc', 'Huy', '1986-12-19', 'NAM', '0935678901', 'huy.truong@overtimehotel.com', '63 Sư Vạn Hạnh, Q.10', 'Kỹ sư Cơ điện Bách Khoa', '2023-07-01', 'DANG_LAM'),
-(15, 6, 8, 'Đinh Văn', 'Phong', '1995-08-25', 'NAM', '0946789012', 'phong.dinh@overtimehotel.com', '118 Phạm Văn Đồng, Gò Vấp', 'Kỹ sư Điện lạnh', '2024-09-01', 'DANG_LAM'),
-(16, 6, 8, 'Phan Hồng', 'Quân', '1997-03-11', 'NAM', '0957890123', 'quan.phan@overtimehotel.com', '29 Quang Trung, Gò Vấp', 'Cao đẳng Kỹ thuật', '2025-01-15', 'DANG_LAM'),
-(17, 7, 2, 'Lâm Văn', 'Tiến', '1984-04-03', 'NAM', '0968901234', 'tien.lam@overtimehotel.com', '84 Bạch Đằng, Tân Bình', 'Sĩ quan An ninh giải ngũ', '2023-06-01', 'DANG_LAM'),
-(18, 7, 9, 'Hà Trọng', 'Nghĩa', '1996-09-15', 'NAM', '0979012345', 'nghia.ha@overtimehotel.com', '52 Phan Huy Ích, Gò Vấp', 'Chứng chỉ Vệ sĩ Chuyên nghiệp', '2025-02-01', 'DANG_LAM'),
-(19, 7, 9, 'Đoàn Văn', 'Thắng', '2000-11-20', 'NAM', '0980123456', 'thang.doan@overtimehotel.com', '135 Nguyễn Oanh, Gò Vấp', 'Bộ đội xuất ngũ', '2026-08-01', 'DANG_LAM'),
-(20, 2, 4, 'Dương Thùy', 'Linh', '1998-07-07', 'NU', '0991234567', 'linh.duong@overtimehotel.com', '19 Bà Huyện Thanh Quan, Q.3', 'Đại học Ngoại ngữ', '2025-03-01', 'DANG_LAM')
+INSERT INTO NHAN_VIEN (ma_nhan_vien, ma_phong_ban, ma_chuc_vu, ho, ten, ngay_sinh, gioi_tinh, dien_thoai, email, dia_chi, trinh_do, ngay_vao_lam, trang_thai, so_nguoi_phu_thuoc) VALUES
+(1, 1, 1, 'Nguyễn Đình', 'Cường', '1985-05-12', 'NAM', '0901234567', 'cuong.nguyen@overtimehotel.com', '123 Nguyễn Huệ, Q.1, TP.HCM', 'Thạc sĩ Quản trị Khách sạn', '2022-01-01', 'DANG_LAM', 2),
+(2, 8, 10, 'Võ Huỳnh Minh', 'Sang', '1992-08-20', 'NAM', '0912345678', 'sang.vo@overtimehotel.com', '45 Lê Duẩn, Q.1, TP.HCM', 'Đại học Quản trị Nhân sự', '2024-03-01', 'DANG_LAM', 1),
+(3, 2, 2, 'Nguyễn Hoàng', 'Long', '1990-11-15', 'NAM', '0923456789', 'long.nguyen@overtimehotel.com', '78 Hai Bà Trưng, Q.3, TP.HCM', 'Đại học Du lịch', '2023-06-15', 'DANG_LAM', 1),
+(4, 2, 4, 'Châu Quốc', 'Bảo', '1996-03-25', 'NAM', '0934567890', 'bao.chau@overtimehotel.com', '12 Võ Văn Tần, Q.3, TP.HCM', 'Cao đẳng Lễ tân', '2025-01-01', 'DANG_LAM', 0),
+(5, 3, 2, 'Trần Thị', 'Mai', '1988-09-10', 'NU', '0945678901', 'mai.tran@overtimehotel.com', '89 CMT8, Q.10, TP.HCM', 'Đại học Kinh tế', '2023-08-01', 'DANG_LAM', 2),
+(6, 3, 5, 'Lê Văn', 'Hùng', '1997-04-18', 'NAM', '0956789012', 'hung.le@overtimehotel.com', '34 Hoàng Hoa Thám, Bình Thạnh', 'Trung cấp Nghề', '2025-02-01', 'DANG_LAM', 0),
+(7, 3, 5, 'Phạm Thị', 'Lan', '1998-12-05', 'NU', '0967890123', 'lan.pham@overtimehotel.com', '56 Phan Đăng Lưu, Phú Nhuận', 'Trung cấp Nghề', '2025-02-15', 'DANG_LAM', 1),
+(8, 4, 2, 'Vũ Minh', 'Tuấn', '1987-07-22', 'NAM', '0978901234', 'tuan.vu@overtimehotel.com', '102 Nguyễn Trãi, Q.5, TP.HCM', 'Đại học Du lịch', '2023-05-01', 'DANG_LAM', 1),
+(9, 4, 3, 'Hoàng Thị', 'Thảo', '1994-01-30', 'NU', '0989012345', 'thao.hoang@overtimehotel.com', '215 Lý Thường Kiệt, Q.11', 'Cao đẳng F&B', '2024-10-01', 'DANG_LAM', 0),
+(10, 4, 7, 'Đỗ Thành', 'Đạt', '2001-06-14', 'NAM', '0990123456', 'dat.do@overtimehotel.com', '77 Trường Chinh, Tân Bình', 'Trung cấp Phục vụ', '2026-08-01', 'DANG_LAM', 0),
+(11, 5, 6, 'Bùi Văn', 'Nam', '1983-02-28', 'NAM', '0902345678', 'nam.bui@overtimehotel.com', '91 Nam Kỳ Khởi Nghĩa, Q.3', 'Chứng chỉ Bếp Trưởng Quốc tế', '2023-04-01', 'DANG_LAM', 3),
+(12, 5, 3, 'Đặng Văn', 'Kiên', '1993-10-17', 'NAM', '0913456789', 'kien.dang@overtimehotel.com', '180 Ung Văn Khiêm, Bình Thạnh', 'Cao đẳng Chế biến Món ăn', '2024-11-01', 'DANG_LAM', 1),
+(13, 5, 7, 'Ngô Thị', 'Bích', '1999-05-08', 'NU', '0924567890', 'bich.ngo@overtimehotel.com', '42 Đinh Bộ Lĩnh, Bình Thạnh', 'Trung cấp Bếp', '2025-03-01', 'DANG_LAM', 0),
+(14, 6, 2, 'Trương Quốc', 'Huy', '1986-12-19', 'NAM', '0935678901', 'huy.truong@overtimehotel.com', '63 Sư Vạn Hạnh, Q.10', 'Kỹ sư Cơ điện Bách Khoa', '2023-07-01', 'DANG_LAM', 2),
+(15, 6, 8, 'Đinh Văn', 'Phong', '1995-08-25', 'NAM', '0946789012', 'phong.dinh@overtimehotel.com', '118 Phạm Văn Đồng, Gò Vấp', 'Kỹ sư Điện lạnh', '2024-09-01', 'DANG_LAM', 1),
+(16, 6, 8, 'Phan Hồng', 'Quân', '1997-03-11', 'NAM', '0957890123', 'quan.phan@overtimehotel.com', '29 Quang Trung, Gò Vấp', 'Cao đẳng Kỹ thuật', '2025-01-15', 'DANG_LAM', 0),
+(17, 7, 2, 'Lâm Văn', 'Tiến', '1984-04-03', 'NAM', '0968901234', 'tien.lam@overtimehotel.com', '84 Bạch Đằng, Tân Bình', 'Sĩ quan An ninh giải ngũ', '2023-06-01', 'DANG_LAM', 2),
+(18, 7, 9, 'Hà Trọng', 'Nghĩa', '1996-09-15', 'NAM', '0979012345', 'nghia.ha@overtimehotel.com', '52 Phan Huy Ích, Gò Vấp', 'Chứng chỉ Vệ sĩ Chuyên nghiệp', '2025-02-01', 'DANG_LAM', 0),
+(19, 7, 9, 'Đoàn Văn', 'Thắng', '2000-11-20', 'NAM', '0980123456', 'thang.doan@overtimehotel.com', '135 Nguyễn Oanh, Gò Vấp', 'Bộ đội xuất ngũ', '2026-08-01', 'DANG_LAM', 0),
+(20, 2, 4, 'Dương Thùy', 'Linh', '1998-07-07', 'NU', '0991234567', 'linh.duong@overtimehotel.com', '19 Bà Huyện Thanh Quan, Q.3', 'Đại học Ngoại ngữ', '2025-03-01', 'DANG_LAM', 0)
 ON CONFLICT (ma_nhan_vien) DO UPDATE 
-SET ho = EXCLUDED.ho, ten = EXCLUDED.ten, dien_thoai = EXCLUDED.dien_thoai, email = EXCLUDED.email;
+SET ho = EXCLUDED.ho, ten = EXCLUDED.ten, dien_thoai = EXCLUDED.dien_thoai, email = EXCLUDED.email, so_nguoi_phu_thuoc = EXCLUDED.so_nguoi_phu_thuoc;
 
 SELECT setval('nhan_vien_ma_nhan_vien_seq', (SELECT MAX(ma_nhan_vien) FROM NHAN_VIEN));
 
