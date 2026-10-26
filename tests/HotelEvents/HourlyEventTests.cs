@@ -31,6 +31,11 @@ internal static class HourlyEventTests
             bool Covered(DateTimeOffset from, DateTimeOffset to) => HourlyEventRules.CanRecordWork(item, assignment, from, to, now);
             Equal(true, Covered(day.AddHours(15), day.AddHours(17)));
             Equal(false, Covered(day.AddHours(14), day.AddHours(15)));
+            item.PhutChuanBi = 60;
+            Equal(false, Covered(day.AddHours(14), day.AddHours(15)));
+            item.NgayKetThuc = day.AddHours(16); item.PhutThuDon = 60;
+            Equal(false, Covered(day.AddHours(16), day.AddHours(17)));
+            item.NgayKetThuc = day.AddHours(20);
             Equal(false, Covered(day.AddHours(16), day.AddHours(18)));
             Equal(false, HourlyEventRules.CanRecordWork(item, assignment, day.AddHours(15), day.AddHours(17), day.AddHours(16)));
             shift.DaCongBo = false; Equal(false, Covered(day.AddHours(15), day.AddHours(17))); shift.DaCongBo = true;

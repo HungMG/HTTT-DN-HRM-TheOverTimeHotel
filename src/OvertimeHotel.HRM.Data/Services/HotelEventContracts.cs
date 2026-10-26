@@ -23,6 +23,7 @@ public class EventInput
     public bool CalculateBudgetAtAcceptance { get; set; }
     public string? Description { get; set; }
     public bool HourlyCompensation { get; set; }
+    // Kept for older clients; saving an event always fixes its location and clears both buffers.
     public int? VenueId { get; set; }
     public int SetupMinutes { get; set; }
     public int TeardownMinutes { get; set; }

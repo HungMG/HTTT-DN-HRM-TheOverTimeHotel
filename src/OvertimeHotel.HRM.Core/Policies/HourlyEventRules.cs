@@ -19,8 +19,7 @@ public static class HourlyEventRules
             && assignment.MaPhanCa == shift.MaPhanCa && shift.MaNhanVien == assignment.MaNhanVien
             && start < end && end <= now && start >= assignment.BatDau && end <= assignment.KetThuc
             && start >= shift.BatDauDuKien && end <= shift.KetThucDuKien
-            && start >= item.NgayBatDau.AddMinutes(-item.PhutChuanBi)
-            && end <= item.NgayKetThuc.AddMinutes(item.PhutThuDon)
+            && start >= item.NgayBatDau && end <= item.NgayKetThuc
             && (!item.KetThucThucTe.HasValue || end <= item.KetThucThucTe);
     }
 

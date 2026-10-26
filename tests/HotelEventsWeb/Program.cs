@@ -241,6 +241,28 @@ await Check("Participation forms request only start and end without attendance e
     Require(!html.Contains("name=\"Work.Start\""), "Recorded participation still offers additional break segments.");
 });
 
+await Check("Event form loads without querying the venue catalog", async () =>
+{
+    var (controller, _) = Controller();
+    var method = typeof(SuKienController).GetMethod("FormAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+    var model = await (Task<EventFormViewModel>)method.Invoke(controller, [new EventFormViewModel()])!;
+    Require(model.Venues.Count == 0, "Event form still depends on a venue catalog.");
+});
+
+await Check("Event form uses the hotel and only event start and end", async () =>
+{
+    foreach (var hourly in new[] { false, true })
+    {
+        var html = System.Net.WebUtility.HtmlDecode(await Render("_EventForm", new EventFormViewModel
+        { Input = new() { HourlyCompensation = hourly, Start = new(2028, 5, 10, 9, 0, 0), End = new(2028, 5, 10, 17, 0, 0) } }));
+        Require(html.Contains("Tại khách sạn"), "Form lost its fixed hotel location.");
+        foreach (var field in new[] { "Venue", "VenueId", "SetupMinutes", "TeardownMinutes" })
+            Require(!html.Contains("name=\"Input." + field + "\""), "Form still requests removed setting " + field);
+        Require(html.Contains("name=\"Input.Start\"") && html.Contains("name=\"Input.End\"")
+            && html.Contains("name=\"Input.ExpectedGuests\""), "Form lost event duration or guest count.");
+    }
+});
+
 if (args.Contains("--export"))
 {
     var export = Path.Combine(root, ".probe/codex-phase1-html");
@@ -284,6 +306,8 @@ public class StaffServiceStub : DispatchProxy
         "GetAsync" => ForbidStaff ? Task.FromException<DuAn?>(new EventOperationException("", "Permission changed", true))
             : FailStaff ? Task.FromException<DuAn?>(new IOException("Assignment query unavailable")) : Task.FromResult<DuAn?>(OutOfScope ? null : Item),
         "EmployeesAsync" => FailPicker ? Task.FromException<IReadOnlyList<NhanVien>>(new IOException("Picker unavailable")) : Task.FromResult<IReadOnlyList<NhanVien>>([]),
+        "ManagersAsync" => Task.FromResult<IReadOnlyList<NhanVien>>([]),
+        "VenuesAsync" => Task.FromException<IReadOnlyList<DiaDiemSuKien>>(new IOException("Venue catalog unavailable")),
         "ShiftsAsync" or "AvailableShiftsAsync" => Task.FromResult<IReadOnlyList<PhanCa>>([]),
         "HistoryAsync" => Task.FromResult<IReadOnlyList<NhatKyQuanTri>>([]),
         _ => throw new InvalidOperationException("Unexpected method: " + method.Name)

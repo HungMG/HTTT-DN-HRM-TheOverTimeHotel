@@ -4,6 +4,8 @@ namespace OvertimeHotel.HRM.Core.Policies;
 
 public static class HotelEventRules
 {
+    public const string HotelVenueName = "Tại khách sạn";
+
     public static int CountEffectiveStaff(IEnumerable<PhanCongDuAn> assignments) => assignments
         .Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"))
         .Select(p => p.MaNhanVien).Distinct().Count();

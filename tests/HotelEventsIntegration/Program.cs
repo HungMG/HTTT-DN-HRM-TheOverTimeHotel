@@ -168,7 +168,7 @@ try
         }
     });
 
-    await Check("Normalized venue overlaps are rejected and adjacency is allowed", async () =>
+    await Check("Hotel is a general location and simultaneous events do not reserve an exclusive hall", async () =>
     {
         var original = f.Input();
         await f.Create(original);
@@ -176,7 +176,10 @@ try
         overlap.Venue = $"  {original.Venue.ToLowerInvariant()}  ";
         overlap.Start = original.Start.AddMinutes(30);
         overlap.End = original.End;
-        await Reject(() => f.With(s => s.SaveAsync(f.Admin, overlap)));
+        var simultaneous = await f.Create(overlap);
+        Require(simultaneous.DiaDiem == "Tại khách sạn" && simultaneous.MaDiaDiem == null,
+            "Simultaneous hotel events unexpectedly require a hall.");
+        overlap.Name += "-adjacent";
         overlap.Start = original.End;
         overlap.End = original.End.AddHours(1);
         await f.Create(overlap);
@@ -293,7 +296,7 @@ try
         }
     });
 
-    await Check("Employee cannot overlap across different event venues", async () =>
+    await Check("Employee cannot overlap across simultaneous hotel events", async () =>
     {
         var input = f.Input();
         var a = await f.Create(input);
@@ -483,7 +486,7 @@ try
         Require(after.TrangThai == "HOAN_THANH" && after.MoTa != stale.Description, "Stale edit overwrote acceptance.");
     });
 
-    await Check("Cancellation requires a reason and releases venue bookings", async () =>
+    await Check("Cancellation requires a reason and keeps later hotel event creation available", async () =>
     {
         var input = f.Input();
         var item = await f.Create(input);
@@ -496,7 +499,7 @@ try
         await f.Create(replacement);
     });
 
-    await Check("Concurrent venue creates have exactly one winner", async () =>
+    await Check("Concurrent hotel events with distinct names can both be created", async () =>
     {
         var first = f.Input();
         var second = f.Input();
@@ -513,9 +516,9 @@ try
         var b = Create(second);
         gate.SetResult();
         var result = await Task.WhenAll(a, b);
-        Require(result.Count(x => x) == 1, "Venue race did not produce exactly one winner.");
+        Require(result.Count(x => x) == 2, "A general hotel location blocked simultaneous events.");
         await using var db = f.Open();
-        Require(await db.DuAns.CountAsync(e => e.TenDuAn == first.Name || e.TenDuAn == second.Name) == 1, "Venue race persisted conflicting records.");
+        Require(await db.DuAns.CountAsync(e => e.TenDuAn == first.Name || e.TenDuAn == second.Name) == 2, "Concurrent hotel event creation lost a record.");
     });
 
     await Check("Concurrent cross-event staffing has exactly one winner", async () =>

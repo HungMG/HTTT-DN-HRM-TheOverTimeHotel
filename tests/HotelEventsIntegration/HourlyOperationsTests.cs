@@ -9,16 +9,24 @@ static partial class HourlyOperationsTests
 
     public static async Task Run(Fixture f, Func<string, Func<Task>, Task> check)
     {
-        await check("Hourly booking reserves capacity and creates needs before staffing", async () =>
+        await check("Hourly booking uses the hotel without venue capacity or preparation buffers", async () =>
         {
             var input = await Input(f);
+            input.Venue = ""; input.VenueId = null; input.ExpectedGuests = 250;
             var item = await f.Create(input);
             Require(item.TinhTheoGio && item.PhanCongs.Count == 0 && item.NhuCaus.Count > 0,
                 "Booking should create editable staffing needs without requiring assigned employees.");
+            Require(item.DiaDiem == "Tại khách sạn" && item.MaDiaDiem == null, "Booking still requires a hall or venue catalog.");
+            var edit = f.Edit(item); edit.VenueId = int.MaxValue; edit.Venue = "Off-site venue";
+            edit.SetupMinutes = 60; edit.TeardownMinutes = 45;
+            await f.With(s => s.SaveAsync(f.HR, edit));
+            item = await f.Get(item.MaDuAn);
+            Require(item.DiaDiem == "Tại khách sạn" && item.MaDiaDiem == null
+                && item.PhutChuanBi == 0 && item.PhutThuDon == 0, "Client input restored removed venue or buffer settings.");
             await Reject(() => f.With(s => s.SaveVenueAsync(f.Manager, f.Prefix + "-forged-venue", 50)), forbidden: true);
             var tooLarge = await Input(f);
             tooLarge.ExpectedGuests = 101;
-            await Reject(() => f.With(s => s.SaveAsync(f.Admin, tooLarge)));
+            Require((await f.Create(tooLarge)).SoKhachDuKien == 101, "A removed venue capacity still limits guest counts.");
             var need = item.NhuCaus.First(n => n.MaPhongBan == "KY_THUAT");
             await f.With(s => s.SaveNeedAsync(f.HR, item.MaDuAn, new EventNeedInput
             {
@@ -296,7 +304,6 @@ static partial class HourlyOperationsTests
         input.Start = monday.ToDateTime(new TimeOnly(15, 0));
         input.End = input.Start.AddHours(5);
         input.HourlyCompensation = true;
-        input.VenueId = await f.With(s => s.SaveVenueAsync(f.HR, input.Venue, 100));
         return input;
     }
 

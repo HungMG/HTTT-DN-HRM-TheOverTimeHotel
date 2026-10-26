@@ -101,8 +101,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
                 Start = HotelEventRules.Local(item.NgayBatDau), End = HotelEventRules.Local(item.NgayKetThuc),
                 ManagerId = item.MaNguoiQuanLy, ExpectedGuests = item.SoKhachDuKien, Budget = item.NganSachPhuCap,
                 CalculateBudgetAtAcceptance = item.TinhPhuCapKhiNghiemThu, Description = item.MoTa,
-                HourlyCompensation = item.TinhTheoGio, VenueId = item.MaDiaDiem,
-                SetupMinutes = item.PhutChuanBi, TeardownMinutes = item.PhutThuDon
+                HourlyCompensation = item.TinhTheoGio
             }
         };
         SetContext(model, returnYear, returnMonth, returnDate ?? DateOnly.FromDateTime(model.Input.Start));
@@ -256,7 +255,11 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         var actor = await ActorAsync();
         if (actor?.IsOffice != true) return Forbid();
         SetContext(model, model.ReturnYear, model.ReturnMonth, model.ReturnDate);
-        if (!ModelState.IsValid) return View("Venues", await FormAsync(model));
+        if (!ModelState.IsValid)
+        {
+            model.Venues = await events.VenuesAsync();
+            return View("Venues", model);
+        }
         try
         {
             model.Input.VenueId = await events.SaveVenueAsync(actor, model.VenueName, model.VenueCapacity);
@@ -270,7 +273,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             if (ex.Forbidden) return Forbid();
             ModelState.AddModelError(ex.Field, ex.Message);
         }
-        await FormAsync(model);
+        model.Venues = await events.VenuesAsync();
         return View("Venues", model);
     }
 
@@ -280,7 +283,8 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         if ((await ActorAsync())?.IsOffice != true) return Forbid();
         var model = new EventFormViewModel();
         SetContext(model, returnYear, returnMonth, returnDate);
-        return View(await FormAsync(model));
+        model.Venues = await events.VenuesAsync();
+        return View(model);
     }
 
     private async Task<IActionResult> MutateAsync(int id, EventDetailsViewModel model, string tab, Func<EventActor, Task> operation, bool assignmentPopup = false)
@@ -326,7 +330,6 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     private async Task<EventFormViewModel> FormAsync(EventFormViewModel model)
     {
         model.Managers = (await events.ManagersAsync()).Select(x => new SelectListItem(x.HoTen, x.MaNhanVien.ToString())).ToList();
-        model.Venues = await events.VenuesAsync();
         return model;
     }
 
@@ -370,8 +373,8 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             History = await events.HistoryAsync(id), Tab = tab is "staff" or "acceptance" ? tab : "overview",
             Assignment = previous?.Assignment ?? new EventAssignmentInput
             {
-                Start = HotelEventRules.Local(item.NgayBatDau.AddMinutes(item.TinhTheoGio ? -item.PhutChuanBi : 0)),
-                End = HotelEventRules.Local(item.NgayKetThuc.AddMinutes(item.TinhTheoGio ? item.PhutThuDon : 0)), Version = item.Version
+                Start = HotelEventRules.Local(item.NgayBatDau),
+                End = HotelEventRules.Local(item.NgayKetThuc), Version = item.Version
             },
             SelectedDepartment = previous?.SelectedDepartment,
             Assignments = previous?.Assignments ?? [],

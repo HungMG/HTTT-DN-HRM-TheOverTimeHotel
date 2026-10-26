@@ -12,20 +12,7 @@
         <span class="event-eyebrow">01 · TỔ CHỨC</span><h3>Thông tin tổ chức</h3>
         <div class="mb-3"><label asp-for="Input.Name" class="form-label">Tên sự kiện <span aria-hidden="true">*</span></label><input asp-for="Input.Name" class="form-control" placeholder="Ví dụ: Hội nghị khách hàng cuối năm" required maxlength="200" /><span asp-validation-for="Input.Name" class="text-danger"></span></div>
         <div class="mb-3"><label asp-for="Input.Type" class="form-label">Loại sự kiện</label><select asp-for="Input.Type" class="form-select">@foreach (var type in HotelEventRules.TypeLabels) { <option value="@type.Key">@type.Value</option> }</select><span asp-validation-for="Input.Type" class="text-danger"></span></div>
-        @if (Model.Input.HourlyCompensation)
-        {
-            <div class="mb-3"><label asp-for="Input.VenueId" class="form-label">Địa điểm và sức chứa <span aria-hidden="true">*</span></label>
-                <select asp-for="Input.VenueId" class="form-select" required><option value="">Chọn địa điểm</option>@foreach (var venue in Model.Venues) { <option value="@venue.MaDiaDiem">@venue.TenDiaDiem · @venue.SucChua khách</option> }</select>
-                <span asp-validation-for="Input.VenueId" class="text-danger"></span>
-                <a asp-action="Venues" asp-route-returnYear="@Model.ReturnYear" asp-route-returnMonth="@Model.ReturnMonth" asp-route-returnDate="@Model.ReturnDate.ToString("yyyy-MM-dd")" target="_blank" rel="noopener">Thêm địa điểm (mở tab mới; tải lại biểu mẫu sau khi thêm)</a>
-            </div>
-            <div class="row"><div class="col-sm-6 mb-3"><label asp-for="Input.SetupMinutes" class="form-label">Chuẩn bị trước (phút)</label><input asp-for="Input.SetupMinutes" type="number" min="0" step="1" class="form-control" required /></div>
-                <div class="col-sm-6 mb-3"><label asp-for="Input.TeardownMinutes" class="form-label">Thu dọn sau (phút)</label><input asp-for="Input.TeardownMinutes" type="number" min="0" step="1" class="form-control" required /></div></div>
-        }
-        else
-        {
-        <div class="mb-3"><label asp-for="Input.Venue" class="form-label">Địa điểm <span aria-hidden="true">*</span></label><input asp-for="Input.Venue" class="form-control" placeholder="Sảnh, phòng hội nghị, khu vực tổ chức…" required maxlength="255" /><span asp-validation-for="Input.Venue" class="text-danger"></span></div>
-        }
+        <div class="mb-3"><span class="form-label d-block">Địa điểm</span><p class="form-control-plaintext mb-0">@HotelEventRules.HotelVenueName</p></div>
         <div class="mb-3"><label asp-for="Input.Start" class="form-label">Bắt đầu <span aria-hidden="true">*</span></label><input asp-for="Input.Start" data-event-start asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" min="@minDate" class="form-control" required /><span asp-validation-for="Input.Start" class="text-danger"></span></div>
         <div class="mb-3"><label asp-for="Input.End" class="form-label">Kết thúc <span aria-hidden="true">*</span></label><input asp-for="Input.End" data-event-end asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" min="@minDate" class="form-control" required /><span asp-validation-for="Input.End" class="text-danger"></span><div class="form-text">Theo giờ Việt Nam (UTC+7). Chỉ tạo từ hôm nay trở đi, có thể tổ chức qua nhiều ngày.</div></div>
     </section>

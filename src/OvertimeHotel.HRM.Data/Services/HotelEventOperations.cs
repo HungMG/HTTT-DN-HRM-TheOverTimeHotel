@@ -78,8 +78,8 @@ public sealed partial class HotelEventService
         var shifts = await db.PhanCas.AsNoTracking().Include(s => s.NhanVien).ThenInclude(n => n!.PhongBan)
             .Include(s => s.NhanVien).ThenInclude(n => n!.HopDongs).Include(s => s.CaLamViec).Include(s => s.ChamCong)
             .Where(s => s.DaCongBo && s.TrangThai != "DA_HUY" && s.TrangThai != "VANG_MAT"
-                && s.BatDauDuKien < item.NgayKetThuc.AddMinutes(item.PhutThuDon)
-                && s.KetThucDuKien > item.NgayBatDau.AddMinutes(-item.PhutChuanBi))
+                && s.BatDauDuKien < item.NgayKetThuc
+                && s.KetThucDuKien > item.NgayBatDau)
             .OrderBy(s => s.BatDauDuKien).ThenBy(s => s.MaNhanVien).ToListAsync();
         return shifts.Where(s => HotelEventRules.GetRequiredDepartments(item.LoaiDuAn)
             .Contains(HotelEventRules.ResolveDepartmentCode(s.NhanVien) ?? "")).ToList();
@@ -150,8 +150,8 @@ public sealed partial class HotelEventService
         var item = await Editable(actor, id, input.Version);
         Require(item.TrangThai == "LEN_KE_HOACH", "", "Chỉ sửa nhu cầu trước khi bắt đầu sự kiện.");
         var start = Utc(input.Start, "Need.Start"); var end = Utc(input.End, "Need.End");
-        Require(start < end && start >= item.NgayBatDau.AddMinutes(-item.PhutChuanBi)
-            && end <= item.NgayKetThuc.AddMinutes(item.PhutThuDon), "Need.End", "Khung phải nằm trong thời gian chuẩn bị đến hết thu dọn.");
+        Require(start < end && start >= item.NgayBatDau
+            && end <= item.NgayKetThuc, "Need.End", "Nhu cầu phải nằm trong giờ bắt đầu đến kết thúc sự kiện.");
         Require(HotelEventRules.GetRequiredDepartments(item.LoaiDuAn).Contains(input.Department), "Need.Department", "Phòng ban không phù hợp loại sự kiện.");
         var role = HotelEventRoleRules.ResolveRole(item.LoaiDuAn, input.Department, input.Role, null);
         Require(role != null, "Need.Role", "Chọn vai trò có trong danh mục.");
@@ -327,8 +327,8 @@ public sealed partial class HotelEventService
         var item = await Editable(actor, id, version);
         Require(item.TrangThai == "DANG_DIEN_RA", "", "Chỉ dừng sự kiện đang thực hiện.");
         var instant = Utc(end, "end");
-        var operationStart = item.NhuCaus.Where(n => n.SoNguoi > 0).Select(n => n.BatDau).DefaultIfEmpty(item.NgayBatDau).Min();
-        Require(instant >= operationStart && instant <= DateTimeOffset.UtcNow && instant <= item.NgayKetThuc.AddMinutes(item.PhutThuDon), "end", "Giờ dừng không hợp lệ.");
+        var operationStart = item.NgayBatDau;
+        Require(instant >= operationStart && instant <= DateTimeOffset.UtcNow && instant <= item.NgayKetThuc, "end", "Giờ dừng không hợp lệ.");
         Require(item.PhanCongs.SelectMany(p => p.CongThucTes).All(c => c.KetThuc <= instant), "", "Giờ dừng không được cắt mất công đã xác nhận.");
         item.KetThucThucTe = instant; item.LyDoDung = Text(reason, 500, "reason", "Lý do dừng");
         foreach (var p in item.PhanCongs.Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY")))

@@ -18,10 +18,10 @@ Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng th�
 - Kiểm tra trùng công của cùng nhân viên trên toàn bộ sự kiện, gồm công còn lưu trong lịch sử phân công đã hủy. Bảng xem trước cảnh báo để đối soát công trùng cũ; việc mở bảng không tự loại bỏ công hoặc tạo khoản chi trả.
 - Manager xác nhận giờ bắt đầu và kết thúc tham gia; server lưu người xác nhận và thời điểm. Thiếu hoặc thay đổi dữ liệu chấm công ca không làm thay đổi tiền sự kiện.
 - HR/Admin sửa khoảng giờ bằng lý do bắt buộc; giữ nguyên mã công và lưu đầy đủ dữ liệu trước/sau, người xác nhận và thời điểm trong cùng giao dịch. Dữ liệu, giải trình và quyết toán lịch sử đã có được giữ lại.
-- Công phải thuộc đúng sự kiện, trong phân công và ca nguồn đã công bố còn hiệu lực; giờ chuẩn bị/thu dọn chỉ được ghi trong giới hạn sự kiện và ca. Công của phân công đã hủy vẫn được hiển thị để đối soát nếu đã phát sinh, kèm cảnh báo thay vì bị bỏ khỏi bảng xem trước.
+- Giờ tham gia phải thuộc đúng sự kiện, trong phân công và ca nguồn đã công bố còn hiệu lực, từ giờ bắt đầu đến giờ kết thúc sự kiện. Không tính thêm thời gian chuẩn bị/thu dọn. Công của phân công đã hủy vẫn được hiển thị để đối soát nếu đã phát sinh, kèm cảnh báo thay vì bị bỏ khỏi bảng xem trước.
 - Hợp đồng đã chấm dứt vẫn làm căn cứ cho công trong khoảng ngày đã ghi nhận. Hợp đồng chấm dứt thiếu ngày kết thúc cần bổ sung căn cứ; không tự suy ra thời gian còn hiệu lực hoặc dùng mức lương mới nhất.
 - Phân công chưa thực hiện được hủy và giữ lịch sử. Đã làm dùng **Kết thúc / bàn giao**; thêm người thay thế trước nếu phần thời gian tương lai thiếu vai trò. Không xóa công để thay người.
-- Hủy sự kiện chỉ khi còn lên kế hoạch và chưa có công. Đã thực hiện dùng **Dừng sự kiện**, lưu giờ dừng/lý do, giữ phần công đã làm rồi chuyển chờ nghiệm thu. Chuẩn bị và thu dọn chỉ tính tiền khi có nhiệm vụ và công được xác nhận trong ca.
+- Hủy sự kiện chỉ khi còn lên kế hoạch và chưa có công. Đã thực hiện dùng **Dừng sự kiện**, lưu giờ dừng/lý do, giữ phần công đã làm rồi chuyển chờ nghiệm thu. Tiền sự kiện chỉ tính trong giờ bắt đầu đến kết thúc, hoặc giờ dừng thực tế nếu dừng trước.
 - Nút nghiệm thu dành cho HR/Admin sau khi xác nhận công/vắng mặt toàn bộ phân công hiệu lực. Xem trước hiển thị từng người, tháng phát sinh, phút, mức lương theo hợp đồng và tổng cộng. Không có hệ số đánh giá xuất sắc trong công thức mới.
 - Chọn hoặc tạo kỳ trả còn `MO`, `NHAP`, `TU_CHOI`, không trước tháng phát sinh. Nghiệm thu tính lại phía server và kiểm tra dấu xem trước để không khóa theo mức lương cũ nếu căn cứ vừa thay đổi.
 - Quyết toán lưu công, căn cứ lương, người duyệt/thời điểm và kỳ trả. Đổi lương sau nghiệm thu không định giá lại. Công qua tháng được tách theo tháng Việt Nam; có thể trả bổ sung vào kỳ mở sau.
@@ -29,7 +29,7 @@ Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng th�
 
 ### Địa điểm và thay đổi ca
 
-Địa điểm mới chọn từ danh mục có mã và sức chứa (`/SuKien/Venues`, HR/Admin). Giữ sảnh từ trước giờ tổ chức theo số phút chuẩn bị đến sau kết thúc theo số phút thu dọn. Hai yêu cầu giữ sảnh chồng nhau bị từ chối, kể cả chỉ chồng ở thời gian chuẩn bị/thu dọn.
+Sự kiện tổ chức cố định **Tại khách sạn**. Biểu mẫu không chọn sảnh/khu, không nhập sức chứa hoặc số phút chuẩn bị/thu dọn; vẫn nhập số khách dự kiến để sinh định mức nhân sự. Server cố định địa điểm, không gắn mã sảnh và lưu hai khoảng đệm bằng 0 kể cả khi client cũ gửi các trường này. Khách sạn là địa điểm chung, không phải một sảnh độc quyền nên có thể tạo nhiều sự kiện trùng giờ; kiểm tra trùng nhân sự/giờ tham gia vẫn được giữ.
 
 Khi đổi/hủy ca tương lai, phân công sự kiện từ ca đó được hủy hiệu lực và lưu lịch sử, sự kiện tăng phiên bản để quản lý bố trí lại. Ca đã có lịch sử công thực hiện không được sửa/xóa làm mất căn cứ; ca nguồn có lịch sử được giữ bằng trạng thái `DA_HUY` thay vì xóa vật lý. Ca hủy không tính vào lịch hoạt động/chấm công/lương. Trạng thái chấm công thường như hoàn thành không tự coi là thay lịch ca.
 
@@ -43,7 +43,7 @@ Migration không chuyển tiền lịch sử sang chính sách giờ. Sự kiệ
 
 `src/OvertimeHotel.HRM.Data/migrations/20261023_event_hourly_shift_planning.sql`
 
-Migration cộng thêm bảng/cột, khóa giao dịch dùng chung và trigger bảo vệ ca nguồn; chạy lại được. Không tự chạy trên database thật lúc khởi động. Trước phát hành: sao lưu, kiểm kê khoản cũ chưa trả, xác nhận danh mục sảnh và các loại đơn nghỉ (`loai_don.la_nghi_phep`). Migration chỉ đánh dấu các tên nghỉ thông dụng; loại đơn tùy biến cần HR xác nhận, không suy ra nghỉ từ cờ hưởng lương.
+Migration cộng thêm bảng/cột, khóa giao dịch dùng chung và trigger bảo vệ ca nguồn; chạy lại được. Không tự chạy trên database thật lúc khởi động. Trước phát hành: sao lưu, kiểm kê khoản cũ chưa trả và các loại đơn nghỉ (`loai_don.la_nghi_phep`). Danh mục sảnh cũ được giữ cho lịch sử; tạo/sửa sự kiện hiện tại không phụ thuộc danh mục này. Migration chỉ đánh dấu các tên nghỉ thông dụng; loại đơn tùy biến cần HR xác nhận, không suy ra nghỉ từ cờ hưởng lương.
 
 ```powershell
 dotnet run --project tests/HotelEvents/HotelEvents.csproj
