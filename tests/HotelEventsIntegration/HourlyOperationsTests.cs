@@ -16,12 +16,12 @@ static partial class HourlyOperationsTests
             var item = await f.Create(input);
             Require(item.TinhTheoGio && item.PhanCongs.Count == 0 && item.NhuCaus.Count > 0,
                 "Booking should create editable staffing needs without requiring assigned employees.");
-            Require(item.DiaDiem == "Tại khách sạn" && item.MaDiaDiem == null, "Booking still requires a hall or venue catalog.");
+            Require(item.DiaDiem == "Khách sạn The Overtime" && item.MaDiaDiem == null, "Booking still requires a hall or venue catalog.");
             var edit = f.Edit(item); edit.VenueId = int.MaxValue; edit.Venue = "Off-site venue";
             edit.SetupMinutes = 60; edit.TeardownMinutes = 45;
             await f.With(s => s.SaveAsync(f.HR, edit));
             item = await f.Get(item.MaDuAn);
-            Require(item.DiaDiem == "Tại khách sạn" && item.MaDiaDiem == null
+            Require(item.DiaDiem == "Khách sạn The Overtime" && item.MaDiaDiem == null
                 && item.PhutChuanBi == 0 && item.PhutThuDon == 0, "Client input restored removed venue or buffer settings.");
             await Reject(() => f.With(s => s.SaveVenueAsync(f.Manager, f.Prefix + "-forged-venue", 50)), forbidden: true);
             var tooLarge = await Input(f);

@@ -255,7 +255,7 @@ await Check("Event form uses the hotel and only event start and end", async () =
     {
         var html = System.Net.WebUtility.HtmlDecode(await Render("_EventForm", new EventFormViewModel
         { Input = new() { HourlyCompensation = hourly, Start = new(2028, 5, 10, 9, 0, 0), End = new(2028, 5, 10, 17, 0, 0) } }));
-        Require(html.Contains("Tại khách sạn"), "Form lost its fixed hotel location.");
+        Require(html.Contains("Khách sạn The Overtime"), "Form lost its fixed hotel location.");
         foreach (var field in new[] { "Venue", "VenueId", "SetupMinutes", "TeardownMinutes" })
             Require(!html.Contains("name=\"Input." + field + "\""), "Form still requests removed setting " + field);
         Require(html.Contains("name=\"Input.Start\"") && html.Contains("name=\"Input.End\"")

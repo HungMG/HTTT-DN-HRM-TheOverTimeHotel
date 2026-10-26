@@ -177,7 +177,7 @@ try
         overlap.Start = original.Start.AddMinutes(30);
         overlap.End = original.End;
         var simultaneous = await f.Create(overlap);
-        Require(simultaneous.DiaDiem == "Tại khách sạn" && simultaneous.MaDiaDiem == null,
+        Require(simultaneous.DiaDiem == "Khách sạn The Overtime" && simultaneous.MaDiaDiem == null,
             "Simultaneous hotel events unexpectedly require a hall.");
         overlap.Name += "-adjacent";
         overlap.Start = original.End;

@@ -12,7 +12,7 @@
     bool Intersects(OvertimeHotel.HRM.Core.Models.DuAn item, DateOnly day) => item.NgayBatDau < HotelEventRules.ToUtc(day.AddDays(1).ToDateTime(TimeOnly.MinValue)) && item.NgayKetThuc > HotelEventRules.ToUtc(day.ToDateTime(TimeOnly.MinValue));
     var cardData = Model.Events.Select(item => new {
         id = item.MaDuAn,
-        name = item.TenDuAn, venue = item.DiaDiem,
+        name = item.TenDuAn, venue = HotelEventRules.VenueLabel(item.DiaDiem),
         type = HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn),
         status = item.TrangThai, statusLabel = HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai),
         count = HotelEventRules.CountEffectiveStaff(item.PhanCongs), time = HotelEventRules.Local(item.NgayBatDau).ToString("HH:mm"),

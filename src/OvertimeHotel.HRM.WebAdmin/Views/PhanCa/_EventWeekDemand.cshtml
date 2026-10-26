@@ -20,7 +20,7 @@
         @foreach (var item in Model.EventDemand)
         {
             <div class="border rounded p-3 mb-3">
-                <a class="fw-semibold" asp-controller="SuKien" asp-action="Details" asp-route-id="@item.MaDuAn" asp-route-tab="staff">@item.TenDuAn</a><span> · @item.DiaDiem</span>
+                <a class="fw-semibold" asp-controller="SuKien" asp-action="Details" asp-route-id="@item.MaDuAn" asp-route-tab="staff">@item.TenDuAn</a><span> · @HotelEventRules.VenueLabel(item.DiaDiem)</span>
                 @if (item.NhuCaus.Count == 0) { <p class="text-warning mt-2 mb-0">Chưa khai báo nhu cầu vai trò / thời gian.</p> }
                 <div class="table-responsive"><table class="table table-sm mt-2 mb-0"><thead><tr><th scope="col">Khung giờ (UTC+7)</th><th scope="col">Bộ phận / vai trò</th><th scope="col">Cần</th><th scope="col">Phân công sự kiện</th><th scope="col">Dự báo ca theo bộ lọc (trong tuần)</th></tr></thead><tbody>
                 @foreach (var need in item.NhuCaus.Where(n => n.BatDau < weekTo && n.KetThuc > weekFrom).OrderBy(n => n.BatDau))

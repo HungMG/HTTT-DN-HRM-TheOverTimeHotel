@@ -29,7 +29,7 @@ Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng th�
 
 ### Địa điểm và thay đổi ca
 
-Sự kiện tổ chức cố định **Tại khách sạn**. Biểu mẫu không chọn sảnh/khu, không nhập sức chứa hoặc số phút chuẩn bị/thu dọn; vẫn nhập số khách dự kiến để sinh định mức nhân sự. Server cố định địa điểm, không gắn mã sảnh và lưu hai khoảng đệm bằng 0 kể cả khi client cũ gửi các trường này. Khách sạn là địa điểm chung, không phải một sảnh độc quyền nên có thể tạo nhiều sự kiện trùng giờ; kiểm tra trùng nhân sự/giờ tham gia vẫn được giữ.
+Sự kiện tổ chức cố định **Khách sạn The Overtime**. Biểu mẫu không chọn sảnh/khu, không nhập sức chứa hoặc số phút chuẩn bị/thu dọn; vẫn nhập số khách dự kiến để sinh định mức nhân sự. Server cố định địa điểm, không gắn mã sảnh và lưu hai khoảng đệm bằng 0 kể cả khi client cũ gửi các trường này. Khách sạn là địa điểm chung, không phải một sảnh độc quyền nên có thể tạo nhiều sự kiện trùng giờ; kiểm tra trùng nhân sự/giờ tham gia vẫn được giữ.
 
 Khi đổi/hủy ca tương lai, phân công sự kiện từ ca đó được hủy hiệu lực và lưu lịch sử, sự kiện tăng phiên bản để quản lý bố trí lại. Ca đã có lịch sử công thực hiện không được sửa/xóa làm mất căn cứ; ca nguồn có lịch sử được giữ bằng trạng thái `DA_HUY` thay vì xóa vật lý. Ca hủy không tính vào lịch hoạt động/chấm công/lương. Trạng thái chấm công thường như hoàn thành không tự coi là thay lịch ca.
 

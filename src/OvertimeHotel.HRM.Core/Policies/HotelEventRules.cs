@@ -4,7 +4,10 @@ namespace OvertimeHotel.HRM.Core.Policies;
 
 public static class HotelEventRules
 {
-    public const string HotelVenueName = "Tại khách sạn";
+    public const string HotelVenueName = "Khách sạn The Overtime";
+
+    public static string VenueLabel(string venue) =>
+        string.Equals(venue.Trim(), "Tại khách sạn", StringComparison.OrdinalIgnoreCase) ? HotelVenueName : venue;
 
     public static int CountEffectiveStaff(IEnumerable<PhanCongDuAn> assignments) => assignments
         .Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"))

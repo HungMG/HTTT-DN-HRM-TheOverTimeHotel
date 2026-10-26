@@ -10,7 +10,7 @@
         <div>
             <span class="event-eyebrow">SK-@item.MaDuAn.ToString("D4") · @HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn)</span>
             <h2>@item.TenDuAn</h2>
-            <p><i class="bi bi-geo-alt" aria-hidden="true"></i> @item.DiaDiem · @HotelEventRules.Local(item.NgayBatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(item.NgayKetThuc).ToString("dd/MM/yyyy HH:mm")</p>
+            <p><i class="bi bi-geo-alt" aria-hidden="true"></i> @HotelEventRules.VenueLabel(item.DiaDiem) · @HotelEventRules.Local(item.NgayBatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(item.NgayKetThuc).ToString("dd/MM/yyyy HH:mm")</p>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="event-status event-status-@item.TrangThai">@statusLabel</span>
