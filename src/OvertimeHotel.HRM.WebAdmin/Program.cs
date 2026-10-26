@@ -320,6 +320,10 @@ builder.Services.AddScoped<AiChatbotUrlBuilder>();
 // Đăng ký dịch vụ sao lưu & phục hồi CSDL
 builder.Services.AddScoped<IBackupService, BackupService>();
 
+// Dọn toàn bộ nhật ký quản trị quá 30 ngày, độc lập với việc mở trang nhật ký.
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddHostedService<AuditLogRetentionWorker>();
+
 // Dựng số liệu sáu báo cáo thống kê (PRD 10.1 → 10.6). Dùng chung cho trang
 // Báo cáo & Thống kê và cho Trợ lý AI, nên hai nơi không thể lệch số liệu.
 builder.Services.AddScoped<BaoCaoReportService>();

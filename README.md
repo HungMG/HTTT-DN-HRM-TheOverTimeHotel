@@ -215,6 +215,10 @@ dotnet run --project src/OvertimeHotel.HRM.WebAdmin --launch-profile http
 
 Mặc định lắng nghe tại **http://localhost:5065** (hoặc `https://localhost:7214` với profile `https`).
 
+Nhật ký quản trị (`nhat_ky_quan_tri`) tự động được dọn khi Web Admin khởi động và mỗi 24 giờ trong lúc ứng dụng chạy. Toàn bộ nhật ký có thời gian tạo trước mốc UTC hiện tại trừ 30 ngày sẽ bị xóa vĩnh viễn, bao gồm nhật ký tài khoản, lương, đơn từ và sự kiện. Bản ghi đúng mốc 30 ngày và mới hơn được giữ lại. Khi web tắt, tác vụ tạm dừng và chạy lại ở lần khởi động tiếp theo; không cần mở trang hay xóa thủ công. Cơ chế này không tự tạo bản sao lưu trước khi xóa. Nếu dọn thất bại, ứng dụng ghi cảnh báo và thử lại sau 24 giờ hoặc ở lần khởi động tiếp theo.
+
+Kiểm thử cơ chế dọn nhật ký (không kết nối database thật): `dotnet run --project tests/AuditLogRetention`.
+
 ### 7.3. Chạy Mobile App
 
 ```bash
