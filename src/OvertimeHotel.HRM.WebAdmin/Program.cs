@@ -329,6 +329,7 @@ builder.Services.AddHostedService<AuditLogRetentionWorker>();
 builder.Services.AddScoped<BaoCaoReportService>();
 builder.Services.AddScoped<IAttendanceSummaryService, AttendanceSummaryService>();
 builder.Services.AddScoped<IHotelEventService, HotelEventService>();
+builder.Services.AddHostedService<HotelEventAutoStartWorker>();
 builder.Services.AddScoped<IPayrollCalculationService, PayrollCalculationService>();
 
 // Cấp phát user Supabase Auth khi tạo tài khoản trên Web.

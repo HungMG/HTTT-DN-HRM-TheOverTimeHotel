@@ -254,8 +254,8 @@ var tests = new (string Name, Action Run)[]
 
     ("Workflow: Từ chối yêu cầu lý do bắt buộc và trả về HR để sửa (vẫn giữ MO)", () =>
     {
-        var ky = new KyLuong 
-        { 
+        var ky = new KyLuong
+        {
             TrangThai = SalaryConstants.PERIOD_OPEN,
             NgayGuiDuyet = DateTimeOffset.UtcNow,
             NguoiGuiDuyet = "HR User"

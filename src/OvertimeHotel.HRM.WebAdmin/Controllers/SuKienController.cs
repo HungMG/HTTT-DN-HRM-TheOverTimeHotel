@@ -101,8 +101,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
                 Start = HotelEventRules.Local(item.NgayBatDau), End = HotelEventRules.Local(item.NgayKetThuc),
                 ManagerId = item.MaNguoiQuanLy, ExpectedGuests = item.SoKhachDuKien, Budget = item.NganSachPhuCap,
                 CalculateBudgetAtAcceptance = item.TinhPhuCapKhiNghiemThu, Description = item.MoTa,
-                HourlyCompensation = item.TinhTheoGio, VenueId = item.MaDiaDiem,
-                SetupMinutes = item.PhutChuanBi, TeardownMinutes = item.PhutThuDon
+                HourlyCompensation = item.TinhTheoGio
             }
         };
         SetContext(model, returnYear, returnMonth, returnDate ?? DateOnly.FromDateTime(model.Input.Start));
@@ -153,13 +152,14 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     }
 
     [HttpGet]
-    public async Task<IActionResult> Details(int id, int? returnYear, int? returnMonth, DateOnly? returnDate, string tab = "overview", bool popup = false)
+    public async Task<IActionResult> Details(int id, int? returnYear, int? returnMonth, DateOnly? returnDate, string tab = "overview", bool popup = false, int? paymentPeriodId = null)
     {
         var actor = await ActorAsync();
         if (actor == null) return Forbid();
         var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, tab);
         if (model == null) return NotFound();
         model.IsPopup = popup;
+        model.PaymentPeriodId = paymentPeriodId;
         return popup ? PartialView("_EventDetailsContent", model) : View(model);
     }
 
@@ -169,7 +169,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     {
         var actor = await ActorAsync();
         if (actor == null) return Forbid();
-        var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, "staff");
+        var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, "staff", assignmentOptions: true);
         if (model == null) return NotFound();
         if (!model.CanManage || model.Event.TrangThai is not ("LEN_KE_HOACH" or "DANG_DIEN_RA")) return Forbid();
         if (employeeIds.Length == 0 || employeeIds.Distinct().Count() != employeeIds.Length
@@ -216,25 +216,15 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> SaveNeed(int id, EventDetailsViewModel model) =>
-        MutateAsync(id, model, "staff", a => events.SaveNeedAsync(a, id, model.Need));
+        MutateAsync(id, model, "overview", a => events.SaveNeedAsync(a, id, model.Need));
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> DeleteNeed(int id, int needId, long version, string reason, EventDetailsViewModel model) =>
-        MutateAsync(id, model, "staff", a => events.DeleteNeedAsync(a, id, needId, version, reason));
+        MutateAsync(id, model, "overview", a => events.DeleteNeedAsync(a, id, needId, version, reason));
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> RecordWork(int id, EventDetailsViewModel model) =>
         MutateAsync(id, model, "acceptance", a => events.RecordWorkAsync(a, id, model.Work));
-
-    [HttpPost, ValidateAntiForgeryToken]
-    public Task<IActionResult> AutoSyncAttendance(int id, long version, EventDetailsViewModel model) =>
-        MutateAsync(id, model, "acceptance", async a =>
-        {
-            var count = await events.AutoSyncWorkFromAttendanceAsync(a, id, version);
-            TempData["Success"] = count > 0
-                ? $"Đã tự động đối soát và ghi nhận công cho {count} phân công từ dữ liệu Chấm công."
-                : "Dữ liệu công sự kiện đã được đồng bộ đầy đủ với Chấm công.";
-        });
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> DeleteWork(int id, int workId, long version, string reason, EventDetailsViewModel model) =>
@@ -254,7 +244,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> EnsurePaymentPeriod(int id, int month, int year, EventDetailsViewModel model) =>
-        MutateAsync(id, model, "acceptance", async a => { await events.EnsurePaymentPeriodAsync(a, month, year); });
+        MutateAsync(id, model, "acceptance", async a => { model.PaymentPeriodId = await events.EnsurePaymentPeriodAsync(a, month, year); });
 
     [HttpPost, ValidateAntiForgeryToken]
     public Task<IActionResult> ReconcileLegacy(int id, long version, int paymentPeriodId, string reason, EventDetailsViewModel model) =>
@@ -266,7 +256,11 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         var actor = await ActorAsync();
         if (actor?.IsOffice != true) return Forbid();
         SetContext(model, model.ReturnYear, model.ReturnMonth, model.ReturnDate);
-        if (!ModelState.IsValid) return View("Venues", await FormAsync(model));
+        if (!ModelState.IsValid)
+        {
+            model.Venues = await events.VenuesAsync();
+            return View("Venues", model);
+        }
         try
         {
             model.Input.VenueId = await events.SaveVenueAsync(actor, model.VenueName, model.VenueCapacity);
@@ -280,7 +274,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             if (ex.Forbidden) return Forbid();
             ModelState.AddModelError(ex.Field, ex.Message);
         }
-        await FormAsync(model);
+        model.Venues = await events.VenuesAsync();
         return View("Venues", model);
     }
 
@@ -290,7 +284,8 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         if ((await ActorAsync())?.IsOffice != true) return Forbid();
         var model = new EventFormViewModel();
         SetContext(model, returnYear, returnMonth, returnDate);
-        return View(await FormAsync(model));
+        model.Venues = await events.VenuesAsync();
+        return View(model);
     }
 
     private async Task<IActionResult> MutateAsync(int id, EventDetailsViewModel model, string tab, Func<EventActor, Task> operation, bool assignmentPopup = false)
@@ -310,11 +305,12 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
                     var updated = await DetailsAsync(actor, id, null, model.ReturnYear, model.ReturnMonth, model.ReturnDate, tab);
                     if (updated == null) return NotFound();
                     updated.IsPopup = true;
+                    updated.PaymentPeriodId = model.PaymentPeriodId;
                     ViewData["EventSuccess"] = "Đã cập nhật sự kiện.";
                     return PartialView("_EventDetailsContent", updated);
                 }
                 TempData["Success"] = "Đã cập nhật sự kiện.";
-                return RedirectToAction(nameof(Details), new { id, model.ReturnYear, model.ReturnMonth, returnDate = model.ReturnDate.ToString("yyyy-MM-dd"), tab });
+                return RedirectToAction(nameof(Details), new { id, model.ReturnYear, model.ReturnMonth, returnDate = model.ReturnDate.ToString("yyyy-MM-dd"), tab, paymentPeriodId = model.PaymentPeriodId });
             }
             catch (EventOperationException ex)
             {
@@ -327,7 +323,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
                 ModelState.AddModelError("", "Dữ liệu sự kiện vừa thay đổi hoặc có lịch trùng. Vui lòng tải lại trước khi thử lại.");
             }
         }
-        var result = await DetailsAsync(actor, id, model, model.ReturnYear, model.ReturnMonth, model.ReturnDate, tab);
+        var result = await DetailsAsync(actor, id, model, model.ReturnYear, model.ReturnMonth, model.ReturnDate, tab, assignmentOptions: assignmentPopup);
         if (result == null) return NotFound();
         result.IsPopup = model.IsPopup;
         return model.IsPopup ? PartialView(assignmentPopup ? "_AssignmentPopup" : "_EventDetailsContent", result) : View("Details", result);
@@ -336,34 +332,54 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     private async Task<EventFormViewModel> FormAsync(EventFormViewModel model)
     {
         model.Managers = (await events.ManagersAsync()).Select(x => new SelectListItem(x.HoTen, x.MaNhanVien.ToString())).ToList();
-        model.Venues = await events.VenuesAsync();
-        model.HourlyEventRate = await EventRateConfig.ReadAsync(db);
+        model.HourlyEventRate = await events.HourlyEventRateAsync();
         return model;
     }
 
     private async Task<EventDetailsViewModel?> DetailsAsync(EventActor actor, int id, EventDetailsViewModel? previous,
-        int? returnYear, int? returnMonth, DateOnly? returnDate, string tab)
+        int? returnYear, int? returnMonth, DateOnly? returnDate, string tab, bool assignmentOptions = false)
     {
-        var item = await events.GetAsync(actor, id);
+        var item = await events.GetOverviewAsync(actor, id);
         if (item == null) return null;
-        var mutable = item.TrangThai is not ("HOAN_THANH" or "HUY");
+        var staffLoadFailed = false;
+        try
+        {
+            var complete = await events.GetAsync(actor, id);
+            if (complete == null) return null;
+            item = complete;
+        }
+        catch (Exception ex) when (ex is not EventOperationException && ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Không thể tải phân công nhân sự cho sự kiện {Id}.", id);
+            staffLoadFailed = true;
+        }
+        var mutable = !staffLoadFailed && item.TrangThai is not ("HOAN_THANH" or "HUY");
+        IReadOnlyList<NhanVien> employees = [];
+        IReadOnlyList<PhanCa> shifts = [];
+        if (mutable && assignmentOptions)
+        {
+            employees = await events.EmployeesAsync();
+            shifts = item.TinhTheoGio ? await events.AvailableShiftsAsync(actor, id) : await events.ShiftsAsync(item);
+        }
         var model = new EventDetailsViewModel
         {
-            Event = item, CanManage = mutable, CanEdit = actor.IsOffice && item.TrangThai == "LEN_KE_HOACH",
-            HourlyEventRate = await EventRateConfig.ReadAsync(db),
-            CanAccept = actor.IsOffice && item.TrangThai == "CHO_NGHIEM_THU",
-            Employees = mutable ? await events.EmployeesAsync() : [],
-            Shifts = item.TinhTheoGio && mutable ? await events.AvailableShiftsAsync(actor, id) : await events.ShiftsAsync(item),
+            Event = item, CanManage = mutable, CanEdit = mutable && actor.IsOffice && item.TrangThai == "LEN_KE_HOACH",
+            HourlyEventRate = await events.HourlyEventRateAsync(),
+            CanAccept = mutable && actor.IsOffice && item.TrangThai == "CHO_NGHIEM_THU",
+            StaffLoadFailed = staffLoadFailed,
+            Employees = employees,
+            Shifts = shifts,
             IsOffice = actor.IsOffice,
-            Need = previous?.Need ?? new EventNeedInput { Version = item.Version, Start = HotelEventRules.Local(item.NgayBatDau), End = HotelEventRules.Local(item.NgayKetThuc) },
+            Need = previous?.Need ?? new EventNeedInput { Version = item.Version, Count = 1 },
             Work = previous?.Work ?? new EventWorkInput { Version = item.Version },
-            PayPreview = item.TinhTheoGio ? await events.PreviewAsync(actor, id) : null,
+            PayPreview = item.TinhTheoGio && !staffLoadFailed ? await events.PreviewAsync(actor, id) : null,
             PaymentPeriods = actor.IsOffice ? await events.PaymentPeriodsAsync(actor) : [],
-            History = await events.HistoryAsync(id), Tab = tab is "staff" or "acceptance" ? tab : "overview",
+            PaymentPeriodId = previous?.PaymentPeriodId,
+            Tab = tab is "staff" or "acceptance" ? tab : "overview",
             Assignment = previous?.Assignment ?? new EventAssignmentInput
             {
-                Start = HotelEventRules.Local(item.NgayBatDau.AddMinutes(item.TinhTheoGio ? -item.PhutChuanBi : 0)),
-                End = HotelEventRules.Local(item.NgayKetThuc.AddMinutes(item.TinhTheoGio ? item.PhutThuDon : 0)), Version = item.Version
+                Start = HotelEventRules.Local(item.NgayBatDau),
+                End = HotelEventRules.Local(item.NgayKetThuc), Version = item.Version
             },
             SelectedDepartment = previous?.SelectedDepartment,
             Assignments = previous?.Assignments ?? [],

@@ -4,6 +4,15 @@ namespace OvertimeHotel.HRM.Core.Policies;
 
 public static class HotelEventRules
 {
+    public const string HotelVenueName = "Khách sạn The Overtime";
+
+    public static string VenueLabel(string venue) =>
+        string.Equals(venue.Trim(), "Tại khách sạn", StringComparison.OrdinalIgnoreCase) ? HotelVenueName : venue;
+
+    public static int CountEffectiveStaff(IEnumerable<PhanCongDuAn> assignments) => assignments
+        .Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"))
+        .Select(p => p.MaNhanVien).Distinct().Count();
+
     public static readonly IReadOnlyDictionary<string, string> StatusLabels = new Dictionary<string, string>
     {
         ["LEN_KE_HOACH"] = "Lên kế hoạch", ["DANG_DIEN_RA"] = "Đang diễn ra",
@@ -98,7 +107,7 @@ public static class HotelEventRules
 
     public static EventStaffingSummary GetStaffingSummary(DuAn item, DateTimeOffset? coverageStart = null)
     {
-        if (item.TinhTheoGio) return DeclaredStaffing(item, coverageStart);
+        if (item.TinhTheoGio || item.NhuCaus.Count > 0) return DeclaredStaffing(item, coverageStart);
         var baseline = GetStaffingSummary(item.LoaiDuAn, item.PhanCongs);
         var start = coverageStart is { } from && from > item.NgayBatDau ? from : item.NgayBatDau;
         var missingRoles = new List<string>();
@@ -133,10 +142,10 @@ public static class HotelEventRules
         {
             var name = DepartmentLabels.GetValueOrDefault(group.Key, group.Key);
             var members = active.Where(p => (p.MaPhongBanSuKien ?? ResolveDepartmentCode(p.NhanVien)) == group.Key).ToList();
-            var roles = group.OrderBy(n => n.BatDau).Select(need =>
+            var roles = group.OrderBy(n => n.VaiTro).Select(need =>
             {
-                var from = coverageStart is { } start && start > need.BatDau ? start : need.BatDau;
-                var to = item.KetThucThucTe is { } stopped && stopped < need.KetThuc ? stopped : need.KetThuc;
+                var from = coverageStart is { } start && start > item.NgayBatDau ? start : item.NgayBatDau;
+                var to = item.KetThucThucTe is { } stopped && stopped < item.NgayKetThuc ? stopped : item.NgayKetThuc;
                 var assigned = members.Where(p => HotelEventRoleRules.Matches(need.VaiTro, p.VaiTroDuAn)).ToList();
                 var concurrent = from >= to ? need.SoNguoi : HotelEventRoleRules.MinimumConcurrentCount(assigned, from, to);
                 var shortfall = Math.Max(0, need.SoNguoi - concurrent);
@@ -150,8 +159,8 @@ public static class HotelEventRules
         var satisfied = departments.Count(d => d.IsSufficient);
         var full = departments.Count > 0 && item.NhuCaus.Any(n => n.SoNguoi > 0) && missing.Count == 0;
         var message = item.NhuCaus.Count == 0 ? "Chưa khai báo nhu cầu nhân sự."
-            : full ? "Đã đủ nhân sự theo các khung nhiệm vụ."
-            : $"Đã ghi nhận nhu cầu; đủ {satisfied}/{departments.Count} phòng ban. Chờ bố trí ca/phân công cho các khung còn thiếu.";
+            : full ? "Đã đủ nhân sự cho toàn sự kiện."
+            : $"Đã ghi nhận nhu cầu; đủ {satisfied}/{departments.Count} phòng ban. Chờ bố trí ca/phân công cho các vai trò còn thiếu.";
         return new EventStaffingSummary(departments.Count, satisfied, full,
             departments.Where(d => !d.IsSufficient).Select(d => d.Name).ToList(), departments, message)
             { MissingRoleDescriptions = missing };
@@ -174,11 +183,12 @@ public static class HotelEventRules
         role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || role.Equals("HR", StringComparison.OrdinalIgnoreCase)
         || (role.Equals("Manager", StringComparison.OrdinalIgnoreCase) && employeeId == managerId);
     public const string AutoCancelReason = "Không liên lạc được với người tổ chức sự kiện";
+    public static bool NeedsLateConfirmationWarning(DuAn item, DateTimeOffset now) => item.TrangThai == "LEN_KE_HOACH" && now >= item.NgayBatDau;
     public static bool IsExpiredPlanning(DuAn item, DateTimeOffset now) =>
         item.TrangThai == "LEN_KE_HOACH" && DateOnly.FromDateTime(Local(item.NgayBatDau)) < DateOnly.FromDateTime(Local(now));
     public static bool CanTransition(string current, string next, DateTimeOffset start, DateTimeOffset end, DateTimeOffset now) =>
         current is ("LEN_KE_HOACH" or "DANG_DIEN_RA" or "CHO_NGHIEM_THU") && ((next == "HUY" && current == "LEN_KE_HOACH")
-        || (current == "LEN_KE_HOACH" && next == "DANG_DIEN_RA" && now >= start && DateOnly.FromDateTime(Local(start)) >= DateOnly.FromDateTime(Local(now)))
+        || (current == "LEN_KE_HOACH" && next == "DANG_DIEN_RA" && now >= start && now <= end)
         || (current == "DANG_DIEN_RA" && next == "CHO_NGHIEM_THU" && now >= end));
     public static bool ReviewsReady(IEnumerable<PhanCongDuAn> assignments, decimal budget)
     {

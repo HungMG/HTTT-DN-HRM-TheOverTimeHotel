@@ -78,18 +78,22 @@ public sealed partial class HotelEventService
         var shifts = await db.PhanCas.AsNoTracking().Include(s => s.NhanVien).ThenInclude(n => n!.PhongBan)
             .Include(s => s.NhanVien).ThenInclude(n => n!.HopDongs).Include(s => s.CaLamViec).Include(s => s.ChamCong)
             .Where(s => s.DaCongBo && s.TrangThai != "DA_HUY" && s.TrangThai != "VANG_MAT"
-                && s.BatDauDuKien < item.NgayKetThuc.AddMinutes(item.PhutThuDon)
-                && s.KetThucDuKien > item.NgayBatDau.AddMinutes(-item.PhutChuanBi))
+                && s.BatDauDuKien < item.NgayKetThuc
+                && s.KetThucDuKien > item.NgayBatDau)
             .OrderBy(s => s.BatDauDuKien).ThenBy(s => s.MaNhanVien).ToListAsync();
         return shifts.Where(s => HotelEventRules.GetRequiredDepartments(item.LoaiDuAn)
             .Contains(HotelEventRules.ResolveDepartmentCode(s.NhanVien) ?? "")).ToList();
     }
 
+    private IQueryable<KyLuong> OpenEventPaymentPeriods => db.KyLuongs.Where(k =>
+        (k.TrangThai == "MO" || k.TrangThai == "NHAP" || k.TrangThai == "TU_CHOI")
+        && !k.NgayDuyet.HasValue && (!k.NgayGuiDuyet.HasValue || !string.IsNullOrEmpty(k.LyDoTuChoi)));
+
     public async Task<IReadOnlyList<KyLuong>> PaymentPeriodsAsync(EventActor actor)
     {
         actor = await CurrentActor(actor);
         if (!actor.IsOffice) return [];
-        return await db.KyLuongs.AsNoTracking().Where(k => k.TrangThai == "MO" || k.TrangThai == "NHAP" || k.TrangThai == "TU_CHOI")
+        return await OpenEventPaymentPeriods.AsNoTracking()
             .OrderBy(k => k.Nam).ThenBy(k => k.Thang).ToListAsync();
     }
 
@@ -101,7 +105,7 @@ public sealed partial class HotelEventService
         var period = await db.KyLuongs.SingleOrDefaultAsync(k => k.Thang == month && k.Nam == year);
         if (period != null)
         {
-            Require(period.TrangThai is "MO" or "NHAP" or "TU_CHOI", "", "Kỳ đã gửi duyệt/đã khóa; chọn kỳ mở khác.");
+            Require(await OpenEventPaymentPeriods.AnyAsync(k => k.MaKyLuong == period.MaKyLuong), "", "Kỳ đã gửi duyệt/đã khóa; chọn kỳ mở khác.");
             return period.MaKyLuong;
         }
         period = new KyLuong { Thang = month, Nam = year, TuNgay = new(year,month,1), DenNgay = new(year,month,DateTime.DaysInMonth(year,month)), TrangThai = "MO" };
@@ -120,8 +124,8 @@ public sealed partial class HotelEventService
         Require(item != null && item.Version == version, "", "Sự kiện không tồn tại hoặc đã thay đổi.");
         Require(!item!.TinhTheoGio && item.TrangThai == "HOAN_THANH", "", "Chỉ đối soát sự kiện chính sách cũ đã hoàn thành.");
         reason = Text(reason, 500, "reason", "Căn cứ đối soát số tiền đã chốt");
-        var period = await db.KyLuongs.SingleOrDefaultAsync(k => k.MaKyLuong == paymentPeriodId);
-        Require(period != null && period.TrangThai is "MO" or "NHAP" or "TU_CHOI", "paymentPeriodId", "Chọn kỳ còn sửa được.");
+        var period = await OpenEventPaymentPeriods.SingleOrDefaultAsync(k => k.MaKyLuong == paymentPeriodId);
+        Require(period != null, "paymentPeriodId", "Chọn kỳ còn sửa được, chưa gửi duyệt hoặc đã từ chối.");
         var month = HourlyEventRules.WorkMonth(item.KetThucThucTe ?? item.NgayKetThuc);
         Require(new DateOnly(period!.Nam,period.Thang,1) >= month, "", "Kỳ trả không được trước tháng phát sinh.");
         Require(item.QuyetToans.Count == 0, "", "Đã đối soát, không tạo khoản trùng.");
@@ -148,25 +152,21 @@ public sealed partial class HotelEventService
         actor = await CurrentActor(actor);
         Require(actor.IsOffice, "", "Chỉ HR/Admin điều chỉnh nhu cầu sự kiện.", true);
         var item = await Editable(actor, id, input.Version);
-        Require(item.TinhTheoGio && item.TrangThai == "LEN_KE_HOACH", "", "Chỉ sửa nhu cầu trước khi bắt đầu sự kiện theo giờ.");
-        var start = Utc(input.Start, "Need.Start"); var end = Utc(input.End, "Need.End");
-        Require(start < end && start >= item.NgayBatDau.AddMinutes(-item.PhutChuanBi)
-            && end <= item.NgayKetThuc.AddMinutes(item.PhutThuDon), "Need.End", "Khung phải nằm trong thời gian chuẩn bị đến hết thu dọn.");
+        Require(item.TrangThai == "LEN_KE_HOACH", "", "Chỉ sửa nhu cầu trước khi bắt đầu sự kiện.");
         Require(HotelEventRules.GetRequiredDepartments(item.LoaiDuAn).Contains(input.Department), "Need.Department", "Phòng ban không phù hợp loại sự kiện.");
         var role = HotelEventRoleRules.ResolveRole(item.LoaiDuAn, input.Department, input.Role, null);
         Require(role != null, "Need.Role", "Chọn vai trò có trong danh mục.");
         Require(input.Count is >= 0 and <= 100000, "Need.Count", "Số người phải từ 0 đến 100.000.");
-        Require(!item.NhuCaus.Any(n => n.MaNhuCau != input.NeedId && n.MaPhongBan == input.Department && n.VaiTro == role
-            && HotelEventRules.Overlaps(start, end, n.BatDau, n.KetThuc)), "", "Khung cùng phòng ban/vai trò không được chồng giờ; hãy gộp nhu cầu.");
+        Require(!item.NhuCaus.Any(n => n.MaNhuCau != input.NeedId && n.MaPhongBan == input.Department && n.VaiTro == role), "Need.Role", "Phòng ban/vai trò đã có nhu cầu; hãy sửa số người trên dòng hiện có.");
         var reason = Text(input.Reason, 500, "Need.Reason", "Lý do điều chỉnh nhu cầu");
         var need = input.NeedId == 0 ? new NhuCauSuKien { MaDuAn = id } : item.NhuCaus.SingleOrDefault(n => n.MaNhuCau == input.NeedId);
         Require(need != null, "", "Không tìm thấy nhu cầu.");
-        var oldNeed = input.NeedId == 0 ? null : JsonSerializer.Serialize(new { need!.TenKhung, need.MaPhongBan, need.VaiTro, need.SoNguoi, need.BatDau, need.KetThuc });
-        need!.TenKhung = Text(input.Name, 100, "Need.Name", "Tên khung"); need.MaPhongBan = input.Department;
-        need.VaiTro = role!; need.SoNguoi = input.Count; need.BatDau = start; need.KetThuc = end; need.LaMau = false;
+        var oldNeed = input.NeedId == 0 ? null : JsonSerializer.Serialize(new { need!.MaPhongBan, need.VaiTro, need.SoNguoi, need.LaMau });
+        need!.MaPhongBan = input.Department;
+        need.VaiTro = role!; need.SoNguoi = input.Count; need.LaMau = false;
         if (input.NeedId == 0) item.NhuCaus.Add(need);
         item.Version++;
-        Audit(actor, item, "NHU_CAU_SU_KIEN", $"{need.TenKhung}: {need.VaiTro}; {need.SoNguoi} người; {input.Start:g}–{input.End:g}.", reason, oldNeed);
+        Audit(actor, item, "NHU_CAU_SU_KIEN", $"{need.MaPhongBan}: {need.VaiTro}; {need.SoNguoi} người cho toàn sự kiện.", reason, oldNeed);
         return 0;
     });
 
@@ -178,9 +178,9 @@ public sealed partial class HotelEventService
         Require(item.TrangThai == "LEN_KE_HOACH", "", "Nhu cầu đã được sử dụng; không xóa sau khi bắt đầu.");
         var need = item.NhuCaus.SingleOrDefault(n => n.MaNhuCau == needId);
         Require(need != null, "", "Không tìm thấy nhu cầu.");
-        var oldNeed = JsonSerializer.Serialize(new { need!.TenKhung, need.MaPhongBan, need.VaiTro, need.SoNguoi, need.BatDau, need.KetThuc });
+        var oldNeed = JsonSerializer.Serialize(new { need!.MaPhongBan, need.VaiTro, need.SoNguoi, need.LaMau });
         db.Remove(need); item.Version++;
-        Audit(actor, item, "XOA_NHU_CAU_SU_KIEN", $"Xóa khung #{needId}.", Text(reason, 500, "reason", "Lý do"), oldNeed);
+        Audit(actor, item, "XOA_NHU_CAU_SU_KIEN", $"Xóa nhu cầu #{needId}.", Text(reason, 500, "reason", "Lý do"), oldNeed);
         return 0;
     });
 
@@ -251,102 +251,29 @@ public sealed partial class HotelEventService
         actor = await CurrentActor(actor);
         var item = await Editable(actor, id, input.Version);
         Require(item.TinhTheoGio && item.TrangThai is "DANG_DIEN_RA" or "CHO_NGHIEM_THU", "", "Chỉ ghi công cho sự kiện theo giờ đang thực hiện/chờ nghiệm thu.");
-        var assignment = item.PhanCongs.SingleOrDefault(p => p.MaPhanCong == input.AssignmentId && p.TrangThaiThamGia != "HUY_PHAN_CONG");
+        var assignment = item.PhanCongs.SingleOrDefault(p => p.MaPhanCong == input.AssignmentId && p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"));
         Require(assignment != null, "", "Không tìm thấy phân công đang hiệu lực.");
+        Require(input.WorkId >= 0, "Work.WorkId", "Mã công không hợp lệ.");
+        var editing = input.WorkId > 0;
+        Require(!editing || actor.IsOffice, "", "Chỉ HR/Admin sửa công đã xác nhận.", true);
+        Require(editing || assignment!.CongThucTes.Count == 0, "Work.WorkId", "Phân công đã có giờ tham gia. HR/Admin sửa khoảng giờ đã lưu.");
+        var reason = editing ? Text(input.Reason, 500, "Work.Reason", "Lý do sửa công") : null;
+        var work = editing ? assignment!.CongThucTes.SingleOrDefault(c => c.MaCong == input.WorkId) : new CongSuKien { MaPhanCong = assignment!.MaPhanCong };
+        Require(work != null, "Work.WorkId", "Không tìm thấy đoạn công trong phân công này.");
+        var oldWork = editing ? WorkSnapshot(work!, assignment!) : null;
         var start = Utc(input.Start, "Work.Start"); var end = Utc(input.End, "Work.End");
-        Require(start < end && start >= assignment!.BatDau && end <= assignment.KetThuc
-            && end <= DateTimeOffset.UtcNow && end <= (item.KetThucThucTe ?? item.NgayKetThuc.AddMinutes(item.PhutThuDon)), "Work.End", "Công phải nằm trong phân công, ca và thời gian thực hiện; không ghi công tương lai.");
-        var shift = assignment!.PhanCa;
-        Require(shift != null && shift.MaNhanVien == assignment.MaNhanVien && start >= shift.BatDauDuKien && end <= shift.KetThucDuKien, "", "Ca nguồn không còn khớp.");
-        Require(!item.PhanCongs.Where(p => p.MaNhanVien == assignment.MaNhanVien).SelectMany(p => p.CongThucTes)
-            .Any(c => HotelEventRules.Overlaps(start, end, c.BatDau, c.KetThuc)), "", "Công thực tế trùng khoảng đã xác nhận.");
-        var attendance = shift!.ChamCong;
-        var matches = attendance?.GioCheckIn is { } checkIn && attendance.GioCheckOut is { } checkOut && checkIn <= start && checkOut >= end;
-        string? explanation = null;
-        var exception = !matches || await HasLeave(assignment.MaNhanVien, start, end);
-        if (exception)
-        {
-            Require(actor.IsOffice, "", "Thiếu/trái chấm công hoặc có nghỉ đã duyệt: cần HR/Admin xác minh giải trình.", true);
-            explanation = Text(input.Explanation, 500, "Work.Explanation", "Giải trình xác nhận công ngoại lệ");
-        }
-        else if (!string.IsNullOrWhiteSpace(input.Explanation)) explanation = Text(input.Explanation, 500, "Work.Explanation", "Giải trình");
-        assignment.CongThucTes.Add(new CongSuKien { BatDau = start, KetThuc = end, GiaiTrinh = explanation,
-            XacNhanNgoaiLe = exception, MaNguoiXacNhan = actor.EmployeeId, NgayXacNhan = DateTimeOffset.UtcNow });
+        Require(HourlyEventRules.CanRecordWork(item, assignment!, start, end, DateTimeOffset.UtcNow), "Work.End",
+            "Công phải nằm trong sự kiện, phân công và ca nguồn đã công bố còn hiệu lực; không ghi công tương lai. Kiểm tra lại Lịch làm việc nếu dữ liệu nguồn thay đổi.");
+        Require(!await db.CongSuKiens.AnyAsync(c => c.PhanCong!.MaNhanVien == assignment.MaNhanVien
+            && c.MaCong != input.WorkId && c.BatDau < end && c.KetThuc > start), "", "Công thực tế trùng khoảng đã xác nhận của nhân viên, kể cả ở sự kiện khác.");
+        work!.BatDau = start; work.KetThuc = end; work.MaNguoiXacNhan = actor.EmployeeId; work.NgayXacNhan = DateTimeOffset.UtcNow;
+        if (!editing) assignment.CongThucTes.Add(work);
         assignment.DanhGia = "HOAN_THANH"; assignment.NgayDanhGia = DateTimeOffset.UtcNow;
         item.Version++;
-        Audit(actor, item, "XAC_NHAN_CONG_SU_KIEN", $"Nhân viên #{assignment.MaNhanVien}: {input.Start:g}–{input.End:g}.", explanation);
+        if (!editing) await db.SaveChangesAsync();
+        Audit(actor, item, editing ? "SUA_CONG_SU_KIEN" : "XAC_NHAN_CONG_SU_KIEN",
+            $"Nhân viên #{assignment.MaNhanVien}: {input.Start:g}–{input.End:g}.", reason, oldWork, WorkSnapshot(work, assignment));
         return 0;
-    });
-
-    public Task<int> AutoSyncWorkFromAttendanceAsync(EventActor actor, int id, long version) => Write(async () =>
-    {
-        actor = await CurrentActor(actor);
-        var item = await Editable(actor, id, version);
-        Require(item.TinhTheoGio && item.TrangThai is "DANG_DIEN_RA" or "CHO_NGHIEM_THU", "", "Chỉ đối soát công cho sự kiện theo giờ đang thực hiện hoặc chờ nghiệm thu.");
-
-        var count = 0;
-        foreach (var assignment in item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG"))
-        {
-            var shift = assignment.PhanCa;
-            if (shift == null) continue;
-
-            if (shift.TrangThai == "VANG_MAT")
-            {
-                if (assignment.DanhGia != "KHONG_THAM_GIA")
-                {
-                    assignment.DanhGia = "KHONG_THAM_GIA";
-                    assignment.NgayDanhGia = DateTimeOffset.UtcNow;
-                    count++;
-                }
-                continue;
-            }
-
-            var attendance = shift.ChamCong;
-            if (attendance?.GioCheckIn is { } checkIn && attendance.GioCheckOut is { } checkOut)
-            {
-                var actualWindow = HourlyEventRules.ResolveActualWindow(
-                    assignment.BatDau, assignment.KetThuc,
-                    shift.BatDauDuKien, shift.KetThucDuKien,
-                    checkIn, checkOut);
-
-                if (actualWindow.HasValue && actualWindow.Value.Start < actualWindow.Value.End)
-                {
-                    var existingWork = assignment.CongThucTes.ToList();
-                    var overlaps = existingWork.Any(c => HotelEventRules.Overlaps(actualWindow.Value.Start, actualWindow.Value.End, c.BatDau, c.KetThuc));
-                    if (!overlaps)
-                    {
-                        var localIn = HotelEventRules.Local(checkIn).ToString("HH:mm");
-                        var localOut = HotelEventRules.Local(checkOut).ToString("HH:mm");
-                        assignment.CongThucTes.Add(new CongSuKien
-                        {
-                            BatDau = actualWindow.Value.Start,
-                            KetThuc = actualWindow.Value.End,
-                            GiaiTrinh = $"Tự động đối soát từ Chấm công (Vào: {localIn}, Ra: {localOut})",
-                            XacNhanNgoaiLe = false,
-                            MaNguoiXacNhan = actor.EmployeeId,
-                            NgayXacNhan = DateTimeOffset.UtcNow
-                        });
-                        assignment.DanhGia = "HOAN_THANH";
-                        assignment.NgayDanhGia = DateTimeOffset.UtcNow;
-                        count++;
-                    }
-                }
-                else if (assignment.CongThucTes.Count == 0 && assignment.DanhGia == "CHUA_DANH_GIA")
-                {
-                    assignment.DanhGia = "KHONG_THAM_GIA";
-                    assignment.NgayDanhGia = DateTimeOffset.UtcNow;
-                    count++;
-                }
-            }
-        }
-
-        if (count > 0)
-        {
-            item.Version++;
-            Audit(actor, item, "DONG_BO_CONG_CHAM_CONG", $"Tự động đối soát chấm công cho {count} phân công sự kiện.");
-        }
-
-        return count;
     });
 
     public Task DeleteWorkAsync(EventActor actor, int id, int workId, long version, string reason) => Write(async () =>
@@ -357,19 +284,25 @@ public sealed partial class HotelEventService
         var assignment = item.PhanCongs.SingleOrDefault(p => p.CongThucTes.Any(c => c.MaCong == workId));
         Require(assignment != null, "", "Không tìm thấy công.");
         var work = assignment!.CongThucTes.Single(c => c.MaCong == workId);
-        var oldWork = JsonSerializer.Serialize(new { work.MaCong, work.MaPhanCong, assignment.MaNhanVien, work.BatDau, work.KetThuc, work.MaNguoiXacNhan, work.NgayXacNhan });
+        var oldWork = WorkSnapshot(work, assignment);
         assignment.CongThucTes.Remove(work); db.Remove(work);
         if (assignment.CongThucTes.Count == 0) { assignment.DanhGia = "CHUA_DANH_GIA"; assignment.NgayDanhGia = null; }
         item.Version++;
-        Audit(actor, item, "SUA_CONG_SU_KIEN", $"Thu hồi công #{workId}; giữ dấu vết chỉnh sửa.", Text(reason, 500, "reason", "Lý do sửa công"), oldWork);
+        Audit(actor, item, "SUA_CONG_SU_KIEN", $"Thu hồi công #{workId}; giữ dấu vết chỉnh sửa.", Text(reason, 500, "reason", "Lý do sửa công"), oldWork, "null");
         return 0;
+    });
+
+    private static string WorkSnapshot(CongSuKien work, PhanCongDuAn assignment) => JsonSerializer.Serialize(new
+    {
+        work.MaCong, work.MaPhanCong, assignment.MaNhanVien, work.BatDau, work.KetThuc,
+        work.MaNguoiXacNhan, work.NgayXacNhan
     });
 
     public Task EndParticipationAsync(EventActor actor, int id, int assignmentId, long version, DateTime end, string reason) => Write(async () =>
     {
         actor = await CurrentActor(actor);
         var item = await Editable(actor, id, version); StaffingOpen(item);
-        var assignment = item.PhanCongs.SingleOrDefault(p => p.MaPhanCong == assignmentId && p.TrangThaiThamGia != "HUY_PHAN_CONG");
+        var assignment = item.PhanCongs.SingleOrDefault(p => p.MaPhanCong == assignmentId && p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"));
         Require(assignment != null, "", "Không tìm thấy phân công.");
         var instant = Utc(end, "end");
         Require(instant > assignment!.BatDau && instant <= assignment.KetThuc && instant <= DateTimeOffset.UtcNow,
@@ -393,11 +326,11 @@ public sealed partial class HotelEventService
         var item = await Editable(actor, id, version);
         Require(item.TrangThai == "DANG_DIEN_RA", "", "Chỉ dừng sự kiện đang thực hiện.");
         var instant = Utc(end, "end");
-        var operationStart = item.NhuCaus.Where(n => n.SoNguoi > 0).Select(n => n.BatDau).DefaultIfEmpty(item.NgayBatDau).Min();
-        Require(instant >= operationStart && instant <= DateTimeOffset.UtcNow && instant <= item.NgayKetThuc.AddMinutes(item.PhutThuDon), "end", "Giờ dừng không hợp lệ.");
+        var operationStart = item.NgayBatDau;
+        Require(instant >= operationStart && instant <= DateTimeOffset.UtcNow && instant <= item.NgayKetThuc, "end", "Giờ dừng không hợp lệ.");
         Require(item.PhanCongs.SelectMany(p => p.CongThucTes).All(c => c.KetThuc <= instant), "", "Giờ dừng không được cắt mất công đã xác nhận.");
         item.KetThucThucTe = instant; item.LyDoDung = Text(reason, 500, "reason", "Lý do dừng");
-        foreach (var p in item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG"))
+        foreach (var p in item.PhanCongs.Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY")))
         {
             if (p.BatDau >= instant) p.TrangThaiThamGia = "HUY_PHAN_CONG";
             else { if (p.KetThuc > instant) p.KetThuc = instant; p.TrangThaiThamGia = "DA_KET_THUC"; }
@@ -415,39 +348,69 @@ public sealed partial class HotelEventService
         return await BuildPreview(item!);
     }
 
+    private static IReadOnlyList<EventPaySlice> ReadFrozenBasis(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind == JsonValueKind.Null) return [];
+        return document.RootElement.EnumerateArray().Select(node =>
+        {
+            var slice = node.Deserialize<EventPaySlice>()!;
+            // Snapshots created before configurable rates used x1.
+            return node.TryGetProperty(nameof(EventPaySlice.Rate), out _) ? slice : slice with { Rate = 1m };
+        }).ToList();
+    }
+
     private async Task<EventPayPreview> BuildPreview(DuAn item)
     {
         var warnings = new List<string>(); var rows = new List<EventPayRow>();
         if (!item.TinhTheoGio) return new(item.Version, rows, ["Sự kiện theo chính sách cũ."], "");
         if (item.TrangThai == "HOAN_THANH")
         {
+            var periodIds = item.QuyetToans.Select(q => q.MaKyChiTra).Distinct().ToArray();
+            var periods = await db.KyLuongs.AsNoTracking().Where(k => periodIds.Contains(k.MaKyLuong))
+                .ToDictionaryAsync(k => k.MaKyLuong);
+            var detailIds = item.QuyetToans.Where(q => q.MaChiTiet.HasValue).Select(q => q.MaChiTiet!.Value).ToArray();
+            var payslips = await db.ChiTietPhieuLuongs.AsNoTracking().Where(d => detailIds.Contains(d.MaChiTiet))
+                .Select(d => new { d.MaChiTiet, d.MaPhieuLuong }).ToDictionaryAsync(d => d.MaChiTiet, d => d.MaPhieuLuong);
             rows.AddRange(item.QuyetToans.OrderBy(q => q.MaNhanVien).ThenBy(q => q.ThangPhatSinh).Select(q => new EventPayRow(
                 q.MaNhanVien, item.PhanCongs.FirstOrDefault(p => p.MaNhanVien == q.MaNhanVien)?.NhanVien?.HoTen ?? $"#{q.MaNhanVien}",
-                q.ThangPhatSinh, q.SoPhut, q.SoTien, JsonSerializer.Deserialize<List<EventPaySlice>>(q.CanCuTinh) ?? [])));
+                q.ThangPhatSinh, q.SoPhut, q.SoTien, ReadFrozenBasis(q.CanCuTinh),
+                periods.TryGetValue(q.MaKyChiTra, out var period) ? new(q.MaKyChiTra, period.Thang, period.Nam, period.TrangThai,
+                    q.MaChiTiet, q.MaChiTiet is { } detailId && payslips.TryGetValue(detailId, out var payslipId) ? payslipId : null) : null)));
         }
         else
         {
             var hourlyRate = await EventRateConfig.ReadAsync(db);
-            foreach (var group in item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG").GroupBy(p => p.MaNhanVien).OrderBy(g => g.Key))
+            if (HotelEventRules.CountEffectiveStaff(item.PhanCongs) == 0)
+                warnings.Add("Chưa có phân công hiệu lực từ Lịch làm việc để đối chiếu công sự kiện.");
+            var recorded = item.PhanCongs.SelectMany(p => p.CongThucTes).ToList();
+            var employees = item.PhanCongs.Select(p => p.MaNhanVien).Distinct().ToArray();
+            var windowStart = recorded.Count > 0 ? recorded.Min(c => c.BatDau) : DateTimeOffset.MinValue;
+            var windowEnd = recorded.Count > 0 ? recorded.Max(c => c.KetThuc) : DateTimeOffset.MinValue;
+            var otherWork = recorded.Count > 0 ? await db.CongSuKiens.AsNoTracking()
+                .Where(c => c.PhanCong!.MaDuAn != item.MaDuAn && employees.Contains(c.PhanCong.MaNhanVien)
+                    && c.BatDau < windowEnd && c.KetThuc > windowStart)
+                .Select(c => new { c.PhanCong!.MaNhanVien, c.BatDau, c.KetThuc }).ToListAsync() : [];
+            foreach (var group in item.PhanCongs.Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY") || p.CongThucTes.Count > 0).GroupBy(p => p.MaNhanVien).OrderBy(g => g.Key))
             {
                 var name = group.First().NhanVien?.HoTen ?? $"#{group.Key}";
+                if (group.SelectMany(p => p.CongThucTes).Any(c => otherWork.Any(o => o.MaNhanVien == group.Key
+                    && HotelEventRules.Overlaps(c.BatDau, c.KetThuc, o.BatDau, o.KetThuc))))
+                    warnings.Add($"{name}: công thực tế trùng với sự kiện khác; cần đối soát trước khi duyệt tiền.");
+                if (group.Any(p => p.TrangThaiThamGia is "HUY_PHAN_CONG" or "DA_HUY"))
+                    warnings.Add($"{name}: phân công đã hủy nhưng còn công thực tế; cần đối soát, không tự bỏ công đã làm.");
                 if (group.Any(p => !p.NgayDanhGia.HasValue || p.DanhGia == "CHUA_DANH_GIA")) warnings.Add($"{name}: còn phân công chưa xác nhận công/vắng mặt.");
                 if (group.Any(p => p.DanhGia != "KHONG_THAM_GIA" && p.CongThucTes.Count == 0)) warnings.Add($"{name}: thiếu công thực tế.");
+                if (group.Any(p => p.DanhGia == "KHONG_THAM_GIA" && p.CongThucTes.Count > 0))
+                    warnings.Add($"{name}: đánh dấu không tham gia nhưng còn công thực tế; HR cần đối soát trước khi nghiệm thu.");
                 try
                 {
                     foreach (var assignment in group)
                     {
-                        var shift = assignment.PhanCa;
                         foreach (var work in assignment.CongThucTes)
                         {
-                            if (shift == null || shift.MaNhanVien != assignment.MaNhanVien || shift.TrangThai == "DA_HUY"
-                                || work.BatDau < shift.BatDauDuKien || work.KetThuc > shift.KetThucDuKien
-                                || work.BatDau < assignment.BatDau || work.KetThuc > assignment.KetThuc)
-                                warnings.Add($"{name}: ca/phân công không còn bao phủ công #{work.MaCong}.");
-                            var attendance = shift?.ChamCong;
-                            var matches = attendance?.GioCheckIn is { } from && attendance.GioCheckOut is { } to && from <= work.BatDau && to >= work.KetThuc;
-                            if ((!matches || await HasLeave(group.Key,work.BatDau,work.KetThuc) || shift?.TrangThai == "VANG_MAT") && !work.XacNhanNgoaiLe)
-                                warnings.Add($"{name}: công #{work.MaCong} cần HR đối soát lại vì chấm công/nghỉ đã thay đổi.");
+                            if (!HourlyEventRules.CanRecordWork(item, assignment, work.BatDau, work.KetThuc, DateTimeOffset.UtcNow))
+                                warnings.Add($"{name}: ca/phân công/thời gian sự kiện không còn hợp lệ cho công #{work.MaCong}; cần kiểm tra lại nguồn phân công.");
                         }
                     }
                     var slices = group.SelectMany(p => p.CongThucTes.SelectMany(c => HourlyEventRules.Price(c.BatDau, c.KetThuc, p.NhanVien!.HopDongs, hourlyRate))).ToList();
@@ -468,12 +431,12 @@ public sealed partial class HotelEventService
         Require(actor.IsOffice, "", "Chỉ HR/Admin nghiệm thu.", true);
         var item = await Editable(actor, id, version); ReviewOpen(item);
         Require(item.TinhTheoGio, "", "Sự kiện không áp dụng chính sách theo giờ.");
-        Require(item.PhanCongs.Any(p => p.TrangThaiThamGia != "HUY_PHAN_CONG"), "", "Sự kiện chưa có phân công thực hiện để nghiệm thu.");
+        Require(HotelEventRules.CountEffectiveStaff(item.PhanCongs) > 0, "", "Sự kiện chưa có phân công thực hiện để nghiệm thu.");
         var preview = await BuildPreview(item);
         Require(preview.Warnings.Count == 0, "", string.Join(" ", preview.Warnings));
         Require(!string.IsNullOrEmpty(previewToken) && preview.Token == previewToken, "", "Căn cứ lương/công đã thay đổi. Xem lại bảng tiền trước khi nghiệm thu.");
-        var period = await db.KyLuongs.SingleOrDefaultAsync(k => k.MaKyLuong == paymentPeriodId);
-        Require(period != null && period.TrangThai is "MO" or "NHAP" or "TU_CHOI", "paymentPeriodId", "Chọn kỳ còn mở/nháp/từ chối; không nhận tiền vào kỳ đã gửi duyệt.");
+        var period = await OpenEventPaymentPeriods.SingleOrDefaultAsync(k => k.MaKyLuong == paymentPeriodId);
+        Require(period != null, "paymentPeriodId", "Chọn kỳ còn mở/nháp/từ chối; không nhận tiền vào kỳ đã gửi duyệt hoặc đã duyệt.");
         var periodMonth = new DateOnly(period!.Nam, period.Thang, 1);
         Require(preview.Rows.All(r => r.WorkMonth <= periodMonth), "paymentPeriodId", "Kỳ trả không được trước tháng phát sinh công.");
         Require(!await db.QuyetToanSuKiens.AnyAsync(q => q.MaDuAn == id), "", "Sự kiện đã có quyết toán; không tạo trùng.");

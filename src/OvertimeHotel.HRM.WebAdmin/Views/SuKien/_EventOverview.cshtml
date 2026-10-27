@@ -8,7 +8,23 @@
     string Money(decimal value) => value.ToString("#,##0.##", CultureInfo.GetCultureInfo("vi-VN")) + " đ";
     var eventRate = Model.HourlyEventRate.ToString("0.00");
 }
-            <div class="event-form-grid">
+@if (Model.NeedsLateConfirmationWarning)
+{
+    <div class="alert alert-warning mb-3 d-flex align-items-center gap-2" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-4" aria-hidden="true"></i>
+        <div>
+            @if (item.NgayKetThuc <= DateTimeOffset.UtcNow)
+            {
+                <strong>Cần đối soát thực hiện:</strong><span> Sự kiện đã quá giờ kết thúc nhưng vẫn đang ở trạng thái Lên kế hoạch. HR/Admin cần kiểm tra thực tế và đối soát hồ sơ.</span>
+            }
+            else
+            {
+                <strong>Đang chờ tự bắt đầu:</strong><span> Sự kiện đã đến giờ bắt đầu dự kiến (@start.ToString("dd/MM/yyyy HH:mm")). Kiểm tra số khách, nhân sự và ca nguồn; hệ thống sẽ tự bắt đầu khi đủ điều kiện.</span>
+            }
+        </div>
+    </div>
+}
+<div class="event-form-grid">
                 <div class="event-panel">
                     <span class="event-eyebrow">THÔNG TIN CHUNG</span>
                     <h3>Bức tranh tổng thể</h3>
@@ -31,59 +47,152 @@
                         <li class="@(item.TrangThai == "CHO_NGHIEM_THU" ? "is-current" : "")">Chờ nghiệm thu <small>Đánh giá nhân sự, xác nhận phụ cấp</small></li>
                         <li class="@(item.TrangThai == "HOAN_THANH" ? "is-current" : "")">Hoàn thành <small>HR/Admin nghiệm thu và khóa dữ liệu</small></li>
                     </ol>
-                    @if (Model.CanManage && item.TrangThai is "LEN_KE_HOACH" or "DANG_DIEN_RA")
+                    @if (item.TrangThai == "LEN_KE_HOACH")
                     {
                         var summary = Model.StaffingSummary;
+                        <p data-event-auto-start>Hệ thống tự bắt đầu sự kiện khi đến giờ và đã đủ thông tin, nhân sự hợp lệ.</p>
+                        @if (!summary.IsFullyStaffed)
+                        {
+                            <div class="alert alert-warning mb-3"><strong>Cần bổ sung nhân sự.</strong> @summary.SummaryText</div>
+                        }
+                        @if (item.TinhTheoGio)
+                        {
+                            <p class="form-text">Cần có số khách lớn hơn 0 và đủ vai trò bắt buộc. Phân công phải gắn ca nguồn đã công bố, nhân viên có hợp đồng hiệu lực, không trùng lịch hoặc nghỉ đã duyệt và bảo đảm định biên bộ phận nguồn.</p>
+                        }
+                        <p class="form-text">Tải lại trang để cập nhật trạng thái mới nhất.</p>
+                    }
+                    else if (Model.CanManage && item.TrangThai == "DANG_DIEN_RA")
+                    {
                         <form asp-action="Status" asp-route-id="@item.MaDuAn" method="post">
                             <partial name="_EventContext" model="Model" />
                             <input name="version" type="hidden" value="@item.Version" />
-                            <input name="status" type="hidden" value="@(item.TrangThai == "LEN_KE_HOACH" ? "DANG_DIEN_RA" : "CHO_NGHIEM_THU")" />
-                            @if (item.TrangThai == "LEN_KE_HOACH" && !summary.IsFullyStaffed)
-                            {
-                                <div class="alert alert-warning mb-3">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                    <strong>Chưa thể bắt đầu sự kiện.</strong> @summary.SummaryText
-                                </div>
-                                <button class="event-primary-button opacity-50" type="submit" disabled title="Chưa đủ nhân sự tất cả phòng ban bắt buộc">
-                                    Bắt đầu sự kiện <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="event-primary-button" type="submit">
-                                    @(item.TrangThai == "LEN_KE_HOACH" ? "Bắt đầu sự kiện" : "Chuyển chờ nghiệm thu") <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                                </button>
-                            }
-                            <p class="form-text">Chuyển trạng thái sau khi đến giờ @(item.TrangThai == "LEN_KE_HOACH" ? "bắt đầu" : "kết thúc") dự kiến.</p>
+                            <input name="status" type="hidden" value="CHO_NGHIEM_THU" />
+                            <button class="event-primary-button" type="submit">Chuyển chờ nghiệm thu <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+                            <p class="form-text">Chuyển chờ nghiệm thu sau khi đến giờ kết thúc dự kiến.</p>
                         </form>
                     }
                 </div>
             </div>
-            <div class="event-panel mt-4">
-                <span class="event-eyebrow">NHẬT KÝ SỰ KIỆN</span>
-                <h3>Lịch sử thay đổi</h3>
-                @if (Model.History.Count == 0)
+            <div class="event-panel mt-4" id="staffing-requirements">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                    <div>
+                        <span class="event-eyebrow">ĐỊNH MỨC &amp; YÊU CẦU NHÂN SỰ</span>
+                        <h3 class="mb-0">Yêu cầu phòng ban &amp; vai trò bắt buộc</h3>
+                    </div>
+                    @if (Model.CanEdit && item.TrangThai == "LEN_KE_HOACH")
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-new-need aria-controls="addCustomNeedForm" aria-expanded="@(Model.Need.NeedId > 0 || !ViewData.ModelState.IsValid ? "true" : "false")">
+                            <i class="bi bi-plus-circle me-1"></i> Điều chỉnh / Thêm yêu cầu
+                        </button>
+                    }
+                </div>
+                <p class="event-muted mb-3">Định mức nhân sự được sinh tự động theo loại sự kiện và số khách, áp dụng cho toàn sự kiện. HR/Admin được điều chỉnh số lượng hoặc bổ sung vai trò kèm lý do.</p>
+
+                @if (Model.CanEdit && item.TrangThai == "LEN_KE_HOACH")
                 {
-                    <p class="event-muted">Chưa có thay đổi được ghi nhận.</p>
+                    <div class="collapse mb-4 @(Model.Need.NeedId > 0 || !ViewData.ModelState.IsValid ? "show" : "")" id="addCustomNeedForm" data-need-editor>
+                        <div class="card card-body bg-light">
+                            <h5 class="card-title h6 mb-3">Biểu mẫu điều chỉnh yêu cầu nhân sự</h5>
+                            <form asp-action="SaveNeed" asp-route-id="@item.MaDuAn" method="post" data-need-form>
+                                <partial name="_EventContext" model="Model" />
+                                <input type="hidden" name="Need.Version" value="@item.Version" />
+                                <input asp-for="Need.NeedId" type="hidden" />
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label asp-for="Need.Department" class="form-label">Phòng ban <span class="text-danger">*</span></label>
+                                        <select asp-for="Need.Department" class="form-select form-select-sm" required>
+                                            @foreach (var dept in HotelEventRules.GetRequiredDepartments(item.LoaiDuAn))
+                                            {
+                                                <option value="@dept">@HotelEventRules.DepartmentLabels.GetValueOrDefault(dept, dept)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label asp-for="Need.Role" class="form-label">Vai trò <span class="text-danger">*</span></label>
+                                        <input asp-for="Need.Role" class="form-control form-control-sm" placeholder="Nhập vai trò trong danh mục phòng ban" required maxlength="100" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label asp-for="Need.Count" class="form-label">Số người cần <span class="text-danger">*</span></label>
+                                        <input asp-for="Need.Count" class="form-control form-control-sm" min="0" max="100000" required />
+                                    </div>
+                                    <div class="col-12">
+                                        <label asp-for="Need.Reason" class="form-label">Lý do điều chỉnh <span class="text-danger">*</span></label>
+                                        <input asp-for="Need.Reason" class="form-control form-control-sm" placeholder="Nhập lý do điều chỉnh hoặc bổ sung vai trò..." required maxlength="500" />
+                                    </div>
+                                    <div class="col-12 text-end">
+                                        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check-lg me-1"></i> Lưu yêu cầu</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                }
+
+                @if (item.NhuCaus.Count == 0)
+                {
+                    <div class="alert alert-secondary mb-0">Chưa có khai báo định mức yêu cầu nhân sự cho sự kiện này.</div>
                 }
                 else
                 {
-                    <ul class="event-history">
-                        @foreach (var entry in Model.History)
-                        {
-                            <li>
-                                <time>@HotelEventRules.Local(entry.ThoiGian).ToString("dd/MM/yyyy HH:mm")</time>
-                                <div>
-                                    <strong>@entry.TenNguoiThucHien</strong> · @entry.HanhDong
-                                    <p>@entry.NoiDung</p>
-                                    @if (!string.IsNullOrWhiteSpace(entry.LyDo))
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Phòng ban</th>
+                                    <th>Vai trò bắt buộc</th>
+                                    <th class="text-center">Số người cần</th>
+                                    <th>Loại yêu cầu</th>
+                                    @if (Model.CanEdit && item.TrangThai == "LEN_KE_HOACH")
                                     {
-                                        <small>Lý do: @entry.LyDo</small>
+                                        <th class="text-end">Thao tác</th>
                                     }
-                                </div>
-                            </li>
-                        }
-                    </ul>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var need in item.NhuCaus.OrderBy(n => n.MaPhongBan).ThenBy(n => n.VaiTro))
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>@HotelEventRules.DepartmentLabels.GetValueOrDefault(need.MaPhongBan, need.MaPhongBan)</strong>
+                                        </td>
+                                        <td>@need.VaiTro</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-secondary fs-6">@need.SoNguoi</span>
+                                        </td>
+                                        <td>
+                                            @if (need.LaMau)
+                                            {
+                                                <span class="badge bg-info text-dark">Theo định mức mẫu</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark">Đã điều chỉnh riêng</span>
+                                            }
+                                        </td>
+                                        @if (Model.CanEdit && item.TrangThai == "LEN_KE_HOACH")
+                                        {
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-xs btn-outline-secondary me-1" data-edit-need="@need.MaNhuCau"
+                                                        data-need-department="@need.MaPhongBan" data-need-role="@need.VaiTro" data-need-count="@need.SoNguoi">
+                                                    Sửa
+                                                </button>
+                                                @if (!need.LaMau)
+                                                {
+                                                    <form asp-action="DeleteNeed" asp-route-id="@item.MaDuAn" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa yêu cầu này?');">
+                                                        <partial name="_EventContext" model="Model" />
+                                                        <input type="hidden" name="needId" value="@need.MaNhuCau" />
+                                                        <input type="hidden" name="version" value="@item.Version" />
+                                                        <input type="hidden" name="reason" value="Xóa yêu cầu điều chỉnh riêng" />
+                                                        <button type="submit" class="btn btn-xs btn-outline-danger">Xóa</button>
+                                                    </form>
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
             </div>
             @if (Model.CanManage)

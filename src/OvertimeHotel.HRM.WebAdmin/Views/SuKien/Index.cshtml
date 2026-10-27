@@ -12,10 +12,10 @@
     bool Intersects(OvertimeHotel.HRM.Core.Models.DuAn item, DateOnly day) => item.NgayBatDau < HotelEventRules.ToUtc(day.AddDays(1).ToDateTime(TimeOnly.MinValue)) && item.NgayKetThuc > HotelEventRules.ToUtc(day.ToDateTime(TimeOnly.MinValue));
     var cardData = Model.Events.Select(item => new {
         id = item.MaDuAn,
-        name = item.TenDuAn, venue = item.DiaDiem,
+        name = item.TenDuAn, venue = HotelEventRules.VenueLabel(item.DiaDiem),
         type = HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn),
         status = item.TrangThai, statusLabel = HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai),
-        count = item.PhanCongs.Count, time = HotelEventRules.Local(item.NgayBatDau).ToString("HH:mm"),
+        count = HotelEventRules.CountEffectiveStaff(item.PhanCongs), time = HotelEventRules.Local(item.NgayBatDau).ToString("HH:mm"),
         days = days.Where(day => Intersects(item, day)).Select(day => day.ToString("yyyy-MM-dd")),
         url = Url.Action("Details", new { id = item.MaDuAn, returnYear = Model.Year, returnMonth = Model.Month })
     });
@@ -88,7 +88,7 @@
                                 @foreach (var item in events.Take(2))
                                 {
                                     <a data-event-link data-event-id="@item.MaDuAn" class="event-calendar-chip event-chip-@item.TrangThai" asp-action="Details" asp-route-id="@item.MaDuAn" asp-route-returnYear="@Model.Year" asp-route-returnMonth="@Model.Month" asp-route-returnDate="@Model.SelectedDate.ToString("yyyy-MM-dd")" title="@item.TenDuAn · @HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai)">
-                                        <span class="event-chip-time">@HotelEventRules.Local(item.NgayBatDau).ToString("HH:mm")</span><strong>@item.TenDuAn</strong><span class="event-chip-meta">@HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai) · @item.PhanCongs.Count người</span>
+                                        <span class="event-chip-time">@HotelEventRules.Local(item.NgayBatDau).ToString("HH:mm")</span><strong>@item.TenDuAn</strong><span class="event-chip-meta">@HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai) · @HotelEventRules.CountEffectiveStaff(item.PhanCongs) người</span>
                                     </a>
                                 }
                                 @if (events.Count > 2) { <span class="event-day-more">+@(events.Count - 2) sự kiện</span> }

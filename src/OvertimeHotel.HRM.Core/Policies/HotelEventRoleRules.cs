@@ -97,7 +97,7 @@ public static class HotelEventRoleRules
 
     public static bool CanRemove(DuAn item, int assignmentId, DateTimeOffset now)
     {
-        if (item.TinhTheoGio)
+        if (item.TinhTheoGio || item.NhuCaus.Count > 0)
         {
             var remainingEvent = new DuAn { TinhTheoGio = true, LoaiDuAn = item.LoaiDuAn, NgayBatDau = item.NgayBatDau,
                 NgayKetThuc = item.NgayKetThuc, KetThucThucTe = item.KetThucThucTe, NhuCaus = item.NhuCaus,

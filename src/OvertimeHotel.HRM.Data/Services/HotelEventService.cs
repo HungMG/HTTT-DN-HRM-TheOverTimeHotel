@@ -8,14 +8,16 @@ namespace OvertimeHotel.HRM.Data.Services;
 
 public sealed partial class HotelEventService(AppDbContext db) : IHotelEventService
 {
-    private IQueryable<DuAn> Events => db.DuAns.Include(e => e.NguoiQuanLy)
+    private IQueryable<DuAn> EventInformation => db.DuAns.Include(e => e.NguoiQuanLy)
+        .Include(e => e.NhuCaus).Include(e => e.QuyetToans).AsSplitQuery();
+    private IQueryable<DuAn> Events => EventInformation
         .Include(e => e.PhanCongs).ThenInclude(p => p.NhanVien).ThenInclude(n => n!.PhongBan)
         .Include(e => e.PhanCongs).ThenInclude(p => p.NhanVien).ThenInclude(n => n!.HopDongs)
         .Include(e => e.PhanCongs).ThenInclude(p => p.PhanCa).ThenInclude(p => p!.ChamCong)
-        .Include(e => e.PhanCongs).ThenInclude(p => p.CongThucTes)
-        .Include(e => e.NhuCaus).Include(e => e.QuyetToans).AsSplitQuery();
+        .Include(e => e.PhanCongs).ThenInclude(p => p.CongThucTes);
 
-        public async Task<int> AutoCancelExpiredEventsAsync()
+    public Task<int> AutoCancelExpiredEventsAsync() => Task.FromResult(0);
+    private async Task<int> DeprecatedAutoCancelExpiredEventsAsync()
     {
         var now = DateTimeOffset.UtcNow;
         var startOfTodayLocal = DateOnly.FromDateTime(HotelEventRules.Local(now)).ToDateTime(TimeOnly.MinValue);
@@ -71,26 +73,33 @@ public sealed partial class HotelEventService(AppDbContext db) : IHotelEventServ
 
 public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffset from, DateTimeOffset to)
     {
-        await AutoCancelExpiredEventsAsync();
+        // Auto-cancel on read removed per plan
         actor = await CurrentActor(actor);
         from = from.ToUniversalTime();
         to = to.ToUniversalTime();
         return await Scoped(Events.AsNoTracking(), actor)
-            .Where(e => e.NgayBatDau.AddMinutes(-e.PhutChuanBi) < to
-                && (e.KetThucThucTe ?? e.NgayKetThuc).AddMinutes(e.PhutThuDon) > from).OrderBy(e => e.NgayBatDau).ToListAsync();
+            .Where(e => e.NgayBatDau < to
+                && (e.KetThucThucTe ?? e.NgayKetThuc) > from).OrderBy(e => e.NgayBatDau).ToListAsync();
     }
 
     public async Task<DuAn?> GetAsync(EventActor actor, int id)
     {
-        await AutoCancelExpiredEventsAsync();
+        // Auto-cancel on read removed per plan
         actor = await CurrentActor(actor);
         return await Scoped(Events.AsNoTracking(), actor).SingleOrDefaultAsync(e => e.MaDuAn == id);
     }
 
+    public async Task<DuAn?> GetOverviewAsync(EventActor actor, int id)
+    {
+        actor = await CurrentActor(actor);
+        return await Scoped(EventInformation.AsNoTracking(), actor).SingleOrDefaultAsync(e => e.MaDuAn == id);
+    }
+
+    public Task<decimal> HourlyEventRateAsync() => EventRateConfig.ReadAsync(db);
+
     public async Task<IReadOnlyList<NhanVien>> ManagersAsync() => await db.NhanViens.AsNoTracking()
         .Where(n => n.TrangThai == "DANG_LAM" && n.TaiKhoan != null && n.TaiKhoan.TrangThai
-            && n.TaiKhoan.VaiTro != null && (n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() == "MANAGER"
-                || n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() == "HR" || n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() == "ADMIN"))
+            && n.TaiKhoan.VaiTro != null && n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() == "HR")
         .OrderBy(n => n.Ten).ThenBy(n => n.Ho).ToListAsync();
 
     public async Task<IReadOnlyList<NhanVien>> EmployeesAsync() => await db.NhanViens.AsNoTracking()
@@ -122,16 +131,6 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         }
         var name = Text(input.Name, 200, "Input.Name", "Tên sự kiện");
         var hourly = input.Id == 0 ? input.HourlyCompensation : item.TinhTheoGio;
-        var venue = input.Venue;
-        DiaDiemSuKien? venueRecord = null;
-        if (hourly)
-        {
-            venueRecord = await db.DiaDiemSuKiens.SingleOrDefaultAsync(v => v.MaDiaDiem == input.VenueId && v.DangSuDung);
-            Require(venueRecord != null, "Input.VenueId", "Chọn địa điểm đang sử dụng trong danh mục.");
-            venue = venueRecord!.TenDiaDiem;
-            Require(input.ExpectedGuests <= venueRecord.SucChua, "Input.ExpectedGuests", "Số khách vượt sức chứa địa điểm.");
-        }
-        venue = Text(venue, 255, "Input.Venue", "Địa điểm");
         Require(HotelEventRules.TypeLabels.ContainsKey(input.Type), "Input.Type", "Loại sự kiện không hợp lệ.");
         var start = Utc(input.Start, "Input.Start");
         var end = Utc(input.End, "Input.End");
@@ -146,8 +145,8 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         Require(!await db.DuAns.AnyAsync(e => e.MaDuAn != input.Id && e.TenDuAn == name), "Input.Name", "Tên sự kiện đã được sử dụng.");
         Require(await db.NhanViens.AnyAsync(n => n.MaNhanVien == input.ManagerId && n.TrangThai == "DANG_LAM"
             && n.TaiKhoan != null && n.TaiKhoan.TrangThai && n.TaiKhoan.VaiTro != null
-            && (n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() == "MANAGER" || n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() == "HR" || n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() == "ADMIN")),
-            "Input.ManagerId", "Chọn quản lý có tài khoản quản lý đang hoạt động.");
+            && n.TaiKhoan.VaiTro.TenVaiTro.ToUpper() == "HR"),
+            "Input.ManagerId", "Chọn nhân viên HR đang làm việc có tài khoản đang hoạt động.");
         Require(!item.PhanCongs.Any(p => p.TrangThaiThamGia != "HUY_PHAN_CONG") || (item.NgayBatDau == start && item.NgayKetThuc == end), "Input.Start",
             "Gỡ các phân công trước khi thay đổi thời gian sự kiện.");
         if (input.Id != 0 && input.Type != item.LoaiDuAn)
@@ -165,51 +164,38 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
                 $"Không thể đổi loại sự kiện: có {incompatible.Count} phân công có phòng ban hoặc vai trò không phù hợp. Vui lòng phân công lại trước khi đổi.");
         }
         Require(calculateAtAcceptance || item.PhanCongs.Sum(p => p.PhuCapDuKien) <= budget, "Input.Budget", "Ngân sách thấp hơn tổng phụ cấp đã phân công.");
-        Require(input.SetupMinutes is >= 0 and <= 10080 && input.TeardownMinutes is >= 0 and <= 10080, "Input.SetupMinutes", "Thời gian chuẩn bị/thu dọn phải từ 0 đến 10.080 phút.");
-        var normalizedVenue = venue.ToLowerInvariant();
-        var occupiedStart = start.AddMinutes(-input.SetupMinutes);
-        var occupiedEnd = end.AddMinutes(input.TeardownMinutes);
-        var sameVenue = await db.DuAns.Where(e => e.MaDuAn != input.Id && e.TrangThai != "HUY"
-            && ((input.VenueId != null && e.MaDiaDiem == input.VenueId) || e.DiaDiem.Trim().ToLower() == normalizedVenue)).ToListAsync();
-        Require(!sameVenue.Any(e => HotelEventRules.Overlaps(occupiedStart, occupiedEnd,
-            e.NgayBatDau.AddMinutes(-e.PhutChuanBi), (e.KetThucThucTe ?? e.NgayKetThuc).AddMinutes(e.PhutThuDon))),
-            "Input.Venue", "Địa điểm đã có sự kiện khác trong khoảng thời gian này.");
-        if (hourly && input.Id != 0 && item.NhuCaus.Count > 0)
-            Require(item.NhuCaus.Where(n => !n.LaMau).All(n => n.BatDau >= occupiedStart && n.KetThuc <= occupiedEnd
-                && HotelEventRules.GetRequiredDepartments(input.Type).Contains(n.MaPhongBan)
+        if (input.Id != 0 && item.NhuCaus.Count > 0)
+            Require(item.NhuCaus.Where(n => !n.LaMau).All(n => HotelEventRules.GetRequiredDepartments(input.Type).Contains(n.MaPhongBan)
                 && HotelEventRoleRules.ResolveRole(input.Type, n.MaPhongBan, n.VaiTro, null) != null), "Input.Start",
-                "Khung nhu cầu không còn phù hợp. Điều chỉnh/xóa nhu cầu trước khi đổi loại hoặc thu ngắn thời gian.");
-        if (hourly && input.Id != 0 && (item.LoaiDuAn != input.Type || item.SoKhachDuKien != input.ExpectedGuests
+                "Nhu cầu không còn phù hợp. Điều chỉnh/xóa nhu cầu trước khi đổi loại sự kiện.");
+        if (input.Id != 0 && (item.LoaiDuAn != input.Type || item.SoKhachDuKien != input.ExpectedGuests
             || item.NgayBatDau != start || item.NgayKetThuc != end))
         {
             foreach (var old in item.NhuCaus.Where(n => n.LaMau).ToList()) { db.Remove(old); item.NhuCaus.Remove(old); }
             foreach (var department in HotelEventRules.GetRequiredDepartments(input.Type))
                 foreach (var role in HotelEventRoleRules.GetRoles(input.Type, department, input.ExpectedGuests).Where(r => r.IsRequired))
                     if (!item.NhuCaus.Any(n => n.MaPhongBan == department && n.VaiTro == role.Name))
-                        item.NhuCaus.Add(new NhuCauSuKien { TenKhung = "Phục vụ sự kiện (mẫu)", LaMau = true, MaPhongBan = department,
-                            VaiTro = role.Name, SoNguoi = role.RequiredCount, BatDau = start, KetThuc = end });
+                        item.NhuCaus.Add(new NhuCauSuKien { LaMau = true, MaPhongBan = department,
+                            VaiTro = role.Name, SoNguoi = role.RequiredCount });
         }
         item.TenDuAn = name;
         item.LoaiDuAn = input.Type;
-        item.DiaDiem = venue;
+        item.DiaDiem = HotelEventRules.HotelVenueName;
         item.NgayBatDau = start;
         item.NgayKetThuc = end;
         item.NganSachPhuCap = budget;
         item.TinhPhuCapKhiNghiemThu = calculateAtAcceptance;
         item.TinhTheoGio = hourly;
-        if (hourly) item.MaDiaDiem = venueRecord!.MaDiaDiem;
-        item.PhutChuanBi = input.SetupMinutes; item.PhutThuDon = input.TeardownMinutes;
         item.MaNguoiQuanLy = input.ManagerId;
         item.SoKhachDuKien = input.ExpectedGuests;
         item.MoTa = input.Description?.Trim();
         if (input.Id == 0)
         {
             db.DuAns.Add(item);
-            if (hourly)
-                foreach (var department in HotelEventRules.GetRequiredDepartments(item.LoaiDuAn))
-                    foreach (var role in HotelEventRoleRules.GetRoles(item.LoaiDuAn, department, item.SoKhachDuKien).Where(r => r.IsRequired))
-                        item.NhuCaus.Add(new NhuCauSuKien { TenKhung = "Phục vụ sự kiện (mẫu)", LaMau = true, MaPhongBan = department,
-                            VaiTro = role.Name, SoNguoi = role.RequiredCount, BatDau = start, KetThuc = end });
+            foreach (var department in HotelEventRules.GetRequiredDepartments(item.LoaiDuAn))
+                foreach (var role in HotelEventRoleRules.GetRoles(item.LoaiDuAn, department, item.SoKhachDuKien).Where(r => r.IsRequired))
+                    item.NhuCaus.Add(new NhuCauSuKien { LaMau = true, MaPhongBan = department,
+                        VaiTro = role.Name, SoNguoi = role.RequiredCount });
         }
         else item.Version++;
         await db.SaveChangesAsync(); // Identity is needed for the audit subject; still in the same transaction.
@@ -238,7 +224,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
     {
         var start = Utc(input.Start, "Assignment.Start");
         var end = Utc(input.End, "Assignment.End");
-        Require(start >= item.NgayBatDau.AddMinutes(-item.PhutChuanBi) && start < end && end <= item.NgayKetThuc.AddMinutes(item.PhutThuDon), "Assignment.End", "Thời gian tham gia phải nằm trong thời gian nhiệm vụ sự kiện.");
+        Require(start >= item.NgayBatDau && start < end && end <= item.NgayKetThuc, "Assignment.End", "Thời gian tham gia phải nằm trong giờ bắt đầu đến kết thúc sự kiện.");
         PhanCa? source = null;
         if (item.TinhTheoGio)
         {
@@ -312,7 +298,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         var assignment = item.PhanCongs.SingleOrDefault(p => p.MaPhanCong == input.AssignmentId);
         Require(assignment != null, "Review.AssignmentId", "Không tìm thấy phân công trong sự kiện.");
         Require(input.Rating is "HOAN_THANH" or "XUAT_SAC" or "KHONG_THAM_GIA", "Review.Rating", "Chọn kết quả đánh giá hợp lệ.");
-        Require(assignment!.TrangThaiThamGia != "HUY_PHAN_CONG", "", "Phân công đã hủy; giữ lịch sử, không đánh giá trả tiền.");
+        Require(assignment!.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"), "", "Phân công đã hủy; giữ lịch sử, không đánh giá trả tiền.");
         if (item.TinhTheoGio)
         {
             Require(input.Rating != "KHONG_THAM_GIA" || assignment.CongThucTes.Count == 0, "", "Đã có công thực tế; HR cần đối soát công trước khi ghi vắng mặt.");
@@ -334,23 +320,16 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
 
     public async Task ChangeStatusAsync(EventActor actor, int id, long version, string status, string? reason = null)
     {
-        await AutoCancelExpiredEventsAsync();
+        // Auto-cancel on read removed per plan
         await Write(async () =>
         {
             actor = await CurrentActor(actor);
         var item = await Editable(actor, id, version);
-        var operationStart = item.TinhTheoGio ? item.NhuCaus.Where(n => n.SoNguoi > 0).Select(n => n.BatDau).DefaultIfEmpty(item.NgayBatDau).Min() : item.NgayBatDau;
-        var operationEnd = item.NgayKetThuc.AddMinutes(item.PhutThuDon);
+        var operationStart = item.NgayBatDau;
+        var operationEnd = item.NgayKetThuc;
         Require(HotelEventRules.CanTransition(item.TrangThai, status, operationStart, operationEnd, DateTimeOffset.UtcNow), "", "Chuyển trạng thái không hợp lệ hoặc chưa đến thời gian thực hiện.");
         if (item.TrangThai == "LEN_KE_HOACH" && status == "DANG_DIEN_RA")
-        {
-            Require(item.SoKhachDuKien > 0, "", "Nhập số khách dự kiến lớn hơn 0 trước khi bắt đầu sự kiện.");
-            var summary = HotelEventRules.GetStaffingSummary(item);
-            Require(summary.IsFullyStaffed, "",
-                $"Chưa thể bắt đầu sự kiện vì còn thiếu vai trò bắt buộc: {string.Join("; ", summary.MissingRoleDescriptions)}.");
-            if (item.TinhTheoGio)
-                foreach (var assignment in item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG")) await ValidateSource(item, assignment);
-        }
+            await EnsureReadyToStart(item);
         var oldStatus = item.TrangThai;
         if (status == "HUY")
         {
@@ -364,7 +343,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
             }
         }
         item.TrangThai = status;
-        if (status == "CHO_NGHIEM_THU") item.KetThucThucTe = item.NgayKetThuc.AddMinutes(item.PhutThuDon);
+        if (status == "CHO_NGHIEM_THU") item.KetThucThucTe = item.NgayKetThuc;
         item.Version++;
         Audit(actor, item, status == "HUY" ? "HUY_SU_KIEN" : "TRANG_THAI_SU_KIEN", $"Trạng thái: {oldStatus} → {status}.", item.LyDoHuy);
             return 0;
@@ -426,7 +405,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
     }
 
     private static void StaffingOpen(DuAn item) => Require(item.TrangThai is "LEN_KE_HOACH" or "DANG_DIEN_RA", "", "Chỉ phân công khi đang lập kế hoạch hoặc đang diễn ra.");
-    private static void ReviewOpen(DuAn item) => Require(item.TrangThai == "CHO_NGHIEM_THU" && (item.KetThucThucTe ?? item.NgayKetThuc.AddMinutes(item.PhutThuDon)) <= DateTimeOffset.UtcNow, "", "Chỉ đánh giá và nghiệm thu sau khi sự kiện kết thúc và ở trạng thái chờ nghiệm thu.");
+    private static void ReviewOpen(DuAn item) => Require(item.TrangThai == "CHO_NGHIEM_THU" && (item.KetThucThucTe ?? item.NgayKetThuc) <= DateTimeOffset.UtcNow, "", "Chỉ đánh giá và nghiệm thu sau khi sự kiện kết thúc và ở trạng thái chờ nghiệm thu.");
     private static string Text(string? value, int max, string field, string label)
     {
         value = value?.Trim();
@@ -442,11 +421,11 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
     {
         if (!condition) throw new EventOperationException(field, message, forbidden);
     }
-    private void Audit(EventActor actor, DuAn item, string action, string message, string? reason = null, string? oldValues = null) => db.NhatKyQuanTris.Add(new NhatKyQuanTri
+    private void Audit(EventActor actor, DuAn item, string action, string message, string? reason = null, string? oldValues = null, string? newValues = null) => db.NhatKyQuanTris.Add(new NhatKyQuanTri
     {
         MaTaiKhoanThucHien = actor.AccountId, TenNguoiThucHien = actor.Name.Length <= 100 ? actor.Name : actor.Name[..100],
         TenTaiKhoanBiTacDong = $"SK-{item.MaDuAn}", HanhDong = action, NoiDung = message,
-        GiaTriCu = oldValues, GiaTriMoi = $"version={item.Version}; trang_thai={item.TrangThai}", LyDo = reason
+        GiaTriCu = oldValues, GiaTriMoi = newValues ?? $"version={item.Version}; trang_thai={item.TrangThai}", LyDo = reason
     });
 
     private async Task<T> Write<T>(Func<Task<T>> operation)

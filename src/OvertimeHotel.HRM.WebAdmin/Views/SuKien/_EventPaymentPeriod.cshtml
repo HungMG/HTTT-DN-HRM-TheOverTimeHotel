@@ -1,12 +1,18 @@
 ﻿@model EventDetailsViewModel
 @using OvertimeHotel.HRM.Core.Policies
+@{
+    var today = DateOnly.FromDateTime(HotelEventRules.Local(DateTimeOffset.UtcNow));
+    var suggested = new DateOnly(today.Year, today.Month, 1);
+    if (Model.PayPreview?.Rows.Count > 0 && Model.PayPreview.Rows.Max(r => r.WorkMonth) > suggested)
+        suggested = Model.PayPreview.Rows.Max(r => r.WorkMonth);
+}
 @if (Model.IsOffice)
 {
     <details class="mt-3"><summary>Tạo kỳ lương chi trả</summary>
         <form asp-action="EnsurePaymentPeriod" asp-route-id="@Model.Event.MaDuAn" method="post" class="row g-2 mt-2 align-items-end">
             <partial name="_EventContext" model="Model" />
-            <div class="col-md-4"><label for="new-payment-month" class="form-label">Tháng</label><input id="new-payment-month" name="month" type="number" min="1" max="12" value="@HotelEventRules.Local(DateTimeOffset.UtcNow).Month" class="form-control" required /></div>
-            <div class="col-md-4"><label for="new-payment-year" class="form-label">Năm</label><input id="new-payment-year" name="year" type="number" min="1900" max="2100" value="@HotelEventRules.Local(DateTimeOffset.UtcNow).Year" class="form-control" required /></div>
+            <div class="col-md-4"><label for="new-payment-month" class="form-label">Tháng</label><input id="new-payment-month" name="month" type="number" min="1" max="12" value="@suggested.Month" class="form-control" required /></div>
+            <div class="col-md-4"><label for="new-payment-year" class="form-label">Năm</label><input id="new-payment-year" name="year" type="number" min="1900" max="2100" value="@suggested.Year" class="form-control" required /></div>
             <div class="col-md-4"><button type="submit" class="event-secondary-button">Tạo / chọn kỳ mở</button></div>
         </form>
     </details>

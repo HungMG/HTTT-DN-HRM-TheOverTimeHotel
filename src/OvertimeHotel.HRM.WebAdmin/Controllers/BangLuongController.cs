@@ -74,8 +74,8 @@ public class BangLuongController(
 
         var periodStatus = currentPeriod?.TrangThai ?? SalaryConstants.PERIOD_OPEN;
         var isLocked = periodStatus == SalaryConstants.PERIOD_LOCKED;
-        var isApproved = !isLocked && currentPeriod?.NgayDuyet != null;
-        var isPendingApproval = !isLocked && currentPeriod?.NgayGuiDuyet != null && currentPeriod?.NgayDuyet == null && string.IsNullOrEmpty(currentPeriod?.LyDoTuChoi);
+        var isApproved = !isLocked && (currentPeriod?.NgayDuyet != null || periodStatus == "DA_DUYET");
+        var isPendingApproval = !isLocked && !isApproved && currentPeriod?.NgayGuiDuyet != null && currentPeriod?.NgayDuyet == null && string.IsNullOrEmpty(currentPeriod?.LyDoTuChoi);
         var isOpenOrDraft = !isLocked && !isPendingApproval && !isApproved;
 
         var showPayrollData = IsHR || isPendingApproval || isApproved || isLocked;
@@ -121,7 +121,7 @@ public class BangLuongController(
             SearchKeyword = keyword,
             DepartmentFilter = department,
             Departments = departments,
-            CanCalculate = IsHR && !isLocked && !isPendingApproval,
+            CanCalculate = IsHR && !isLocked && !isPendingApproval && !isApproved,
             CanSubmitApproval = IsHR && isOpenOrDraft && query.Any(),
             CanApprove = IsBoss && isPendingApproval,
             CanLock = IsBoss && isApproved,
@@ -368,7 +368,8 @@ public class BangLuongController(
             ThucNhan = payslip.ThucNhan,
             ThucNhanBangChu = VietnameseNumberToWords.ConvertToWords(payslip.ThucNhan),
             AdjustInput = new AdjustSalaryItemInput { MaPhieuLuong = payslip.MaPhieuLuong },
-            CanEdit = IsHR && ky?.TrangThai != SalaryConstants.PERIOD_LOCKED && ky?.NgayGuiDuyet == null,
+            CanEdit = IsHR && ky != null && ky.TrangThai != SalaryConstants.PERIOD_LOCKED && ky.TrangThai != "DA_DUYET"
+                && !ky.NgayGuiDuyet.HasValue && !ky.NgayDuyet.HasValue,
             IsHR = IsHR,
             SuccessMessage = TempData["Success"]?.ToString(),
             ErrorMessage = TempData["Error"]?.ToString()

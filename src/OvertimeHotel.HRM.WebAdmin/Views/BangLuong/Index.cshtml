@@ -376,7 +376,7 @@
                 <span class="badge bg-light text-dark rounded-pill" data-payroll-count>@Model.Items.Count nhân viên</span>
                 @if (Model.TotalEventBonus > 0)
                 {
-                    <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle rounded-pill py-1 px-2.5" title="Chính sách sự kiện 5★: Hệ số x2 trong ca trực chính thức">
+                    <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle rounded-pill py-1 px-2.5" title="Tiền sự kiện theo kết quả quyết toán đã lưu">
                         <i class="bi bi-stars text-warning me-1"></i>Thù lao sự kiện: @Model.TotalEventBonus.ToString("N0") đ (@Model.TotalEventStaffCount nhân sự)
                     </span>
                 }
@@ -507,7 +507,7 @@
                                         <div class="fw-semibold">@row.TongThuong.ToString("N0")</div>
                                         @if (row.TienSuKien > 0)
                                         {
-                                            <div class="small text-warning-emphasis fw-semibold" style="font-size: 0.72rem;" title="Bao gồm @row.TienSuKien.ToString("N0")đ thù lao sự kiện (+100% lương giờ trong ca)">
+                                            <div class="small text-warning-emphasis fw-semibold" style="font-size: 0.72rem;" title="Bao gồm @row.TienSuKien.ToString("N0")đ tiền sự kiện theo quyết toán đã lưu">
                                                 <i class="bi bi-stars text-warning"></i> SK: @row.TienSuKien.ToString("N0")
                                             </div>
                                         }
@@ -540,7 +540,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@row.MaPhieuLuong" />
                                                 <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                                                <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0.5" title="Tính lại phiếu lương nhân viên này" onclick="return confirm('Tính lại số liệu chấm công, sự kiện và khấu trừ của @row.HoTen?');">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0.5" title="Tính lại phiếu lương nhân viên này" onclick="return confirm('Tính lại số liệu chấm công, sự kiện và khấu trừ của nhân viên này?');">
                                                     <i class="bi bi-arrow-clockwise"></i>
                                                 </button>
                                             </form>

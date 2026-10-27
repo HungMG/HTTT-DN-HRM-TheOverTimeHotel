@@ -67,6 +67,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
     {
         if (period.TrangThai == SalaryConstants.PERIOD_LOCKED)
             throw new InvalidOperationException("Kỳ lương đã khóa sổ, không được phép tính lại hoặc chỉnh sửa.");
+        if (period.NgayDuyet.HasValue || period.TrangThai == "DA_DUYET")
+            throw new InvalidOperationException("Bảng lương đã được duyệt, không thể tính lại hoặc chỉnh sửa.");
         if (period.NgayGuiDuyet.HasValue && !period.NgayDuyet.HasValue && string.IsNullOrEmpty(period.LyDoTuChoi))
             throw new InvalidOperationException("Bảng lương đang chờ Ban Giám Đốc duyệt, không thể tính lại hoặc chỉnh sửa.");
     }
@@ -659,7 +661,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 tongTienPhat += fine;
                 fineDetails.Add(new ChiTietTruViPhamTamUng
                 {
-                    LoaiTru = "BO_CA",
+                    LoaiTru = "KY_LUAT",
                     SoPhutViPham = 480,
                     SoTienTru = fine,
                     LyDoChiTiet = $"Bỏ ca làm việc không phép ngày {shift.NgayLamViec:dd/MM/yyyy}"
