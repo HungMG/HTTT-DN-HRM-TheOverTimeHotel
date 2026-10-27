@@ -407,7 +407,7 @@
                             <span class="text-muted">Số người phụ thuộc:</span>
                             <span class="fw-semibold text-dark">
                                 @emp.SoNguoiPhuThuoc người 
-                                <span class="text-muted fw-normal small">(giảm trừ @((emp.SoNguoiPhuThuoc * 4400000m).ToString("N0")) đ/tháng)</span>
+                                <span class="text-muted fw-normal small">(giảm trừ @((emp.SoNguoiPhuThuoc * OvertimeHotel.HRM.Core.Constants.SalaryConstants.DEPENDENT_TAX_DEDUCTION).ToString("N0")) đ/tháng)</span>
                             </span>
                         </div>
                         <div class="profile-prop-row">

@@ -122,7 +122,7 @@ $$\text{Tổng Khấu Trừ} = \text{Bảo Hiểm Bắt Buộc (10.5%)} + \text{
    - Vắng mặt không phép (Bỏ ca): Trừ toàn bộ lương ngày công đó + phạt bổ sung 200.000 VNĐ.
 
 3. **Thuế Thu Nhập Cá Nhân (TNCN):**
-   - Khấu trừ theo biểu thuế lũy tiến từng phần của Nhà nước sau khi trừ gia cảnh bản thân (11.000.000 VNĐ/tháng) và người phụ thuộc (4.400.000 VNĐ/tháng/người). *(Mức giảm trừ này là của Luật Thuế TNCN 07/2007/QH12 — xem cảnh báo tại mục 3.2, **cần xác minh** theo luật đang hiệu lực.)*
+   - Khấu trừ theo biểu thuế lũy tiến từng phần của Nhà nước sau khi trừ gia cảnh bản thân (15.500.000 VNĐ/tháng) và người phụ thuộc (6.200.000 VNĐ/tháng/người). *(Cập nhật theo mức giảm trừ mới: 15,5 triệu đồng cho bản thân và 6,2 triệu đồng cho mỗi người phụ thuộc).*
 
 #### 3.1. Trình tự tính thuế TNCN (thứ tự bắt buộc)
 
@@ -137,19 +137,25 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 - **Phụ cấp Dự án / Thù Lao Sự Kiện Khách Sạn là khoản thu nhập chịu thuế TNCN 100%:** Khoản thù lao này phát sinh từ việc nhân viên tham gia phục vụ sự kiện, tiệc cưới, hội nghị của khách sạn, mang tính chất tiền công / tiền thù lao trực tiếp nên **bắt buộc chịu thuế TNCN** (`chiu_thue_tncn = TRUE`). Do đó, khoản phụ cấp này **thuộc Thu nhập chịu thuế** và không được trừ ra khỏi Gross khi tính toán thu nhập chịu thuế.
 - Các khoản cộng/trừ vào thu nhập chịu thuế ngoài các bảo hiểm bắt buộc: Phụ cấp trách nhiệm quản lý (`chiu_thue_tncn = TRUE`). *Lưu ý: Khách sạn đã loại bỏ phụ cấp điện thoại và tạm ứng lương.*
 
-#### 3.2. Bảng thuế suất TNCN lũy tiến từng phần
+#### 3.2. Biểu thuế thu nhập cá nhân lũy tiến từng phần (5 bậc mới năm 2026)
 
-> ⚠️ **CẢNH BÁO — BẢNG NÀY CẦN XÁC MINH TRƯỚC KHI ĐƯA VÀO CODE.**
-> PRD hiện đang dùng mức giảm trừ **11.000.000đ/tháng** (bản thân) và **4.400.000đ/tháng/người** (người phụ thuộc). Đây là mức giảm trừ của **Luật Thuế TNCN số 07/2007/QH12**. Trong quá trình tra cứu, dữ liệu thuế hiện hành trên nhiều nguồn **mâu thuẫn nhau** (có bảng 5 bậc, có bảng 7 bậc; mức giảm trừ người phụ thuộc có nơi ghi 6,2 triệu, nơi ghi 9,5 triệu) → **chưa xác minh được bảng nào là đúng**, nên PRD **không tự điền số liệu đoán**.
-> Hệ thống đang hardcode bảng thuế trong code, nên đây là rủi ro sai số tiền thật cho nhân viên — cần đối chiếu với **văn bản luật chính thức** hoặc tư vấn thuế trước khi chốt.
 
-**Cấu trúc bảng thuế suất (code cần hardcode):**
+> Cập nhật 26/10/2026: Hệ thống áp dụng chính thức **Biểu thuế lũy tiến từng phần 5 bậc mới năm 2026** (rút gọn từ 7 bậc xuống 5 bậc) cùng mức giảm trừ gia cảnh **15.500.000đ/tháng** (bản thân) và **6.200.000đ/tháng/người** (người phụ thuộc). Cài đặt chuẩn tại `PersonalIncomeTaxCalculator.cs`.
 
-| Thuế suất | Phần thu nhập tính thuế (VNĐ/tháng) | Phần thu nhập tính thuế (VNĐ/năm) |
-|:---:|---|---|
-| `i` | Từ mốc dưới → mốc trên | Từ mốc dưới → mốc trên |
 
-**Mốc cần xác minh — hai phương án đang tồn tại:**
+**Bảng biểu thuế lũy tiến từng phần 5 bậc năm 2026:**
+
+
+
+
+
+| Bậc | Phần thu nhập tính thuế / tháng (triệu đồng) | Thuế suất (%) | Số trừ cố định (triệu đồng) | Công thức tính nhanh |
+| :---: | :--- | :---: | :---: | :--- |
+| **1** | Đến 10 | **5%** | **0** | $\text{TNTT} \times 5\%$ |
+| **2** | Trên 10 đến 30 | **10%** | **0,5** | $(\text{TNTT} \times 10\%) - 500.000đ$ |
+| **3** | Trên 30 đến 60 | **20%** | **3,5** | $(\text{TNTT} \times 20\%) - 3.500.000đ$ |
+| **4** | Trên 60 đến 100 | **30%** | **9,5** | $(\text{TNTT} \times 30\%) - 9.500.000đ$ |
+| **5** | Trên 100 | **35%** | **14,5** | $(\text{TNTT} \times 35\%) - 14.500.000đ$ |
 
 *Phương án A — bảng 5 bậc (tương thích với mức giảm trừ 11tr/4,4tr đang có trong PRD và trong `ChiTietTruThueTncn.cs`):*
 
@@ -164,7 +170,7 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 *Phương án B — bảng 7 bậc (nguồn cho biết đã ban hành Luật Thuế TNCN số **109/2025/QH15**, hiệu lực từ **01/01/2026** — cần xác minh tồn tại thực tế không):*
 
 | Bậc | Thuế suất | Thu nhập tính thuế cả năm | | Mức giảm trừ |
-|:---:|:---:|---|---|---|
+|:---:---|
 | 1 | 2% | ≤ 15.000.000 | | Bản thân: 15.500.000đ/tháng |
 | 2 | 6% | > 15.000.000 – 40.000.000 | | Người phụ thuộc: **6.200.000đ** hoặc **9.500.000đ/tháng** |
 | 3 | 10% | > 40.000.000 – 80.000.000 | | *(hai nguồn cho hai con số khác nhau)* |
@@ -199,7 +205,7 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
    - **Bảng Thu Nhập (Gross)** — phải khớp đủ các khoản với công thức Tầng 1:
 
      | # | Khoản mục | Công thức hiển thị |
-     |:---:|---|---|
+     
      | 1 | Lương công thực tế | `(Lương CB / 26) × Số ngày công thực tế` |
      | 2 | Tiền OT | `(Lương CB / 26 / 8) × Số giờ OT × Hệ số` — tách dòng theo hệ số 1.5 / 2.0 / 3.0 nếu kỳ lương có cả 3 loại |
      | 3 | Phụ cấp ca đêm 30% | `(Lương CB / 26 / 8) × Số giờ ca đêm × 0.30` |
@@ -212,7 +218,7 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
    - **Bảng Khấu Trừ** — phải khớp đủ các khoản với công thức Tầng 2:
 
      | # | Khoản mục | Công thức hiển thị |
-     |:---:|---|---|
+     
      | 1 | BHXH | `8% × Lương cơ bản` |
      | 2 | BHYT | `1.5% × Lương cơ bản` |
      | 3 | BHTN | `1% × Lương cơ bản` |

@@ -162,7 +162,7 @@ public class FineViolationItemViewModel
 public class TaxDetailViewModel
 {
     public decimal ThuNhapChiuThue { get; set; }
-    public decimal GiamTruBanThan { get; set; } = 11000000.00m;
+    public decimal GiamTruBanThan { get; set; } = 15500000.00m;
     public int SoNguoiPhuThuoc { get; set; }
     public decimal GiamTruPhuThuoc { get; set; }
     public decimal ThuNhapTinhThue { get; set; }

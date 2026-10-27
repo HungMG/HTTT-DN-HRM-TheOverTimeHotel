@@ -24,8 +24,8 @@ public static class SalaryConstants
     public const decimal MEAL_ALLOWANCE_PER_DAY = 30000m;    // 30.000 VNĐ / ngày công thực tế
 
     // Giảm trừ gia cảnh thuế TNCN
-    public const decimal PERSONAL_TAX_DEDUCTION = 11000000m; // 11.000.000 VNĐ/tháng
-    public const decimal DEPENDENT_TAX_DEDUCTION = 4400000m; // 4.400.000 VNĐ/tháng/người
+    public const decimal PERSONAL_TAX_DEDUCTION = 15500000m; // 15.500.000 VNĐ/tháng
+    public const decimal DEPENDENT_TAX_DEDUCTION = 6200000m; // 6.200.000 VNĐ/tháng/người
 
     // Phạt vi phạm kỷ luật chấm công
     public const decimal FINE_PER_MINUTE_LATE = 2000m;       // Phạt 2.000 VNĐ / phút đi trễ (theo cau_hinh_khau_tru ma 5)

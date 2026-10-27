@@ -13,50 +13,45 @@ Console.WriteLine("=============================================================
 
 var tests = new (string Name, Action Run)[]
 {
-    // --- PART 1: THUẾ THU NHẬP CÁ NHÂN (PIT) 7 BẬC TIŨY TIẾN ---
+    // --- PART 1: THUẾ THU NHẬP CÁ NHÂN (PIT) 5 BẬC LŨY TIẾN MỚI NĂM 2026 ---
     ("PIT: Thu nhập tính thuế <= 0 => Thuế = 0", () =>
     {
         Equal(0m, PersonalIncomeTaxCalculator.CalculateTax(-1_000_000m));
         Equal(0m, PersonalIncomeTaxCalculator.CalculateTax(0m));
     }),
 
-    ("PIT: Bậc 1 (Thu nhập tính thuế <= 5M, 5%)", () =>
+    ("PIT: Bậc 1 (Thu nhập tính thuế <= 10M, 5% - trừ 0đ)", () =>
     {
         // Thu nhập tính thuế = 4M => 4M * 5% = 200,000đ
         Equal(200_000m, PersonalIncomeTaxCalculator.CalculateTax(4_000_000m));
-        // Thu nhập tính thuế = 5M => 5M * 5% = 250,000đ
-        Equal(250_000m, PersonalIncomeTaxCalculator.CalculateTax(5_000_000m));
+        // Thu nhập tính thuế = 10M => 10M * 5% = 500,000đ
+        Equal(500_000m, PersonalIncomeTaxCalculator.CalculateTax(10_000_000m));
     }),
 
-    ("PIT: Bậc 2 (5M - 10M, 10%)", () =>
+    ("PIT: Bậc 2 (10M - 30M, 10% - trừ 0.5M)", () =>
     {
-        // Thu nhập tính thuế = 9M.
-        // Bậc 1: 5M * 5% = 250,000đ
-        // Bậc 2: 4M * 10% = 400,000đ => Tổng = 650,000đ
-        Equal(650_000m, PersonalIncomeTaxCalculator.CalculateTax(9_000_000m));
+        // Thu nhập tính thuế = 18M: 18M * 10% - 500,000đ = 1,300,000đ
+        Equal(1_300_000m, PersonalIncomeTaxCalculator.CalculateTax(18_000_000m));
+        // Thu nhập tính thuế = 30M: 30M * 10% - 500,000đ = 2,500,000đ
+        Equal(2_500_000m, PersonalIncomeTaxCalculator.CalculateTax(30_000_000m));
     }),
 
-    ("PIT: Bậc 3 (10M - 18M, 15%)", () =>
+    ("PIT: Bậc 3 (30M - 60M, 20% - trừ 3.5M)", () =>
     {
-        // Thu nhập tính thuế = 18M.
-        // Bậc 1: 5M * 5% = 250,000
-        // Bậc 2: 5M * 10% = 500,000
-        // Bậc 3: 8M * 15% = 1,200,000 => Tổng = 1,950,000đ
-        Equal(1_950_000m, PersonalIncomeTaxCalculator.CalculateTax(18_000_000m));
+        // Thu nhập tính thuế = 50M: 50M * 20% - 3,500,000đ = 6,500,000đ
+        Equal(6_500_000m, PersonalIncomeTaxCalculator.CalculateTax(50_000_000m));
+        // Thu nhập tính thuế = 60M: 60M * 20% - 3,500,000đ = 8,500,000đ
+        Equal(8_500_000m, PersonalIncomeTaxCalculator.CalculateTax(60_000_000m));
     }),
 
-    ("PIT: Bậc 4 đến Bậc 7 lũy tiến từng phần", () =>
+    ("PIT: Bậc 4 (60M - 100M, 30% - trừ 9.5M) và Bậc 5 (> 100M, 35% - trừ 14.5M)", () =>
     {
-        // Thu nhập tính thuế cực cao: 89M
-        // B1: 5M * 5% = 250,000
-        // B2: 5M * 10% = 500,000
-        // B3: 8M * 15% = 1,200,000
-        // B4: 14M * 20% = 2,800,000
-        // B5: 20M * 25% = 5,000,000
-        // B6: 28M * 30% = 8,400,000 (từ 52M đến 80M)
-        // B7: (89M - 80M) = 9M * 35% = 3,150,000
-        // Tổng = 250k + 500k + 1.2M + 2.8M + 5M + 8.4M + 3.15M = 21,300,000đ
-        Equal(21_300_000m, PersonalIncomeTaxCalculator.CalculateTax(89_000_000m));
+        // Thu nhập tính thuế = 80M: 80M * 30% - 9,500,000đ = 14,500,000đ
+        Equal(14_500_000m, PersonalIncomeTaxCalculator.CalculateTax(80_000_000m));
+        // Thu nhập tính thuế = 100M: 100M * 30% - 9,500,000đ = 20,500,000đ
+        Equal(20_500_000m, PersonalIncomeTaxCalculator.CalculateTax(100_000_000m));
+        // Thu nhập tính thuế = 120M: 120M * 35% - 14,500,000đ = 27,500,000đ
+        Equal(27_500_000m, PersonalIncomeTaxCalculator.CalculateTax(120_000_000m));
     }),
 
     // --- PART 2: TIỆN ÍCH ĐỌC TIỀN THÀNH CHỮ TIẾNG VIỆT ---
@@ -83,8 +78,8 @@ var tests = new (string Name, Action Run)[]
         Equal(0.015m, SalaryConstants.BHYT_RATE);
         Equal(0.01m, SalaryConstants.BHTN_RATE);
         Equal(0.105m, SalaryConstants.TOTAL_INSURANCE_RATE);
-        Equal(11_000_000m, SalaryConstants.PERSONAL_TAX_DEDUCTION);
-        Equal(4_400_000m, SalaryConstants.DEPENDENT_TAX_DEDUCTION);
+        Equal(15_500_000m, SalaryConstants.PERSONAL_TAX_DEDUCTION);
+        Equal(6_200_000m, SalaryConstants.DEPENDENT_TAX_DEDUCTION);
         Equal(46_800_000m, SalaryConstants.MAX_INSURANCE_SALARY_BASE);
         Equal(99_200_000m, SalaryConstants.MAX_UNEMPLOYMENT_INSURANCE_SALARY_BASE);
     }),
@@ -137,11 +132,11 @@ var tests = new (string Name, Action Run)[]
 
         // PIT: Thu nhập chịu thuế = Gross - Phụ cấp ăn trưa (miễn thuế) = 13,090,000 - 720,000 = 12,370,000
         decimal thuNhapChiuThue = tongGross - phuCapAnTrua;
-        // Thu nhập tính thuế = Thu nhập chịu thuế - Bảo hiểm (1,092,000) - Giảm trừ gia cảnh bản thân (11,000,000)
-        // = 12,370,000 - 1,092,000 - 11,000,000 = 278,000đ (Bậc 1: 5%)
-        decimal thuNhapTinhThue = thuNhapChiuThue - tongBaoHiem - SalaryConstants.PERSONAL_TAX_DEDUCTION;
+        // Thu nhập tính thuế = Thu nhập chịu thuế - Bảo hiểm (1,092,000) - Giảm trừ gia cảnh bản thân (15,500,000)
+        // = 12,370,000 - 1,092,000 - 15,500,000 = -4,222,000đ (<= 0 => Thuế = 0đ)
+        decimal thuNhapTinhThue = Math.Max(0m, thuNhapChiuThue - tongBaoHiem - SalaryConstants.PERSONAL_TAX_DEDUCTION);
         decimal thueTNCN = PersonalIncomeTaxCalculator.CalculateTax(thuNhapTinhThue);
-        decimal expectedPit = Math.Round(278_000m * 0.05m, 0, MidpointRounding.AwayFromZero); // 13,900
+        decimal expectedPit = 0m;
         Equal(expectedPit, thueTNCN);
 
         decimal tongKhauTru = tongBaoHiem + phatChamCong + thueTNCN;
@@ -149,7 +144,7 @@ var tests = new (string Name, Action Run)[]
 
         // BẮT BUỘC INVARIANT: ThucNhan == Gross - Deductions
         Equal(thucNhan, tongGross - tongKhauTru);
-        Equal(11_834_100m, thucNhan);
+        Equal(11_848_000m, thucNhan);
     }),
 
     // --- PART 5: THƯỞNG DỰ ÁN / SỰ KIỆN THEO MA TRẬN CAU_HINH_KHOAN_LUONG (MỤC 1.1 PRD 05) ---
@@ -361,32 +356,26 @@ var tests = new (string Name, Action Run)[]
         Equal(true, IsVisibleOnMobile(SalaryConstants.PAYSLIP_PAID, SalaryConstants.PERIOD_LOCKED));
     }),
 
-    // --- PART 1.1: KIỂM TRA TẤT CẢ CÁC MỐC BIÊN CỦA 7 BẬC THUẾ TNCN ---
-    ("PIT: Chính xác từng mốc biên của 7 bậc thuế lũy tiến", () =>
+    // --- PART 1.1: KIỂM TRA TẤT CẢ CÁC MỐC BIÊN CỦA 5 BẬC THUẾ TNCN NĂM 2026 ---
+    ("PIT: Chính xác từng mốc biên của 5 bậc thuế lũy tiến năm 2026", () =>
     {
         // Mốc 0đ: 0%
         Equal(0m, PersonalIncomeTaxCalculator.CalculateTax(0m));
 
-        // Mốc 5M: Bậc 1 max = 5M * 5% = 250,000đ
-        Equal(250_000m, PersonalIncomeTaxCalculator.CalculateTax(5_000_000m));
+        // Mốc 10M: Bậc 1 max = 10M * 5% = 500,000đ
+        Equal(500_000m, PersonalIncomeTaxCalculator.CalculateTax(10_000_000m));
 
-        // Mốc 10M: Bậc 1 (250k) + Bậc 2 (5M * 10% = 500k) = 750,000đ
-        Equal(750_000m, PersonalIncomeTaxCalculator.CalculateTax(10_000_000m));
+        // Mốc 30M: Bậc 2 max = 30M * 10% - 0.5M = 2,500,000đ
+        Equal(2_500_000m, PersonalIncomeTaxCalculator.CalculateTax(30_000_000m));
 
-        // Mốc 18M: 750k + Bậc 3 (8M * 15% = 1.2M) = 1,950,000đ
-        Equal(1_950_000m, PersonalIncomeTaxCalculator.CalculateTax(18_000_000m));
+        // Mốc 60M: Bậc 3 max = 60M * 20% - 3.5M = 8,500,000đ
+        Equal(8_500_000m, PersonalIncomeTaxCalculator.CalculateTax(60_000_000m));
 
-        // Mốc 32M: 1.95M + Bậc 4 (14M * 20% = 2.8M) = 4,750,000đ
-        Equal(4_750_000m, PersonalIncomeTaxCalculator.CalculateTax(32_000_000m));
+        // Mốc 100M: Bậc 4 max = 100M * 30% - 9.5M = 20,500,000đ
+        Equal(20_500_000m, PersonalIncomeTaxCalculator.CalculateTax(100_000_000m));
 
-        // Mốc 52M: 4.75M + Bậc 5 (20M * 25% = 5M) = 9,750,000đ
-        Equal(9_750_000m, PersonalIncomeTaxCalculator.CalculateTax(52_000_000m));
-
-        // Mốc 80M: 9.75M + Bậc 6 (28M * 30% = 8.4M) = 18,150,000đ
-        Equal(18_150_000m, PersonalIncomeTaxCalculator.CalculateTax(80_000_000m));
-
-        // Mốc 100M: 18.15M + Bậc 7 (20M * 35% = 7M) = 25,150,000đ
-        Equal(25_150_000m, PersonalIncomeTaxCalculator.CalculateTax(100_000_000m));
+        // Mốc 120M: Bậc 5 = 120M * 35% - 14.5M = 27,500,000đ
+        Equal(27_500_000m, PersonalIncomeTaxCalculator.CalculateTax(120_000_000m));
     }),
 
     ("OT Multipliers: Tính đúng hệ số ngày nghỉ (2.0x) và ngày lễ (3.0x)", () =>
@@ -571,19 +560,19 @@ var tests = new (string Name, Action Run)[]
         Assert(!isEligible, "Hợp đồng thử việc không thuộc đối tượng đóng bảo hiểm bắt buộc.");
     }),
 
-    ("PIT: Giảm trừ gia cảnh theo số người phụ thuộc (SoNguoiPhuThuoc * 4.400.000đ)", () =>
+    ("PIT: Giảm trừ gia cảnh theo số người phụ thuộc (SoNguoiPhuThuoc * 6.200.000đ)", () =>
     {
         var nv = new NhanVien { Ho = "Nguyen", Ten = "Van A", SoNguoiPhuThuoc = 2 };
         Equal(2, nv.SoNguoiPhuThuoc);
 
         decimal thuNhapChiuThue = 18_000_000m;
         decimal tongBaoHiem = 10_400_000m * SalaryConstants.TOTAL_INSURANCE_RATE; // 1,092,000đ
-        decimal giamTruBanThan = SalaryConstants.PERSONAL_TAX_DEDUCTION;            // 11,000,000đ
-        decimal giamTruPhuThuoc = nv.SoNguoiPhuThuoc * SalaryConstants.DEPENDENT_TAX_DEDUCTION; // 8,800,000đ
+        decimal giamTruBanThan = SalaryConstants.PERSONAL_TAX_DEDUCTION;            // 15,500,000đ
+        decimal giamTruPhuThuoc = nv.SoNguoiPhuThuoc * SalaryConstants.DEPENDENT_TAX_DEDUCTION; // 12,400,000đ
 
-        Equal(8_800_000m, giamTruPhuThuoc);
+        Equal(12_400_000m, giamTruPhuThuoc);
 
-        // Thu nhập tính thuế = 18,000,000 - 1,092,000 - 11,000,000 - 8,800,000 = -2,892,000 (<= 0 => Tax = 0)
+        // Thu nhập tính thuế = 18,000,000 - 1,092,000 - 15,500,000 - 12,400,000 = -10,992,000 (<= 0 => Tax = 0)
         decimal thuNhapTinhThue = Math.Max(0m, thuNhapChiuThue - tongBaoHiem - giamTruBanThan - giamTruPhuThuoc);
         Equal(0m, thuNhapTinhThue);
         Equal(0m, PersonalIncomeTaxCalculator.CalculateTax(thuNhapTinhThue));

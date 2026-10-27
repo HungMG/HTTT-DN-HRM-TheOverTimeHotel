@@ -240,11 +240,11 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         var khauTrus = await _context.CauHinhKhauTrus.AsNoTracking().ToListAsync(cancellationToken);
         if (khauTrus.FirstOrDefault(x => x.MaKhoanTru == 1) is { TyLeHoacDinhMuc: > 0 } kt1)
-            config.BhxhRate = kt1.TyLeHoacDinhMuc > 1m ? kt1.TyLeHoacDinhMuc / 100m : kt1.TyLeHoacDinhMuc;
+            config.BhxhRate = kt1.TyLeHoacDinhMuc >= 1m ? kt1.TyLeHoacDinhMuc / 100m : kt1.TyLeHoacDinhMuc;
         if (khauTrus.FirstOrDefault(x => x.MaKhoanTru == 2) is { TyLeHoacDinhMuc: > 0 } kt2)
-            config.BhytRate = kt2.TyLeHoacDinhMuc > 1m ? kt2.TyLeHoacDinhMuc / 100m : kt2.TyLeHoacDinhMuc;
+            config.BhytRate = kt2.TyLeHoacDinhMuc >= 1m ? kt2.TyLeHoacDinhMuc / 100m : kt2.TyLeHoacDinhMuc;
         if (khauTrus.FirstOrDefault(x => x.MaKhoanTru == 3) is { TyLeHoacDinhMuc: > 0 } kt3)
-            config.BhtnRate = kt3.TyLeHoacDinhMuc > 1m ? kt3.TyLeHoacDinhMuc / 100m : kt3.TyLeHoacDinhMuc;
+            config.BhtnRate = kt3.TyLeHoacDinhMuc >= 1m ? kt3.TyLeHoacDinhMuc / 100m : kt3.TyLeHoacDinhMuc;
         if (khauTrus.FirstOrDefault(x => x.MaKhoanTru == 5) is { TyLeHoacDinhMuc: > 0 } kt5)
             config.FinePerMinuteLate = kt5.TyLeHoacDinhMuc;
 

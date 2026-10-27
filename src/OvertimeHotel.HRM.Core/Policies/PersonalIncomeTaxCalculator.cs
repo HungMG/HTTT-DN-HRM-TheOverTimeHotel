@@ -3,17 +3,20 @@ namespace OvertimeHotel.HRM.Core.Policies;
 public static class PersonalIncomeTaxCalculator
 {
     /// <summary>
-    /// Bậc thuế lũy tiến từng phần theo tháng (Luật Thuế TNCN Việt Nam).
+    /// Biểu thuế lũy tiến từng phần 5 bậc mới (áp dụng từ năm 2026).
+    /// Bậc 1: Đến 10 triệu: 5% (trừ 0)
+    /// Bậc 2: Trên 10 đến 30 triệu: 10% (trừ 0,5 triệu)
+    /// Bậc 3: Trên 30 đến 60 triệu: 20% (trừ 3,5 triệu)
+    /// Bậc 4: Trên 60 đến 100 triệu: 30% (trừ 9,5 triệu)
+    /// Bậc 5: Trên 100 triệu: 35% (trừ 14,5 triệu)
     /// </summary>
     private static readonly (decimal MaxAmount, decimal Rate)[] TaxBrackets =
     [
-        (5000000m, 0.05m),   // Bậc 1: <= 5tr: 5%
-        (10000000m, 0.10m),  // Bậc 2: > 5tr - 10tr: 10%
-        (18000000m, 0.15m),  // Bậc 3: > 10tr - 18tr: 15%
-        (32000000m, 0.20m),  // Bậc 4: > 18tr - 32tr: 20%
-        (52000000m, 0.25m),  // Bậc 5: > 32tr - 52tr: 25%
-        (80000000m, 0.30m),  // Bậc 6: > 52tr - 80tr: 30%
-        (decimal.MaxValue, 0.35m) // Bậc 7: > 80tr: 35%
+        (10000000m, 0.05m),        // Bậc 1: Đến 10 triệu: 5%
+        (30000000m, 0.10m),        // Bậc 2: Trên 10 đến 30 triệu: 10%
+        (60000000m, 0.20m),        // Bậc 3: Trên 30 đến 60 triệu: 20%
+        (100000000m, 0.30m),       // Bậc 4: Trên 60 đến 100 triệu: 30%
+        (decimal.MaxValue, 0.35m)  // Bậc 5: Trên 100 triệu: 35%
     ];
 
     /// <summary>

@@ -512,7 +512,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.MaChiTietThue).HasColumnName("ma_chi_tiet_thue");
             entity.Property(e => e.MaChiTiet).HasColumnName("ma_chi_tiet");
             entity.Property(e => e.ThuNhapChiuThue).HasColumnName("thu_nhap_chiu_thue").HasPrecision(15, 2).IsRequired();
-            entity.Property(e => e.GiamTruBanThan).HasColumnName("giam_tru_ban_than").HasPrecision(15, 2).HasDefaultValue(11000000.00m);
+            entity.Property(e => e.GiamTruBanThan).HasColumnName("giam_tru_ban_than").HasPrecision(15, 2).HasDefaultValue(15500000.00m);
             entity.Property(e => e.SoNguoiPhuThuoc).HasColumnName("so_nguoi_phu_thuoc").HasDefaultValue(0);
             entity.Property(e => e.GiamTruPhuThuoc).HasColumnName("giam_tru_phu_thuoc").HasPrecision(15, 2).HasDefaultValue(0.00m);
             entity.Property(e => e.ThuNhapTinhThue).HasColumnName("thu_nhap_tinh_thue").HasPrecision(15, 2).IsRequired();

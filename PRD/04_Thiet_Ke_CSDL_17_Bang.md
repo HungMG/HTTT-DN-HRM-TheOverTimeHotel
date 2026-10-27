@@ -268,9 +268,9 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ma_chi_tiet_thue` (SERIAL, PK): Mã bản ghi thuế TNCN.
 - `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NOT NULL, ON DELETE CASCADE): Dòng chi tiết lương chủ (Quan hệ 1-1).
 - `thu_nhap_chiu_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Tổng thu nhập chịu thuế trong kỳ.
-- `giam_tru_ban_than` (DECIMAL(15,2), NOT NULL, DEFAULT 11000000.00): Mức giảm trừ gia cảnh cho bản thân người nộp thuế (11.000.000 VNĐ/tháng).
+- `giam_tru_ban_than` (DECIMAL(15,2), NOT NULL, DEFAULT 15500000.00): Mức giảm trừ gia cảnh cho bản thân người nộp thuế (15.500.000 VNĐ/tháng).
 - `so_nguoi_phu_thuoc` (INT, NOT NULL, DEFAULT 0, CHECK >= 0): Số lượng người phụ thuộc đăng ký hợp lệ.
-- `giam_tru_phu_thuoc` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng tiền giảm trừ người phụ thuộc (4.400.000 VNĐ/người/tháng theo luật hiện hành).
+- `giam_tru_phu_thuoc` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Tổng tiền giảm trừ người phụ thuộc (6.200.000 VNĐ/người/tháng theo quy định mới).
 - `thu_nhap_tinh_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Thu nhập tính thuế sau giảm trừ.
 - `tien_thue` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Số tiền thuế TNCN trích nộp theo biểu lũy tiến từng phần.
 
