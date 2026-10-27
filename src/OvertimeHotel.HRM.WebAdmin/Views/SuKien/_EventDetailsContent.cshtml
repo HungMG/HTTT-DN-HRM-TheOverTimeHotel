@@ -2,79 +2,48 @@
 @using OvertimeHotel.HRM.Core.Policies
 @{
     var item = Model.Event;
-    var employeeCount = item.TinhTheoGio ? item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG").Select(p => p.MaNhanVien).Distinct().Count() : item.PhanCongs.Count;
+    var employeeCount = Model.StaffLoadFailed ? "" : HotelEventRules.CountEffectiveStaff(item.PhanCongs).ToString();
     var statusLabel = HotelEventRules.StatusLabels.GetValueOrDefault(item.TrangThai, item.TrangThai);
-    var typeLabel = HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn);
 }
 <div class="events-page event-details-content p-0" data-event-details data-event-id="@item.MaDuAn" data-event-count="@employeeCount" data-event-status="@item.TrangThai" data-event-status-label="@statusLabel" data-active-section="@Model.Tab">
-    <div class="event-page-heading mb-4">
+    <div class="event-page-heading">
         <div>
-            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                <span class="event-eyebrow mb-0">SK-@item.MaDuAn.ToString("D4") · @typeLabel</span>
-                @if (item.TinhTheoGio)
-                {
-                    <span class="event-badge event-badge--blue"><i class="bi bi-clock-history"></i> Sự kiện theo ca</span>
-                }
-                else
-                {
-                    <span class="event-badge event-badge--gold"><i class="bi bi-stars"></i> Sự kiện định mức</span>
-                }
-            </div>
-            <h2 class="text-navy fw-bold mb-2">@item.TenDuAn</h2>
-            <p class="text-muted mb-0 small">
-                <i class="bi bi-geo-alt-fill text-gold me-1" aria-hidden="true"></i> @item.DiaDiem
-                <span class="mx-2">·</span>
-                <i class="bi bi-calendar-event text-gold me-1" aria-hidden="true"></i> @HotelEventRules.Local(item.NgayBatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(item.NgayKetThuc).ToString("dd/MM/yyyy HH:mm")
-            </p>
+            <span class="event-eyebrow">SK-@item.MaDuAn.ToString("D4") · @HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn)</span>
+            <h2>@item.TenDuAn</h2>
+            <p><i class="bi bi-geo-alt" aria-hidden="true"></i> @HotelEventRules.VenueLabel(item.DiaDiem) · @HotelEventRules.Local(item.NgayBatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(item.NgayKetThuc).ToString("dd/MM/yyyy HH:mm")</p>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="event-status event-status-@item.TrangThai">@statusLabel</span>
             @if (Model.CanEdit)
             {
-                <a class="event-secondary-button" asp-action="Edit" asp-route-id="@item.MaDuAn" asp-route-returnYear="@Model.ReturnYear" asp-route-returnMonth="@Model.ReturnMonth" asp-route-returnDate="@Model.ReturnDate.ToString("yyyy-MM-dd")">
-                    <i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa
-                </a>
+                <a class="event-secondary-button" asp-action="Edit" asp-route-id="@item.MaDuAn" asp-route-returnYear="@Model.ReturnYear" asp-route-returnMonth="@Model.ReturnMonth" asp-route-returnDate="@Model.ReturnDate.ToString("yyyy-MM-dd")"><i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa</a>
             }
         </div>
     </div>
-
     @if ((ViewData["EventSuccess"] ?? TempData["Success"]) is string message)
     {
-        <div class="alert alert-success d-flex align-items-center gap-2 mb-3 rounded-3" role="status" data-event-success-alert>
-            <i class="bi bi-check-circle-fill fs-5 text-success"></i>
-            <span>@message</span>
-        </div>
+        <div class="alert alert-success" role="status">@message</div>
     }
-    <div asp-validation-summary="All" class="text-danger event-validation mb-3" role="alert"></div>
-
+    <div asp-validation-summary="All" class="text-danger event-validation" role="alert"></div>
     @if (item.TrangThai is "HOAN_THANH" or "HUY")
     {
-        <div class="event-info-note mb-4 p-3 rounded-3 border d-flex align-items-center gap-2 bg-slate-subtle">
-            <i class="bi @(item.TrangThai == "HOAN_THANH" ? "bi-lock-fill text-gold" : "bi-exclamation-triangle-fill text-danger")"></i>
-            <span class="small">@(item.TrangThai == "HOAN_THANH" ? "Sự kiện đã nghiệm thu chính thức. Toàn bộ danh sách phân công và mức phụ cấp đã được khóa để kết chuyển lương." : "Sự kiện đã hủy. Lý do: " + item.LyDoHuy)</span>
-        </div>
+        <div class="event-info-note mb-3">@(item.TrangThai == "HOAN_THANH" ? item.NgayNghiemThu.HasValue || item.QuyetToans.Count > 0 ? "Sự kiện đã nghiệm thu. Thông tin và phụ cấp đã được khóa." : "Sự kiện đã được đánh dấu hoàn thành. Dữ liệu chỉ xem; hồ sơ nghiệm thu cần được đối soát." : "Sự kiện đã hủy. " + item.LyDoHuy)</div>
     }
-
-    <nav class="event-details-navigation mb-4" aria-label="Nội dung sự kiện">
-        <button type="button" class="event-nav-tab" data-details-section="overview" aria-pressed="@(Model.Tab == "overview" ? "true" : "false")">
-            <i class="bi bi-info-circle me-1" aria-hidden="true"></i> Thông tin sự kiện
-        </button>
-        <button type="button" class="event-nav-tab" data-details-section="staff" aria-pressed="@(Model.Tab == "staff" ? "true" : "false")">
-            <i class="bi bi-people-fill me-1" aria-hidden="true"></i> Đội ngũ nhân sự
-            <span class="event-nav-counter ms-1">@employeeCount</span>
-        </button>
-        <button type="button" class="event-nav-tab" data-details-section="acceptance" aria-pressed="@(Model.Tab == "acceptance" ? "true" : "false")">
-            <i class="bi bi-patch-check-fill me-1" aria-hidden="true"></i> Đánh giá &amp; Nghiệm thu
-        </button>
+    <nav class="event-details-navigation" aria-label="Nội dung sự kiện">
+        <button type="button" class="event-secondary-button" data-details-section="overview" aria-pressed="@(Model.Tab == "overview" ? "true" : "false")"><i class="bi bi-arrow-left" aria-hidden="true"></i> Thông tin sự kiện</button>
+        <button type="button" class="event-secondary-button" data-details-section="staff" aria-pressed="@(Model.Tab == "staff" ? "true" : "false")"><i class="bi bi-people" aria-hidden="true"></i> Nhân sự@(Model.StaffLoadFailed ? "" : " · " + employeeCount)</button>
+        <button type="button" class="event-secondary-button" data-details-section="acceptance" aria-pressed="@(Model.Tab == "acceptance" ? "true" : "false")"><i class="bi bi-patch-check" aria-hidden="true"></i> Đánh giá &amp; nghiệm thu</button>
     </nav>
-
-    <section data-details-pane="overview" hidden="@(Model.Tab != "overview")" class="event-details-pane">
-        <partial name="_EventOverview" model="Model" />
-    </section>
-    <section data-details-pane="staff" hidden="@(Model.Tab != "staff")" class="event-details-pane">
-        <partial name="@(item.TinhTheoGio ? "_HourlyEventStaff" : "_EventStaff")" model="Model" />
-    </section>
-    <section data-details-pane="acceptance" hidden="@(Model.Tab != "acceptance")" class="event-details-pane">
-        <partial name="@(item.TinhTheoGio ? "_HourlyEventAcceptance" : "_EventAcceptance")" model="Model" />
+    <section data-details-pane="overview" hidden="@(Model.Tab != "overview")"><partial name="_EventOverview" model="Model" /></section>
+    <section data-details-pane="staff" hidden="@(Model.Tab != "staff")"><partial name="@(item.TinhTheoGio ? "_HourlyEventStaff" : "_EventStaff")" model="Model" /></section>
+    <section data-details-pane="acceptance" hidden="@(Model.Tab != "acceptance")">
+        @if (Model.StaffLoadFailed)
+        {
+            <div class="alert alert-danger" role="alert">Không tải được danh sách nhân sự. Vui lòng tải lại trước khi xem đánh giá và nghiệm thu.</div>
+        }
+        else
+        {
+            <partial name="@(item.TinhTheoGio ? "_HourlyEventAcceptance" : "_EventAcceptance")" model="Model" />
+        }
     </section>
 </div>

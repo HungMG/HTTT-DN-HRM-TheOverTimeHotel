@@ -601,6 +601,7 @@ public sealed class BaoCaoReportService
                 TrangThai = d.TrangThai,
                 NgayBatDau = d.NgayBatDau,
                 NgayKetThuc = d.NgayKetThuc,
+                TinhTheoGio = d.TinhTheoGio,
                 NganSachPhuCap = d.NganSachPhuCap
             })
             .ToArrayAsync();
@@ -635,6 +636,18 @@ public sealed class BaoCaoReportService
             phanCong = [.. phanCong.Where(p => visibleIds.Contains(p.MaDuAn))];
         }
 
+        var hourlyIds = suKien.Where(d => d.TinhTheoGio).Select(d => d.MaDuAn).ToArray();
+        var hourlyAmounts = hourlyIds.Length == 0
+            ? new Dictionary<int, decimal>()
+            : await _context.QuyetToanSuKiens.AsNoTracking()
+                .Where(q => hourlyIds.Contains(q.MaDuAn))
+                .GroupBy(q => q.MaDuAn)
+                .Select(g => new { MaDuAn = g.Key, SoTien = g.Sum(q => q.SoTien) })
+                .ToDictionaryAsync(q => q.MaDuAn, q => q.SoTien);
+        decimal EventAmount(SuKienRow item) => item.TinhTheoGio
+            ? hourlyAmounts.GetValueOrDefault(item.MaDuAn)
+            : phanCong.Where(p => p.MaDuAn == item.MaDuAn).Sum(p => p.SoTienPhuCap);
+
         var tongLuot = phanCong.Length;
 
         return new HieuQuaSuKienReport
@@ -645,7 +658,7 @@ public sealed class BaoCaoReportService
             DaHuy = suKien.Count(d => d.TrangThai == "HUY"),
             TongLuotPhanCong = tongLuot,
             TongNganSach = suKien.Sum(d => d.NganSachPhuCap),
-            TongPhuCapDaPhanBo = phanCong.Sum(p => p.SoTienPhuCap),
+            TongPhuCapDaPhanBo = suKien.Sum(EventAmount),
             TyLeXuatSac = PhanTram(phanCong.Count(p => p.DanhGia == "XUAT_SAC"), tongLuot),
             TyLeHoanThanh = PhanTram(phanCong.Count(p => p.DanhGia is "HOAN_THANH" or "XUAT_SAC"), tongLuot),
 
@@ -653,7 +666,7 @@ public sealed class BaoCaoReportService
                 .Select(d =>
                 {
                     var cuaSuKien = phanCong.Where(p => p.MaDuAn == d.MaDuAn).ToArray();
-                    var phuCap = cuaSuKien.Sum(p => p.SoTienPhuCap);
+                    var phuCap = EventAmount(d);
 
                     return new SuKienItem
                     {
@@ -902,6 +915,7 @@ internal sealed class SuKienRow
     public string TrangThai { get; set; } = string.Empty;
     public DateTimeOffset NgayBatDau { get; set; }
     public DateTimeOffset NgayKetThuc { get; set; }
+    public bool TinhTheoGio { get; set; }
     public decimal NganSachPhuCap { get; set; }
 }
 

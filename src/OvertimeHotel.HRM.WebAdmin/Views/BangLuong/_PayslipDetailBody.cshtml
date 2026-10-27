@@ -131,7 +131,7 @@
                                 <div class="col-12">
                                     <div class="d-flex align-items-center gap-2 small text-warning bg-white bg-opacity-10 rounded-pill px-3 py-1.5 border border-warning border-opacity-25">
                                         <i class="bi bi-stars"></i>
-                                        <span>Gồm <strong>@Model.EventAllowances.Sum(e => e.SoTien).ToString("N0") đ</strong> thù lao sự kiện 5★ (+100% lương giờ trong ca)</span>
+                                        <span>Gồm <strong>@Model.EventAllowances.Sum(e => e.SoTien).ToString("N0") đ</strong> tiền sự kiện theo quyết toán đã lưu</span>
                                     </div>
                                 </div>
                             }
@@ -225,7 +225,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="chiTietId" value="@pc.MaChiTiet" />
                                                 <input type="hidden" name="phieuLuongId" value="@Model.MaPhieuLuong" />
-                                                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                                <input type="hidden" name="returnUrl" value="@Url.Action("Detail", "BangLuong", new { id = Model.MaPhieuLuong })" />
                                                 <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng điều chỉnh" onclick="return confirm('Xóa dòng điều chỉnh này?');">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -238,19 +238,21 @@
                     </div>
                 }
 
-                <!-- 6. Phụ cấp / Thù lao Sự kiện khách sạn (Chính sách 5★: Hệ số x2 trong ca, không OT) -->
+                <!-- 6. Tiền sự kiện theo quyết toán đã lưu -->
                 <div class="py-2.5 border-bottom">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div>
                             <div class="fw-semibold text-dark d-flex align-items-center gap-2 flex-wrap">
                                 <span>6. Thù lao Sự kiện khách sạn (5★ Event Service)</span>
                                 <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle rounded-pill px-2.5 py-1" style="font-size: 0.7rem;">
-                                    <i class="bi bi-stars text-warning me-1"></i>Hệ số x2 trong ca (+100% lương giờ)
+                                    <i class="bi bi-stars text-warning me-1"></i>Theo quyết toán đã lưu
                                 </span>
                                 <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">Chịu thuế TNCN</span>
                             </div>
                             <div class="small text-muted mt-1">
-                                Phân công trong ca trực chính thức · Được hưởng thêm 100% đơn giá lương giờ (+1.0x) cho thời gian phục vụ sự kiện, tiếp sức bàn giao giữa các ca mà không phát sinh OT ngoài ca.
+                                Khoản cộng thêm cho thời gian tham gia sự kiện trong ca trực. Số tiền và hệ số được lưu khi nghiệm thu; thay đổi cấu hình sau đó không làm tính lại khoản đã chốt.
+                                @if (Model.EventAllowances.Count > 0)
+                                { <span class="d-block">Khoản đã kết chuyển vào phiếu lương. Khóa sổ kỳ lương không xác nhận đã chuyển khoản cho nhân viên.</span> }
                             </div>
                         </div>
                         <div class="font-monospace fw-bold fs-6 @(Model.EventAllowances.Count > 0 ? "text-primary" : "text-muted")">
@@ -274,7 +276,7 @@
                                     </div>
                                     <div class="text-end ps-2">
                                         <span class="font-monospace fw-bold text-dark">@ev.SoTien.ToString("N0") đ</span>
-                                        <div class="small text-gold-dark fw-semibold" style="font-size: 0.7rem;">+100% lương giờ</div>
+                                        <div class="small text-gold-dark fw-semibold" style="font-size: 0.7rem;">Đã lưu khi quyết toán</div>
                                     </div>
                                 </div>
                             }
@@ -309,7 +311,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="chiTietId" value="@bn.MaChiTiet" />
                                                 <input type="hidden" name="phieuLuongId" value="@Model.MaPhieuLuong" />
-                                                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                                <input type="hidden" name="returnUrl" value="@Url.Action("Detail", "BangLuong", new { id = Model.MaPhieuLuong })" />
                                                 <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng điều chỉnh" onclick="return confirm('Xóa khoản thưởng này?');">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -439,7 +441,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="chiTietId" value="@ad.MaChiTiet" />
                                                 <input type="hidden" name="phieuLuongId" value="@Model.MaPhieuLuong" />
-                                                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                                <input type="hidden" name="returnUrl" value="@Url.Action("Detail", "BangLuong", new { id = Model.MaPhieuLuong })" />
                                                 <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng khấu trừ" onclick="return confirm('Xóa dòng khấu trừ này?');">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -478,7 +480,7 @@
                         <form method="post" asp-action="RecalculateEmployee" class="d-inline">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@Model.MaPhieuLuong" />
-                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                            <input type="hidden" name="returnUrl" value="@Url.Action("Detail", "BangLuong", new { id = Model.MaPhieuLuong })" />
                             <button type="submit" class="btn btn-outline-primary rounded-pill px-3 btn-sm shadow-xs" onclick="return confirm('Tính lại toàn bộ số liệu công, tăng ca và sự kiện của nhân viên này?');">
                                 <i class="bi bi-arrow-clockwise me-1"></i> Tính lại phiếu này
                             </button>
@@ -489,7 +491,7 @@
                     <form method="post" asp-action="Adjust" class="row g-3 align-items-end">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="MaPhieuLuong" value="@Model.MaPhieuLuong" />
-                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                        <input type="hidden" name="returnUrl" value="@Url.Action("Detail", "BangLuong", new { id = Model.MaPhieuLuong })" />
 
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold">Loại khoản điều chỉnh <span class="text-danger">*</span></label>

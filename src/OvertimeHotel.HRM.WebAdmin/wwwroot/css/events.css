@@ -826,36 +826,6 @@
   margin-top: 5px;
 }
 
-.event-history {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.event-history li {
-  display: flex;
-  gap: 24px;
-  padding: 14px 0;
-  border-bottom: 1px solid #eee8dc;
-  font-size: 11px;
-  line-height: 1.8;
-}
-
-.event-history li:last-child {
-  border: 0;
-}
-
-.event-history time {
-  color: #9a958b;
-  min-width: 112px;
-  font-size: 10px;
-}
-
-.event-history p {
-  margin: 3px 0;
-  color: #8b918c;
-}
-
 .event-cancel-panel {
   margin-top: 24px;
   border: 1px solid #ead9d3;
@@ -1240,10 +1210,6 @@
   }
   .event-tabs .nav-link i {
     display: none;
-  }
-  .event-history li {
-    gap: 5px;
-    flex-direction: column;
   }
   .event-budget-grid {
     gap: 10px;
@@ -2275,3 +2241,24 @@ dialog.event-assignment-dialog::backdrop {
     transform: scale(1);
   }
 }
+.event-acceptance-dialog {
+    width: min(560px, calc(100% - 2rem));
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+    border: 1px solid #d4af37;
+    border-radius: 1rem;
+    color: #172b4d;
+    box-shadow: 0 1rem 3rem #0003;
+}
+.event-acceptance-dialog::backdrop { background: #0f172a99; }
+.event-acceptance-dialog dt { margin-top: .6rem; }
+.event-acceptance-dialog dd { margin: .2rem 0 .5rem; }
+.event-participation-person { border: 1px solid var(--event-line, #e9e1d2); border-radius: 12px; overflow: hidden; }
+.event-participation-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px; background: #faf8f5; }
+.event-participation-table { min-width: 900px; table-layout: fixed; }
+.event-participation-table .participation-source { width: 24%; }
+.event-participation-table .participation-plan { width: 18%; }
+.event-participation-table .participation-work { width: 34%; }
+.event-participation-table .participation-result { width: 24%; }
+.event-participation-table td { vertical-align: top; overflow-wrap: anywhere; }

@@ -23,6 +23,7 @@ public class EventInput
     public bool CalculateBudgetAtAcceptance { get; set; }
     public string? Description { get; set; }
     public bool HourlyCompensation { get; set; }
+    // Kept for older clients; saving an event always fixes its location and clears both buffers.
     public int? VenueId { get; set; }
     public int SetupMinutes { get; set; }
     public int TeardownMinutes { get; set; }
@@ -52,12 +53,9 @@ public class EventNeedInput
 {
     public long Version { get; set; }
     public int NeedId { get; set; }
-    public string Name { get; set; } = "Phục vụ sự kiện";
     public string Department { get; set; } = "";
     public string Role { get; set; } = "";
     public int Count { get; set; }
-    public DateTime Start { get; set; }
-    public DateTime End { get; set; }
     public string Reason { get; set; } = "";
 }
 
@@ -65,13 +63,15 @@ public class EventWorkInput
 {
     public long Version { get; set; }
     public int AssignmentId { get; set; }
+    public int WorkId { get; set; }
     public DateTime Start { get; set; }
     public DateTime End { get; set; }
-    public string? Explanation { get; set; }
+    public string? Reason { get; set; }
 }
 
 public record EventPayRow(int EmployeeId, string EmployeeName, DateOnly WorkMonth, decimal Minutes,
-    decimal Amount, IReadOnlyList<OvertimeHotel.HRM.Core.Policies.EventPaySlice> Basis);
+    decimal Amount, IReadOnlyList<OvertimeHotel.HRM.Core.Policies.EventPaySlice> Basis, EventPayTransfer? Transfer = null);
+public record EventPayTransfer(int PeriodId, int Month, int Year, string PeriodStatus, int? DetailId, int? PayslipId);
 public record EventPayPreview(long Version, IReadOnlyList<EventPayRow> Rows, IReadOnlyList<string> Warnings, string Token)
 {
     public decimal Total => Rows.Sum(r => r.Amount);

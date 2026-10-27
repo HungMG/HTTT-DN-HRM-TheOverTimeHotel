@@ -6,7 +6,9 @@ public interface IHotelEventService
 {
     Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffset from, DateTimeOffset to);
     Task<DuAn?> GetAsync(EventActor actor, int id);
+    Task<DuAn?> GetOverviewAsync(EventActor actor, int id);
     Task<IReadOnlyList<NhanVien>> ManagersAsync();
+    Task<decimal> HourlyEventRateAsync();
     Task<IReadOnlyList<NhanVien>> EmployeesAsync();
     Task<IReadOnlyList<PhanCa>> ShiftsAsync(DuAn item);
     Task<IReadOnlyList<NhatKyQuanTri>> HistoryAsync(int id);
@@ -22,7 +24,6 @@ public interface IHotelEventService
     Task SaveNeedAsync(EventActor actor, int id, EventNeedInput input);
     Task DeleteNeedAsync(EventActor actor, int id, int needId, long version, string reason);
     Task RecordWorkAsync(EventActor actor, int id, EventWorkInput input);
-    Task<int> AutoSyncWorkFromAttendanceAsync(EventActor actor, int id, long version);
     Task DeleteWorkAsync(EventActor actor, int id, int workId, long version, string reason);
     Task EndParticipationAsync(EventActor actor, int id, int assignmentId, long version, DateTime end, string reason);
     Task StopAsync(EventActor actor, int id, long version, DateTime end, string reason);
@@ -35,4 +36,5 @@ public interface IHotelEventService
     Task PublishWeekAsync(EventActor actor, DateOnly weekStart, long version, string? reason);
     Task<CongBoLichTuan?> PublishedWeekAsync(DateOnly weekStart);
     Task<int> AutoCancelExpiredEventsAsync();
+    Task<int> AutoStartReadyEventsAsync(CancellationToken cancellationToken = default);
 }

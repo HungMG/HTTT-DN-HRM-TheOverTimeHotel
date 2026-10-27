@@ -4,13 +4,10 @@ public class NhuCauSuKien
 {
     public int MaNhuCau { get; set; }
     public int MaDuAn { get; set; }
-    public string TenKhung { get; set; } = "Phục vụ sự kiện";
     public string MaPhongBan { get; set; } = "";
     public string VaiTro { get; set; } = "";
     public int SoNguoi { get; set; }
     public bool LaMau { get; set; }
-    public DateTimeOffset BatDau { get; set; }
-    public DateTimeOffset KetThuc { get; set; }
     public DuAn? DuAn { get; set; }
 }
 
@@ -20,8 +17,6 @@ public class CongSuKien
     public int MaPhanCong { get; set; }
     public DateTimeOffset BatDau { get; set; }
     public DateTimeOffset KetThuc { get; set; }
-    public string? GiaiTrinh { get; set; }
-    public bool XacNhanNgoaiLe { get; set; }
     public int MaNguoiXacNhan { get; set; }
     public DateTimeOffset NgayXacNhan { get; set; }
     public PhanCongDuAn? PhanCong { get; set; }

@@ -1,5 +1,4 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.PhanCaIndexViewModel
-@using OvertimeHotel.HRM.Core.Policies
 @{
     ViewData["Title"] = "Lập Lịch Phân Ca 24/7 & Điều Hành Lịch Trực";
     var currentWeek = ViewBag.CurrentWeek as string ?? Model.WeekStart.ToString("yyyy-MM-dd");
@@ -27,7 +26,6 @@
 }
 
 <link rel="stylesheet" href="~/css/phanca-calendar.css" asp-append-version="true" />
-<link rel="stylesheet" href="~/css/events.css" asp-append-version="true" />
 
 <style>
     /* ==========================================================================
@@ -667,11 +665,6 @@
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 px-2 py-1" style="font-size: 0.72rem;">
                             Lịch phân ca 24/7 &bull; @Model.TongNhanVien nhân sự
                         </span>
-                        <span class="badge rounded-pill ms-1 px-2.5 py-1 fw-bold text-navy"
-                              style="background: #fef3c7; border: 1px solid #d4af37; font-size: 0.72rem;"
-                              title="Quy định vận hành: Thứ Bảy hằng tuần bắt đầu lập và xếp lịch cho tuần sau">
-                            <i class="bi bi-calendar2-week text-warning me-1"></i>Thứ Bảy hằng tuần: Bắt đầu xếp ca cho tuần sau
-                        </span>
                         @if (Model.BiGioiHanTheoBoPhan)
                         {
                             <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1 px-2 py-1"
@@ -702,17 +695,6 @@
                             }
                         </button>
                     </div>
-
-                    @if (Model.CanPublishWeek)
-                    {
-                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-bold shadow-xs hover-lift d-inline-flex align-items-center gap-1.5"
-                                style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); border: 1px solid #d4af37;"
-                                data-bs-toggle="modal" data-bs-target="#modalPublishWeek"
-                                title="Công bố lịch tuần chính thức">
-                            <i class="bi bi-megaphone-fill text-gold"></i>
-                            @(Model.PublishedWeek == null ? "Công Bố Lịch Tuần" : "Công Bố Lại")
-                        </button>
-                    }
 
                     <button type="button" class="btn btn-hotel-primary btn-sm rounded-pill px-3 py-1 fw-bold shadow-xs catalog-action-btn"
                             data-bs-toggle="modal" data-bs-target="#modalCreatePhanCa" title="Mở lưới phân ca chi tiết đa nhân sự kèm bộ lịch">
@@ -1085,14 +1067,10 @@
                 <!-- CHẾ ĐỘ 1: MA TRẬN PHÂN CA TUẦN (PHỤ) -->
                 <div id="viewMatrixContainer" class="shift-workspace-card shadow-sm overflow-hidden mb-4 d-none">
                     <div class="p-3 phanca-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="d-flex align-items-center gap-2">
                             <i class="bi bi-calendar3-range text-primary fs-5"></i>
                             <h5 class="mb-0 fw-bold text-dark fs-6 font-serif">Ma Trận Phân Ca Tuần 24/7</h5>
                             <span class="badge bg-primary-subtle text-primary rounded-pill" id="badgeMatrixCount">@Model.Rows.Count nhân sự</span>
-                            <span class="badge rounded-pill px-2.5 py-1 fw-bold text-navy"
-                                  style="background: #fef3c7; border: 1px solid #d4af37; font-size: 0.72rem;">
-                                <i class="bi bi-calendar2-week text-warning me-1"></i>Thứ Bảy hằng tuần: Bắt đầu xếp ca cho tuần sau
-                            </span>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2 small">
                             @foreach (var caMat in Model.DanhSachCa)
@@ -2030,123 +2008,6 @@
 <!-- EMBED CẤU HÌNH ĐỊNH BIÊN CA POPUP (PRD 3.5) -->
 <partial name="_DinhBienModal" model="Model.DinhBien" />
 
-@if (Model.CanPublishWeek)
-{
-    var publishNowLocal = HotelEventRules.Local(DateTimeOffset.UtcNow);
-    var isSaturdayPublish = publishNowLocal.DayOfWeek == DayOfWeek.Saturday;
-    var targetNextWeek = HourlyEventRules.WeekStart(DateOnly.FromDateTime(publishNowLocal)).AddDays(7);
-    var isTargetNextWeek = Model.WeekStart == targetNextWeek;
-    var isExemptReason = isSaturdayPublish && isTargetNextWeek;
-    var hasUnpublishedDrafts = Model.DanhSachPhanCa.Any(s => !s.DaCongBo);
-
-    <!-- MODAL: CÔNG BỐ LỊCH TUẦN 24/7 (LUXURY 5★ POPUP) -->
-    <div class="modal fade" id="modalPublishWeek" tabindex="-1" aria-labelledby="modalPublishWeekTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden modal-luxury-card">
-                <div class="modal-header bg-white border-bottom py-3 px-4">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm"
-                             style="width: 44px; height: 44px; font-size: 1.1rem; background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); border: 1.5px solid #d4af37;">
-                            <i class="bi bi-megaphone-fill text-gold"></i>
-                        </div>
-                        <div>
-                            <div class="text-uppercase small fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px; color: #b45309;">
-                                <i class="bi bi-stars text-warning me-1"></i>Điều hành ca trực 24/7 · Quy chuẩn 5★
-                            </div>
-                            <h3 class="modal-title h5 mb-0 font-serif fw-bold text-dark" id="modalPublishWeekTitle">
-                                @(Model.PublishedWeek == null ? "Công Bố Lịch Tuần" : "Công Bố Lại Lịch Tuần")
-                            </h3>
-                            <div class="small text-muted">Tuần @Model.WeekStart.ToString("dd/MM") – @Model.WeekEnd.ToString("dd/MM/yyyy")</div>
-                        </div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
-                </div>
-                <form asp-action="PublishWeek" method="post" id="formPublishWeek">
-                    @Html.AntiForgeryToken()
-                    <input name="weekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" type="hidden" />
-                    <input name="version" value="@(Model.PublishedWeek?.Version ?? 0)" type="hidden" />
-
-                    <div class="modal-body p-4 bg-light bg-opacity-50">
-                        <!-- THÔNG BÁO QUY CHUẨN THỨ BẢY -->
-                        <div class="alert @(isExemptReason ? "alert-success border-success-subtle" : "alert-warning border-warning-subtle") rounded-3 p-3 mb-3 shadow-2xs">
-                            <div class="d-flex align-items-start gap-2.5">
-                                <i class="bi @(isExemptReason ? "bi-check-circle-fill text-success" : "bi-info-circle-fill text-warning") fs-5 mt-0.5"></i>
-                                <div>
-                                    <div class="fw-bold @(isExemptReason ? "text-success-emphasis" : "text-warning-emphasis") small mb-1">
-                                        @(isExemptReason ? "Quy định Thứ Bảy: Hợp lệ công bố định kỳ" : "Quy định vận hành: Yêu cầu ghi nhận lý do")
-                                    </div>
-                                    <div class="small @(isExemptReason ? "text-success" : "text-dark")">
-                                        @if (isExemptReason)
-                                        {
-                                            <span>Hôm nay là <strong>Thứ Bảy</strong> và bạn đang công bố lịch chuẩn cho <strong>tuần tiếp theo</strong> (@targetNextWeek.ToString("dd/MM/yyyy")). Không bắt buộc nhập lý do điều chỉnh.</span>
-                                        }
-                                        else
-                                        {
-                                            <span>Theo quy chế khách sạn, <strong>Thứ Bảy hằng tuần là ngày bắt đầu lập và công bố lịch tuần sau</strong>. Công bố ngoài khung thời gian này hoặc công bố lại lịch đã sửa đổi cần nhập lý do để lưu nhật ký kiểm toán.</span>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- THẺ TỔNG QUAN DỮ LIỆU TUẦN -->
-                        <div class="row g-2 mb-3">
-                            <div class="col-4">
-                                <div class="p-2 rounded-3 bg-white border text-center shadow-2xs">
-                                    <div class="small text-muted" style="font-size: 0.72rem;">Nhân sự trong tuần</div>
-                                    <div class="fw-bold fs-6 font-serif text-navy">@Model.TongNhanVien NV</div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="p-2 rounded-3 bg-white border text-center shadow-2xs">
-                                    <div class="small text-muted" style="font-size: 0.72rem;">Tổng lượt ca trực</div>
-                                    <div class="fw-bold fs-6 font-serif text-navy">@Model.DanhSachPhanCa.Count ca</div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="p-2 rounded-3 bg-white border text-center shadow-2xs">
-                                    <div class="small text-muted" style="font-size: 0.72rem;">Trạng thái</div>
-                                    <div class="fw-bold fs-6 font-serif @(hasUnpublishedDrafts ? "text-warning" : "text-success")" style="font-size: 0.78rem;">
-                                        @(Model.PublishedWeek == null ? "Bản dự thảo" : hasUnpublishedDrafts ? "Có ca mới chưa công bố" : $"Phiên bản {Model.PublishedWeek.Version}")
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TRƯỜNG NHẬP LÝ DO -->
-                        <div class="mb-2">
-                            <label for="modal-publish-week-reason" class="form-label small fw-semibold text-navy d-flex align-items-center justify-content-between">
-                                <span>Lý do công bố / điều chỉnh @(isExemptReason ? "(Tùy chọn)" : "<span class=\"text-danger\">*</span>")</span>
-                                @if (!isExemptReason)
-                                {
-                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.68rem;">Bắt buộc</span>
-                                }
-                            </label>
-                            <textarea id="modal-publish-week-reason" name="reason" class="form-control" rows="3" maxlength="500"
-                                      placeholder="@(isExemptReason ? "Ghi chú thêm về lịch phân ca tuần này (không bắt buộc)..." : "Nhập lý do công bố ngoài Thứ Bảy hoặc lý do điều chỉnh lịch đã công bố...")"
-                                      @(isExemptReason ? "" : "required")></textarea>
-                            <div class="form-text small text-muted" style="font-size: 0.72rem;">
-                                Lý do sẽ được ghi vào nhật ký kiểm toán hệ thống (Audit Log) phục vụ hậu kiểm.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer bg-light border-top py-2.5 px-4 d-flex justify-content-between align-items-center">
-                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold small" data-bs-dismiss="modal">
-                            Đóng
-                        </button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5"
-                                style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); border: 1px solid #d4af37;">
-                            <i class="bi bi-megaphone-fill text-gold"></i>
-                            @(Model.PublishedWeek == null ? "Xác Nhận Công Bố Lịch Tuần" : "Xác Nhận Công Bố Lại")
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-}
-
 <style>
 /* CẤU TRÚC MODAL SCROLLABLE: ĐẢM BẢO FOOTER VÀ NÚT XÁC NHẬN LUÔN NẰM TRONG KHUNG NHÌN */
 #modalCreatePhanCa .modal-dialog {
@@ -2538,9 +2399,6 @@
 }
 </style>
 
-<partial name="~/Views/SuKien/_EventDialogs.cshtml" />
-<div class="hotel-toast-stack" aria-live="polite"></div>
-
 @section Scripts {
 <script>
     // =========================================================================
@@ -2646,16 +2504,6 @@
         localStorage.setItem('overtime_phanca_view_mode', mode);
     }
     window.switchCalendarViewTab = switchViewMode;
-    window.loadWeekInPlace = loadWeekInPlace;
-    window.refreshPhanCaWorkspaceInPlace = function (preferredMode) {
-        if (preferredMode) {
-            localStorage.setItem('overtime_phanca_view_mode', preferredMode);
-            localStorage.setItem('overtime_phanca_active_tab', preferredMode);
-        }
-        const currentUrl = new URL(window.location.href);
-        const currentWeek = currentUrl.searchParams.get('week') || '@currentWeek';
-        loadWeekInPlace(currentWeek);
-    };
 
     // 4. Nạp tuần tại chỗ qua AJAX - TUYỆT ĐỐI KHÔNG RELOAD TOÀN TRANG
     function loadWeekInPlace(targetWeekDate) {
@@ -4149,6 +3997,4 @@
     };
 </script>
 <script src="~/js/phanca-calendar.js" asp-append-version="true"></script>
-<script src="~/js/events.js" asp-append-version="true"></script>
-<script src="~/js/event-details.js" asp-append-version="true"></script>
 }
