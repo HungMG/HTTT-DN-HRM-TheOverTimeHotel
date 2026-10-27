@@ -299,8 +299,8 @@ static partial class HourlyOperationsTests
     private static async Task<EventInput> Input(Fixture f)
     {
         var input = f.Input();
-        var monday = HourlyEventRules.WeekStart(DateOnly.FromDateTime(input.Start)).AddDays(28 + (input.Start.Day * 7));
-        input.Start = monday.ToDateTime(new TimeOnly(15, 0));
+        // Fixture.Input already supplies a distinct date; day-of-month arithmetic can collide across months.
+        input.Start = input.Start.Date.AddHours(15);
         input.End = input.Start.AddHours(5);
         input.HourlyCompensation = true;
         return input;
@@ -310,7 +310,7 @@ static partial class HourlyOperationsTests
     {
         await using var db = f.Open();
         var date = DateOnly.FromDateTime(HotelEventRules.Local(item.NgayBatDau));
-        var ca = new CaLamViec { TenCa = $"{f.Prefix}-{date:yyyyMMdd}", GioBatDau = new(9, 0), GioKetThuc = new(17, 0) };
+        var ca = new CaLamViec { TenCa = $"{f.Prefix}-{date:yyyyMMdd}-{item.MaDuAn}-{employee}", GioBatDau = new(9, 0), GioKetThuc = new(17, 0) };
         var shift = new PhanCa { MaNhanVien = employee, CaLamViec = ca, NgayLamViec = date,
             BatDauDuKien = HotelEventRules.ToUtc(date.ToDateTime(new TimeOnly(9, 0))),
             KetThucDuKien = HotelEventRules.ToUtc(date.ToDateTime(new TimeOnly(17, 0))) };
