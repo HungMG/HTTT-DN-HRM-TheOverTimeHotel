@@ -79,6 +79,23 @@ public class PhieuLuongDetailViewModel
     public string TrangThai { get; set; } = string.Empty;
     public string PeriodStatus { get; set; } = string.Empty;
     public bool IsLocked => PeriodStatus == "KHOA_SO";
+
+    // Thống kê chấm công, ngày công, tăng ca & kỷ luật (Attendance & Discipline Summary)
+    public int CongChuan => OvertimeHotel.HRM.Core.Constants.SalaryConstants.STANDARD_WORKING_DAYS; // 26 ngày
+    public decimal NgayDiLam { get; set; }
+    public decimal NgayNghiPhep { get; set; }
+    public decimal NgayNghiKhongLuong { get; set; }
+    public int SoCaBo { get; set; }
+
+    public decimal TongGioOt { get; set; }
+    public decimal GioOtThuong { get; set; }
+    public decimal GioOtCuoiTuan { get; set; }
+    public decimal GioOtNgayLe { get; set; }
+
+    public int SoLanDiMuon { get; set; }
+    public int TongPhutDiMuon { get; set; }
+    public int SoLanVeSom { get; set; }
+    public int TongPhutVeSom { get; set; }
     public bool CanEdit { get; set; }
     public bool IsHR { get; set; }
 

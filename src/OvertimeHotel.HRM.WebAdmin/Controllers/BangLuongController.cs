@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Utilities;
+using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Services;
+using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
@@ -14,9 +17,11 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 [Authorize]
 public class BangLuongController(
     IPayrollCalculationService payrollService,
+    AppDbContext context,
     ILogger<BangLuongController> logger) : Controller
 {
     private readonly IPayrollCalculationService _payrollService = payrollService;
+    private readonly AppDbContext _context = context;
     private readonly ILogger<BangLuongController> _logger = logger;
 
     private int? CurrentUserId =>
@@ -26,6 +31,15 @@ public class BangLuongController(
         User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Người dùng";
 
     // Quản trị viên hệ thống kiêm Ban Giám Đốc (Sếp phê duyệt, khóa sổ)
+    private static bool IsHoliday(DateOnly date)
+    {
+        if (date.Month == 1 && date.Day == 1) return true;
+        if (date.Month == 4 && date.Day == 30) return true;
+        if (date.Month == 5 && date.Day == 1) return true;
+        if (date.Month == 9 && (date.Day == 1 || date.Day == 2 || date.Day == 3)) return true;
+        return false;
+    }
+
     private bool IsAdmin => User.IsInRole("Admin");
 
     // Ban Giám Đốc / Sếp có thẩm quyền phê duyệt bảng lương
@@ -321,6 +335,114 @@ public class BangLuongController(
                 CanDelete = true
             }).ToList();
 
+        // 1. Phân loại vi phạm giờ giấc & kỷ luật
+        var lateItems = violationItems.Where(v => v.LoaiTru == "DI_TRE").ToList();
+        var earlyItems = violationItems.Where(v => v.LoaiTru == "VE_SOM").ToList();
+        var missItems = violationItems.Where(v => v.LoaiTru == "KY_LUAT" || v.LyDoChiTiet.Contains("Bỏ ca")).ToList();
+
+        int soLanDiMuon = lateItems.Count;
+        int tongPhutDiMuon = lateItems.Sum(v => v.SoPhutViPham);
+        int soLanVeSom = earlyItems.Count;
+        int tongPhutVeSom = earlyItems.Sum(v => v.SoPhutViPham);
+        int soCaBo = missItems.Count;
+
+        // 2. Nạp dữ liệu phân ca & đơn từ chấm công thực tế trong kỳ
+        decimal ngayDiLam = 0;
+        decimal ngayNghiPhep = 0;
+        decimal ngayNghiKhongLuong = 0;
+        decimal tongGioOt = 0;
+        decimal gioOtThuong = 0;
+        decimal gioOtCuoiTuan = 0;
+        decimal gioOtNgayLe = 0;
+
+        if (ky != null)
+        {
+            var empShifts = await _context.PhanCas
+                .AsNoTracking()
+                .Include(s => s.CaLamViec)
+                .Include(s => s.ChamCong)
+                .Where(s => s.MaNhanVien == payslip.MaNhanVien
+                         && s.NgayLamViec >= ky.TuNgay
+                         && s.NgayLamViec <= ky.DenNgay)
+                .ToListAsync();
+
+            var empLeaves = await _context.DonTus
+                .AsNoTracking()
+                .Include(r => r.LoaiDon)
+                .Where(r => r.MaNhanVien == payslip.MaNhanVien
+                         && r.TrangThai == "DA_DUYET"
+                         && r.TuNgay <= ky.DenNgay
+                         && r.DenNgay >= ky.TuNgay)
+                .ToListAsync();
+
+            if (empShifts.Count > 0)
+            {
+                var summary = AttendanceSummaryCalculator.Calculate(
+                    payslip.MaNhanVien, nv?.HoTen ?? "", ky.TuNgay, ky.DenNgay, empShifts,
+                    empLeaves.Where(r => r.LoaiDon?.CoHuongLuong == true));
+
+                ngayDiLam = (decimal)summary.WorkedDays;
+                ngayNghiPhep = (decimal)summary.PaidLeaveDays;
+
+                var unpaidRequests = empLeaves.Where(r => r.LoaiDon?.CoHuongLuong == false).ToList();
+                foreach (var r in unpaidRequests)
+                {
+                    var start = Math.Max(ky.TuNgay.DayNumber, r.TuNgay.DayNumber);
+                    var end = Math.Min(ky.DenNgay.DayNumber, r.DenNgay.DayNumber);
+                    if (end >= start) ngayNghiKhongLuong += (end - start + 1);
+                }
+
+                if (soCaBo == 0)
+                {
+                    soCaBo = empShifts.Count(s => s.TrangThai == "VANG_MAT" || (s.ChamCong != null && s.ChamCong.TrangThai == "VANG_MAT"));
+                }
+
+                foreach (var s in empShifts.Where(s => s.ChamCong is { GioTangCaOt: > 0 }))
+                {
+                    var ot = s.ChamCong!.GioTangCaOt;
+                    tongGioOt += ot;
+                    if (IsHoliday(s.NgayLamViec))
+                        gioOtNgayLe += ot;
+                    else if (s.NgayLamViec.DayOfWeek == DayOfWeek.Sunday)
+                        gioOtCuoiTuan += ot;
+                    else
+                        gioOtThuong += ot;
+                }
+            }
+            else
+            {
+                ngayDiLam = payslip.NgayCongThucTe;
+            }
+        }
+        else
+        {
+            ngayDiLam = payslip.NgayCongThucTe;
+        }
+
+        if (ngayDiLam == 0 && ngayNghiPhep == 0 && payslip.NgayCongThucTe > 0)
+        {
+            ngayDiLam = payslip.NgayCongThucTe;
+        }
+
+        // Bổ sung phân tích giờ OT từ ghi chú nếu bảng ca chưa có chi tiết
+        if (tongGioOt == 0 && overtimeItems.Count > 0)
+        {
+            foreach (var ot in overtimeItems)
+            {
+                if (!string.IsNullOrEmpty(ot.GhiChu))
+                {
+                    var match = System.Text.RegularExpressions.Regex.Match(ot.GhiChu, @"([\d\.,]+)\s*giờ");
+                    if (match.Success && decimal.TryParse(match.Groups[1].Value.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var hours))
+                    {
+                        tongGioOt += hours;
+                        if (ot.TenKhoan.Contains("Lễ") || ot.TenKhoan.Contains("Tết")) gioOtNgayLe += hours;
+                        else if (ot.TenKhoan.Contains("nghỉ") || ot.TenKhoan.Contains("tuần")) gioOtCuoiTuan += hours;
+                        else gioOtThuong += hours;
+                    }
+                }
+            }
+        }
+
         var model = new PhieuLuongDetailViewModel
         {
             MaPhieuLuong = payslip.MaPhieuLuong,
@@ -338,6 +460,18 @@ public class BangLuongController(
             PeriodStatus = ky?.TrangThai ?? SalaryConstants.PERIOD_OPEN,
             LuongCoBan = payslip.LuongCoBan,
             NgayCongThucTe = payslip.NgayCongThucTe,
+            NgayDiLam = ngayDiLam,
+            NgayNghiPhep = ngayNghiPhep,
+            NgayNghiKhongLuong = ngayNghiKhongLuong,
+            SoCaBo = soCaBo,
+            TongGioOt = tongGioOt,
+            GioOtThuong = gioOtThuong,
+            GioOtCuoiTuan = gioOtCuoiTuan,
+            GioOtNgayLe = gioOtNgayLe,
+            SoLanDiMuon = soLanDiMuon,
+            TongPhutDiMuon = tongPhutDiMuon,
+            SoLanVeSom = soLanVeSom,
+            TongPhutVeSom = tongPhutVeSom,
             TienLuongCong = payslip.TienLuongCong,
             OvertimeItems = overtimeItems,
             TienTangCa = payslip.TienTangCa,

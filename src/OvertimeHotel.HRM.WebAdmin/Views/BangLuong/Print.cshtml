@@ -121,13 +121,16 @@
                     <span class="text-muted">Lương cơ bản HĐLĐ:</span> <strong class="font-num text-primary">@Model.LuongCoBan.ToString("N0") đ</strong>
                 </div>
                 <div class="col-sm-6 col-md-3">
-                    <span class="text-muted">Số ngày công chuẩn:</span> <strong>26 ngày</strong>
+                    <span class="text-muted">Công chuẩn / Tính lương:</span> <strong>@Model.CongChuan ng</strong> / <strong class="text-success font-num">@Model.NgayCongThucTe.ToString("N1") ng</strong>
+                    <div class="text-muted" style="font-size: 0.72rem;">(Đi làm: @Model.NgayDiLam.ToString("N1") ng + Phép: @Model.NgayNghiPhep.ToString("N1") ng)</div>
                 </div>
                 <div class="col-sm-6 col-md-3">
-                    <span class="text-muted">Ngày công thực tế:</span> <strong class="text-success font-num">@Model.NgayCongThucTe.ToString("N1") ngày</strong>
+                    <span class="text-muted">Làm thêm giờ (OT):</span> <strong class="text-primary font-num">@Model.TongGioOt.ToString("N1") giờ</strong>
+                    <div class="text-muted" style="font-size: 0.72rem;">(Thường: @Model.GioOtThuong.ToString("N1")h | Nghỉ: @Model.GioOtCuoiTuan.ToString("N1")h | Lễ: @Model.GioOtNgayLe.ToString("N1")h)</div>
                 </div>
                 <div class="col-sm-6 col-md-3">
-                    <span class="text-muted">Trạng thái:</span> <strong class="text-success">Đã đối soát</strong>
+                    <span class="text-muted">Kỷ luật / Vắng:</span> <strong class="@(Model.SoLanDiMuon > 0 || Model.SoCaBo > 0 ? "text-danger" : "text-success")">Trễ @Model.SoLanDiMuon lần / Bỏ @Model.SoCaBo ca</strong>
+                    <div class="text-muted" style="font-size: 0.72rem;">(Trễ: @Model.TongPhutDiMuon p | Sớm: @Model.SoLanVeSom lần | Không lương: @Model.NgayNghiKhongLuong ng)</div>
                 </div>
             </div>
         </div>
