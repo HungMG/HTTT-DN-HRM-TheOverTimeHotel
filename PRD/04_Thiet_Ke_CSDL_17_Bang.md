@@ -150,7 +150,10 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ngay_lam_viec` (DATE, NOT NULL): Ngày thực hiện ca.
 - `bat_dau_du_kien` (TIMESTAMPTZ, NOT NULL): Mốc thời gian dự kiến bắt đầu ca (làm căn cứ tính phút đi trễ).
 - `ket_thuc_du_kien` (TIMESTAMPTZ, NOT NULL): Mốc thời gian dự kiến kết thúc ca (làm căn cứ tính phút về sớm).
-- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DA_PHAN', CHECK in ('DA_PHAN', 'HOAN_THANH', 'VANG_MAT')): Trạng thái xử lý ca.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DA_PHAN', CHECK in ('DA_PHAN', 'HOAN_THANH', 'VANG_MAT', 'DA_HUY')): Trạng thái xử lý ca.
+- `da_cong_bo` (BOOLEAN, NOT NULL, DEFAULT FALSE): Trạng thái công bố lịch ca cho nhân viên xem trên Mobile App.
+- `gio_tang_ca_du_kien` (DECIMAL(4,2), NOT NULL, DEFAULT 0.00, CHECK (gio_tang_ca_du_kien >= 0 AND gio_tang_ca_du_kien <= 4.0)): Số giờ làm thêm (OT) dự kiến được phân công theo ca (tối đa 4h/ngày theo Điều 107 BLLĐ 2019).
+- `ghi_chu_ot` (VARCHAR(255), NULL): Lý do / nội dung công việc làm thêm ngoài giờ.
 
 ### Bảng 12: `cham_cong` (Bản ghi quẹt thẻ in/out)
 - `ma_cham_cong` (SERIAL, PK): Mã bản ghi chấm công.

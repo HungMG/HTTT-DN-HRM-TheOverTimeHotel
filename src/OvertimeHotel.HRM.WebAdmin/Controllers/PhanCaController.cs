@@ -247,6 +247,7 @@ public class PhanCaController : Controller
             model.TongSoCa = model.DanhSachPhanCa.Count;
             model.TongNhanVien = model.DanhSachNhanVien.Count;
             model.SoNhanVienDuocPhan = model.DanhSachPhanCa.Select(p => p.MaNhanVien).Distinct().Count();
+            model.TongGioOtTuan = model.DanhSachPhanCa.Where(p => p.TrangThai != "DA_HUY").Sum(p => p.GioTangCaDuKien);
 
             // 7. Xây dựng 42 ngày cho Cuốn Lịch (Calendar Notebook)
             for (int i = 0; i < 42; i++)
@@ -308,7 +309,9 @@ public class PhanCaController : Controller
                         TenPhongBan = emp?.PhongBan?.TenPhongBan ?? "Khách sạn",
                         AvatarColor = avatarColors[Math.Abs(p.MaNhanVien.GetHashCode()) % avatarColors.Length],
                         HasActiveContract = hasValidContract,
-                        DisabledReason = !hasValidContract ? $"Nhân viên {emp?.HoTen} có hợp đồng hết hạn / chưa có hiệu lực vào ngày {model.SelectedDate:dd/MM/yyyy}." : null
+                        DisabledReason = !hasValidContract ? $"Nhân viên {emp?.HoTen} có hợp đồng hết hạn / chưa có hiệu lực vào ngày {model.SelectedDate:dd/MM/yyyy}." : null,
+                        GioTangCaDuKien = p.GioTangCaDuKien,
+                        GhiChuOt = p.GhiChuOt
                     });
                 }
 
@@ -558,7 +561,9 @@ public class PhanCaController : Controller
                                 SacThai = p.CaLamViec?.SacThaiCa ?? "morning",
                                 TrangThai = p.TrangThai,
                                 HasAttendance = p.ChamCong != null,
-                                IsCheckedIn = p.ChamCong != null && p.ChamCong.GioCheckIn.HasValue
+                                IsCheckedIn = p.ChamCong != null && p.ChamCong.GioCheckIn.HasValue,
+                                GioTangCaDuKien = p.GioTangCaDuKien,
+                                GhiChuOt = p.GhiChuOt
                             }).ToList()
                     };
                     row.Days.Add(cell);
@@ -753,19 +758,31 @@ public class PhanCaController : Controller
                 return RedirectToAction(nameof(Index), new { week = targetDates.First().ToString("yyyy-MM-dd") });
             }
 
+            // Kiểm tra số giờ tăng ca hợp lệ theo Điều 107 Bộ luật Lao động 2019
+            if (input.GioTangCaDuKien > 0)
+            {
+                var otConflict = ShiftSchedulingPolicy.ValidateOvertime(input.GioTangCaDuKien);
+                if (otConflict.HasConflict)
+                {
+                    TempData["Error"] = TempData["ErrorMessage"] = otConflict.ThongDiep;
+                    return RedirectToAction(nameof(Index), new { week = targetDates.First().ToString("yyyy-MM-dd") });
+                }
+            }
+
             // Bản đồ ca đang có của từng nhân viên, nới thêm 1 ngày mỗi đầu để bắt được
             // ca đêm của hôm trước kéo sang hôm sau (PRD 3.2 chồng giờ + 3.3 nghỉ 8h).
+            // Mốc kết thúc ca được tính kèm cả giờ tăng ca OT để đảm bảo khoảng nghỉ hợp lệ.
             var rangeStart = targetDates.Min().AddDays(-1);
             var rangeEnd = targetDates.Max().AddDays(1);
             var shiftWindows = (await _context.PhanCas.AsNoTracking()
                     .Where(p => p.TrangThai != "DA_HUY" && empIds.Contains(p.MaNhanVien) &&
                                 p.NgayLamViec >= rangeStart && p.NgayLamViec <= rangeEnd)
-                    .Select(p => new { p.MaNhanVien, p.BatDauDuKien, p.KetThucDuKien })
+                    .Select(p => new { p.MaNhanVien, p.BatDauDuKien, p.KetThucDuKien, p.GioTangCaDuKien })
                     .ToListAsync())
                 .GroupBy(p => p.MaNhanVien)
                 .ToDictionary(
                     g => g.Key,
-                    g => g.Select(x => new ShiftSchedulingPolicy.ShiftWindow(x.BatDauDuKien, x.KetThucDuKien)).ToList());
+                    g => g.Select(x => new ShiftSchedulingPolicy.ShiftWindow(x.BatDauDuKien, x.KetThucDuKien.AddHours((double)x.GioTangCaDuKien))).ToList());
 
             int successCount = 0;
             int skippedDuplicateCount = 0;
@@ -835,6 +852,7 @@ public class PhanCaController : Controller
 
                     var shiftStart = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
                     var shiftEnd = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
+                    var shiftEndWithOt = shiftEnd.AddHours((double)input.GioTangCaDuKien);
 
                     // Chồng giờ + nghỉ tối thiểu 8 giờ (PRD 3.2 và 3.3). Dùng danh sách
                     // ca đã tải sẵn ở trên, nối thêm các ca vừa xếp trong cùng lượt gọi
@@ -843,7 +861,7 @@ public class PhanCaController : Controller
                         ? windows
                         : new List<ShiftSchedulingPolicy.ShiftWindow>();
 
-                    var conflict = ShiftSchedulingPolicy.ValidateAssignment(existingWindows, shiftStart, shiftEnd);
+                    var conflict = ShiftSchedulingPolicy.ValidateAssignment(existingWindows, shiftStart, shiftEndWithOt);
                     if (conflict.HasConflict)
                     {
                         if (conflict.Kind == ShiftConflictKind.Overlap)
@@ -862,10 +880,12 @@ public class PhanCaController : Controller
                     var phanCa = exist ?? new PhanCa { MaNhanVien = empId, MaCa = input.MaCa, NgayLamViec = targetDate };
                     phanCa.BatDauDuKien = shiftStart;
                     phanCa.KetThucDuKien = shiftEnd;
+                    phanCa.GioTangCaDuKien = input.GioTangCaDuKien;
+                    phanCa.GhiChuOt = string.IsNullOrWhiteSpace(input.GhiChuOt) ? null : input.GhiChuOt.Trim();
                     phanCa.TrangThai = safeStatus;
-                    phanCa.DaCongBo = false;
+                    phanCa.DaCongBo = true;
                     if (exist == null) _context.PhanCas.Add(phanCa);
-                    existingWindows.Add(new ShiftSchedulingPolicy.ShiftWindow(shiftStart, shiftEnd));
+                    existingWindows.Add(new ShiftSchedulingPolicy.ShiftWindow(shiftStart, shiftEndWithOt));
                     shiftWindows[empId] = existingWindows;
                     successCount++;
                 }
@@ -1059,7 +1079,7 @@ public class PhanCaController : Controller
                     shift.BatDauDuKien = shiftStart;
                     shift.KetThucDuKien = shiftEnd;
                     shift.TrangThai = "DA_PHAN";
-                    shift.DaCongBo = false;
+                    shift.DaCongBo = true;
                     if (exist == null) _context.PhanCas.Add(shift);
                     existingWindows.Add(new ShiftSchedulingPolicy.ShiftWindow(shiftStart, shiftEnd));
                     addedCount++;
@@ -1586,27 +1606,39 @@ public class PhanCaController : Controller
                 return Json(new { success = false, message = "Không thể đổi ca vì nhân viên đã quẹt thẻ chấm công cho ca hiện tại." });
             }
 
+            if (input.GioTangCaDuKien > 0)
+            {
+                var otConflict = ShiftSchedulingPolicy.ValidateOvertime(input.GioTangCaDuKien);
+                if (otConflict.HasConflict)
+                {
+                    return Json(new { success = false, message = otConflict.ThongDiep });
+                }
+            }
+
             var shiftStart = new DateTimeOffset(startDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
             var shiftEnd = new DateTimeOffset(endDateTime, TimeSpan.FromHours(7)).ToUniversalTime();
+            var shiftEndWithOt = shiftEnd.AddHours((double)input.GioTangCaDuKien);
             var activeShifts = existing.Where(p => p.TrangThai != "DA_HUY").ToList();
             var sameSource = activeShifts.Count == 1 && activeShifts[0].MaCa == input.MaCa
-                && activeShifts[0].BatDauDuKien == shiftStart && activeShifts[0].KetThucDuKien == shiftEnd;
+                && activeShifts[0].BatDauDuKien == shiftStart && activeShifts[0].KetThucDuKien == shiftEnd
+                && activeShifts[0].GioTangCaDuKien == input.GioTangCaDuKien;
             if (!sameSource && existing.Count != 0)
                 await CancelSourceShiftsAsync(existing, input.ChangeReason);
 
             // PRD 3.2 / 3.3: ca đang xếp không được trùng giờ và phải giữ khoảng
-            // nghỉ tối thiểu với các ca của những ngày khác. Ca cùng ngày vừa nằm
+            // nghỉ tối thiểu với các ca của những ngày khác (kể cả thời gian tăng ca OT). Ca cùng ngày vừa nằm
             // trong `existing` (sẽ bị xoá) nên không tính vào tập so sánh.
-            var otherWindows = (await _context.PhanCas.AsNoTracking()
+            var otherWindowsRaw = await _context.PhanCas.AsNoTracking()
                     .Where(p => p.TrangThai != "DA_HUY" && p.MaNhanVien == input.MaNhanVien &&
                                 p.NgayLamViec != targetDate &&
                                 p.NgayLamViec >= targetDate.AddDays(-2) &&
                                 p.NgayLamViec <= targetDate.AddDays(2))
-                    .Select(p => new { p.BatDauDuKien, p.KetThucDuKien })
-                    .ToListAsync())
-                .Select(p => new ShiftSchedulingPolicy.ShiftWindow(p.BatDauDuKien, p.KetThucDuKien));
+                    .Select(p => new { p.BatDauDuKien, p.KetThucDuKien, p.GioTangCaDuKien })
+                    .ToListAsync();
+            var otherWindows = otherWindowsRaw
+                .Select(p => new ShiftSchedulingPolicy.ShiftWindow(p.BatDauDuKien, p.KetThucDuKien.AddHours((double)p.GioTangCaDuKien)));
 
-            var conflict = ShiftSchedulingPolicy.ValidateAssignment(otherWindows, shiftStart, shiftEnd);
+            var conflict = ShiftSchedulingPolicy.ValidateAssignment(otherWindows, shiftStart, shiftEndWithOt);
             if (conflict.HasConflict)
             {
                 return Json(new { success = false, message = conflict.ThongDiep });
@@ -1616,8 +1648,10 @@ public class PhanCaController : Controller
                 ?? new PhanCa { MaNhanVien = input.MaNhanVien, MaCa = input.MaCa, NgayLamViec = targetDate };
             phanCa.BatDauDuKien = shiftStart;
             phanCa.KetThucDuKien = shiftEnd;
+            phanCa.GioTangCaDuKien = input.GioTangCaDuKien;
+            phanCa.GhiChuOt = string.IsNullOrWhiteSpace(input.GhiChuOt) ? null : input.GhiChuOt.Trim();
             phanCa.TrangThai = "DA_PHAN";
-            phanCa.DaCongBo = sameSource && phanCa.DaCongBo;
+            phanCa.DaCongBo = true;
             if (phanCa.MaPhanCa == 0) _context.PhanCas.Add(phanCa);
             else _context.Entry(phanCa).State = EntityState.Modified;
             await _context.SaveChangesAsync();
@@ -1634,6 +1668,9 @@ public class PhanCaController : Controller
                 gioBatDau = ca.GioBatDau.ToString("HH:mm"),
                 gioKetThuc = ca.GioKetThuc.ToString("HH:mm"),
                 quaDem = ca.QuaDem,
+                gioTangCaDuKien = phanCa.GioTangCaDuKien,
+                ghiChuOt = phanCa.GhiChuOt,
+                coTangCa = phanCa.CoTangCa,
                 // Trả về loại ca + sắc thái để JS chọn đúng màu thẻ: trước đây ca
                 // hành chính (không có "Sáng"/"Chiều"/"Đêm" trong tên) bị tô như ca sáng.
                 loaiCa = ca.LoaiCa,
