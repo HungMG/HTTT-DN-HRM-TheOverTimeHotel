@@ -18,6 +18,16 @@ public record EventPaySlice(DateTimeOffset Start, DateTimeOffset End, decimal Mo
 
 public static class HourlyEventRules
 {
+    public static string? AutomaticRating(PhanCongDuAn assignment)
+    {
+        var planned = assignment.KetThuc - assignment.BatDau;
+        if (planned <= TimeSpan.Zero || assignment.CongThucTes.Count == 0 ||
+            assignment.CongThucTes.Any(w => w.BatDau < assignment.BatDau || w.KetThuc > assignment.KetThuc || w.KetThuc <= w.BatDau))
+            return null;
+        var ticks = assignment.CongThucTes.Sum(w => (decimal)(w.KetThuc - w.BatDau).Ticks);
+        return ticks * 3 >= (decimal)planned.Ticks * 2 ? "XUAT_SAC" : "HOAN_THANH";
+    }
+
     public static bool CanRecordWork(DuAn item, PhanCongDuAn assignment, DateTimeOffset start, DateTimeOffset end, DateTimeOffset now)
     {
         var shift = assignment.PhanCa;

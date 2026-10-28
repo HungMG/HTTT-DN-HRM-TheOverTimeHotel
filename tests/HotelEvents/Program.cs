@@ -5,6 +5,20 @@ var start = new DateTimeOffset(2028, 2, 29, 17, 0, 0, TimeSpan.Zero); // Vietnam
 var end = start.AddHours(2);
 var tests = new (string Name, Action Run)[]
 {
+    ("Hourly result uses the two-thirds threshold and requires actual work", () =>
+    {
+        var assignment = new PhanCongDuAn { BatDau = start, KetThuc = start.AddHours(6) };
+        Equal<string?>(null, HourlyEventRules.AutomaticRating(assignment));
+        var work = new CongSuKien { BatDau = start, KetThuc = start.AddHours(3) };
+        assignment.CongThucTes.Add(work);
+        Equal("HOAN_THANH", HourlyEventRules.AutomaticRating(assignment));
+        work.KetThuc = start.AddHours(4);
+        Equal("XUAT_SAC", HourlyEventRules.AutomaticRating(assignment));
+        work.KetThuc = start.AddHours(5);
+        Equal("XUAT_SAC", HourlyEventRules.AutomaticRating(assignment));
+        assignment.KetThuc = start;
+        Equal<string?>(null, HourlyEventRules.AutomaticRating(assignment));
+    }),
     ("Creation uses the Vietnam calendar day, including midnight and earlier hours today", () =>
     {
         var beforeMidnight = new DateTimeOffset(2026, 10, 15, 16, 59, 59, TimeSpan.Zero);

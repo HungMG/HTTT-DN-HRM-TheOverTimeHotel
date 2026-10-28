@@ -468,6 +468,19 @@ await Check("Payroll event explanation does not invent a fixed settlement multip
         "Payroll displays a hardcoded multiplier instead of the saved settlement.");
 });
 
+await Check("Hourly acceptance displays automatic ratings and flags missing work", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true; item.TrangThai = "CHO_NGHIEM_THU";
+    var start = item.NgayBatDau;
+    item.PhanCongs = [
+        new() { MaPhanCong = 1, MaNhanVien = 10, BatDau = start, KetThuc = start.AddHours(6), DanhGia = "HOAN_THANH",
+            CongThucTes = [new() { BatDau = start, KetThuc = start.AddHours(4) }] },
+        new() { MaPhanCong = 2, MaNhanVien = 11, BatDau = start, KetThuc = start.AddHours(6) }
+    ];
+    var html = System.Net.WebUtility.HtmlDecode(await Render("_HourlyEventAcceptance", new EventDetailsViewModel { Event = item, CanManage = true }));
+    Require(html.Contains("Hoàn thành xuất sắc") && html.Contains("Thiếu dữ liệu giờ thực tế"), "Automatic result or missing-work warning is absent.");
+    Require(!html.Contains("name=\"Review.Rating\" class=\"form-select\""), "The result still offers manual grading.");
+});
 await Check("Phase 3 readiness counts distinct people across assignments and flags unresolved work", async () =>
 {
     var item = Event(); item.TinhTheoGio = true; item.TrangThai = "CHO_NGHIEM_THU";

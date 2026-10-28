@@ -54,12 +54,15 @@ public class EventDetailsViewModel
         .Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY") || p.CongThucTes.Count > 0).ToList();
     public int AcceptanceStaffCount => AcceptanceAssignments.Select(p => p.MaNhanVien).Distinct().Count();
     public int ConfirmedStaffCount => AcceptanceAssignments.GroupBy(p => p.MaNhanVien).Count(g => g.All(p =>
-        p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY") && p.NgayDanhGia.HasValue
-        && (p.DanhGia == "KHONG_THAM_GIA" ? p.CongThucTes.Count == 0
-            : p.DanhGia is "HOAN_THANH" or "XUAT_SAC" && p.CongThucTes.Count > 0)));
+        p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY")
+        && (p.DanhGia == "KHONG_THAM_GIA" ? p.NgayDanhGia.HasValue && p.CongThucTes.Count == 0
+            : Event.TrangThai == "HOAN_THANH" ? p.NgayDanhGia.HasValue && p.DanhGia is "HOAN_THANH" or "XUAT_SAC"
+            : OvertimeHotel.HRM.Core.Policies.HourlyEventRules.AutomaticRating(p) != null)));
     public int MissingWorkStaffCount => AcceptanceAssignments.Where(p => p.DanhGia != "KHONG_THAM_GIA" && p.CongThucTes.Count == 0)
         .Select(p => p.MaNhanVien).Distinct().Count();
-    public int UnreviewedStaffCount => AcceptanceAssignments.Where(p => !p.NgayDanhGia.HasValue || p.DanhGia == "CHUA_DANH_GIA")
+    public int UnreviewedStaffCount => AcceptanceAssignments.Where(p => Event.TrangThai == "HOAN_THANH" || p.DanhGia == "KHONG_THAM_GIA"
+        ? !p.NgayDanhGia.HasValue || p.DanhGia == "CHUA_DANH_GIA"
+        : OvertimeHotel.HRM.Core.Policies.HourlyEventRules.AutomaticRating(p) == null)
         .Select(p => p.MaNhanVien).Distinct().Count();
     public int AbsentStaffCount => AcceptanceAssignments.GroupBy(p => p.MaNhanVien).Count(g =>
         g.All(p => p.DanhGia == "KHONG_THAM_GIA" && p.NgayDanhGia.HasValue && p.CongThucTes.Count == 0));

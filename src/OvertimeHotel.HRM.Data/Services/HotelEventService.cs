@@ -303,6 +303,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         Require(assignment!.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"), "", "Phân công đã hủy; giữ lịch sử, không đánh giá trả tiền.");
         if (item.TinhTheoGio)
         {
+            Require(input.Rating == "KHONG_THAM_GIA", "Review.Rating", "Kết quả tham gia được tính tự động từ giờ thực tế.");
             Require(input.Rating != "KHONG_THAM_GIA" || assignment.CongThucTes.Count == 0, "", "Đã có công thực tế; HR cần đối soát công trước khi ghi vắng mặt.");
             Require(input.Rating == "KHONG_THAM_GIA" || assignment.CongThucTes.Count > 0, "", "Ghi công thực tế trước khi đánh giá hoàn thành.");
         }
