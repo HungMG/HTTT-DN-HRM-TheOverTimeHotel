@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -76,6 +77,7 @@ public class GiaiTrinhChamCongController : Controller
             .AsNoTracking()
             .Include(g => g.NhanVien)!.ThenInclude(n => n!.PhongBan)
             .Include(g => g.PhanCa)!.ThenInclude(p => p!.CaLamViec)
+            .Include(g => g.PhanCa)!.ThenInclude(p => p!.ChamCong)
             .Include(g => g.QuanLyXacMinh)
             .Include(g => g.HrXacNhan)
             .AsQueryable();
@@ -87,6 +89,8 @@ public class GiaiTrinhChamCongController : Controller
                 : baseQuery.Where(g => g.NhanVien != null && g.NhanVien.MaPhongBan == scopeDept.Value);
         }
 
+        var visibleItems = await this.SearchDataAsync($"attendance-explanations:scope:{scopeDept}", () => baseQuery.ToListAsync());
+        baseQuery = visibleItems.AsQueryable();
         var query = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(trangThai))
@@ -102,11 +106,11 @@ public class GiaiTrinhChamCongController : Controller
                 g.LyDo.ToLower().Contains(value));
         }
 
-        var totalFiltered = await query.CountAsync();
+        var totalFiltered = query.Count();
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalFiltered / (double)PAGE_SIZE));
         var pageNumber = Math.Clamp(page, 1, totalPages);
 
-        var rows = await query
+        var rows = query
             .OrderBy(g => g.TrangThai == STATUS_CHO_QUAN_LY || g.TrangThai == STATUS_CHO_HR ? 0 : 1)
             .ThenByDescending(g => g.NgayGui)
             .Skip((pageNumber - 1) * PAGE_SIZE)
@@ -141,7 +145,7 @@ public class GiaiTrinhChamCongController : Controller
                 g.YKienHr,
                 g.NgayGui
             })
-            .ToListAsync();
+            .ToList();
 
         var model = new GiaiTrinhIndexViewModel
         {
@@ -173,11 +177,11 @@ public class GiaiTrinhChamCongController : Controller
                 YKienHr = r.YKienHr,
                 NgayGui = r.NgayGui
             }).ToList(),
-            TongGiaiTrinh = await baseQuery.CountAsync(),
-            ChoQuanLy = await baseQuery.CountAsync(g => g.TrangThai == STATUS_CHO_QUAN_LY),
-            ChoHr = await baseQuery.CountAsync(g => g.TrangThai == STATUS_CHO_HR),
-            DaDuyet = await baseQuery.CountAsync(g => g.TrangThai == STATUS_DA_DUYET),
-            TuChoi = await baseQuery.CountAsync(g => g.TrangThai == STATUS_TU_CHOI),
+            TongGiaiTrinh = baseQuery.Count(),
+            ChoQuanLy = baseQuery.Count(g => g.TrangThai == STATUS_CHO_QUAN_LY),
+            ChoHr = baseQuery.Count(g => g.TrangThai == STATUS_CHO_HR),
+            DaDuyet = baseQuery.Count(g => g.TrangThai == STATUS_DA_DUYET),
+            TuChoi = baseQuery.Count(g => g.TrangThai == STATUS_TU_CHOI),
             CoQuyenQuanLy = User.IsInRole("Manager") || User.IsInRole("Admin"),
             CoQuyenHr = laHr,
             PageNumber = pageNumber,

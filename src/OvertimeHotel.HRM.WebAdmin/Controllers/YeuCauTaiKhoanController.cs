@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -83,6 +84,8 @@ public class YeuCauTaiKhoanController : Controller
         var canProcess = LeaveApprovalPolicy.CanProcessAccountRequest(role);
 
         var baseQuery = BuildVisibleQuery(canProcess, employeeId);
+        var visibleItems = await this.SearchDataAsync($"account-requests:process:{canProcess}:sender:{employeeId}", () => baseQuery.ToListAsync());
+        baseQuery = visibleItems.AsQueryable();
         var query = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -101,11 +104,11 @@ public class YeuCauTaiKhoanController : Controller
             query = query.Where(item => item.TrangThai == trangThai);
         }
 
-        var totalFiltered = await query.CountAsync();
+        var totalFiltered = query.Count();
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalFiltered / (double)PageSize));
         var pageNumber = Math.Clamp(page, 1, totalPages);
 
-        var requests = await query
+        var requests = query
             .OrderByDescending(item => item.NgayGui)
             .ThenByDescending(item => item.MaYeuCau)
             .Skip((pageNumber - 1) * PageSize)
@@ -136,7 +139,7 @@ public class YeuCauTaiKhoanController : Controller
                 HandledAt = item.NgayXuLy,
                 GrantedUsername = item.TaiKhoanDuocCap == null ? null : item.TaiKhoanDuocCap.TenDangNhap
             })
-            .ToListAsync();
+            .ToList();
 
         // Đếm KPI trên tập đã phân tát quyền, không phải trên toàn bảng — nếu
         // không thì số của HR sẽ phản ánh cả hộp thư của IT.
@@ -146,11 +149,11 @@ public class YeuCauTaiKhoanController : Controller
             TrangThai = trangThai,
             StatusOptions = BuildStatusOptions(trangThai),
             Requests = requests,
-            TotalRequests = await baseQuery.CountAsync(),
-            PendingRequests = await baseQuery.CountAsync(item => item.TrangThai == STATUS_CHO_IT),
-            ProcessingRequests = await baseQuery.CountAsync(item => item.TrangThai == STATUS_DANG_XU_LY),
-            GrantedRequests = await baseQuery.CountAsync(item => item.TrangThai == STATUS_DA_CAP),
-            RejectedRequests = await baseQuery.CountAsync(item => item.TrangThai == STATUS_TU_CHOI),
+            TotalRequests = baseQuery.Count(),
+            PendingRequests = baseQuery.Count(item => item.TrangThai == STATUS_CHO_IT),
+            ProcessingRequests = baseQuery.Count(item => item.TrangThai == STATUS_DANG_XU_LY),
+            GrantedRequests = baseQuery.Count(item => item.TrangThai == STATUS_DA_CAP),
+            RejectedRequests = baseQuery.Count(item => item.TrangThai == STATUS_TU_CHOI),
             TotalFilteredRequests = totalFiltered,
             PageNumber = pageNumber,
             PageSize = PageSize,

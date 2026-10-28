@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,19 +31,21 @@ public class CaLamViecController : Controller
         }
 
         keyword = keyword?.Trim();
-        var query = _context.CaLamViecs.AsNoTracking().Include(x => x.PhanCas).AsQueryable();
-        query = query.Where(x => !x.TenCa.StartsWith("EVT-") && !x.TenCa.StartsWith("TEST-"));
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            var value = keyword.ToLower();
-            query = query.Where(x => x.TenCa.ToLower().Contains(value));
-        }
-
         ViewBag.Keyword = keyword;
         try
         {
-            ViewBag.Total = await _context.CaLamViecs.CountAsync(x => !x.TenCa.StartsWith("EVT-") && !x.TenCa.StartsWith("TEST-"));
-            return View(await query.OrderBy(x => x.GioBatDau).ToListAsync());
+            var allShifts = await this.SearchDataAsync("shifts:templates", () => _context.CaLamViecs.AsNoTracking()
+                .Include(x => x.PhanCas)
+                .Where(x => !x.TenCa.StartsWith("EVT-") && !x.TenCa.StartsWith("TEST-")).ToListAsync());
+            var query = allShifts.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var value = keyword.ToLower();
+                query = query.Where(x => x.TenCa.ToLower().Contains(value));
+            }
+
+            ViewBag.Total = allShifts.Count;
+            return View(query.OrderBy(x => x.GioBatDau).ToList());
         }
         catch (Exception ex)
         {

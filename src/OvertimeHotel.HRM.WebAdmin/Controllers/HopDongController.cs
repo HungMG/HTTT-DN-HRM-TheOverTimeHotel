@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -38,23 +39,23 @@ public class HopDongController : Controller
         try
         {
             // Thực thi tuần tự trên cùng DbContext instance để đảm bảo an toàn đơn luồng (Thread-safe)
-            var allContracts = await _context.HopDongs.AsNoTracking()
+            var allContracts = await this.SearchDataAsync("contracts:list", () => _context.HopDongs.AsNoTracking()
                 .Include(c => c.NhanVien)
                     .ThenInclude(nv => nv!.PhongBan)
                 .Include(c => c.NhanVien)
                     .ThenInclude(nv => nv!.ChucVu)
-                .ToListAsync();
-            var allEmployees = await _context.NhanViens.AsNoTracking()
+                .ToListAsync());
+            var allEmployees = await this.SearchDataAsync("contracts:employees", () => _context.NhanViens.AsNoTracking()
                 .Include(nv => nv.PhongBan)
                 .Include(nv => nv.ChucVu)
                 .OrderBy(item => item.Ten).ThenBy(item => item.Ho)
-                .ToListAsync();
-            var allDepartments = await _context.PhongBans.AsNoTracking()
+                .ToListAsync());
+            var allDepartments = await this.SearchDataAsync("contracts:departments", () => _context.PhongBans.AsNoTracking()
                 .OrderBy(p => p.TenPhongBan)
-                .ToListAsync();
-            var allPositions = await _context.ChucVus.AsNoTracking()
+                .ToListAsync());
+            var allPositions = await this.SearchDataAsync("contracts:positions", () => _context.ChucVus.AsNoTracking()
                 .OrderBy(cv => cv.TenChucVu)
-                .ToListAsync();
+                .ToListAsync());
 
             // Lọc trên bộ nhớ máy chủ (0ms)
             var filtered = allContracts.AsEnumerable();
@@ -122,7 +123,7 @@ public class HopDongController : Controller
             var employeeOptions = allEmployees.Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien:D3}", item.MaNhanVien.ToString())).ToList();
             var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
             var positionOptions = allPositions.Select(cv => new SelectListItem(cv.TenChucVu + (cv.MaPhongBan == null ? " (Chung)" : ""), cv.MaChucVu.ToString())).ToList();
-            
+
             ViewBag.EmployeeOptions = employeeOptions;
             ViewBag.DepartmentOptions = departmentOptions;
             ViewBag.PositionOptions = positionOptions;
@@ -145,7 +146,7 @@ public class HopDongController : Controller
             var pageNumber = Math.Clamp(page, 1, totalPages);
             var pagedContracts = orderedContracts.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
-            var initialSoHopDong = await GenerateUniqueContractNumberAsync("CHINH_THUC");
+            var initialSoHopDong = await this.SearchDataAsync($"contracts:next-number:{today:yyyyMMdd}", () => GenerateUniqueContractNumberAsync("CHINH_THUC"));
             var model = new HopDongIndexViewModel
             {
                 CreateContractForm = new HopDongFormViewModel
@@ -601,7 +602,7 @@ public class HopDongController : Controller
     {
         model.LoaiHopDong = model.LoaiHopDong?.Trim() ?? string.Empty;
         model.HinhThucHopDong = model.HinhThucHopDong?.Trim() ?? "CHINH_THUC";
-        
+
         // Tự động sinh mã hợp đồng nếu để trống
         if (string.IsNullOrWhiteSpace(model.SoHopDong))
         {

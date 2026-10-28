@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -101,8 +102,8 @@ public class ChamCongController : Controller
         try
         {
             // 1. Tải danh mục phục vụ bộ lọc
-            var phongBans = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
-            var caLamViecs = await _context.CaLamViecs.AsNoTracking().OrderBy(c => c.GioBatDau).ToListAsync();
+            var phongBans = await this.SearchDataAsync("attendance:departments", () => _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync());
+            var caLamViecs = await this.SearchDataAsync("attendance:shifts", () => _context.CaLamViecs.AsNoTracking().OrderBy(c => c.GioBatDau).ToListAsync());
 
             model.PhongBanOptions = phongBans.Select(p => new SelectListItem(p.TenPhongBan, p.MaPhongBan.ToString(), p.MaPhongBan == phongBanId)).ToList();
             model.CaOptions = caLamViecs.Select(c => new SelectListItem($"{c.TenCa} ({c.GioBatDau:HH:mm} - {c.GioKetThuc:HH:mm})", c.MaCa.ToString(), c.MaCa == caId)).ToList();
@@ -137,18 +138,20 @@ public class ChamCongController : Controller
                 query = query.Where(p => p.MaCa == caId.Value);
             }
 
-            var allShifts = await query
-                .OrderByDescending(p => p.NgayLamViec)
-                .ThenBy(p => p.BatDauDuKien)
-                .ToListAsync();
-
-            var allShiftIds = allShifts.Select(p => p.MaPhanCa).ToList();
-            var eventAssignments = await _context.PhanCongDuAns
-                .Include(p => p.DuAn)
-                .Include(p => p.CongThucTes)
-                .Where(p => p.MaPhanCa.HasValue && allShiftIds.Contains(p.MaPhanCa.Value) && p.TrangThaiThamGia != "HUY_PHAN_CONG")
-                .AsNoTracking()
-                .ToListAsync();
+            // One snapshot prevents stale shift IDs from poisoning a freshly loaded event map.
+            var snapshot = await this.SearchDataAsync($"attendance:list:{startDate:yyyyMMdd}:{endDate:yyyyMMdd}:scope:{scopeDept}:department:{phongBanId}:shift:{caId}", async () =>
+            {
+                var shifts = await query.OrderByDescending(p => p.NgayLamViec)
+                    .ThenBy(p => p.BatDauDuKien).ToListAsync();
+                var shiftIds = shifts.Select(p => p.MaPhanCa).ToList();
+                var events = await _context.PhanCongDuAns.AsNoTracking()
+                    .Include(p => p.DuAn).Include(p => p.CongThucTes)
+                    .Where(p => p.MaPhanCa.HasValue && shiftIds.Contains(p.MaPhanCa.Value) && p.TrangThaiThamGia != "HUY_PHAN_CONG")
+                    .ToListAsync();
+                return (Shifts: shifts, Events: events);
+            });
+            var allShifts = snapshot.Shifts;
+            var eventAssignments = snapshot.Events;
 
             var eventByShift = eventAssignments
                 .GroupBy(p => p.MaPhanCa!.Value)

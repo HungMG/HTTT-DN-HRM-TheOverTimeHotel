@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text;
@@ -37,55 +38,23 @@ public class NhanVienController : Controller
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 5, 50);
 
-        var query = _context.NhanViens
-            .AsNoTracking()
-            .Include(employee => employee.PhongBan)
-            .Include(employee => employee.ChucVu)
-            .Include(employee => employee.HopDongs)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            var value = keyword.ToLower();
-            query = query.Where(employee =>
-                employee.Ho.ToLower().Contains(value) ||
-                employee.Ten.ToLower().Contains(value) ||
-                (employee.Ho + " " + employee.Ten).ToLower().Contains(value) ||
-                employee.EmailCongVu.ToLower().Contains(value) ||
-                (employee.EmailCaNhan != null && employee.EmailCaNhan.ToLower().Contains(value)) ||
-                employee.DienThoai.Contains(value));
-        }
-
-        if (departmentId is > 0)
-        {
-            query = query.Where(employee => employee.MaPhongBan == departmentId.Value);
-
-            if (positionId is > 0)
-                query = query.Where(employee => employee.MaChucVu == positionId.Value);
-        }
-        else
-        {
-            positionId = null; // Bắt buộc chọn phòng ban trước mới được lọc theo chức vụ
-        }
-
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(employee => employee.TrangThai == status);
+        if (departmentId is not > 0) positionId = null;
 
         var today = DateOnly.FromDateTime(DateTime.Today);
         try
         {
             // Thực thi tuần tự trên cùng DbContext instance để đảm bảo an toàn đơn luồng (Thread-safe)
-            var depts = await _context.PhongBans.AsNoTracking().OrderBy(item => item.TenPhongBan).ToListAsync();
-            var poss = await _context.ChucVus.AsNoTracking().OrderBy(item => item.TenChucVu).ToListAsync();
-            var allEmployees = await _context.NhanViens.AsNoTracking().Where(employee => employee.IsProfileComplete)
+            var depts = await this.SearchDataAsync("employees:departments", () => _context.PhongBans.AsNoTracking().OrderBy(item => item.TenPhongBan).ToListAsync());
+            var poss = await this.SearchDataAsync("employees:positions", () => _context.ChucVus.AsNoTracking().OrderBy(item => item.TenChucVu).ToListAsync());
+            var allEmployees = await this.SearchDataAsync("employees:list", () => _context.NhanViens.AsNoTracking().Where(employee => employee.IsProfileComplete)
                 .Include(employee => employee.PhongBan)
                 .Include(employee => employee.ChucVu)
                 .Include(employee => employee.HopDongs)
                 .Include(employee => employee.TaiKhoan)
                     .ThenInclude(t => t!.VaiTro)
-                .ToListAsync();
+                .ToListAsync());
 
-            // Lọc trên bộ nhớ máy chủ (0ms)
+            // Lọc trên bản sao danh sách trong cache, không truy vấn lại theo keyword.
             var filtered = allEmployees.AsEnumerable();
             if (!string.IsNullOrWhiteSpace(keyword))
             {
@@ -541,9 +510,9 @@ public class NhanVienController : Controller
     private async Task<IReadOnlyList<HopDong>> GetEligibleContractsAsync()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        return await _context.HopDongs.AsNoTracking().Include(x => x.NhanVien)
+        return await this.SearchDataAsync($"employees:eligible-contracts:{today:yyyyMMdd}", () => _context.HopDongs.AsNoTracking().Include(x => x.NhanVien)
             .Where(x => x.NhanVien != null && !x.NhanVien.IsProfileComplete && x.TrangThai != "DA_CHAM_DUT" && x.TrangThai != "CHAM_DUT" && (x.NgayKetThuc == null || x.NgayKetThuc >= today))
-            .OrderBy(x => x.SoHopDong).ToListAsync();
+            .OrderBy(x => x.SoHopDong).ToListAsync());
     }
 
     private static string RemoveDiacritics(string text)

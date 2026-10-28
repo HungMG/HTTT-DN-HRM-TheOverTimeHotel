@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,42 +40,42 @@ public class UserAccountsController : Controller
     {
         var normalizedKeyword = keyword?.Trim();
         var auditDateValidationMessage = GetAuditDateValidationMessage(auditFrom, auditTo);
-        var query = _context.TaiKhoans
-            .AsNoTracking()
-            .Include(account => account.NhanVien)!
-                .ThenInclude(employee => employee!.PhongBan)
-            .Include(account => account.NhanVien)!
-                .ThenInclude(employee => employee!.ChucVu)
-            .Include(account => account.VaiTro)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(normalizedKeyword))
-        {
-            var loweredKeyword = normalizedKeyword.ToLower();
-            query = query.Where(account =>
-                account.TenDangNhap.ToLower().Contains(loweredKeyword) ||
-                (account.NhanVien != null &&
-                 (account.NhanVien.Ho.ToLower().Contains(loweredKeyword) ||
-                  account.NhanVien.Ten.ToLower().Contains(loweredKeyword) ||
-                  account.NhanVien.EmailCongVu.ToLower().Contains(loweredKeyword))));
-        }
-
-        if (roleId.HasValue)
-        {
-            query = query.Where(account => account.MaVaiTro == roleId.Value);
-        }
-
-        if (isActive.HasValue)
-        {
-            query = query.Where(account => account.TrangThai == isActive.Value);
-        }
-
         try
         {
-            var totalFilteredAccounts = await query.CountAsync();
+            var allAccounts = await this.SearchDataAsync("accounts:list", () => _context.TaiKhoans
+                .AsNoTracking()
+                .Include(account => account.NhanVien)!
+                    .ThenInclude(employee => employee!.PhongBan)
+                .Include(account => account.NhanVien)!
+                    .ThenInclude(employee => employee!.ChucVu)
+                .Include(account => account.VaiTro).ToListAsync());
+            var query = allAccounts.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(normalizedKeyword))
+            {
+                var loweredKeyword = normalizedKeyword.ToLower();
+                query = query.Where(account =>
+                    account.TenDangNhap.ToLower().Contains(loweredKeyword) ||
+                    (account.NhanVien != null &&
+                     (account.NhanVien.Ho.ToLower().Contains(loweredKeyword) ||
+                      account.NhanVien.Ten.ToLower().Contains(loweredKeyword) ||
+                      account.NhanVien.EmailCongVu.ToLower().Contains(loweredKeyword))));
+            }
+
+            if (roleId.HasValue)
+            {
+                query = query.Where(account => account.MaVaiTro == roleId.Value);
+            }
+
+            if (isActive.HasValue)
+            {
+                query = query.Where(account => account.TrangThai == isActive.Value);
+            }
+
+            var totalFilteredAccounts = query.Count();
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalFilteredAccounts / (double)AccountPageSize));
             var pageNumber = Math.Clamp(page, 1, totalPages);
-            var accounts = await query
+            var accounts = query
                 .OrderByDescending(account => account.TrangThai)
                 .ThenBy(account => account.TenDangNhap)
                 .Skip((pageNumber - 1) * AccountPageSize)
@@ -97,7 +98,7 @@ public class UserAccountsController : Controller
                     RoleName = account.VaiTro == null ? "Chưa cấp" : account.VaiTro.TenVaiTro,
                     IsActive = account.TrangThai
                 })
-                .ToListAsync();
+                .ToList();
 
             var roleOptions = await GetRoleOptionsAsync(roleId);
             var auditLogPage = new AuditLogPageResult([], 0, 1, 1);
@@ -125,10 +126,10 @@ public class UserAccountsController : Controller
                 AuditDateValidationMessage = auditDateValidationMessage,
                 Accounts = accounts,
                 RoleOptions = roleOptions,
-                TotalAccounts = await _context.TaiKhoans.CountAsync(),
-                ActiveAccounts = await _context.TaiKhoans.CountAsync(account => account.TrangThai),
-                LockedAccounts = await _context.TaiKhoans.CountAsync(account => !account.TrangThai),
-                AdminAccounts = await _context.TaiKhoans.CountAsync(account => account.VaiTro != null && account.VaiTro.TenVaiTro == "Admin"),
+                TotalAccounts = allAccounts.Count,
+                ActiveAccounts = allAccounts.Count(account => account.TrangThai),
+                LockedAccounts = allAccounts.Count(account => !account.TrangThai),
+                AdminAccounts = allAccounts.Count(account => account.VaiTro != null && account.VaiTro.TenVaiTro == "Admin"),
                 TotalFilteredAccounts = totalFilteredAccounts,
                 PageNumber = pageNumber,
                 PageSize = AccountPageSize,
@@ -692,24 +693,14 @@ public class UserAccountsController : Controller
 
     private async Task<IReadOnlyList<SelectListItem>> GetRoleOptionsAsync(int? selectedRoleId)
     {
-        var roles = await _context.VaiTros
-            .AsNoTracking()
-            .Where(role => SupportedRoles.Contains(role.TenVaiTro))
-            .OrderBy(role => role.MaVaiTro)
-            .Select(role => new SelectListItem
-            {
-                Value = role.MaVaiTro.ToString(),
-                Text = role.TenVaiTro,
-                Selected = selectedRoleId.HasValue && role.MaVaiTro == selectedRoleId.Value
-            })
-            .ToListAsync();
-
-        foreach (var role in roles)
+        var roles = await this.SearchDataAsync("accounts:roles", () => _context.VaiTros.AsNoTracking()
+            .Where(role => SupportedRoles.Contains(role.TenVaiTro)).OrderBy(role => role.MaVaiTro).ToListAsync());
+        return roles.Select(role => new SelectListItem
         {
-            role.Text = GetVietnameseRoleName(role.Text);
-        }
-
-        return roles;
+            Value = role.MaVaiTro.ToString(),
+            Text = GetVietnameseRoleName(role.TenVaiTro),
+            Selected = selectedRoleId == role.MaVaiTro
+        }).ToList();
     }
 
     private async Task<IReadOnlyList<SelectListItem>> GetConfigurableRoleOptionsAsync(int? selectedRoleId)
@@ -789,14 +780,17 @@ public class UserAccountsController : Controller
             query = query.Where(log => log.ThoiGian < startOfNextDay);
         }
 
-        var totalLogs = await query.CountAsync();
+        var auditRows = await this.SearchDataAsync($"accounts:audit:{auditFrom:yyyyMMdd}:{auditTo:yyyyMMdd}", () => query.ToListAsync());
+        query = auditRows.AsQueryable();
+
+        var totalLogs = query.Count();
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalLogs / (double)AuditPageSize));
         var pageNumber = Math.Clamp(page, 1, totalPages);
-        var logs = await query
+        var logs = query
             .OrderByDescending(log => log.ThoiGian)
             .Skip((pageNumber - 1) * AuditPageSize)
             .Take(AuditPageSize)
-            .ToListAsync();
+            .ToList();
 
         var items = logs.Select(log => new AdminAuditLogViewModel
         {

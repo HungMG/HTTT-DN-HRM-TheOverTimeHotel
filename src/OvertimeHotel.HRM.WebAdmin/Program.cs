@@ -46,6 +46,10 @@ if (builder.Environment.IsDevelopment())
     mvcBuilder.AddRazorRuntimeCompilation();
 }
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<SearchListCache>();
+builder.Services.AddSingleton<SearchCacheSaveInterceptor>();
+builder.Services.AddSingleton<SearchCacheCommandInterceptor>();
+builder.Services.AddSingleton<SearchCacheTransactionInterceptor>();
 
 // Nén phản hồi HTTP (Brotli ưu tiên, rơi về Gzip). Không có lớp này, mỗi trang phải
 // truyền nguyên văn ~670 KB CSS/JS và HTML lớn nhất gần 1.8 MB — đo thực tế cho thấy
@@ -287,8 +291,11 @@ builder.Services.AddAuthorization(options =>
 
 // Cấu hình kết nối Entity Framework Core với Supabase PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddDbContext<AppDbContext>((services, options) =>
 {
+    options.AddInterceptors(services.GetRequiredService<SearchCacheSaveInterceptor>(),
+        services.GetRequiredService<SearchCacheCommandInterceptor>(),
+        services.GetRequiredService<SearchCacheTransactionInterceptor>());
     if (!string.IsNullOrWhiteSpace(connectionString))
     {
         options.UseNpgsql(connectionString, npgsqlOptions =>

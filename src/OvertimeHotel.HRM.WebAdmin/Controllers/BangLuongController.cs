@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -40,13 +41,15 @@ public class BangLuongController(
         var targetThang = thang ?? DateTime.Today.Month;
         var targetNam = nam ?? DateTime.Today.Year;
 
-        var periods = await _payrollService.GetAllPeriodsAsync();
-        var currentPeriod = await _payrollService.GetPeriodWithDetailsAsync(targetThang, targetNam);
+        var periods = await this.SearchDataAsync("payroll:periods", () => _payrollService.GetAllPeriodsAsync());
+        var currentPeriod = await this.SearchDataAsync($"payroll:period:{targetNam}:{targetThang}",
+            () => _payrollService.GetPeriodWithDetailsAsync(targetThang, targetNam));
 
         if (currentPeriod == null)
         {
             currentPeriod = await _payrollService.GetOrCreatePeriodAsync(targetThang, targetNam);
-            currentPeriod = await _payrollService.GetPeriodWithDetailsAsync(targetThang, targetNam);
+            currentPeriod = await this.SearchDataAsync($"payroll:period:{targetNam}:{targetThang}",
+                () => _payrollService.GetPeriodWithDetailsAsync(targetThang, targetNam));
         }
 
         var departments = currentPeriod?.PhieuLuongs

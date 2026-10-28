@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,32 +26,32 @@ public class ChucVuController : Controller
     public async Task<IActionResult> Index(string? keyword, int? departmentId)
     {
         keyword = keyword?.Trim();
-        var query = _context.ChucVus.AsNoTracking()
-            .Include(x => x.PhongBan)
-            .Include(x => x.NhanViens)
-            .AsQueryable();
-
-        if (departmentId is > 0)
-        {
-            query = query.Where(x => x.MaPhongBan == departmentId.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            var value = keyword.ToLower();
-            query = query.Where(x => x.TenChucVu.ToLower().Contains(value) ||
-                (x.MoTa != null && x.MoTa.ToLower().Contains(value)) ||
-                (x.PhongBan != null && x.PhongBan.TenPhongBan.ToLower().Contains(value)));
-        }
-
         ViewBag.Keyword = keyword;
         ViewBag.DepartmentId = departmentId;
         await LoadDepartmentsToViewBagAsync(departmentId);
 
         try
         {
-            ViewBag.Total = await _context.ChucVus.CountAsync();
-            return View(await query.OrderBy(x => x.TenChucVu).ToListAsync());
+            var allPositions = await this.SearchDataAsync("positions:list", () => _context.ChucVus.AsNoTracking()
+                .Include(x => x.PhongBan)
+                .Include(x => x.NhanViens).ToListAsync());
+            var query = allPositions.AsQueryable();
+
+            if (departmentId is > 0)
+            {
+                query = query.Where(x => x.MaPhongBan == departmentId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var value = keyword.ToLower();
+                query = query.Where(x => x.TenChucVu.ToLower().Contains(value) ||
+                    (x.MoTa != null && x.MoTa.ToLower().Contains(value)) ||
+                    (x.PhongBan != null && x.PhongBan.TenPhongBan.ToLower().Contains(value)));
+            }
+
+            ViewBag.Total = allPositions.Count;
+            return View(query.OrderBy(x => x.TenChucVu).ToList());
         }
         catch (Exception ex)
         {
@@ -227,7 +228,7 @@ public class ChucVuController : Controller
     {
         try
         {
-            var depts = await _context.PhongBans.AsNoTracking().OrderBy(x => x.TenPhongBan).ToListAsync();
+            var depts = await this.SearchDataAsync("positions:departments", () => _context.PhongBans.AsNoTracking().OrderBy(x => x.TenPhongBan).ToListAsync());
             ViewBag.PhongBans = depts;
         }
         catch

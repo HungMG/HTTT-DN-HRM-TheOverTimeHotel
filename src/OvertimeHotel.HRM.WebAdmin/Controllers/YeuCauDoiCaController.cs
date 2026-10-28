@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -90,6 +91,8 @@ public class YeuCauDoiCaController : Controller
             }
         }
 
+        var visibleItems = await this.SearchDataAsync($"shift-requests:scope:{scopeDept}", () => baseQuery.ToListAsync());
+        baseQuery = visibleItems.AsQueryable();
         var query = baseQuery;
 
         if (!string.IsNullOrWhiteSpace(trangThai))
@@ -108,11 +111,11 @@ public class YeuCauDoiCaController : Controller
                 y.LyDo.ToLower().Contains(value));
         }
 
-        var totalFiltered = await query.CountAsync();
+        var totalFiltered = query.Count();
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalFiltered / (double)PAGE_SIZE));
         var pageNumber = Math.Clamp(page, 1, totalPages);
 
-        var items = await query
+        var items = query
             .OrderBy(y => y.TrangThai == STATUS_CHO_DUYET ? 0 : 1)
             .ThenByDescending(y => y.NgayGui)
             .Skip((pageNumber - 1) * PAGE_SIZE)
@@ -145,7 +148,7 @@ public class YeuCauDoiCaController : Controller
                 NgayDuyet = y.NgayDuyet,
                 PhanHoiDuyet = y.PhanHoiDuyet
             })
-            .ToListAsync();
+            .ToList();
 
         var model = new YeuCauDoiCaIndexViewModel
         {
@@ -153,11 +156,11 @@ public class YeuCauDoiCaController : Controller
             Keyword = keyword,
             TrangThaiOptions = BuildStatusOptions(trangThai),
             Items = items,
-            TongYeuCau = await baseQuery.CountAsync(),
-            ChoDuyet = await baseQuery.CountAsync(y => y.TrangThai == STATUS_CHO_DUYET),
-            DaDuyet = await baseQuery.CountAsync(y => y.TrangThai == STATUS_DA_DUYET),
-            TuChoi = await baseQuery.CountAsync(y => y.TrangThai == STATUS_TU_CHOI),
-            DaHuy = await baseQuery.CountAsync(y => y.TrangThai == STATUS_DA_HUY),
+            TongYeuCau = baseQuery.Count(),
+            ChoDuyet = baseQuery.Count(y => y.TrangThai == STATUS_CHO_DUYET),
+            DaDuyet = baseQuery.Count(y => y.TrangThai == STATUS_DA_DUYET),
+            TuChoi = baseQuery.Count(y => y.TrangThai == STATUS_TU_CHOI),
+            DaHuy = baseQuery.Count(y => y.TrangThai == STATUS_DA_HUY),
             CoQuyenDuyet = true,
             PageNumber = pageNumber,
             PageSize = PAGE_SIZE,

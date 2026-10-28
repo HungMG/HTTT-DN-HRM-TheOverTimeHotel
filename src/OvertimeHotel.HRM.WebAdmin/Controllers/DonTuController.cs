@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -99,11 +100,42 @@ public class DonTuController : Controller
                 d.NhanVien.MaPhongBan == managerDept);
         }
 
+        var currentYear = DateTime.Today.Year;
+        // Cache the source and its dependent maps together, under the same generation.
+        var snapshot = await this.SearchDataAsync(
+            $"leave-requests:year:{currentYear}:role:{normalizedRole}:department:{currentDeptId}:employee:{currentEmployeeId}",
+            async () =>
+            {
+                var loadedRequests = await authorizedQuery.ToListAsync();
+                // Tải số ngày phép đã dùng cho toàn bộ nhân viên trong phạm vi được xem.
+                var empIds = loadedRequests.Select(d => d.MaNhanVien).Distinct().ToList();
+                var approvedLeaveDaysMap = await _context.DonTus
+                    .AsNoTracking()
+                    .Where(d => empIds.Contains(d.MaNhanVien) && d.MaLoaiDon == 1 && d.TrangThai == "DA_DUYET" && d.TuNgay.Year == currentYear)
+                    .GroupBy(d => d.MaNhanVien)
+                    .Select(g => new
+                    {
+                        MaNhanVien = g.Key,
+                        TongNgay = g.Sum(x => x.DenNgay.DayNumber - x.TuNgay.DayNumber + 1)
+                    })
+                    .ToDictionaryAsync(x => x.MaNhanVien, x => x.TongNgay);
+
+                // Tải hợp đồng gần nhất cho đơn thôi việc
+                var contractsMap = await _context.HopDongs
+                    .AsNoTracking()
+                    .Where(h => empIds.Contains(h.MaNhanVien) && h.TrangThai == "DANG_HIEU_LUC")
+                    .GroupBy(h => h.MaNhanVien)
+                    .Select(g => g.OrderByDescending(h => h.NgayBatDau).First())
+                    .ToDictionaryAsync(h => h.MaNhanVien, h => h);
+                return (Requests: loadedRequests, AnnualLeaveDays: approvedLeaveDaysMap, Contracts: contractsMap);
+            });
+        authorizedQuery = snapshot.Requests.AsQueryable();
+
         // 3. Đếm các chỉ số KPI
-        var totalPending = await authorizedQuery.CountAsync(d => d.TrangThai == "CHO_DUYET");
-        var totalApproved = await authorizedQuery.CountAsync(d => d.TrangThai == "DA_DUYET");
-        var totalRejected = await authorizedQuery.CountAsync(d => d.TrangThai == "TU_CHOI");
-        var totalAll = await authorizedQuery.CountAsync();
+        var totalPending = authorizedQuery.Count(d => d.TrangThai == "CHO_DUYET");
+        var totalApproved = authorizedQuery.Count(d => d.TrangThai == "DA_DUYET");
+        var totalRejected = authorizedQuery.Count(d => d.TrangThai == "TU_CHOI");
+        var totalAll = authorizedQuery.Count();
 
         // 4. Áp dụng các bộ lọc
         var filteredQuery = authorizedQuery;
@@ -167,39 +199,20 @@ public class DonTuController : Controller
         }
 
         // 5. Phân trang
-        var totalFiltered = await filteredQuery.CountAsync();
+        var totalFiltered = filteredQuery.Count();
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalFiltered / (double)pageSize));
         var validPage = Math.Clamp(page, 1, totalPages);
 
-        var pagedList = await filteredQuery
+        var pagedList = filteredQuery
             .Skip((validPage - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToList();
 
         // 6. Tính toán quyền duyệt & bối cảnh đơn (quỹ phép năm, hợp đồng)
         var items = new List<DonTuItemViewModel>();
-        var currentYear = DateTime.Today.Year;
 
-        // Tải trước số ngày phép năm đã dùng cho nhân viên có đơn trong trang
-        var empIds = pagedList.Select(d => d.MaNhanVien).Distinct().ToList();
-        var approvedLeaveDaysMap = await _context.DonTus
-            .AsNoTracking()
-            .Where(d => empIds.Contains(d.MaNhanVien) && d.MaLoaiDon == 1 && d.TrangThai == "DA_DUYET" && d.TuNgay.Year == currentYear)
-            .GroupBy(d => d.MaNhanVien)
-            .Select(g => new
-            {
-                MaNhanVien = g.Key,
-                TongNgay = g.Sum(x => x.DenNgay.DayNumber - x.TuNgay.DayNumber + 1)
-            })
-            .ToDictionaryAsync(x => x.MaNhanVien, x => x.TongNgay);
-
-        // Tải hợp đồng gần nhất cho đơn thôi việc
-        var contractsMap = await _context.HopDongs
-            .AsNoTracking()
-            .Where(h => empIds.Contains(h.MaNhanVien) && h.TrangThai == "DANG_HIEU_LUC")
-            .GroupBy(h => h.MaNhanVien)
-            .Select(g => g.OrderByDescending(h => h.NgayBatDau).First())
-            .ToDictionaryAsync(h => h.MaNhanVien, h => h);
+        var approvedLeaveDaysMap = snapshot.AnnualLeaveDays;
+        var contractsMap = snapshot.Contracts;
 
         foreach (var d in pagedList)
         {
@@ -270,8 +283,8 @@ public class DonTuController : Controller
         }
 
         // 7. Tạo danh sách chọn lọc cho form
-        var loaiDons = await _context.LoaiDons.AsNoTracking().OrderBy(l => l.MaLoaiDon).ToListAsync();
-        var phongBans = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
+        var loaiDons = await this.SearchDataAsync("leave-requests:types", () => _context.LoaiDons.AsNoTracking().OrderBy(l => l.MaLoaiDon).ToListAsync());
+        var phongBans = await this.SearchDataAsync("leave-requests:departments", () => _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync());
 
         var loaiDonOptions = new List<SelectListItem>
         {

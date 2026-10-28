@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,29 +24,31 @@ public class PhongBanController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? keyword)
     {
-        var query = _context.PhongBans.AsNoTracking().AsQueryable();
         keyword = keyword?.Trim();
-
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            var normalizedKeyword = keyword.ToLower();
-            query = query.Where(item =>
-                item.TenPhongBan.ToLower().Contains(normalizedKeyword) ||
-                (item.MoTa != null && item.MoTa.ToLower().Contains(normalizedKeyword)));
-        }
-
         ViewBag.Keyword = keyword;
 
         try
         {
-            ViewBag.Total = await _context.PhongBans.CountAsync();
-            var departments = await query.OrderBy(item => item.TenPhongBan)
+            var allDepartments = await this.SearchDataAsync("departments:list", () =>
+                _context.PhongBans.AsNoTracking().Include(p => p.NhanViens).ToListAsync());
+            var query = allDepartments.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var normalizedKeyword = keyword.ToLower();
+                query = query.Where(item =>
+                    item.TenPhongBan.ToLower().Contains(normalizedKeyword) ||
+                    (item.MoTa != null && item.MoTa.ToLower().Contains(normalizedKeyword)));
+            }
+
+            ViewBag.Total = allDepartments.Count;
+            var departments = query.OrderBy(item => item.TenPhongBan)
                 .Select(item => new
                 {
                     Department = item,
                     WorkingCount = item.NhanViens.Count(employee => employee.IsProfileComplete && employee.TrangThai == "DANG_LAM"),
                     AssignedCount = item.NhanViens.Count
-                }).ToListAsync();
+                }).ToList();
             ViewBag.WorkingEmployeeCounts = departments.ToDictionary(item => item.Department.MaPhongBan, item => item.WorkingCount);
             ViewBag.AssignedEmployeeCounts = departments.ToDictionary(item => item.Department.MaPhongBan, item => item.AssignedCount);
             return View(departments.Select(item => item.Department).ToList());

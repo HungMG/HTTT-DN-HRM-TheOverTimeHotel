@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -250,7 +251,8 @@ public class CauHinhLuongController(AppDbContext context, IMemoryCache cache,
         var model = new CauHinhLuongListViewModel { Category = category, Keyword = keyword, Type = type };
         try
         {
-            var query = Query(category);
+            var query = (await this.SearchDataAsync($"payroll-config:{category}",
+                () => Query(category).ToListAsync())).AsQueryable();
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 var term = keyword.ToLowerInvariant();
@@ -258,7 +260,7 @@ public class CauHinhLuongController(AppDbContext context, IMemoryCache cache,
                     (x.Description != null && x.Description.ToLower().Contains(term)));
             }
             if (!string.IsNullOrEmpty(type)) query = query.Where(x => x.Type == type);
-            model.Items = await query.OrderBy(x => x.Name).ToListAsync();
+            model.Items = query.OrderBy(x => x.Name).ToList();
         }
         catch (NpgsqlException ex)
         {
@@ -353,7 +355,7 @@ public class CauHinhLuongController(AppDbContext context, IMemoryCache cache,
                 e.TenLoaiOt = model.Name;
                 e.HeSo = model.Value;
                 e.MoTa = model.Description;
-                
+
                 if (model.Id == 0) _context.CauHinhTangCas.Add(e);
                 break;
             }
