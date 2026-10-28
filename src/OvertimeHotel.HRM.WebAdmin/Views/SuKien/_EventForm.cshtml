@@ -12,7 +12,15 @@
     <section class="event-panel">
         <span class="event-eyebrow">01 · TỔ CHỨC</span><h3>Thông tin tổ chức</h3>
         <div class="mb-3"><label asp-for="Input.Name" class="form-label">Tên sự kiện <span aria-hidden="true">*</span></label><input asp-for="Input.Name" class="form-control" placeholder="Ví dụ: Hội nghị khách hàng cuối năm" required maxlength="200" /><span asp-validation-for="Input.Name" class="text-danger"></span></div>
-        <div class="mb-3"><label asp-for="Input.Type" class="form-label">Loại sự kiện</label><select asp-for="Input.Type" class="form-select">@foreach (var type in HotelEventRules.TypeLabels) { <option value="@type.Key">@type.Value</option> }</select><span asp-validation-for="Input.Type" class="text-danger"></span></div>
+        <div class="mb-3"><label asp-for="Input.Type" class="form-label">Loại sự kiện</label><select asp-for="Input.Type" class="form-select">
+            @if (Model.Input.Id != 0 && Model.ExistingType is { } currentType
+                && !HotelEventRules.CreationTypeLabels.ContainsKey(currentType)
+                && HotelEventRules.TypeLabels.TryGetValue(currentType, out var currentLabel))
+            {
+                <option value="@currentType">@currentLabel (Loại cũ)</option>
+            }
+            @foreach (var type in HotelEventRules.CreationTypeLabels) { <option value="@type.Key">@type.Value</option> }
+        </select><span asp-validation-for="Input.Type" class="text-danger"></span></div>
         <div class="mb-3"><span class="form-label d-block">Địa điểm</span><p class="form-control-plaintext mb-0">@HotelEventRules.HotelVenueName</p></div>
         <div class="mb-3"><label asp-for="Input.Start" class="form-label">Bắt đầu <span aria-hidden="true">*</span></label><input asp-for="Input.Start" data-event-start asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" min="@minDate" class="form-control" required /><span asp-validation-for="Input.Start" class="text-danger"></span></div>
         <div class="mb-3"><label asp-for="Input.End" class="form-label">Kết thúc <span aria-hidden="true">*</span></label><input asp-for="Input.End" data-event-end asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" min="@minDate" class="form-control" required /><span asp-validation-for="Input.End" class="text-danger"></span><div class="form-text">Theo giờ Việt Nam (UTC+7). Chỉ tạo từ hôm nay trở đi, có thể tổ chức qua nhiều ngày.</div></div>

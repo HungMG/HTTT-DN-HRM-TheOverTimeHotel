@@ -131,7 +131,9 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         }
         var name = Text(input.Name, 200, "Input.Name", "Tên sự kiện");
         var hourly = input.Id == 0 ? input.HourlyCompensation : item.TinhTheoGio;
-        Require(HotelEventRules.TypeLabels.ContainsKey(input.Type), "Input.Type", "Loại sự kiện không hợp lệ.");
+        Require(HotelEventRules.CreationTypeLabels.ContainsKey(input.Type)
+            || input.Id > 0 && input.Type == item.LoaiDuAn && HotelEventRules.TypeLabels.ContainsKey(input.Type),
+            "Input.Type", "Chọn loại sự kiện đang sử dụng. Loại cũ chỉ được giữ nguyên trong hồ sơ đã có.");
         var start = Utc(input.Start, "Input.Start");
         var end = Utc(input.End, "Input.End");
         Require(input.Id != 0 || HotelEventRules.CanCreateOn(DateOnly.FromDateTime(input.Start), DateTimeOffset.UtcNow),
@@ -151,7 +153,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
             "Gỡ các phân công trước khi thay đổi thời gian sự kiện.");
         if (input.Id != 0 && input.Type != item.LoaiDuAn)
         {
-            var newAllowed = HotelEventRules.GetRequiredDepartments(input.Type);
+            var newAllowed = HotelEventRules.GetAllowedDepartments(input.Type);
             var incompatible = item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG")
                 .Where(p => {
                     var code = p.MaPhongBanSuKien ?? HotelEventRules.ResolveDepartmentCode(p.NhanVien);
@@ -165,7 +167,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         }
         Require(calculateAtAcceptance || item.PhanCongs.Sum(p => p.PhuCapDuKien) <= budget, "Input.Budget", "Ngân sách thấp hơn tổng phụ cấp đã phân công.");
         if (input.Id != 0 && item.NhuCaus.Count > 0)
-            Require(item.NhuCaus.Where(n => !n.LaMau).All(n => HotelEventRules.GetRequiredDepartments(input.Type).Contains(n.MaPhongBan)
+            Require(item.NhuCaus.Where(n => !n.LaMau).All(n => HotelEventRules.GetAllowedDepartments(input.Type).Contains(n.MaPhongBan)
                 && HotelEventRoleRules.ResolveRole(input.Type, n.MaPhongBan, n.VaiTro, null) != null), "Input.Start",
                 "Nhu cầu không còn phù hợp. Điều chỉnh/xóa nhu cầu trước khi đổi loại sự kiện.");
         if (input.Id != 0 && (item.LoaiDuAn != input.Type || item.SoKhachDuKien != input.ExpectedGuests
@@ -242,7 +244,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
             && (!item.TinhTheoGio || HotelEventRules.Overlaps(start,end,p.BatDau,p.KetThuc))), "Assignment.EmployeeId", "Nhân viên đã được phân công/trùng nhiệm vụ trong sự kiện.");
         var employee = await db.NhanViens.Include(n => n.PhongBan).Include(n => n.HopDongs).SingleOrDefaultAsync(n => n.MaNhanVien == input.EmployeeId);
         Require(employee != null && HotelEventRules.ContractCovers(employee, start, end), "Assignment.EmployeeId", "Nhân viên phải đang làm việc và có hợp đồng hiệu lực suốt thời gian tham gia.");
-        var allowedDepts = HotelEventRules.GetRequiredDepartments(item.LoaiDuAn);
+        var allowedDepts = HotelEventRules.GetAllowedDepartments(item.LoaiDuAn);
         var empDept = HotelEventRules.ResolveDepartmentCode(employee);
         Require(empDept != null && allowedDepts.Contains(empDept), "Assignment.EmployeeId",
             $"Chỉ được chọn nhân viên thuộc các phòng ban quy định cho {HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, "sự kiện")}.");

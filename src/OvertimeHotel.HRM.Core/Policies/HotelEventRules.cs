@@ -18,9 +18,14 @@ public static class HotelEventRules
         ["LEN_KE_HOACH"] = "Lên kế hoạch", ["DANG_DIEN_RA"] = "Đang diễn ra",
         ["CHO_NGHIEM_THU"] = "Chờ nghiệm thu", ["HOAN_THANH"] = "Hoàn thành", ["HUY"] = "Đã hủy"
     };
-    public static readonly IReadOnlyDictionary<string, string> TypeLabels = new Dictionary<string, string>
+    public static readonly IReadOnlyDictionary<string, string> CreationTypeLabels = new Dictionary<string, string>
     {
-        ["TIEC_CUOI"] = "Tiệc cưới", ["HOI_NGHI_MICE"] = "Hội nghị MICE", ["GALA_DINNER"] = "Gala Dinner",
+        ["TIEC_CUOI"] = "Tiệc cưới", ["HOI_NGHI_MICE"] = "Hội nghị",
+        ["TIEC_SINH_NHAT"] = "Tiệc sinh nhật", ["TIEC_TAT_NIEN"] = "Tiệc tất niên", ["HOP_BAO"] = "Họp báo"
+    };
+    public static readonly IReadOnlyDictionary<string, string> TypeLabels = new Dictionary<string, string>(CreationTypeLabels)
+    {
+        ["GALA_DINNER"] = "Gala Dinner",
         ["FESTIVAL_AM_THUC"] = "Festival ẩm thực", ["DOAN_VIP"] = "Đoàn VIP"
     };
     public static readonly IReadOnlyDictionary<string, string> DepartmentLabels = new Dictionary<string, string>
@@ -35,7 +40,10 @@ public static class HotelEventRules
         ["HOI_NGHI_MICE"] = ["TIEN_SANH", "AM_THUC", "BEP", "KY_THUAT", "IT", "AN_NINH"],
         ["GALA_DINNER"] = ["TIEN_SANH", "AM_THUC", "BEP", "KY_THUAT", "AN_NINH"],
         ["FESTIVAL_AM_THUC"] = ["AM_THUC", "BEP", "BUONG_PHONG", "KY_THUAT", "AN_NINH"],
-        ["DOAN_VIP"] = ["TIEN_SANH", "BUONG_PHONG", "AM_THUC", "BEP", "AN_NINH"]
+        ["DOAN_VIP"] = ["TIEN_SANH", "BUONG_PHONG", "AM_THUC", "BEP", "AN_NINH"],
+        ["TIEC_SINH_NHAT"] = ["TIEN_SANH", "AM_THUC", "BEP", "KY_THUAT"],
+        ["TIEC_TAT_NIEN"] = ["TIEN_SANH", "AM_THUC", "BEP", "KY_THUAT", "AN_NINH"],
+        ["HOP_BAO"] = ["TIEN_SANH", "KY_THUAT", "IT", "AN_NINH"]
     };
     public static readonly IReadOnlyDictionary<string, string> RatingLabels = new Dictionary<string, string>
     {
@@ -73,6 +81,8 @@ public static class HotelEventRules
 
     public static IReadOnlyList<string> GetRequiredDepartments(string eventType) =>
         RequiredDepartmentsByType.GetValueOrDefault(eventType, []);
+
+    public static IReadOnlyList<string> GetAllowedDepartments(string eventType) => HotelEventRoleRules.GetDepartments(eventType);
 
     public static EventStaffingSummary GetStaffingSummary(string eventType, IEnumerable<PhanCongDuAn> assignments)
     {

@@ -71,7 +71,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             Input = new EventInput { HourlyCompensation = true, Start = day.ToDateTime(new TimeOnly(9, 0)), End = (endDate is { } last && last >= day ? last : day).ToDateTime(new TimeOnly(17, 0)) }
         };
         SetContext(model, returnYear, returnMonth, returnDate ?? day);
-        await FormAsync(model);
+        await FormAsync(model, actor);
         return popup ? PartialView("_CreateEventPopup", model) : View(model);
     }
 
@@ -105,7 +105,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             }
         };
         SetContext(model, returnYear, returnMonth, returnDate ?? DateOnly.FromDateTime(model.Input.Start));
-        return View(await FormAsync(model));
+        return View(await FormAsync(model, actor));
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -147,7 +147,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
                 ModelState.AddModelError("", "Không thể lưu sự kiện. Dữ liệu có thể đã thay đổi; vui lòng tải lại và kiểm tra tên hoặc lịch địa điểm.");
             }
         }
-        await FormAsync(model);
+        await FormAsync(model, actor);
         return model.IsPopup ? PartialView("_CreateEventPopup", model) : View(view, model);
     }
 
@@ -173,7 +173,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         if (model == null) return NotFound();
         if (!model.CanManage || model.Event.TrangThai is not ("LEN_KE_HOACH" or "DANG_DIEN_RA")) return Forbid();
         if (employeeIds.Length == 0 || employeeIds.Distinct().Count() != employeeIds.Length
-            || !model.RequiredDepartments.Contains(department)
+            || !HotelEventRules.GetAllowedDepartments(model.Event.LoaiDuAn).Contains(department)
             || employeeIds.Any(employeeId => !model.Employees.Any(n => n.MaNhanVien == employeeId
                 && HotelEventRules.ResolveDepartmentCode(n) == department)
                 || (!model.Event.TinhTheoGio && model.Event.PhanCongs.Any(p => p.MaNhanVien == employeeId))
@@ -329,8 +329,9 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         return model.IsPopup ? PartialView(assignmentPopup ? "_AssignmentPopup" : "_EventDetailsContent", result) : View("Details", result);
     }
 
-    private async Task<EventFormViewModel> FormAsync(EventFormViewModel model)
+    private async Task<EventFormViewModel> FormAsync(EventFormViewModel model, EventActor actor)
     {
+        model.ExistingType = model.Input.Id == 0 ? null : (await events.GetOverviewAsync(actor, model.Input.Id))?.LoaiDuAn;
         model.Managers = (await events.ManagersAsync()).Select(x => new SelectListItem(x.HoTen, x.MaNhanVien.ToString())).ToList();
         model.HourlyEventRate = await events.HourlyEventRateAsync();
         return model;

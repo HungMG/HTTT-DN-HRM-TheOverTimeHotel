@@ -5,7 +5,6 @@
     var item = Model.Event;
     var active = item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.TrangThaiThamGia != "DA_HUY").ToList();
     var distinctEmployees = HotelEventRules.CountEffectiveStaff(item.PhanCongs);
-    var historyAssignments = item.PhanCongs.Where(p => p.TrangThaiThamGia is "HUY_PHAN_CONG" or "DA_HUY" or "DA_KET_THUC").ToList();
     var closed = item.TrangThai is "HOAN_THANH" or "HUY";
     var summary = Model.StaffingSummary;
 
@@ -31,7 +30,8 @@
         {
             foreach (var kv in HotelEventRules.DepartmentLabels)
             {
-                departments.Add(new EventDepartmentStatus(kv.Key, kv.Value, 0, false, []));
+                departments.Add(new EventDepartmentStatus(kv.Key, kv.Value, 0, false,
+                    Array.Empty<OvertimeHotel.HRM.Core.Models.PhanCongDuAn>()));
             }
         }
     }
@@ -57,6 +57,7 @@
     };
 }
 
+<div class="event-staff-directory" data-event-staff>
 <div class="event-staff-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <div>
         <span class="event-eyebrow">ĐỘI NGŨ SỰ KIỆN THEO PHÒNG BAN</span>
@@ -99,21 +100,23 @@ else
         </div>
     }
 
-    <!-- Điều hướng nhanh theo phòng ban -->
-    <div class="d-flex gap-2 flex-wrap mb-4">
+    <div class="event-staff-filters" role="group" aria-label="Lọc nhân sự theo phòng ban">
+        <button type="button" class="event-staff-filter" data-staff-department-filter="all" aria-pressed="true" aria-controls="event-staff-departments-@item.MaDuAn">
+            <i class="bi bi-people" aria-hidden="true"></i><span>Tất cả</span><span class="event-staff-filter__count">@distinctEmployees</span>
+        </button>
         @foreach (var dept in departments)
         {
-            var deptActiveCount = dept.Assignments.Count(p => p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.TrangThaiThamGia != "DA_HUY");
-            <a href="#dept-@dept.Code" class="btn btn-sm btn-light border text-navy d-inline-flex align-items-center gap-1 text-decoration-none shadow-sm">
-                <i class="bi @GetDepartmentIcon(dept.Code)"></i>
+            var deptActiveCount = dept.Assignments.Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY")).Select(p => p.MaNhanVien).Distinct().Count();
+            <button type="button" class="event-staff-filter" data-staff-department-filter="@dept.Code" aria-pressed="false" aria-controls="event-staff-departments-@item.MaDuAn">
+                <i class="bi @GetDepartmentIcon(dept.Code)" aria-hidden="true"></i>
                 <span>@dept.Name</span>
-                <span class="badge @(deptActiveCount > 0 ? "bg-primary" : "bg-secondary") rounded-pill">@deptActiveCount</span>
-            </a>
+                <span class="event-staff-filter__count">@deptActiveCount</span>
+            </button>
         }
     </div>
 
     <!-- Danh sách nhân sự chia theo từng phòng ban -->
-    <div class="event-department-list">
+    <div class="event-department-list" id="event-staff-departments-@item.MaDuAn">
         @foreach (var department in departments)
         {
             var deptActive = department.Assignments.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.TrangThaiThamGia != "DA_HUY").ToList();
@@ -126,7 +129,7 @@ else
                         <div>
                             <h4 class="mb-1 fw-bold text-navy">@department.Name</h4>
                             <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="text-muted small">@deptActive.Count nhân sự phân công</span>
+                                <span class="text-muted small">@deptActive.Select(p => p.MaNhanVien).Distinct().Count() nhân sự phân công</span>
                                 @if (deptActive.Count > 0)
                                 {
                                     <span class="badge bg-success-subtle text-success border border-success-subtle">
@@ -155,67 +158,60 @@ else
 
                 @if (deptActive.Count > 0)
                 {
-                    <div class="table-responsive mt-3">
-                        <table class="table table-hover align-middle event-table mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="min-width: 180px;">Nhân sự</th>
-                                    <th>Vai trò / Nhiệm vụ</th>
-                                    <th style="width: 120px;">Ca nguồn</th>
-                                    <th style="min-width: 180px;">Thời gian tham gia</th>
-                                    <th style="width: 140px;">Trạng thái</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var member in deptActive.OrderBy(p => p.BatDau).ThenBy(p => p.NhanVien?.HoTen))
-                                {
-                                    var statusLabel = member.TrangThaiThamGia switch
-                                    {
-                                        "DA_KET_THUC" => "Đã kết thúc",
-                                        "DA_PHAN" => "Đang phân công",
-                                        _ => member.TrangThaiThamGia
-                                    };
-                                    <tr data-assigned-member data-employee-id="@member.MaNhanVien">
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="avatar-initials avatar-initials--xs">@GetInitials(member.NhanVien?.HoTen)</span>
-                                                <div>
-                                                    <strong class="d-block text-navy">@(member.NhanVien?.HoTen ?? $"NV #{member.MaNhanVien}")</strong>
-                                                    <small class="text-muted">#@member.MaNhanVien</small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="fw-semibold text-navy">@member.VaiTroDuAn</span>
+                    <div class="event-assigned-grid event-staff-member-grid mt-3">
+                        @foreach (var member in deptActive.OrderBy(p => p.BatDau).ThenBy(p => p.NhanVien?.HoTen))
+                        {
+                            var statusLabel = member.TrangThaiThamGia switch
+                            {
+                                "DA_KET_THUC" => "Đã kết thúc",
+                                "DA_PHAN" => "Đang phân công",
+                                _ => member.TrangThaiThamGia
+                            };
+                            <article class="event-assigned-member-card event-staff-member-card" data-assigned-member data-employee-id="@member.MaNhanVien">
+                                <header class="event-staff-person-card">
+                                    <span class="avatar-initials event-staff-person-avatar" aria-hidden="true">@GetInitials(member.NhanVien?.HoTen)</span>
+                                    <div>
+                                        <strong>@(member.NhanVien?.HoTen ?? $"NV #{member.MaNhanVien}")</strong>
+                                        <small>Mã nhân viên #@member.MaNhanVien</small>
+                                    </div>
+                                </header>
+                                <dl class="event-staff-member-details">
+                                    <div class="event-staff-member-details__wide">
+                                        <dt>Vai trò / Nhiệm vụ</dt>
+                                        <dd><strong>@member.VaiTroDuAn</strong>
                                             @if (!string.IsNullOrWhiteSpace(member.NhiemVuCuThe))
                                             {
-                                                <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>@member.NhiemVuCuThe</small>
+                                                <span class="d-block mt-1 text-secondary">@member.NhiemVuCuThe</span>
                                             }
-                                        </td>
-                                        <td>
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt>Ca nguồn</dt>
+                                        <dd>
                                             @if (member.MaPhanCa.HasValue)
                                             {
-                                                <a asp-controller="PhanCa" asp-action="Index" asp-route-week="@DateOnly.FromDateTime(HotelEventRules.Local(member.BatDau)).ToString("yyyy-MM-dd")" class="badge bg-light text-navy border text-decoration-none" title="Xem ca làm việc">
-                                                    <i class="bi bi-calendar-event me-1"></i>Ca #@member.MaPhanCa
+                                                <a asp-controller="PhanCa" asp-action="Index" asp-route-week="@DateOnly.FromDateTime(HotelEventRules.Local(member.BatDau)).ToString("yyyy-MM-dd")" class="event-staff-source-link" title="Xem ca làm việc">
+                                                    <i class="bi bi-calendar-event me-1" aria-hidden="true"></i>Ca #@member.MaPhanCa
                                                 </a>
                                             }
-                                            else
-                                            {
-                                                <span class="text-muted">—</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            <small class="text-secondary">
-                                                <i class="bi bi-clock me-1"></i>@HotelEventRules.Local(member.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(member.KetThuc).ToString("dd/MM HH:mm")
-                                            </small>
-                                        </td>
-                                        <td>
-                                            <span class="badge @(member.TrangThaiThamGia == "DA_PHAN" ? "bg-success" : "bg-secondary")">@statusLabel</span>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                                            else { <span class="text-muted">Chưa có ca nguồn</span> }
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt>Trạng thái</dt>
+                                        <dd><span class="badge @(member.TrangThaiThamGia == "DA_PHAN" ? "bg-success" : "bg-secondary")">@statusLabel</span></dd>
+                                    </div>
+                                    <div class="event-staff-member-details__wide">
+                                        <dt>Thời gian tham gia</dt>
+                                        <dd class="event-staff-time-range">
+                                            <time datetime="@member.BatDau.ToString("O")">@HotelEventRules.Local(member.BatDau).ToString("dd/MM HH:mm")</time>
+                                            <span>–</span>
+                                            <time datetime="@member.KetThuc.ToString("O")">@HotelEventRules.Local(member.KetThuc).ToString("dd/MM HH:mm")</time>
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </article>
+                        }
                     </div>
                 }
                 else
@@ -235,40 +231,4 @@ else
     </div>
 }
 
-@if (historyAssignments.Count > 0)
-{
-    <details class="event-panel mt-4 p-3 bg-white rounded-3 border">
-        <summary class="fw-semibold text-secondary cursor-pointer">Lịch sử phân công (@historyAssignments.Count bản ghi đã hủy / kết thúc)</summary>
-        <div class="table-responsive mt-2">
-            <table class="table table-sm text-muted align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Nhân sự</th>
-                        <th>Phòng ban</th>
-                        <th>Vai trò</th>
-                        <th>Khung giờ</th>
-                        <th>Trạng thái</th>
-                        <th>Lý do</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var h in historyAssignments.OrderByDescending(p => p.KetThuc))
-                    {
-                        var hDept = h.MaPhongBanSuKien ?? HotelEventRules.ResolveDepartmentCode(h.NhanVien);
-                        var hDeptName = HotelEventRules.DepartmentLabels.GetValueOrDefault(hDept ?? "", hDept ?? "Khác");
-                        <tr>
-                            <td>@(h.NhanVien?.HoTen ?? $"NV #{h.MaNhanVien}")</td>
-                            <td><span class="badge bg-light text-dark border">@hDeptName</span></td>
-                            <td>@h.VaiTroDuAn</td>
-                            <td><small>@HotelEventRules.Local(h.BatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(h.KetThuc).ToString("dd/MM HH:mm")</small></td>
-                            <td>
-                                <span class="badge bg-secondary">@(h.TrangThaiThamGia is "HUY_PHAN_CONG" or "DA_HUY" ? "Đã hủy" : "Đã kết thúc")</span>
-                            </td>
-                            <td><small>@(h.LyDoKetThuc ?? "—")</small></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </details>
-}
+</div>

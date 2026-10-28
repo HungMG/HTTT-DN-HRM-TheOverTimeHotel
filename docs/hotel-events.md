@@ -2,6 +2,30 @@
 
 ## Chính sách mới (23/10/2026)
 
+### Năm loại sự kiện tạo mới (28/10/2026)
+
+Biểu mẫu tạo mới và server chỉ nhận năm loại theo thứ tự:
+
+| Mã lưu | Tên hiển thị |
+| --- | --- |
+| `TIEC_CUOI` | Tiệc cưới |
+| `HOI_NGHI_MICE` | Hội nghị |
+| `TIEC_SINH_NHAT` | Tiệc sinh nhật |
+| `TIEC_TAT_NIEN` | Tiệc tất niên |
+| `HOP_BAO` | Họp báo |
+
+Giữ mã `HOI_NGHI_MICE` và các định mức hiện có của tiệc cưới/hội nghị. `GALA_DINNER`, `FESTIVAL_AM_THUC`, `DOAN_VIP` tiếp tục đọc với nhãn lịch sử trên lịch, chi tiết và báo cáo. Khi sửa sự kiện cũ còn lên kế hoạch, biểu mẫu cho giữ đúng loại đã lưu (đánh dấu **Loại cũ**) hoặc chuyển sang một trong năm loại mới; không cho đổi sang một loại cũ khác. Tạo mới không nhận các mã cũ, kể cả gửi trực tiếp từ client.
+
+Mẫu sinh nhật bắt buộc Tiền sảnh, F&B, Bếp và Kỹ thuật; tất niên thêm An ninh. Họp báo bắt buộc Tiền sảnh, Kỹ thuật, IT và An ninh. HR/Admin có thể bổ sung vai trò của phòng ban tùy chọn từ danh mục; phòng ban tùy chọn chỉ cần bố trí khi đã khai báo nhu cầu. Lựa chọn này gồm Buồng phòng cho hai loại tiệc mới, An ninh cho sinh nhật, F&B/Bếp/Buồng phòng cho họp báo.
+
+Ô vai trò trong biểu mẫu điều chỉnh nhu cầu gợi ý danh mục theo phòng ban đang chọn, gồm cả phòng ban tùy chọn chưa có nhu cầu mẫu. Khi sửa hoặc có lỗi nhập liệu, nội dung đã nhập vẫn được giữ để chỉnh tiếp.
+
+Thay đổi loại và mẫu nhân sự không định giá lại quyết toán, phụ cấp hay phiếu lương đã lưu. Các danh mục vai trò lịch sử tiếp tục phục vụ dữ liệu cũ.
+
+Áp dụng `src/OvertimeHotel.HRM.Data/migrations/20261028_event_type_catalog.sql` sau các migration hiện có và trước khi tạo các loại mới. Script mở rộng các ràng buộc mã loại để nhận cả năm loại mới và ba loại lịch sử, giữ nguyên dữ liệu và số tiền đã lưu; không tự chạy lúc khởi động Web.
+
+### Cách tính tiền sự kiện
+
 Sự kiện tạo mới trên Web dùng `TinhTheoGio = true`. Khoản cộng thêm được tính bằng **lương cơ bản tháng / 26 / 8 × số giờ sự kiện thực tế được duyệt × hệ số thưởng sự kiện** (mặc định **2.0**). Lương ca thông thường vẫn tính qua chấm công; không cộng lại lương ca trong dòng tiền sự kiện. Lương 8.000.000đ và hai giờ thực tế được cộng thêm **153.846đ**. Hệ số lưu tại `cau_hinh_khoan_luong` dòng `ma_khoan = 35`, sửa được tại **Cấu hình lương & Phụ cấp → Thưởng**; code đọc qua `EventRateConfig` và fallback về `SalaryConstants.EVENT_HOURLY_RATE` nếu thiếu dòng. Không dùng ma trận định mức cố định của chính sách cũ. Dùng số chính xác để tính và làm tròn đến đồng sau khi tổng hợp theo nhân viên/sự kiện/tháng phát sinh.
 
 ### Tự bắt đầu sự kiện
@@ -85,6 +109,7 @@ Migration cộng thêm bảng/cột, khóa giao dịch dùng chung và trigger b
 ```powershell
 dotnet run --project tests/HotelEvents/HotelEvents.csproj
 dotnet run --project tests/HotelEventsWeb/HotelEventsWeb.csproj -- --export
+dotnet run --project tests/HotelEventsWeb/HotelEventsWeb.csproj -- --runtime-compilation --export
 python tests/hotel-events-needs.py
 python tests/hotel-events-work.py
 dotnet run --project tests/PayrollRules/PayrollRules.csproj

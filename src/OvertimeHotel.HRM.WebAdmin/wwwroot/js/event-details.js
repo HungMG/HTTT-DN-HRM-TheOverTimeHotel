@@ -36,6 +36,7 @@
         function bindContent(body, notify = false) {
             ui.bindTimeForms(body);
             body.querySelectorAll('[data-assignment-role]').forEach(toggleCustomRole);
+            body.querySelectorAll('[data-need-form]').forEach(updateNeedRoleSuggestions);
             const root = body.querySelector('[data-event-details]');
             if (!root) return;
             selectSection(root, root.dataset.activeSection);
@@ -43,6 +44,13 @@
                 id: root.dataset.eventId, count: root.dataset.eventCount,
                 status: root.dataset.eventStatus, statusLabel: root.dataset.eventStatusLabel
             } }));
+        }
+        function updateNeedRoleSuggestions(form) {
+            const department = form.elements.namedItem('Need.Department').value;
+            const list = form.querySelector('[data-need-role-department="' + department + '"]');
+            const input = form.elements.namedItem('Need.Role');
+            if (list) input.setAttribute('list', list.id);
+            else input.removeAttribute('list');
         }
         function toggleCustomRole(select) {
             const fields = select.closest('[data-assignment-person]').querySelector('[data-custom-role-fields]');
@@ -145,6 +153,18 @@
             if (next && !next.disabled) { openAssignment(next); return; }
             const root = event.target.closest('[data-event-details]');
             if (!root) return;
+            const departmentFilter = event.target.closest('[data-staff-department-filter]');
+            if (departmentFilter) {
+                const directory = departmentFilter.closest('[data-event-staff]');
+                const department = departmentFilter.dataset.staffDepartmentFilter;
+                directory.querySelectorAll('[data-department-card]').forEach(card => {
+                    card.hidden = department !== 'all' && card.dataset.departmentCard !== department;
+                });
+                directory.querySelectorAll('[data-staff-department-filter]').forEach(button => {
+                    button.setAttribute('aria-pressed', String(button === departmentFilter));
+                });
+                return;
+            }
             const confirmAcceptance = event.target.closest('[data-acceptance-confirm], [data-acceptance-cancel]');
             if (confirmAcceptance) {
                 const confirmation = confirmAcceptance.closest('[data-acceptance-dialog]');
@@ -167,6 +187,7 @@
                 field('Role').value = data.needRole || '';
                 field('Count').value = data.needCount || '1';
                 field('Reason').value = '';
+                updateNeedRoleSuggestions(form);
                 bootstrap.Collapse.getOrCreateInstance(root.querySelector('[data-need-editor]'), { toggle: false }).show();
                 root.querySelector('[data-new-need]').setAttribute('aria-expanded', 'true');
                 field('Reason').focus();
@@ -190,6 +211,7 @@
             if (event.key === 'Escape' && event.target.closest('[data-acceptance-dialog][open]')) event.stopPropagation();
         }, true);
         document.addEventListener('change', event => {
+            if (event.target.matches('[name="Need.Department"]')) updateNeedRoleSuggestions(event.target.form);
             if (event.target.matches('[data-choose-member]')) {
                 const picker = event.target.closest('[data-member-picker]');
                 const count = picker.querySelectorAll('[data-choose-member]:checked').length;

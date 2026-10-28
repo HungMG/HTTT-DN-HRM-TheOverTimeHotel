@@ -21,19 +21,29 @@
         {
             <div class="border rounded p-3 mb-3">
                 <a class="fw-semibold" asp-controller="SuKien" asp-action="Details" asp-route-id="@item.MaDuAn" asp-route-tab="staff">@item.TenDuAn</a><span> · @HotelEventRules.VenueLabel(item.DiaDiem)</span>
-                <p class="text-muted mb-0">@HotelEventRules.Local(item.NgayBatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(item.KetThucThucTe ?? item.NgayKetThuc).ToString("dd/MM HH:mm") (UTC+7). Nhu cầu áp dụng cho toàn sự kiện.</p>
+                <p class="text-muted mb-0">Dự kiến: @HotelEventRules.Local(item.NgayBatDau).ToString("dd/MM HH:mm") – @HotelEventRules.Local(item.NgayKetThuc).ToString("dd/MM HH:mm") (UTC+7). Nhu cầu áp dụng cho toàn sự kiện.</p>
                 @if (item.NhuCaus.Count == 0) { <p class="text-warning mt-2 mb-0">Chưa khai báo nhu cầu vai trò.</p> }
                 <div class="table-responsive"><table class="table table-sm mt-2 mb-0"><thead><tr><th scope="col">Bộ phận / vai trò</th><th scope="col">Cần</th><th scope="col">Phân công sự kiện</th><th scope="col">Dự báo ca theo bộ lọc (trong tuần)</th></tr></thead><tbody>
                 @foreach (var need in item.NhuCaus.OrderBy(n => n.MaPhongBan).ThenBy(n => n.VaiTro))
                 {
                     var from = item.NgayBatDau > weekFrom ? item.NgayBatDau : weekFrom;
-                    var to = (item.KetThucThucTe ?? item.NgayKetThuc) < weekTo ? (item.KetThucThucTe ?? item.NgayKetThuc) : weekTo;
-                    var assignments = item.PhanCongs.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.MaPhongBanSuKien == need.MaPhongBan && HotelEventRoleRules.Matches(need.VaiTro, p.VaiTroDuAn));
+                    var eventEnd = item.KetThucThucTe is { } actualEnd && actualEnd < item.NgayKetThuc ? actualEnd : item.NgayKetThuc;
+                    var to = eventEnd < weekTo ? eventEnd : weekTo;
+                    var assignments = item.PhanCongs.Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY")
+                        && (p.MaPhongBanSuKien ?? HotelEventRules.ResolveDepartmentCode(p.NhanVien)) == need.MaPhongBan
+                        && HotelEventRoleRules.Matches(need.VaiTro, p.VaiTroDuAn)).ToList();
+                    var assignedCount = assignments.Where(p => HotelEventRules.Overlaps(p.BatDau, p.KetThuc, from, to))
+                        .Select(p => p.MaNhanVien).Distinct().Count();
                     var confirmed = HotelEventRoleRules.MinimumConcurrentCount(assignments, from, to);
                     var draftShifts = Model.DanhSachPhanCa.Where(s => s.TrangThai != "DA_HUY" && s.TrangThai != "VANG_MAT" && s.NhanVien != null && HotelEventRules.ResolveDepartmentCode(s.NhanVien) == need.MaPhongBan)
                         .Select(s => new OvertimeHotel.HRM.Core.Models.PhanCongDuAn { MaNhanVien = s.MaNhanVien, BatDau = s.BatDauDuKien, KetThuc = s.KetThucDuKien });
                     var forecast = HotelEventRoleRules.MinimumConcurrentCount(draftShifts, from, to);
-                    <tr><td>@HotelEventRules.DepartmentLabels.GetValueOrDefault(need.MaPhongBan, need.MaPhongBan)<br />@need.VaiTro</td><td>@need.SoNguoi</td><td class="@(confirmed < need.SoNguoi ? "text-danger" : "text-success")">@confirmed/@need.SoNguoi · Thiếu @Math.Max(0, need.SoNguoi - confirmed)</td><td>@forecast người liên tục<br /><small class="text-muted">Chưa xác nhận vai trò hay khả năng điều phối</small></td></tr>
+                    <tr><td>@HotelEventRules.DepartmentLabels.GetValueOrDefault(need.MaPhongBan, need.MaPhongBan)<br />@need.VaiTro</td><td>@need.SoNguoi</td><td><strong>Đã phân công: @assignedCount người</strong><br />
+                        @if (item.TrangThai == "HOAN_THANH")
+                        { <small class="text-muted">Sự kiện đã hoàn thành</small> }
+                        else
+                        { <small class="@(confirmed < need.SoNguoi ? "text-danger" : "text-success")">Phủ đủ giờ dự kiến: @confirmed/@need.SoNguoi · Thiếu @Math.Max(0, need.SoNguoi - confirmed)</small> }
+                    </td><td>@forecast người liên tục<br /><small class="text-muted">Chưa xác nhận vai trò hay khả năng điều phối</small></td></tr>
                 }
                 </tbody></table></div>
             </div>

@@ -165,6 +165,7 @@ try
     await EventReportTests.Run(f, Check);
     await HourlyOperationsTests.Run(f, Check);
     await Phase1Tests.Run(f, Check);
+    await EventTypeIntegrationTests.Run(f, Check);
 
     await Check("Creation rejects past dates but accepts today and future", async () =>
     {

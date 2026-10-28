@@ -81,7 +81,7 @@ public sealed partial class HotelEventService
                 && s.BatDauDuKien < item.NgayKetThuc
                 && s.KetThucDuKien > item.NgayBatDau)
             .OrderBy(s => s.BatDauDuKien).ThenBy(s => s.MaNhanVien).ToListAsync();
-        return shifts.Where(s => HotelEventRules.GetRequiredDepartments(item.LoaiDuAn)
+        return shifts.Where(s => HotelEventRules.GetAllowedDepartments(item.LoaiDuAn)
             .Contains(HotelEventRules.ResolveDepartmentCode(s.NhanVien) ?? "")).ToList();
     }
 
@@ -153,7 +153,7 @@ public sealed partial class HotelEventService
         Require(actor.IsOffice, "", "Chỉ HR/Admin điều chỉnh nhu cầu sự kiện.", true);
         var item = await Editable(actor, id, input.Version);
         Require(item.TrangThai == "LEN_KE_HOACH", "", "Chỉ sửa nhu cầu trước khi bắt đầu sự kiện.");
-        Require(HotelEventRules.GetRequiredDepartments(item.LoaiDuAn).Contains(input.Department), "Need.Department", "Phòng ban không phù hợp loại sự kiện.");
+        Require(HotelEventRules.GetAllowedDepartments(item.LoaiDuAn).Contains(input.Department), "Need.Department", "Phòng ban không phù hợp loại sự kiện.");
         var role = HotelEventRoleRules.ResolveRole(item.LoaiDuAn, input.Department, input.Role, null);
         Require(role != null, "Need.Role", "Chọn vai trò có trong danh mục.");
         Require(input.Count is >= 0 and <= 100000, "Need.Count", "Số người phải từ 0 đến 100.000.");

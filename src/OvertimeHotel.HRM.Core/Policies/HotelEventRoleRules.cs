@@ -7,7 +7,8 @@ public static class HotelEventRoleRules
     public const string OtherRoleValue = "__OTHER__";
     public const string OtherRolePrefix = "Khác: ";
 
-    private sealed record DepartmentRoles(int Capacity, string Primary, string Support, string Optional);
+    private sealed record DepartmentRoles(int Capacity, string Primary, string Support, string Optional,
+        bool PrimaryRequired = true, bool SupportRequired = true);
     private static readonly IReadOnlyDictionary<(string Type, string Department), DepartmentRoles> Catalog =
         new Dictionary<(string, string), DepartmentRoles>
         {
@@ -37,15 +38,38 @@ public static class HotelEventRoleRules
             [("DOAN_VIP","AM_THUC")] = new(10,"Phục vụ bàn VIP","Phục vụ đồ uống VIP","Điều phối phục vụ riêng"),
             [("DOAN_VIP","BEP")] = new(25,"Chế biến món VIP","Phụ trách thực đơn riêng","Kiểm tra trình bày món"),
             [("DOAN_VIP","BUONG_PHONG")] = new(15,"Chuẩn bị phòng VIP","Kiểm tra chất lượng phòng","Hỗ trợ yêu cầu tại phòng"),
-            [("DOAN_VIP","AN_NINH")] = new(20,"Kiểm soát khu vực VIP","Bảo đảm tuyến di chuyển","Điều phối xe đón tiễn")
+            [("DOAN_VIP","AN_NINH")] = new(20,"Kiểm soát khu vực VIP","Bảo đảm tuyến di chuyển","Điều phối xe đón tiễn"),
+            [("TIEC_SINH_NHAT","TIEN_SANH")] = new(50,"Đón khách sinh nhật","Hướng dẫn bàn tiệc","Điều phối đón khách", SupportRequired: false),
+            [("TIEC_SINH_NHAT","AM_THUC")] = new(20,"Phục vụ tiệc sinh nhật","Phục vụ đồ uống","Điều phối phục vụ"),
+            [("TIEC_SINH_NHAT","BEP")] = new(40,"Chế biến món tiệc sinh nhật","Chuẩn bị bánh sinh nhật","Chuẩn bị món tráng miệng", SupportRequired: false),
+            [("TIEC_SINH_NHAT","KY_THUAT")] = new(100,"Phụ trách âm thanh và ánh sáng","Trực thiết bị tiệc","Hỗ trợ trình chiếu", SupportRequired: false),
+            [("TIEC_SINH_NHAT","AN_NINH")] = new(100,"Bảo đảm an ninh tiệc sinh nhật","Hướng dẫn bãi xe","Kiểm soát lối vào", PrimaryRequired: false),
+            [("TIEC_SINH_NHAT","BUONG_PHONG")] = new(100,"Vệ sinh khu vực tiệc sinh nhật","Chuẩn bị khăn và đồ vải","Hỗ trợ vệ sinh trong tiệc", PrimaryRequired: false),
+            [("TIEC_TAT_NIEN","TIEN_SANH")] = new(100,"Đón khách tiệc tất niên","Hướng dẫn bàn tiệc","Điều phối đón khách", SupportRequired: false),
+            [("TIEC_TAT_NIEN","AM_THUC")] = new(20,"Phục vụ tiệc tất niên","Phục vụ đồ uống","Điều phối phục vụ"),
+            [("TIEC_TAT_NIEN","BEP")] = new(50,"Chế biến món tiệc tất niên","Trình bày món ăn","Chuẩn bị món tráng miệng", SupportRequired: false),
+            [("TIEC_TAT_NIEN","KY_THUAT")] = new(100,"Phụ trách âm thanh sân khấu","Phụ trách ánh sáng sân khấu","Trực thiết bị chương trình", SupportRequired: false),
+            [("TIEC_TAT_NIEN","AN_NINH")] = new(100,"Bảo đảm an ninh tiệc tất niên","Hướng dẫn bãi xe","Kiểm soát lối vào", SupportRequired: false),
+            [("TIEC_TAT_NIEN","BUONG_PHONG")] = new(100,"Vệ sinh khu vực tiệc tất niên","Chuẩn bị khăn và đồ vải","Hỗ trợ vệ sinh trong tiệc", PrimaryRequired: false),
+            [("HOP_BAO","TIEN_SANH")] = new(50,"Tiếp nhận phóng viên và khách mời","Hướng dẫn chỗ ngồi họp báo","Điều phối đón khách", SupportRequired: false),
+            [("HOP_BAO","KY_THUAT")] = new(100,"Phụ trách micro và trình chiếu","Phụ trách ánh sáng họp báo","Trực thiết bị họp báo", SupportRequired: false),
+            [("HOP_BAO","IT")] = new(100,"Phụ trách đường truyền họp báo","Hỗ trợ phát trực tuyến","Hỗ trợ máy tính", SupportRequired: false),
+            [("HOP_BAO","AN_NINH")] = new(100,"Kiểm soát khách dự họp báo","Bảo đảm an ninh họp báo","Hướng dẫn bãi xe", SupportRequired: false),
+            [("HOP_BAO","AM_THUC")] = new(40,"Phục vụ tiệc trà họp báo","Phục vụ đồ uống họp báo","Điều phối phục vụ", PrimaryRequired: false),
+            [("HOP_BAO","BEP")] = new(80,"Chuẩn bị tiệc trà họp báo","Chuẩn bị món nhẹ","Kiểm tra chất lượng món", PrimaryRequired: false),
+            [("HOP_BAO","BUONG_PHONG")] = new(100,"Vệ sinh khu vực họp báo","Chuẩn bị khăn và đồ vải","Hỗ trợ vệ sinh trong họp báo", PrimaryRequired: false)
         };
+
+    internal static IReadOnlyList<string> GetDepartments(string eventType) =>
+        Catalog.Keys.Where(key => key.Type == eventType).Select(key => key.Department).ToArray();
 
     public static IReadOnlyList<EventRoleRequirement> GetRoles(string eventType, string department, int guests)
     {
         if (guests < 0) throw new ArgumentOutOfRangeException(nameof(guests));
         if (!Catalog.TryGetValue((eventType, department), out var rules)) return [];
-        return [new(rules.Primary, (int)(((long)guests + rules.Capacity - 1) / rules.Capacity), true),
-            new(rules.Support, guests > 0 ? 1 : 0, true), new(rules.Optional, 0, false)];
+        return [new(rules.Primary, rules.PrimaryRequired ? (int)(((long)guests + rules.Capacity - 1) / rules.Capacity) : 0, rules.PrimaryRequired),
+            new(rules.Support, guests > 0 && rules.PrimaryRequired && rules.SupportRequired ? 1 : 0, rules.PrimaryRequired && rules.SupportRequired),
+            new(rules.Optional, 0, false)];
     }
 
     public static string? ResolveRole(string eventType, string department, string? selected, string? custom)

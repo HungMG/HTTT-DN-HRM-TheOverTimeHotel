@@ -113,9 +113,14 @@ var tests = new (string Name, Action Run)[]
         completed.VaiTroDuAn = new string('Y', 100);
         Equal(true, HotelEventRules.ResolveEventBonus(item, department, completed).TenKhoan.Length <= 150);
     }),
-    ("Only 5 valid event types exist and BAO_TRI_NANG_CAP is removed", () =>
+    ("Only five types are creatable while three historical types remain readable", () =>
     {
-        Equal(5, HotelEventRules.TypeLabels.Count);
+        Equal(5, HotelEventRules.CreationTypeLabels.Count);
+        Equal(8, HotelEventRules.TypeLabels.Count);
+        foreach (var type in new[] { "TIEC_CUOI", "HOI_NGHI_MICE", "TIEC_SINH_NHAT", "TIEC_TAT_NIEN", "HOP_BAO" })
+            Equal(true, HotelEventRules.CreationTypeLabels.ContainsKey(type));
+        foreach (var type in new[] { "GALA_DINNER", "FESTIVAL_AM_THUC", "DOAN_VIP" })
+            Equal(false, HotelEventRules.CreationTypeLabels.ContainsKey(type));
         Equal(false, HotelEventRules.TypeLabels.ContainsKey("BAO_TRI_NANG_CAP"));
         Equal(true, HotelEventRules.TypeLabels.ContainsKey("TIEC_CUOI"));
         Equal(true, HotelEventRules.TypeLabels.ContainsKey("HOI_NGHI_MICE"));
@@ -214,6 +219,7 @@ foreach (var test in tests)
 failed += RoleStaffingTests.Run();
 failed += HourlyEventTests.Run();
 failed += PlanPhase1Tests.Run();
+failed += EventTypeTests.Run();
 if (failed != 0) Environment.Exit(1);
 
 static NhanVien Employee() => new()

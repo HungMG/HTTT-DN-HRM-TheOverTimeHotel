@@ -18,6 +18,8 @@ public class EventFormViewModel
 {
     public bool IsPopup { get; set; }
     public EventInput Input { get; set; } = new();
+    [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+    public string? ExistingType { get; set; }
     public IReadOnlyList<SelectListItem> Managers { get; set; } = [];
     public IReadOnlyList<DiaDiemSuKien> Venues { get; set; } = [];
     /// <summary>Hệ số thưởng sự kiện theo giờ đang áp dụng (đọc từ cấu hình khoản lương).</summary>
@@ -86,8 +88,8 @@ public class EventDetailsViewModel
         OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetStaffingSummary(Event).Departments
             .FirstOrDefault(d => d.Code == SelectedDepartment)?.Roles ?? [];
     public IReadOnlyList<string> RequiredDepartments =>
-        Event.TinhTheoGio ? Event.NhuCaus.Select(n => n.MaPhongBan)
+        (Event.TinhTheoGio ? Enumerable.Empty<string>() : OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetRequiredDepartments(Event.LoaiDuAn))
+            .Concat(Event.NhuCaus.Select(n => n.MaPhongBan))
             .Concat(Event.PhanCongs.Select(p => p.MaPhongBanSuKien ?? OvertimeHotel.HRM.Core.Policies.HotelEventRules.ResolveDepartmentCode(p.NhanVien) ?? ""))
-            .Where(code => code != "").Distinct().ToList()
-            : OvertimeHotel.HRM.Core.Policies.HotelEventRules.GetRequiredDepartments(Event.LoaiDuAn);
+            .Where(code => code != "").Distinct().ToList();
 }

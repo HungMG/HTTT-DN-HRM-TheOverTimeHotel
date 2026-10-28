@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewEngines;
@@ -28,7 +29,17 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 builder.Logging.ClearProviders();
 builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
-builder.Services.AddControllersWithViews().AddApplicationPart(typeof(SuKienController).Assembly);
+var mvc = builder.Services.AddControllersWithViews().AddApplicationPart(typeof(SuKienController).Assembly);
+if (args.Contains("--runtime-compilation"))
+{
+    mvc.AddRazorRuntimeCompilation().ConfigureApplicationPartManager(manager =>
+    {
+        // Otherwise matching checksums reuse precompiled views and miss runtime-only syntax failures.
+        foreach (var part in manager.ApplicationParts.OfType<CompiledRazorAssemblyPart>().ToList())
+            manager.ApplicationParts.Remove(part);
+    });
+    Console.WriteLine("Testing physical Razor source with runtime compilation.");
+}
 await using var app = builder.Build();
 var failures = 0;
 var passed = 0;
@@ -53,6 +64,23 @@ static DuAn Event() => new()
     NhuCaus = [new() { MaNhuCau = 21, MaPhongBan = "KY_THUAT", VaiTro = "Phụ trách âm thanh và micro",
         SoNguoi = 2, LaMau = true }]
 };
+static DuAn StaffFilterEvent()
+{
+    var item = Event(); item.TinhTheoGio = true;
+    item.NhuCaus.Add(new() { MaNhuCau = 22, MaPhongBan = "TIEN_SANH", VaiTro = "Đón tiếp đại biểu", SoNguoi = 1 });
+    item.NhuCaus.Add(new() { MaNhuCau = 23, MaPhongBan = "AN_NINH", VaiTro = "Kiểm soát thẻ đại biểu", SoNguoi = 1 });
+    item.PhanCongs = [
+        new() { MaPhanCong = 1, MaNhanVien = 10, NhanVien = new() { Ho = "Nguyễn", Ten = "An" },
+            MaPhongBanSuKien = "KY_THUAT", VaiTroDuAn = "Phụ trách âm thanh và micro", MaPhanCa = 55,
+            BatDau = item.NgayBatDau, KetThuc = item.NgayKetThuc },
+        new() { MaPhanCong = 2, MaNhanVien = 11, NhanVien = new() { Ho = "Trần", Ten = "Bình" },
+            MaPhongBanSuKien = "TIEN_SANH", VaiTroDuAn = "Đón tiếp đại biểu", MaPhanCa = 56,
+            BatDau = item.NgayBatDau, KetThuc = item.NgayKetThuc },
+        new() { MaPhanCong = 3, MaNhanVien = 12, NhanVien = new() { Ho = "Hidden", Ten = "Cancelled" },
+            MaPhongBanSuKien = "KY_THUAT", TrangThaiThamGia = "HUY_PHAN_CONG" }
+    ];
+    return item;
+}
 static (SuKienController Controller, StaffServiceStub Stub) Controller()
 {
     var service = DispatchProxy.Create<IHotelEventService, StaffServiceStub>();
@@ -130,6 +158,71 @@ await Check("Calendar and event details count distinct people and omit cancelled
     var details = await Render("_EventDetailsContent", new EventDetailsViewModel { Event = item });
     Require(details.Contains("data-event-count=\"1\""), "Event details has a different staff count.");
 });
+await Check("New event form offers exactly the five supported types with public labels", async () =>
+{
+    foreach (var model in new[] { new EventFormViewModel(), new EventFormViewModel
+        { ExistingType = "GALA_DINNER", Input = new() { Type = "GALA_DINNER" } } })
+    {
+        var html = System.Net.WebUtility.HtmlDecode(await Render("_EventForm", model));
+        var select = Regex.Match(html, "<select[^>]*name=\"Input.Type\"[^>]*>(.*?)</select>", RegexOptions.Singleline).Groups[1].Value;
+        var options = Regex.Matches(select, "<option[^>]*value=\"([^\"]*)\"[^>]*>(.*?)</option>", RegexOptions.Singleline)
+            .Select(m => (m.Groups[1].Value, m.Groups[2].Value.Trim())).ToArray();
+        Require(options.SequenceEqual(new[] { ("TIEC_CUOI", "Tiệc cưới"), ("HOI_NGHI_MICE", "Hội nghị"),
+            ("TIEC_SINH_NHAT", "Tiệc sinh nhật"), ("TIEC_TAT_NIEN", "Tiệc tất niên"), ("HOP_BAO", "Họp báo") }),
+            "Create picker offers retired types or is missing a supported type/label: " + string.Join(", ", options));
+    }
+});
+await Check("Editing a retired event offers its current type plus the five supported choices only", async () =>
+{
+    foreach (var current in new[] { "GALA_DINNER", "FESTIVAL_AM_THUC", "DOAN_VIP" })
+    {
+        var (controller, stub) = Controller(); stub.Item.LoaiDuAn = current;
+        var model = new EventFormViewModel { Input = new() { Id = 17, Type = current } };
+        var form = typeof(SuKienController).GetMethod("FormAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        model = await (Task<EventFormViewModel>)form.Invoke(controller, [model, new EventActor(1, 1, "HR", "Probe")])!;
+        var html = System.Net.WebUtility.HtmlDecode(await Render("_EventForm", model));
+        var select = Regex.Match(html, "<select[^>]*name=\"Input.Type\"[^>]*>(.*?)</select>", RegexOptions.Singleline).Groups[1].Value;
+        var options = Regex.Matches(select, "<option[^>]*value=\"([^\"]*)\"[^>]*>(.*?)</option>", RegexOptions.Singleline);
+        Require(options.Count == 6, "Legacy edit must have five supported types and its current retired type only.");
+        var legacy = options.Single(m => m.Groups[1].Value == current);
+        Require(legacy.Groups[2].Value.Contains("Loại cũ") && legacy.Value.Contains("selected"), "Current retired type is not clearly marked and selected.");
+        Require(!options.Any(m => m.Groups[1].Value != current && new[] { "GALA_DINNER", "FESTIVAL_AM_THUC", "DOAN_VIP" }.Contains(m.Groups[1].Value)),
+            "Edit offers a different retired type.");
+        model.Input.Type = current == "GALA_DINNER" ? "DOAN_VIP" : "GALA_DINNER";
+        html = System.Net.WebUtility.HtmlDecode(await Render("_EventForm", model));
+        select = Regex.Match(html, "<select[^>]*name=\"Input.Type\"[^>]*>(.*?)</select>", RegexOptions.Singleline).Groups[1].Value;
+        Require(select.Contains("value=\"" + current + "\"") && !select.Contains("value=\"" + model.Input.Type + "\""),
+            "A rejected posted type replaced the persisted legacy option.");
+        model.Input.Type = "HOP_BAO";
+        html = System.Net.WebUtility.HtmlDecode(await Render("_EventForm", model));
+        select = Regex.Match(html, "<select[^>]*name=\"Input.Type\"[^>]*>(.*?)</select>", RegexOptions.Singleline).Groups[1].Value;
+        Require(Regex.IsMatch(select, "<option[^>]*value=\"HOP_BAO\"[^>]*selected"), "Edit discarded the newly selected supported type.");
+    }
+});
+await Check("Calendar and historical details display all supported and retired type labels", async () =>
+{
+    var types = new[] { ("TIEC_CUOI", "Tiệc cưới"), ("HOI_NGHI_MICE", "Hội nghị"),
+        ("TIEC_SINH_NHAT", "Tiệc sinh nhật"), ("TIEC_TAT_NIEN", "Tiệc tất niên"), ("HOP_BAO", "Họp báo"),
+        ("GALA_DINNER", "Gala Dinner"), ("FESTIVAL_AM_THUC", "Festival ẩm thực"), ("DOAN_VIP", "Đoàn VIP") };
+    var items = types.Select((type, i) => { var item = Event(); item.MaDuAn = i + 1; item.LoaiDuAn = type.Item1; return item; }).ToArray();
+    var html = await Render("Index", new EventCalendarViewModel { Year = 2028, Month = 5, SelectedDate = new(2028, 5, 10), Events = items });
+    var json = Regex.Match(html, "<script id=\"event-calendar-data\"[^>]*>(.*?)</script>", RegexOptions.Singleline).Groups[1].Value;
+    using var parsed = JsonDocument.Parse(json);
+    Require(parsed.RootElement.EnumerateArray().Select(item => item.GetProperty("type").GetString()).SequenceEqual(types.Select(type => type.Item2)),
+        "Calendar exposes a type code or an outdated label.");
+    foreach (var (item, type) in items.Zip(types))
+    {
+        item.TrangThai = "HOAN_THANH";
+        var details = System.Net.WebUtility.HtmlDecode(await Render("_EventDetailsContent", new EventDetailsViewModel { Event = item }));
+        Require(details.Contains("· " + type.Item2 + "</span>"), "Historical details lost label for " + type.Item1);
+    }
+    var report = System.Net.WebUtility.HtmlDecode(await Render("_BaoCaoBoard", new BaoCaoViewModel
+    {
+        Tab = "su-kien", SuKien = new() { TongSuKien = items.Length, DanhSach = parsed.RootElement.EnumerateArray()
+            .Select(item => new SuKienItem { TenDuAn = "Type fixture", LoaiLabel = item.GetProperty("type").GetString()! }).ToArray() }
+    }, controller: "BaoCao"));
+    foreach (var (_, label) in types) Require(report.Contains("<td>" + label + "</td>"), "Event report hid type label " + label);
+});
 await Check("Staffing need form applies to the whole event without separate windows", async () =>
 {
     var model = new EventDetailsViewModel { Event = Event(), CanEdit = true, IsOffice = true };
@@ -183,17 +276,57 @@ await Check("Need editor retains allowed departments after their last need is de
         Require(!select.Contains("value=\"BUONG_PHONG\""), "Need editor offered a department outside the MICE catalog.");
     }
 });
+await Check("New event need editor offers optional departments without requiring them in its staffing summary", async () =>
+{
+    foreach (var type in new[] { "TIEC_SINH_NHAT", "TIEC_TAT_NIEN", "HOP_BAO" })
+    {
+        var item = Event(); item.LoaiDuAn = type; item.TinhTheoGio = true; item.NhuCaus.Clear(); item.PhanCongs.Clear();
+        var model = new EventDetailsViewModel { Event = item, CanEdit = true };
+        var html = await Render("_EventOverview", model);
+        var select = Regex.Match(html, "<select[^>]*name=\"Need.Department\"[^>]*>(.*?)</select>", RegexOptions.Singleline).Groups[1].Value;
+        foreach (var code in new[] { "TIEN_SANH", "AM_THUC", "BEP", "KY_THUAT", "AN_NINH", "BUONG_PHONG" })
+            Require(select.Contains("value=\"" + code + "\""), type + " need editor omitted allowed department " + code);
+        Require(!model.StaffingSummary.Departments.Any(d => d.Code == "BUONG_PHONG"), "Optional housekeeping became a mandatory staffing department.");
+    }
+});
+await Check("Press optional catering need exposes department role suggestions accepted by validation", async () =>
+{
+    var item = Event(); item.LoaiDuAn = "HOP_BAO"; item.TinhTheoGio = true; item.NhuCaus.Clear();
+    var html = System.Net.WebUtility.HtmlDecode(await Render("_EventOverview", new EventDetailsViewModel { Event = item, CanEdit = true,
+        Need = new() { Department = "AM_THUC", Role = "Giữ nội dung đang sửa" } }));
+    var list = Regex.Match(html, "<datalist[^>]*data-need-role-department=\"AM_THUC\"[^>]*>(.*?)</datalist>", RegexOptions.Singleline);
+    Require(list.Success, "Optional press catering roles cannot be discovered from the need editor.");
+    var roles = Regex.Matches(list.Groups[1].Value, "<option[^>]*value=\"([^\"]*)\"").Select(m => m.Groups[1].Value).ToArray();
+    Require(roles.SequenceEqual(new[] { "Phục vụ tiệc trà họp báo", "Phục vụ đồ uống họp báo", "Điều phối phục vụ" }), "Press catering suggestions contain another department's roles.");
+    Require(roles.All(role => OvertimeHotel.HRM.Core.Policies.HotelEventRoleRules.ResolveRole("HOP_BAO", "AM_THUC", role, null) == role),
+        "A suggested catering role is rejected by server role validation.");
+    Require(Regex.IsMatch(html, "<input[^>]*name=\"Need.Role\"[^>]*value=\"Giữ nội dung đang sửa\""), "Role suggestions overwrite the entered role.");
+});
 
-await Check("Both staff views distinguish an empty active list from cancelled history", async () =>
+await Check("Both staff views keep the empty schedule state without assignment history", async () =>
 {
     foreach (var view in new[] { "_EventStaff", "_HourlyEventStaff" })
     {
         var item = Event();
         item.PhanCongs = [new() { MaNhanVien = 11, TrangThaiThamGia = "HUY_PHAN_CONG" }];
         var html = System.Net.WebUtility.HtmlDecode(await Render(view, new EventDetailsViewModel { Event = item, CanManage = true }));
-        Require(html.Contains("Chưa sắp xếp sự kiện") && html.Contains("Bố trí ca bên Lịch làm việc") && html.Contains("Lịch sử phân công"),
-            view + " lost the empty-state schedule link or cancelled history.");
+        Require(html.Contains("Chưa sắp xếp sự kiện") && html.Contains("Bố trí ca bên Lịch làm việc") && !html.Contains("Lịch sử phân công"),
+            view + " lost the schedule link or still displays assignment history.");
         Require(html.Contains("0 nhân sự tham gia") && !html.Contains("Không tải được danh sách nhân sự"), "Empty staffing was rendered as a load failure.");
+    }
+});
+await Check("Both staff views provide department filter buttons and omit cancelled people", async () =>
+{
+    foreach (var view in new[] { "_EventStaff", "_HourlyEventStaff" })
+    {
+        var html = System.Net.WebUtility.HtmlDecode(await Render(view, new EventDetailsViewModel { Event = StaffFilterEvent() }));
+        Require(html.Contains("data-event-staff") && Regex.IsMatch(html,
+            "<button[^>]*data-staff-department-filter=\"all\"[^>]*aria-pressed=\"true\""), "Missing default All button.");
+        foreach (var department in new[] { "KY_THUAT", "TIEN_SANH", "AN_NINH" })
+            Require(Regex.IsMatch(html, "<button[^>]*data-staff-department-filter=\"" + department + "\""),
+                "Department icon is not an accessible filter button: " + department);
+        Require(!html.Contains("Hidden Cancelled") && !html.Contains("Lịch sử phân công"), "Cancelled staffing leaked into the directory.");
+        Require(!html.Contains("<form") && !html.Contains("data-add-member"), "Staff filtering exposes assignment actions.");
     }
 });
 await Check("Both read-only staff views show the source shift, task and participation time", async () =>
@@ -211,6 +344,8 @@ await Check("Both read-only staff views show the source shift, task and particip
         var html = System.Net.WebUtility.HtmlDecode(await Render(view, new EventDetailsViewModel { Event = item, CanManage = true }));
         foreach (var text in new[] { "Nguyễn An", "Kỹ thuật", "Kiểm tra micro hội trường", "Ca #55", "10/05 09:00", "10/05 17:00" })
             Require(html.Contains(text), view + " omitted " + text);
+        Require(html.Contains("<article") && html.Contains("event-staff-member-details") && !html.Contains("<table"),
+            "Staff information must be grouped into complete employee cards.");
         Require(!html.Contains("<form") && !html.Contains("data-add-member"), "Read-only staff view contains assignment actions.");
     }
 });
@@ -264,7 +399,7 @@ await Check("Event form loads without querying the venue catalog", async () =>
 {
     var (controller, _) = Controller();
     var method = typeof(SuKienController).GetMethod("FormAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
-    var model = await (Task<EventFormViewModel>)method.Invoke(controller, [new EventFormViewModel()])!;
+    var model = await (Task<EventFormViewModel>)method.Invoke(controller, [new EventFormViewModel(), new EventActor(1, 1, "HR", "Probe")])!;
     Require(model.Venues.Count == 0, "Event form still depends on a venue catalog.");
 });
 
@@ -280,6 +415,30 @@ await Check("Event form uses the hotel and only event start and end", async () =
         Require(html.Contains("name=\"Input.Start\"") && html.Contains("name=\"Input.End\"")
             && html.Contains("name=\"Input.ExpectedGuests\""), "Form lost event duration or guest count.");
     }
+});
+
+await Check("Weekly event demand shows assigned people even when actual end exceeds planned shifts", async () =>
+{
+    var item = Event(); item.TinhTheoGio = true; item.TrangThai = "HOAN_THANH";
+    item.KetThucThucTe = item.NgayKetThuc.AddHours(1);
+    item.PhanCongs = [
+        new() { MaNhanVien = 10, MaPhongBanSuKien = "KY_THUAT", VaiTroDuAn = item.NhuCaus.First().VaiTro,
+            BatDau = item.NgayBatDau, KetThuc = item.NgayBatDau.AddHours(3) },
+        new() { MaNhanVien = 10, MaPhongBanSuKien = "KY_THUAT", VaiTroDuAn = item.NhuCaus.First().VaiTro,
+            BatDau = item.NgayBatDau.AddHours(3), KetThuc = item.NgayKetThuc },
+        new() { MaNhanVien = 11, MaPhongBanSuKien = "KY_THUAT", VaiTroDuAn = item.NhuCaus.First().VaiTro,
+            BatDau = item.NgayBatDau, KetThuc = item.NgayKetThuc, TrangThaiThamGia = "DA_KET_THUC" },
+        new() { MaNhanVien = 12, MaPhongBanSuKien = "KY_THUAT", VaiTroDuAn = item.NhuCaus.First().VaiTro,
+            BatDau = item.NgayBatDau, KetThuc = item.NgayKetThuc, TrangThaiThamGia = "DA_HUY" }
+    ];
+    async Task<string> Weekly() => System.Net.WebUtility.HtmlDecode(await Render("_EventWeekDemand", new PhanCaIndexViewModel
+        { CanViewEventDemand = true, WeekStart = new(2028, 5, 8), WeekEnd = new(2028, 5, 14), EventDemand = [item] }, controller: "PhanCa"));
+    var html = await Weekly();
+    Require(html.Contains("Đã phân công: 2 người"), "Actual end or canceled assignments hid or inflated the assigned people count.");
+    Require(!html.Contains("Thiếu 2"), "Completed event is incorrectly reported as having no staffing.");
+    item.TrangThai = "DANG_DIEN_RA";
+    html = await Weekly();
+    Require(html.Contains("Đã phân công: 2 người") && html.Contains("2/2 · Thiếu 0"), "Planned coverage was incorrectly extended beyond the planned event end.");
 });
 
 await Check("Payroll confirmation never executes employee names as script", async () =>
@@ -444,6 +603,15 @@ if (args.Contains("--export"))
     {
         Year = 2028, Month = 5, SelectedDate = new(2028, 5, 10), Events = [Event()]
     }));
+    await File.WriteAllTextAsync(Path.Combine(export, "staff-filter.html"), await Render("_EventDetailsContent", new EventDetailsViewModel
+        { Event = StaffFilterEvent(), Tab = "staff", CanManage = true, CanEdit = true, Need = new() { Count = 1 } }));
+    var press = Event(); press.LoaiDuAn = "HOP_BAO"; press.TinhTheoGio = true;
+    press.NhuCaus = [new() { MaNhuCau = 21, MaPhongBan = "KY_THUAT", VaiTro = "Phụ trách micro và trình chiếu", SoNguoi = 2 }];
+    var pressModel = new EventDetailsViewModel { Event = press, CanEdit = true, Need = new() { Count = 1 } };
+    await File.WriteAllTextAsync(Path.Combine(export, "press-needs.html"), await Render("_EventDetailsContent", pressModel));
+    pressModel.Need = new() { Department = "AM_THUC", Role = "Vai trò đang sửa", Count = 4, Reason = "Bổ sung tiệc trà" };
+    var pressState = new ModelStateDictionary(); pressState.AddModelError("Need.Role", "Chọn vai trò trong danh mục.");
+    await File.WriteAllTextAsync(Path.Combine(export, "press-needs-invalid.html"), await Render("_EventDetailsContent", pressModel, pressState));
     var hourly = Event(); hourly.TinhTheoGio = true; hourly.TrangThai = "CHO_NGHIEM_THU";
     hourly.PhanCongs = [new() { MaPhanCong = 1, MaNhanVien = 10, MaPhanCa = 55, TrangThaiThamGia = "DA_PHAN",
         NhanVien = new() { Ho = "Nguyễn", Ten = "An" }, BatDau = hourly.NgayBatDau, KetThuc = hourly.NgayKetThuc,
