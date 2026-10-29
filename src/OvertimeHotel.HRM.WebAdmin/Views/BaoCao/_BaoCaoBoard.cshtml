@@ -7,7 +7,9 @@
     const string Money = "N0";
 }
 
-<div class="in-place-container" data-baocao-board>
+<div class="in-place-container" data-baocao-board
+     data-ky="@Model.KyBaoCao" data-nam="@Model.Nam" data-thang="@Model.Thang"
+     data-quy="@Model.Quy" data-phong-ban="@Model.PhongBanId" data-tab="@Model.Tab">
     @* Payload cho ECharts. Controller serialize bằng encoder mặc định của System.Text.Json
        nên ký tự '<' đã thành < — tên phòng ban / tên sự kiện do người dùng nhập
        không thể đóng thẻ script này. *@
@@ -33,13 +35,26 @@
 
     @* ══════════════════════ 10.1 — BIẾN ĐỘNG NHÂN SỰ ══════════════════════ *@
     <section class="baocao-panel" data-baocao-panel="bien-dong" hidden="@(tab != "bien-dong")">
+        @if (Model.BienDong.SoHoSoThieuNgayThoiViec > 0)
+        {
+            <div class="alert alert-warning py-2 px-3 small rounded-3 mb-3">
+                <i class="bi bi-exclamation-triangle-fill me-1 text-warning"></i>
+                Hệ thống ghi nhận <strong>@Model.BienDong.SoHoSoThieuNgayThoiViec</strong> hồ sơ đã thôi việc nhưng chưa cập nhật ngày thôi việc chính thức. Quân số quá khứ được bảo toàn và không tự động trừ trước ngày vào làm.
+            </div>
+        }
         <div class="baocao-kpi-grid">
             <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-box-arrow-in-right"></i></div>
                 <div>
                     <span class="catalog-kpi-label">Tuyển mới trong kỳ</span>
                     <h3 class="catalog-kpi-value"><span data-count-to="@Model.BienDong.TuyenMoi">@Model.BienDong.TuyenMoi</span> <small>người</small></h3>
-                    <p class="catalog-kpi-desc">Hồ sơ có ngày vào làm nằm trong kỳ</p>
+                    <p class="catalog-kpi-desc">
+                        @if (!string.IsNullOrEmpty(Model.BienDong.KyTruocLabel))
+                        {
+                            <span>So với @Model.BienDong.KyTruocLabel: <strong class="@(Model.BienDong.TuyenMoiThayDoi >= 0 ? "baocao-up" : "baocao-down")">@(Model.BienDong.TuyenMoiThayDoi >= 0 ? "+" : "")@Model.BienDong.TuyenMoiThayDoi</strong> &bull; </span>
+                        }
+                        <a href="javascript:void(0)" class="text-decoration-none fw-semibold" data-baocao-drill="tuyen-moi"><i class="bi bi-zoom-in"></i> Chi tiết</a>
+                    </p>
                 </div>
             </div>
             <div class="catalog-kpi-card catalog-kpi-card--deduction shadow-sm">
@@ -47,7 +62,13 @@
                 <div>
                     <span class="catalog-kpi-label">Thôi việc trong kỳ</span>
                     <h3 class="catalog-kpi-value"><span data-count-to="@Model.BienDong.NghiViec">@Model.BienDong.NghiViec</span> <small>người</small></h3>
-                    <p class="catalog-kpi-desc">Hồ sơ có ngày thôi việc nằm trong kỳ</p>
+                    <p class="catalog-kpi-desc">
+                        @if (!string.IsNullOrEmpty(Model.BienDong.KyTruocLabel))
+                        {
+                            <span>So với @Model.BienDong.KyTruocLabel: <strong class="@(Model.BienDong.NghiViecThayDoi <= 0 ? "baocao-up" : "baocao-down")">@(Model.BienDong.NghiViecThayDoi >= 0 ? "+" : "")@Model.BienDong.NghiViecThayDoi</strong> &bull; </span>
+                        }
+                        <a href="javascript:void(0)" class="text-decoration-none fw-semibold" data-baocao-drill="thoi-viec"><i class="bi bi-zoom-in"></i> Chi tiết</a>
+                    </p>
                 </div>
             </div>
             <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
@@ -206,7 +227,7 @@
                 <div>
                     <span class="catalog-kpi-label">Từ đại học trở lên</span>
                     <h3 class="catalog-kpi-value"><span data-count-to="@Model.HocVanThamNien.SoDaiHocTroLen">@Model.HocVanThamNien.SoDaiHocTroLen</span> <small>người</small></h3>
-                    <p class="catalog-kpi-desc">Gồm sau đại học, đại học và cao đẳng</p>
+                    <p class="catalog-kpi-desc">Gồm bậc Đại học và Sau Đại học (chuẩn PRD 10.3)</p>
                 </div>
             </div>
             <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
@@ -273,11 +294,22 @@
     @if (Model.CanViewPayrollFund)
     {
         <section class="baocao-panel" data-baocao-panel="quy-luong" hidden="@(tab != "quy-luong")">
+            <div class="baocao-note d-block mb-3">
+                <p>@Model.QuyLuong.TrangThaiNganSachDuyet</p>
+                @if (Model.QuyLuong.CoNganSachDuocDuyet)
+                {
+                    <p>Ngân sách được duyệt: <strong>@Model.QuyLuong.NganSachDuocDuyet?.ToString("N0") đ</strong>.
+                        Chênh lệch lương đã duyệt: @Model.QuyLuong.ChenhLechNganSachDuyet?.ToString("N0") đ.
+                        Tỷ lệ: @(Model.QuyLuong.TyLeGiaiNganNganSachDuyet?.ToString("0.#") ?? "Không tính khi ngân sách bằng 0") %.</p>
+                }
+                <a asp-controller="PayrollBudget" asp-action="Index" asp-route-nam="@Model.Nam">Lập / duyệt ngân sách lương</a>
+                <p class="small mb-0">Số lương đã tính có thể gồm phiếu nháp; duyệt/kết chuyển không đồng nghĩa đã thanh toán.</p>
+            </div>
             <div class="baocao-kpi-grid">
                 <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                     <div class="catalog-kpi-icon"><i class="bi bi-wallet2"></i></div>
                     <div>
-                        <span class="catalog-kpi-label">Thực chi gộp</span>
+                        <span class="catalog-kpi-label">Tổng lương đã tính</span>
                         <h3 class="catalog-kpi-value">@Model.QuyLuong.ThucChiGross.ToString(Money) <small>đ</small></h3>
                         <p class="catalog-kpi-desc">Lương công + tăng ca + phụ cấp + thưởng</p>
                     </div>
@@ -287,7 +319,10 @@
                     <div>
                         <span class="catalog-kpi-label">Thực nhận</span>
                         <h3 class="catalog-kpi-value">@Model.QuyLuong.ThucChi.ToString(Money) <small>đ</small></h3>
-                        <p class="catalog-kpi-desc">Sau khấu trừ · @Model.QuyLuong.SoPhieuLuong phiếu lương</p>
+                        <p class="catalog-kpi-desc">
+                            Sau khấu trừ · @Model.QuyLuong.SoPhieuLuong phiếu &bull;
+                            <a href="javascript:void(0)" class="text-decoration-none fw-semibold" data-baocao-drill="phieu-luong"><i class="bi bi-zoom-in"></i> Chi tiết</a>
+                        </p>
                     </div>
                 </div>
                 <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
@@ -301,7 +336,7 @@
                 <div class="catalog-kpi-card @(Model.QuyLuong.VuotNguong ? "catalog-kpi-card--deduction" : "catalog-kpi-card--bonus") shadow-sm">
                     <div class="catalog-kpi-icon"><i class="bi bi-speedometer2"></i></div>
                     <div>
-                        <span class="catalog-kpi-label">Tỷ lệ giải ngân</span>
+                        <span class="catalog-kpi-label">Tỷ lệ so với định mức</span>
                         <h3 class="catalog-kpi-value">@Model.QuyLuong.PhanTramGiaiNgan.ToString("0.#") <small>%</small></h3>
                         <p class="catalog-kpi-desc">
                             Chênh lệch @Model.QuyLuong.ChenhLech.ToString(Money) đ
@@ -312,6 +347,22 @@
                         </p>
                     </div>
                 </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2">
+                    <i class="bi bi-check-circle me-1"></i>@Model.QuyLuong.SoPhieuDaDuyet phiếu đã duyệt (@Model.QuyLuong.ThucChiGrossDaDuyet.ToString(Money) đ)
+                </span>
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle py-1 px-2">
+                    <i class="bi bi-pencil-square me-1"></i>@Model.QuyLuong.SoPhieuNhap phiếu nháp/dự tính (@Model.QuyLuong.ThucChiGrossNhap.ToString(Money) đ)
+                </span>
+                @if (!string.IsNullOrEmpty(Model.QuyLuong.KyTruocLabel))
+                {
+                    <span class="badge bg-light text-dark border py-1 px-2">
+                        Kỳ trước (@Model.QuyLuong.KyTruocLabel): @Model.QuyLuong.ThucChiGrossKyTruoc.ToString(Money) đ
+                        (@(Model.QuyLuong.ThucChiGrossThayDoi >= 0 ? "+" : "")@Model.QuyLuong.ThucChiGrossThayDoi.ToString(Money) đ)
+                    </span>
+                }
             </div>
 
             @if (!string.IsNullOrEmpty(Model.QuyLuong.GhiChuPhuongPhap))
@@ -370,6 +421,8 @@
 
     @* ══════════════════════ 10.5 — CHUYÊN CẦN & VI PHẠM ══════════════════════ *@
     <section class="baocao-panel" data-baocao-panel="chuyen-can" hidden="@(tab != "chuyen-can")">
+        <p class="baocao-note">Chỉ xét ca đã công bố và kết thúc. Nghỉ được duyệt: @Model.ChuyenCan.SoCaNghiDuocDuyet ca;
+            thiếu quẹt cần đối soát: @Model.ChuyenCan.SoCaThieuQuet ca. Hai nhóm này không tính vào mẫu số chuyên cần.</p>
         <div class="baocao-kpi-grid">
             <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-fingerprint"></i></div>
@@ -393,7 +446,10 @@
                 <div>
                     <span class="catalog-kpi-label">Lượt vi phạm</span>
                     <h3 class="catalog-kpi-value"><span data-count-to="@viPham">@viPham</span> <small>lượt</small></h3>
-                    <p class="catalog-kpi-desc">Trễ @Model.ChuyenCan.DiTre · sớm @Model.ChuyenCan.VeSom · cả hai @Model.ChuyenCan.TreVaSom</p>
+                    <p class="catalog-kpi-desc">
+                        Trễ @Model.ChuyenCan.DiTre · sớm @Model.ChuyenCan.VeSom &bull;
+                        <a href="javascript:void(0)" class="text-decoration-none fw-semibold" data-baocao-drill="vi-pham"><i class="bi bi-zoom-in"></i> Chi tiết</a>
+                    </p>
                 </div>
             </div>
             <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
@@ -474,6 +530,13 @@
 
     @* ══════════════════════ 10.6 — HIỆU QUẢ NHÂN SỰ SỰ KIỆN ══════════════════════ *@
     <section class="baocao-panel" data-baocao-panel="su-kien" hidden="@(tab != "su-kien")">
+        @if (!string.IsNullOrEmpty(Model.SuKien.GhiChuPhamVi))
+        {
+            <div class="alert alert-info py-2 px-3 small rounded-3 mb-3">
+                <i class="bi bi-info-circle-fill me-1 text-info"></i>
+                @Model.SuKien.GhiChuPhamVi
+            </div>
+        }
         <div class="baocao-kpi-grid">
             <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-calendar-event"></i></div>
@@ -488,13 +551,16 @@
                 <div>
                     <span class="catalog-kpi-label">Lượt điều động nhân sự</span>
                     <h3 class="catalog-kpi-value"><span data-count-to="@Model.SuKien.TongLuotPhanCong">@Model.SuKien.TongLuotPhanCong</span> <small>lượt</small></h3>
-                    <p class="catalog-kpi-desc">Tổng số phân công vào các sự kiện</p>
+                    <p class="catalog-kpi-desc">
+                        Tổng số phân công &bull;
+                        <a href="javascript:void(0)" class="text-decoration-none fw-semibold" data-baocao-drill="su-kien"><i class="bi bi-zoom-in"></i> Chi tiết</a>
+                    </p>
                 </div>
             </div>
             <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-cash-coin"></i></div>
                 <div>
-                    <span class="catalog-kpi-label">Phụ cấp đã phân bổ</span>
+                    <span class="catalog-kpi-label">Tiền sự kiện phát sinh trong kỳ</span>
                     <h3 class="catalog-kpi-value">@Model.SuKien.TongPhuCapDaPhanBo.ToString(Money) <small>đ</small></h3>
                     <p class="catalog-kpi-desc">Trên ngân sách dự kiến @Model.SuKien.TongNganSach.ToString(Money) đ</p>
                 </div>
@@ -568,4 +634,16 @@
             </section>
         }
     </section>
+
+    <!-- Modal chi tiết đối chứng (Drill-down) -->
+    <div class="modal fade" id="baocaoDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" id="baocaoDetailsContent">
+                <div class="p-4 text-center text-muted">
+                    <span class="spinner-border spinner-border-sm me-2"></span> Đang nạp dữ liệu chi tiết...
+                </div>
+            </div>
+        </div>
+    </div>
+    @if (Model.IsDatabaseOnline) { <partial name="_ReportComparisons" model="Model" /> }
 </div>

@@ -1,0 +1,322 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.BaoCaoViewModel
+@{
+    Layout = null;
+    var now = Model.GeneratedAt.ToOffset(TimeSpan.FromHours(7));
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>Báo cáo Thống kê Nhân sự — @Model.NhanKy</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <style>
+        @@page {
+            size: A4;
+            margin: 15mm 15mm 20mm 15mm;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 10pt;
+            color: #1e293b;
+            background: #fff;
+        }
+        .print-header {
+            border-bottom: 2px solid #1e3a8a;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+        }
+        .hotel-name {
+            font-size: 16pt;
+            font-weight: 700;
+            color: #1e3a8a;
+            text-transform: uppercase;
+        }
+        .report-title {
+            font-size: 14pt;
+            font-weight: 700;
+            margin-top: 10px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        .report-meta {
+            text-align: center;
+            font-size: 9pt;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+        .table {
+            font-size: 9pt;
+        }
+        thead {
+            display: table-header-group;
+        }
+        tr {
+            page-break-inside: avoid;
+        }
+        .badge {
+            font-weight: 500;
+        }
+        .signature-block {
+            margin-top: 32px;
+            page-break-inside: avoid;
+        }
+        @@media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="p-3">
+    <div class="no-print mb-3 d-flex justify-content-between align-items-center bg-light p-2 rounded border">
+        <span>Bản xem trước in khổ A4. Bấm In để mở hộp thoại in của trình duyệt (chọn Lưu dưới dạng PDF nếu muốn tải PDF).</span>
+        <div>
+            <button onclick="window.print()" class="btn btn-sm btn-primary fw-semibold px-3">
+                In / Lưu PDF
+            </button>
+            <button onclick="window.close()" class="btn btn-sm btn-outline-secondary ms-2">Đóng</button>
+        </div>
+    </div>
+
+    @if (!Model.IsDatabaseOnline)
+    {
+        <p role="alert">Dữ liệu báo cáo chưa sẵn sàng. Không thể in số liệu chưa tải thành công.</p>
+    }
+    else
+    {
+    <div class="print-header d-flex justify-content-between align-items-center">
+        <div>
+            <div class="hotel-name">The OverTime Hotel</div>
+            <small class="text-muted">Hệ thống Quản trị Nguồn nhân lực & Phân tích Quản trị</small>
+        </div>
+        <div class="text-end text-muted small">
+            <div>Ngày in: @now.ToString("dd/MM/yyyy HH:mm")</div>
+            <div>Người lập: @Model.RoleLabel</div>
+        </div>
+    </div>
+
+    <div class="report-title">BÁO CÁO THỐNG KÊ NHÂN SỰ — @Model.NhanKy</div>
+    <div class="report-meta">
+        Phạm vi: <strong>@Model.PhamViLabel</strong> &bull; Kỳ: <strong>@Model.NhanKy</strong> (@Model.TuNgay.ToString("dd/MM/yyyy") - @Model.DenNgay.ToString("dd/MM/yyyy"))
+    </div>
+
+    @* Tab Biến động *@
+    @if (Model.Tab == "bien-dong")
+    {
+        <h5 class="fw-bold border-bottom pb-1">1. Chỉ tiêu Biến động Nhân sự</h5>
+        <div class="row g-2 mb-3">
+            <div class="col-3">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Quân số đầu kỳ</small>
+                    <span class="fs-5 fw-bold">@Model.BienDong.DauKy</span>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Tuyển mới</small>
+                    <span class="fs-5 fw-bold text-success">+@Model.BienDong.TuyenMoi</span>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Thôi việc</small>
+                    <span class="fs-5 fw-bold text-danger">-@Model.BienDong.NghiViec</span>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Quân số cuối kỳ</small>
+                    <span class="fs-5 fw-bold">@Model.BienDong.CuoiKy</span>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="fw-bold mt-3">Chi tiết biến động theo phòng ban:</h6>
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Phòng ban</th>
+                    <th class="text-end">Quân số</th>
+                    <th class="text-end">Tuyển mới</th>
+                    <th class="text-end">Thôi việc</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var dept in Model.BienDong.TheoPhongBan)
+                {
+                    <tr>
+                        <td>@dept.PhongBan</td>
+                        <td class="text-end">@dept.QuanSo</td>
+                        <td class="text-end text-success">@(dept.TuyenMoi > 0 ? "+" + dept.TuyenMoi : "0")</td>
+                        <td class="text-end text-danger">@(dept.NghiViec > 0 ? "-" + dept.NghiViec : "0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (Model.Tab == "quy-luong")
+    {
+        <h5 class="fw-bold border-bottom pb-1">2. Đối soát Quỹ lương vs Định mức</h5>
+        <p>@Model.QuyLuong.TrangThaiNganSachDuyet</p>
+        @if (Model.QuyLuong.NganSachDuocDuyet.HasValue)
+        {
+            <p>Ngân sách được duyệt: @Model.QuyLuong.NganSachDuocDuyet.Value.ToString("N0") đ.
+                Chênh lệch với lương đã duyệt: @Model.QuyLuong.ChenhLechNganSachDuyet?.ToString("N0") đ.</p>
+        }
+        <div class="row g-2 mb-3">
+            <div class="col-4">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Tổng lương đã tính (Gross)</small>
+                    <span class="fs-5 fw-bold">@Model.QuyLuong.ThucChiGross.ToString("N0") đ</span>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Định mức tham chiếu</small>
+                    <span class="fs-5 fw-bold">@Model.QuyLuong.NganSachThamChieu.ToString("N0") đ</span>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Tỷ lệ so với định mức</small>
+                    <span class="fs-5 fw-bold @(Model.QuyLuong.VuotNguong ? "text-danger" : "text-success")">
+                        @Model.QuyLuong.PhanTramGiaiNgan.ToString("0.0") %
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="fw-bold mt-3">Phân bổ chi phí theo phòng ban:</h6>
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Phòng ban</th>
+                    <th class="text-end">Định mức</th>
+                    <th class="text-end">Thực chi</th>
+                    <th class="text-end">Chênh lệch</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.QuyLuong.TheoPhongBan)
+                {
+                    <tr>
+                        <td>@row.PhongBan</td>
+                        <td class="text-end">@row.NganSach.ToString("N0") đ</td>
+                        <td class="text-end fw-semibold">@row.ThucChi.ToString("N0") đ</td>
+                        <td class="text-end @(row.ChenhLech > 0 ? "text-danger" : "text-success")">@row.ChenhLech.ToString("N0") đ</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (Model.Tab == "chuyen-can")
+    {
+        <h5 class="fw-bold border-bottom pb-1">3. Chuyên cần & Vi phạm</h5>
+        <div class="row g-2 mb-3">
+            <div class="col-3">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Tổng lượt ca</small>
+                    <span class="fs-5 fw-bold">@Model.ChuyenCan.TongBanGhi</span>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Đúng giờ</small>
+                    <span class="fs-5 fw-bold text-success">@Model.ChuyenCan.DungGio</span>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Vi phạm (trễ/sớm)</small>
+                    <span class="fs-5 fw-bold text-danger">@(Model.ChuyenCan.DiTre + Model.ChuyenCan.VeSom + Model.ChuyenCan.TreVaSom)</span>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="border p-2 rounded text-center">
+                    <small class="text-muted d-block">Tỷ lệ chuyên cần</small>
+                    <span class="fs-5 fw-bold">@Model.ChuyenCan.TyLeChuyenCan.ToString("0.0") %</span>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="fw-bold mt-3">Xếp hạng vi phạm kỷ luật:</h6>
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Nhân viên</th>
+                    <th>Phòng ban</th>
+                    <th class="text-end">Lượt vi phạm</th>
+                    <th class="text-end">Tổng phút trễ</th>
+                    <th class="text-end">Tổng phút sớm</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.ChuyenCan.XepHangViPham)
+                {
+                    <tr>
+                        <td class="fw-semibold">@row.HoTen</td>
+                        <td>@row.PhongBan</td>
+                        <td class="text-end text-danger fw-bold">@row.SoLanViPham</td>
+                        <td class="text-end">@row.TongPhutTre</td>
+                        <td class="text-end">@row.TongPhutVeSom</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (Model.Tab == "co-cau")
+    {
+        <h5>Cơ cấu nhân lực: @Model.CoCau.TongNhanSu hồ sơ</h5>
+        @foreach (var group in new (string Title, IReadOnlyList<OvertimeHotel.HRM.WebAdmin.Models.PhanBoItem> Rows)[] {
+            ("Phòng ban", Model.CoCau.TheoPhongBan), ("Chức vụ", Model.CoCau.TheoChucVu),
+            ("Giới tính", Model.CoCau.TheoGioiTinh), ("Trạng thái", Model.CoCau.TheoTrangThai) })
+        {
+            <h6>@group.Title</h6>
+            <partial name="_ReportDistribution" model="group.Rows" />
+        }
+    }
+    else if (Model.Tab == "hoc-van")
+    {
+        <h5>Học vấn và thâm niên</h5>
+        <p>Đại học trở lên: @Model.HocVanThamNien.SoDaiHocTroLen người (@Model.HocVanThamNien.TyLeDaiHocTroLen%). Thâm niên trung bình: @Model.HocVanThamNien.ThamNienTrungBinh năm.</p>
+        <h6>Trình độ</h6><partial name="_ReportDistribution" model="Model.HocVanThamNien.TheoTrinhDo" />
+        <h6>Thâm niên</h6><partial name="_ReportDistribution" model="Model.HocVanThamNien.TheoThamNien" />
+    }
+    else if (Model.Tab == "su-kien")
+    {
+        <h5>Hiệu quả nhân sự sự kiện</h5>
+        <p>@Model.SuKien.TongSuKien sự kiện; @Model.SuKien.TongLuotPhanCong lượt phân công. Tiền phát sinh trong kỳ: @Model.SuKien.TongPhuCapDaPhanBo.ToString("N0") đ.</p>
+        <p>@Model.SuKien.GhiChuPhamVi</p>
+        <table class="table table-bordered table-sm">
+            <thead><tr><th>Sự kiện</th><th>Loại / Trạng thái</th><th>Thời gian</th><th>Nhân sự</th><th>Ngân sách</th><th>Phát sinh</th></tr></thead>
+            <tbody>
+                @foreach (var item in Model.SuKien.DanhSach)
+                {
+                    <tr><td>@item.TenDuAn</td><td>@item.LoaiLabel / @item.TrangThaiLabel</td>
+                        <td>@item.TuNgay.ToString("dd/MM/yyyy") – @item.DenNgay.ToString("dd/MM/yyyy")</td>
+                        <td>@item.SoNhanSu</td><td>@item.NganSach.ToString("N0") đ</td><td>@item.PhuCapDaPhanBo.ToString("N0") đ</td></tr>
+                }
+            </tbody>
+        </table>
+        <h6>Đánh giá nhân sự</h6><partial name="_ReportDistribution" model="Model.SuKien.TheoDanhGia" />
+    }
+
+    <partial name="_ReportComparisons" model="Model" />
+    <div class="signature-block row mt-5 text-center">
+        <div class="col-6">
+            <div class="fw-bold">NGƯỜI LẬP BIỂU</div>
+            <div class="text-muted small">(Ký, ghi rõ họ tên)</div>
+            <div style="height: 60px;"></div>
+            <div>@Model.RoleLabel</div>
+        </div>
+        <div class="col-6">
+            <div class="fw-bold">GIÁM ĐỐC / BAN ĐIỀU HÀNH</div>
+            <div class="text-muted small">(Ký, đóng dấu)</div>
+            <div style="height: 60px;"></div>
+            <div>...................................................</div>
+        </div>
+    </div>
+    }
+
+</body>
+</html>

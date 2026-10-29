@@ -1,0 +1,68 @@
+@using System.Globalization
+@using OvertimeHotel.HRM.Core.Policies
+@model OvertimeHotel.HRM.WebAdmin.Models.PayrollBudgetViewModel
+@{
+    ViewData["Title"] = "Ngân sách lương được duyệt";
+}
+<div class="catalog-page">
+    <partial name="_CatalogAlerts" />
+    <h1>Ngân sách lương được duyệt</h1>
+    <p>Mỗi tháng/phòng ban có một ngân sách. Tổng khách sạn là tổng các phòng, chỉ dùng bản đã duyệt hoặc khóa.
+        Người lập và người duyệt phải là hai nhân viên khác nhau. Ngân sách đã duyệt không được sửa số tiền.</p>
+    <a asp-controller="BaoCao" asp-action="Index" asp-route-tab="quy-luong">Quay lại báo cáo quỹ lương</a>
+    <form method="get" class="d-flex gap-2 align-items-end my-3">
+        <div><label for="budget-year">Năm</label><input class="form-control" id="budget-year" name="nam" type="number" value="@Model.Nam" min="2000" max="2200" required /></div>
+        <button class="btn btn-primary" type="submit">Xem ngân sách</button>
+    </form>
+    @if (!Model.Available)
+    {
+        <div class="alert alert-warning" role="status">Chưa triển khai bảng ngân sách. DBA cần kiểm tra và duyệt migration; ứng dụng không tự chạy script.</div>
+    }
+    else
+    {
+        <section class="catalog-card p-3 mb-3">
+            <h2 class="h5">Lập ngân sách nháp</h2>
+            <form asp-action="Save" method="post" class="row g-3">
+                <input type="hidden" name="Nam" value="@Model.Nam" />
+                <div class="col-md-2"><label for="new-month">Tháng</label><input id="new-month" name="Thang" type="number" class="form-control" min="1" max="12" value="1" required /></div>
+                <div class="col-md-4"><label for="new-dept">Phòng ban</label><select id="new-dept" name="MaPhongBan" class="form-select" asp-items="Model.Departments" required><option value="">Chọn phòng ban</option></select></div>
+                <div class="col-md-3"><label for="new-amount">Ngân sách (đ)</label><input id="new-amount" name="SoTien" class="form-control" type="number" min="0" max="9999999999999.99" step="0.01" required /></div>
+                <div class="col-md-3"><label for="new-note">Ghi chú</label><input id="new-note" name="GhiChu" class="form-control" maxlength="2000" /></div>
+                <div><button class="btn btn-primary" type="submit">Lưu nháp</button></div>
+            </form>
+        </section>
+        @if (Model.Rows.Count == 0) { <p>Chưa có ngân sách trong năm này.</p> }
+        @foreach (var row in Model.Rows)
+        {
+            var department = Model.Departments.FirstOrDefault(d => d.Value == row.MaPhongBan?.ToString())?.Text ?? "Không xác định";
+            <section class="catalog-card p-3 mb-3">
+                <h2 class="h5">Tháng @row.Thang/@row.Nam · @department</h2>
+                <p>Trạng thái: <strong>@row.TrangThai</strong> · @row.SoTienNganSach.ToString("N2") đ · Người lập #@row.NguoiTao · Người duyệt #@row.NguoiDuyet · @row.NgayDuyet?.ToString("dd/MM/yyyy HH:mm") UTC</p>
+                @if (row.TrangThai is "DRAFT" or "TU_CHOI")
+                {
+                    <form asp-action="Save" method="post" class="row g-2 mb-2">
+                        <input type="hidden" name="Id" value="@row.MaNganSach" /><input type="hidden" name="Nam" value="@row.Nam" />
+                        <input type="hidden" name="Version" value="@row.Version" />
+                        <input type="hidden" name="Thang" value="@row.Thang" /><input type="hidden" name="MaPhongBan" value="@row.MaPhongBan" />
+                        <div class="col-md-4"><label for="amount-@row.MaNganSach">Ngân sách (đ)</label><input id="amount-@row.MaNganSach" class="form-control" name="SoTien" type="number" min="0" max="9999999999999.99" step="0.01" value="@row.SoTienNganSach.ToString(CultureInfo.InvariantCulture)" required /></div>
+                        <div class="col-md-6"><label for="note-@row.MaNganSach">Ghi chú</label><input id="note-@row.MaNganSach" class="form-control" name="GhiChu" value="@row.GhiChu" maxlength="2000" /></div>
+                        <div class="col-md-2 align-self-end"><button type="submit" class="btn btn-outline-primary">Lưu sửa</button></div>
+                    </form>
+                }
+                else { <p>@row.GhiChu</p> }
+                <form asp-action="Transition" method="post" class="d-flex gap-2">
+                    <input type="hidden" name="id" value="@row.MaNganSach" /><input type="hidden" name="nam" value="@Model.Nam" />
+                    <input type="hidden" name="version" value="@row.Version" />
+                    @foreach (var action in new[] { "submit", "approve", "reject", "lock" })
+                    {
+                        if (PayrollBudgetPolicy.CanTransition(row.TrangThai, action, row.NguoiTao ?? 0, Model.ActorId))
+                        {
+                            var label = action switch { "submit" => "Gửi duyệt", "approve" => "Duyệt", "reject" => "Từ chối", _ => "Khóa ngân sách" };
+                            <button class="btn btn-sm btn-outline-primary" type="submit" name="action" value="@action">@label</button>
+                        }
+                    }
+                </form>
+            </section>
+        }
+    }
+</div>

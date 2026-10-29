@@ -343,6 +343,127 @@ var tests = new (string Name, Action Run)[]
     ("Quỹ lương: ngưỡng cảnh báo đỏ là 10%", () =>
     {
         Equal(10m, ReportPolicy.BudgetAlertThresholdPercent);
+    }),
+
+    // ══════════════════════════════════════════════════════════════════
+    //  PART 9: SO SÁNH KỲ TRƯỚC & CÙNG KỲ NĂM TRƯỚC (Task 11)
+    // ══════════════════════════════════════════════════════════════════
+
+    ("So sánh: kỳ trước theo tháng (trong năm và lùi năm)", () =>
+    {
+        var t10 = ReportPolicy.ResolvePreviousPeriodRange(2026, null, 10);
+        Equal(new DateOnly(2026, 9, 1), t10.From);
+        Equal(new DateOnly(2026, 9, 30), t10.To);
+        Equal("Tháng 09/2026", t10.Label);
+
+        var t1 = ReportPolicy.ResolvePreviousPeriodRange(2026, null, 1);
+        Equal(new DateOnly(2025, 12, 1), t1.From);
+        Equal(new DateOnly(2025, 12, 31), t1.To);
+        Equal("Tháng 12/2025", t1.Label);
+    }),
+
+    ("So sánh: kỳ trước theo quý và năm", () =>
+    {
+        var q4 = ReportPolicy.ResolvePreviousPeriodRange(2026, 4, null);
+        Equal(new DateOnly(2026, 7, 1), q4.From);
+        Equal(new DateOnly(2026, 9, 30), q4.To);
+        Equal("Quý 3/2026", q4.Label);
+
+        var q1 = ReportPolicy.ResolvePreviousPeriodRange(2026, 1, null);
+        Equal(new DateOnly(2025, 10, 1), q1.From);
+        Equal(new DateOnly(2025, 12, 31), q1.To);
+        Equal("Quý 4/2025", q1.Label);
+
+        var nam = ReportPolicy.ResolvePreviousPeriodRange(2026, null, null);
+        Equal(new DateOnly(2025, 1, 1), nam.From);
+        Equal(new DateOnly(2025, 12, 31), nam.To);
+        Equal("Năm 2025", nam.Label);
+    }),
+
+    ("So sánh: cùng kỳ năm trước (YoY)", () =>
+    {
+        var t10YoY = ReportPolicy.ResolveSamePeriodLastYearRange(2026, null, 10);
+        Equal(new DateOnly(2025, 10, 1), t10YoY.From);
+        Equal(new DateOnly(2025, 10, 31), t10YoY.To);
+        Equal("Tháng 10/2025", t10YoY.Label);
+
+        var q2YoY = ReportPolicy.ResolveSamePeriodLastYearRange(2026, 2, null);
+        Equal(new DateOnly(2025, 4, 1), q2YoY.From);
+        Equal(new DateOnly(2025, 6, 30), q2YoY.To);
+        Equal("Quý 2/2025", q2YoY.Label);
+    }),
+
+    ("So sánh: tính biến động CalculateChange", () =>
+    {
+        var tang = ReportPolicy.CalculateChange(120m, 100m);
+        Equal(20m, tang.Absolute);
+        Equal(20.0m, tang.Percent);
+        Equal("tang", tang.Trend);
+
+        var giam = ReportPolicy.CalculateChange(80m, 100m);
+        Equal(-20m, giam.Absolute);
+        Equal(-20.0m, giam.Percent);
+        Equal("giam", giam.Trend);
+
+        var bang = ReportPolicy.CalculateChange(100m, 100m);
+        Equal(0m, bang.Absolute);
+        Equal(0.0m, bang.Percent);
+        Equal("khong_doi", bang.Trend);
+
+        // Chặn chia cho 0 khi kỳ trước = 0
+        var tuKhong = ReportPolicy.CalculateChange(50m, 0m);
+        Equal(50m, tuKhong.Absolute);
+        Equal(null, tuKhong.Percent);
+        Equal("tang", tuKhong.Trend);
+
+        var haiKhong = ReportPolicy.CalculateChange(0m, 0m);
+        Equal(0m, haiKhong.Absolute);
+        Equal(null, haiKhong.Percent);
+        Equal("khong_doi", haiKhong.Trend);
+    }),
+
+    // ══════════════════════════════════════════════════════════════════
+    //  PART 10: THÂM NIÊN VỚI NHÂN VIÊN ĐÃ NGHỈ (Task 2)
+    // ══════════════════════════════════════════════════════════════════
+
+    ("Thâm niên: nhân viên thôi việc dừng tính tại ngày nghỉ", () =>
+    {
+        var vaoLam = new DateOnly(2024, 1, 15);
+        var thoiViec = new DateOnly(2025, 7, 15); // làm đúng 18 tháng
+        var asOf = new DateOnly(2026, 10, 1);     // mốc sau đó rất lâu
+
+        // Nếu có ngày nghỉ trước mốc -> thâm niên chốt tại 18 tháng, không tăng tiếp thành 32 tháng
+        Equal(18, ReportPolicy.TenureMonths(vaoLam, asOf, thoiViec));
+
+        // Nếu chưa nghỉ (ngayThoiViec = null) -> tính bình thường tới asOf (32 tháng)
+        Equal(32, ReportPolicy.TenureMonths(vaoLam, asOf, null));
+
+        // Nếu ngày nghỉ nằm sau asOf -> tính tới asOf
+        var thoiViecTuongLai = new DateOnly(2027, 1, 1);
+        Equal(32, ReportPolicy.TenureMonths(vaoLam, asOf, thoiViecTuongLai));
+    }),
+
+    // ══════════════════════════════════════════════════════════════════
+    //  PART 11: AN TOÀN XUẤT TỆP & CHỐNG CSV FORMULA INJECTION (Task 6)
+    // ══════════════════════════════════════════════════════════════════
+
+    ("An toàn CSV: vô hiệu hóa tiền tố công thức bảng tính", () =>
+    {
+        // Các ký tự nguy hiểm: =, +, -, @, \t, \r
+        Equal("'=cmd|' /C calc'!A0", ReportPolicy.EscapeCsv("=cmd|' /C calc'!A0"));
+        Equal("'+12345", ReportPolicy.EscapeCsv("+12345"));
+        Equal("'-SUM(A1:A10)", ReportPolicy.EscapeCsv("-SUM(A1:A10)"));
+        Equal("\"'@HYPERLINK(\"\"http://evil.com\"\")\"", ReportPolicy.EscapeCsv("@HYPERLINK(\"http://evil.com\")"));
+
+        // Có dấu phẩy -> bọc ngoặc kép và thoát dấu nháy
+        Equal("\"'=SUM(A1, B1)\"", ReportPolicy.EscapeCsv("=SUM(A1, B1)"));
+        Equal("\"Phòng Lễ Tân, Buồng\"", ReportPolicy.EscapeCsv("Phòng Lễ Tân, Buồng"));
+        Equal("\"Giám đốc \"\"VIP\"\"\"", ReportPolicy.EscapeCsv("Giám đốc \"VIP\""));
+
+        // Chuỗi bình thường và chuỗi null/rỗng
+        Equal("Phòng Nhân sự", ReportPolicy.EscapeCsv("Phòng Nhân sự"));
+        Equal("", ReportPolicy.EscapeCsv(null));
+        Equal("", ReportPolicy.EscapeCsv(""));
     })
 };
 

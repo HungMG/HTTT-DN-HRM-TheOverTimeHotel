@@ -1,4 +1,6 @@
 using OvertimeHotel.HRM.Core.Enums;
+using OvertimeHotel.HRM.Core.Models;
+using System.Linq.Expressions;
 
 namespace OvertimeHotel.HRM.Core.Policies;
 
@@ -22,6 +24,23 @@ namespace OvertimeHotel.HRM.Core.Policies;
 /// </summary>
 public static class ReportPolicy
 {
+    // An undated termination cannot be reconstructed as an indefinite active contract.
+    public static Expression<Func<HopDong, bool>> ReferenceContractFilter => h =>
+        (h.TrangThai == "HIEU_LUC" || h.TrangThai == "HET_HAN" || h.TrangThai == "DA_KET_THUC"
+            || h.TrangThai == "DA_CHAM_DUT" || h.TrangThai == "CHAM_DUT")
+        && ((h.TrangThai != "DA_CHAM_DUT" && h.TrangThai != "CHAM_DUT") || h.NgayKetThuc != null);
+
+    /// <summary>Only published, completed shifts are assessed; missing punches and approved leave are explicit states.</summary>
+    public static string? ResolveAttendanceStatus(bool published, string shiftStatus, DateTimeOffset endsAt,
+        DateTimeOffset now, bool approvedLeave, ChamCong? punch)
+    {
+        if (!published || shiftStatus == "DA_HUY" || endsAt > now) return null;
+        if (punch is null || (!punch.GioCheckIn.HasValue && !punch.GioCheckOut.HasValue))
+            return approvedLeave ? "NGHI_DA_DUYET" : "VANG_MAT";
+        if (!punch.GioCheckIn.HasValue || !punch.GioCheckOut.HasValue) return "THIEU_QUET";
+        return shiftStatus == "VANG_MAT" ? "VANG_MAT" : punch.TrangThai;
+    }
+
     /// <summary>Số tháng của một quý, dùng khi quy đổi khoảng kỳ báo cáo.</summary>
     private const int MonthsPerQuarter = 3;
 
@@ -139,6 +158,51 @@ public static class ReportPolicy
     }
 
     /// <summary>
+    /// Xác định khoảng ngày và nhãn của kỳ liền trước kỳ hiện tại (Month-over-Month hoặc Quarter-over-Quarter hoặc Year-over-Year).
+    /// </summary>
+    public static (DateOnly From, DateOnly To, string Label) ResolvePreviousPeriodRange(int year, int? quarter, int? month)
+    {
+        if (month is >= 1 and <= 12)
+        {
+            var prevYear = month == 1 ? year - 1 : year;
+            var prevMonth = month == 1 ? 12 : month.Value - 1;
+            return ResolvePeriodRange(prevYear, null, prevMonth);
+        }
+
+        if (quarter is >= 1 and <= 4)
+        {
+            var prevYear = quarter == 1 ? year - 1 : year;
+            var prevQuarter = quarter == 1 ? 4 : quarter.Value - 1;
+            return ResolvePeriodRange(prevYear, prevQuarter, null);
+        }
+
+        return ResolvePeriodRange(year - 1, null, null);
+    }
+
+    /// <summary>
+    /// Xác định khoảng ngày và nhãn của cùng kỳ năm trước (Year-over-Year).
+    /// </summary>
+    public static (DateOnly From, DateOnly To, string Label) ResolveSamePeriodLastYearRange(int year, int? quarter, int? month) =>
+        ResolvePeriodRange(year - 1, quarter, month);
+
+    /// <summary>
+    /// Tính biến động giữa kỳ hiện tại và kỳ so sánh.
+    /// Trả về chênh lệch tuyệt đối, tỷ lệ % thay đổi (null nếu kỳ trước bằng 0) và hướng biến động.
+    /// </summary>
+    public static (decimal Absolute, decimal? Percent, string Trend) CalculateChange(decimal current, decimal previous)
+    {
+        var abs = current - previous;
+        decimal? pct = null;
+        if (previous != 0m)
+        {
+            pct = Math.Round(abs / Math.Abs(previous) * 100m, 1);
+        }
+
+        var trend = abs > 0 ? "tang" : (abs < 0 ? "giam" : "khong_doi");
+        return (abs, pct, trend);
+    }
+
+    /// <summary>
     /// Số tháng của một kỳ báo cáo — dùng để quy đổi định mức ngân sách tháng sang cả kỳ.
     /// So quỹ lương một quý với định mức một tháng sẽ lệch đúng ba lần.
     /// </summary>
@@ -208,17 +272,24 @@ public static class ReportPolicy
     /// Thâm niên công tác tính theo số tháng tròn giữa ngày vào làm và ngày mốc.
     /// Nhân viên chưa vào làm (mốc nằm trước ngày vào làm) trả về 0 thay vì số âm.
     /// </summary>
-    public static int TenureMonths(DateOnly ngayVaoLam, DateOnly asOf)
+    public static int TenureMonths(DateOnly ngayVaoLam, DateOnly asOf) =>
+        TenureMonths(ngayVaoLam, asOf, null);
+
+    /// <summary>
+    /// Thâm niên công tác có xét ngày thôi việc: nếu đã nghỉ trước ngày mốc, thâm niên dừng tại ngày thôi việc.
+    /// </summary>
+    public static int TenureMonths(DateOnly ngayVaoLam, DateOnly asOf, DateOnly? ngayThoiViec)
     {
-        if (ngayVaoLam > asOf)
+        var cutoff = ngayThoiViec.HasValue && ngayThoiViec.Value < asOf ? ngayThoiViec.Value : asOf;
+        if (ngayVaoLam > cutoff)
         {
             return 0;
         }
 
-        var months = (asOf.Year - ngayVaoLam.Year) * MonthsPerYear + (asOf.Month - ngayVaoLam.Month);
+        var months = (cutoff.Year - ngayVaoLam.Year) * MonthsPerYear + (cutoff.Month - ngayVaoLam.Month);
 
         // Chưa tới ngày kỷ niệm trong tháng thì chưa tính là tròn tháng.
-        if (asOf.Day < ngayVaoLam.Day)
+        if (cutoff.Day < ngayVaoLam.Day)
         {
             months--;
         }
@@ -405,5 +476,32 @@ public static class ReportPolicy
         var rate = budget <= 0m ? 0m : Math.Round(actual / budget * 100m, 1);
 
         return (variance, rate, actual > budget);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  BẢO MẬT XUẤT CSV
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Chuẩn hóa chuỗi an toàn cho CSV: bọc dấu nháy kép khi có ký tự đặc biệt,
+    /// đồng thời vô hiệu hóa công thức nguy hiểm (CSV Formula Injection)
+    /// bắt đầu bằng =, +, -, @, \t, \r bằng cách thêm tiền tố nháy đơn '.
+    /// </summary>
+    public static string EscapeCsv(string? value)
+    {
+        var text = value ?? string.Empty;
+
+        // Vô hiệu hóa tiền tố công thức bảng tính (CSV Formula Injection)
+        if (text.Length > 0 && (text[0] == '=' || text[0] == '+' || text[0] == '-' || text[0] == '@' || text[0] == '\t' || text[0] == '\r'))
+        {
+            text = "'" + text;
+        }
+
+        if (text.IndexOfAny([',', '"', '\n', '\r']) < 0)
+        {
+            return text;
+        }
+
+        return $"\"{text.Replace("\"", "\"\"")}\"";
     }
 }

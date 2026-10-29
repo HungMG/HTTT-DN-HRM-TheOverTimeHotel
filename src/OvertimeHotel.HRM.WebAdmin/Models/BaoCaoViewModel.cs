@@ -13,6 +13,8 @@ namespace OvertimeHotel.HRM.WebAdmin.Models;
 /// </summary>
 public class BaoCaoViewModel
 {
+    public string? CungKyLabel { get; set; }
+    public IReadOnlyList<ReportComparisonItem> SoSanhCungKy { get; set; } = [];
     // ── Bộ lọc ─────────────────────────────────────────────────────────────
     /// <summary>Kiểu kỳ đang chọn: <c>THANG</c>, <c>QUY</c> hoặc <c>NAM</c>.</summary>
     public string KyBaoCao { get; set; } = "THANG";
@@ -145,6 +147,36 @@ public class BienDongNhanSuReport
     /// <summary>Biến động ròng trong kỳ (tuyển mới - thôi việc).</summary>
     public int BienDongRong { get; set; }
 
+    /// <summary>Số hồ sơ thôi việc bị thiếu ngày thôi việc chính thức trong CSDL.</summary>
+    public int SoHoSoThieuNgayThoiViec { get; set; }
+
+    /// <summary>Nhãn kỳ liền trước dùng để so sánh (MoM / QoQ / YoY).</summary>
+    public string? KyTruocLabel { get; set; }
+
+    /// <summary>Tuyển mới kỳ trước.</summary>
+    public int TuyenMoiKyTruoc { get; set; }
+
+    /// <summary>Thôi việc kỳ trước.</summary>
+    public int NghiViecKyTruoc { get; set; }
+
+    /// <summary>Quân số cuối kỳ trước.</summary>
+    public int CuoiKyKyTruoc { get; set; }
+
+    /// <summary>Chênh lệch tuyển mới so với kỳ trước.</summary>
+    public int TuyenMoiThayDoi { get; set; }
+
+    /// <summary>Chênh lệch thôi việc so với kỳ trước.</summary>
+    public int NghiViecThayDoi { get; set; }
+
+    /// <summary>Chênh lệch quân số cuối kỳ so với kỳ trước.</summary>
+    public int CuoiKyThayDoi { get; set; }
+
+    /// <summary>Tỷ lệ thôi việc kỳ trước.</summary>
+    public decimal TyLeThoiViecKyTruoc { get; set; }
+
+    /// <summary>Thay đổi điểm phần trăm tỷ lệ thôi việc so với kỳ trước.</summary>
+    public decimal? TyLeThoiViecThayDoi { get; set; }
+
     /// <summary>Chuỗi số liệu theo từng tháng trong kỳ.</summary>
     public IReadOnlyList<BienDongSeriesItem> Series { get; set; } = [];
 
@@ -273,6 +305,45 @@ public class QuyLuongNganSachReport
     /// <summary>Số phiếu lương đã tổng hợp trong kỳ.</summary>
     public int SoPhieuLuong { get; set; }
 
+    /// <summary>Số phiếu lương đã duyệt trong kỳ.</summary>
+    public int SoPhieuDaDuyet { get; set; }
+
+    /// <summary>Số phiếu lương ở trạng thái nháp trong kỳ.</summary>
+    public int SoPhieuNhap { get; set; }
+
+    /// <summary>Tổng thực chi gộp từ các phiếu đã duyệt.</summary>
+    public decimal ThucChiGrossDaDuyet { get; set; }
+
+    /// <summary>Tổng thực chi gộp từ các phiếu nháp (dự tính).</summary>
+    public decimal ThucChiGrossNhap { get; set; }
+
+    /// <summary>Ngân sách lương được phê duyệt chính thức (nếu đã thiết lập).</summary>
+    public decimal? NganSachDuocDuyet { get; set; }
+
+    /// <summary>Đã có ngân sách được phê duyệt hay chưa.</summary>
+    public bool CoNganSachDuocDuyet => NganSachDuocDuyet.HasValue;
+
+    /// <summary>Tỷ lệ giải ngân theo ngân sách được duyệt (%).</summary>
+    public decimal? TyLeGiaiNganNganSachDuyet { get; set; }
+
+    /// <summary>Chênh lệch thực chi so với ngân sách được duyệt.</summary>
+    public decimal? ChenhLechNganSachDuyet { get; set; }
+
+    /// <summary>Trạng thái ngân sách lương được duyệt.</summary>
+    public string TrangThaiNganSachDuyet { get; set; } = "Chưa thiết lập";
+
+    /// <summary>Nhãn kỳ trước để so sánh chi phí lương.</summary>
+    public string? KyTruocLabel { get; set; }
+
+    /// <summary>Thực chi gross kỳ trước.</summary>
+    public decimal ThucChiGrossKyTruoc { get; set; }
+
+    /// <summary>Chênh lệch thực chi gross so với kỳ trước.</summary>
+    public decimal ThucChiGrossThayDoi { get; set; }
+
+    /// <summary>Tỷ lệ % thay đổi thực chi gross so với kỳ trước.</summary>
+    public decimal? ThucChiGrossThayDoiPct { get; set; }
+
     /// <summary>Chuỗi số liệu theo tháng: định mức vs thực chi.</summary>
     public IReadOnlyList<QuyLuongSeriesItem> Series { get; set; } = [];
 
@@ -281,6 +352,16 @@ public class QuyLuongNganSachReport
 
     /// <summary>Ghi chú phương pháp — nói rõ định mức là số suy ra, không phải ngân sách duyệt thật.</summary>
     public string GhiChuPhuongPhap { get; set; } = string.Empty;
+}
+
+public sealed class ReportComparisonItem
+{
+    public string Label { get; set; } = "";
+    public string Unit { get; set; } = "";
+    public decimal Current { get; set; }
+    public decimal Previous { get; set; }
+    public decimal Difference => Current - Previous;
+    public decimal? Percent => OvertimeHotel.HRM.Core.Policies.ReportPolicy.CalculateChange(Current, Previous).Percent;
 }
 
 /// <summary>Một điểm dữ liệu theo tháng cho biểu đồ cột định mức vs thực tế.</summary>
@@ -319,6 +400,8 @@ public class QuyLuongPhongBanItem
 /// <summary>Báo cáo chuyên cần &amp; vi phạm theo PRD 10.5.</summary>
 public class ChuyenCanViPhamReport
 {
+    public int SoCaNghiDuocDuyet { get; set; }
+    public int SoCaThieuQuet { get; set; }
     /// <summary>Tổng số lượt chấm công trong kỳ.</summary>
     public int TongBanGhi { get; set; }
 
@@ -349,6 +432,21 @@ public class ChuyenCanViPhamReport
     /// <summary>Tổng giờ tăng ca OT trong kỳ.</summary>
     public decimal TongGioOt { get; set; }
 
+    /// <summary>Tỷ lệ chuyên cần kỳ trước.</summary>
+    public decimal TyLeChuyenCanKyTruoc { get; set; }
+
+    /// <summary>Thay đổi điểm phần trăm tỷ lệ chuyên cần so với kỳ trước.</summary>
+    public decimal? ChuyenCanThayDoiDiemPhanTram { get; set; }
+
+    /// <summary>Số lượt vi phạm kỳ trước.</summary>
+    public int ViPhamKyTruoc { get; set; }
+
+    /// <summary>Chênh lệch lượt vi phạm so với kỳ trước.</summary>
+    public int ViPhamThayDoi { get; set; }
+
+    /// <summary>Nhãn kỳ trước để so sánh chuyên cần.</summary>
+    public string? KyTruocLabel { get; set; }
+
     /// <summary>Diễn biến tỷ lệ chuyên cần theo từng tháng.</summary>
     public IReadOnlyList<ChuyenCanSeriesItem> Series { get; set; } = [];
 
@@ -375,6 +473,9 @@ public class ChuyenCanSeriesItem
 /// <summary>Một nhân sự trong bảng xếp hạng vi phạm kỷ luật.</summary>
 public class ViPhamNhanSuItem
 {
+    /// <summary>Mã định danh nhân viên.</summary>
+    public int MaNhanVien { get; set; }
+
     /// <summary>Họ tên nhân viên.</summary>
     public string HoTen { get; set; } = string.Empty;
 
@@ -425,6 +526,12 @@ public class HieuQuaSuKienReport
     /// <summary>Tỷ lệ phân công đã hoàn thành (gồm cả xuất sắc), tính theo phần trăm.</summary>
     public decimal TyLeHoanThanh { get; set; }
 
+    /// <summary>True nếu đang xem trong phạm vi một bộ phận/phòng ban cụ thể.</summary>
+    public bool PhamViBoPhan { get; set; }
+
+    /// <summary>Ghi chú phạm vi (ngân sách sự kiện là số toàn sự kiện, nhân sự/phụ cấp là của bộ phận).</summary>
+    public string? GhiChuPhamVi { get; set; }
+
     /// <summary>Danh sách sự kiện kèm chi phí và kết quả nhân sự.</summary>
     public IReadOnlyList<SuKienItem> DanhSach { get; set; } = [];
 
@@ -462,6 +569,9 @@ public class SuKienItem
     /// <summary>Ngân sách phụ cấp dự kiến.</summary>
     public decimal NganSach { get; set; }
 
+    /// <summary>True nếu ngân sách hiển thị là ngân sách của toàn sự kiện (chung liên phòng).</summary>
+    public bool NganSachToanSuKien { get; set; }
+
     /// <summary>Tổng phụ cấp đã phân bổ cho nhân sự.</summary>
     public decimal PhuCapDaPhanBo { get; set; }
 
@@ -476,4 +586,34 @@ public class SuKienItem
 
     /// <summary>Số phân công chưa được đánh giá.</summary>
     public int SoChuaDanhGia { get; set; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CHI TIẾT ĐỐI CHỨNG (DRILL-DOWN)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// <summary>Dữ liệu chi tiết đối chứng từ KPI/chỉ tiêu xuống danh sách nguồn.</summary>
+public class BaoCaoChiTietViewModel
+{
+    public string LoaiChiTiet { get; set; } = string.Empty;
+    public string TieuDe { get; set; } = string.Empty;
+    public string NhanKy { get; set; } = string.Empty;
+    public string PhamViLabel { get; set; } = string.Empty;
+    public int TongSoDong => DanhSach.Count;
+    public decimal? TongTien { get; set; }
+    public IReadOnlyList<ChiTietDongItem> DanhSach { get; set; } = [];
+}
+
+/// <summary>Một dòng chi tiết chứng từ / hồ sơ nguồn.</summary>
+public class ChiTietDongItem
+{
+    public string MaDinhDanh { get; set; } = string.Empty;
+    public string TenDoiTuong { get; set; } = string.Empty;
+    public string BoPhan { get; set; } = string.Empty;
+    public string ChucVuHoacLoai { get; set; } = string.Empty;
+    public DateOnly? NgayThang { get; set; }
+    public decimal? SoTien { get; set; }
+    public int? SoLuong { get; set; }
+    public string TrangThai { get; set; } = string.Empty;
+    public string GhiChu { get; set; } = string.Empty;
 }

@@ -1,0 +1,91 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.BaoCaoChiTietViewModel
+
+<div class="modal-header border-0 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold text-hotel-navy">
+            <i class="bi bi-card-checklist me-2 text-hotel-gold"></i>@Model.TieuDe
+        </h5>
+        <div class="text-muted small mt-1">
+            <span class="badge bg-light text-dark border me-1"><i class="bi bi-calendar3 me-1"></i>@Model.NhanKy</span>
+            <span class="badge bg-light text-dark border me-1"><i class="bi bi-diagram-3 me-1"></i>@Model.PhamViLabel</span>
+            <span class="badge bg-light text-dark border"><i class="bi bi-list-ol me-1"></i>Tổng: @Model.TongSoDong bản ghi</span>
+            @if (Model.TongTien.HasValue && Model.TongTien.Value > 0)
+            {
+                <span class="badge bg-primary text-white ms-1">Tổng tiền: @Model.TongTien.Value.ToString("N0") đ</span>
+            }
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+</div>
+<div class="modal-body">
+    @if (Model.DanhSach.Count == 0)
+    {
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+            Không có dữ liệu chứng từ / hồ sơ chi tiết cho kỳ và phạm vi này.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th>Mã</th>
+                        <th>Họ tên / Đối tượng</th>
+                        <th>Phòng ban</th>
+                        <th>Chức vụ / Loại</th>
+                        <th>Ngày</th>
+                        @if (Model.DanhSach.Any(x => x.SoTien.HasValue))
+                        {
+                            <th class="text-end">Số tiền</th>
+                        }
+                        @if (Model.DanhSach.Any(x => x.SoLuong.HasValue))
+                        {
+                            <th class="text-end">Số lượng</th>
+                        }
+                        <th>Trạng thái</th>
+                        <th>Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.DanhSach)
+                    {
+                        <tr>
+                            <td><span class="badge bg-light text-dark border">@item.MaDinhDanh</span></td>
+                            <td class="fw-semibold">@item.TenDoiTuong</td>
+                            <td>@item.BoPhan</td>
+                            <td>@item.ChucVuHoacLoai</td>
+                            <td>@(item.NgayThang.HasValue ? item.NgayThang.Value.ToString("dd/MM/yyyy") : "—")</td>
+                            @if (Model.DanhSach.Any(x => x.SoTien.HasValue))
+                            {
+                                <td class="text-end fw-semibold text-primary">
+                                    @(item.SoTien.HasValue ? item.SoTien.Value.ToString("N0") + " đ" : "—")
+                                </td>
+                            }
+                            @if (Model.DanhSach.Any(x => x.SoLuong.HasValue))
+                            {
+                                <td class="text-end fw-bold">@(item.SoLuong.HasValue ? item.SoLuong.Value.ToString() : "—")</td>
+                            }
+                            <td><span class="badge bg-secondary-subtle text-secondary border">@item.TrangThai</span></td>
+                            <td class="small text-muted">@item.GhiChu</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+<div class="modal-footer border-0 pt-0 d-flex justify-content-between">
+    @if (Model.DanhSach.Count > 0)
+    {
+        <button type="button" class="btn btn-sm btn-outline-primary rounded-3" data-baocao-export-details>
+            <i class="bi bi-file-earmark-arrow-down me-1"></i> Xuất CSV chi tiết
+        </button>
+    }
+    else
+    {
+        <span></span>
+    }
+    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3" data-bs-dismiss="modal">Đóng</button>
+</div>

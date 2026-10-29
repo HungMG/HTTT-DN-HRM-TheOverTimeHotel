@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Security.Claims;
 using System.Text;
+using System.IO.Compression;
+using System.Xml.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OvertimeHotel.HRM.Core.Policies;
@@ -95,9 +97,22 @@ public class BaoCaoController : Controller
             return Forbid();
         }
 
+        var role = User.FindFirst(ClaimTypes.Role)?.Value;
+        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && !ReportPolicy.CanViewPayrollFundReport(role))
+        {
+            return Forbid();
+        }
+
         try
         {
             var model = await BuildAsync(scope, ky, nam, thang, quy, phongBan, tab);
+            if (!model.IsDatabaseOnline)
+            {
+                _logger.LogWarning("Không thể xuất CSV vì dữ liệu CSDL chưa tải được hoặc bị ngắt kết nối.");
+                TempData["Error"] = "Không thể xuất tệp báo cáo vì kết nối dữ liệu gián đoạn. Vui lòng thử lại sau.";
+                return StatusCode(503, "Dữ liệu báo cáo chưa sẵn sàng.");
+            }
+
             var (fileName, content) = BuildCsv(model);
             return File(content, "text/csv; charset=utf-8", fileName);
         }
@@ -107,6 +122,97 @@ public class BaoCaoController : Controller
             TempData["Error"] = "Không thể xuất tệp báo cáo. Vui lòng thử lại.";
             return RedirectToAction(nameof(Index), new { ky, nam, thang, quy, phongBan, tab });
         }
+    }
+
+    /// <summary>
+    /// Xuất bảng tính .xlsx có kiểu ô số/văn bản, không phụ thuộc thư viện ngoài.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ExportExcel(
+        string? ky,
+        int? nam,
+        int? thang,
+        int? quy,
+        int? phongBan,
+        string? tab)
+    {
+        var scope = ResolveScope();
+        if (!scope.IsAllowed)
+        {
+            return Forbid();
+        }
+
+        var role = User.FindFirst(ClaimTypes.Role)?.Value;
+        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && !ReportPolicy.CanViewPayrollFundReport(role))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            var model = await BuildAsync(scope, ky, nam, thang, quy, phongBan, tab);
+            if (!model.IsDatabaseOnline)
+            {
+                return StatusCode(503, "Dữ liệu báo cáo chưa sẵn sàng.");
+            }
+
+            var (fileName, content) = BuildExcelFile(model);
+            return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi xuất Excel báo cáo thống kê.");
+            TempData["Error"] = "Không thể xuất tệp Excel.";
+            return RedirectToAction(nameof(Index), new { ky, nam, thang, quy, phongBan, tab });
+        }
+    }
+
+    /// <summary>
+    /// Xem dữ liệu nguồn phục vụ đối chứng từ chỉ tiêu (Task 9).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Details(
+        string type,
+        string? ky,
+        int? nam,
+        int? thang,
+        int? quy,
+        int? phongBan)
+    {
+        var scope = ResolveScope();
+        if (!scope.IsAllowed)
+        {
+            return Forbid();
+        }
+
+        var role = User.FindFirst(ClaimTypes.Role)?.Value;
+        var details = await _reportService.BuildChiTietAsync(scope, role, type, ky, nam, thang, quy, phongBan);
+        return PartialView("_BaoCaoDetails", details);
+    }
+
+    /// <summary>
+    /// Trang in / lưu PDF khổ A4 tối ưu (Task 12).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Print(
+        string? ky,
+        int? nam,
+        int? thang,
+        int? quy,
+        int? phongBan,
+        string? tab)
+    {
+        var scope = ResolveScope();
+        if (!scope.IsAllowed)
+        {
+            return Forbid();
+        }
+
+        var role = User.FindFirst(ClaimTypes.Role)?.Value;
+        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && !ReportPolicy.CanViewPayrollFundReport(role)) return Forbid();
+        var model = await BuildAsync(scope, ky, nam, thang, quy, phongBan, tab);
+        if (!model.IsDatabaseOnline) return StatusCode(503, "Dữ liệu báo cáo chưa sẵn sàng.");
+        return View("Print", model);
     }
 
     /// <summary>
@@ -163,6 +269,13 @@ public class BaoCaoController : Controller
                 break;
         }
 
+        if (model.SoSanhCungKy.Count > 0)
+        {
+            sb.AppendLine(); sb.AppendLine($"SO SÁNH CÙNG KỲ,{Esc(model.CungKyLabel)}");
+            sb.AppendLine("Chỉ tiêu,Đơn vị,Kỳ này,Cùng kỳ,Chênh lệch,Thay đổi (%)");
+            foreach (var item in model.SoSanhCungKy)
+                sb.AppendLine($"{Esc(item.Label)},{Esc(item.Unit)},{Num(item.Current)},{Num(item.Previous)},{Num(item.Difference)},{(item.Percent.HasValue ? Num(item.Percent.Value) : "Không tính: kỳ gốc bằng 0")}");
+        }
         var safePeriod = model.NhanKy.Replace('/', '-').Replace(' ', '_');
         return ($"BaoCao_{model.Tab}_{safePeriod}.csv", Encoding.UTF8.GetBytes(sb.ToString()));
     }
@@ -223,12 +336,14 @@ public class BaoCaoController : Controller
     private static void AppendQuyLuong(StringBuilder sb, QuyLuongNganSachReport report)
     {
         sb.AppendLine("ĐỐI SOÁT QUỸ LƯƠNG VS ĐỊNH MỨC THAM CHIẾU");
-        sb.AppendLine($"Thực chi (thực nhận),{Num(report.ThucChi)}");
-        sb.AppendLine($"Thực chi (gộp),{Num(report.ThucChiGross)}");
+        sb.AppendLine($"Lương thực nhận đã tính,{Num(report.ThucChi)}");
+        sb.AppendLine($"Tổng lương đã tính (Gross),{Num(report.ThucChiGross)}");
         sb.AppendLine($"Định mức tham chiếu,{Num(report.NganSachThamChieu)}");
         sb.AppendLine($"Chênh lệch,{Num(report.ChenhLech)}");
-        sb.AppendLine($"Tỷ lệ giải ngân (%),{Num(report.PhanTramGiaiNgan)}");
+        sb.AppendLine($"Tỷ lệ so với định mức (%),{Num(report.PhanTramGiaiNgan)}");
         sb.AppendLine($"Vượt định mức,{(report.VuotNguong ? "Có" : "Không")}");
+        sb.AppendLine($"Ngân sách được duyệt,{(report.NganSachDuocDuyet.HasValue ? Num(report.NganSachDuocDuyet.Value) : "Chưa đủ dữ liệu")}");
+        sb.AppendLine($"Trạng thái ngân sách,{Esc(report.TrangThaiNganSachDuyet)}");
         sb.AppendLine($"Ghi chú,{Esc(report.GhiChuPhuongPhap)}");
         sb.AppendLine();
 
@@ -289,6 +404,7 @@ public class BaoCaoController : Controller
         sb.AppendLine($"Tổng lượt phân công,{report.TongLuotPhanCong}");
         sb.AppendLine($"Tổng ngân sách phụ cấp,{Num(report.TongNganSach)}");
         sb.AppendLine($"Tổng phụ cấp đã phân bổ,{Num(report.TongPhuCapDaPhanBo)}");
+        sb.AppendLine($"Ghi chú kỳ tiền,{Esc(report.GhiChuPhamVi)}");
         sb.AppendLine($"Tỷ lệ xuất sắc (%),{Num(report.TyLeXuatSac)}");
         sb.AppendLine($"Tỷ lệ hoàn thành (%),{Num(report.TyLeHoanThanh)}");
         sb.AppendLine();
@@ -344,18 +460,226 @@ public class BaoCaoController : Controller
     private static string Num(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
     /// <summary>Bọc trường CSV trong dấu nháy kép khi chứa dấu phẩy, nháy kép hoặc xuống dòng.</summary>
-    private static string Esc(string? value)
-    {
-        var text = value ?? string.Empty;
-        if (text.IndexOfAny([',', '"', '\n', '\r']) < 0)
-        {
-            return text;
-        }
-
-        return $"\"{text.Replace("\"", "\"\"")}\"";
-    }
+        /// <summary>Chuẩn hóa trường CSV an toàn, chống chèn công thức CSV Injection (ReportPolicy.EscapeCsv).</summary>
+    private static string Esc(string? value) => ReportPolicy.EscapeCsv(value);
 
     /// <summary>Yêu cầu AJAX nạp vùng dữ liệu tại chỗ.</summary>
     private bool IsAjaxRequest() =>
         string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  XUẤT EXCEL XML (SpreadsheetML)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static (string FileName, byte[] Content) BuildExcelXml(BaoCaoViewModel model)
+    {
+        var safePeriod = model.NhanKy.Replace('/', '-').Replace(' ', '_');
+        var sb = new StringBuilder();
+        sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+        sb.AppendLine("<?mso-application progid=\"Excel.Sheet\"?>");
+        sb.AppendLine("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"");
+        sb.AppendLine(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"");
+        sb.AppendLine(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"");
+        sb.AppendLine(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\">");
+        sb.AppendLine(" <Styles>");
+        sb.AppendLine("  <Style ss:ID=\"Default\" ss:Name=\"Normal\"><Font ss:FontName=\"Segoe UI\" ss:Size=\"11\"/></Style>");
+        sb.AppendLine("  <Style ss:ID=\"Header\"><Font ss:FontName=\"Segoe UI\" ss:Size=\"14\" ss:Bold=\"1\"/></Style>");
+        sb.AppendLine("  <Style ss:ID=\"SubHeader\"><Font ss:FontName=\"Segoe UI\" ss:Size=\"10\" ss:Italic=\"1\" ss:Color=\"#555555\"/></Style>");
+        sb.AppendLine("  <Style ss:ID=\"ColHeader\"><Font ss:FontName=\"Segoe UI\" ss:Size=\"11\" ss:Bold=\"1\" ss:Color=\"#FFFFFF\"/><Interior ss:Color=\"#1E3A8A\" ss:Pattern=\"Solid\"/></Style>");
+        sb.AppendLine("  <Style ss:ID=\"BoldTitle\"><Font ss:FontName=\"Segoe UI\" ss:Size=\"11\" ss:Bold=\"1\"/></Style>");
+        sb.AppendLine("  <Style ss:ID=\"Number\"><NumberFormat ss:Format=\"#,##0\"/></Style>");
+        sb.AppendLine("  <Style ss:ID=\"Decimal\"><NumberFormat ss:Format=\"#,##0.0\"/></Style>");
+        sb.AppendLine(" </Styles>");
+        sb.AppendLine($" <Worksheet ss:Name=\"{XmlEsc(model.Tab)}\">");
+        sb.AppendLine("  <Table>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"Header\"><Data ss:Type=\"String\">BÁO CÁO THỐNG KÊ NHÂN SỰ — " + XmlEsc(model.NhanKy) + "</Data></Cell></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"SubHeader\"><Data ss:Type=\"String\">Phạm vi: " + XmlEsc(model.PhamViLabel) + " | Người xuất: " + XmlEsc(model.RoleLabel) + " | Ngày tạo: " + model.GeneratedAt.ToOffset(VietnamOffset).ToString("dd/MM/yyyy HH:mm") + "</Data></Cell></Row>");
+        sb.AppendLine("   <Row></Row>");
+
+        switch (model.Tab)
+        {
+            case "co-cau":
+                AppendExcelCoCau(sb, model.CoCau);
+                break;
+            case "hoc-van":
+                AppendExcelHocVan(sb, model.HocVanThamNien);
+                break;
+            case "quy-luong":
+                AppendExcelQuyLuong(sb, model.QuyLuong);
+                break;
+            case "chuyen-can":
+                AppendExcelChuyenCan(sb, model.ChuyenCan);
+                break;
+            case "su-kien":
+                AppendExcelSuKien(sb, model.SuKien);
+                break;
+            default:
+                AppendExcelBienDong(sb, model.BienDong);
+                break;
+        }
+
+        if (model.SoSanhCungKy.Count > 0)
+        {
+            sb.AppendLine("<Row><Cell><Data ss:Type=\"String\">SO SÁNH CÙNG KỲ " + XmlEsc(model.CungKyLabel) + "</Data></Cell></Row>");
+            sb.AppendLine("<Row><Cell><Data ss:Type=\"String\">Chỉ tiêu (đơn vị)</Data></Cell><Cell><Data ss:Type=\"String\">Kỳ này</Data></Cell><Cell><Data ss:Type=\"String\">Cùng kỳ</Data></Cell><Cell><Data ss:Type=\"String\">Chênh lệch</Data></Cell><Cell><Data ss:Type=\"String\">Thay đổi (%)</Data></Cell></Row>");
+            foreach (var item in model.SoSanhCungKy)
+                sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.Label)} ({XmlEsc(item.Unit)})</Data></Cell><Cell><Data ss:Type=\"Number\">{Num(item.Current)}</Data></Cell><Cell><Data ss:Type=\"Number\">{Num(item.Previous)}</Data></Cell><Cell><Data ss:Type=\"Number\">{Num(item.Difference)}</Data></Cell><Cell><Data ss:Type=\"String\">{(item.Percent.HasValue ? Num(item.Percent.Value) : "Không tính: kỳ gốc bằng 0")}</Data></Cell></Row>");
+        }
+        sb.AppendLine("  </Table>");
+        sb.AppendLine(" </Worksheet>");
+        sb.AppendLine("</Workbook>");
+
+        return ($"BaoCao_{model.Tab}_{safePeriod}.xls", Encoding.UTF8.GetBytes(sb.ToString()));
+    }
+
+    private static string XmlEsc(string? str) => System.Security.SecurityElement.Escape(str ?? string.Empty);
+
+    // Build a small standards-based xlsx package from the existing typed report rows.
+    // Strings are inline text, never formulas; numeric XML uses invariant culture.
+    private static (string FileName, byte[] Content) BuildExcelFile(BaoCaoViewModel model)
+    {
+        var (_, xml) = BuildExcelXml(model);
+        XNamespace legacy = "urn:schemas-microsoft-com:office:spreadsheet";
+        XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        var rows = XDocument.Parse(Encoding.UTF8.GetString(xml)).Descendants(legacy + "Row").ToArray();
+        var sheet = new XElement(ns + "worksheet", new XElement(ns + "sheetData", rows.Select((row, index) =>
+            new XElement(ns + "row", new XAttribute("r", index + 1), row.Elements(legacy + "Cell").Select((cell, col) =>
+            {
+                var data = cell.Element(legacy + "Data");
+                var numeric = (string?)data?.Attribute(legacy + "Type") == "Number";
+                var style = (string?)cell.Attribute(legacy + "StyleID") switch
+                { "Number" => 1, "Decimal" => 2, "Header" or "BoldTitle" => 3, "ColHeader" => 4, _ => 0 };
+                var column = ""; var n = col + 1;
+                while (n > 0) { n--; column = (char)('A' + n % 26) + column; n /= 26; }
+                return new XElement(ns + "c", new XAttribute("r", column + (index + 1)), new XAttribute("s", style),
+                    numeric ? new object[] { new XAttribute("t", "n"), new XElement(ns + "v", data?.Value ?? "0") }
+                        : new object[] { new XAttribute("t", "inlineStr"), new XElement(ns + "is",
+                            new XElement(ns + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), data?.Value ?? "")) });
+            })))));
+        using var buffer = new MemoryStream();
+        using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            void Add(string path, string content)
+            {
+                using var writer = new StreamWriter(zip.CreateEntry(path).Open(), new UTF8Encoding(false));
+                writer.Write(content);
+            }
+            Add("[Content_Types].xml", """
+                <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>
+                """);
+            Add("_rels/.rels", """
+                <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>
+                """);
+            Add("xl/workbook.xml", """
+                <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Bao cao" sheetId="1" r:id="rId1"/></sheets></workbook>
+                """);
+            Add("xl/_rels/workbook.xml.rels", """
+                <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>
+                """);
+            Add("xl/styles.xml", """
+                <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="14"/></font><font><b/><color rgb="FFFFFFFF"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1E3A8A"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>
+                """);
+            Add("xl/worksheets/sheet1.xml", sheet.ToString(SaveOptions.DisableFormatting));
+        }
+        return ($"BaoCao_{model.Tab}_{model.NhanKy.Replace('/', '-').Replace(' ', '_')}.xlsx", buffer.ToArray());
+    }
+
+    private static void AppendExcelBienDong(StringBuilder sb, BienDongNhanSuReport report)
+    {
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">BIẾN ĐỘNG NHÂN SỰ</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Quân số đầu kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.DauKy}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tuyển mới trong kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.TuyenMoi}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Thôi việc trong kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.NghiViec}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Quân số cuối kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.CuoiKy}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tỷ lệ thôi việc (%)</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{report.TyLeThoiViec.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
+        sb.AppendLine("   <Row></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Phòng ban</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Quân số</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Tuyển mới</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Thôi việc</Data></Cell></Row>");
+        foreach (var item in report.TheoPhongBan)
+        {
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.PhongBan)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{item.QuanSo}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{item.TuyenMoi}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{item.NghiViec}</Data></Cell></Row>");
+        }
+    }
+
+    private static void AppendExcelCoCau(StringBuilder sb, CoCauNhanLucReport report)
+    {
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">CƠ CẤU NHÂN LỰC</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng nhân sự</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.TongNhanSu}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Đang làm việc</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.DangLam}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Đang nghỉ phép</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.NghiPhep}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Đã thôi việc</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.DaThoiViec}</Data></Cell></Row>");
+        sb.AppendLine("   <Row></Row>");
+        AppendExcelPhanBo(sb, "THEO PHÒNG BAN", report.TheoPhongBan);
+        AppendExcelPhanBo(sb, "THEO CHỨC VỤ", report.TheoChucVu);
+    }
+
+    private static void AppendExcelHocVan(StringBuilder sb, HocVanThamNienReport report)
+    {
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">HỌC VẤN & THÂM NIÊN</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Số nhân sự từ đại học trở lên</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.SoDaiHocTroLen}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tỷ lệ từ đại học trở lên (%)</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{report.TyLeDaiHocTroLen.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Thâm niên trung bình (năm)</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{report.ThamNienTrungBinh.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
+        sb.AppendLine("   <Row></Row>");
+        AppendExcelPhanBo(sb, "THEO TRÌNH ĐỘ", report.TheoTrinhDo);
+        AppendExcelPhanBo(sb, "THEO THÂM NIÊN", report.TheoThamNien);
+    }
+
+    private static void AppendExcelQuyLuong(StringBuilder sb, QuyLuongNganSachReport report)
+    {
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">ĐỐI SOÁT QUỸ LƯƠNG VS ĐỊNH MỨC THAM CHIẾU</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Lương thực nhận đã tính</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ThucChi)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng lương đã tính (Gross)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ThucChiGross)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Định mức tham chiếu</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.NganSachThamChieu)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Chênh lệch</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ChenhLech)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tỷ lệ so với định mức (%)</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{report.PhanTramGiaiNgan.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
+        sb.AppendLine("   <Row></Row>");
+        sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">Ngân sách được duyệt</Data></Cell><Cell><Data ss:Type=\"String\">{(report.NganSachDuocDuyet.HasValue ? Num(report.NganSachDuocDuyet.Value) : "Chưa đủ dữ liệu")}</Data></Cell></Row>");
+        sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">{XmlEsc(report.TrangThaiNganSachDuyet)}</Data></Cell></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Phòng ban</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Định mức</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Thực chi</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Chênh lệch</Data></Cell></Row>");
+        foreach (var item in report.TheoPhongBan)
+        {
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.PhongBan)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.NganSach)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.ThucChi)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.ChenhLech)}</Data></Cell></Row>");
+        }
+    }
+
+    private static void AppendExcelChuyenCan(StringBuilder sb, ChuyenCanViPhamReport report)
+    {
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">CHUYÊN CẦN & VI PHẠM</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng lượt chấm công</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.TongBanGhi}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Đúng giờ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.DungGio}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tỷ lệ chuyên cần (%)</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{report.TyLeChuyenCan.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
+        sb.AppendLine("   <Row></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Nhân viên</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Phòng ban</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Số lần vi phạm</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Tổng phút trễ</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Tổng phút sớm</Data></Cell></Row>");
+        foreach (var item in report.XepHangViPham)
+        {
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.HoTen)}</Data></Cell><Cell><Data ss:Type=\"String\">{XmlEsc(item.PhongBan)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{item.SoLanViPham}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{item.TongPhutTre}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{item.TongPhutVeSom}</Data></Cell></Row>");
+        }
+    }
+
+    private static void AppendExcelSuKien(StringBuilder sb, HieuQuaSuKienReport report)
+    {
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">HIỆU QUẢ NHÂN SỰ DỰ ÁN / SỰ KIỆN</Data></Cell></Row>");
+        sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">{XmlEsc(report.GhiChuPhamVi)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng số sự kiện</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.TongSuKien}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng lượt phân công</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.TongLuotPhanCong}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng ngân sách phụ cấp</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.TongNganSach)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng phụ cấp đã phân bổ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.TongPhuCapDaPhanBo)}</Data></Cell></Row>");
+        sb.AppendLine("   <Row></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Tên sự kiện</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Loại</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Trạng thái</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Nhân sự</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Ngân sách</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Đã phân bổ</Data></Cell></Row>");
+        foreach (var item in report.DanhSach)
+        {
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.TenDuAn)}</Data></Cell><Cell><Data ss:Type=\"String\">{XmlEsc(item.LoaiLabel)}</Data></Cell><Cell><Data ss:Type=\"String\">{XmlEsc(item.TrangThaiLabel)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{item.SoNhanSu}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.NganSach)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.PhuCapDaPhanBo)}</Data></Cell></Row>");
+        }
+    }
+
+    private static void AppendExcelPhanBo(StringBuilder sb, string title, IReadOnlyList<PhanBoItem> items)
+    {
+        sb.AppendLine($"   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">{XmlEsc(title)}</Data></Cell></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Nhóm</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Số lượng</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Tỷ lệ (%)</Data></Cell></Row>");
+        foreach (var item in items)
+        {
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.Nhan)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{item.GiaTri}</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{item.TyLe.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
+        }
+        sb.AppendLine("   <Row></Row>");
+    }
+
 }

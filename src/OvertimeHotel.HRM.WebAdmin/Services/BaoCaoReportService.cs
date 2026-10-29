@@ -62,7 +62,7 @@ public sealed class BaoCaoReportService
         int? phongBan,
         string? tab)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = DateOnly.FromDateTime(HotelEventRules.Local(DateTimeOffset.UtcNow));
         var roleLabel = ResolveRoleLabel(role);
 
         // ── Chuẩn hóa bộ lọc kỳ ──────────────────────────────────────────────
@@ -85,7 +85,8 @@ public sealed class BaoCaoReportService
             : scope.DepartmentId;
 
         var cacheKey = string.Join('|',
-            "BaoCaoMetrics_V1", role ?? "-", year, month, quarter, departmentId, today.DayNumber);
+            "BaoCaoMetrics_V2", role ?? "-", year, month, quarter, departmentId, today.DayNumber,
+            _cache.Get<string>(PayrollBudgetService.RevisionKey) ?? "initial");
 
         if (_cache.TryGetValue(cacheKey, out BaoCaoViewModel? cached) && cached is not null)
         {
@@ -128,27 +129,50 @@ public sealed class BaoCaoReportService
             // Danh mục phòng ban chỉ hiện khi người dùng thực sự được chọn phạm vi.
             model.PhongBanOptions = scope.IsWholeHotel
                 ? [.. phongBans.Select(p => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(
-                    p.TenPhongBan, p.MaPhongBan.ToString(CultureInfo.InvariantCulture)))]
+                    p.TenPhongBan, p.MaPhongBan.ToString(CultureInfo.InvariantCulture), p.MaPhongBan == departmentId))]
                 : [];
 
             model.NamOptions = BuildYearOptions(year, today.Year);
 
             var nhanSu = await LoadEmployeesAsync(departmentId);
 
-            model.BienDong = BuildBienDong(nhanSu, from, to, year);
-            model.CoCau = BuildCoCau(nhanSu);
+            model.BienDong = BuildBienDong(nhanSu, from, to, year, quarter, month);
+            model.CoCau = BuildCoCau(nhanSu, to);
 
             // 10.3 lấy mốc thâm niên tại ngày cuối kỳ báo cáo để số liệu quá khứ vẫn tái lập được.
             model.HocVanThamNien = BuildHocVanThamNien(nhanSu, to);
 
-            model.ChuyenCan = await BuildChuyenCanAsync(from, to, departmentId);
+            model.ChuyenCan = await BuildChuyenCanAsync(from, to, year, quarter, month, departmentId);
 
             if (model.CanViewPayrollFund)
             {
-                model.QuyLuong = await BuildQuyLuongAsync(from, to, year, departmentId);
+                model.QuyLuong = await BuildQuyLuongAsync(from, to, year, quarter, month, departmentId);
             }
 
             model.SuKien = await BuildSuKienAsync(from, to, scope, departmentId);
+
+            var (yoyFrom, yoyTo, yoyLabel) = ReportPolicy.ResolveSamePeriodLastYearRange(year, quarter, month);
+            model.CungKyLabel = yoyLabel;
+            var yoyStaff = BuildBienDong(nhanSu, yoyFrom, yoyTo, year - 1, quarter, month);
+            var yoyAttendance = await LoadAttendanceAsync(yoyFrom, yoyTo, departmentId);
+            var yoyAssessed = yoyAttendance.Where(r => r.TrangThai is not ("NGHI_DA_DUYET" or "THIEU_QUET")).ToArray();
+            var comparisons = new List<ReportComparisonItem> {
+                new() {Label="Quân số cuối kỳ", Unit="người", Current=model.BienDong.CuoiKy, Previous=yoyStaff.CuoiKy},
+                new() {Label="Tuyển mới", Unit="người", Current=model.BienDong.TuyenMoi, Previous=yoyStaff.TuyenMoi},
+                new() {Label="Thôi việc", Unit="người", Current=model.BienDong.NghiViec, Previous=yoyStaff.NghiViec},
+                new() {Label="Chuyên cần", Unit="%", Current=model.ChuyenCan.TyLeChuyenCan,
+                    Previous=ReportPolicy.AttendanceRate(yoyAssessed.Count(r=>ReportPolicy.IsOnTime(r.TrangThai)),yoyAssessed.Length)}
+            };
+            if (model.CanViewPayrollFund)
+            {
+                var yoyGross = await _context.PhieuLuongs.AsNoTracking().Where(p=>p.KyLuong != null
+                    && p.KyLuong.Nam==yoyFrom.Year && p.KyLuong.Thang>=yoyFrom.Month && p.KyLuong.Thang<=yoyTo.Month
+                    && (departmentId==null || (p.NhanVien!=null && p.NhanVien.MaPhongBan==departmentId)))
+                    .SumAsync(p=>(decimal?)(p.TienLuongCong+p.TienTangCa+p.TongPhuCap+p.TongThuong)) ?? 0m;
+                comparisons.Add(new() {Label="Tổng lương đã tính (Gross)",Unit="đ",Current=model.QuyLuong.ThucChiGross,Previous=yoyGross});
+            }
+            model.SoSanhCungKy = comparisons;
+
 
             // JSON cho ECharts. Giữ bộ mã hóa mặc định của System.Text.Json: nó thoát ký tự
             // '<' và '>' thành < / >, nên tên phòng ban hay tên sự kiện do người dùng
@@ -188,19 +212,29 @@ public sealed class BaoCaoReportService
     /// bám theo ngày, còn biểu đồ xu hướng luôn vẽ 12 tháng của năm đang chọn để người dùng có
     /// bối cảnh — chọn một tháng lẻ mà chỉ thấy một cột thì không đọc được xu hướng.
     /// </summary>
-    private static BienDongNhanSuReport BuildBienDong(
+    internal static BienDongNhanSuReport BuildBienDong(
         IReadOnlyList<NhanSuRow> nhanSu,
         DateOnly from,
         DateOnly to,
-        int year)
+        int year,
+        int? quarter = null,
+        int? month = null)
     {
         var resigned = nhanSu.Where(n => ReportPolicy.IsResigned(n.TrangThai)).ToArray();
+        var soThieuNgayNghi = resigned.Count(n => !n.NgayThoiViec.HasValue);
 
-        // Quân số tại một mốc ngày: đã vào làm và chưa thôi việc tính đến ngày đó.
-        // Ngày thôi việc của một số hồ sơ có thể trống — khi đó chỉ dựa vào trạng thái.
-        int HeadcountAt(DateOnly asOf) =>
-            nhanSu.Count(n => n.NgayVaoLam <= asOf)
-            - resigned.Count(n => !n.NgayThoiViec.HasValue || n.NgayThoiViec.Value <= asOf);
+        // Quân số tại một mốc ngày:
+        // Chỉ những người ĐÃ vào làm tính đến mốc ngày đó (n.NgayVaoLam <= asOf)
+        // VÀ chưa thôi việc tính đến ngày đó.
+        // Nhân viên thôi việc chỉ trừ khi họ đã vào làm và ngày nghỉ xác định được <= asOf.
+        // Nhân viên thôi việc thiếu ngày nghỉ không được phép làm sai quân số quá khứ trước ngày vào làm.
+        int HeadcountAt(DateOnly asOf)
+        {
+            var hired = nhanSu.Where(n => n.NgayVaoLam <= asOf).ToList();
+            var resignedCount = hired.Count(n => ReportPolicy.IsResigned(n.TrangThai)
+                && n.NgayThoiViec.HasValue && n.NgayThoiViec.Value <= asOf);
+            return Math.Max(0, hired.Count - resignedCount);
+        }
 
         var dauKy = Math.Max(0, HeadcountAt(from.AddDays(-1)));
         var cuoiKy = Math.Max(0, HeadcountAt(to));
@@ -209,6 +243,17 @@ public sealed class BaoCaoReportService
                                            && n.NgayThoiViec.Value >= from
                                            && n.NgayThoiViec.Value <= to);
 
+        // So sánh với kỳ trước (MoM / QoQ / YoY)
+        var (prevFrom, prevTo, prevLabel) = ReportPolicy.ResolvePreviousPeriodRange(year, quarter, month);
+        var prevDauKy = Math.Max(0, HeadcountAt(prevFrom.AddDays(-1)));
+        var prevCuoiKy = Math.Max(0, HeadcountAt(prevTo));
+        var prevTuyenMoi = nhanSu.Count(n => n.NgayVaoLam >= prevFrom && n.NgayVaoLam <= prevTo);
+        var prevNghiViec = resigned.Count(n => n.NgayThoiViec.HasValue
+                                               && n.NgayThoiViec.Value >= prevFrom
+                                               && n.NgayThoiViec.Value <= prevTo);
+        var prevTurnover = ReportPolicy.TurnoverRate(ReportPolicy.AverageHeadcount(prevDauKy, prevCuoiKy), prevNghiViec);
+        var currentTurnover = ReportPolicy.TurnoverRate(ReportPolicy.AverageHeadcount(dauKy, cuoiKy), nghiViec);
+
         var report = new BienDongNhanSuReport
         {
             DauKy = dauKy,
@@ -216,7 +261,17 @@ public sealed class BaoCaoReportService
             TuyenMoi = tuyenMoi,
             NghiViec = nghiViec,
             BienDongRong = tuyenMoi - nghiViec,
-            TyLeThoiViec = ReportPolicy.TurnoverRate(ReportPolicy.AverageHeadcount(dauKy, cuoiKy), nghiViec)
+            TyLeThoiViec = currentTurnover,
+            SoHoSoThieuNgayThoiViec = soThieuNgayNghi,
+            KyTruocLabel = prevLabel,
+            TuyenMoiKyTruoc = prevTuyenMoi,
+            TuyenMoiThayDoi = tuyenMoi - prevTuyenMoi,
+            NghiViecKyTruoc = prevNghiViec,
+            NghiViecThayDoi = nghiViec - prevNghiViec,
+            CuoiKyKyTruoc = prevCuoiKy,
+            CuoiKyThayDoi = cuoiKy - prevCuoiKy,
+            TyLeThoiViecKyTruoc = prevTurnover,
+            TyLeThoiViecThayDoi = currentTurnover - prevTurnover
         };
 
         var series = new List<BienDongSeriesItem>(12);
@@ -240,17 +295,21 @@ public sealed class BaoCaoReportService
 
         report.TheoPhongBan = nhanSu
             .GroupBy(n => n.TenPhongBan)
-            .Select(g => new BienDongPhongBanItem
+            .Select(g =>
             {
-                PhongBan = g.Key,
-                QuanSo = Math.Max(0, g.Count(n => n.NgayVaoLam <= to)
-                                     - g.Count(n => ReportPolicy.IsResigned(n.TrangThai)
-                                                    && (!n.NgayThoiViec.HasValue || n.NgayThoiViec.Value <= to))),
-                TuyenMoi = g.Count(n => n.NgayVaoLam >= from && n.NgayVaoLam <= to),
-                NghiViec = g.Count(n => ReportPolicy.IsResigned(n.TrangThai)
-                                        && n.NgayThoiViec.HasValue
-                                        && n.NgayThoiViec.Value >= from
-                                        && n.NgayThoiViec.Value <= to)
+                var hiredInDept = g.Where(n => n.NgayVaoLam <= to).ToList();
+                var resignedInDept = hiredInDept.Count(n => ReportPolicy.IsResigned(n.TrangThai)
+                    && n.NgayThoiViec.HasValue && n.NgayThoiViec.Value <= to);
+                return new BienDongPhongBanItem
+                {
+                    PhongBan = g.Key,
+                    QuanSo = Math.Max(0, hiredInDept.Count - resignedInDept),
+                    TuyenMoi = g.Count(n => n.NgayVaoLam >= from && n.NgayVaoLam <= to),
+                    NghiViec = g.Count(n => ReportPolicy.IsResigned(n.TrangThai)
+                                            && n.NgayThoiViec.HasValue
+                                            && n.NgayThoiViec.Value >= from
+                                            && n.NgayThoiViec.Value <= to)
+                };
             })
             .Where(row => row.QuanSo > 0 || row.TuyenMoi > 0 || row.NghiViec > 0)
             .OrderByDescending(row => row.QuanSo)
@@ -264,21 +323,77 @@ public sealed class BaoCaoReportService
 
     /// <summary>
     /// Dựng báo cáo cơ cấu nhân lực theo phòng ban, trạng thái, giới tính và chức vụ.
-    /// Gom nhóm bằng LINQ trên bộ nhớ vì nhãn hiển thị (giới tính, trạng thái) cần dịch sang
-    /// tiếng Việt — việc đó không dịch được sang SQL.
+    /// Giới hạn tại mốc thời gian asOf để đảm bảo tính chuẩn xác lịch sử (không tính người vào làm tương lai).
     /// </summary>
-    private static CoCauNhanLucReport BuildCoCau(IReadOnlyList<NhanSuRow> nhanSu)
+    internal static CoCauNhanLucReport BuildCoCau(IReadOnlyList<NhanSuRow> nhanSu, DateOnly asOf)
     {
-        var total = nhanSu.Count;
+        // Chỉ xét những người đã vào làm tính đến ngày mốc asOf (loại bỏ nhân sự tương lai)
+        var cohort = nhanSu.Where(n => n.NgayVaoLam <= asOf).ToList();
+        var total = cohort.Count;
+
+        // Trạng thái chuẩn hóa tại mốc asOf
+        string StatusAtAsOf(NhanSuRow n)
+        {
+            if (ReportPolicy.IsResigned(n.TrangThai))
+            {
+                if (n.NgayThoiViec.HasValue && n.NgayThoiViec.Value > asOf)
+                {
+                    return "DANG_LAM";
+                }
+                return "THOI_VIEC";
+            }
+            return n.TrangThai;
+        }
+
+        var dangLam = cohort.Count(n => StatusAtAsOf(n) == "DANG_LAM");
+        var nghiPhep = cohort.Count(n => StatusAtAsOf(n) == "NGHI_PHEP");
+        var daThoiViec = cohort.Count(n => ReportPolicy.IsResigned(StatusAtAsOf(n)));
+
+        // Xử lý chức vụ: Top 7 + gom phần còn lại vào "Chức vụ khác" để bảo toàn 100% mẫu số
+        var positionGroups = cohort
+            .GroupBy(n => string.IsNullOrWhiteSpace(n.TenChucVu) ? "Chưa xếp chức vụ" : n.TenChucVu)
+            .Select(g => new { Nhan = g.Key, GiaTri = g.Count() })
+            .OrderByDescending(x => x.GiaTri)
+            .ThenBy(x => x.Nhan, StringComparer.CurrentCulture)
+            .ToList();
+
+        List<PhanBoItem> theoChucVu;
+        if (positionGroups.Count <= 8)
+        {
+            theoChucVu = positionGroups.Select(p => new PhanBoItem
+            {
+                Nhan = p.Nhan,
+                GiaTri = p.GiaTri,
+                TyLe = PhanTram(p.GiaTri, total)
+            }).ToList();
+        }
+        else
+        {
+            var top7 = positionGroups.Take(7).Select(p => new PhanBoItem
+            {
+                Nhan = p.Nhan,
+                GiaTri = p.GiaTri,
+                TyLe = PhanTram(p.GiaTri, total)
+            }).ToList();
+
+            var remaining = positionGroups.Skip(7).Sum(p => p.GiaTri);
+            top7.Add(new PhanBoItem
+            {
+                Nhan = "Chức vụ khác",
+                GiaTri = remaining,
+                TyLe = PhanTram(remaining, total)
+            });
+            theoChucVu = top7;
+        }
 
         return new CoCauNhanLucReport
         {
             TongNhanSu = total,
-            DangLam = nhanSu.Count(n => n.TrangThai == "DANG_LAM"),
-            NghiPhep = nhanSu.Count(n => n.TrangThai == "NGHI_PHEP"),
-            DaThoiViec = nhanSu.Count(n => ReportPolicy.IsResigned(n.TrangThai)),
+            DangLam = dangLam,
+            NghiPhep = nghiPhep,
+            DaThoiViec = daThoiViec,
 
-            TheoPhongBan = [.. nhanSu
+            TheoPhongBan = [.. cohort
                 .GroupBy(n => n.TenPhongBan)
                 .Select(g => new PhanBoItem
                 {
@@ -289,39 +404,36 @@ public sealed class BaoCaoReportService
                 .OrderByDescending(item => item.GiaTri)
                 .ThenBy(item => item.Nhan, StringComparer.CurrentCulture)],
 
-            TheoTrangThai = [.. nhanSu
-                .GroupBy(n => ResolveStatusLabel(n.TrangThai))
+            TheoTrangThai = [.. cohort
+                .GroupBy(n => ResolveStatusLabel(StatusAtAsOf(n)))
                 .Select(g => new PhanBoItem { Nhan = g.Key, GiaTri = g.Count(), TyLe = PhanTram(g.Count(), total) })
                 .OrderByDescending(item => item.GiaTri)
                 .ThenBy(item => item.Nhan, StringComparer.CurrentCulture)],
 
-            TheoGioiTinh = [.. nhanSu
+            TheoGioiTinh = [.. cohort
                 .GroupBy(n => ResolveGenderLabel(n.GioiTinh))
                 .Select(g => new PhanBoItem { Nhan = g.Key, GiaTri = g.Count(), TyLe = PhanTram(g.Count(), total) })
                 .OrderByDescending(item => item.GiaTri)
                 .ThenBy(item => item.Nhan, StringComparer.CurrentCulture)],
 
-            // Chỉ lấy tám chức vụ đông nhất: biểu đồ tròn quá nhiều lát cắt thì không đọc được.
-            TheoChucVu = [.. nhanSu
-                .GroupBy(n => n.TenChucVu)
-                .Select(g => new PhanBoItem { Nhan = g.Key, GiaTri = g.Count(), TyLe = PhanTram(g.Count(), total) })
-                .OrderByDescending(item => item.GiaTri)
-                .ThenBy(item => item.Nhan, StringComparer.CurrentCulture)
-                .Take(8)]
+            TheoChucVu = theoChucVu
         };
     }
 
     // ── 10.3 Học vấn & thâm niên ──────────────────────────────────────────
 
     /// <summary>
-    /// Dựng báo cáo học vấn &amp; thâm niên. Trình độ được chuẩn hóa theo từ khóa
-    /// (<see cref="ReportPolicy.NormalizeEducation"/>) vì cột <c>trinh_do</c> là văn bản tự do.
+    /// Dựng báo cáo học vấn &amp; thâm niên.
+    /// Giới hạn mốc thâm niên tại ngày cuối kỳ báo cáo để số liệu quá khứ vẫn tái lập được,
+    /// đồng thời thâm niên người đã thôi việc dừng tại ngày thôi việc.
     /// </summary>
-    private static HocVanThamNienReport BuildHocVanThamNien(IReadOnlyList<NhanSuRow> nhanSu, DateOnly asOf)
+    internal static HocVanThamNienReport BuildHocVanThamNien(IReadOnlyList<NhanSuRow> nhanSu, DateOnly asOf)
     {
-        var total = nhanSu.Count;
+        // Chỉ xét những người đã vào làm trước hoặc đúng mốc asOf
+        var cohort = nhanSu.Where(n => n.NgayVaoLam <= asOf).ToList();
+        var total = cohort.Count;
 
-        var educationCounts = nhanSu
+        var educationCounts = cohort
             .GroupBy(n => ReportPolicy.NormalizeEducation(n.TrinhDo))
             .ToDictionary(g => g.Key, g => g.Count());
 
@@ -345,8 +457,8 @@ public sealed class BaoCaoReportService
             theoTrinhDo.Add(new PhanBoItem { Nhan = level, GiaTri = count, TyLe = PhanTram(count, total) });
         }
 
-        var tenureCounts = nhanSu
-            .GroupBy(n => ReportPolicy.TenureBucketLabel(ReportPolicy.TenureMonths(n.NgayVaoLam, asOf)))
+        var tenureCounts = cohort
+            .GroupBy(n => ReportPolicy.TenureBucketLabel(ReportPolicy.TenureMonths(n.NgayVaoLam, asOf, n.NgayThoiViec)))
             .ToDictionary(g => g.Key, g => g.Count());
 
         var theoThamNien = ReportPolicy.TenureBucketOrder
@@ -360,7 +472,7 @@ public sealed class BaoCaoReportService
 
         var averageMonths = total == 0
             ? 0m
-            : Math.Round(nhanSu.Average(n => (decimal)ReportPolicy.TenureMonths(n.NgayVaoLam, asOf)), 1);
+            : Math.Round(cohort.Average(n => (decimal)ReportPolicy.TenureMonths(n.NgayVaoLam, asOf, n.NgayThoiViec)), 1);
 
         return new HocVanThamNienReport
         {
@@ -376,17 +488,14 @@ public sealed class BaoCaoReportService
 
     /// <summary>
     /// Dựng báo cáo đối soát quỹ lương.
-    ///
-    /// <para>
-    /// CSDL chưa có bảng ngân sách quỹ lương, nên "định mức tham chiếu" được SUY RA từ tổng
-    /// lương cơ bản của các hợp đồng đang hiệu lực nhân với số tháng của kỳ. Đây là định mức
-    /// kỹ thuật chứ không phải hạn mức Ban Giám đốc phê duyệt — giao diện phải nói rõ điều này.
-    /// </para>
+    /// Tính định mức tháng nhất quán giữa toàn khách sạn, chuỗi tháng và từng bộ phận.
     /// </summary>
     private async Task<QuyLuongNganSachReport> BuildQuyLuongAsync(
         DateOnly from,
         DateOnly to,
         int year,
+        int? quarter,
+        int? month,
         int? departmentId)
     {
         var phieuLuong = await _context.PhieuLuongs
@@ -404,13 +513,15 @@ public sealed class BaoCaoReportService
                 TienTangCa = p.TienTangCa,
                 TongPhuCap = p.TongPhuCap,
                 TongThuong = p.TongThuong,
-                ThucNhan = p.ThucNhan
+                ThucNhan = p.ThucNhan,
+                TrangThai = p.TrangThai
             })
             .ToArrayAsync();
 
         var hopDong = await _context.HopDongs
             .AsNoTracking()
-            .Where(h => h.TrangThai == "HIEU_LUC"
+            .Where(ReportPolicy.ReferenceContractFilter)
+            .Where(h => h.NgayBatDau <= to && (h.NgayKetThuc == null || h.NgayKetThuc >= from)
                         && (departmentId == null || (h.NhanVien != null && h.NhanVien.MaPhongBan == departmentId)))
             .Select(h => new HopDongRow
             {
@@ -428,6 +539,23 @@ public sealed class BaoCaoReportService
             .Where(h => h.NgayBatDau <= end && (h.NgayKetThuc == null || h.NgayKetThuc.Value >= start))
             .Sum(h => h.LuongCoBan);
 
+        // Định mức của phòng ban trong một khoảng ngày:
+        decimal DeptBudgetBetween(string deptName, DateOnly start, DateOnly end) => hopDong
+            .Where(h => string.Equals(h.PhongBan, deptName, StringComparison.CurrentCulture)
+                        && h.NgayBatDau <= end
+                        && (h.NgayKetThuc == null || h.NgayKetThuc.Value >= start))
+            .Sum(h => h.LuongCoBan);
+
+        decimal DeptBudgetInPeriod(string deptName)
+        {
+            decimal b = 0m;
+            for (var m = from.Month; m <= to.Month; m++)
+            {
+                b += DeptBudgetBetween(deptName, new DateOnly(year, m, 1), new DateOnly(year, m, DateTime.DaysInMonth(year, m)));
+            }
+            return b;
+        }
+
         // Chỉ nhận phiếu lương thuộc đúng kỳ báo cáo (cùng năm, tháng nằm trong khoảng).
         var trongKy = phieuLuong
             .Where(p => p.Thang >= from.Month && p.Thang <= to.Month)
@@ -439,8 +567,7 @@ public sealed class BaoCaoReportService
         var gross = trongKy.Sum(Gross);
         var net = trongKy.Sum(p => p.ThucNhan);
 
-        // Định mức cả kỳ = cộng định mức từng tháng, vì một hợp đồng kéo dài nhiều tháng phải
-        // được tính nhiều lần. So quỹ lương một quý với định mức một tháng sẽ lệch đúng ba lần.
+        // Định mức cả kỳ = cộng định mức từng tháng
         decimal budget = 0m;
         for (var m = from.Month; m <= to.Month; m++)
         {
@@ -461,27 +588,57 @@ public sealed class BaoCaoReportService
             });
         }
 
-        // Phân rã theo phòng ban: chỉ hiện phòng ban thực sự phát sinh chi phí lương trong kỳ.
-        var theoPhongBan = trongKy
-            .GroupBy(p => p.PhongBan)
-            .Select(g => new
-            {
-                PhongBan = g.Key,
-                ThucChi = g.Sum(Gross),
-                NganSach = hopDong
-                    .Where(h => string.Equals(h.PhongBan, g.Key, StringComparison.CurrentCulture))
-                    .Sum(h => h.LuongCoBan) * soThang
-            })
-            .Select(item => new QuyLuongPhongBanItem
-            {
-                PhongBan = item.PhongBan,
-                ThucChi = item.ThucChi,
-                NganSach = item.NganSach,
-                ChenhLech = item.ThucChi - item.NganSach
-            })
-            .OrderByDescending(item => item.ThucChi)
-            .ThenBy(item => item.PhongBan, StringComparer.CurrentCulture)
+        // Phân rã theo phòng ban: kết hợp cả phòng có phiếu lương và phòng có hợp đồng định mức
+        var allDeptNames = trongKy.Select(p => p.PhongBan)
+            .Union(hopDong.Select(h => h.PhongBan))
+            .Distinct()
             .ToList();
+
+        var theoPhongBan = allDeptNames
+            .Select(dept =>
+            {
+                var slips = trongKy.Where(p => string.Equals(p.PhongBan, dept, StringComparison.CurrentCulture)).ToArray();
+                var thucChi = slips.Sum(Gross);
+                var nganSach = DeptBudgetInPeriod(dept);
+                return new QuyLuongPhongBanItem
+                {
+                    PhongBan = dept,
+                    ThucChi = thucChi,
+                    NganSach = nganSach,
+                    ChenhLech = thucChi - nganSach
+                };
+            })
+            .Where(row => row.ThucChi > 0m || row.NganSach > 0m)
+            .OrderByDescending(row => row.ThucChi)
+            .ThenBy(row => row.PhongBan, StringComparer.CurrentCulture)
+            .ToList();
+
+        // Phân loại trạng thái phiếu lương
+        var soDaDuyet = trongKy.Count(p => p.TrangThai is "DA_DUYET" or "KHOA" or "DA_THANH_TOAN");
+        var soNhap = trongKy.Count(p => p.TrangThai is "NHAP" or "CHO_DUYET");
+        var tienDaDuyet = trongKy.Where(p => p.TrangThai is "DA_DUYET" or "KHOA" or "DA_THANH_TOAN").Sum(Gross);
+        var tienNhap = trongKy.Where(p => p.TrangThai is "NHAP" or "CHO_DUYET").Sum(Gross);
+
+        // So sánh với kỳ trước
+        var (prevFrom, prevTo, prevLabel) = ReportPolicy.ResolvePreviousPeriodRange(year, quarter, month);
+        var prevSlips = await _context.PhieuLuongs
+            .AsNoTracking()
+            .Where(p => p.KyLuong != null
+                        && p.KyLuong.Nam == prevFrom.Year
+                        && p.KyLuong.Thang >= prevFrom.Month && p.KyLuong.Thang <= prevTo.Month
+                        && (departmentId == null || (p.NhanVien != null && p.NhanVien.MaPhongBan == departmentId)))
+            .Select(p => p.TienLuongCong + p.TienTangCa + p.TongPhuCap + p.TongThuong)
+            .ToArrayAsync();
+
+        var approvedRows = await PayrollBudgetService.ReadAsync(_context, year);
+        var departmentIds = departmentId.HasValue ? new[] {departmentId.Value}
+            : await _context.PhongBans.AsNoTracking().Select(p=>p.MaPhongBan).ToArrayAsync();
+        var coverage = PayrollBudgetPolicy.Summarize(approvedRows ?? [], year,
+            Enumerable.Range(from.Month, to.Month-from.Month+1).ToArray(), departmentIds);
+        decimal? approvedBudget = approvedRows != null && coverage.Complete ? coverage.Total : null;
+
+        var prevGross = prevSlips.Sum();
+        var change = ReportPolicy.CalculateChange(gross, prevGross);
 
         return new QuyLuongNganSachReport
         {
@@ -494,30 +651,59 @@ public sealed class BaoCaoReportService
             SoThangTrongKy = soThang,
             SoHopDong = hopDong.Length,
             SoPhieuLuong = trongKy.Length,
+            SoPhieuDaDuyet = soDaDuyet,
+            SoPhieuNhap = soNhap,
+            ThucChiGrossDaDuyet = tienDaDuyet,
+            ThucChiGrossNhap = tienNhap,
+            NganSachDuocDuyet = approvedBudget,
+            TyLeGiaiNganNganSachDuyet = approvedBudget > 0m ? Math.Round(tienDaDuyet / approvedBudget.Value * 100m, 1) : null,
+            ChenhLechNganSachDuyet = approvedBudget.HasValue ? tienDaDuyet-approvedBudget.Value : null,
+            TrangThaiNganSachDuyet = approvedRows == null ? "Chưa triển khai bảng ngân sách; cần DBA duyệt migration."
+                : !coverage.Complete ? $"Chưa đủ ngân sách được duyệt: thiếu {coverage.MissingSlots}/{coverage.ExpectedSlots} ô tháng/phòng ban."
+                : "Đã duyệt đủ ngân sách tháng/phòng ban; so với lương đã duyệt, không phải tiền đã thanh toán.",
+            KyTruocLabel = prevLabel,
+            ThucChiGrossKyTruoc = prevGross,
+            ThucChiGrossThayDoi = change.Absolute,
+            ThucChiGrossThayDoiPct = change.Percent,
             Series = series,
             TheoPhongBan = theoPhongBan,
             GhiChuPhuongPhap =
                 "Định mức tham chiếu được suy ra từ tổng lương cơ bản của hợp đồng đang hiệu lực "
-                + "nhân với số tháng của kỳ, không phải hạn mức ngân sách đã được phê duyệt."
+                + "cộng theo từng tháng giao kỳ; không phải ngân sách đã duyệt. Hợp đồng chấm dứt thiếu ngày kết thúc bị loại vì không đủ căn cứ tái lập; định mức chưa phân bổ theo ngày cho hợp đồng thay đổi giữa tháng."
         };
     }
 
     // ── 10.5 Chuyên cần & vi phạm ──────────────────────────────────────────
 
     /// <summary>
-    /// Dựng báo cáo chuyên cần &amp; vi phạm. Chấm công không mang mã nhân viên trực tiếp nên
-    /// mọi truy vấn phải đi vòng qua lịch phân ca (<c>PhanCa</c>) để lấy ngày làm việc và bộ phận.
+    /// Dựng báo cáo chuyên cần &amp; vi phạm.
+    /// Đối chiếu cả lịch phân ca kết thúc chưa chấm công để không bỏ sót vắng mặt.
     /// </summary>
-    private async Task<ChuyenCanViPhamReport> BuildChuyenCanAsync(DateOnly from, DateOnly to, int? departmentId)
+    private async Task<ChuyenCanViPhamReport> BuildChuyenCanAsync(
+        DateOnly from,
+        DateOnly to,
+        int year,
+        int? quarter,
+        int? month,
+        int? departmentId)
     {
         var rows = await LoadAttendanceAsync(from, to, departmentId);
-        var total = rows.Length;
+        var (prevFrom, prevTo, prevLabel) = ReportPolicy.ResolvePreviousPeriodRange(year, quarter, month);
+        var prevRows = await LoadAttendanceAsync(prevFrom, prevTo, departmentId);
+        return BuildAttendanceReport(rows, prevRows, from, to, prevLabel);
+    }
+
+    internal static ChuyenCanViPhamReport BuildAttendanceReport(ChamCongRow[] rows, ChamCongRow[] prevRows,
+        DateOnly from, DateOnly to, string prevLabel)
+    {
+        var assessed = rows.Where(r => r.TrangThai is not ("NGHI_DA_DUYET" or "THIEU_QUET")).ToArray();
+        var total = assessed.Length;
         var dungGio = rows.Count(r => ReportPolicy.IsOnTime(r.TrangThai));
 
         var series = new List<ChuyenCanSeriesItem>(to.Month - from.Month + 1);
         for (var m = from.Month; m <= to.Month; m++)
         {
-            var cuaThang = rows.Where(r => r.Ngay.Month == m).ToArray();
+            var cuaThang = assessed.Where(r => r.Ngay.Month == m).ToArray();
             var dungGioThang = cuaThang.Count(r => ReportPolicy.IsOnTime(r.TrangThai));
 
             series.Add(new ChuyenCanSeriesItem
@@ -528,27 +714,42 @@ public sealed class BaoCaoReportService
             });
         }
 
+
+        var prevTotal = prevRows.Count(r => r.TrangThai is not ("NGHI_DA_DUYET" or "THIEU_QUET"));
+        var prevDungGio = prevRows.Count(r => ReportPolicy.IsOnTime(r.TrangThai));
+        var prevRate = ReportPolicy.AttendanceRate(prevDungGio, prevTotal);
+        var currentRate = ReportPolicy.AttendanceRate(dungGio, total);
+        var prevViPham = prevRows.Count(r => ReportPolicy.IsViolation(r.TrangThai));
+        var currentViPham = rows.Count(r => ReportPolicy.IsViolation(r.TrangThai));
+
         return new ChuyenCanViPhamReport
         {
             TongBanGhi = total,
+            SoCaNghiDuocDuyet = rows.Count(r => r.TrangThai == "NGHI_DA_DUYET"),
+            SoCaThieuQuet = rows.Count(r => r.TrangThai == "THIEU_QUET"),
             DungGio = dungGio,
             DiTre = rows.Count(r => r.TrangThai == "DI_TRE"),
             VeSom = rows.Count(r => r.TrangThai == "VE_SOM"),
             TreVaSom = rows.Count(r => r.TrangThai == "TRE_VA_SOM"),
-            // Mã vắng trong CSDL là VANG_MAT, không phải "VANG" — so sánh cũ luôn ra 0.
             Vang = rows.Count(r => ReportPolicy.IsAbsent(r.TrangThai)),
             TongPhutTre = rows.Sum(r => r.PhutDiTre),
             TongPhutVeSom = rows.Sum(r => r.PhutVeSom),
             TongGioOt = rows.Sum(r => r.GioTangCaOt),
-            TyLeChuyenCan = ReportPolicy.AttendanceRate(dungGio, total),
+            TyLeChuyenCan = currentRate,
+            KyTruocLabel = prevLabel,
+            TyLeChuyenCanKyTruoc = prevRate,
+            ChuyenCanThayDoiDiemPhanTram = currentRate - prevRate,
+            ViPhamKyTruoc = prevViPham,
+            ViPhamThayDoi = currentViPham - prevViPham,
             Series = series,
 
-            // Bảng xếp hạng kỷ luật: chỉ xét lượt vi phạm (trễ / sớm), không gồm vắng mặt.
+            // Bảng xếp hạng kỷ luật: nhóm theo định danh nhân viên (tránh gộp trùng tên)
             XepHangViPham = [.. rows
                 .Where(r => ReportPolicy.IsViolation(r.TrangThai))
-                .GroupBy(r => new { r.HoTen, r.PhongBan })
+                .GroupBy(r => new { r.MaNhanVien, r.HoTen, r.PhongBan })
                 .Select(g => new ViPhamNhanSuItem
                 {
+                    MaNhanVien = g.Key.MaNhanVien,
                     HoTen = g.Key.HoTen,
                     PhongBan = g.Key.PhongBan,
                     SoLanViPham = g.Count(),
@@ -560,8 +761,7 @@ public sealed class BaoCaoReportService
                 .ThenBy(item => item.HoTen, StringComparer.CurrentCulture)
                 .Take(10)],
 
-            // Tỷ lệ chuyên cần theo phòng ban.
-            TheoPhongBan = [.. rows
+            TheoPhongBan = [.. assessed
                 .GroupBy(r => r.PhongBan)
                 .Select(g => new PhanBoItem
                 {
@@ -577,8 +777,8 @@ public sealed class BaoCaoReportService
     // ── 10.6 Hiệu quả nhân sự dự án / sự kiện ─────────────────────────────
 
     /// <summary>
-    /// Dựng báo cáo hiệu quả nhân sự sự kiện. Sự kiện được lọc theo ngày bắt đầu nằm trong kỳ;
-    /// Quản lý chỉ thấy sự kiện có nhân sự thuộc bộ phận mình tham gia.
+    /// Dựng báo cáo hiệu quả nhân sự sự kiện.
+    /// Lọc sự kiện diễn ra trong kỳ và áp dụng nhất quán phạm vi phòng ban/bộ phận.
     /// </summary>
     private async Task<HieuQuaSuKienReport> BuildSuKienAsync(
         DateOnly from,
@@ -589,9 +789,10 @@ public sealed class BaoCaoReportService
         var fromUtc = HotelEventRules.ToUtc(from.ToDateTime(TimeOnly.MinValue));
         var toUtcExclusive = HotelEventRules.ToUtc(to.AddDays(1).ToDateTime(TimeOnly.MinValue));
 
+        // Sự kiện đang hoặc đã diễn ra giao với kỳ báo cáo
         var suKien = await _context.DuAns
             .AsNoTracking()
-            .Where(d => d.NgayBatDau >= fromUtc && d.NgayBatDau < toUtcExclusive)
+            .Where(d => d.NgayBatDau < toUtcExclusive && d.NgayKetThuc > fromUtc)
             .OrderBy(d => d.NgayBatDau)
             .Select(d => new SuKienRow
             {
@@ -619,34 +820,31 @@ public sealed class BaoCaoReportService
                     MaNhanVien = p.MaNhanVien,
                     MaPhongBan = p.NhanVien != null ? p.NhanVien.MaPhongBan : null,
                     DanhGia = p.DanhGia,
-                    SoTienPhuCap = p.SoTienPhuCap
+                    SoTienPhuCap = p.SoTienPhuCap,
+                    TrangThaiThamGia = p.TrangThaiThamGia
                 })
                 .ToArrayAsync();
 
-        // Quản lý bị thu hẹp: chỉ giữ sự kiện có ít nhất một phân công thuộc bộ phận của mình.
-        // Sự kiện chưa phân công ai sẽ không hiện — thà thiếu còn hơn lộ sự kiện ngoài phạm vi.
-        if (!scope.IsWholeHotel && departmentId is int dept)
+        // Loại bỏ các phân công đã bị hủy
+        phanCong = [.. phanCong.Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"))];
+
+        var money = await LoadEventMoneyAsync(from, to, departmentId);
+
+        // Lọc theo phòng ban: áp dụng cho cả Manager và Admin/HR khi chọn phòng ban
+        if (departmentId is int dept)
         {
             var visibleIds = phanCong
                 .Where(p => p.MaPhongBan == dept)
                 .Select(p => p.MaDuAn)
                 .ToHashSet();
 
+            visibleIds.UnionWith(money.Select(m => m.EventId));
             suKien = [.. suKien.Where(d => visibleIds.Contains(d.MaDuAn))];
-            phanCong = [.. phanCong.Where(p => visibleIds.Contains(p.MaDuAn))];
+            phanCong = [.. phanCong.Where(p => p.MaPhongBan == dept)];
         }
 
-        var hourlyIds = suKien.Where(d => d.TinhTheoGio).Select(d => d.MaDuAn).ToArray();
-        var hourlyAmounts = hourlyIds.Length == 0
-            ? new Dictionary<int, decimal>()
-            : await _context.QuyetToanSuKiens.AsNoTracking()
-                .Where(q => hourlyIds.Contains(q.MaDuAn))
-                .GroupBy(q => q.MaDuAn)
-                .Select(g => new { MaDuAn = g.Key, SoTien = g.Sum(q => q.SoTien) })
-                .ToDictionaryAsync(q => q.MaDuAn, q => q.SoTien);
-        decimal EventAmount(SuKienRow item) => item.TinhTheoGio
-            ? hourlyAmounts.GetValueOrDefault(item.MaDuAn)
-            : phanCong.Where(p => p.MaDuAn == item.MaDuAn).Sum(p => p.SoTienPhuCap);
+        var amounts = money.GroupBy(m => m.EventId).ToDictionary(g => g.Key, g => g.Sum(m => m.Detail.SoTien ?? 0m));
+        decimal EventAmount(SuKienRow item) => amounts.GetValueOrDefault(item.MaDuAn);
 
         var tongLuot = phanCong.Length;
 
@@ -661,6 +859,10 @@ public sealed class BaoCaoReportService
             TongPhuCapDaPhanBo = suKien.Sum(EventAmount),
             TyLeXuatSac = PhanTram(phanCong.Count(p => p.DanhGia == "XUAT_SAC"), tongLuot),
             TyLeHoanThanh = PhanTram(phanCong.Count(p => p.DanhGia is "HOAN_THANH" or "XUAT_SAC"), tongLuot),
+            PhamViBoPhan = departmentId.HasValue,
+            GhiChuPhamVi = departmentId.HasValue
+                ? "Ngân sách là số chung toàn sự kiện; nhân sự và tiền là phần của bộ phận. Tiền theo giờ lọc theo tháng phát sinh; tiền cũ theo tháng kết thúc phân công, chưa đồng nghĩa đã thanh toán."
+                : "Tiền theo giờ lọc theo tháng phát sinh; tiền cũ theo tháng kết thúc phân công. Kỳ chi trả được ghi tại phần đối chứng, chưa đồng nghĩa đã thanh toán.",
 
             DanhSach = [.. suKien
                 .Select(d =>
@@ -674,11 +876,11 @@ public sealed class BaoCaoReportService
                         TenDuAn = d.TenDuAn,
                         LoaiLabel = HotelEventRules.TypeLabels.GetValueOrDefault(d.LoaiDuAn, d.LoaiDuAn),
                         TrangThaiLabel = HotelEventRules.StatusLabels.GetValueOrDefault(d.TrangThai, d.TrangThai),
-                        // Đổi mốc UTC sang giờ Việt Nam để ngày hiển thị không lệch một ngày.
                         TuNgay = DateOnly.FromDateTime(HotelEventRules.Local(d.NgayBatDau)),
                         DenNgay = DateOnly.FromDateTime(HotelEventRules.Local(d.NgayKetThuc)),
                         SoNhanSu = cuaSuKien.Select(p => p.MaNhanVien).Distinct().Count(),
                         NganSach = d.NganSachPhuCap,
+                        NganSachToanSuKien = departmentId.HasValue,
                         PhuCapDaPhanBo = phuCap,
                         TyLeSuDungNganSach = d.NganSachPhuCap <= 0m
                             ? 0m
@@ -758,36 +960,216 @@ public sealed class BaoCaoReportService
     /// </summary>
     private async Task<ChamCongRow[]> LoadAttendanceAsync(DateOnly from, DateOnly to, int? departmentId)
     {
-        var raw = await _context.ChamCongs
-            .AsNoTracking()
-            .Where(c => c.PhanCa != null
-                        && c.PhanCa.NgayLamViec >= from
-                        && c.PhanCa.NgayLamViec <= to
-                        && (departmentId == null || (c.PhanCa.NhanVien != null && c.PhanCa.NhanVien.MaPhongBan == departmentId)))
-            .Select(c => new
+        var now = DateTimeOffset.UtcNow;
+        var shifts = await _context.PhanCas.AsNoTracking()
+            .Where(p => p.DaCongBo && p.TrangThai != "DA_HUY" && p.KetThucDuKien <= now
+                && p.NgayLamViec >= from && p.NgayLamViec <= to
+                && (departmentId == null || (p.NhanVien != null && p.NhanVien.MaPhongBan == departmentId)))
+            .Select(p => new
             {
-                HoTen = c.PhanCa!.NhanVien != null ? c.PhanCa.NhanVien.Ho + " " + c.PhanCa.NhanVien.Ten : string.Empty,
-                PhongBan = c.PhanCa!.NhanVien != null && c.PhanCa.NhanVien.PhongBan != null
-                    ? c.PhanCa.NhanVien.PhongBan.TenPhongBan
-                    : "(Chưa xếp phòng ban)",
-                c.PhanCa!.NgayLamViec,
-                c.TrangThai,
-                c.PhutDiTre,
-                c.PhutVeSom,
-                c.GioTangCaOt
-            })
-            .ToArrayAsync();
-
-        return [.. raw.Select(c => new ChamCongRow
+                p.MaNhanVien, p.NgayLamViec, p.DaCongBo, p.TrangThai, p.KetThucDuKien,
+                HoTen = p.NhanVien != null ? p.NhanVien.Ho + " " + p.NhanVien.Ten : "",
+                PhongBan = p.NhanVien != null && p.NhanVien.PhongBan != null ? p.NhanVien.PhongBan.TenPhongBan : "(Chưa xếp phòng ban)",
+                Punch = p.ChamCong,
+                ApprovedLeave = _context.DonTus.Any(d => d.MaNhanVien == p.MaNhanVien
+                    && d.TrangThai == "DA_DUYET" && d.LoaiDon != null && d.LoaiDon.LaNghiPhep
+                    && d.TuNgay <= p.NgayLamViec && d.DenNgay >= p.NgayLamViec)
+            }).ToArrayAsync();
+        return shifts.Select(p => new ChamCongRow
         {
-            HoTen = c.HoTen,
-            PhongBan = c.PhongBan,
-            Ngay = c.NgayLamViec,
-            TrangThai = c.TrangThai,
-            PhutDiTre = c.PhutDiTre,
-            PhutVeSom = c.PhutVeSom,
-            GioTangCaOt = c.GioTangCaOt
-        })];
+            MaNhanVien = p.MaNhanVien, HoTen = p.HoTen, PhongBan = p.PhongBan, Ngay = p.NgayLamViec,
+            TrangThai = ReportPolicy.ResolveAttendanceStatus(p.DaCongBo, p.TrangThai, p.KetThucDuKien,
+                now, p.ApprovedLeave, p.Punch)!,
+            PhutDiTre = p.Punch?.PhutDiTre ?? 0, PhutVeSom = p.Punch?.PhutVeSom ?? 0,
+            GioTangCaOt = p.Punch?.GioTangCaOt ?? 0
+        }).Where(r => r.TrangThai != null).ToArray();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  CHI TIẾT ĐỐI CHỨNG DỮ LIỆU NGUỒN (DRILL-DOWN)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Nạp dữ liệu nguồn phục vụ đối chứng từ chỉ tiêu KPI (Task 9).
+    /// </summary>
+    public async Task<BaoCaoChiTietViewModel> BuildChiTietAsync(
+        ReportPolicy.BaoCaoScope scope,
+        string? role,
+        string type,
+        string? ky,
+        int? nam,
+        int? thang,
+        int? quy,
+        int? phongBan)
+    {
+        var today = DateOnly.FromDateTime(HotelEventRules.Local(DateTimeOffset.UtcNow));
+        var year = nam is >= 2000 and <= 2200 ? nam.Value : today.Year;
+        var periodKind = (ky ?? "THANG").ToUpperInvariant() switch
+        {
+            "QUY" => "QUY",
+            "NAM" => "NAM",
+            _ => "THANG"
+        };
+
+        int? month = periodKind == "THANG" ? Math.Clamp(thang ?? today.Month, 1, 12) : null;
+        int? quarter = periodKind == "QUY" ? Math.Clamp(quy ?? ((today.Month - 1) / 3) + 1, 1, 4) : null;
+        var (from, to, periodLabel) = ReportPolicy.ResolvePeriodRange(year, quarter, month);
+
+        int? departmentId = scope.IsWholeHotel ? (phongBan is > 0 ? phongBan : null) : scope.DepartmentId;
+
+        var result = new BaoCaoChiTietViewModel
+        {
+            LoaiChiTiet = type,
+            NhanKy = periodLabel,
+            PhamViLabel = departmentId.HasValue ? $"Phòng ban #{departmentId.Value}" : "Toàn khách sạn"
+        };
+
+        switch (type.ToLowerInvariant())
+        {
+            case "tuyen-moi":
+                result.TieuDe = "Danh sách nhân sự tuyển mới trong kỳ";
+                var tuyen = await _context.NhanViens
+                    .AsNoTracking()
+                    .Where(n => n.NgayVaoLam >= from && n.NgayVaoLam <= to
+                                && (departmentId == null || n.MaPhongBan == departmentId))
+                    .OrderBy(n => n.NgayVaoLam)
+                    .Select(n => new ChiTietDongItem
+                    {
+                        MaDinhDanh = "NV-" + n.MaNhanVien.ToString(),
+                        TenDoiTuong = n.Ho + " " + n.Ten,
+                        BoPhan = n.PhongBan != null ? n.PhongBan.TenPhongBan : "Chưa xếp",
+                        ChucVuHoacLoai = n.ChucVu != null ? n.ChucVu.TenChucVu : "Chưa xếp",
+                        NgayThang = n.NgayVaoLam,
+                        TrangThai = n.TrangThai
+                    })
+                    .ToArrayAsync();
+                result.DanhSach = tuyen;
+                break;
+
+            case "thoi-viec":
+                result.TieuDe = "Danh sách nhân sự thôi việc trong kỳ";
+                var thoi = await _context.NhanViens
+                    .AsNoTracking()
+                    .Where(n => (n.TrangThai == "THOI_VIEC" || n.TrangThai == "DA_THOI_VIEC")
+                                && n.NgayThoiViec >= from && n.NgayThoiViec <= to
+                                && (departmentId == null || n.MaPhongBan == departmentId))
+                    .OrderBy(n => n.NgayThoiViec)
+                    .Select(n => new ChiTietDongItem
+                    {
+                        MaDinhDanh = "NV-" + n.MaNhanVien.ToString(),
+                        TenDoiTuong = n.Ho + " " + n.Ten,
+                        BoPhan = n.PhongBan != null ? n.PhongBan.TenPhongBan : "Chưa xếp",
+                        ChucVuHoacLoai = n.ChucVu != null ? n.ChucVu.TenChucVu : "Chưa xếp",
+                        NgayThang = n.NgayThoiViec,
+                        TrangThai = n.TrangThai
+                    })
+                    .ToArrayAsync();
+                result.DanhSach = thoi;
+                break;
+
+            case "vi-pham":
+                result.TieuDe = "Danh sách các lượt vi phạm kỷ luật (trễ/sớm)";
+                var rawAtt = await LoadAttendanceAsync(from, to, departmentId);
+                var violations = rawAtt
+                    .Where(r => ReportPolicy.IsViolation(r.TrangThai))
+                    .OrderByDescending(r => r.Ngay)
+                    .Select(r => new ChiTietDongItem
+                    {
+                        MaDinhDanh = "NV-" + r.MaNhanVien,
+                        TenDoiTuong = r.HoTen,
+                        BoPhan = r.PhongBan,
+                        ChucVuHoacLoai = r.TrangThai == "DI_TRE" ? "Đi trễ" : (r.TrangThai == "VE_SOM" ? "Về sớm" : "Trễ và sớm"),
+                        NgayThang = r.Ngay,
+                        SoLuong = r.PhutDiTre + r.PhutVeSom,
+                        TrangThai = r.TrangThai,
+                        GhiChu = $"Trễ {r.PhutDiTre}p, sớm {r.PhutVeSom}p"
+                    })
+                    .ToList();
+                result.DanhSach = violations;
+                break;
+
+            case "phieu-luong":
+                if (!ReportPolicy.CanViewPayrollFundReport(role))
+                {
+                    result.TieuDe = "Không có quyền truy cập chi tiết quỹ lương";
+                    result.DanhSach = [];
+                    break;
+                }
+                result.TieuDe = "Danh sách phiếu lương trong kỳ";
+                var slips = await _context.PhieuLuongs
+                    .AsNoTracking()
+                    .Where(p => p.KyLuong != null && p.KyLuong.Nam == year
+                                && p.KyLuong.Thang >= from.Month && p.KyLuong.Thang <= to.Month
+                                && (departmentId == null || (p.NhanVien != null && p.NhanVien.MaPhongBan == departmentId)))
+                    .OrderBy(p => p.KyLuong!.Thang)
+                    .ThenBy(p => p.NhanVien != null ? p.NhanVien.Ten : "")
+                    .Select(p => new ChiTietDongItem
+                    {
+                        MaDinhDanh = "PL-" + p.MaPhieuLuong,
+                        TenDoiTuong = p.NhanVien != null ? p.NhanVien.Ho + " " + p.NhanVien.Ten : "Không tên",
+                        BoPhan = p.NhanVien != null && p.NhanVien.PhongBan != null ? p.NhanVien.PhongBan.TenPhongBan : "Chưa xếp",
+                        ChucVuHoacLoai = $"Tháng {p.KyLuong!.Thang:00}/{p.KyLuong.Nam}",
+                        SoTien = p.TienLuongCong + p.TienTangCa + p.TongPhuCap + p.TongThuong,
+                        TrangThai = p.TrangThai,
+                        GhiChu = $"Thực nhận: {p.ThucNhan:N0} đ"
+                    })
+                    .ToArrayAsync();
+                result.DanhSach = slips;
+                result.TongTien = slips.Sum(s => s.SoTien ?? 0m);
+                break;
+
+            case "su-kien":
+                result.TieuDe = "Các khoản tiền sự kiện phát sinh trong kỳ";
+                var money = await LoadEventMoneyAsync(from, to, departmentId);
+                result.DanhSach = money.Select(m => m.Detail).ToArray();
+                result.TongTien = money.Sum(m => m.Detail.SoTien ?? 0m);
+                break;
+        }
+
+        return result;
+    }
+
+    private sealed record EventMoneyRow(int EventId, ChiTietDongItem Detail);
+
+    private async Task<EventMoneyRow[]> LoadEventMoneyAsync(DateOnly from, DateOnly to, int? departmentId)
+    {
+        var firstMonth = new DateOnly(from.Year, from.Month, 1);
+        var lastMonth = new DateOnly(to.Year, to.Month, 1);
+        var start = HotelEventRules.ToUtc(from.ToDateTime(TimeOnly.MinValue));
+        var end = HotelEventRules.ToUtc(to.AddDays(1).ToDateTime(TimeOnly.MinValue));
+        var hourly = await _context.QuyetToanSuKiens.AsNoTracking()
+            .Where(q => q.DuAn != null && q.DuAn.TinhTheoGio
+                && q.DuAn.NgayBatDau < end && q.DuAn.NgayKetThuc > start
+                && q.ThangPhatSinh >= firstMonth && q.ThangPhatSinh <= lastMonth
+                && (departmentId == null || (q.NhanVien != null && q.NhanVien.MaPhongBan == departmentId)))
+            .Select(q => new {
+                q.MaDuAn, q.MaQuyetToan, q.ThangPhatSinh, q.MaKyChiTra, q.MaChiTiet, q.SoTien,
+                Name = q.NhanVien != null ? q.NhanVien.Ho + " " + q.NhanVien.Ten : "Không rõ",
+                Department = q.NhanVien != null && q.NhanVien.PhongBan != null ? q.NhanVien.PhongBan.TenPhongBan : "Chưa xếp",
+                Event = q.DuAn!.TenDuAn
+            }).ToArrayAsync();
+        var legacy = await _context.PhanCongDuAns.AsNoTracking()
+            .Where(p => p.DuAn != null && !p.DuAn.TinhTheoGio && p.SoTienPhuCap != 0m
+                && p.DuAn.NgayBatDau < end && p.DuAn.NgayKetThuc > start
+                && p.KetThuc > start && p.KetThuc <= end
+                && (departmentId == null || (p.NhanVien != null && p.NhanVien.MaPhongBan == departmentId)))
+            .Select(p => new {
+                p.MaDuAn, p.MaPhanCong, p.KetThuc, p.SoTienPhuCap, p.TrangThaiChiTra,
+                Name = p.NhanVien != null ? p.NhanVien.Ho + " " + p.NhanVien.Ten : "Không rõ",
+                Department = p.NhanVien != null && p.NhanVien.PhongBan != null ? p.NhanVien.PhongBan.TenPhongBan : "Chưa xếp",
+                Event = p.DuAn!.TenDuAn
+            }).ToArrayAsync();
+        return hourly.Select(q => new EventMoneyRow(q.MaDuAn, new ChiTietDongItem {
+            MaDinhDanh = "QT-" + q.MaQuyetToan, TenDoiTuong = q.Name, BoPhan = q.Department,
+            ChucVuHoacLoai = q.Event, NgayThang = q.ThangPhatSinh, SoTien = q.SoTien,
+            TrangThai = q.MaChiTiet.HasValue ? "Đã kết chuyển vào phiếu lương" : "Chưa kết chuyển",
+            GhiChu = "Tháng phát sinh; kỳ chi trả #" + q.MaKyChiTra + ". Kết chuyển không có nghĩa đã thanh toán."
+        })).Concat(legacy.Select(p => new EventMoneyRow(p.MaDuAn, new ChiTietDongItem {
+            MaDinhDanh = "PC-" + p.MaPhanCong, TenDoiTuong = p.Name, BoPhan = p.Department,
+            ChucVuHoacLoai = p.Event, NgayThang = DateOnly.FromDateTime(HotelEventRules.Local(p.KetThuc.AddTicks(-1))),
+            SoTien = p.SoTienPhuCap, TrangThai = p.TrangThaiChiTra,
+            GhiChu = "Tiền lịch sử ghi nhận tại tháng kết thúc phân công; không cộng lại từ quyết toán."
+        }))).ToArray();
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -876,6 +1258,7 @@ internal sealed class NhanSuRow
 /// <summary>Một lượt chấm công kèm nhân viên và bộ phận suy ra từ lịch phân ca.</summary>
 internal sealed class ChamCongRow
 {
+    public int MaNhanVien { get; set; }
     public string HoTen { get; set; } = string.Empty;
     public string PhongBan { get; set; } = string.Empty;
     public DateOnly Ngay { get; set; }
@@ -889,6 +1272,7 @@ internal sealed class ChamCongRow
 internal sealed class PhieuLuongRow
 {
     public int Thang { get; set; }
+    public string TrangThai { get; set; } = string.Empty;
     public string PhongBan { get; set; } = string.Empty;
     public decimal TienLuongCong { get; set; }
     public decimal TienTangCa { get; set; }
@@ -927,4 +1311,5 @@ internal sealed class PhanCongRow
     public int? MaPhongBan { get; set; }
     public string DanhGia { get; set; } = string.Empty;
     public decimal SoTienPhuCap { get; set; }
+    public string TrangThaiThamGia { get; set; } = "DA_PHAN";
 }

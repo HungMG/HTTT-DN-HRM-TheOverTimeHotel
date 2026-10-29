@@ -19,6 +19,9 @@
      data-baocao-root
      data-baocao-endpoint="@Url.Action("Index")"
      data-baocao-export-endpoint="@Url.Action("Export")"
+     data-baocao-export-excel-endpoint="@Url.Action("ExportExcel")"
+     data-baocao-details-endpoint="@Url.Action("Details")"
+     data-baocao-print-endpoint="@Url.Action("Print")"
      data-baocao-tab="@Model.Tab">
 
     <partial name="_CatalogAlerts" />
@@ -57,10 +60,15 @@
                     title="Tải số liệu của tab đang mở ra tệp CSV mở bằng Excel">
                 <i class="bi bi-file-earmark-excel me-1"></i> Xuất CSV
             </button>
+            <button type="button" class="btn btn-sm btn-outline-success rounded-3 px-3 fw-semibold"
+                    data-baocao-export-excel
+                    title="Tải số liệu của tab đang mở ra tệp Excel (.xls) có định dạng và màu sắc">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Xuất Excel
+            </button>
             <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold"
                     data-baocao-print
-                    title="In báo cáo đang xem theo khổ A4">
-                <i class="bi bi-printer me-1"></i> In báo cáo
+                    title="In báo cáo đang xem theo khổ A4 hoặc lưu PDF">
+                <i class="bi bi-printer me-1"></i> In / PDF
             </button>
         </div>
     </header>

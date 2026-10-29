@@ -604,6 +604,8 @@
     }
 
     activeTab = tab;
+    var appliedBoard = currentBoard();
+    if (appliedBoard) appliedBoard.dataset.tab = tab;
 
     if (tabsNav) {
       Array.prototype.forEach.call(tabsNav.querySelectorAll("[data-baocao-tab]"), function (button) {
@@ -626,7 +628,7 @@
     renderCharts();
 
     if (config.pushUrl) {
-      window.history.pushState({ baocaoTab: tab }, "", buildUrl(url("data-baocao-endpoint", root)).toString());
+      window.history.pushState({ baocaoTab: tab }, "", buildCurrentExportUrl(root.getAttribute("data-baocao-endpoint") || window.location.pathname));
     }
   }
 
@@ -695,7 +697,22 @@
     window.HotelMotion?.applyEntrance?.(adopted);
   }
 
-  async function refresh(targetUrl) {
+  // Server-rendered state is authoritative, including omitted/reset parameters.
+  function syncFormFromUrl(targetUrl, preserveTab) {
+    if (!filterForm) return;
+    var board = currentBoard();
+    var data = board ? board.dataset : {};
+    ["ky", "nam", "thang", "quy", "phongBan"].forEach(function (key) {
+      var field = filterForm.querySelector('select[name="' + key + '"]');
+      if (field) field.value = data[key] !== undefined ? data[key] : (targetUrl.searchParams.get(key) || "");
+    });
+    syncPeriodFields();
+    var tab = normalizeTab(preserveTab ? activeTab : (data.tab || targetUrl.searchParams.get("tab")));
+    if (tab) applyTab(tab, { persist: true, pushUrl: false });
+  }
+
+  async function refresh(targetUrl, pushHistory) {
+    if (typeof pushHistory === "undefined") pushHistory = true;
     var next = targetUrl instanceof URL ? targetUrl : new URL(String(targetUrl), window.location.origin);
 
     if (activeAbort) activeAbort.abort();
@@ -713,17 +730,23 @@
         throw new Error("Máy chủ trả về mã " + response.status + ".");
       }
 
-      var parsed = new DOMParser().parseFromString(await response.text(), "text/html");
+      var html = await response.text();
+      if (signal.aborted) return;
+      var parsed = new DOMParser().parseFromString(html, "text/html");
       var nextBoard = parsed.querySelector("[data-baocao-board]");
       if (!nextBoard) {
         throw new Error("Dữ liệu trả về không đúng cấu trúc.");
       }
 
       replaceBoard(nextBoard);
-      applyTab(activeTab, { persist: false, pushUrl: false });
-      window.history.pushState({}, "", next.toString());
+      syncFormFromUrl(next, pushHistory);
+      if (pushHistory) {
+        window.history.pushState({}, "", buildCurrentExportUrl(root.getAttribute("data-baocao-endpoint") || window.location.pathname));
+      }
     } catch (error) {
       if (error && error.name === "AbortError") return;
+      syncFormFromUrl(new URL(window.location.href), true);
+      window.history.replaceState({}, "", buildCurrentExportUrl(root.getAttribute("data-baocao-endpoint") || window.location.pathname));
       console.warn("[BaoCao] Lỗi nạp lại vùng dữ liệu:", error);
       showError(error instanceof Error ? error.message : null);
     } finally {
@@ -788,32 +811,138 @@
       refresh(new URL(
         resetLink.getAttribute("href") || root.getAttribute("data-baocao-endpoint"),
         window.location.origin
-      ));
+      ), true);
     });
+  }
+
+  // Export and history use server-applied board filters, never pending form edits.
+  function buildCurrentExportUrl(baseEndpoint) {
+    var result = new URL(baseEndpoint, window.location.origin);
+    var board = currentBoard();
+    var data = board ? board.dataset : {};
+    ["ky", "nam", "thang", "quy", "phongBan"].forEach(function (key) {
+      if (data[key]) result.searchParams.set(key, data[key]);
+    });
+    if (activeTab) {
+      result.searchParams.set("tab", activeTab);
+    }
+    return result.toString();
   }
 
   var exportButton = root.querySelector("[data-baocao-export]");
   if (exportButton) {
     exportButton.addEventListener("click", function () {
-      // Điều hướng sang endpoint tải tệp. Trình duyệt nhận Content-Disposition:
-      // attachment nên trang báo cáo vẫn nguyên trạng, không bị nạp lại.
-      window.location.href = buildUrl(new URL(
-        root.getAttribute("data-baocao-export-endpoint") || window.location.pathname,
-        window.location.origin
-      )).toString();
+      var endpoint = root.getAttribute("data-baocao-export-endpoint") || "/BaoCao/Export";
+      window.location.href = buildCurrentExportUrl(endpoint);
+    });
+  }
+
+  var exportExcelButton = root.querySelector("[data-baocao-export-excel]");
+  if (exportExcelButton) {
+    exportExcelButton.addEventListener("click", function () {
+      var endpoint = root.getAttribute("data-baocao-export-excel-endpoint") || "/BaoCao/ExportExcel";
+      window.location.href = buildCurrentExportUrl(endpoint);
     });
   }
 
   var printButton = root.querySelector("[data-baocao-print]");
   if (printButton) {
     printButton.addEventListener("click", function () {
-      window.print();
+      var endpoint = root.getAttribute("data-baocao-print-endpoint") || "/BaoCao/Print";
+      window.open(buildCurrentExportUrl(endpoint), "_blank");
     });
   }
 
-  // Nút quay lại / tiến của trình duyệt: nạp lại đúng vùng dữ liệu theo URL mới.
+  // ═══════════════════════════════════════════════════════════════════════
+  //  DRILL-DOWN MODAL CHI TIẾT ĐỐI CHỨNG (Task 9)
+  // ═══════════════════════════════════════════════════════════════════════
+  function exportModalTableToCsv(container, drillType) {
+    var table = container.querySelector("table");
+    if (!table) return;
+    var rows = table.querySelectorAll("tr");
+    var csvContent = "\uFEFF"; // UTF-8 BOM
+    Array.prototype.forEach.call(rows, function (row) {
+      var cells = row.querySelectorAll("th, td");
+      var line = [];
+      Array.prototype.forEach.call(cells, function (cell) {
+        var text = (cell.innerText || cell.textContent || "").trim();
+        // Chống chèn công thức CSV Injection
+        if (/^[=+@\-\t\r]/.test(text)) {
+          text = "'" + text;
+        }
+        line.push('"' + text.replace(/"/g, '""') + '"');
+      });
+      if (line.length > 0) {
+        csvContent += line.join(",") + "\r\n";
+      }
+    });
+
+    var blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    var link = document.createElement("a");
+    var filename = "BaoCaoChiTiet_" + drillType + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  async function openDrillDown(drillType) {
+    var modalEl = document.getElementById("baocaoDetailsModal");
+    var contentEl = document.getElementById("baocaoDetailsContent");
+    if (!modalEl || !contentEl) return;
+
+    contentEl.innerHTML = '<div class="p-5 text-center text-muted"><div class="spinner-border text-primary mb-3" role="status"></div><div class="fw-semibold">Đang nạp dữ liệu chi tiết...</div></div>';
+
+    var modalInstance = null;
+    if (window.bootstrap && window.bootstrap.Modal) {
+      modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+      modalInstance.show();
+    } else {
+      modalEl.classList.add("show");
+      modalEl.style.display = "block";
+    }
+
+    try {
+      var detailsEndpoint = root.getAttribute("data-baocao-details-endpoint") || "/BaoCao/Details";
+      var fetchUrl = new URL(detailsEndpoint, window.location.origin);
+      fetchUrl = new URL(buildCurrentExportUrl(detailsEndpoint));
+      fetchUrl.searchParams.set("type", drillType);
+
+      var resp = await fetch(fetchUrl.toString(), {
+        headers: { "X-Requested-With": "XMLHttpRequest", Accept: "text/html" }
+      });
+      if (!resp.ok) {
+        throw new Error("Máy chủ trả về mã " + resp.status);
+      }
+      var html = await resp.text();
+      contentEl.innerHTML = html;
+
+      var modalExportBtn = contentEl.querySelector("[data-baocao-export-details]");
+      if (modalExportBtn) {
+        modalExportBtn.addEventListener("click", function () {
+          exportModalTableToCsv(contentEl, drillType);
+        });
+      }
+    } catch (err) {
+      contentEl.innerHTML = '<div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Không thể tải chi tiết</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-danger py-4">' + (err.message || "Đã xảy ra lỗi khi tải dữ liệu.") + '</div><div class="modal-footer border-0"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Đóng</button></div>';
+    }
+  }
+
+  // Bắt sự kiện click drill-down trên toàn bộ bảng báo cáo
+  root.addEventListener("click", function (event) {
+    var trigger = event.target.closest("[data-baocao-drill]");
+    if (!trigger) return;
+    event.preventDefault();
+    var drillType = trigger.getAttribute("data-baocao-drill");
+    if (drillType) {
+      openDrillDown(drillType);
+    }
+  });
+
+  // Nút quay lại / tiến của trình duyệt: nạp lại đúng vùng dữ liệu theo URL mới (không push duplicate).
   window.addEventListener("popstate", function () {
-    refresh(new URL(window.location.href));
+    refresh(new URL(window.location.href), false);
   });
 
   // Đổi kích thước cửa sổ: chỉ co giãn biểu đồ đang hiển thị.

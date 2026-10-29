@@ -50,6 +50,9 @@ public class AppDbContext : DbContext
     public DbSet<DinhBienNgay> DinhBienNgays => Set<DinhBienNgay>();
     public DbSet<GiaiTrinhChamCong> GiaiTrinhChamCongs => Set<GiaiTrinhChamCong>();
 
+    // Bổ sung theo PRD 10.4 / TSK-24: Kế hoạch ngân sách lương được phê duyệt
+    public DbSet<NganSachLuong> NganSachLuongs => Set<NganSachLuong>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -816,6 +819,35 @@ public class AppDbContext : DbContext
                 .WithMany(n => n.GiaiTrinhHrXacNhan)
                 .HasForeignKey(e => e.MaHrXacNhan)
                 .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Bổ sung theo PRD 10.4 / TSK-24: Kế hoạch ngân sách lương được phê duyệt
+        modelBuilder.Entity<NganSachLuong>(entity =>
+        {
+            entity.ToTable("ngan_sach_luong");
+            entity.HasKey(e => e.MaNganSach);
+            entity.Property(e => e.MaNganSach).HasColumnName("ma_ngan_sach");
+            entity.Property(e => e.Version).HasColumnName("version").HasDefaultValue(1L).IsConcurrencyToken();
+            entity.Property(e => e.Nam).HasColumnName("nam").IsRequired();
+            entity.Property(e => e.Thang).HasColumnName("thang");
+            entity.Property(e => e.MaPhongBan).HasColumnName("ma_phong_ban");
+            entity.Property(e => e.SoTienNganSach).HasColumnName("so_tien_ngan_sach").HasPrecision(15, 2).IsRequired();
+            entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("DRAFT").IsRequired();
+            entity.Property(e => e.NguoiTao).HasColumnName("nguoi_tao");
+            entity.Property(e => e.NgayTao).HasColumnName("ngay_tao").HasDefaultValueSql("now()");
+            entity.Property(e => e.NguoiDuyet).HasColumnName("nguoi_duyet");
+            entity.Property(e => e.NgayDuyet).HasColumnName("ngay_duyet");
+            entity.Property(e => e.GhiChu).HasColumnName("ghi_chu");
+
+            entity.HasOne(e => e.PhongBan)
+                .WithMany()
+                .HasForeignKey(e => e.MaPhongBan)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.NhanVienDuyet)
+                .WithMany()
+                .HasForeignKey(e => e.NguoiDuyet)
                 .OnDelete(DeleteBehavior.SetNull);
         });
     }

@@ -1,0 +1,21 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.BaoCaoViewModel
+@if (Model.SoSanhCungKy.Count > 0)
+{
+    <section class="catalog-card p-3 my-3">
+        <h2 class="h5">So sánh cùng kỳ năm trước: @Model.CungKyLabel</h2>
+        <p class="small text-muted">So sánh toàn kỳ đã chọn; kỳ đang diễn ra chưa có dữ liệu đầy đủ. Phòng ban dùng hồ sơ hiện tại, chưa có lịch sử điều chuyển để tái lập hoàn toàn.</p>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>Chỉ tiêu</th><th>Kỳ này</th><th>Cùng kỳ</th><th>Chênh lệch</th><th>Thay đổi (%)</th></tr></thead>
+                <tbody>
+                    @foreach (var row in Model.SoSanhCungKy)
+                    {
+                        <tr><td>@row.Label (@row.Unit)</td><td>@row.Current.ToString("N1")</td><td>@row.Previous.ToString("N1")</td>
+                            <td>@row.Difference.ToString("N1")@(row.Unit == "%" ? " điểm %" : "")</td>
+                            <td>@(row.Percent.HasValue ? row.Percent.Value.ToString("0.#") + "%" : "Không tính: kỳ gốc bằng 0")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}

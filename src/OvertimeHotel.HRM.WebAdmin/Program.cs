@@ -334,6 +334,7 @@ builder.Services.AddHostedService<AuditLogRetentionWorker>();
 // Dựng số liệu sáu báo cáo thống kê (PRD 10.1 → 10.6). Dùng chung cho trang
 // Báo cáo & Thống kê và cho Trợ lý AI, nên hai nơi không thể lệch số liệu.
 builder.Services.AddScoped<BaoCaoReportService>();
+builder.Services.AddScoped<PayrollBudgetService>();
 builder.Services.AddScoped<IAttendanceSummaryService, AttendanceSummaryService>();
 builder.Services.AddScoped<IHotelEventService, HotelEventService>();
 builder.Services.AddHostedService<HotelEventAutoStartWorker>();
