@@ -263,10 +263,28 @@ public static class ShiftSchedulingPolicy
     }
 
     /// <summary>
+    /// Múi giờ chuẩn của khách sạn The OverTime Hotel (Việt Nam UTC+7).
+    /// </summary>
+    public static readonly TimeSpan VietnamOffset = TimeSpan.FromHours(7);
+
+    /// <summary>
+    /// Kiểm tra xem cổng phân ca định kỳ dành cho Quản lý (Manager) có đang mở hay không.
+    /// Theo quy trình vận hành khách sạn: Quản lý các bộ phận thực hiện xếp ca vào Thứ Bảy (00:00)
+    /// và Chủ Nhật (hết 23:59:59) hàng tuần cho tuần tiếp theo.
+    /// Từ Thứ Hai đến hết Thứ Sáu cổng đóng để giữ ổn định lịch trực đã công bố.
+    /// Quản trị viên (Admin) và Nhân sự (HR) có toàn quyền điều phối 24/7 mọi lúc.
+    /// </summary>
+    public static bool IsManagerSchedulingWindowOpen(DateTimeOffset? now = null)
+    {
+        var vnNow = (now ?? DateTimeOffset.UtcNow).ToOffset(VietnamOffset);
+        return vnNow.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+    }
+
+    /// <summary>
     /// Định dạng mốc thời gian theo giờ Việt Nam để thông báo đọc được ngay trên giao diện.
     /// </summary>
     public static string Format(DateTimeOffset value)
-        => value.ToOffset(TimeSpan.FromHours(7)).ToString("HH:mm dd/MM/yyyy");
+        => value.ToOffset(VietnamOffset).ToString("HH:mm dd/MM/yyyy");
 
     private static string FormatHours(double hours)
         => hours <= 0 ? "0" : hours.ToString("0.#");

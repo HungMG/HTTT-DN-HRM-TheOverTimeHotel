@@ -227,12 +227,9 @@
     }
   }
 
-  // Ca đầu tiên trong danh mục là ca mở sẵn; các ca còn lại gấp lại cho nhật ký
-  // gọn gàng. Trước đây chỗ này khoá cứng maCa === 1 — đúng với bộ ba Sáng/Chiều/
-  // Đêm nhưng sai ngay khi danh mục đổi thứ tự hoặc thêm ca mới.
+  // Toàn bộ các nhóm ca mặc định luôn thu lại (collapsed) gọn gàng theo yêu cầu trải nghiệm
   function isDefaultExpandedShift(maCa, caList) {
-    if (!caList || caList.length === 0) return false;
-    return Number(maCa) === Number(caList[0].maCa);
+    return false;
   }
 
   // Ghi nhớ ca nào người dùng đã tự thu gọn / mở rộng, để khi nhật ký render lại

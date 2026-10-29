@@ -116,6 +116,8 @@ public class PhanCaController : Controller
         // sửa được trên thanh địa chỉ và bỏ trống là thấy hết.
         var phamViPhongBanId = User.ResolveEffectiveDepartmentId(phongBanId);
         var biGioiHanTheoBoPhan = User.GetManagedDepartmentScope().HasValue;
+        var isManager = biGioiHanTheoBoPhan;
+        var isWindowClosedForUser = isManager && !ShiftSchedulingPolicy.IsManagerSchedulingWindowOpen();
 
         var model = new PhanCaIndexViewModel
         {
@@ -127,7 +129,8 @@ public class PhanCaController : Controller
             SelectedPhongBanId = phongBanId,
             SelectedCaId = caId,
             PhamViPhongBanId = phamViPhongBanId,
-            BiGioiHanTheoBoPhan = biGioiHanTheoBoPhan
+            BiGioiHanTheoBoPhan = biGioiHanTheoBoPhan,
+            IsManagerSchedulingWindowClosed = isWindowClosedForUser
         };
 
         try
@@ -488,9 +491,34 @@ public class PhanCaController : Controller
                 }
             }
 
+            var dowNames = new[] { "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật" };
+            var allDinhBienNgayInWeek = await _context.DinhBienNgays.AsNoTracking()
+                .Where(d => d.Ngay >= weekStart && d.Ngay <= weekEnd)
+                .Select(d => d.Ngay)
+                .Distinct()
+                .ToListAsync();
+            var daysWithOverride = allDinhBienNgayInWeek.ToHashSet();
+
+            var weekDayOptions = new List<DinhBienDayOption>();
+            for (int i = 0; i < 7; i++)
+            {
+                var d = weekStart.AddDays(i);
+                weekDayOptions.Add(new DinhBienDayOption
+                {
+                    Date = d,
+                    DayName = dowNames[i],
+                    FormattedDate = d.ToString("dd/MM"),
+                    IsSelected = d == model.SelectedDate,
+                    HasCustomQuota = daysWithOverride.Contains(d)
+                });
+            }
+
             model.DinhBien = new DinhBienModalViewModel
             {
                 Ngay = model.SelectedDate,
+                WeekStart = weekStart,
+                WeekEnd = weekEnd,
+                WeekDays = weekDayOptions,
                 DanhSachCa = model.DanhSachCa,
                 DanhSachPhongBan = danhSachPhongBan,
                 ReturnWeek = weekStart.ToString("yyyy-MM-dd"),
@@ -655,6 +683,18 @@ public class PhanCaController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreatePhanCaInputModel input)
     {
+        // KHUNG GIỜ PHÂN CA QUẢN LÝ: Quản lý chỉ được phân ca vào Thứ Bảy & Chủ Nhật hàng tuần.
+        // Ngoài khung giờ này (Thứ 2 đến Thứ 6), chỉ Admin và HR mới có quyền điều phối đột xuất.
+        if (GetManagerDepartmentScope().HasValue && !ShiftSchedulingPolicy.IsManagerSchedulingWindowOpen())
+        {
+            TempData["Error"] = TempData["ErrorMessage"] = "Cổng phân ca định kỳ dành cho Quản lý chỉ mở vào Thứ Bảy và Chủ Nhật hàng tuần. Hiện tại cổng đang đóng (Thứ Hai – Thứ Sáu). Vui lòng liên hệ Admin hoặc HR nếu cần phân ca đột xuất.";
+            if (!string.IsNullOrWhiteSpace(input.ReturnUrl) && Url.IsLocalUrl(input.ReturnUrl))
+            {
+                return Redirect(input.ReturnUrl);
+            }
+            return RedirectToAction(nameof(Index), new { week = input.NgayLamViec != default ? input.NgayLamViec.ToString("yyyy-MM-dd") : null });
+        }
+
         var empIds = (input.DanhSachMaNhanVien ?? new List<int>())
             .Where(id => id > 0)
             .Distinct()
@@ -961,6 +1001,13 @@ public class PhanCaController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> QuickWeekSchedule(int maNhanVien, int maCa, string weekStartStr)
     {
+        // KHUNG GIỜ PHÂN CA QUẢN LÝ: Quản lý chỉ được phân ca vào Thứ Bảy & Chủ Nhật hàng tuần.
+        if (GetManagerDepartmentScope().HasValue && !ShiftSchedulingPolicy.IsManagerSchedulingWindowOpen())
+        {
+            TempData["Error"] = TempData["ErrorMessage"] = "Cổng phân ca định kỳ dành cho Quản lý chỉ mở vào Thứ Bảy và Chủ Nhật hàng tuần. Hiện tại cổng đang đóng (Thứ Hai – Thứ Sáu). Vui lòng liên hệ Admin hoặc HR nếu cần xếp ca đột xuất.";
+            return RedirectToAction(nameof(Index), new { week = weekStartStr });
+        }
+
         if (maNhanVien <= 0 || maCa <= 0 || !DateOnly.TryParse(weekStartStr, out var weekStart))
         {
             TempData["Error"] = TempData["ErrorMessage"] = "Thông tin xếp ca nhanh không hợp lệ.";
@@ -1162,6 +1209,13 @@ public class PhanCaController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id, string? returnWeek, string? changeReason)
     {
+        // KHUNG GIỜ PHÂN CA QUẢN LÝ: Quản lý chỉ được phân ca/hủy ca vào Thứ Bảy & Chủ Nhật hàng tuần.
+        if (GetManagerDepartmentScope().HasValue && !ShiftSchedulingPolicy.IsManagerSchedulingWindowOpen())
+        {
+            TempData["Error"] = TempData["ErrorMessage"] = "Cổng điều chỉnh phân ca dành cho Quản lý chỉ mở vào Thứ Bảy và Chủ Nhật hàng tuần. Hiện tại cổng đang đóng (Thứ Hai – Thứ Sáu). Vui lòng liên hệ Admin hoặc HR nếu cần hủy ca đột xuất.";
+            return RedirectToAction(nameof(Index), new { week = returnWeek });
+        }
+
         try
         {
             var result = await WriteScheduleAsync<IActionResult?>(async () =>
@@ -1346,6 +1400,69 @@ public class PhanCaController : Controller
     }
 
     /// <summary>
+    /// API đọc dữ liệu định biên riêng và số nhân sự thực tế theo từng ô ca × chức vụ × bộ phận
+    /// của một ngày được chọn (phục vụ chuyển ngày tức thì trong popup định biên ca).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetDinhBienNgayAjax(string ngay)
+    {
+        if (!DateOnly.TryParse(ngay, out var parsedDate))
+        {
+            return Json(new { success = false, message = "Ngày áp dụng không hợp lệ." });
+        }
+
+        var dinhBienNgay = await DocDinhBienNgayAsync(parsedDate);
+        var phamViId = GetManagerDepartmentScope();
+
+        var shiftsQuery = _context.PhanCas.AsNoTracking()
+            .Include(p => p.NhanVien)
+            .Where(p => p.NgayLamViec == parsedDate && p.TrangThai != "VANG_MAT");
+
+        if (phamViId.HasValue)
+        {
+            shiftsQuery = shiftsQuery.Where(p => p.NhanVien != null && p.NhanVien.MaPhongBan == phamViId.Value);
+        }
+
+        var shiftsInDay = await shiftsQuery.ToListAsync();
+
+        var items = dinhBienNgay
+            .Where(d => !phamViId.HasValue || d.MaPhongBan == phamViId.Value)
+            .Select(d => new
+            {
+                maCa = d.MaCa,
+                maChucVu = d.MaChucVu,
+                maPhongBan = d.MaPhongBan,
+                mucNgay = d.SoNguoiToiThieu
+            }).ToList();
+
+        var hienCo = shiftsInDay
+            .Where(p => p.NhanVien?.MaChucVu != null)
+            .GroupBy(p => new
+            {
+                p.MaCa,
+                MaChucVu = p.NhanVien!.MaChucVu!.Value,
+                MaPhongBan = p.NhanVien.MaPhongBan ?? p.NhanVien.ChucVu?.MaPhongBan
+            })
+            .Select(g => new
+            {
+                maCa = g.Key.MaCa,
+                maChucVu = g.Key.MaChucVu,
+                maPhongBan = g.Key.MaPhongBan,
+                soLuong = g.Count()
+            })
+            .ToList();
+
+        return Json(new
+        {
+            success = true,
+            ngay = parsedDate.ToString("yyyy-MM-dd"),
+            ngayHienThi = parsedDate.ToString("dd/MM/yyyy"),
+            dinhBienNgay = items,
+            hienCo = hienCo
+        });
+    }
+
+    /// <summary>
     /// Đọc mức định biên nền, chịu được trường hợp CSDL chưa có cột <c>ma_phong_ban</c>
     /// (migration 20261026 chưa chạy). Khi đó trả về danh sách rỗng thay vì làm sập
     /// màn phân ca — cảnh báo thiếu định biên tạm ẩn, lịch vẫn dùng được bình thường.
@@ -1512,6 +1629,12 @@ public class PhanCaController : Controller
         if (targetDate < today)
         {
             return Json(new { success = false, message = "Không thể phân ca hoặc sửa ca cho ngày trong quá khứ." });
+        }
+
+        // KHUNG GIỜ PHÂN CA QUẢN LÝ: Quản lý chỉ được phân ca vào Thứ Bảy & Chủ Nhật hàng tuần.
+        if (GetManagerDepartmentScope().HasValue && !ShiftSchedulingPolicy.IsManagerSchedulingWindowOpen())
+        {
+            return Json(new { success = false, message = "Cổng phân ca định kỳ dành cho Quản lý chỉ mở vào Thứ Bảy và Chủ Nhật hàng tuần. Hiện tại cổng đang đóng (Thứ Hai – Thứ Sáu). Vui lòng liên hệ Admin hoặc HR nếu cần điều phối đột xuất." });
         }
 
         try

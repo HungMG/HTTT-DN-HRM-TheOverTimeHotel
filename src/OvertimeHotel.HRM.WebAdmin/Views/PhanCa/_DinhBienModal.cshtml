@@ -1,6 +1,13 @@
 @using System.Globalization
 @model OvertimeHotel.HRM.WebAdmin.Models.DinhBienModalViewModel
 
+@{
+    var groupedRows = Model.Rows
+        .GroupBy(r => new { r.MaPhongBan, TenPhongBan = r.TenPhongBan ?? "Khách sạn / Dùng chung" })
+        .OrderBy(g => g.Key.TenPhongBan)
+        .ToList();
+}
+
 <div class="modal fade" id="modalDinhBien" tabindex="-1" aria-labelledby="modalDinhBienLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <form method="post" asp-action="SaveDinhBien" id="formDinhBien"
@@ -13,115 +20,178 @@
             <div id="dinhBienCellsContainer"></div>
 
             <!-- MODAL HEADER -->
-            <div class="modal-header bg-white border-bottom py-3 px-4">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center"
-                         style="width: 44px; height: 44px; background: linear-gradient(135deg, #0f172a, #1e3a8a); color: #d4af37; box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);">
-                        <i class="bi bi-people-fill fs-5"></i>
+            <div class="modal-header bg-white border-bottom py-2.5 px-3">
+                <div class="d-flex align-items-center gap-2.5">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
+                         style="width: 38px; height: 38px; background: linear-gradient(135deg, #0f172a, #1e3a8a); color: #d4af37;">
+                        <i class="bi bi-people-fill fs-6"></i>
                     </div>
                     <div>
-                        <div class="text-uppercase small fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px; color: #b45309;">
-                            <i class="bi bi-stars text-warning me-1"></i>Định biên tối thiểu theo ca
-                        </div>
-                        <h2 class="modal-title h5 mb-0 font-serif fw-bold text-dark" id="modalDinhBienLabel">
+                        <h2 class="modal-title fs-6 fw-bold text-dark mb-0 font-serif" id="modalDinhBienLabel">
                             Cấu Hình Định Biên Ca Trực
                         </h2>
+                        <div class="text-muted" style="font-size: 0.72rem;">
+                            Thiết lập số lượng nhân sự tối thiểu theo ca và chức vụ · Mức nền chuẩn hoặc mức riêng theo ngày
+                        </div>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
 
-            <div class="modal-body p-4 bg-light bg-opacity-50" style="overflow-y: auto; max-height: calc(85vh - 140px);">
-                    <!-- CHỌN PHẠM VI ÁP DỤNG -->
-                    <div class="card border-0 rounded-4 shadow-sm mb-3" style="border: 1px solid #e2e8f0 !important;">
-                        <div class="card-body p-3">
-                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <span class="fw-bold text-dark small">
-                                        <i class="bi bi-sliders2 text-primary me-1"></i>Phạm vi áp dụng:
-                                    </span>
-                                    <div class="btn-group btn-group-sm rounded-pill p-1 bg-light border" role="group">
-                                        <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold dinh-bien-mode-btn active"
-                                                data-mode="nen" onclick="switchDinhBienMode('nen', this)">
-                                            <i class="bi bi-calendar-range me-1"></i>Mức chung mọi ngày
-                                        </button>
-                                        <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-bold dinh-bien-mode-btn btn-light"
-                                                data-mode="ngay" onclick="switchDinhBienMode('ngay', this)">
-                                            <i class="bi bi-calendar-day me-1"></i>Riêng ngày @Model.Ngay.ToString("dd/MM")
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="small text-muted" id="dinhBienModeHint">
-                                    <i class="bi bi-info-circle text-primary me-1"></i>
-                                    Mức chung áp cho mọi ngày trong lịch.
-                                </div>
+            <!-- MODAL BODY -->
+            <div class="modal-body p-3 bg-light bg-opacity-50" style="overflow-y: auto; max-height: calc(85vh - 120px);">
+                <!-- 1. BẢNG ĐIỀU KHIỂN PHẠM VI (MỨC CHUẨN MỌI NGÀY 🔁 MỨC RIÊNG THEO NGÀY TRONG TUẦN) -->
+                <div class="card border-0 rounded-3 shadow-sm bg-white mb-2.5 p-2.5" style="border: 1px solid #e2e8f0 !important;">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <!-- NÚT CHUYỂN CHẾ ĐỘ -->
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small fw-bold text-dark" style="font-size: 0.78rem;">
+                                <i class="bi bi-sliders2 text-primary me-1"></i>Chế độ áp dụng:
+                            </span>
+                            <div class="btn-group btn-group-sm rounded-pill p-0.5 bg-light border" role="group">
+                                <button type="button" class="btn btn-xs rounded-pill px-3 py-1 fw-bold dinh-bien-mode-btn active"
+                                        data-mode="nen" onclick="switchDinhBienMode('nen', this)" style="font-size: 0.75rem;">
+                                    <i class="bi bi-calendar-range me-1 text-primary"></i>🌟 Mọi ngày (Mức chuẩn)
+                                </button>
+                                <button type="button" class="btn btn-xs rounded-pill px-3 py-1 fw-bold dinh-bien-mode-btn btn-light"
+                                        data-mode="ngay" onclick="switchDinhBienMode('ngay', this)" style="font-size: 0.75rem;">
+                                    <i class="bi bi-calendar-day me-1 text-warning"></i>📅 Mức riêng theo ngày
+                                </button>
                             </div>
-                            <div class="small text-secondary mt-2 pt-2 border-top">
-                                <i class="bi bi-lightbulb text-warning me-1"></i>
-                                Để trống hoặc nhập <strong>0</strong> nghĩa là <em>không đặt định biên</em> cho ô đó.
-                                Ô đang có dòng riêng cho ngày @Model.Ngay.ToString("dd/MM") được đánh dấu
-                                <span class="badge rounded-pill px-2 py-0 ms-1" style="background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; font-size: 0.66rem;">riêng ngày</span>.
-                            </div>
+                        </div>
+
+                        <!-- THÔNG ĐIỆP HƯỚNG DẪN -->
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted" id="dinhBienModeHint" style="font-size: 0.74rem;">
+                                <i class="bi bi-info-circle text-primary me-1"></i>Mức chuẩn áp dụng cho tất cả các ngày trong tuần (nhập 0 để bỏ).
+                            </span>
                         </div>
                     </div>
 
-                    <!-- LƯỚI ĐỊNH BIÊN: CHỨC VỤ × CA -->
-                    <div class="card border-0 rounded-4 shadow-sm bg-white overflow-hidden" style="border: 1px solid #e2e8f0 !important;">
-                        <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
-                            <span class="fw-bold text-dark" style="font-size: 0.92rem;">
-                                <i class="bi bi-grid-3x3-gap text-primary me-2"></i>Số người tối thiểu theo chức vụ và ca
-                            </span>
-                            <span class="badge bg-light text-muted border rounded-pill px-3 py-1 small">
-                                @Model.Rows.Count chức vụ · @Model.DanhSachCa.Count ca
-                            </span>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0 dinh-bien-table">
-                                <thead class="bg-light sticky-top" style="z-index: 2;">
-                                    <tr style="font-size: 0.78rem; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; background: #f8fafc;">
-                                        <th class="ps-4 bg-light">Chức vụ</th>
-                                        @foreach (var ca in Model.DanhSachCa)
-                                        {
-                                            <th class="text-center bg-light" style="width: 150px;">
-                                                <div class="d-flex flex-column align-items-center">
-                                                    <span>@ca.TenCa</span>
-                                                    <span class="font-monospace text-muted" style="font-size: 0.68rem; font-weight: 400;">
-                                                        @ca.GioBatDau.ToString("HH:mm") - @ca.GioKetThuc.ToString("HH:mm")
-                                                    </span>
-                                                </div>
-                                            </th>
-                                        }
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                @if (Model.Rows.Count == 0)
+                    <!-- THANH CHỌN NGÀY TRONG TUẦN (HIỆN KHI CHỌN CHẾ ĐỘ "MỨC RIÊNG THEO NGÀY") -->
+                    <div id="dinhBienWeekDaysContainer" class="d-none pt-2 border-top">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div class="d-flex flex-wrap align-items-center gap-1.5" id="dinhBienDayPills">
+                                <span class="small fw-semibold text-secondary me-1" style="font-size: 0.74rem;">
+                                    <i class="bi bi-calendar-week me-1"></i>Chọn ngày:
+                                </span>
+                                @if (Model.WeekDays.Count > 0)
                                 {
-                                    <tr>
-                                        <td colspan="@(Model.DanhSachCa.Count + 1)" class="text-center py-4 text-muted">
-                                            <i class="bi bi-person-x fs-2 text-secondary opacity-50 d-block mb-2"></i>
-                                            Chưa có chức vụ nào trong hệ thống để đặt định biên.
-                                        </td>
-                                    </tr>
+                                    @foreach (var day in Model.WeekDays)
+                                    {
+                                        var isCurrentDay = day.Date == Model.Ngay;
+                                        <button type="button"
+                                                class="btn btn-xs rounded-pill px-2.5 py-1 fw-semibold dinh-bien-day-btn @(isCurrentDay ? "btn-primary active shadow-xs" : "btn-outline-secondary")"
+                                                data-date="@day.Date.ToString("yyyy-MM-dd")"
+                                                onclick="selectDinhBienDate('@day.Date.ToString("yyyy-MM-dd")', this)"
+                                                style="font-size: 0.72rem;">
+                                            @day.DayName (@day.FormattedDate)
+                                            @if (day.HasCustomQuota)
+                                            {
+                                                <span class="badge bg-warning text-dark rounded-pill ms-1 px-1 py-0" style="font-size: 0.58rem;" title="Ngày này đã có định biên riêng">
+                                                    riêng
+                                                </span>
+                                            }
+                                        </button>
+                                    }
                                 }
                                 else
                                 {
-                                    @foreach (var row in Model.Rows)
+                                    <button type="button" class="btn btn-xs btn-primary rounded-pill px-2.5 py-1 fw-semibold active"
+                                            data-date="@Model.Ngay.ToString("yyyy-MM-dd")">
+                                        @Model.Ngay.ToString("dd/MM/yyyy")
+                                    </button>
+                                }
+                            </div>
+
+                            <!-- DATE PICKER TÙY CHỌN CHO NGÀY BẤT KỲ -->
+                            <div class="d-flex align-items-center gap-1.5">
+                                <label for="dinhBienCustomDateInput" class="small text-muted mb-0" style="font-size: 0.72rem;">
+                                    Ngày khác:
+                                </label>
+                                <input type="date" id="dinhBienCustomDateInput"
+                                       class="form-control form-control-sm rounded-pill px-2 py-0.5 text-center"
+                                       style="width: 125px; font-size: 0.72rem; height: 26px;"
+                                       value="@Model.Ngay.ToString("yyyy-MM-dd")"
+                                       onchange="selectDinhBienDate(this.value, null)" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. BỘ LỌC THEO PHÒNG BAN (GỌN GÀNG, TRÁNH RỐI MẮT NHƯ PHẢN HỒI) -->
+                @if (groupedRows.Count > 1)
+                {
+                    <div class="d-flex flex-wrap align-items-center gap-1.5 mb-2 px-1" id="dinhBienDeptFilterPills">
+                        <span class="small fw-semibold text-secondary me-1" style="font-size: 0.74rem;">
+                            <i class="bi bi-filter me-1"></i>Lọc bộ phận:
+                        </span>
+                        <button type="button" class="btn btn-xs rounded-pill px-2.5 py-0.5 fw-bold dinh-bien-dept-btn btn-primary active shadow-xs"
+                                data-dept-id="all" onclick="filterDinhBienDepartment('all', this)" style="font-size: 0.72rem;">
+                            Tất cả (@Model.Rows.Count)
+                        </button>
+                        @foreach (var g in groupedRows)
+                        {
+                            var deptIdStr = g.Key.MaPhongBan.HasValue ? g.Key.MaPhongBan.Value.ToString() : "null";
+                            <button type="button" class="btn btn-xs rounded-pill px-2.5 py-0.5 fw-semibold dinh-bien-dept-btn btn-outline-secondary"
+                                    data-dept-id="@deptIdStr" onclick="filterDinhBienDepartment('@deptIdStr', this)" style="font-size: 0.72rem;">
+                                @g.Key.TenPhongBan (@g.Count())
+                            </button>
+                        }
+                    </div>
+                }
+
+                <!-- 3. LƯỚI ĐỊNH BIÊN: GOM NHÓM THEO BỘ PHẬN RÕ RÀNG -->
+                <div class="card border-0 rounded-3 shadow-sm bg-white overflow-hidden" style="border: 1px solid #e2e8f0 !important;">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 dinh-bien-table" id="tableDinhBienMatrix">
+                            <thead class="bg-light sticky-top" style="z-index: 2;">
+                                <tr style="font-size: 0.74rem; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; background: #f8fafc;">
+                                    <th class="ps-3 bg-light" style="width: 32%;">Chức vụ / Vị trí</th>
+                                    @foreach (var ca in Model.DanhSachCa)
                                     {
-                                        <tr>
-                                            <td class="ps-4">
-                                                <div class="fw-semibold text-dark font-serif" style="font-size: 0.9rem;">@row.TenChucVu</div>
-                                                @if (row.MaPhongBan.HasValue)
-                                                {
-                                                    <div class="text-muted" style="font-size: 0.72rem;">@row.TenPhongBan</div>
-                                                }
-                                                else
-                                                {
-                                                    @* Chức danh không gắn bộ phận: ghi rõ là dùng chung, không để
-                                                       nhãn mơ hồ khiến người dùng tưởng đã tách được theo bộ phận. *@
-                                                    <div class="text-muted fst-italic" style="font-size: 0.72rem;">
-                                                        <i class="bi bi-diagram-3 me-1"></i>@row.TenPhongBan
-                                                    </div>
-                                                }
+                                        <th class="text-center bg-light" style="width: 125px;">
+                                            <div class="d-flex flex-column align-items-center">
+                                                <span class="fw-bold">@ca.TenCa</span>
+                                                <span class="font-monospace text-muted" style="font-size: 0.66rem; font-weight: 400;">
+                                                    @ca.GioBatDau.ToString("HH:mm") - @ca.GioKetThuc.ToString("HH:mm")
+                                                </span>
+                                            </div>
+                                        </th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @if (Model.Rows.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="@(Model.DanhSachCa.Count + 1)" class="text-center py-4 text-muted">
+                                        <i class="bi bi-person-x fs-2 text-secondary opacity-50 d-block mb-1"></i>
+                                        Chưa có chức vụ nào để cấu hình định biên.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var group in groupedRows)
+                                {
+                                    var deptIdStr = group.Key.MaPhongBan.HasValue ? group.Key.MaPhongBan.Value.ToString() : "null";
+                                    <tr class="table-group-divider dinh-bien-dept-header-row" data-dept-id="@deptIdStr" style="background: #f1f5f9;">
+                                        <td colspan="@(Model.DanhSachCa.Count + 1)" class="py-1 px-3 fw-bold text-dark" style="font-size: 0.76rem;">
+                                            <i class="bi bi-diagram-3-fill text-primary me-1.5"></i>@group.Key.TenPhongBan
+                                            <span class="badge bg-light text-secondary border rounded-pill ms-2 px-2 py-0.5" style="font-size: 0.65rem;">
+                                                @group.Count() chức danh
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    @foreach (var row in group)
+                                    {
+                                        <tr class="dinh-bien-row" data-dept-id="@deptIdStr">
+                                            <td class="ps-3 py-2">
+                                                <div class="fw-semibold text-dark" style="font-size: 0.84rem;">@row.TenChucVu</div>
+                                                <div class="text-muted" style="font-size: 0.7rem;">
+                                                    @(row.MaPhongBan.HasValue ? row.TenPhongBan : "Dùng chung mọi bộ phận")
+                                                </div>
                                             </td>
                                             @foreach (var ca in Model.DanhSachCa)
                                             {
@@ -131,11 +201,11 @@
                                                 var coRiengNgay = mucNgay > 0;
                                                 var chiDoc = !Model.CoQuyenSua;
 
-                                                <td class="text-center">
-                                                    <div class="d-flex flex-column align-items-center gap-1">
+                                                <td class="text-center py-2">
+                                                    <div class="d-flex flex-column align-items-center gap-0.5">
                                                         <input type="number"
-                                                               class="form-control form-control-sm text-center rounded-3 dinh-bien-input @(coRiengNgay ? "has-day-override" : "")"
-                                                               style="max-width: 78px; font-variant-numeric: tabular-nums;"
+                                                               class="form-control form-control-sm text-center rounded-2 dinh-bien-input @(coRiengNgay ? "has-day-override" : "")"
+                                                               style="width: 64px; height: 30px; font-size: 0.84rem; font-weight: 600; font-variant-numeric: tabular-nums;"
                                                                min="0" max="99" step="1" inputmode="numeric"
                                                                data-ma-ca="@ca.MaCa"
                                                                data-ma-chuc-vu="@row.MaChucVu"
@@ -143,48 +213,53 @@
                                                                data-muc-nen="@mucNen"
                                                                data-muc-ngay="@mucNgay"
                                                                data-co-rieng-ngay="@(coRiengNgay ? "1" : "0")"
-                                                               title="Hiện có @hienCo người đang trực ca này trong ngày @Model.Ngay.ToString("dd/MM")"
+                                                               title="Hiện có @hienCo người trực"
                                                                disabled="@chiDoc" />
-                                                        @if (coRiengNgay)
-                                                        {
-                                                            <span class="badge rounded-pill px-2 py-0 dinh-bien-day-badge"
-                                                                  style="font-size: 0.62rem; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;">
-                                                                riêng ngày
+                                                        <div class="d-flex align-items-center gap-1 mt-0.5">
+                                                            <span class="badge rounded-pill px-1 py-0 dinh-bien-day-badge @(coRiengNgay ? "" : "d-none")"
+                                                                  style="font-size: 0.58rem; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;">
+                                                                riêng
                                                             </span>
-                                                        }
-                                                        <span class="dinh-bien-hien-co text-muted" style="font-size: 0.68rem; font-variant-numeric: tabular-nums;">
-                                                            hiện có @hienCo
-                                                        </span>
+                                                            <span class="dinh-bien-hien-co text-muted" style="font-size: 0.65rem; font-variant-numeric: tabular-nums;">
+                                                                có @hienCo
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </td>
                                             }
                                         </tr>
                                     }
                                 }
-                                </tbody>
-                            </table>
-                        </div>
+                            }
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+            </div>
 
-                <!-- MODAL FOOTER -->
-                <div class="modal-footer bg-light border-top py-3 px-4">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+            <!-- MODAL FOOTER -->
+            <div class="modal-footer bg-light border-top py-2.5 px-3 d-flex align-items-center justify-content-between">
+                <div class="text-muted small" style="font-size: 0.74rem;" id="dinhBienFooterSummary">
+                    <i class="bi bi-check-circle text-success me-1"></i>Nhập số lượng &gt;= 1 hoặc nhập 0 để xóa định biên.
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
                         <i class="bi bi-x-lg me-1"></i> Đóng
                     </button>
                     @if (Model.CoQuyenSua)
                     {
-                        <button type="submit" class="btn btn-hotel-primary rounded-pill px-4 fw-bold shadow-sm">
-                            <i class="bi bi-check2-circle me-1"></i> Lưu định biên
+                        <button type="submit" class="btn btn-sm btn-hotel-primary rounded-pill px-3.5 fw-bold shadow-sm" id="btnSaveDinhBien">
+                            <i class="bi bi-check2-circle me-1"></i> <span id="btnSaveDinhBienText">Lưu định biên chung</span>
                         </button>
                     }
                     else
                     {
                         <span class="small text-muted ms-2">
-                            <i class="bi bi-lock me-1"></i>Tài khoản của bạn chỉ xem được định biên.
+                            <i class="bi bi-lock me-1"></i>Tài khoản chỉ xem.
                         </span>
                     }
                 </div>
-            </form>
+            </div>
+        </form>
     </div>
 </div>

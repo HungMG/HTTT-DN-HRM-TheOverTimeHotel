@@ -60,6 +60,12 @@ public class PhanCaIndexViewModel
     /// <summary>Số ca trong ngày đang chọn chưa đủ định biên tối thiểu (PRD 3.5).</summary>
     public int TongCaThieuDinhBien { get; set; }
 
+    /// <summary>
+    /// Cổng phân ca định kỳ dành cho Quản lý (Manager) đang bị đóng (Thứ 2 đến Thứ 6).
+    /// Chỉ Quản lý mới bị áp dụng cờ này; Admin và HR luôn là false (toàn quyền 24/7).
+    /// </summary>
+    public bool IsManagerSchedulingWindowClosed { get; set; }
+
     /// <summary>Dữ liệu cho popup cấu hình định biên (PRD 3.5).</summary>
     public DinhBienModalViewModel DinhBien { get; set; } = new();
 }
@@ -330,6 +336,27 @@ public class DinhBienModalViewModel
 
     /// <summary>Số ô đang bị đè riêng cho ngày này.</summary>
     public int SoOCoDinhBienNgay => Rows.Sum(r => r.MucNgayTheoCa.Count);
+
+    /// <summary>Ngày bắt đầu tuần đang xem (Thứ Hai).</summary>
+    public DateOnly WeekStart { get; set; }
+
+    /// <summary>Ngày kết thúc tuần đang xem (Chủ Nhật).</summary>
+    public DateOnly WeekEnd { get; set; }
+
+    /// <summary>Danh sách 7 ngày trong tuần để người dùng chọn thiết lập định biên riêng.</summary>
+    public List<DinhBienDayOption> WeekDays { get; set; } = new();
+}
+
+/// <summary>
+/// Tuỳ chọn ngày trong tuần làm việc cho modal cấu hình định biên ca.
+/// </summary>
+public class DinhBienDayOption
+{
+    public DateOnly Date { get; set; }
+    public string DayName { get; set; } = string.Empty; // "Thứ 2", "Thứ 3", ..., "Chủ nhật"
+    public string FormattedDate { get; set; } = string.Empty; // "dd/MM"
+    public bool IsSelected { get; set; }
+    public bool HasCustomQuota { get; set; }
 }
 
 /// <summary>
