@@ -663,8 +663,15 @@
                             <span id="calMonthLabel">Tháng @Model.Month / @Model.Year</span>
                         </span>
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 px-2 py-1" style="font-size: 0.72rem;">
-                            Lịch phân ca 24/7 &bull; @Model.TongNhanVien nhân sự
+                            Lịch phân ca 24/7 &bull; @Model.TongNhanVien nhân sự &bull; @Model.TongSoCa ca tuần
                         </span>
+                        @if (Model.TongGioOtTuan > 0)
+                        {
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1 px-2 py-1"
+                                  style="font-size: 0.72rem;" title="Tổng số giờ tăng ca (OT) dự kiến được phân công trong tuần này">
+                                <i class="bi bi-clock-history me-1"></i>OT tuần: <strong>@Model.TongGioOtTuan.ToString("0.#")h</strong>
+                            </span>
+                        }
                         @if (Model.BiGioiHanTheoBoPhan)
                         {
                             <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1 px-2 py-1"
@@ -1045,6 +1052,12 @@
                                                                     {
                                                                         <span class="badge bg-danger ms-1" style="font-size:9px;" title="@emp.DisabledReason">Hết hạn HĐ</span>
                                                                     }
+                                                                    @if (emp.CoTangCa)
+                                                                    {
+                                                                        <span class="badge bg-warning text-dark border border-warning ms-1" style="font-size:9px;" title="Tăng ca: +@emp.GioTangCaDuKien.ToString("0.#")h. @emp.GhiChuOt">
+                                                                            <i class="bi bi-clock-history me-1"></i>+@emp.GioTangCaDuKien.ToString("0.#")h OT
+                                                                        </span>
+                                                                    }
                                                                 </div>
                                                                 <div class="phanca-agenda-emp-role">@emp.TenChucVu &bull; @emp.TenPhongBan</div>
                                                             </div>
@@ -1271,6 +1284,12 @@
                                                                     @if (isNight)
                                                                     {
                                                                         <span class="badge bg-warning text-dark px-1 mt-1" style="font-size: 0.55rem;">+30% đêm</span>
+                                                                    }
+                                                                    @if (shift.CoTangCa)
+                                                                    {
+                                                                        <span class="badge bg-warning text-dark border border-warning px-1 mt-1 ms-1" style="font-size: 0.55rem;" title="Tăng ca: +@shift.GioTangCaDuKien.ToString("0.#")h. @shift.GhiChuOt">
+                                                                            <i class="bi bi-clock-history"></i> +@shift.GioTangCaDuKien.ToString("0.#")h OT
+                                                                        </span>
                                                                     }
                                                                 </div>
                                                             }
@@ -1509,6 +1528,14 @@
                                                     <div class="small font-monospace">
                                                         @p.BatDauDuKien.ToString("HH:mm") &rarr; @p.KetThucDuKien.ToString("HH:mm (dd/MM)")
                                                     </div>
+                                                    @if (p.CoTangCa)
+                                                    {
+                                                        <div class="mt-1">
+                                                            <span class="badge bg-warning text-dark border border-warning" style="font-size: 0.65rem;" title="@p.GhiChuOt">
+                                                                <i class="bi bi-clock-history me-1"></i>+@p.GioTangCaDuKien.ToString("0.#")h OT (đến @p.KetThucDuKienKemOt.ToString("HH:mm"))
+                                                            </span>
+                                                        </div>
+                                                    }
                                                 </td>
                                                 <td>
                                                     @if (p.TrangThai == "HOAN_THANH")
@@ -1696,6 +1723,32 @@
                             <span class="phanca-summary-line" id="modalSchedulingSummaryBadge">
                                 <i class="bi bi-check2-all"></i> Chưa chọn nhân sự
                             </span>
+                        </div>
+
+                        <div class="phanca-config-divider"></div>
+
+                        <!-- NHÓM 4: TĂNG CA (OT) DỰ KIẾN (ĐIỀU 107 BLLĐ) -->
+                        <div class="phanca-config-group phanca-config-group-ot">
+                            <span class="phanca-config-label">
+                                <i class="bi bi-clock-history text-warning"></i> Tăng ca (OT) dự kiến
+                                <span class="badge bg-warning-subtle text-warning-emphasis border ms-1" style="font-size: 0.6rem;">Tối đa 4h</span>
+                            </span>
+                            <div class="d-flex align-items-center gap-1">
+                                <div class="input-group input-group-sm" style="width: 82px;">
+                                    <input type="number" name="GioTangCaDuKien" id="modalGioTangCa" class="form-control form-control-sm text-center fw-bold px-1"
+                                           value="0.0" min="0" max="4.0" step="0.5" oninput="updateModalSelectedCount()" />
+                                    <span class="input-group-text px-1 small" style="font-size: 0.7rem;">h</span>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-secondary btn-xs px-1 py-1" onclick="setModalOtHours(0)" title="Không tăng ca">0h</button>
+                                    <button type="button" class="btn btn-outline-primary btn-xs px-1 py-1" onclick="setModalOtHours(1.0)" title="+1 giờ">+1h</button>
+                                    <button type="button" class="btn btn-outline-primary btn-xs px-1 py-1" onclick="setModalOtHours(1.5)" title="+1.5 giờ">+1.5</button>
+                                    <button type="button" class="btn btn-outline-primary btn-xs px-1 py-1" onclick="setModalOtHours(2.0)" title="+2 giờ">+2h</button>
+                                    <button type="button" class="btn btn-outline-warning btn-xs px-1 py-1" onclick="setModalOtHours(4.0)" title="Tối đa 4 giờ">+4h</button>
+                                </div>
+                            </div>
+                            <input type="text" name="GhiChuOt" id="modalGhiChuOt" class="form-control form-control-sm"
+                                   placeholder="Lý do OT (tiệc cưới, sự kiện...)" maxlength="255" style="font-size: 0.72rem; padding: 2px 6px;" />
                         </div>
                     </div>
 
@@ -2063,9 +2116,10 @@
     gap: 0.4rem;
     min-width: 0;
 }
-.phanca-config-group-dates { flex: 1 1 34%; }
-.phanca-config-group-shifts { flex: 1 1 40%; }
-.phanca-config-group-status { flex: 0 0 auto; }
+.phanca-config-group-dates { flex: 1 1 28%; }
+.phanca-config-group-shifts { flex: 1 1 34%; }
+.phanca-config-group-status { flex: 0 0 170px; }
+.phanca-config-group-ot { flex: 0 0 210px; }
 .phanca-config-label {
     font-size: 0.68rem;
     font-weight: 700;
@@ -3314,6 +3368,14 @@
         selectAllModalEmployees(master.checked);
     }
 
+    function setModalOtHours(hours) {
+        const el = document.getElementById('modalGioTangCa');
+        if (el) {
+            el.value = Number(hours).toFixed(1);
+            updateModalSelectedCount();
+        }
+    }
+
     function updateModalSelectedCount() {
         const count = document.querySelectorAll('.modal-emp-chk:checked').length;
         const submitLabel = document.getElementById('submitCountLabel');
@@ -3323,10 +3385,13 @@
         const summary = document.getElementById('modalSchedulingSummaryBadge');
         if (summary) {
             const soNgay = modalSelectedDates.size;
+            const otEl = document.getElementById('modalGioTangCa');
+            const otVal = otEl ? parseFloat(otEl.value) : 0;
+            const otBadge = (otVal > 0) ? ` (+${otVal.toFixed(1)}h OT)` : '';
             if (count === 0) {
                 summary.innerHTML = '<i class="bi bi-check2-all"></i> Chưa chọn nhân sự';
             } else {
-                summary.innerHTML = '<i class="bi bi-check2-all"></i> ' + count + ' nhân sự × ' + soNgay + ' ngày';
+                summary.innerHTML = '<i class="bi bi-check2-all"></i> ' + count + ' nhân sự × ' + soNgay + ' ngày' + otBadge;
             }
         }
     }
@@ -3349,6 +3414,15 @@
             showQuickToast('⚠️ Vui lòng chọn ít nhất một nhân viên trong danh sách trước khi lưu phân ca.');
             return false;
         }
+
+        const otEl = document.getElementById('modalGioTangCa');
+        const otVal = otEl ? parseFloat(otEl.value) : 0;
+        if (isNaN(otVal) || otVal < 0 || otVal > 4.0) {
+            huy();
+            showQuickToast('⚠️ Số giờ tăng ca (OT) phải từ 0.0 đến 4.0 giờ/ngày theo Điều 107 Bộ luật Lao động 2019.');
+            return false;
+        }
+
         return true;
     }
 
@@ -3528,6 +3602,59 @@
         modal.show();
     }
 
+    // Mở modal lập lịch chi tiết để phân ca đáp ứng Nhu cầu sự kiện
+    function openCreateShiftForEventDemand(deptId, dateStr, roleName, eventTitle, deptName) {
+        if (!dateStr) {
+            dateStr = TODAY_STR;
+        }
+
+        if (dateStr < TODAY_STR) {
+            showQuickToast('⚠️ Sự kiện đã diễn ra trong quá khứ (' + dateStr + '). Vui lòng chọn ngày hiện tại hoặc tương lai để xếp ca.');
+            return;
+        }
+
+        // 1. Chuyển tháng bộ lịch modal nếu sự kiện nằm ở tháng khác
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const yr = parseInt(parts[0], 10);
+            const mo = parseInt(parts[1], 10);
+            if (!isNaN(yr) && !isNaN(mo) && (yr !== modalCalYear || mo !== modalCalMonth)) {
+                modalCalYear = yr;
+                modalCalMonth = mo;
+                renderModalCalendar();
+            }
+        }
+
+        // 2. Chọn ngày sự kiện
+        selectModalDateSingle(dateStr);
+
+        // 3. Lọc theo phòng ban tương ứng
+        const deptSelect = document.getElementById('modalDeptFilter');
+        if (deptSelect) {
+            deptSelect.value = deptId ? deptId.toString() : '';
+        }
+
+        // 4. Lọc nhân sự chưa có ca để ưu tiên hiển thị nhân sự sẵn sàng
+        filterModalEmpByShiftStatus('free');
+
+        // 5. Gợi ý lý do/công việc trong ghi chú OT nếu có
+        const ghiChuOt = document.getElementById('modalGhiChuOt');
+        if (ghiChuOt && eventTitle) {
+            ghiChuOt.value = 'Sự kiện: ' + eventTitle + (roleName ? (' - ' + roleName) : '');
+        }
+
+        // 6. Mở modal phân ca
+        const modalEl = document.getElementById('modalCreatePhanCa');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        const msg = '✨ Đã mở lưới phân ca ngày ' + dateStr + (deptName ? (' cho ' + deptName) : '') + (eventTitle ? (' phục vụ sự kiện "' + eventTitle + '"') : '');
+        showQuickToast(msg);
+    }
+    window.openCreateShiftForEventDemand = openCreateShiftForEventDemand;
+
     // =========================================================================
     // ⚡ CỤM CÔNG CỤ THÊM NHANH CÁC CA TRỰC TIẾP TRÊN LỊCH MA TRẬN (IN-PLACE AJAX)
     // =========================================================================
@@ -3701,6 +3828,7 @@
                             ${data.gioBatDau} - ${data.gioKetThuc}
                         </div>
                         ${isNight ? '<span class="badge bg-warning text-dark px-1 mt-1" style="font-size: 0.55rem;">+30% đêm</span>' : ''}
+                        ${data.coTangCa ? `<span class="badge bg-warning text-dark border border-warning px-1 mt-1 ms-1" style="font-size: 0.55rem;" title="Tăng ca: +${data.gioTangCaDuKien}h. ${data.ghiChuOt || ''}"><i class="bi bi-clock-history"></i> +${data.gioTangCaDuKien}h OT</span>` : ''}
                     </div>`;
 
                 const existingIdx = WEEK_SHIFTS_DATA.findIndex(s => s.empId === maNhanVien && s.date === ngayLamViec);

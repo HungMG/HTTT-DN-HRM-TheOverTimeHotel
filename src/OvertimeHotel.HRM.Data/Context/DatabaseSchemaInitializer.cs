@@ -60,4 +60,19 @@ public static class DatabaseSchemaInitializer
 
         return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
+
+    public static Task EnsureShiftAutoPublishSchemaAsync(AppDbContext context, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            ALTER TABLE public.phan_ca
+                ADD COLUMN IF NOT EXISTS gio_tang_ca_du_kien numeric(4,2) NOT NULL DEFAULT 0.00,
+                ADD COLUMN IF NOT EXISTS ghi_chu_ot varchar(255);
+
+            UPDATE public.phan_ca SET da_cong_bo = TRUE WHERE da_cong_bo = FALSE;
+
+            ALTER TABLE public.phan_ca ALTER COLUMN da_cong_bo SET DEFAULT TRUE;
+            """;
+
+        return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+    }
 }

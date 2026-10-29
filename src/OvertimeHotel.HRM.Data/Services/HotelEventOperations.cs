@@ -268,7 +268,7 @@ public sealed partial class HotelEventService
             && c.MaCong != input.WorkId && c.BatDau < end && c.KetThuc > start), "", "Công thực tế trùng khoảng đã xác nhận của nhân viên, kể cả ở sự kiện khác.");
         work!.BatDau = start; work.KetThuc = end; work.MaNguoiXacNhan = actor.EmployeeId; work.NgayXacNhan = DateTimeOffset.UtcNow;
         if (!editing) assignment.CongThucTes.Add(work);
-        assignment.DanhGia = "HOAN_THANH"; assignment.NgayDanhGia = DateTimeOffset.UtcNow;
+        assignment.DanhGia = HourlyEventRules.AutomaticRating(assignment)!; assignment.NgayDanhGia = DateTimeOffset.UtcNow;
         item.Version++;
         if (!editing) await db.SaveChangesAsync();
         Audit(actor, item, editing ? "SUA_CONG_SU_KIEN" : "XAC_NHAN_CONG_SU_KIEN",
@@ -399,8 +399,8 @@ public sealed partial class HotelEventService
                     warnings.Add($"{name}: công thực tế trùng với sự kiện khác; cần đối soát trước khi duyệt tiền.");
                 if (group.Any(p => p.TrangThaiThamGia is "HUY_PHAN_CONG" or "DA_HUY"))
                     warnings.Add($"{name}: phân công đã hủy nhưng còn công thực tế; cần đối soát, không tự bỏ công đã làm.");
-                if (group.Any(p => !p.NgayDanhGia.HasValue || p.DanhGia == "CHUA_DANH_GIA")) warnings.Add($"{name}: còn phân công chưa xác nhận công/vắng mặt.");
-                if (group.Any(p => p.DanhGia != "KHONG_THAM_GIA" && p.CongThucTes.Count == 0)) warnings.Add($"{name}: thiếu công thực tế.");
+                if (group.Any(p => p.DanhGia == "KHONG_THAM_GIA" && !p.NgayDanhGia.HasValue)) warnings.Add($"{name}: còn phân công chưa xác nhận vắng mặt.");
+                if (group.Any(p => p.DanhGia != "KHONG_THAM_GIA" && HourlyEventRules.AutomaticRating(p) == null)) warnings.Add($"{name}: thiếu hoặc sai dữ liệu giờ thực tế.");
                 if (group.Any(p => p.DanhGia == "KHONG_THAM_GIA" && p.CongThucTes.Count > 0))
                     warnings.Add($"{name}: đánh dấu không tham gia nhưng còn công thực tế; HR cần đối soát trước khi nghiệm thu.");
                 try
@@ -440,6 +440,11 @@ public sealed partial class HotelEventService
         var periodMonth = new DateOnly(period!.Nam, period.Thang, 1);
         Require(preview.Rows.All(r => r.WorkMonth <= periodMonth), "paymentPeriodId", "Kỳ trả không được trước tháng phát sinh công.");
         Require(!await db.QuyetToanSuKiens.AnyAsync(q => q.MaDuAn == id), "", "Sự kiện đã có quyết toán; không tạo trùng.");
+        foreach (var assignment in item.PhanCongs.Where(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY") && p.DanhGia != "KHONG_THAM_GIA"))
+        {
+            assignment.DanhGia = HourlyEventRules.AutomaticRating(assignment)!;
+            assignment.NgayDanhGia ??= DateTimeOffset.UtcNow;
+        }
         foreach (var row in preview.Rows)
             item.QuyetToans.Add(new QuyetToanSuKien { MaNhanVien = row.EmployeeId, ThangPhatSinh = row.WorkMonth,
                 MaKyChiTra = paymentPeriodId, SoPhut = row.Minutes, SoTien = row.Amount, CanCuTinh = JsonSerializer.Serialize(row.Basis),

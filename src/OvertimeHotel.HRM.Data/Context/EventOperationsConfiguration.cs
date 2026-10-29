@@ -53,7 +53,7 @@ internal static class EventOperationsConfiguration
         assignment.Property(e => e.LyDoKetThuc).HasColumnName("ly_do_ket_thuc").HasMaxLength(500);
         assignment.HasOne(e => e.PhanCa).WithMany().HasForeignKey(e => e.MaPhanCa).OnDelete(DeleteBehavior.Restrict);
         assignment.HasIndex(e => new { e.MaDuAn, e.MaNhanVien }).IsUnique(false);
-        model.Entity<PhanCa>().Property(e => e.DaCongBo).HasColumnName("da_cong_bo");
+        model.Entity<PhanCa>().Property(e => e.DaCongBo).HasColumnName("da_cong_bo").HasDefaultValue(true);
         model.Entity<LoaiDon>().Property(e => e.LaNghiPhep).HasColumnName("la_nghi_phep");
     }
 

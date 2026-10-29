@@ -376,10 +376,11 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     try
     {
         await DatabaseSchemaInitializer.EnsureAdminAuditLogTableAsync(schemaContext);
+        await DatabaseSchemaInitializer.EnsureShiftAutoPublishSchemaAsync(schemaContext);
     }
     catch (Exception ex)
     {
-        schemaLogger.LogWarning(ex, "Không thể tự tạo bảng nhật ký quản trị. Hãy chạy migration 20260918_add_admin_audit_log.sql trên Supabase.");
+        schemaLogger.LogWarning(ex, "Không thể tự khởi tạo cấu trúc CSDL. Hãy kiểm tra các migration trên Supabase.");
     }
 }
 

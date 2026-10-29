@@ -54,6 +54,9 @@ public class PhanCaIndexViewModel
     public int SoNhanVienDuocPhan { get; set; }
     public int TongNhanVien { get; set; }
 
+    /// <summary>Tổng giờ làm thêm OT dự kiến được phân công trong tuần đang xem.</summary>
+    public decimal TongGioOtTuan { get; set; }
+
     /// <summary>Số ca trong ngày đang chọn chưa đủ định biên tối thiểu (PRD 3.5).</summary>
     public int TongCaThieuDinhBien { get; set; }
 
@@ -176,6 +179,9 @@ public class AgendaEmployeeItem
     public string AvatarColor { get; set; } = "#1e3a8a";
     public bool HasActiveContract { get; set; } = true;
     public string? DisabledReason { get; set; }
+    public decimal GioTangCaDuKien { get; set; }
+    public string? GhiChuOt { get; set; }
+    public bool CoTangCa => GioTangCaDuKien > 0;
 }
 
 public class AgendaDay
@@ -230,6 +236,15 @@ public class PhanCaItemDto
     public string TrangThai { get; set; } = "DA_PHAN";
     public bool HasAttendance { get; set; }
     public bool IsCheckedIn { get; set; }
+
+    /// <summary>Số giờ làm thêm OT dự kiến theo ca.</summary>
+    public decimal GioTangCaDuKien { get; set; }
+
+    /// <summary>Lý do / công việc làm thêm tăng ca.</summary>
+    public string? GhiChuOt { get; set; }
+
+    /// <summary>Ca có phân công làm thêm tăng ca.</summary>
+    public bool CoTangCa => GioTangCaDuKien > 0;
 }
 
 public class CreatePhanCaInputModel
@@ -240,6 +255,8 @@ public class CreatePhanCaInputModel
     public DateOnly NgayLamViec { get; set; }
     public List<DateOnly> DanhSachNgayLamViec { get; set; } = new();
     public string TrangThai { get; set; } = "DA_PHAN";
+    public decimal GioTangCaDuKien { get; set; } = 0.00m;
+    public string? GhiChuOt { get; set; }
     public string? ReturnUrl { get; set; }
 }
 
@@ -248,6 +265,8 @@ public class QuickAssignAjaxModel
     public int MaNhanVien { get; set; }
     public string NgayLamViec { get; set; } = string.Empty;
     public int MaCa { get; set; }
+    public decimal GioTangCaDuKien { get; set; } = 0.00m;
+    public string? GhiChuOt { get; set; }
     public string? ChangeReason { get; set; }
 }
 

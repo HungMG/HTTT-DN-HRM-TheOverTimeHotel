@@ -18,7 +18,12 @@ public enum ShiftConflictKind
     /// Chế độ làm việc của chức danh không khớp loại ca — người hành chính bị xếp
     /// vào ca xoay, hoặc người trực ca bị xếp vào khung giờ văn phòng.
     /// </summary>
-    WorkModeMismatch = 3
+    WorkModeMismatch = 3,
+
+    /// <summary>
+    /// Số giờ tăng ca (OT) vượt quá trần quy định của Bộ luật Lao động 2019 (tối đa 4h/ngày hoặc tổng ca > 12h/ngày).
+    /// </summary>
+    InvalidOvertimeHours = 4
 }
 
 /// <summary>
@@ -71,6 +76,46 @@ public static class ShiftSchedulingPolicy
 
     /// <summary>Trích dẫn pháp lý hiển thị kèm thông báo chặn.</summary>
     public const string REST_RULE_CITATION = "Điều 110 Bộ luật Lao động 2019";
+
+    /// <summary>
+    /// Giới hạn số giờ làm thêm tối đa trong 01 ngày (Điều 107 Bộ luật Lao động 2019):
+    /// không quá 50% số giờ làm việc bình thường trong 1 ngày (tối đa 4.0 giờ đối với ca 8h).
+    /// </summary>
+    public const double MAX_DAILY_OVERTIME_HOURS = 4.0d;
+
+    /// <summary>
+    /// Tổng thời giờ làm việc bình thường và thời giờ làm thêm không quá 12 giờ trong 01 ngày (Điều 107 BLLĐ).
+    /// </summary>
+    public const double MAX_DAILY_WORK_HOURS = 12.0d;
+
+    /// <summary>
+    /// Kiểm tra tính hợp lệ của số giờ tăng ca (OT).
+    /// </summary>
+    public static ShiftConflict ValidateOvertime(decimal gioTangCa, decimal gioLamChuan = 8.00m)
+    {
+        if (gioTangCa < 0)
+        {
+            return new ShiftConflict(
+                ShiftConflictKind.InvalidOvertimeHours, null, null, 0,
+                "Số giờ tăng ca không được là số âm.");
+        }
+
+        if ((double)gioTangCa > MAX_DAILY_OVERTIME_HOURS)
+        {
+            return new ShiftConflict(
+                ShiftConflictKind.InvalidOvertimeHours, null, null, 0,
+                $"Số giờ tăng ca ({gioTangCa:N1}h) vượt quá mức tối đa {MAX_DAILY_OVERTIME_HOURS:0.0} giờ/ngày theo Điều 107 Bộ luật Lao động 2019.");
+        }
+
+        if ((double)(gioLamChuan + gioTangCa) > MAX_DAILY_WORK_HOURS)
+        {
+            return new ShiftConflict(
+                ShiftConflictKind.InvalidOvertimeHours, null, null, 0,
+                $"Tổng thời giờ làm việc ({gioLamChuan + gioTangCa:N1}h) vượt quá mức tối đa {MAX_DAILY_WORK_HOURS:0.0} giờ/ngày theo Điều 107 Bộ luật Lao động 2019.");
+        }
+
+        return ShiftConflict.None;
+    }
 
     /// <summary>Độ lệch cho phép khi so mốc thời gian, tránh sai số dấu phẩy động.</summary>
     private static readonly TimeSpan Tolerance = TimeSpan.FromSeconds(1);
