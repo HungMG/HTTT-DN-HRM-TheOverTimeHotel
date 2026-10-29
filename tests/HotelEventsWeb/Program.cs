@@ -433,12 +433,25 @@ await Check("Weekly event demand shows assigned people even when actual end exce
     ];
     async Task<string> Weekly() => System.Net.WebUtility.HtmlDecode(await Render("_EventWeekDemand", new PhanCaIndexViewModel
         { CanViewEventDemand = true, WeekStart = new(2028, 5, 8), WeekEnd = new(2028, 5, 14), EventDemand = [item] }, controller: "PhanCa"));
+    static string Summary(string html)
+    {
+        var row = Regex.Match(html, "<tr class=\"event-row-clickable\"[\\s\\S]*?</tr>").Value;
+        return Regex.Replace(Regex.Replace(row, "<[^>]+>", " "), @"\s+", " ").Trim();
+    }
     var html = await Weekly();
-    Require(html.Contains("Đã phân công: 2 người"), "Actual end or canceled assignments hid or inflated the assigned people count.");
+    var summary = Summary(html);
+    Require(Regex.IsMatch(summary, @"\b2\s*/\s*2\b") && !summary.Contains("Thiếu"),
+        "Completed event must show two staffed positions, excluding canceled assignments. Rendered row: " + summary);
     Require(!html.Contains("Thiếu 2"), "Completed event is incorrectly reported as having no staffing.");
     item.TrangThai = "DANG_DIEN_RA";
     html = await Weekly();
-    Require(html.Contains("Đã phân công: 2 người") && html.Contains("2/2 · Thiếu 0"), "Planned coverage was incorrectly extended beyond the planned event end.");
+    summary = Summary(html);
+    Require(Regex.IsMatch(summary, @"\b2\s*/\s*2\b") && !summary.Contains("Thiếu"),
+        "Planned coverage was incorrectly extended beyond the planned event end. Rendered row: " + summary);
+    item.PhanCongs = item.PhanCongs.Where(p => p.MaNhanVien != 11).ToList();
+    html = await Weekly();
+    Require(Summary(html).Contains("Thiếu 1/2 người"),
+        "A genuinely unstaffed position must remain visible; duplicate segments and canceled assignments cannot fill it.");
 });
 
 await Check("Payroll confirmation never executes employee names as script", async () =>
