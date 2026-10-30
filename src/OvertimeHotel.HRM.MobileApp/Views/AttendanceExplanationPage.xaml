@@ -6,7 +6,9 @@
              x:Class="OvertimeHotel.HRM.MobileApp.Views.AttendanceExplanationPage"
              x:DataType="vm:AttendanceExplanationViewModel"
              Title="Giải Trình Chấm Công"
-             BackgroundColor="#F8FAFC">
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
 
     <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="16,12,16,0">
 

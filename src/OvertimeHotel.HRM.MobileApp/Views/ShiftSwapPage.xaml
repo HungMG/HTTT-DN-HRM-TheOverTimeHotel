@@ -6,7 +6,9 @@
              x:Class="OvertimeHotel.HRM.MobileApp.Views.ShiftSwapPage"
              x:DataType="vm:ShiftSwapViewModel"
              Title="Đổi Ca Trực"
-             BackgroundColor="#F8FAFC">
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
 
     <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="16,12,16,0">
 

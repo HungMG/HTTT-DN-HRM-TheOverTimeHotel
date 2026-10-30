@@ -6,7 +6,9 @@
              x:Class="OvertimeHotel.HRM.MobileApp.Views.RequestsPage"
              x:DataType="vm:RequestsViewModel"
              Title="Đơn Từ"
-             BackgroundColor="#F8FAFC">
+             BackgroundColor="#F8FAFC"
+             NavigationPage.HasNavigationBar="False"
+             Shell.NavBarIsVisible="False">
 
     <Grid RowDefinitions="Auto,Auto,*" Padding="16,12,16,0">
 
