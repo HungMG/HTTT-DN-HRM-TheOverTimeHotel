@@ -14,6 +14,42 @@ public partial class AttendanceExplanationPage : ContentPage
         InitializeComponent();
         BindingContext = _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.PopupRequested += OnPopupRequested;
+        _viewModel.ConfirmRequested += OnConfirmRequested;
+    }
+
+    private void OnPopupRequested(string title, string message, bool isError)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            popup.Show(
+                title: title,
+                message: message,
+                iconText: isError ? "!" : "★",
+                iconTextColor: isError ? "#B91C1C" : "#047857",
+                iconBgColor: isError ? "#FEE2E2" : "#ECFDF5",
+                borderColor: isError ? "#F87171" : "#34D399",
+                confirmText: "ĐÃ BIẾT",
+                showCancel: false,
+                onConfirm: null);
+        });
+    }
+
+    private void OnConfirmRequested(string title, string message, string confirmText, Action onConfirm)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            popup.Show(
+                title: title,
+                message: message,
+                iconText: "!",
+                iconTextColor: "#B45309",
+                iconBgColor: "#FFFBEB",
+                borderColor: "#D4AF37",
+                confirmText: confirmText,
+                showCancel: true,
+                onConfirm: onConfirm);
+        });
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -67,5 +103,6 @@ public partial class AttendanceExplanationPage : ContentPage
         base.OnDisappearing();
         StopSkeleton();
         _viewModel.CancelLoad();
+        _viewModel.CloseShiftDropdownCommand.Execute(null);
     }
 }

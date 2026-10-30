@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
              xmlns:dto="clr-namespace:OvertimeHotel.HRM.Core.DTOs;assembly=OvertimeHotel.HRM.Core"
+             xmlns:controls="clr-namespace:OvertimeHotel.HRM.MobileApp.Views.Controls"
              x:Class="OvertimeHotel.HRM.MobileApp.Views.ShiftSwapPage"
              x:DataType="vm:ShiftSwapViewModel"
              Title="Đổi Ca Trực"
@@ -373,17 +374,95 @@
                                FontSize="12"
                                TextColor="#1E3A8A" />
 
+                        <!-- TRIGGER BOX -->
                         <Border Stroke="#CBD5E1"
-                                StrokeShape="RoundRectangle 10"
+                                StrokeShape="RoundRectangle 12"
                                 BackgroundColor="#F8FAFC"
-                                Padding="12,4">
-                            <Picker ItemsSource="{Binding EligibleMyShifts}"
-                                    SelectedItem="{Binding SelectedMyShift}"
-                                    ItemDisplayBinding="{Binding DisplayText}"
-                                    Title="-- Chọn ca bạn muốn nhường --"
-                                    TextColor="#0F172A"
-                                    TitleColor="#94A3B8"
-                                    FontSize="12" />
+                                Padding="14,0"
+                                HeightRequest="48">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleMyShiftDropdownCommand}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalOptions="Center">
+                                <Border Grid.Column="0"
+                                        WidthRequest="30" HeightRequest="30"
+                                        StrokeShape="RoundRectangle 8"
+                                        BackgroundColor="#EFF6FF"
+                                        Stroke="#DBEAFE"
+                                        StrokeThickness="1"
+                                        VerticalOptions="Center" HorizontalOptions="Center">
+                                    <Label Text="📤" FontSize="14" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+
+                                <Label Grid.Column="1"
+                                       Text="{Binding SelectedMyShiftDisplayText}"
+                                       FontFamily="SegoeUIBold" FontSize="13" TextColor="#1E3A8A"
+                                       LineBreakMode="TailTruncation" VerticalOptions="Center" />
+
+                                <Border Grid.Column="2"
+                                        StrokeShape="RoundRectangle 12"
+                                        BackgroundColor="#F1F5F9"
+                                        WidthRequest="26" HeightRequest="26"
+                                        Padding="0" VerticalOptions="Center">
+                                    <Label Text="▼"
+                                           FontSize="9" TextColor="#64748B" FontFamily="SegoeUIBold"
+                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- DROPDOWN THẺ NỔI DƯỚI TRIGGER BOX -->
+                        <Border IsVisible="{Binding IsMyShiftDropdownOpen}"
+                                Stroke="#CBD5E1"
+                                StrokeShape="RoundRectangle 14"
+                                BackgroundColor="#FFFFFF"
+                                Padding="6"
+                                Margin="0,2,0,4">
+                            <Border.Shadow>
+                                <Shadow Brush="#0F172A" Offset="0,6" Radius="16" Opacity="0.12" />
+                            </Border.Shadow>
+                            <ScrollView MaximumHeightRequest="220" VerticalScrollBarVisibility="Always">
+                                <VerticalStackLayout Spacing="3"
+                                                     BindableLayout.ItemsSource="{Binding EligibleMyShifts}">
+                                    <BindableLayout.EmptyView>
+                                        <Label Text="Không có ca làm việc nào đủ điều kiện"
+                                               TextColor="#94A3B8"
+                                               FontSize="12"
+                                               FontFamily="SegoeUI"
+                                               HorizontalOptions="Center"
+                                               Margin="16" />
+                                    </BindableLayout.EmptyView>
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="dto:EligibleMyShiftDto">
+                                            <Border StrokeShape="RoundRectangle 10"
+                                                    Stroke="Transparent"
+                                                    BackgroundColor="Transparent"
+                                                    Padding="12,10"
+                                                    Margin="0,1">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ShiftSwapViewModel}}, Path=SelectMyShiftCommand}"
+                                                        CommandParameter="{Binding .}" />
+                                                </Border.GestureRecognizers>
+                                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" VerticalOptions="Center">
+                                                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                                        <Label Text="{Binding TenCa}" FontFamily="SegoeUIBold" FontSize="13" TextColor="#0F172A" />
+                                                        <Label Text="{Binding NgayLamViec, StringFormat='Ngày: {0:dd/MM/yyyy}'}" FontFamily="SegoeUI" FontSize="11" TextColor="#64748B" />
+                                                    </VerticalStackLayout>
+                                                    <Border Grid.Column="1"
+                                                            StrokeShape="RoundRectangle 8"
+                                                            BackgroundColor="#EFF6FF"
+                                                            Padding="8,4"
+                                                            VerticalOptions="Center">
+                                                        <Label Text="{Binding GioBatDau, StringFormat='{0} - '}"
+                                                               FontFamily="SegoeUIBold" FontSize="11" TextColor="#1E3A8A" />
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                            </ScrollView>
                         </Border>
 
                         <Label Text="* Chỉ hiển thị các ca chưa diễn ra và chưa có chấm công."
@@ -405,17 +484,95 @@
                                FontSize="12"
                                TextColor="#1E3A8A" />
 
+                        <!-- TRIGGER BOX -->
                         <Border Stroke="#CBD5E1"
-                                StrokeShape="RoundRectangle 10"
+                                StrokeShape="RoundRectangle 12"
                                 BackgroundColor="#F8FAFC"
-                                Padding="12,4">
-                            <Picker ItemsSource="{Binding EligiblePartnerShifts}"
-                                    SelectedItem="{Binding SelectedPartnerShift}"
-                                    ItemDisplayBinding="{Binding DisplayText}"
-                                    Title="-- Chọn ca đồng nghiệp nhận thay --"
-                                    TextColor="#0F172A"
-                                    TitleColor="#94A3B8"
-                                    FontSize="12" />
+                                Padding="14,0"
+                                HeightRequest="48">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding TogglePartnerShiftDropdownCommand}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalOptions="Center">
+                                <Border Grid.Column="0"
+                                        WidthRequest="30" HeightRequest="30"
+                                        StrokeShape="RoundRectangle 8"
+                                        BackgroundColor="#EFF6FF"
+                                        Stroke="#DBEAFE"
+                                        StrokeThickness="1"
+                                        VerticalOptions="Center" HorizontalOptions="Center">
+                                    <Label Text="📥" FontSize="14" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+
+                                <Label Grid.Column="1"
+                                       Text="{Binding SelectedPartnerShiftDisplayText}"
+                                       FontFamily="SegoeUIBold" FontSize="13" TextColor="#1E3A8A"
+                                       LineBreakMode="TailTruncation" VerticalOptions="Center" />
+
+                                <Border Grid.Column="2"
+                                        StrokeShape="RoundRectangle 12"
+                                        BackgroundColor="#F1F5F9"
+                                        WidthRequest="26" HeightRequest="26"
+                                        Padding="0" VerticalOptions="Center">
+                                    <Label Text="▼"
+                                           FontSize="9" TextColor="#64748B" FontFamily="SegoeUIBold"
+                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- DROPDOWN THẺ NỔI DƯỚI TRIGGER BOX -->
+                        <Border IsVisible="{Binding IsPartnerShiftDropdownOpen}"
+                                Stroke="#CBD5E1"
+                                StrokeShape="RoundRectangle 14"
+                                BackgroundColor="#FFFFFF"
+                                Padding="6"
+                                Margin="0,2,0,4">
+                            <Border.Shadow>
+                                <Shadow Brush="#0F172A" Offset="0,6" Radius="16" Opacity="0.12" />
+                            </Border.Shadow>
+                            <ScrollView MaximumHeightRequest="220" VerticalScrollBarVisibility="Always">
+                                <VerticalStackLayout Spacing="3"
+                                                     BindableLayout.ItemsSource="{Binding EligiblePartnerShifts}">
+                                    <BindableLayout.EmptyView>
+                                        <Label Text="Không có ca đồng nghiệp nào trong cùng bộ phận"
+                                               TextColor="#94A3B8"
+                                               FontSize="12"
+                                               FontFamily="SegoeUI"
+                                               HorizontalOptions="Center"
+                                               Margin="16" />
+                                    </BindableLayout.EmptyView>
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="dto:EligiblePartnerShiftDto">
+                                            <Border StrokeShape="RoundRectangle 10"
+                                                    Stroke="Transparent"
+                                                    BackgroundColor="Transparent"
+                                                    Padding="12,10"
+                                                    Margin="0,1">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer
+                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ShiftSwapViewModel}}, Path=SelectPartnerShiftCommand}"
+                                                        CommandParameter="{Binding .}" />
+                                                </Border.GestureRecognizers>
+                                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" VerticalOptions="Center">
+                                                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                                        <Label Text="{Binding TenNhanVien}" FontFamily="SegoeUIBold" FontSize="13" TextColor="#0F172A" />
+                                                        <Label Text="{Binding DisplayText}" FontFamily="SegoeUI" FontSize="11" TextColor="#64748B" LineBreakMode="TailTruncation" />
+                                                    </VerticalStackLayout>
+                                                    <Border Grid.Column="1"
+                                                            StrokeShape="RoundRectangle 8"
+                                                            BackgroundColor="#EFF6FF"
+                                                            Padding="8,4"
+                                                            VerticalOptions="Center">
+                                                        <Label Text="{Binding TenCa}"
+                                                               FontFamily="SegoeUIBold" FontSize="11" TextColor="#1E3A8A" />
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                            </ScrollView>
                         </Border>
 
                         <Label Text="* Chỉ hiển thị các ca của đồng nghiệp trong cùng một bộ phận."
@@ -470,6 +627,91 @@
 
             </VerticalStackLayout>
         </ScrollView>
+
+        <!-- ==================== MODAL TỪ CHỐI ĐỔI CA (LUXURY STYLE) ==================== -->
+        <Grid IsVisible="{Binding IsRejectModalOpen}"
+              ZIndex="950"
+              BackgroundColor="#990F172A">
+            <Border StrokeShape="RoundRectangle 22"
+                    Stroke="#DC2626"
+                    StrokeThickness="1.5"
+                    BackgroundColor="#FFFFFF"
+                    WidthRequest="330"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Padding="22">
+                <Border.Shadow>
+                    <Shadow Brush="#0F172A" Offset="0,10" Radius="24" Opacity="0.3" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="14">
+                    <!-- Icon tròn cảnh báo -->
+                    <Border StrokeShape="RoundRectangle 25"
+                            Stroke="#DC2626"
+                            StrokeThickness="1.5"
+                            BackgroundColor="#FEF2F2"
+                            WidthRequest="50"
+                            HeightRequest="50"
+                            HorizontalOptions="Center">
+                        <Label Text="!"
+                               TextColor="#DC2626"
+                               FontSize="24"
+                               FontFamily="SegoeUIBold"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <Label Text="Từ Chối Đổi Ca"
+                           FontFamily="SegoeUIBold"
+                           FontSize="17"
+                           TextColor="#0F172A"
+                           HorizontalOptions="Center" />
+
+                    <Label Text="Vui lòng nhập lý do từ chối (bắt buộc):"
+                           FontFamily="SegoeUI"
+                           FontSize="12"
+                           TextColor="#64748B"
+                           HorizontalOptions="Center" />
+
+                    <Border Stroke="#CBD5E1"
+                            StrokeShape="RoundRectangle 12"
+                            BackgroundColor="#F8FAFC"
+                            Padding="10">
+                        <Editor Text="{Binding RejectReason}"
+                                Placeholder="Nhập lý do từ chối..."
+                                PlaceholderColor="#94A3B8"
+                                TextColor="#0F172A"
+                                FontSize="13"
+                                HeightRequest="80"
+                                MaxLength="500" />
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,4,0,0">
+                        <Button Grid.Column="0"
+                                Text="HỦY"
+                                Command="{Binding CancelRejectModalCommand}"
+                                BackgroundColor="#F1F5F9"
+                                TextColor="#64748B"
+                                FontFamily="SegoeUIBold"
+                                FontSize="12"
+                                CornerRadius="12"
+                                HeightRequest="42" />
+
+                        <Button Grid.Column="1"
+                                Text="XÁC NHẬN"
+                                Command="{Binding ConfirmRejectCommand}"
+                                BackgroundColor="#DC2626"
+                                TextColor="#FFFFFF"
+                                FontFamily="SegoeUIBold"
+                                FontSize="12"
+                                CornerRadius="12"
+                                HeightRequest="42" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- LUXURY POPUP THÔNG BÁO VÀ XÁC NHẬN -->
+        <controls:LuxuryPopup x:Name="popup" ZIndex="999" />
 
     </Grid>
 </ContentPage>

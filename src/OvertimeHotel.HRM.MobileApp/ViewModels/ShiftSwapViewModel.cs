@@ -19,11 +19,19 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
     private string _errorMessage = string.Empty;
 
     private bool _isCreateMode;
+    private bool _isMyShiftDropdownOpen;
+    private bool _isPartnerShiftDropdownOpen;
+    private bool _isRejectModalOpen;
+    private ShiftSwapItemDto? _rejectTargetItem;
+    private string _rejectReason = string.Empty;
+
     private EligibleMyShiftDto? _selectedMyShift;
     private EligiblePartnerShiftDto? _selectedPartnerShift;
     private string _lyDo = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action<string, string, bool>? PopupRequested;
+    public event Action<string, string, string, Action>? ConfirmRequested;
 
     public ObservableCollection<EligibleMyShiftDto> EligibleMyShifts { get; } = [];
     public ObservableCollection<EligiblePartnerShiftDto> EligiblePartnerShifts { get; } = [];
@@ -38,6 +46,11 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
     public ICommand WithdrawCommand { get; }
     public ICommand SelectMyShiftCommand { get; }
     public ICommand SelectPartnerShiftCommand { get; }
+    public ICommand ToggleMyShiftDropdownCommand { get; }
+    public ICommand TogglePartnerShiftDropdownCommand { get; }
+    public ICommand CloseDropdownsCommand { get; }
+    public ICommand ConfirmRejectCommand { get; }
+    public ICommand CancelRejectModalCommand { get; }
     public ICommand BackCommand { get; }
 
     public ShiftSwapViewModel(IShiftSwapService service)
@@ -56,17 +69,45 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
             IsCreateMode = mode == "create";
         });
         SubmitCommand = new Command(async () => await SubmitAsync(), () => !IsSubmitting && CanSubmit);
-        AcceptCommand = new Command<ShiftSwapItemDto>(async (item) => await AcceptAsync(item), (item) => !IsSubmitting);
-        RejectCommand = new Command<ShiftSwapItemDto>(async (item) => await RejectAsync(item), (item) => !IsSubmitting);
-        WithdrawCommand = new Command<ShiftSwapItemDto>(async (item) => await WithdrawAsync(item), (item) => !IsSubmitting);
+        AcceptCommand = new Command<ShiftSwapItemDto>((item) => Accept(item), (item) => !IsSubmitting);
+        RejectCommand = new Command<ShiftSwapItemDto>((item) => OpenRejectModal(item), (item) => !IsSubmitting);
+        WithdrawCommand = new Command<ShiftSwapItemDto>((item) => Withdraw(item), (item) => !IsSubmitting);
+        
+        ToggleMyShiftDropdownCommand = new Command(() =>
+        {
+            IsMyShiftDropdownOpen = !IsMyShiftDropdownOpen;
+            if (IsMyShiftDropdownOpen) IsPartnerShiftDropdownOpen = false;
+        });
+        TogglePartnerShiftDropdownCommand = new Command(() =>
+        {
+            IsPartnerShiftDropdownOpen = !IsPartnerShiftDropdownOpen;
+            if (IsPartnerShiftDropdownOpen) IsMyShiftDropdownOpen = false;
+        });
+        CloseDropdownsCommand = new Command(() =>
+        {
+            IsMyShiftDropdownOpen = false;
+            IsPartnerShiftDropdownOpen = false;
+        });
+
         SelectMyShiftCommand = new Command<EligibleMyShiftDto>((shift) =>
         {
             SelectedMyShift = shift;
+            IsMyShiftDropdownOpen = false;
         });
         SelectPartnerShiftCommand = new Command<EligiblePartnerShiftDto>((shift) =>
         {
             SelectedPartnerShift = shift;
+            IsPartnerShiftDropdownOpen = false;
         });
+
+        ConfirmRejectCommand = new Command(async () => await ConfirmRejectAsync(), () => !IsSubmitting);
+        CancelRejectModalCommand = new Command(() =>
+        {
+            IsRejectModalOpen = false;
+            _rejectTargetItem = null;
+            RejectReason = string.Empty;
+        });
+
         BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
     }
 
@@ -125,6 +166,38 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
         set => SetProperty(ref _isCreateMode, value);
     }
 
+    public bool IsMyShiftDropdownOpen
+    {
+        get => _isMyShiftDropdownOpen;
+        set => SetProperty(ref _isMyShiftDropdownOpen, value);
+    }
+
+    public bool IsPartnerShiftDropdownOpen
+    {
+        get => _isPartnerShiftDropdownOpen;
+        set => SetProperty(ref _isPartnerShiftDropdownOpen, value);
+    }
+
+    public bool IsRejectModalOpen
+    {
+        get => _isRejectModalOpen;
+        set => SetProperty(ref _isRejectModalOpen, value);
+    }
+
+    public string RejectReason
+    {
+        get => _rejectReason;
+        set => SetProperty(ref _rejectReason, value);
+    }
+
+    public string SelectedMyShiftDisplayText => SelectedMyShift is { } s
+        ? $"{s.TenCa} ({s.GioBatDau} - {s.GioKetThuc}) · {s.NgayLamViec:dd/MM/yyyy}"
+        : "-- Chọn ca bạn muốn nhường --";
+
+    public string SelectedPartnerShiftDisplayText => SelectedPartnerShift is { } s
+        ? $"{s.TenNhanVien} · {s.TenCa} ({s.GioBatDau} - {s.GioKetThuc}) · {s.NgayLamViec:dd/MM/yyyy}"
+        : "-- Chọn ca đồng nghiệp nhận thay --";
+
     public EligibleMyShiftDto? SelectedMyShift
     {
         get => _selectedMyShift;
@@ -132,6 +205,7 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _selectedMyShift, value))
             {
+                OnPropertyChanged(nameof(SelectedMyShiftDisplayText));
                 OnPropertyChanged(nameof(CanSubmit));
                 ((Command)SubmitCommand).ChangeCanExecute();
             }
@@ -145,6 +219,7 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _selectedPartnerShift, value))
             {
+                OnPropertyChanged(nameof(SelectedPartnerShiftDisplayText));
                 OnPropertyChanged(nameof(CanSubmit));
                 ((Command)SubmitCommand).ChangeCanExecute();
             }
@@ -272,21 +347,14 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
             var result = await _service.CreateShiftSwapAsync(req);
             if (result.Success)
             {
-                if (Application.Current?.MainPage != null)
-                {
-                    await Application.Current.MainPage.DisplayAlert("Thành công", result.Message, "OK");
-                }
-
+                PopupRequested?.Invoke("Tạo yêu cầu thành công", result.Message, false);
                 LyDo = string.Empty;
                 IsCreateMode = false;
                 await LoadAsync(isRefresh: true);
             }
             else
             {
-                if (Application.Current?.MainPage != null)
-                {
-                    await Application.Current.MainPage.DisplayAlert("Không thể gửi", result.Message, "Đóng");
-                }
+                PopupRequested?.Invoke("Không thể gửi yêu cầu", result.Message, true);
             }
         }
         finally
@@ -295,18 +363,19 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
         }
     }
 
-    public async Task AcceptAsync(ShiftSwapItemDto? item)
+    public void Accept(ShiftSwapItemDto? item)
     {
-        if (item == null || Application.Current?.MainPage == null) return;
+        if (item == null) return;
 
-        var confirm = await Application.Current.MainPage.DisplayAlert(
+        ConfirmRequested?.Invoke(
             "Xác nhận đổi ca",
             $"Bạn có chắc chắn muốn đồng ý đổi ca #{item.MaYeuCau} với {item.TenNguoiGui}?\nCa của bạn: {item.TenCaNhan} ({item.NgayCaNhan})\nCa nhận lại: {item.TenCaGui} ({item.NgayCaGui})",
-            "Đồng ý đổi",
-            "Xem lại");
+            "ĐỒNG Ý ĐỔI",
+            () => _ = ExecuteAcceptAsync(item));
+    }
 
-        if (!confirm) return;
-
+    private async Task ExecuteAcceptAsync(ShiftSwapItemDto item)
+    {
         IsSubmitting = true;
         try
         {
@@ -317,12 +386,12 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
 
             if (result.Success)
             {
-                await Application.Current.MainPage.DisplayAlert("Thành công", result.Message, "OK");
+                PopupRequested?.Invoke("Đồng ý đổi ca thành công", result.Message, false);
                 await LoadAsync(isRefresh: true);
             }
             else
             {
-                await Application.Current.MainPage.DisplayAlert("Thất bại", result.Message, "Đóng");
+                PopupRequested?.Invoke("Không thể xác nhận", result.Message, true);
             }
         }
         finally
@@ -331,37 +400,44 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
         }
     }
 
-    public async Task RejectAsync(ShiftSwapItemDto? item)
+    public void OpenRejectModal(ShiftSwapItemDto? item)
     {
-        if (item == null || Application.Current?.MainPage == null) return;
+        if (item == null) return;
+        _rejectTargetItem = item;
+        RejectReason = string.Empty;
+        IsRejectModalOpen = true;
+    }
 
-        var reason = await Application.Current.MainPage.DisplayPromptAsync(
-            "Từ chối đổi ca",
-            "Nhập lý do bạn không thể đổi ca (bắt buộc):",
-            "Xác nhận từ chối",
-            "Hủy",
-            placeholder: "Lý do từ chối...",
-            maxLength: 500);
+    public async Task ConfirmRejectAsync()
+    {
+        if (_rejectTargetItem == null) return;
 
-        if (string.IsNullOrWhiteSpace(reason)) return;
+        if (string.IsNullOrWhiteSpace(RejectReason))
+        {
+            PopupRequested?.Invoke("Thiếu lý do từ chối", "Bắt buộc phải nhập lý do khi từ chối đổi ca.", true);
+            return;
+        }
 
         IsSubmitting = true;
+        IsRejectModalOpen = false;
         try
         {
-            var result = await _service.RespondShiftSwapAsync(item.MaYeuCau, new RespondShiftSwapRequest
+            var result = await _service.RespondShiftSwapAsync(_rejectTargetItem.MaYeuCau, new RespondShiftSwapRequest
             {
                 DongY = false,
-                LyDo = reason.Trim()
+                LyDo = RejectReason.Trim()
             });
 
             if (result.Success)
             {
-                await Application.Current.MainPage.DisplayAlert("Đã từ chối", result.Message, "OK");
+                PopupRequested?.Invoke("Đã từ chối yêu cầu đổi ca", result.Message, false);
+                _rejectTargetItem = null;
+                RejectReason = string.Empty;
                 await LoadAsync(isRefresh: true);
             }
             else
             {
-                await Application.Current.MainPage.DisplayAlert("Thất bại", result.Message, "Đóng");
+                PopupRequested?.Invoke("Không thể từ chối", result.Message, true);
             }
         }
         finally
@@ -370,30 +446,31 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
         }
     }
 
-    public async Task WithdrawAsync(ShiftSwapItemDto? item)
+    public void Withdraw(ShiftSwapItemDto? item)
     {
-        if (item == null || Application.Current?.MainPage == null) return;
+        if (item == null) return;
 
-        var confirm = await Application.Current.MainPage.DisplayAlert(
-            "Rút yêu cầu",
+        ConfirmRequested?.Invoke(
+            "Xác nhận rút yêu cầu đổi ca",
             $"Bạn có chắc chắn muốn rút yêu cầu đổi ca #{item.MaYeuCau}?",
-            "Rút yêu cầu",
-            "Không");
+            "RÚT YÊU CẦU",
+            () => _ = ExecuteWithdrawAsync(item));
+    }
 
-        if (!confirm) return;
-
+    private async Task ExecuteWithdrawAsync(ShiftSwapItemDto item)
+    {
         IsSubmitting = true;
         try
         {
             var result = await _service.WithdrawShiftSwapAsync(item.MaYeuCau);
             if (result.Success)
             {
-                await Application.Current.MainPage.DisplayAlert("Thành công", result.Message, "OK");
+                PopupRequested?.Invoke("Rút yêu cầu thành công", result.Message, false);
                 await LoadAsync(isRefresh: true);
             }
             else
             {
-                await Application.Current.MainPage.DisplayAlert("Thất bại", result.Message, "Đóng");
+                PopupRequested?.Invoke("Không thể rút", result.Message, true);
             }
         }
         finally

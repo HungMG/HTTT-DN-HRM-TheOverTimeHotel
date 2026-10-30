@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
              xmlns:dto="clr-namespace:OvertimeHotel.HRM.Core.DTOs;assembly=OvertimeHotel.HRM.Core"
+             xmlns:controls="clr-namespace:OvertimeHotel.HRM.MobileApp.Views.Controls"
              x:Class="OvertimeHotel.HRM.MobileApp.Views.AttendanceExplanationPage"
              x:DataType="vm:AttendanceExplanationViewModel"
              Title="Giải Trình Chấm Công"
@@ -130,7 +131,7 @@
                     VerticalScrollBarVisibility="Never">
             <VerticalStackLayout Spacing="16" Padding="0,0,0,24">
 
-                <!-- 1. Chọn ca làm việc -->
+                <!-- 1. Chọn ca làm việc (Mẫu Dropdown thẻ nổi Luxury) -->
                 <VerticalStackLayout Spacing="6">
                     <Label Text="CHỌN CA TRỰC CẦN GIẢI TRÌNH"
                            FontFamily="SegoeUIBold"
@@ -138,18 +139,95 @@
                            CharacterSpacing="1"
                            TextColor="#94A3B8" />
 
-                    <Border BackgroundColor="#FFFFFF"
-                            Stroke="#CBD5E1"
-                            StrokeThickness="1"
+                    <!-- TRIGGER BOX -->
+                    <Border Stroke="#CBD5E1"
                             StrokeShape="RoundRectangle 12"
-                            Padding="12,4">
-                        <Picker ItemsSource="{Binding EligibleShifts}"
-                                SelectedItem="{Binding SelectedShift}"
-                                ItemDisplayBinding="{Binding TenCa}"
-                                Title="-- Chọn ca trực trong 45 ngày qua --"
-                                TextColor="#0F172A"
-                                FontFamily="SegoeUIBold"
-                                FontSize="13" />
+                            BackgroundColor="#FFFFFF"
+                            Padding="14,0"
+                            HeightRequest="48">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleShiftDropdownCommand}" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalOptions="Center">
+                            <Border Grid.Column="0"
+                                    WidthRequest="30" HeightRequest="30"
+                                    StrokeShape="RoundRectangle 8"
+                                    BackgroundColor="#EFF6FF"
+                                    Stroke="#DBEAFE"
+                                    StrokeThickness="1"
+                                    VerticalOptions="Center" HorizontalOptions="Center">
+                                <Label Text="📅" FontSize="14" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+
+                            <Label Grid.Column="1"
+                                   Text="{Binding SelectedShiftDisplayText}"
+                                   FontFamily="SegoeUIBold" FontSize="13" TextColor="#1E3A8A"
+                                   LineBreakMode="TailTruncation" VerticalOptions="Center" />
+
+                            <Border Grid.Column="2"
+                                    StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="#F1F5F9"
+                                    WidthRequest="26" HeightRequest="26"
+                                    Padding="0" VerticalOptions="Center">
+                                <Label Text="▼"
+                                       FontSize="9" TextColor="#64748B" FontFamily="SegoeUIBold"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- DROPDOWN THẺ NỔI DƯỚI TRIGGER BOX -->
+                    <Border IsVisible="{Binding IsShiftDropdownOpen}"
+                            Stroke="#CBD5E1"
+                            StrokeShape="RoundRectangle 14"
+                            BackgroundColor="#FFFFFF"
+                            Padding="6"
+                            Margin="0,2,0,4">
+                        <Border.Shadow>
+                            <Shadow Brush="#0F172A" Offset="0,6" Radius="16" Opacity="0.12" />
+                        </Border.Shadow>
+                        <ScrollView MaximumHeightRequest="220" VerticalScrollBarVisibility="Always">
+                            <VerticalStackLayout Spacing="3"
+                                                 BindableLayout.ItemsSource="{Binding EligibleShifts}">
+                                <BindableLayout.EmptyView>
+                                    <Label Text="Không có ca trực nào trong 45 ngày qua"
+                                           TextColor="#94A3B8"
+                                           FontSize="12"
+                                           FontFamily="SegoeUI"
+                                           HorizontalOptions="Center"
+                                           Margin="16" />
+                                </BindableLayout.EmptyView>
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="dto:EligibleShiftDto">
+                                        <Border StrokeShape="RoundRectangle 10"
+                                                Stroke="Transparent"
+                                                BackgroundColor="Transparent"
+                                                Padding="12,10"
+                                                Margin="0,1">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AttendanceExplanationViewModel}}, Path=SelectShiftCommand}"
+                                                    CommandParameter="{Binding .}" />
+                                            </Border.GestureRecognizers>
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" VerticalOptions="Center">
+                                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                                    <Label Text="{Binding TenCa}" FontFamily="SegoeUIBold" FontSize="13" TextColor="#0F172A" />
+                                                    <Label Text="{Binding NgayLamViec, StringFormat='Ngày: {0:dd/MM/yyyy}'}" FontFamily="SegoeUI" FontSize="11" TextColor="#64748B" />
+                                                </VerticalStackLayout>
+                                                <Border Grid.Column="1"
+                                                        StrokeShape="RoundRectangle 8"
+                                                        BackgroundColor="#EFF6FF"
+                                                        Padding="8,4"
+                                                        VerticalOptions="Center">
+                                                    <Label Text="{Binding GioBatDau, StringFormat='{0:HH:mm}'}"
+                                                           FontFamily="SegoeUIBold" FontSize="11" TextColor="#1E3A8A" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </ScrollView>
                     </Border>
                 </VerticalStackLayout>
 
@@ -439,6 +517,8 @@
 
             </VerticalStackLayout>
         </ScrollView>
+
+        <controls:LuxuryPopup x:Name="popup" ZIndex="999" />
 
     </Grid>
 

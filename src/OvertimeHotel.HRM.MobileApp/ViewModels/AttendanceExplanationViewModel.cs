@@ -19,6 +19,7 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
     private string _errorMessage = string.Empty;
 
     private bool _isCreateMode = true;
+    private bool _isShiftDropdownOpen;
     private EligibleShiftDto? _selectedShift;
     private TimeSpan? _gioDeXuatVaoTime;
     private TimeSpan? _gioDeXuatRaTime;
@@ -28,6 +29,8 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
     private string _minhChung = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action<string, string, bool>? PopupRequested;
+    public event Action<string, string, string, Action>? ConfirmRequested;
 
     public ObservableCollection<EligibleShiftDto> EligibleShifts { get; } = [];
     public ObservableCollection<AttendanceExplanationItemDto> MyExplanations { get; } = [];
@@ -38,6 +41,8 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
     public ICommand SubmitCommand { get; }
     public ICommand WithdrawCommand { get; }
     public ICommand SelectShiftCommand { get; }
+    public ICommand ToggleShiftDropdownCommand { get; }
+    public ICommand CloseShiftDropdownCommand { get; }
     public ICommand BackCommand { get; }
 
     public AttendanceExplanationViewModel(IAttendanceExplanationService service)
@@ -51,10 +56,13 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
             IsCreateMode = mode != "history";
         });
         SubmitCommand = new Command(async () => await SubmitAsync(), () => !IsSubmitting && CanSubmit);
-        WithdrawCommand = new Command<AttendanceExplanationItemDto>(async (item) => await WithdrawAsync(item));
+        WithdrawCommand = new Command<AttendanceExplanationItemDto>((item) => Withdraw(item));
+        ToggleShiftDropdownCommand = new Command(() => IsShiftDropdownOpen = !IsShiftDropdownOpen);
+        CloseShiftDropdownCommand = new Command(() => IsShiftDropdownOpen = false);
         SelectShiftCommand = new Command<EligibleShiftDto>((shift) =>
         {
             SelectedShift = shift;
+            IsShiftDropdownOpen = false;
         });
         BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
     }
@@ -122,6 +130,12 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
     public string HistoryTabBackground => !IsCreateMode ? "#1E3A8A" : "#FFFFFF";
     public string HistoryTabColor => !IsCreateMode ? "#FFFFFF" : "#64748B";
 
+    public bool IsShiftDropdownOpen
+    {
+        get => _isShiftDropdownOpen;
+        set => SetProperty(ref _isShiftDropdownOpen, value);
+    }
+
     public EligibleShiftDto? SelectedShift
     {
         get => _selectedShift;
@@ -142,10 +156,15 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(HasSelectedShift));
                 OnPropertyChanged(nameof(SelectedShiftDateText));
                 OnPropertyChanged(nameof(SelectedShiftStartText));
+                OnPropertyChanged(nameof(SelectedShiftDisplayText));
                 NotifyCanSubmitChanged();
             }
         }
     }
+
+    public string SelectedShiftDisplayText => SelectedShift is { } shift
+        ? $"{shift.TenCa} · {shift.NgayLamViec:dd/MM/yyyy} ({shift.GioBatDau:HH:mm} - {shift.GioKetThuc:HH:mm})"
+        : "-- Chọn ca trực trong 45 ngày qua --";
 
     public bool HasSelectedShift => SelectedShift != null;
     public string SelectedShiftDateText => SelectedShift is { } shift ? $"Ngày: {shift.NgayLamViec:dd/MM/yyyy}" : string.Empty;
@@ -354,7 +373,7 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
             var result = await _service.SubmitExplanationAsync(request);
             if (result.Success)
             {
-                await Shell.Current.DisplayAlert("Thành công", "Đã gửi giải trình chấm công. Đang chờ Quản lý bộ phận xác minh.", "Đóng");
+                PopupRequested?.Invoke("Gửi giải trình thành công", "Đã gửi giải trình chấm công. Đang chờ Quản lý bộ phận xác minh.", false);
                 LyDo = string.Empty;
                 MinhChung = string.Empty;
                 IsCreateMode = false;
@@ -362,12 +381,12 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
             }
             else
             {
-                await Shell.Current.DisplayAlert("Lỗi", result.Message, "Đóng");
+                PopupRequested?.Invoke("Không thể gửi giải trình", result.Message, true);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            await Shell.Current.DisplayAlert("Lỗi", "Không thể gửi giải trình lúc này. Vui lòng thử lại sau.", "Đóng");
+            PopupRequested?.Invoke("Lỗi hệ thống", "Không thể gửi giải trình lúc này. Vui lòng thử lại sau.", true);
         }
         finally
         {
@@ -375,36 +394,37 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task WithdrawAsync(AttendanceExplanationItemDto? item)
+    private void Withdraw(AttendanceExplanationItemDto? item)
     {
         if (item == null || !item.CanWithdraw) return;
 
-        bool confirm = await Shell.Current.DisplayAlert(
+        ConfirmRequested?.Invoke(
             "Xác nhận rút giải trình",
             $"Bạn có chắc chắn muốn rút giải trình cho ca {item.TenCa} ngày {item.NgayLamViec:dd/MM/yyyy} không?",
-            "Rút giải trình",
-            "Đóng");
+            "RÚT GIẢI TRÌNH",
+            () => _ = ExecuteWithdrawAsync(item));
+    }
 
-        if (!confirm) return;
-
+    private async Task ExecuteWithdrawAsync(AttendanceExplanationItemDto item)
+    {
         IsSubmitting = true;
         try
         {
             var result = await _service.WithdrawExplanationAsync(item.MaGiaiTrinh);
             if (result.Success)
             {
-                await Shell.Current.DisplayAlert("Thành công", "Đã rút giải trình chấm công thành công.", "Đóng");
+                PopupRequested?.Invoke("Rút giải trình thành công", "Đã rút giải trình chấm công thành công.", false);
                 await LoadAsync();
             }
             else
             {
-                await Shell.Current.DisplayAlert("Không thể rút", result.Message, "Đóng");
+                PopupRequested?.Invoke("Không thể rút", result.Message, true);
                 await LoadAsync();
             }
         }
         catch (Exception)
         {
-            await Shell.Current.DisplayAlert("Lỗi", "Không thể rút giải trình lúc này. Vui lòng thử lại sau.", "Đóng");
+            PopupRequested?.Invoke("Lỗi hệ thống", "Không thể rút giải trình lúc này. Vui lòng thử lại sau.", true);
         }
         finally
         {
