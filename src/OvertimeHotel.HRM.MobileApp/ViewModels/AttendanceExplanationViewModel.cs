@@ -44,6 +44,17 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
     public ICommand ToggleShiftDropdownCommand { get; }
     public ICommand CloseShiftDropdownCommand { get; }
     public ICommand BackCommand { get; }
+    public ICommand ToggleGioVaoCommand { get; }
+    public ICommand ToggleGioRaCommand { get; }
+    public ICommand SelectReasonSuggestionCommand { get; }
+    public ObservableCollection<string> ReasonSuggestions { get; } =
+    [
+        "Quên quẹt thẻ ra",
+        "Máy vân tay lỗi",
+        "Tăng ca theo lệnh",
+        "Đi công tác ngoài",
+        "Vào ca khẩn cấp"
+    ];
 
     public AttendanceExplanationViewModel(IAttendanceExplanationService service)
     {
@@ -65,6 +76,15 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
             IsShiftDropdownOpen = false;
         });
         BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
+        ToggleGioVaoCommand = new Command(() => UseGioVao = !UseGioVao);
+        ToggleGioRaCommand = new Command(() => UseGioRa = !UseGioRa);
+        SelectReasonSuggestionCommand = new Command<string>((reason) =>
+        {
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                LyDo = reason;
+            }
+        });
     }
 
     public bool IsDemoMode => _service.IsDemoMode;
@@ -157,6 +177,12 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(SelectedShiftDateText));
                 OnPropertyChanged(nameof(SelectedShiftStartText));
                 OnPropertyChanged(nameof(SelectedShiftDisplayText));
+                OnPropertyChanged(nameof(GioVaoThucTeDisplayText));
+                OnPropertyChanged(nameof(HasGioVaoThucTe));
+                OnPropertyChanged(nameof(GioRaThucTeDisplayText));
+                OnPropertyChanged(nameof(HasGioRaThucTe));
+                OnPropertyChanged(nameof(GioDeXuatVaoDisplayText));
+                OnPropertyChanged(nameof(GioDeXuatRaDisplayText));
                 NotifyCanSubmitChanged();
             }
         }
@@ -168,7 +194,30 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
 
     public bool HasSelectedShift => SelectedShift != null;
     public string SelectedShiftDateText => SelectedShift is { } shift ? $"Ngày: {shift.NgayLamViec:dd/MM/yyyy}" : string.Empty;
-    public string SelectedShiftStartText => SelectedShift is { } shift ? $"Giờ ca: {shift.GioBatDau:HH:mm}" : string.Empty;
+    public string SelectedShiftStartText => SelectedShift is { } shift ? $"Giờ ca: {shift.GioBatDau:HH:mm} - {shift.GioKetThuc:HH:mm}" : string.Empty;
+
+    public string GioVaoThucTeDisplayText => SelectedShift?.GioVaoThucTe.HasValue == true
+        ? $"✓ {SelectedShift.GioVaoThucTe.Value.ToLocalTime():HH:mm} (Đã quẹt)"
+        : "✕ Chưa quẹt thẻ vào";
+
+    public bool HasGioVaoThucTe => SelectedShift?.GioVaoThucTe.HasValue == true;
+
+    public string GioRaThucTeDisplayText => SelectedShift?.GioRaThucTe.HasValue == true
+        ? $"✓ {SelectedShift.GioRaThucTe.Value.ToLocalTime():HH:mm} (Đã quẹt)"
+        : "✕ Chưa quẹt thẻ ra";
+
+    public bool HasGioRaThucTe => SelectedShift?.GioRaThucTe.HasValue == true;
+
+    public string GioDeXuatVaoDisplayText => GioDeXuatVaoTime.HasValue
+        ? $"{GioDeXuatVaoTime.Value.Hours:D2}:{GioDeXuatVaoTime.Value.Minutes:D2}"
+        : "--:--";
+
+    public string GioDeXuatRaDisplayText => GioDeXuatRaTime.HasValue
+        ? $"{GioDeXuatRaTime.Value.Hours:D2}:{GioDeXuatRaTime.Value.Minutes:D2}"
+        : "--:--";
+
+    public bool IsGioVaoOff => !UseGioVao;
+    public bool IsGioRaOff => !UseGioRa;
 
     public bool UseGioVao
     {
@@ -177,6 +226,7 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _useGioVao, value))
             {
+                OnPropertyChanged(nameof(IsGioVaoOff));
                 NotifyCanSubmitChanged();
             }
         }
@@ -189,6 +239,7 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _useGioRa, value))
             {
+                OnPropertyChanged(nameof(IsGioRaOff));
                 NotifyCanSubmitChanged();
             }
         }
@@ -201,6 +252,7 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _gioDeXuatVaoTime, value))
             {
+                OnPropertyChanged(nameof(GioDeXuatVaoDisplayText));
                 NotifyCanSubmitChanged();
             }
         }
@@ -213,6 +265,7 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _gioDeXuatRaTime, value))
             {
+                OnPropertyChanged(nameof(GioDeXuatRaDisplayText));
                 NotifyCanSubmitChanged();
             }
         }

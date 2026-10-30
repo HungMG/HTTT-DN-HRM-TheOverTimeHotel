@@ -233,12 +233,15 @@
 
                 <!-- Chi tiết ca được chọn -->
                 <Border IsVisible="{Binding HasSelectedShift}"
-                        BackgroundColor="#EFF6FF"
-                        Stroke="#BFDBFE"
+                        BackgroundColor="#FFFFFF"
+                        Stroke="#E2E8F0"
                         StrokeThickness="1"
                         StrokeShape="RoundRectangle 14"
-                        Padding="14,10">
-                    <VerticalStackLayout Spacing="4">
+                        Padding="14,12">
+                    <Border.Shadow>
+                        <Shadow Brush="#0F172A" Offset="0,2" Radius="6" Opacity="0.04" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="8">
                         <Grid ColumnDefinitions="*,Auto">
                             <Label Grid.Column="0"
                                    Text="{Binding SelectedShift.TenCa}"
@@ -252,7 +255,21 @@
                                    TextColor="#1E3A8A" />
                         </Grid>
                         <Label Text="{Binding SelectedShiftStartText}"
-                               TextColor="#475569" FontSize="11" FontFamily="SegoeUI" />
+                               TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
+
+                        <!-- Hộp giờ thực tế -->
+                        <Border BackgroundColor="#F8FAFC" Stroke="#F1F5F9" StrokeShape="RoundRectangle 10" Padding="12,8">
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label Text="Giờ vào thực tế:" FontSize="10" TextColor="#64748B" FontFamily="SegoeUI" />
+                                    <Label Text="{Binding GioVaoThucTeDisplayText}" FontSize="11" FontFamily="SegoeUIBold" TextColor="#0F172A" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                    <Label Text="Giờ ra thực tế:" FontSize="10" TextColor="#64748B" FontFamily="SegoeUI" />
+                                    <Label Text="{Binding GioRaThucTeDisplayText}" FontSize="11" FontFamily="SegoeUIBold" TextColor="#0F172A" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
                     </VerticalStackLayout>
                 </Border>
 
@@ -262,9 +279,15 @@
                         StrokeThickness="1"
                         StrokeShape="RoundRectangle 14"
                         Padding="14,12">
-                    <VerticalStackLayout Spacing="8">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                    <Border.Shadow>
+                        <Shadow Brush="#0F172A" Offset="0,2" Radius="6" Opacity="0.04" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleGioVaoCommand}" />
+                            </Grid.GestureRecognizers>
+                            <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
                                 <Label Text="Bổ sung / sửa Giờ vào"
                                        FontFamily="SegoeUIBold"
                                        FontSize="13"
@@ -273,17 +296,123 @@
                                        FontSize="10"
                                        TextColor="#64748B" />
                             </VerticalStackLayout>
-                            <Switch Grid.Column="1"
-                                    IsToggled="{Binding UseGioVao}"
-                                    OnColor="#1E3A8A"
-                                    ThumbColor="#FFFFFF" />
+
+                            <!-- Toggle Pill Giờ vào -->
+                            <Border Grid.Column="1"
+                                    WidthRequest="68"
+                                    HeightRequest="32"
+                                    StrokeShape="RoundRectangle 16"
+                                    Padding="2,2"
+                                    VerticalOptions="Center">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleGioVaoCommand}" />
+                                </Border.GestureRecognizers>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding UseGioVao}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="#1E3A8A" />
+                                        <Setter Property="Stroke" Value="#D4AF37" />
+                                        <Setter Property="StrokeThickness" Value="1.5" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Border" Binding="{Binding UseGioVao}" Value="False">
+                                        <Setter Property="BackgroundColor" Value="#E2E8F0" />
+                                        <Setter Property="Stroke" Value="#CBD5E1" />
+                                        <Setter Property="StrokeThickness" Value="1.5" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Grid VerticalOptions="Center" HorizontalOptions="Fill">
+                                    <!-- Khi BẬT -->
+                                    <Label Text="BẬT"
+                                           IsVisible="{Binding UseGioVao}"
+                                           TextColor="#FFFFFF"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="10"
+                                           HorizontalOptions="Start"
+                                           VerticalOptions="Center"
+                                           Margin="8,0,0,0" />
+                                    <Border IsVisible="{Binding UseGioVao}"
+                                            WidthRequest="24"
+                                            HeightRequest="24"
+                                            StrokeShape="RoundRectangle 12"
+                                            BackgroundColor="#FFFFFF"
+                                            Stroke="#D4AF37"
+                                            StrokeThickness="1"
+                                            HorizontalOptions="End"
+                                            VerticalOptions="Center">
+                                        <Label Text="✓"
+                                               TextColor="#D4AF37"
+                                               FontFamily="SegoeUIBold"
+                                               FontSize="11"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                    </Border>
+
+                                    <!-- Khi TẮT (Nổi bật trên nền trắng, không bị chìm) -->
+                                    <Border IsVisible="{Binding IsGioVaoOff}"
+                                            WidthRequest="24"
+                                            HeightRequest="24"
+                                            StrokeShape="RoundRectangle 12"
+                                            BackgroundColor="#64748B"
+                                            HorizontalOptions="Start"
+                                            VerticalOptions="Center">
+                                        <Label Text="✕"
+                                               TextColor="#FFFFFF"
+                                               FontFamily="SegoeUIBold"
+                                               FontSize="10"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                    </Border>
+                                    <Label Text="TẮT"
+                                           IsVisible="{Binding IsGioVaoOff}"
+                                           TextColor="#64748B"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="10"
+                                           HorizontalOptions="End"
+                                           VerticalOptions="Center"
+                                           Margin="0,0,8,0" />
+                                </Grid>
+                            </Border>
                         </Grid>
 
-                        <TimePicker IsVisible="{Binding UseGioVao}"
-                                    Time="{Binding GioDeXuatVaoTime}"
-                                    TextColor="#1E3A8A"
-                                    FontFamily="SegoeUIBold"
-                                    FontSize="16" />
+                        <!-- Khung chọn giờ vào -->
+                        <Border IsVisible="{Binding UseGioVao}"
+                                BackgroundColor="#F0FDF4"
+                                Stroke="#22C55E"
+                                StrokeThickness="1.5"
+                                StrokeShape="RoundRectangle 12"
+                                Padding="12,10">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalOptions="Center">
+                                <Label Grid.Column="0" Text="🕒" FontSize="18" VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                                    <Label Text="{Binding GioDeXuatVaoDisplayText}"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="17"
+                                           TextColor="#15803D" />
+                                    <Label Text="Giờ vào đề xuất ghi nhận công"
+                                           FontSize="10"
+                                           TextColor="#166534"
+                                           FontFamily="SegoeUI" />
+                                </VerticalStackLayout>
+                                <Border Grid.Column="2"
+                                        StrokeShape="RoundRectangle 8"
+                                        Stroke="#86EFAC"
+                                        BackgroundColor="#FFFFFF"
+                                        Padding="10,6"
+                                        VerticalOptions="Center">
+                                    <Grid>
+                                        <Label Text="Đổi giờ ▾"
+                                               FontFamily="SegoeUIBold"
+                                               FontSize="11"
+                                               TextColor="#15803D"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                        <TimePicker Time="{Binding GioDeXuatVaoTime}"
+                                                    Opacity="0.01"
+                                                    HorizontalOptions="Fill"
+                                                    VerticalOptions="Fill" />
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
                     </VerticalStackLayout>
                 </Border>
 
@@ -293,9 +422,15 @@
                         StrokeThickness="1"
                         StrokeShape="RoundRectangle 14"
                         Padding="14,12">
-                    <VerticalStackLayout Spacing="8">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                    <Border.Shadow>
+                        <Shadow Brush="#0F172A" Offset="0,2" Radius="6" Opacity="0.04" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ToggleGioRaCommand}" />
+                            </Grid.GestureRecognizers>
+                            <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
                                 <Label Text="Bổ sung / sửa Giờ ra"
                                        FontFamily="SegoeUIBold"
                                        FontSize="13"
@@ -304,17 +439,123 @@
                                        FontSize="10"
                                        TextColor="#64748B" />
                             </VerticalStackLayout>
-                            <Switch Grid.Column="1"
-                                    IsToggled="{Binding UseGioRa}"
-                                    OnColor="#1E3A8A"
-                                    ThumbColor="#FFFFFF" />
+
+                            <!-- Toggle Pill Giờ ra -->
+                            <Border Grid.Column="1"
+                                    WidthRequest="68"
+                                    HeightRequest="32"
+                                    StrokeShape="RoundRectangle 16"
+                                    Padding="2,2"
+                                    VerticalOptions="Center">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding ToggleGioRaCommand}" />
+                                </Border.GestureRecognizers>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding UseGioRa}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="#1E3A8A" />
+                                        <Setter Property="Stroke" Value="#D4AF37" />
+                                        <Setter Property="StrokeThickness" Value="1.5" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Border" Binding="{Binding UseGioRa}" Value="False">
+                                        <Setter Property="BackgroundColor" Value="#E2E8F0" />
+                                        <Setter Property="Stroke" Value="#CBD5E1" />
+                                        <Setter Property="StrokeThickness" Value="1.5" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Grid VerticalOptions="Center" HorizontalOptions="Fill">
+                                    <!-- Khi BẬT -->
+                                    <Label Text="BẬT"
+                                           IsVisible="{Binding UseGioRa}"
+                                           TextColor="#FFFFFF"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="10"
+                                           HorizontalOptions="Start"
+                                           VerticalOptions="Center"
+                                           Margin="8,0,0,0" />
+                                    <Border IsVisible="{Binding UseGioRa}"
+                                            WidthRequest="24"
+                                            HeightRequest="24"
+                                            StrokeShape="RoundRectangle 12"
+                                            BackgroundColor="#FFFFFF"
+                                            Stroke="#D4AF37"
+                                            StrokeThickness="1"
+                                            HorizontalOptions="End"
+                                            VerticalOptions="Center">
+                                        <Label Text="✓"
+                                               TextColor="#D4AF37"
+                                               FontFamily="SegoeUIBold"
+                                               FontSize="11"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                    </Border>
+
+                                    <!-- Khi TẮT (Nổi bật trên nền trắng, không bị chìm) -->
+                                    <Border IsVisible="{Binding IsGioRaOff}"
+                                            WidthRequest="24"
+                                            HeightRequest="24"
+                                            StrokeShape="RoundRectangle 12"
+                                            BackgroundColor="#64748B"
+                                            HorizontalOptions="Start"
+                                            VerticalOptions="Center">
+                                        <Label Text="✕"
+                                               TextColor="#FFFFFF"
+                                               FontFamily="SegoeUIBold"
+                                               FontSize="10"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                    </Border>
+                                    <Label Text="TẮT"
+                                           IsVisible="{Binding IsGioRaOff}"
+                                           TextColor="#64748B"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="10"
+                                           HorizontalOptions="End"
+                                           VerticalOptions="Center"
+                                           Margin="0,0,8,0" />
+                                </Grid>
+                            </Border>
                         </Grid>
 
-                        <TimePicker IsVisible="{Binding UseGioRa}"
-                                    Time="{Binding GioDeXuatRaTime}"
-                                    TextColor="#1E3A8A"
-                                    FontFamily="SegoeUIBold"
-                                    FontSize="16" />
+                        <!-- Khung chọn giờ ra -->
+                        <Border IsVisible="{Binding UseGioRa}"
+                                BackgroundColor="#F0FDF4"
+                                Stroke="#22C55E"
+                                StrokeThickness="1.5"
+                                StrokeShape="RoundRectangle 12"
+                                Padding="12,10">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalOptions="Center">
+                                <Label Grid.Column="0" Text="🕒" FontSize="18" VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                                    <Label Text="{Binding GioDeXuatRaDisplayText}"
+                                           FontFamily="SegoeUIBold"
+                                           FontSize="17"
+                                           TextColor="#15803D" />
+                                    <Label Text="Giờ ra đề xuất ghi nhận công"
+                                           FontSize="10"
+                                           TextColor="#166534"
+                                           FontFamily="SegoeUI" />
+                                </VerticalStackLayout>
+                                <Border Grid.Column="2"
+                                        StrokeShape="RoundRectangle 8"
+                                        Stroke="#86EFAC"
+                                        BackgroundColor="#FFFFFF"
+                                        Padding="10,6"
+                                        VerticalOptions="Center">
+                                    <Grid>
+                                        <Label Text="Đổi giờ ▾"
+                                               FontFamily="SegoeUIBold"
+                                               FontSize="11"
+                                               TextColor="#15803D"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                        <TimePicker Time="{Binding GioDeXuatRaTime}"
+                                                    Opacity="0.01"
+                                                    HorizontalOptions="Fill"
+                                                    VerticalOptions="Fill" />
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
                     </VerticalStackLayout>
                 </Border>
 
@@ -322,23 +563,53 @@
                 <VerticalStackLayout Spacing="6">
                     <Grid ColumnDefinitions="*,Auto">
                         <Label Grid.Column="0"
-                               Text="LÝ DO GIẢI TRÌNH *"
+                               Text="4. LÝ DO GIẢI TRÌNH *"
                                FontFamily="SegoeUIBold"
                                FontSize="11"
                                CharacterSpacing="1"
-                               TextColor="#94A3B8" />
+                               TextColor="#1E3A8A" />
                         <Label Grid.Column="1"
                                Text="{Binding LyDoLengthText}"
                                FontSize="10"
                                TextColor="#94A3B8" />
                     </Grid>
+
+                    <!-- Chip gợi ý lý do nhanh -->
+                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,2,0,4">
+                        <HorizontalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding ReasonSuggestions}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <Border StrokeShape="RoundRectangle 16"
+                                            Stroke="#BFDBFE"
+                                            StrokeThickness="1"
+                                            BackgroundColor="#EFF6FF"
+                                            Padding="12,6">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AttendanceExplanationViewModel}}, Path=SelectReasonSuggestionCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                        <Label Text="{Binding .}"
+                                               FontSize="11"
+                                               FontFamily="SegoeUIBold"
+                                               TextColor="#1E3A8A" />
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </HorizontalStackLayout>
+                    </ScrollView>
+
                     <Border BackgroundColor="#FFFFFF"
                             Stroke="#CBD5E1"
-                            StrokeThickness="1"
+                            StrokeThickness="1.5"
                             StrokeShape="RoundRectangle 12"
-                            Padding="12">
+                            Padding="12,8">
+                        <Border.Shadow>
+                            <Shadow Brush="#0F172A" Offset="0,2" Radius="6" Opacity="0.04" />
+                        </Border.Shadow>
                         <Editor Text="{Binding LyDo}"
                                 Placeholder="Nhập chi tiết lý do quên quẹt thẻ, sai giờ vào/ra..."
+                                PlaceholderColor="#94A3B8"
                                 MaxLength="500"
                                 HeightRequest="80"
                                 FontSize="13"
@@ -350,11 +621,11 @@
                 <VerticalStackLayout Spacing="6">
                     <Grid ColumnDefinitions="*,Auto">
                         <Label Grid.Column="0"
-                               Text="MINH CHỨNG / NGƯỜI XÁC NHẬN"
+                               Text="5. MINH CHỨNG / NGƯỜI XÁC NHẬN"
                                FontFamily="SegoeUIBold"
                                FontSize="11"
                                CharacterSpacing="1"
-                               TextColor="#94A3B8" />
+                               TextColor="#64748B" />
                         <Label Grid.Column="1"
                                Text="{Binding MinhChungLengthText}"
                                FontSize="10"
@@ -362,11 +633,15 @@
                     </Grid>
                     <Border BackgroundColor="#FFFFFF"
                             Stroke="#CBD5E1"
-                            StrokeThickness="1"
+                            StrokeThickness="1.5"
                             StrokeShape="RoundRectangle 12"
-                            Padding="12">
+                            Padding="12,8">
+                        <Border.Shadow>
+                            <Shadow Brush="#0F172A" Offset="0,2" Radius="6" Opacity="0.04" />
+                        </Border.Shadow>
                         <Editor Text="{Binding MinhChung}"
                                 Placeholder="Ví dụ: Giám sát A đã xác nhận lúc 14:05, tin nhắn zalo..."
+                                PlaceholderColor="#94A3B8"
                                 MaxLength="500"
                                 HeightRequest="60"
                                 FontSize="13"
@@ -375,15 +650,15 @@
                 </VerticalStackLayout>
 
                 <!-- Nút gửi giải trình -->
-                <Button Text="GỬI GIẢI TRÌNH"
+                <Button Text="✈   GỬI GIẢI TRÌNH CHẤM CÔNG"
                         Command="{Binding SubmitCommand}"
                         BackgroundColor="#1E3A8A"
                         TextColor="#FFFFFF"
                         CornerRadius="14"
                         FontFamily="SegoeUIBold"
-                        FontSize="14"
-                        HeightRequest="48"
-                        Margin="0,8,0,0" />
+                        FontSize="13"
+                        HeightRequest="50"
+                        Margin="0,10,0,16" />
 
             </VerticalStackLayout>
         </ScrollView>
