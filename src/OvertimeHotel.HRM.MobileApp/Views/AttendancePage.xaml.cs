@@ -33,8 +33,8 @@ public partial class AttendancePage : ContentPage
         // 1. Đặt vị trí ban đầu (Opacity đã khai báo 0 trong XAML nên không bị chớp giật).
         pageHeader.TranslationY = -22;
         shiftCard.TranslationY = 30;
-        punchCard.TranslationY = 30;
         noShiftCard.TranslationY = 30;
+        todayCard.TranslationY = 30;
         historySection.TranslationY = 30;
         historyCard.TranslationY = 30;
 
@@ -48,13 +48,15 @@ public partial class AttendancePage : ContentPage
 
         await Task.Delay(90);
 
-        var stateCards = new List<VisualElement> { shiftCard, punchCard, noShiftCard };
+        var stateCards = new List<VisualElement> { shiftCard, noShiftCard };
         var visibleCards = stateCards.Where(c => c.IsVisible).ToList();
         await visibleCards.StaggerCascadeAsync(SlideDirection.Up, delayBetweenMs: 70, duration: 380);
 
         await Task.Delay(90);
 
         _ = Task.WhenAll(
+            todayCard.FadeToAsync(1.0, 400, Easing.CubicOut),
+            todayCard.TranslateToAsync(0, 0, 440, Easing.CubicOut),
             historySection.FadeToAsync(1.0, 400, Easing.CubicOut),
             historySection.TranslateToAsync(0, 0, 440, Easing.CubicOut),
             historyCard.FadeToAsync(1.0, 400, Easing.CubicOut),
@@ -78,12 +80,28 @@ public partial class AttendancePage : ContentPage
             case nameof(AttendanceViewModel.IsPopupVisible):
                 if (_viewModel.IsPopupVisible)
                 {
+                    popupOverlay.InputTransparent = false;
                     _ = popupOverlay.FadeToAsync(1, 180, Easing.CubicOut);
                     _ = popupCard.BounceInAsync(360);
                 }
                 else
                 {
+                    popupOverlay.InputTransparent = true;
                     _ = popupOverlay.FadeToAsync(0, 160, Easing.CubicOut);
+                }
+                break;
+
+            case nameof(AttendanceViewModel.IsDetailPopupVisible):
+                if (_viewModel.IsDetailPopupVisible)
+                {
+                    detailPopupOverlay.InputTransparent = false;
+                    _ = detailPopupOverlay.FadeToAsync(1, 180, Easing.CubicOut);
+                    _ = detailPopupCard.BounceInAsync(360);
+                }
+                else
+                {
+                    detailPopupOverlay.InputTransparent = true;
+                    _ = detailPopupOverlay.FadeToAsync(0, 160, Easing.CubicOut);
                 }
                 break;
 
@@ -184,6 +202,12 @@ public partial class AttendancePage : ContentPage
     {
         if (sender is VisualElement btn) await btn.SpringTapAsync();
         _viewModel.ClosePopupCommand.Execute(null);
+    }
+
+    private async void OnCloseDetailPopupClicked(object? sender, EventArgs e)
+    {
+        if (sender is VisualElement btn) await btn.SpringTapAsync();
+        _viewModel.CloseDetailPopupCommand.Execute(null);
     }
 
     /// <summary>

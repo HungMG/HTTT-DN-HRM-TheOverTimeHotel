@@ -41,6 +41,7 @@ namespace OvertimeHotel.HRM.MobileApp.Services;
 public class AuthService : IAuthService
 {
     private const string JwtStorageKey = "hrm_mobile_jwt_token";
+    private const string RefreshTokenStorageKey = "hrm_mobile_refresh_token";
 
     // GoTrue trả lỗi 400 kèm mã error_code cụ thể; hiển thị mã này cho người dùng
     // giúp phân biệt "sai mật khẩu" với "tài khoản bị khoá", nhưng KHÔNG bao giờ
@@ -81,20 +82,31 @@ public class AuthService : IAuthService
 
     public async Task<string?> GetTokenAsync()
     {
+        string? token = null;
         if (!string.IsNullOrEmpty(CurrentUser?.Token))
         {
-            return CurrentUser.Token;
+            token = CurrentUser.Token;
+        }
+        else
+        {
+            try
+            {
+                token = await SecureStorage.GetAsync(JwtStorageKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Không thể đọc JWT từ SecureStorage.");
+                return null;
+            }
         }
 
-        try
+        if (!string.IsNullOrEmpty(token) && IsExpired(token))
         {
-            return await SecureStorage.GetAsync(JwtStorageKey);
+            _logger.LogInformation("JWT access token đã hết hạn, tiến hành làm mới tự động qua GoTrue...");
+            token = await RefreshTokenAsync();
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Không thể đọc JWT từ SecureStorage.");
-            return null;
-        }
+
+        return token;
     }
 
     public async Task<LoginResponse> LoginAsync(string username, string password, bool rememberMe = true)
@@ -163,6 +175,7 @@ public class AuthService : IAuthService
 
     /// <summary>
     /// Gọi GoTrue cấp access token. Trả null khi thông tin đăng nhập sai.
+    /// Đồng thời lưu refresh token để tự động gia hạn phiên làm việc không bị gián đoạn.
     /// </summary>
     private async Task<string?> SignInWithPasswordAsync(string email, string password)
     {
@@ -180,7 +193,73 @@ public class AuthService : IAuthService
             return null;
         }
 
-        return ReadStringProperty(json, "access_token");
+        var accessToken = ReadStringProperty(json, "access_token");
+        var refreshToken = ReadStringProperty(json, "refresh_token");
+
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+        {
+            try
+            {
+                await SecureStorage.SetAsync(RefreshTokenStorageKey, refreshToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Lỗi khi lưu refresh token vào SecureStorage.");
+            }
+        }
+
+        return accessToken;
+    }
+
+    /// <summary>
+    /// Gia hạn access token tự động qua refresh token từ GoTrue mà không bắt người dùng đăng nhập lại.
+    /// </summary>
+    public async Task<string?> RefreshTokenAsync()
+    {
+        try
+        {
+            var refreshToken = await SecureStorage.GetAsync(RefreshTokenStorageKey);
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                return null;
+            }
+
+            var payload = JsonSerializer.Serialize(new { refresh_token = refreshToken });
+            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            using var response = await _authClient.PostAsync("token?grant_type=refresh_token", content);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("GoTrue từ chối làm mới token: HTTP {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var newAccessToken = ReadStringProperty(json, "access_token");
+            var newRefreshToken = ReadStringProperty(json, "refresh_token");
+
+            if (!string.IsNullOrWhiteSpace(newAccessToken))
+            {
+                await SecureStorage.SetAsync(JwtStorageKey, newAccessToken);
+                if (CurrentUser != null)
+                {
+                    CurrentUser.Token = newAccessToken;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(newRefreshToken))
+            {
+                await SecureStorage.SetAsync(RefreshTokenStorageKey, newRefreshToken);
+            }
+
+            _logger.LogInformation("Đã gia hạn thành công phiên đăng nhập qua GoTrue.");
+            return newAccessToken;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi gọi làm mới token từ GoTrue.");
+            return null;
+        }
     }
 
     /// <summary>
@@ -312,10 +391,11 @@ public class AuthService : IAuthService
         try
         {
             SecureStorage.Remove(JwtStorageKey);
+            SecureStorage.Remove(RefreshTokenStorageKey);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Lỗi khi xóa JWT khỏi SecureStorage.");
+            _logger.LogWarning(ex, "Lỗi khi xóa JWT và refresh token khỏi SecureStorage.");
         }
 
         CurrentUser = null;
@@ -332,12 +412,17 @@ public class AuthService : IAuthService
                 return false;
             }
 
-            // Token hạn 1 giờ nên phải kiểm hạn trước; hết hạn thì xoá và bắt
-            // đăng nhập lại — không có đường làm mới (xem ghi chú ở đầu class).
+            // Token hạn 1 giờ: nếu hết hạn, thử làm mới qua refresh token trước
             if (IsExpired(token))
             {
-                SecureStorage.Remove(JwtStorageKey);
-                return false;
+                _logger.LogInformation("JWT lưu trữ đã hết hạn, thử làm mới qua refresh token...");
+                token = await RefreshTokenAsync();
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    SecureStorage.Remove(JwtStorageKey);
+                    SecureStorage.Remove(RefreshTokenStorageKey);
+                    return false;
+                }
             }
 
             var email = ReadStringClaim(token, "email");
@@ -348,6 +433,7 @@ public class AuthService : IAuthService
                 // Token còn hạn nhưng dựng phiên hỏng (mạng lỗi, hồ sơ bị xoá).
                 // Xoá token để vòng sau thử lại từ đầu, thay vì lặp lại vô ích.
                 SecureStorage.Remove(JwtStorageKey);
+                SecureStorage.Remove(RefreshTokenStorageKey);
                 return false;
             }
 

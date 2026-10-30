@@ -26,6 +26,11 @@ public class DemoAuthService : IAuthService
         return Task.FromResult<string?>(CurrentUser?.Token ?? "demo-mode-token");
     }
 
+    public Task<string?> RefreshTokenAsync()
+    {
+        return Task.FromResult<string?>(CurrentUser?.Token ?? "demo-mode-token");
+    }
+
     public Task<LoginResponse> LoginAsync(string username, string password, bool rememberMe = true)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))

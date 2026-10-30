@@ -14,6 +14,8 @@ public class PayslipRowItem(PayslipSummaryDto slip)
 
     public int MaPhieuLuong => slip.MaPhieuLuong;
 
+    public string SlipIdText => $"#{slip.MaPhieuLuong:D4}";
+
     // Kỳ lương đọc qua quan hệ ky_luong. Nếu policy trên Cloud chưa mở (thiếu
     // migration 20261010) thì embed trả null và Thang/Nam bằng 0 — lúc đó hiện
     // mã kỳ để người dùng vẫn phân biệt được các phiếu, thay vì dòng trắng.
@@ -21,15 +23,15 @@ public class PayslipRowItem(PayslipSummaryDto slip)
         ? $"Tháng {slip.Thang:00} / {slip.Nam:0000}"
         : $"Kỳ lương #{slip.MaPhieuLuong}";
 
-    public string NetText => Format(slip.ThucNhan);
+    public string NetText => $"{Format(slip.ThucNhan)} ₫";
 
-    public string EarnedText => Format(slip.TienLuongCong + slip.TienTangCa + slip.TongPhuCap + slip.TongThuong);
+    public string EarnedText => $"{Format(slip.TienLuongCong + slip.TienTangCa + slip.TongPhuCap + slip.TongThuong)} ₫";
 
-    public string DeductionText => Format(slip.TongKhauTru);
+    public string DeductionText => $"{Format(slip.TongKhauTru)} ₫";
 
-    public string WorkDayText => $"{slip.NgayCongThucTe:0.##} ngày công";
+    public string WorkDayText => $"{slip.NgayCongThucTe:0.##} / 26 ngày công";
 
-    public string BaseSalaryText => Format(slip.LuongCoBan);
+    public string BaseSalaryText => $"{Format(slip.LuongCoBan)} ₫";
 
     public string StatusText => slip.TrangThai switch
     {

@@ -17,6 +17,8 @@ public class AttendanceViewModel : INotifyPropertyChanged
 {
     private readonly IAttendanceService _attendanceService;
     private readonly IGeoLocationService _geoLocationService;
+    private readonly IAuthService _authService;
+    private bool _isSessionExpired;
 
     // Trạng thái ca làm việc hôm nay
     private int _maPhanCa;
@@ -59,13 +61,19 @@ public class AttendanceViewModel : INotifyPropertyChanged
     private string _popupIconTextColor = "#B45309";
     private string _popupBorderColor = "#D4AF37";
 
+    // Chi tiết giờ chấm công của một ngày (Popup chi tiết)
+    private bool _isDetailPopupVisible;
+    private AttendanceRecord? _selectedRecord;
+    private bool _isHistoryCollapsed = true;
+
     private int _monthLabelYear = DateTime.Now.Year;
     private int _monthLabelMonth = DateTime.Now.Month;
 
-    public AttendanceViewModel(IAttendanceService attendanceService, IGeoLocationService geoLocationService)
+    public AttendanceViewModel(IAttendanceService attendanceService, IGeoLocationService geoLocationService, IAuthService authService)
     {
         _attendanceService = attendanceService ?? throw new ArgumentNullException(nameof(attendanceService));
         _geoLocationService = geoLocationService ?? throw new ArgumentNullException(nameof(geoLocationService));
+        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
 
         CheckInCommand = new Command(async () => await ExecuteCheckInAsync(), () => CanPunchCard);
         CheckOutCommand = new Command(async () => await ExecuteCheckOutAsync(), () => CanPunchCard);
@@ -74,6 +82,9 @@ public class AttendanceViewModel : INotifyPropertyChanged
         PreviousMonthCommand = new Command(() => ShiftMonth(-1));
         NextMonthCommand = new Command(() => ShiftMonth(1));
         FilterStatusCommand = new Command<AttendanceStatusFilter>(ApplyStatusFilter);
+        ShowDetailCommand = new Command<AttendanceRecord>(ExecuteShowDetail);
+        CloseDetailPopupCommand = new Command(ExecuteCloseDetailPopup);
+        ToggleHistoryCollapseCommand = new Command(() => IsHistoryCollapsed = !IsHistoryCollapsed);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -376,6 +387,50 @@ public class AttendanceViewModel : INotifyPropertyChanged
 
     public string MonthLabel => $"Tháng {_monthLabelMonth:00}/{_monthLabelYear}";
 
+    public bool IsDetailPopupVisible
+    {
+        get => _isDetailPopupVisible;
+        private set => SetProperty(ref _isDetailPopupVisible, value);
+    }
+
+    public AttendanceRecord? SelectedRecord
+    {
+        get => _selectedRecord;
+        private set => SetProperty(ref _selectedRecord, value);
+    }
+
+    /// <summary>
+    /// Chế độ thu gọn danh sách tháng: khi bật (mặc định), chỉ hiện bản ghi hôm nay cho gọn.
+    /// Khi mở rộng, hiển thị danh sách cả tháng kèm bộ lọc.
+    /// </summary>
+    public bool IsHistoryCollapsed
+    {
+        get => _isHistoryCollapsed;
+        set
+        {
+            if (SetProperty(ref _isHistoryCollapsed, value))
+            {
+                OnPropertyChanged(nameof(IsHistoryExpanded));
+                OnPropertyChanged(nameof(CollapseToggleText));
+                OnPropertyChanged(nameof(CollapseToggleIcon));
+            }
+        }
+    }
+
+    public bool IsHistoryExpanded => !_isHistoryCollapsed;
+
+    public string CollapseToggleText => _isHistoryCollapsed ? "Mở rộng cả tháng" : "Thu gọn (Chỉ hôm nay)";
+    public string CollapseToggleIcon => _isHistoryCollapsed ? "▼" : "▲";
+
+    /// <summary>Bản ghi chấm công của ngày hôm nay (nếu có trong tháng).</summary>
+    public AttendanceRecord? TodayRecord =>
+        _allMonthlyRecords.FirstOrDefault(r => r.NgayLamViecDate == DateOnly.FromDateTime(DateTime.Now))
+        ?? (_allMonthlyRecords.Count > 0 ? _allMonthlyRecords[0] : null);
+
+    public bool HasTodayRecord => TodayRecord != null;
+
+    public string TodayDateText => DateTime.Now.ToString("dd/MM/yyyy");
+
     #endregion
 
     #region Lệnh
@@ -389,6 +444,15 @@ public class AttendanceViewModel : INotifyPropertyChanged
 
     /// <summary>Nhận <see cref="AttendanceStatusFilter"/> từ nút được bấm.</summary>
     public ICommand FilterStatusCommand { get; }
+
+    /// <summary>Hiển thị popup chi tiết các giờ chấm công của ngày được chọn.</summary>
+    public ICommand ShowDetailCommand { get; }
+
+    /// <summary>Đóng popup chi tiết giờ chấm công.</summary>
+    public ICommand CloseDetailPopupCommand { get; }
+
+    /// <summary>Chuyển đổi trạng thái thu gọn / mở rộng danh sách lịch sử chấm công.</summary>
+    public ICommand ToggleHistoryCollapseCommand { get; }
 
     #endregion
 
@@ -412,6 +476,7 @@ public class AttendanceViewModel : INotifyPropertyChanged
         }
         catch (UnauthorizedAccessException ex)
         {
+            _isSessionExpired = true;
             ShowPopup("Phiên Đăng Nhập Hết Hạn", ex.Message, false);
         }
         catch (Exception ex)
@@ -484,6 +549,8 @@ public class AttendanceViewModel : INotifyPropertyChanged
 
         RefreshFilterCounts();
         ApplyStatusFilter(StatusFilters.First(f => f.Code == _activeStatusFilter));
+        OnPropertyChanged(nameof(TodayRecord));
+        OnPropertyChanged(nameof(HasTodayRecord));
     }
 
     /// <summary>
@@ -589,6 +656,7 @@ public class AttendanceViewModel : INotifyPropertyChanged
         }
         catch (UnauthorizedAccessException ex)
         {
+            _isSessionExpired = true;
             ShowPopup("Phiên Đăng Nhập Hết Hạn", ex.Message, false);
         }
         catch (Exception ex)
@@ -641,6 +709,7 @@ public class AttendanceViewModel : INotifyPropertyChanged
         }
         catch (UnauthorizedAccessException ex)
         {
+            _isSessionExpired = true;
             ShowPopup("Phiên Đăng Nhập Hết Hạn", ex.Message, false);
         }
         catch (Exception ex)
@@ -675,9 +744,42 @@ public class AttendanceViewModel : INotifyPropertyChanged
         _ = LoadMonthlyAsync();
     }
 
-    private void ExecuteClosePopup()
+    private async void ExecuteClosePopup()
     {
         IsPopupVisible = false;
+        if (_isSessionExpired)
+        {
+            _isSessionExpired = false;
+            try
+            {
+                await _authService.LogoutAsync();
+                if (Shell.Current is AppShell shell)
+                {
+                    shell.ClearRoleTabs();
+                    await shell.GoToAsync("//LoginPage");
+                }
+            }
+            catch
+            {
+                // Nuốt lỗi điều hướng nếu đang ở background
+            }
+        }
+    }
+
+    private void ExecuteShowDetail(AttendanceRecord? record)
+    {
+        if (record == null)
+        {
+            return;
+        }
+
+        SelectedRecord = record;
+        IsDetailPopupVisible = true;
+    }
+
+    private void ExecuteCloseDetailPopup()
+    {
+        IsDetailPopupVisible = false;
     }
 
     private void UpdateActionButton()
@@ -802,6 +904,7 @@ public class AttendanceViewModel : INotifyPropertyChanged
 
         var record = new AttendanceRecord
         {
+            NgayLamViecDate = dto.NgayLamViec,
             NgayLamViec = dto.NgayLamViec.ToString("dd/MM/yyyy"),
             TenCa = string.IsNullOrWhiteSpace(dto.TenCa) ? "Ca Làm Việc" : dto.TenCa,
             CheckInText = dto.CheckIn.HasValue ? FormatTime(dto.CheckIn.Value) : "--:--",

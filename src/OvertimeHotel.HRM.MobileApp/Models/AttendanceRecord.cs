@@ -5,6 +5,9 @@ namespace OvertimeHotel.HRM.MobileApp.Models;
 /// </summary>
 public class AttendanceRecord
 {
+    /// <summary>Ngày làm việc dạng DateOnly để lọc và đối chiếu.</summary>
+    public DateOnly NgayLamViecDate { get; set; }
+
     /// <summary>Ngày làm việc, định dạng dd/MM/yyyy.</summary>
     public string NgayLamViec { get; set; } = string.Empty;
 

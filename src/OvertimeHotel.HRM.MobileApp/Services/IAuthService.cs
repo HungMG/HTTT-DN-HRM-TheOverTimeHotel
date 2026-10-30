@@ -48,4 +48,9 @@ public interface IAuthService
     /// Đổi mật khẩu tài khoản người dùng hiện tại.
     /// </summary>
     Task<(bool Success, string Message)> ChangePasswordAsync(string oldPassword, string newPassword);
+
+    /// <summary>
+    /// Làm mới JWT access token qua refresh token GoTrue khi phiên sắp/đã hết hạn.
+    /// </summary>
+    Task<string?> RefreshTokenAsync();
 }

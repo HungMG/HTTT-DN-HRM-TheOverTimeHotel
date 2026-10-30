@@ -302,11 +302,11 @@ public class LoginViewModel : INotifyPropertyChanged
             // authenticated, app không đọc được). Ô nhập đã đổi nhãn cho khớp.
             // Mật khẩu thống nhất do nhóm chốt cho 6 tài khoản demo trên Cloud.
             case "employee":
-                Username = "bao.chau@overtimehotel.com";
+                Username = "dat.do@overtimehotel.com";
                 Password = "123456789";
                 break;
             case "manager":
-                Username = "dat.do@overtimehotel.com";
+                Username = "bao.chau@overtimehotel.com";
                 Password = "123456789";
                 break;
             case "hr":

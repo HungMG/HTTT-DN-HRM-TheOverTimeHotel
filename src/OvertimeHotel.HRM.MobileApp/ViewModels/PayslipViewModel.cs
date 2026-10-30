@@ -87,6 +87,7 @@ public class PayslipViewModel : INotifyPropertyChanged
 
     public bool HasDetail => _summary != null;
     public bool HasListVisible => !HasDetail && HasData;
+    public bool IsListHeaderVisible => !HasDetail;
     public bool HasIncomeItems => IncomeItems.Count > 0;
     public bool HasDeductionItems => DeductionItems.Count > 0;
     public bool HasNoDeductions => _summary != null && DeductionItems.Count == 0 && !IsDetailLoading;
@@ -181,13 +182,17 @@ public class PayslipViewModel : INotifyPropertyChanged
             if (_authService.CurrentUser?.IsLoggedIn != true)
                 throw new UnauthorizedAccessException("Vui lòng đăng nhập để xem phiếu lương.");
 
+            if (!string.IsNullOrWhiteSpace(_authService.CurrentUser.HoTen))
+                EmployeeName = _authService.CurrentUser.HoTen;
+
             var slips = await _service.GetPayslipsAsync(token);
             if (version != _loadVersion || token.IsCancellationRequested) return;
 
             foreach (var slip in slips)
             {
                 Payslips.Add(new PayslipRowItem(slip));
-                if (Payslips.Count == 1) EmployeeName = slip.HoTen;
+                if (Payslips.Count == 1 && !string.IsNullOrWhiteSpace(slip.HoTen))
+                    EmployeeName = slip.HoTen;
             }
             HasData = true;
             IsEmpty = Payslips.Count == 0;
@@ -296,6 +301,7 @@ public class PayslipViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(HasDetail));
         OnPropertyChanged(nameof(HasListVisible));
+        OnPropertyChanged(nameof(IsListHeaderVisible));
         OnPropertyChanged(nameof(TotalGross));
         OnPropertyChanged(nameof(DetailPeriodText));
         OnPropertyChanged(nameof(DetailSlipIdText));

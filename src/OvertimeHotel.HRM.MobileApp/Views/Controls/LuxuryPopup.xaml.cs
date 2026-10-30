@@ -17,6 +17,8 @@ public partial class LuxuryPopup : ContentView
 
         // Mặc định ẩn hoàn toàn; trang chủ bật lên bằng Show().
         popupOverlay.IsVisible = false;
+        IsVisible = false;
+        InputTransparent = true;
     }
 
     /// <summary>
@@ -56,6 +58,8 @@ public partial class LuxuryPopup : ContentView
 
         _confirmAction = onConfirm;
 
+        IsVisible = true;
+        InputTransparent = false;
         popupOverlay.IsVisible = true;
         popupOverlay.Opacity = 0;
         _ = popupOverlay.FadeToAsync(1, 180, Easing.CubicOut);
@@ -66,6 +70,8 @@ public partial class LuxuryPopup : ContentView
     public void Hide()
     {
         popupOverlay.IsVisible = false;
+        IsVisible = false;
+        InputTransparent = true;
         _confirmAction = null;
     }
 
