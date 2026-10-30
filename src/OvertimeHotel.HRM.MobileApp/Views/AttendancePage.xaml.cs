@@ -238,6 +238,13 @@ public partial class AttendancePage : ContentPage
         await Shell.Current.GoToAsync("SchedulePage");
     }
 
+    /// <summary>Mở màn bảng công tháng (nút bên cạnh Lịch ca và Phiếu lương).</summary>
+    private async void OnAttendanceSummaryTapped(object? sender, EventArgs e)
+    {
+        if (sender is VisualElement card) await card.SpringTapAsync();
+        await Shell.Current.GoToAsync("AttendanceSummaryPage");
+    }
+
     /// <summary>Mở màn phiếu lương (nút dưới nút Lịch Ca 24/7).</summary>
     private async void OnPayslipTapped(object? sender, EventArgs e)
     {

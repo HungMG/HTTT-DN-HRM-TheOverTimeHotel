@@ -17,6 +17,7 @@ public class YeuCauDoiCaIndexViewModel
     public IReadOnlyList<YeuCauDoiCaItemViewModel> Items { get; set; } = [];
 
     public int TongYeuCau { get; set; }
+    public int ChoNguoiNhan { get; set; }
     public int ChoDuyet { get; set; }
     public int DaDuyet { get; set; }
     public int TuChoi { get; set; }
@@ -55,7 +56,11 @@ public class YeuCauDoiCaItemViewModel
     public string GioCaNhan { get; set; } = string.Empty;
 
     public string LyDo { get; set; } = string.Empty;
-    public string TrangThai { get; set; } = "CHO_DUYET";
+    public string TrangThai { get; set; } = "CHO_NGUOI_NHAN";
+
+    public string? BenTuChoi { get; set; }
+    public string? PhanHoiNguoiNhan { get; set; }
+    public DateTimeOffset? NgayNguoiNhanPhanHoi { get; set; }
 
     public string? TenNguoiDuyet { get; set; }
     public DateTimeOffset NgayGui { get; set; }
@@ -64,6 +69,7 @@ public class YeuCauDoiCaItemViewModel
 
     public string TrangThaiNhan => TrangThai switch
     {
+        "CHO_NGUOI_NHAN" => "Chờ đối tác",
         "CHO_DUYET" => "Chờ duyệt",
         "DA_DUYET" => "Đã duyệt",
         "TU_CHOI" => "Từ chối",
@@ -74,6 +80,7 @@ public class YeuCauDoiCaItemViewModel
     /// <summary>Lớp Bootstrap của nhãn trạng thái, dùng chung bảng màu với màn Đơn từ.</summary>
     public string TrangThaiCss => TrangThai switch
     {
+        "CHO_NGUOI_NHAN" => "bg-info text-dark",
         "CHO_DUYET" => "bg-warning text-dark",
         "DA_DUYET" => "bg-success",
         "TU_CHOI" => "bg-danger",

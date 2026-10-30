@@ -78,6 +78,7 @@ public class LeaveApprovalService : ILeaveApprovalService
         "ma_don,nv:nhan_vien!don_tu_ma_nhan_vien_fkey!inner(ma_phong_ban)";
 
     private readonly SupabaseRestClient _rest;
+    private readonly WebAdminApiClient _api;
     private readonly IAuthService _authService;
     private readonly ILogger<LeaveApprovalService> _logger;
 
@@ -85,10 +86,12 @@ public class LeaveApprovalService : ILeaveApprovalService
 
     public LeaveApprovalService(
         SupabaseRestClient rest,
+        WebAdminApiClient api,
         IAuthService authService,
         ILogger<LeaveApprovalService> logger)
     {
         _rest = rest ?? throw new ArgumentNullException(nameof(rest));
+        _api = api ?? throw new ArgumentNullException(nameof(api));
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -179,10 +182,15 @@ public class LeaveApprovalService : ILeaveApprovalService
                 return new LeaveReviewResult(false, errorCode ?? "VALIDATION_ERROR", errorMessage!);
             }
 
-            // Điều kiện trang_thai=eq.CHO_DUYET nằm trong chính URL thay cho
-            // optimistic concurrency của ExecuteUpdateAsync: đơn đã bị người
-            // khác xử lý giữa lúc đọc và lúc ghi thì không khớp dòng nào,
-            // NoRowsMatched bật lên — đúng ý nghĩa "đã có người làm trước".
+            // Nếu WebAdmin API đã được cấu hình, ưu tiên xử lý tập trung phía máy chủ
+            if (_api.IsConfigured)
+            {
+                return await _api.PostAsync<LeaveReviewResult>(
+                    $"api/leaverequests/{maDon}/review",
+                    new LeaveReviewRequest(approved, string.IsNullOrWhiteSpace(phanHoi) ? null : phanHoi.Trim()));
+            }
+
+            // Fallback sang PostgREST PATCH cho môi trường chưa cấu hình WebAdmin API (bảo toàn client cũ)
             var body = JsonSerializer.Serialize(
                 new ReviewPayload(
                     TrangThai: approved ? "DA_DUYET" : "TU_CHOI",
@@ -220,8 +228,14 @@ public class LeaveApprovalService : ILeaveApprovalService
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Lỗi kết nối khi gửi yêu cầu review đơn #{MaDon}", maDon);
-            return new LeaveReviewResult(
-                false, "NETWORK_ERROR", "Không thể kết nối máy chủ để xử lý đơn. Vui lòng thử lại.");
+            var code = ex.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Conflict => "CONCURRENCY_CONFLICT",
+                System.Net.HttpStatusCode.Forbidden => "FORBIDDEN",
+                System.Net.HttpStatusCode.NotFound => "NOT_FOUND",
+                _ => "NETWORK_ERROR"
+            };
+            return new LeaveReviewResult(false, code, string.IsNullOrWhiteSpace(ex.Message) ? "Không thể kết nối máy chủ để xử lý đơn. Vui lòng thử lại." : ex.Message);
         }
     }
 
@@ -283,7 +297,7 @@ public class LeaveApprovalService : ILeaveApprovalService
             MoTa: PostgrstJson.ReadString(row, "mo_ta")))];
     }
 
-    public async Task<List<LeaveRequestItem>> GetMyRequestsAsync(bool chiChoDuyet = false)
+    public async Task<List<LeaveRequestItem>> GetMyRequestsAsync(bool chiChoDuyet = false, CancellationToken cancellationToken = default)
     {
         var maNhanVien = RequireEmployeeId();
 
@@ -297,7 +311,7 @@ public class LeaveApprovalService : ILeaveApprovalService
 
         filters.Add("order=ngay_gui.desc");
 
-        var json = await _rest.GetAsync($"don_tu?select={SelectDonTu}&{string.Join('&', filters)}");
+        var json = await _rest.GetAsync($"don_tu?select={SelectDonTu}&{string.Join('&', filters)}", cancellationToken);
         return MapToItems(json);
     }
 
@@ -679,18 +693,21 @@ public class LeaveApprovalService : ILeaveApprovalService
     /// <summary>Thông tin tối thiểu của một đơn để chạy luật thẩm quyền.</summary>
     private readonly record struct RequestSnapshot(int MaNhanVien, int MaLoaiDon, string TrangThai, int? RequestDeptId);
 
-    /// <summary>
-    /// Body PATCH cho <c>don_tu</c>.
-    /// </summary>
-    /// <remarks>
-    /// <b>Bắt buộc khai báo <c>JsonPropertyName</c> cho từng cột.</b> CSDL dùng
-    /// <c>snake_case</c> còn tên property C# là PascalCase, mà
-    /// <see cref="JsonPayloadOptions"/> cố tình KHÔNG đặt policy đổi tên — nó chỉ
-    /// lo phần null. Không có chú thích này, <c>System.Text.Json</c> serialize ra
-    /// <c>MaNguoiDuyet</c>, PostgREST trả về
-    /// <c>PGRST204: Could not find the 'MaNguoiDuyet' column of 'don_tu'</c> và
-    /// báo chung chung "Dữ liệu gửi lên không hợp lệ" — dù mọi giá trị đều đúng.
-    /// </remarks>
+    /// <summary>Rút đơn qua API có kiểm tra danh tính và trạng thái ở máy chủ.</summary>
+    public async Task<LeaveReviewResult> WithdrawRequestAsync(int maDon)
+    {
+        try
+        {
+            return await _api.PostAsync<LeaveReviewResult>($"api/leaverequests/{maDon}/withdraw");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or UnauthorizedAccessException or InvalidOperationException or TaskCanceledException)
+        {
+            _logger.LogWarning(ex, "Không thể rút đơn #{MaDon}", maDon);
+            return new LeaveReviewResult(false, "ERROR", ex is TaskCanceledException ? "Kết nối hết thời gian. Vui lòng thử lại." : ex.Message);
+        }
+    }
+
+    /// <summary>Body PATCH duyệt đơn dùng tên cột PostgREST.</summary>
     private sealed record ReviewPayload(
         [property: JsonPropertyName("trang_thai")] string TrangThai,
         [property: JsonPropertyName("ngay_duyet")] string NgayDuyet,

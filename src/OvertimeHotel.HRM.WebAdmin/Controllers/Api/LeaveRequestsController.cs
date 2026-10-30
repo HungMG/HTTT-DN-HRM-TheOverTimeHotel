@@ -264,6 +264,65 @@ public class LeaveRequestsController : ControllerBase
         ));
     }
 
+    /// <summary>
+    /// Nhân viên rút đơn nghỉ phép đang ở trạng thái CHO_DUYET.
+    /// Hỗ trợ cả 2 route để tương thích tuyệt đối.
+    /// </summary>
+    [HttpPost("{maDon:int}/withdraw")]
+    [HttpPost("/api/leaverequests/{maDon:int}/withdraw")]
+    public async Task<IActionResult> WithdrawLeaveRequest([FromRoute] int maDon)
+    {
+        try
+        {
+            var (account, errorResult) = await GetCurrentAccountAsync();
+            if (errorResult != null) return errorResult;
+
+            var currentEmployeeId = account!.MaNhanVien;
+
+            // 1. Tìm đơn từ trong DB
+            var donTu = await _context.DonTus.FirstOrDefaultAsync(d => d.MaDon == maDon);
+            if (donTu == null)
+            {
+                return NotFound(new LeaveReviewResult(false, "NOT_FOUND", "Không tìm thấy đơn từ yêu cầu."));
+            }
+
+            // 2. Zero Trust: Phân quyền - Người gọi bắt buộc phải là chủ đơn
+            if (donTu.MaNhanVien != currentEmployeeId)
+            {
+                return StatusCode(403, new LeaveReviewResult(false, "FORBIDDEN", "Bạn không có quyền rút đơn của người khác."));
+            }
+
+            // 3. Kiểm tra trạng thái hợp lệ để rút
+            if (donTu.TrangThai != "CHO_DUYET")
+            {
+                if (donTu.TrangThai == "DA_HUY")
+                {
+                    return StatusCode(409, new LeaveReviewResult(false, "ALREADY_WITHDRAWN", "Đơn từ này đã được rút trước đó."));
+                }
+                return StatusCode(409, new LeaveReviewResult(false, "ALREADY_REVIEWED", "Đơn từ đã được xử lý bởi cấp quản lý nên không thể rút."));
+            }
+
+            // 4. Conditional Update (Optimistic Concurrency)
+            var affected = await _context.DonTus
+                .Where(d => d.MaDon == maDon && d.MaNhanVien == currentEmployeeId && d.TrangThai == "CHO_DUYET")
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.TrangThai, "DA_HUY"));
+
+            if (affected == 0)
+            {
+                return StatusCode(409, new LeaveReviewResult(false, "CONCURRENCY_CONFLICT", "Đơn từ đã được xử lý hoặc thay đổi trạng thái trước đó."));
+            }
+
+            _logger.LogInformation("Nhân viên #{EmployeeId} đã rút đơn #{MaDon} thành công.", currentEmployeeId, maDon);
+
+            return Ok(new LeaveReviewResult(true, "WITHDRAWN", "Đã rút đơn nghỉ phép thành công."));
+        }
+        catch (Exception ex) when (IsDatabaseUnavailable(ex))
+        {
+            _logger.LogError(ex, "Database unavailable while withdrawing leave request {RequestId}.", maDon);
+            return DatabaseUnavailableResult();
+        }
+    }
+
     private static bool IsDatabaseUnavailable(Exception exception) =>
         exception is DbException or TimeoutException ||
         exception.InnerException is DbException or TimeoutException;

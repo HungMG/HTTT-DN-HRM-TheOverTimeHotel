@@ -561,12 +561,29 @@
                                                        Text="{Binding NgayGuiDisplay, StringFormat='Gửi lúc: {0}'}"
                                                        TextColor="#94A3B8"
                                                        FontSize="10"
-                                                       FontFamily="SegoeUI" />
-                                                <Label Grid.Column="1"
-                                                       Text="{Binding MaDon, StringFormat='#{0}'}"
-                                                       TextColor="#94A3B8"
-                                                       FontSize="10"
-                                                       FontFamily="SegoeUI" />
+                                                       FontFamily="SegoeUI"
+                                                       VerticalOptions="Center" />
+                                                <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                                                    <Button Text="Rút đơn"
+                                                            IsVisible="{Binding CanWithdraw}"
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:LeaveSubmitViewModel}}, Path=WithdrawCommand}"
+                                                            CommandParameter="{Binding .}"
+                                                            BackgroundColor="#FEF2F2"
+                                                            TextColor="#DC2626"
+                                                            BorderColor="#FCA5A5"
+                                                            BorderWidth="1"
+                                                            CornerRadius="8"
+                                                            FontSize="10"
+                                                            FontFamily="SegoeUIBold"
+                                                            HeightRequest="28"
+                                                            Padding="10,0"
+                                                            VerticalOptions="Center" />
+                                                    <Label Text="{Binding MaDon, StringFormat='#{0}'}"
+                                                           TextColor="#94A3B8"
+                                                           FontSize="10"
+                                                           FontFamily="SegoeUI"
+                                                           VerticalOptions="Center" />
+                                                </HorizontalStackLayout>
                                             </Grid>
 
                                             <!-- Phản hồi của người duyệt, chỉ hiện khi đã xử lý -->

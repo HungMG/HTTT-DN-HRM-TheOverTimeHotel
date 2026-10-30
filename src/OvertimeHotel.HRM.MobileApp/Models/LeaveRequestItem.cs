@@ -76,6 +76,7 @@ public class LeaveRequestItem
         "CHO_DUYET" => "Chờ duyệt",
         "DA_DUYET" => "Đã duyệt",
         "TU_CHOI" => "Từ chối",
+        "DA_HUY" => "Đã rút",
         _ => TrangThai
     };
 
@@ -84,6 +85,7 @@ public class LeaveRequestItem
         "CHO_DUYET" => "#B45309", // Amber-700
         "DA_DUYET" => "#15803D",  // Green-700
         "TU_CHOI" => "#B91C1C",   // Red-700
+        "DA_HUY" => "#64748B",    // Slate-500
         _ => "#64748B"
     };
 
@@ -92,6 +94,7 @@ public class LeaveRequestItem
         "CHO_DUYET" => "#FEF3C7", // Amber-100
         "DA_DUYET" => "#DCFCE7",  // Green-100
         "TU_CHOI" => "#FEE2E2",   // Red-100
+        "DA_HUY" => "#F1F5F9",    // Slate-100
         _ => "#F1F5F9"
     };
 
@@ -114,4 +117,6 @@ public class LeaveRequestItem
         5 => "#BE123C", // Rose-700
         _ => "#334155"
     };
+
+    public bool CanWithdraw => TrangThai == "CHO_DUYET";
 }

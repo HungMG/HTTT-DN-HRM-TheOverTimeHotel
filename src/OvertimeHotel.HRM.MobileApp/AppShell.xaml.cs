@@ -39,6 +39,9 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute("LeaveApprovalPage", typeof(LeaveApprovalPage));
 		Routing.RegisterRoute("LeaveDetailPage", typeof(LeaveDetailPage));
 		Routing.RegisterRoute("LeaveSubmitPage", typeof(LeaveSubmitPage));
+		Routing.RegisterRoute("RequestsPage", typeof(RequestsPage));
+		Routing.RegisterRoute("AttendanceExplanationPage", typeof(AttendanceExplanationPage));
+		Routing.RegisterRoute("ShiftSwapPage", typeof(ShiftSwapPage));
 		Routing.RegisterRoute("AttendanceSummaryPage", typeof(AttendanceSummaryPage));
 		Routing.RegisterRoute("SchedulePage", typeof(SchedulePage));
 		Routing.RegisterRoute("PayslipPage", typeof(PayslipPage));
@@ -228,21 +231,21 @@ public partial class AppShell : Shell
 				Route = "Attendance",
 				ContentTemplate = new DataTemplate(typeof(AttendancePage))
 			};
-			var docsTab = new ShellContent
+			var requestsTab = new ShellContent
 			{
-				Title = "Giấy Tờ",
+				Title = "Đơn Từ",
 				Icon = TAB_ICON_DOCS,
-				Route = "Docs",
-				ContentTemplate = new DataTemplate(typeof(AttendanceSummaryPage))
+				Route = "Requests",
+				ContentTemplate = new DataTemplate(typeof(RequestsPage))
 			};
 
 			ApplyTabAppearance(employeeHomeTab);
 			ApplyTabAppearance(attendanceTab);
-			ApplyTabAppearance(docsTab);
+			ApplyTabAppearance(requestsTab);
 
 			mainTabs.Items.Add(employeeHomeTab);
 			mainTabs.Items.Add(attendanceTab);
-			mainTabs.Items.Add(docsTab);
+			mainTabs.Items.Add(requestsTab);
 			mainTabs.Items.Add(settingsTab);
 		}
 

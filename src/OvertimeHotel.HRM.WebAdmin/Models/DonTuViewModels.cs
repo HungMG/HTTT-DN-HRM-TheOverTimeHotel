@@ -86,6 +86,7 @@ public class DonTuItemViewModel
         "CHO_DUYET" => "Chờ duyệt",
         "DA_DUYET" => "Đã duyệt",
         "TU_CHOI" => "Từ chối",
+        "DA_HUY" => "Đã rút",
         _ => TrangThai
     };
 

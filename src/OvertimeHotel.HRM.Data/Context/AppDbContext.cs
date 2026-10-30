@@ -664,7 +664,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.MaNhanVienGui).HasColumnName("ma_nhan_vien_gui").IsRequired();
             entity.Property(e => e.MaNhanVienNhan).HasColumnName("ma_nhan_vien_nhan").IsRequired();
             entity.Property(e => e.LyDo).HasColumnName("ly_do").HasMaxLength(500).IsRequired();
-            entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(20).HasDefaultValue("CHO_DUYET").IsRequired();
+            entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(20).HasDefaultValue("CHO_NGUOI_NHAN").IsRequired();
+            entity.Property(e => e.BenTuChoi).HasColumnName("ben_tu_choi").HasMaxLength(20);
+            entity.Property(e => e.PhanHoiNguoiNhan).HasColumnName("phan_hoi_nguoi_nhan").HasMaxLength(500);
+            entity.Property(e => e.NgayNguoiNhanPhanHoi).HasColumnName("ngay_nguoi_nhan_phan_hoi");
             entity.Property(e => e.MaNguoiDuyet).HasColumnName("ma_nguoi_duyet");
             entity.Property(e => e.NgayGui).HasColumnName("ngay_gui").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.NgayDuyet).HasColumnName("ngay_duyet");

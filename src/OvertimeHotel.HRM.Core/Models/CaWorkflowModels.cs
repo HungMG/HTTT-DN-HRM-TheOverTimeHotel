@@ -31,7 +31,11 @@ public class YeuCauDoiCa
 
     public string LyDo { get; set; } = string.Empty;
 
-    public string TrangThai { get; set; } = "CHO_DUYET";
+    public string TrangThai { get; set; } = "CHO_NGUOI_NHAN";
+
+    public string? BenTuChoi { get; set; }
+    public string? PhanHoiNguoiNhan { get; set; }
+    public DateTimeOffset? NgayNguoiNhanPhanHoi { get; set; }
 
     public int? MaNguoiDuyet { get; set; }
     public DateTimeOffset NgayGui { get; set; } = DateTimeOffset.UtcNow;

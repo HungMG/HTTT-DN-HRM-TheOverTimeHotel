@@ -56,6 +56,8 @@ public static class MauiProgram
 			builder.Services.AddSingleton<ILeaveApprovalService>(services => services.GetRequiredService<DemoLeaveApprovalService>());
 			builder.Services.AddSingleton<IAttendanceService, DemoAttendanceService>();
 			builder.Services.AddSingleton<IMobileAttendanceSummaryService, DemoAttendanceSummaryService>();
+			builder.Services.AddSingleton<IAttendanceExplanationService, DemoAttendanceExplanationService>();
+			builder.Services.AddSingleton<IShiftSwapService, DemoShiftSwapService>();
 		}
 		else
 		{
@@ -63,6 +65,8 @@ public static class MauiProgram
 			builder.Services.AddSingleton<ILeaveApprovalService, LeaveApprovalService>();
 			builder.Services.AddSingleton<IAttendanceService, AttendanceService>();
 			builder.Services.AddSingleton<IMobileAttendanceSummaryService, MobileAttendanceSummaryService>();
+			builder.Services.AddSingleton<IAttendanceExplanationService, AttendanceExplanationService>();
+			builder.Services.AddSingleton<IShiftSwapService, ShiftSwapService>();
 
 			// Lịch 24/7 và phiếu lương: LUÔN đọc CSDL thật, không có nhánh demo.
 			// Cả hai bảng đều bị RLS giới hạn theo chủ phiếu, nên dữ liệu mẫu
@@ -75,6 +79,7 @@ public static class MauiProgram
 		// dùng một HttpClient/connection pool — dựng HttpClient mới cho mỗi lần
 		// quẹt thẻ sẽ rò bộ nhớ socket trên Android.
 		builder.Services.AddSingleton<SupabaseRestClient>();
+        builder.Services.AddSingleton<WebAdminApiClient>();
 
 		// Ghi nhận vị trí quẹt thẻ để đối chiếu chống gian lận chấm công.
 		builder.Services.AddSingleton<IGeoLocationService, GeoLocationService>();
@@ -87,6 +92,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<LeaveApprovalViewModel>();
 		builder.Services.AddTransient<LeaveDetailViewModel>();
 		builder.Services.AddTransient<LeaveSubmitViewModel>();
+		builder.Services.AddTransient<RequestsViewModel>();
+		builder.Services.AddTransient<AttendanceExplanationViewModel>();
+		builder.Services.AddTransient<ShiftSwapViewModel>();
 		builder.Services.AddTransient<AttendanceViewModel>();
 		builder.Services.AddTransient<AttendanceSummaryViewModel>();
 		builder.Services.AddTransient<ScheduleViewModel>();
@@ -115,6 +123,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<LeaveApprovalPage>();
 		builder.Services.AddTransient<LeaveDetailPage>();
 		builder.Services.AddTransient<LeaveSubmitPage>();
+		builder.Services.AddTransient<RequestsPage>();
+		builder.Services.AddTransient<AttendanceExplanationPage>();
+		builder.Services.AddTransient<ShiftSwapPage>();
 		builder.Services.AddTransient<AttendancePage>();
 		builder.Services.AddTransient<AttendanceSummaryPage>();
 		builder.Services.AddTransient<SchedulePage>();

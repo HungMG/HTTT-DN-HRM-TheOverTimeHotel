@@ -19,6 +19,11 @@
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/DemoLeaveApprovalService.cs" Link="DemoLeaveApprovalService.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/DemoAttendanceService.cs" Link="DemoAttendanceService.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/DemoAttendanceSummaryService.cs" Link="DemoAttendanceSummaryService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/IShiftSwapService.cs" Link="IShiftSwapService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/ShiftSwapService.cs" Link="ShiftSwapService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/IAttendanceExplanationService.cs" Link="IAttendanceExplanationService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/AttendanceExplanationService.cs" Link="AttendanceExplanationService.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/WebAdminApiClient.cs" Link="WebAdminApiClient.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/ApiConfig.cs" Link="ApiConfig.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/PostgrstJson.cs" Link="PostgrstJson.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/SupabaseRestClient.cs" Link="SupabaseRestClient.cs" />

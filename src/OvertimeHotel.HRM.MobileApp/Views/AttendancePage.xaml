@@ -59,70 +59,103 @@
                     </Border>
                 </VerticalStackLayout>
 
-                <!-- ==================== LỐI TẮT NHANH 2 CỘT (LỊCH CA & PHIẾU LƯƠNG) ==================== -->
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <!-- ==================== LỐI TẮT NHANH 3 CỘT (LỊCH CA, BẢNG CÔNG, PHIẾU LƯƠNG) ==================== -->
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                     <!-- Lịch ca 24/7 -->
                     <Border Grid.Column="0"
                             Stroke="#1E3A8A"
                             BackgroundColor="#1E3A8A"
-                            StrokeShape="RoundRectangle 16"
-                            Padding="14,12">
+                            StrokeShape="RoundRectangle 14"
+                            Padding="10,12">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnScheduleTapped" />
                         </Border.GestureRecognizers>
-                        <VerticalStackLayout Spacing="6">
+                        <VerticalStackLayout Spacing="4">
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label Grid.Column="0"
                                        Text="📅"
-                                       FontSize="18"
+                                       FontSize="16"
                                        VerticalOptions="Center" />
                                 <Label Grid.Column="1"
                                        Text="›"
                                        FontFamily="SegoeUIBold"
-                                       FontSize="18"
+                                       FontSize="16"
                                        TextColor="#D4AF37"
                                        VerticalOptions="Center" />
                             </Grid>
                             <Label Text="LỊCH CA 24/7"
                                    FontFamily="SegoeUIBold"
-                                   FontSize="13"
+                                   FontSize="11"
                                    TextColor="#FFFFFF" />
-                            <Label Text="Xem ca theo tuần"
+                            <Label Text="Xem ca tuần"
                                    FontFamily="SegoeUI"
-                                   FontSize="10"
+                                   FontSize="9"
+                                   TextColor="#DBEAFE" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Bảng công tháng -->
+                    <Border Grid.Column="1"
+                            Stroke="#1E3A8A"
+                            BackgroundColor="#1E3A8A"
+                            StrokeShape="RoundRectangle 14"
+                            Padding="10,12">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnAttendanceSummaryTapped" />
+                        </Border.GestureRecognizers>
+                        <VerticalStackLayout Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Grid.Column="0"
+                                       Text="📊"
+                                       FontSize="16"
+                                       VerticalOptions="Center" />
+                                <Label Grid.Column="1"
+                                       Text="›"
+                                       FontFamily="SegoeUIBold"
+                                       FontSize="16"
+                                       TextColor="#D4AF37"
+                                       VerticalOptions="Center" />
+                            </Grid>
+                            <Label Text="BẢNG CÔNG"
+                                   FontFamily="SegoeUIBold"
+                                   FontSize="11"
+                                   TextColor="#FFFFFF" />
+                            <Label Text="Theo tháng"
+                                   FontFamily="SegoeUI"
+                                   FontSize="9"
                                    TextColor="#DBEAFE" />
                         </VerticalStackLayout>
                     </Border>
 
                     <!-- Phiếu Lương -->
-                    <Border Grid.Column="1"
+                    <Border Grid.Column="2"
                             Stroke="#1E3A8A"
                             BackgroundColor="#1E3A8A"
-                            StrokeShape="RoundRectangle 16"
-                            Padding="14,12">
+                            StrokeShape="RoundRectangle 14"
+                            Padding="10,12">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnPayslipTapped" />
                         </Border.GestureRecognizers>
-                        <VerticalStackLayout Spacing="6">
+                        <VerticalStackLayout Spacing="4">
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label Grid.Column="0"
                                        Text="💰"
-                                       FontSize="18"
+                                       FontSize="16"
                                        VerticalOptions="Center" />
                                 <Label Grid.Column="1"
                                        Text="›"
                                        FontFamily="SegoeUIBold"
-                                       FontSize="18"
+                                       FontSize="16"
                                        TextColor="#D4AF37"
                                        VerticalOptions="Center" />
                             </Grid>
                             <Label Text="PHIẾU LƯƠNG"
                                    FontFamily="SegoeUIBold"
-                                   FontSize="13"
+                                   FontSize="11"
                                    TextColor="#FFFFFF" />
-                            <Label Text="Thu nhập hàng tháng"
+                            <Label Text="Thu nhập tháng"
                                    FontFamily="SegoeUI"
-                                   FontSize="10"
+                                   FontSize="9"
                                    TextColor="#DBEAFE" />
                         </VerticalStackLayout>
                     </Border>

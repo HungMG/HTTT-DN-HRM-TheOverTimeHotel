@@ -117,6 +117,10 @@
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
+	<ItemGroup Condition="'$(WebAdminApiUrl)' != ''">
+		<AssemblyMetadata Include="WebAdminApiUrl" Value="$(WebAdminApiUrl)" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<!-- Bản đồ tương tác cho cổng Nhân viên. LƯU Ý: trên Android, control này LUÔN render

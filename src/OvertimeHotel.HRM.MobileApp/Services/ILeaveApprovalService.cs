@@ -67,7 +67,8 @@ public interface ILeaveApprovalService
     /// <param name="chiChoDuyet">
     /// true thì chỉ lấy đơn còn chờ duyệt; false thì lấy toàn bộ lịch sử.
     /// </param>
-    Task<List<LeaveRequestItem>> GetMyRequestsAsync(bool chiChoDuyet = false);
+    /// <param name="cancellationToken">Token huỷ thao tác mạng nếu cần dừng sớm.</param>
+    Task<List<LeaveRequestItem>> GetMyRequestsAsync(bool chiChoDuyet = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Nộp một đơn từ mới. Mã nhân viên luôn lấy từ phiên đăng nhập, không nhận
@@ -79,4 +80,9 @@ public interface ILeaveApprovalService
     /// Số ngày phép năm đã dùng trong năm hiện tại (các đơn loại 1 đã được duyệt).
     /// </summary>
     Task<int> GetUsedAnnualLeaveDaysAsync();
+
+    /// <summary>
+    /// Nhân viên tự rút đơn nghỉ phép của chính mình (chỉ khi đơn còn ở trạng thái CHO_DUYET).
+    /// </summary>
+    Task<LeaveReviewResult> WithdrawRequestAsync(int maDon);
 }

@@ -6,7 +6,8 @@ namespace OvertimeHotel.HRM.MobileApp.Views;
 public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
 {
     private readonly AttendanceSummaryViewModel _viewModel;
-    private CancellationTokenSource _skeletonCts = new();
+    private int _appearingVersion;
+    private CancellationTokenSource? _skeletonCts;
 
     /// <summary>
     /// Đã dựng theo kiểu trang gốc của tab hay chưa — dùng để chỉ cấu hình lần đầu.
@@ -46,27 +47,49 @@ public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
     }
 
     /// <summary>
-    /// Nhịp thở của khối skeleton. Không dùng vòng tròn xoay ActivityIndicator vì
-    /// quy chuẩn §2 cấm — skeleton cho người dùng thấy trước bố cục trang.
+    /// Nhịp thở của khối skeleton cho một lượt xuất hiện cụ thể.
+    /// Trả về CancellationTokenSource để gắn chặt vòng đời theo từng lượt.
     /// </summary>
-    private void StartSkeletonLoop()
+    private CancellationTokenSource StartSkeletonLoop()
     {
-        DisposeSkeleton();
-        _skeletonCts = new CancellationTokenSource();
-        _ = skeletonLayout.ShimmerLoopAsync(_skeletonCts.Token);
+        StopSkeleton();
+        var cts = new CancellationTokenSource();
+        _skeletonCts = cts;
+        _ = skeletonLayout.ShimmerLoopAsync(cts.Token);
+        return cts;
     }
 
     /// <summary>
-    /// Dừng nhịp thở khi rời trang: animation nền vô ích vừa tốn pin vừa giữ CTS sống
-    /// (Dispose rồi tạo mới) để lần vào trang sau dùng lại được.
+    /// Dừng nhịp thở khi rời trang hoặc bắt đầu lượt mới.
     /// </summary>
-    private void DisposeSkeleton()
+    private void StopSkeleton()
     {
-        if (_skeletonCts.IsCancellationRequested) return;
+        if (_skeletonCts != null)
+        {
+            if (!_skeletonCts.IsCancellationRequested)
+            {
+                try { _skeletonCts.Cancel(); } catch (ObjectDisposedException) { }
+            }
+            _skeletonCts.Dispose();
+            _skeletonCts = null;
+        }
+    }
 
-        _skeletonCts.Cancel();
-        _skeletonCts.Dispose();
-        _skeletonCts = new CancellationTokenSource();
+    /// <summary>
+    /// Dừng nhịp thở gắn với đúng lượt xuất hiện tương ứng.
+    /// </summary>
+    private void StopSkeletonForAppearance(int version, CancellationTokenSource cts)
+    {
+        if (!cts.IsCancellationRequested)
+        {
+            try { cts.Cancel(); } catch (ObjectDisposedException) { }
+        }
+        cts.Dispose();
+
+        if (version == _appearingVersion && ReferenceEquals(_skeletonCts, cts))
+        {
+            _skeletonCts = null;
+        }
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query) => _viewModel.Configure(query);
@@ -74,8 +97,9 @@ public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        var version = ++_appearingVersion;
         SyncShellContext();
-        StartSkeletonLoop();
+        var cts = StartSkeletonLoop();
         headerBar.Opacity = 0;
         headerBar.TranslationY = -12;
         // Dừng nhịp thở ngay khi nạp xong chứ không chờ rời trang: khối skeleton đã
@@ -88,7 +112,7 @@ public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
         }
         finally
         {
-            DisposeSkeleton();
+            StopSkeletonForAppearance(version, cts);
         }
 
         if (_viewModel.HasError && _viewModel.IsAdminSelfAccess)
@@ -108,9 +132,10 @@ public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
 
     protected override void OnDisappearing()
     {
-        DisposeSkeleton();
-        _viewModel.CancelLoad();
         base.OnDisappearing();
+        ++_appearingVersion;
+        StopSkeleton();
+        _viewModel.CancelLoad();
     }
 
     private async void OnBackClicked(object? sender, EventArgs e)

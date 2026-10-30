@@ -54,7 +54,11 @@ public class LeaveSubmitViewModel : INotifyPropertyChanged
         // phần form nằm trên cùng bị đẩy xuống dưới màn hình.
         OpenHistoryCommand = new Command(() => IsHistoryOpen = true);
         CloseHistoryCommand = new Command(() => IsHistoryOpen = false);
+        WithdrawCommand = new Command<LeaveRequestItem>(async (item) => await WithdrawAsync(item));
     }
+
+    /// <summary>Lệnh rút đơn nghỉ phép khi còn chờ duyệt.</summary>
+    public ICommand WithdrawCommand { get; }
 
     /// <summary>Lệnh quay lại trang trước.</summary>
     public ICommand BackCommand { get; }
@@ -478,6 +482,43 @@ public class LeaveSubmitViewModel : INotifyPropertyChanged
                 IsSubmitting = false;
                 PopupRequested?.Invoke("⚠️", ex.Message, false);
             });
+        }
+    }
+
+    private async Task WithdrawAsync(LeaveRequestItem? item)
+    {
+        if (item is null || !item.CanWithdraw) return;
+
+        bool confirm = await Shell.Current.DisplayAlert(
+            "Xác nhận rút đơn",
+            $"Bạn có chắc chắn muốn rút đơn {item.TenLoaiDon} (từ {item.TuNgay:dd/MM/yyyy} đến {item.DenNgay:dd/MM/yyyy}) không?",
+            "Rút đơn",
+            "Đóng");
+
+        if (!confirm) return;
+
+        IsSubmitting = true;
+        try
+        {
+            var result = await _leaveService.WithdrawRequestAsync(item.MaDon);
+            if (result.Success)
+            {
+                await Shell.Current.DisplayAlert("Thành công", "Đã rút đơn nghỉ phép thành công.", "Đóng");
+                await RefreshAsync();
+            }
+            else
+            {
+                await Shell.Current.DisplayAlert("Không thể rút đơn", result.Message, "Đóng");
+                await RefreshAsync();
+            }
+        }
+        catch (Exception)
+        {
+            await Shell.Current.DisplayAlert("Lỗi", "Không thể rút đơn lúc này. Vui lòng thử lại sau.", "Đóng");
+        }
+        finally
+        {
+            IsSubmitting = false;
         }
     }
 

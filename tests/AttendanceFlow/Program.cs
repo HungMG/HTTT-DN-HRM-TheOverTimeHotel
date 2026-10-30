@@ -76,6 +76,30 @@ await Check("Summary refuses invalid months, cancelled calls and logged out sess
     await Expect<UnauthorizedAccessException>(() => summary.GetSummaryAsync(year, month));
 });
 
+await Check("Mobile request writes use authenticated WebAdmin API and propagate conflicts", async () =>
+{
+    var user = new SessionAuth(new UserSession { IsLoggedIn = true, MaNhanVien = 1, Token = "sample-token" });
+    var handler = new WorkflowHandler();
+    var api = new WebAdminApiClient(user, new HttpClient(handler) { BaseAddress = new Uri("https://example.test/") });
+    var swaps = new ShiftSwapService(api);
+    var created = await swaps.CreateShiftSwapAsync(new CreateShiftSwapRequest { MaPhanCaGui = 1, MaPhanCaNhan = 2, LyDo = "Test" });
+    Require(created.Success && handler.LastPath == "/api/mobile/shift-swaps", "Swap creation did not use the workflow API.");
+    Require(handler.LastAuthorization == "Bearer sample-token", "Bearer token was not sent.");
+    var conflict = await swaps.RespondShiftSwapAsync(12, new RespondShiftSwapRequest { DongY = true });
+    Require(!conflict.Success && conflict.Message == "Đơn đã được rút", "Conflict message was lost.");
+    Require(handler.LastPath == "/api/mobile/shift-swaps/12/respond", "Wrong response endpoint.");
+    Require(handler.LastBody?.Contains("\"accept\":true") == true, "Response body does not match the API contract.");
+    var leave = new LeaveApprovalService(new SupabaseRestClient(user, NullLogger<SupabaseRestClient>.Instance), api, user, NullLogger<LeaveApprovalService>.Instance);
+    var leaveResult = await leave.WithdrawRequestAsync(9);
+    Require(leaveResult.Success && handler.LastPath == "/api/leaverequests/9/withdraw", "Leave withdrawal did not use the workflow API.");
+    var explanations = new AttendanceExplanationService(api);
+    var withdrawal = await explanations.WithdrawExplanationAsync(7);
+    Require(withdrawal.Success && handler.LastPath == "/api/mobile/attendance-explanations/7/withdraw", "Explanation withdrawal did not use the workflow API.");
+    handler.Unauthorized = true;
+    var expired = await swaps.WithdrawShiftSwapAsync(12);
+    Require(!expired.Success && expired.Message.Contains("đăng nhập lại"), "Expired token was not surfaced.");
+});
+
 if (args.Contains("--live"))
 {
     var password = Environment.GetEnvironmentVariable("TSK20_TEST_PASSWORD")
@@ -118,7 +142,7 @@ if (args.Contains("--live"))
             Expect<InvalidOperationException>(() => employeeSummary.GetSummaryAsync(now.Year, now.Month, hr.CurrentUser!.MaNhanVien)));
         await Check("HR approval list provides names and department IDs for employee orders", async () =>
         {
-            var approval = new LeaveApprovalService(hrRest, hr, NullLogger<LeaveApprovalService>.Instance);
+            var approval = new LeaveApprovalService(hrRest, new WebAdminApiClient(hr), hr, NullLogger<LeaveApprovalService>.Instance);
             var items = (await approval.GetLeaveRequestsAsync()).Items;
             Require(items.All(r => r.MaPhongBan.HasValue && !r.HoTenNhanVien.StartsWith("NV#")), "Employee relation was hidden/missing in the approval list.");
             Console.WriteLine($"  Authorized pending orders: {items.Count}");
@@ -167,8 +191,27 @@ sealed class SessionAuth(UserSession session) : IAuthService
     public UserSession? CurrentUser { get; private set; } = session;
     public bool IsAuthenticated => CurrentUser?.IsLoggedIn == true;
     public Task<string?> GetTokenAsync() => Task.FromResult(CurrentUser?.Token);
+    public Task<string?> RefreshTokenAsync() => GetTokenAsync();
     public Task LogoutAsync() { CurrentUser = null; return Task.CompletedTask; }
     public Task<bool> TryAutoLoginAsync() => Task.FromResult(false);
     public Task<LoginResponse> LoginAsync(string username, string password, bool rememberMe = true) => throw new NotSupportedException();
     public Task<(bool Success, string Message)> ChangePasswordAsync(string oldPassword, string newPassword) => throw new NotSupportedException();
+}
+
+sealed class WorkflowHandler : HttpMessageHandler
+{
+    public string? LastPath { get; private set; }
+    public string? LastAuthorization { get; private set; }
+    public string? LastBody { get; private set; }
+    public bool Unauthorized { get; set; }
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        LastBody = request.Content == null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+        LastPath = request.RequestUri!.AbsolutePath;
+        LastAuthorization = request.Headers.Authorization?.ToString();
+        if (Unauthorized) return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+        if (LastPath.EndsWith("/respond")) return new HttpResponseMessage(System.Net.HttpStatusCode.Conflict) { Content = new StringContent("{\"message\":\"Đơn đã được rút\"}") };
+        var body = (LastPath.Contains("attendance-explanations") || LastPath.Contains("leaverequests")) ? "{\"success\":true,\"code\":\"WITHDRAWN\",\"message\":\"OK\"}" : "{\"success\":true,\"message\":\"OK\",\"maYeuCau\":12}";
+        return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+    }
 }

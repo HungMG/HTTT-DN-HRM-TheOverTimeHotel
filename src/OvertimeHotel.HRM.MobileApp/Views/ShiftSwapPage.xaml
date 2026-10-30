@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:dto="clr-namespace:OvertimeHotel.HRM.Core.DTOs;assembly=OvertimeHotel.HRM.Core"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.ShiftSwapPage"
+             x:DataType="vm:ShiftSwapViewModel"
+             Title="Đổi Ca Trực"
+             BackgroundColor="#F8FAFC">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="16,12,16,0">
+
+        <!-- ==================== BANNER DEMO ==================== -->
+        <Border Grid.Row="0"
+                IsVisible="{Binding IsDemoMode}"
+                StrokeShape="RoundRectangle 8"
+                Stroke="#F59E0B"
+                BackgroundColor="#FEF3C7"
+                Padding="12,8"
+                Margin="0,0,0,12">
+            <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                <Label Text="⚠️" FontSize="14" VerticalOptions="Center" />
+                <Label Text="CHẾ ĐỘ DEMO · Dữ liệu mẫu"
+                       TextColor="#B45309"
+                       FontFamily="SegoeUIBold"
+                       FontSize="11"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+        </Border>
+
+        <!-- ==================== HEADER ==================== -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,0,0,16">
+            <Button Grid.Column="0"
+                    Text="←"
+                    FontSize="20"
+                    WidthRequest="44"
+                    HeightRequest="44"
+                    CornerRadius="22"
+                    Padding="0"
+                    BackgroundColor="#EFF6FF"
+                    TextColor="#1E3A8A"
+                    Command="{Binding BackCommand}"
+                    SemanticProperties.Description="Quay lại" />
+
+            <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                <Label Text="ĐỔI CA TRỰC"
+                       FontFamily="SegoeUIBold"
+                       FontSize="16"
+                       TextColor="#0F172A" />
+                <Label Text="Hoán đổi ca làm việc cùng bộ phận"
+                       FontFamily="SegoeUI"
+                       FontSize="11"
+                       TextColor="#64748B" />
+            </VerticalStackLayout>
+
+            <Button Grid.Column="2"
+                    Text="↻"
+                    FontSize="22"
+                    WidthRequest="44"
+                    HeightRequest="44"
+                    CornerRadius="22"
+                    Padding="0"
+                    BackgroundColor="#EFF6FF"
+                    TextColor="#1E3A8A"
+                    Command="{Binding RefreshCommand}"
+                    SemanticProperties.Description="Tải lại" />
+        </Grid>
+
+        <!-- ==================== TAB CHUYỂN ĐỔI ==================== -->
+        <Border Grid.Row="2"
+                Stroke="#E2E8F0"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 12"
+                BackgroundColor="#FFFFFF"
+                Padding="4"
+                Margin="0,0,0,16">
+            <Grid ColumnDefinitions="*,*">
+                <Button Grid.Column="0"
+                        Text="Danh sách đổi ca"
+                        Command="{Binding SwitchModeCommand}"
+                        CommandParameter="list"
+                        CornerRadius="8"
+                        HeightRequest="40"
+                        Padding="0"
+                        FontSize="12"
+                        FontFamily="SegoeUIBold">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsCreateMode}" Value="False">
+                            <Setter Property="BackgroundColor" Value="#1E3A8A" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsCreateMode}" Value="True">
+                            <Setter Property="BackgroundColor" Value="Transparent" />
+                            <Setter Property="TextColor" Value="#64748B" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+                <Button Grid.Column="1"
+                        Text="Tạo yêu cầu mới"
+                        Command="{Binding SwitchModeCommand}"
+                        CommandParameter="create"
+                        CornerRadius="8"
+                        HeightRequest="40"
+                        Padding="0"
+                        FontSize="12"
+                        FontFamily="SegoeUIBold">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsCreateMode}" Value="True">
+                            <Setter Property="BackgroundColor" Value="#1E3A8A" />
+                            <Setter Property="TextColor" Value="#FFFFFF" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="Button" Binding="{Binding IsCreateMode}" Value="False">
+                            <Setter Property="BackgroundColor" Value="Transparent" />
+                            <Setter Property="TextColor" Value="#64748B" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ==================== TAB 1: DANH SÁCH ĐỔI CA ==================== -->
+        <Grid Grid.Row="3">
+            <Grid.Triggers>
+                <DataTrigger TargetType="Grid" Binding="{Binding IsCreateMode}" Value="True">
+                    <Setter Property="IsVisible" Value="False" />
+                </DataTrigger>
+                <DataTrigger TargetType="Grid" Binding="{Binding IsCreateMode}" Value="False">
+                    <Setter Property="IsVisible" Value="True" />
+                </DataTrigger>
+            </Grid.Triggers>
+
+            <!-- Skeleton loading -->
+            <VerticalStackLayout x:Name="SkeletonList"
+                                 IsVisible="{Binding IsLoading}"
+                                 Spacing="12"
+                                 Margin="0,8,0,0">
+                <Border HeightRequest="130" StrokeShape="RoundRectangle 16" Stroke="#E2E8F0" BackgroundColor="#E2E8F0" />
+                <Border HeightRequest="130" StrokeShape="RoundRectangle 16" Stroke="#E2E8F0" BackgroundColor="#E2E8F0" />
+                <Border HeightRequest="130" StrokeShape="RoundRectangle 16" Stroke="#E2E8F0" BackgroundColor="#E2E8F0" />
+            </VerticalStackLayout>
+
+            <!-- Trạng thái trống -->
+            <VerticalStackLayout IsVisible="{Binding IsEmpty}"
+                                 Spacing="12"
+                                 HorizontalOptions="Center"
+                                 VerticalOptions="Center"
+                                 Margin="0,32,0,0">
+                <Border StrokeShape="RoundRectangle 36"
+                        BackgroundColor="#F1F5F9"
+                        WidthRequest="72"
+                        HeightRequest="72"
+                        HorizontalOptions="Center">
+                    <Label Text="⇄"
+                           FontSize="32"
+                           TextColor="#94A3B8"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
+                <Label Text="Chưa có yêu cầu đổi ca nào"
+                       FontFamily="SegoeUIBold"
+                       FontSize="15"
+                       TextColor="#334155"
+                       HorizontalOptions="Center" />
+                <Label Text="Bấm 'Tạo yêu cầu mới' để gửi yêu cầu đổi ca với đồng nghiệp cùng bộ phận."
+                       FontFamily="SegoeUI"
+                       FontSize="12"
+                       TextColor="#94A3B8"
+                       HorizontalTextAlignment="Center"
+                       Padding="32,0" />
+                <Button Text="+ Tạo yêu cầu ngay"
+                        Command="{Binding SwitchModeCommand}"
+                        CommandParameter="create"
+                        BackgroundColor="#1E3A8A"
+                        TextColor="#FFFFFF"
+                        CornerRadius="20"
+                        FontSize="12"
+                        FontFamily="SegoeUIBold"
+                        HeightRequest="40"
+                        HorizontalOptions="Center"
+                        Margin="0,8,0,0" />
+            </VerticalStackLayout>
+
+            <!-- Danh sách -->
+            <RefreshView IsRefreshing="{Binding IsLoading}"
+                         Command="{Binding RefreshCommand}"
+                         IsVisible="{Binding IsListVisible}">
+                <CollectionView ItemsSource="{Binding MyShiftSwaps}"
+                                SelectionMode="None">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Vertical" ItemSpacing="12" />
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="dto:ShiftSwapItemDto">
+                            <Border StrokeShape="RoundRectangle 16"
+                                    Stroke="#E2E8F0"
+                                    StrokeThickness="1"
+                                    BackgroundColor="#FFFFFF"
+                                    Padding="16"
+                                    Margin="0,0,0,4">
+                                <VerticalStackLayout Spacing="10">
+
+                                    <!-- Dòng tiêu đề mã đơn + badge trạng thái -->
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <HorizontalStackLayout Grid.Column="0" Spacing="8" VerticalOptions="Center">
+                                            <Label Text="{Binding MaYeuCau, StringFormat='Đơn đổi ca #{0}'}"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="14"
+                                                   TextColor="#0F172A" />
+                                            <Border IsVisible="{Binding IsReceiver}"
+                                                    BackgroundColor="#EFF6FF"
+                                                    Stroke="#3B82F6"
+                                                    StrokeShape="RoundRectangle 6"
+                                                    Padding="6,2">
+                                                <Label Text="Được nhờ trực"
+                                                       TextColor="#1D4ED8"
+                                                       FontSize="10"
+                                                       FontFamily="SegoeUIBold" />
+                                            </Border>
+                                        </HorizontalStackLayout>
+
+                                        <Border Grid.Column="1"
+                                                BackgroundColor="{Binding StatusBadgeColor}"
+                                                StrokeShape="RoundRectangle 12"
+                                                Padding="10,4">
+                                            <Label Text="{Binding StatusBadgeText}"
+                                                   TextColor="{Binding StatusBadgeTextColor}"
+                                                   FontFamily="SegoeUIBold"
+                                                   FontSize="11" />
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Chi tiết 2 ca đổi -->
+                                    <Border BackgroundColor="#F8FAFC"
+                                            Stroke="#F1F5F9"
+                                            StrokeShape="RoundRectangle 10"
+                                            Padding="12,10">
+                                        <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="8">
+                                            <!-- Ca nhường -->
+                                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                                <Label Text="Ca nhường:" FontSize="10" TextColor="#64748B" FontFamily="SegoeUI" />
+                                                <Label Text="{Binding TenCaGui}" FontSize="12" TextColor="#1E3A8A" FontFamily="SegoeUIBold" />
+                                                <Label Text="{Binding NgayCaGui}" FontSize="11" TextColor="#334155" FontFamily="SegoeUI" />
+                                                <Label Text="{Binding GioCaGui}" FontSize="10" TextColor="#64748B" FontFamily="SegoeUI" />
+                                                <Label Text="{Binding TenNguoiGui, StringFormat='Bởi: {0}'}" FontSize="10" TextColor="#0284C7" FontFamily="SegoeUI" Margin="0,2,0,0" />
+                                            </VerticalStackLayout>
+
+                                            <!-- Mũi tên ⇄ -->
+                                            <Label Grid.Column="1"
+                                                   Text="⇄"
+                                                   FontSize="20"
+                                                   TextColor="#94A3B8"
+                                                   VerticalOptions="Center"
+                                                   HorizontalOptions="Center" />
+
+                                            <!-- Ca nhận thay -->
+                                            <VerticalStackLayout Grid.Column="2" Spacing="2">
+                                                <Label Text="Ca nhận thay:" FontSize="10" TextColor="#64748B" FontFamily="SegoeUI" />
+                                                <Label Text="{Binding TenCaNhan}" FontSize="12" TextColor="#1E3A8A" FontFamily="SegoeUIBold" />
+                                                <Label Text="{Binding NgayCaNhan}" FontSize="11" TextColor="#334155" FontFamily="SegoeUI" />
+                                                <Label Text="{Binding GioCaNhan}" FontSize="10" TextColor="#64748B" FontFamily="SegoeUI" />
+                                                <Label Text="{Binding TenNguoiNhan, StringFormat='Nhờ: {0}'}" FontSize="10" TextColor="#0284C7" FontFamily="SegoeUI" Margin="0,2,0,0" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Lý do -->
+                                    <HorizontalStackLayout Spacing="6">
+                                        <Label Text="Lý do:" FontSize="11" TextColor="#64748B" FontFamily="SegoeUIBold" />
+                                        <Label Text="{Binding LyDo}" FontSize="11" TextColor="#1E293B" FontFamily="SegoeUI" LineBreakMode="WordWrap" />
+                                    </HorizontalStackLayout>
+
+                                    <!-- Ý kiến đối tác nếu có -->
+                                    <Border IsVisible="{Binding HasPhanHoiNguoiNhan}"
+                                            BackgroundColor="#F0F9FF"
+                                            Stroke="#BAE6FD"
+                                            StrokeShape="RoundRectangle 8"
+                                            Padding="10,6">
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="Phản hồi đối tác:" FontSize="11" TextColor="#0284C7" FontFamily="SegoeUIBold" />
+                                            <Label Text="{Binding PhanHoiNguoiNhan}" FontSize="11" TextColor="#0369A1" FontFamily="SegoeUI" />
+                                        </HorizontalStackLayout>
+                                    </Border>
+
+                                    <!-- Ý kiến duyệt quản lý nếu có -->
+                                    <Border IsVisible="{Binding HasPhanHoiDuyet}"
+                                            BackgroundColor="#FEF3C7"
+                                            Stroke="#FDE68A"
+                                            StrokeShape="RoundRectangle 8"
+                                            Padding="10,6">
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="Ý kiến quản lý:" FontSize="11" TextColor="#B45309" FontFamily="SegoeUIBold" />
+                                            <Label Text="{Binding PhanHoiDuyet}" FontSize="11" TextColor="#92400E" FontFamily="SegoeUI" />
+                                        </HorizontalStackLayout>
+                                    </Border>
+
+                                    <!-- Các nút hành động -->
+                                    <!-- Người nhận B xác nhận hoặc từ chối -->
+                                    <Grid IsVisible="{Binding CanRespond}"
+                                          ColumnDefinitions="*,*"
+                                          ColumnSpacing="10"
+                                          Margin="0,6,0,0">
+                                        <Button Grid.Column="0"
+                                                Text="✓ Đồng ý đổi"
+                                                BackgroundColor="#10B981"
+                                                TextColor="#FFFFFF"
+                                                FontFamily="SegoeUIBold"
+                                                FontSize="12"
+                                                CornerRadius="10"
+                                                HeightRequest="38"
+                                                Padding="0"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ShiftSwapViewModel}}, Path=AcceptCommand}"
+                                                CommandParameter="{Binding .}" />
+
+                                        <Button Grid.Column="1"
+                                                Text="✗ Từ chối"
+                                                BackgroundColor="#EF4444"
+                                                TextColor="#FFFFFF"
+                                                FontFamily="SegoeUIBold"
+                                                FontSize="12"
+                                                CornerRadius="10"
+                                                HeightRequest="38"
+                                                Padding="0"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ShiftSwapViewModel}}, Path=RejectCommand}"
+                                                CommandParameter="{Binding .}" />
+                                    </Grid>
+
+                                    <!-- Người gửi A rút đơn -->
+                                    <Button IsVisible="{Binding CanWithdraw}"
+                                            Text="Rút yêu cầu đổi ca"
+                                            BackgroundColor="#F1F5F9"
+                                            TextColor="#DC2626"
+                                            FontFamily="SegoeUIBold"
+                                            FontSize="12"
+                                            CornerRadius="10"
+                                            HeightRequest="38"
+                                            Margin="0,4,0,0"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ShiftSwapViewModel}}, Path=WithdrawCommand}"
+                                            CommandParameter="{Binding .}" />
+
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </RefreshView>
+        </Grid>
+
+        <!-- ==================== TAB 2: TẠO YÊU CẦU MỚI ==================== -->
+        <ScrollView Grid.Row="3" Margin="0,0,0,16">
+            <ScrollView.Triggers>
+                <DataTrigger TargetType="ScrollView" Binding="{Binding IsCreateMode}" Value="False">
+                    <Setter Property="IsVisible" Value="False" />
+                </DataTrigger>
+                <DataTrigger TargetType="ScrollView" Binding="{Binding IsCreateMode}" Value="True">
+                    <Setter Property="IsVisible" Value="True" />
+                </DataTrigger>
+            </ScrollView.Triggers>
+
+            <VerticalStackLayout Spacing="16">
+
+                <!-- 1. CHỌN CA NHƯỜNG CỦA TÔI -->
+                <Border StrokeShape="RoundRectangle 16"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="#FFFFFF"
+                        Padding="16">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="1. CHỌN CA NHƯỜNG CỦA BẠN"
+                               FontFamily="SegoeUIBold"
+                               FontSize="12"
+                               TextColor="#1E3A8A" />
+
+                        <Border Stroke="#CBD5E1"
+                                StrokeShape="RoundRectangle 10"
+                                BackgroundColor="#F8FAFC"
+                                Padding="12,4">
+                            <Picker ItemsSource="{Binding EligibleMyShifts}"
+                                    SelectedItem="{Binding SelectedMyShift}"
+                                    ItemDisplayBinding="{Binding DisplayText}"
+                                    Title="-- Chọn ca bạn muốn nhường --"
+                                    TextColor="#0F172A"
+                                    TitleColor="#94A3B8"
+                                    FontSize="12" />
+                        </Border>
+
+                        <Label Text="* Chỉ hiển thị các ca chưa diễn ra và chưa có chấm công."
+                               FontSize="10"
+                               TextColor="#94A3B8"
+                               FontFamily="SegoeUI" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- 2. CHỌN CA NHẬN THAY TỪ ĐỒNG NGHIỆP CÙNG BỘ PHẬN -->
+                <Border StrokeShape="RoundRectangle 16"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="#FFFFFF"
+                        Padding="16">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="2. CHỌN CA TRỰC ĐỒNG NGHIỆP NHẬN THAY"
+                               FontFamily="SegoeUIBold"
+                               FontSize="12"
+                               TextColor="#1E3A8A" />
+
+                        <Border Stroke="#CBD5E1"
+                                StrokeShape="RoundRectangle 10"
+                                BackgroundColor="#F8FAFC"
+                                Padding="12,4">
+                            <Picker ItemsSource="{Binding EligiblePartnerShifts}"
+                                    SelectedItem="{Binding SelectedPartnerShift}"
+                                    ItemDisplayBinding="{Binding DisplayText}"
+                                    Title="-- Chọn ca đồng nghiệp nhận thay --"
+                                    TextColor="#0F172A"
+                                    TitleColor="#94A3B8"
+                                    FontSize="12" />
+                        </Border>
+
+                        <Label Text="* Chỉ hiển thị các ca của đồng nghiệp trong cùng một bộ phận."
+                               FontSize="10"
+                               TextColor="#94A3B8"
+                               FontFamily="SegoeUI" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- 3. LÝ DO ĐỔI CA -->
+                <Border StrokeShape="RoundRectangle 16"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="#FFFFFF"
+                        Padding="16">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="3. LÝ DO ĐỔI CA (TỐI ĐA 500 KÝ TỰ)"
+                               FontFamily="SegoeUIBold"
+                               FontSize="12"
+                               TextColor="#1E3A8A" />
+
+                        <Border Stroke="#CBD5E1"
+                                StrokeShape="RoundRectangle 10"
+                                BackgroundColor="#F8FAFC"
+                                Padding="12">
+                            <Editor Text="{Binding LyDo}"
+                                    Placeholder="Nhập lý do chi tiết để đồng nghiệp và quản lý nắm được..."
+                                    PlaceholderColor="#94A3B8"
+                                    TextColor="#0F172A"
+                                    FontSize="12"
+                                    HeightRequest="90"
+                                    MaxLength="500" />
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- NÚT GỬI YÊU CẦU -->
+                <Button Text="Gửi yêu cầu đổi ca"
+                        Command="{Binding SubmitCommand}"
+                        BackgroundColor="#1E3A8A"
+                        TextColor="#FFFFFF"
+                        CornerRadius="14"
+                        HeightRequest="48"
+                        FontSize="14"
+                        FontFamily="SegoeUIBold"
+                        IsEnabled="{Binding CanSubmit}" />
+
+                <ActivityIndicator IsRunning="{Binding IsSubmitting}"
+                                   IsVisible="{Binding IsSubmitting}"
+                                   Color="#1E3A8A"
+                                   HorizontalOptions="Center" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+    </Grid>
+</ContentPage>

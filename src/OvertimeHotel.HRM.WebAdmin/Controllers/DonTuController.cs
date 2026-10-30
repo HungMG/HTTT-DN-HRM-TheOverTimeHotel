@@ -303,7 +303,8 @@ public class DonTuController : Controller
             new("Tất cả trạng thái", "ALL", string.IsNullOrEmpty(status) || status == "ALL"),
             new("Chờ duyệt", "CHO_DUYET", status == "CHO_DUYET"),
             new("Đã duyệt", "DA_DUYET", status == "DA_DUYET"),
-            new("Từ chối", "TU_CHOI", status == "TU_CHOI")
+            new("Từ chối", "TU_CHOI", status == "TU_CHOI"),
+            new("Đã rút", "DA_HUY", status == "DA_HUY")
         };
 
         var viewModel = new DonTuIndexViewModel
@@ -443,6 +444,7 @@ public class DonTuController : Controller
                     "CHO_DUYET" => "Chờ duyệt",
                     "DA_DUYET" => "Đã duyệt",
                     "TU_CHOI" => "Từ chối",
+                    "DA_HUY" => "Đã rút",
                     _ => donTu.TrangThai
                 },
                 maNguoiDuyet = donTu.MaNguoiDuyet,

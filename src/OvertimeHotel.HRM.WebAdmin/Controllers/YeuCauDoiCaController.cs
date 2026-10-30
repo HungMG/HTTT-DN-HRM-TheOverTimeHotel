@@ -32,6 +32,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 [Authorize(Policy = PermissionCodes.AssignShifts)]
 public class YeuCauDoiCaController : Controller
 {
+    private const string STATUS_CHO_NGUOI_NHAN = "CHO_NGUOI_NHAN";
     private const string STATUS_CHO_DUYET = "CHO_DUYET";
     private const string STATUS_DA_DUYET = "DA_DUYET";
     private const string STATUS_TU_CHOI = "TU_CHOI";
@@ -91,7 +92,9 @@ public class YeuCauDoiCaController : Controller
             }
         }
 
-        var visibleItems = await this.SearchDataAsync($"shift-requests:scope:{scopeDept}", () => baseQuery.ToListAsync());
+        // Responses can be written by another WebAdmin instance; its local cache
+        // invalidation cannot refresh this process. Always read the current state.
+        var visibleItems = await baseQuery.ToListAsync();
         baseQuery = visibleItems.AsQueryable();
         var query = baseQuery;
 
@@ -116,7 +119,7 @@ public class YeuCauDoiCaController : Controller
         var pageNumber = Math.Clamp(page, 1, totalPages);
 
         var items = query
-            .OrderBy(y => y.TrangThai == STATUS_CHO_DUYET ? 0 : 1)
+            .OrderBy(y => y.TrangThai == STATUS_CHO_DUYET ? 0 : (y.TrangThai == STATUS_CHO_NGUOI_NHAN ? 1 : 2))
             .ThenByDescending(y => y.NgayGui)
             .Skip((pageNumber - 1) * PAGE_SIZE)
             .Take(PAGE_SIZE)
@@ -143,6 +146,9 @@ public class YeuCauDoiCaController : Controller
                     : y.PhanCaNhan.CaLamViec.GioBatDau.ToString("HH:mm") + " – " + y.PhanCaNhan.CaLamViec.GioKetThuc.ToString("HH:mm"),
                 LyDo = y.LyDo,
                 TrangThai = y.TrangThai,
+                BenTuChoi = y.BenTuChoi,
+                PhanHoiNguoiNhan = y.PhanHoiNguoiNhan,
+                NgayNguoiNhanPhanHoi = y.NgayNguoiNhanPhanHoi,
                 TenNguoiDuyet = y.NguoiDuyet == null ? null : (y.NguoiDuyet.Ho + " " + y.NguoiDuyet.Ten).Trim(),
                 NgayGui = y.NgayGui,
                 NgayDuyet = y.NgayDuyet,
@@ -157,6 +163,7 @@ public class YeuCauDoiCaController : Controller
             TrangThaiOptions = BuildStatusOptions(trangThai),
             Items = items,
             TongYeuCau = baseQuery.Count(),
+            ChoNguoiNhan = baseQuery.Count(y => y.TrangThai == STATUS_CHO_NGUOI_NHAN),
             ChoDuyet = baseQuery.Count(y => y.TrangThai == STATUS_CHO_DUYET),
             DaDuyet = baseQuery.Count(y => y.TrangThai == STATUS_DA_DUYET),
             TuChoi = baseQuery.Count(y => y.TrangThai == STATUS_TU_CHOI),
@@ -193,6 +200,19 @@ public class YeuCauDoiCaController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(YeuCauDoiCaCreateViewModel model)
     {
+        return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            _context.ChangeTracker.Clear();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await _context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(2026101509)");
+            var result = await CreateLockedAsync(model);
+            await transaction.CommitAsync();
+            return result;
+        });
+    }
+
+    private async Task<IActionResult> CreateLockedAsync(YeuCauDoiCaCreateViewModel model)
+    {
         model.LyDo = model.LyDo?.Trim() ?? string.Empty;
 
         if (model.LyDo.Length is 0 or > 500)
@@ -222,7 +242,11 @@ public class YeuCauDoiCaController : Controller
         {
             var now = DateTimeOffset.UtcNow;
 
-            if (caGui.MaNhanVien == caNhan.MaNhanVien)
+            if (!caGui.MaPhongBan.HasValue || caGui.MaPhongBan != caNhan.MaPhongBan)
+            {
+                ModelState.AddModelError(string.Empty, "Chỉ được đổi ca giữa nhân viên cùng bộ phận.");
+            }
+            else if (caGui.MaNhanVien == caNhan.MaNhanVien)
             {
                 ModelState.AddModelError(string.Empty, "Hai ca được chọn thuộc cùng một nhân viên — đổi ca phải là hai người khác nhau.");
             }
@@ -265,7 +289,7 @@ public class YeuCauDoiCaController : Controller
             MaNhanVienGui = caGui.MaNhanVien,
             MaNhanVienNhan = caNhan.MaNhanVien,
             LyDo = model.LyDo,
-            TrangThai = STATUS_CHO_DUYET,
+            TrangThai = STATUS_CHO_NGUOI_NHAN,
             NgayGui = DateTimeOffset.UtcNow
         };
 
@@ -273,10 +297,10 @@ public class YeuCauDoiCaController : Controller
         await _context.SaveChangesAsync();
 
         _logger.LogInformation(
-            "Tạo yêu cầu đổi ca #{RequestId}: ca #{ShiftFrom} (NV {EmployeeFrom}) ↔ ca #{ShiftTo} (NV {EmployeeTo}).",
+            "Tạo yêu cầu đổi ca #{RequestId}: ca #{ShiftFrom} (NV {EmployeeFrom}) ↔ ca #{ShiftTo} (NV {EmployeeTo}). Chờ người nhận xác nhận.",
             yeuCau.MaYeuCau, caGui.MaPhanCa, caGui.MaNhanVien, caNhan.MaPhanCa, caNhan.MaNhanVien);
 
-        TempData["Success"] = $"Đã tạo yêu cầu đổi ca #{yeuCau.MaYeuCau}. Yêu cầu đang chờ duyệt.";
+        TempData["Success"] = $"Đã tạo yêu cầu đổi ca #{yeuCau.MaYeuCau}. Yêu cầu đang chờ người nhận xác nhận.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -425,6 +449,18 @@ public class YeuCauDoiCaController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(int id, string? lyDo)
     {
+        return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await _context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(2026101509)");
+            var result = await RejectLockedAsync(id, lyDo);
+            await transaction.CommitAsync();
+            return result;
+        });
+    }
+
+    private async Task<IActionResult> RejectLockedAsync(int id, string? lyDo)
+    {
         lyDo = lyDo?.Trim();
 
         // CHECK chk_doi_ca_tu_choi_can_ly_do của CSDL đòi lý do; bắt ở đây để
@@ -465,6 +501,7 @@ public class YeuCauDoiCaController : Controller
             .Where(y => y.MaYeuCau == id && y.TrangThai == STATUS_CHO_DUYET)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(y => y.TrangThai, STATUS_TU_CHOI)
+                .SetProperty(y => y.BenTuChoi, "QUAN_LY")
                 .SetProperty(y => y.MaNguoiDuyet, nguoiDuyetId)
                 .SetProperty(y => y.NgayDuyet, DateTimeOffset.UtcNow)
                 .SetProperty(y => y.PhanHoiDuyet, lyDo));
@@ -557,7 +594,7 @@ public class YeuCauDoiCaController : Controller
 
     private Task<bool> HasOpenRequestAsync(int maPhanCa) =>
         _context.YeuCauDoiCas.AnyAsync(y =>
-            y.TrangThai == STATUS_CHO_DUYET &&
+            (y.TrangThai == STATUS_CHO_NGUOI_NHAN || y.TrangThai == STATUS_CHO_DUYET) &&
             (y.MaPhanCaGui == maPhanCa || y.MaPhanCaNhan == maPhanCa));
 
     private static bool InScope(int? employeeDeptId, int? scopeDeptId)
@@ -629,11 +666,12 @@ public class YeuCauDoiCaController : Controller
     }
 
     private static bool IsKnownStatus(string? status) =>
-        status is STATUS_CHO_DUYET or STATUS_DA_DUYET or STATUS_TU_CHOI or STATUS_DA_HUY;
+        status is STATUS_CHO_NGUOI_NHAN or STATUS_CHO_DUYET or STATUS_DA_DUYET or STATUS_TU_CHOI or STATUS_DA_HUY;
 
     private static IReadOnlyList<SelectListItem> BuildStatusOptions(string? selected) =>
     [
         new SelectListItem { Value = string.Empty, Text = "-- Tất cả trạng thái --", Selected = string.IsNullOrWhiteSpace(selected) },
+        new SelectListItem { Value = STATUS_CHO_NGUOI_NHAN, Text = "Chờ đối tác", Selected = selected == STATUS_CHO_NGUOI_NHAN },
         new SelectListItem { Value = STATUS_CHO_DUYET, Text = "Chờ duyệt", Selected = selected == STATUS_CHO_DUYET },
         new SelectListItem { Value = STATUS_DA_DUYET, Text = "Đã duyệt", Selected = selected == STATUS_DA_DUYET },
         new SelectListItem { Value = STATUS_TU_CHOI, Text = "Từ chối", Selected = selected == STATUS_TU_CHOI },

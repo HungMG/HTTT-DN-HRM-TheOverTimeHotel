@@ -36,6 +36,7 @@ public class GiaiTrinhChamCongController : Controller
     private const string STATUS_CHO_HR = "CHO_HR";
     private const string STATUS_DA_DUYET = "DA_DUYET";
     private const string STATUS_TU_CHOI = "TU_CHOI";
+    private const string STATUS_DA_HUY = "DA_HUY";
 
     private const int PAGE_SIZE = 10;
 
@@ -322,8 +323,8 @@ public class GiaiTrinhChamCongController : Controller
         {
             MaPhanCa = ca!.MaPhanCa,
             MaNhanVien = ca.MaNhanVien,
-            GioDeXuatVao = gioVao,
-            GioDeXuatRa = gioRa,
+            GioDeXuatVao = gioVao?.ToUniversalTime(),
+            GioDeXuatRa = gioRa?.ToUniversalTime(),
             LyDo = model.LyDo,
             MinhChung = model.MinhChung,
             TrangThai = STATUS_CHO_QUAN_LY,
@@ -688,7 +689,7 @@ public class GiaiTrinhChamCongController : Controller
         $"OT: {chamCong.GioTangCaOt:0.##} giờ; Trạng thái: {chamCong.TrangThai}";
 
     private static bool IsKnownStatus(string? status) =>
-        status is STATUS_CHO_QUAN_LY or STATUS_CHO_HR or STATUS_DA_DUYET or STATUS_TU_CHOI;
+        status is STATUS_CHO_QUAN_LY or STATUS_CHO_HR or STATUS_DA_DUYET or STATUS_TU_CHOI or STATUS_DA_HUY;
 
     private static IReadOnlyList<SelectListItem> BuildStatusOptions(string? selected) =>
     [
@@ -696,7 +697,8 @@ public class GiaiTrinhChamCongController : Controller
         new SelectListItem { Value = STATUS_CHO_QUAN_LY, Text = "Chờ Quản lý xác minh", Selected = selected == STATUS_CHO_QUAN_LY },
         new SelectListItem { Value = STATUS_CHO_HR, Text = "Chờ HR xác nhận", Selected = selected == STATUS_CHO_HR },
         new SelectListItem { Value = STATUS_DA_DUYET, Text = "Đã duyệt", Selected = selected == STATUS_DA_DUYET },
-        new SelectListItem { Value = STATUS_TU_CHOI, Text = "Từ chối", Selected = selected == STATUS_TU_CHOI }
+        new SelectListItem { Value = STATUS_TU_CHOI, Text = "Từ chối", Selected = selected == STATUS_TU_CHOI },
+        new SelectListItem { Value = STATUS_DA_HUY, Text = "Đã rút", Selected = selected == STATUS_DA_HUY }
     ];
 
     private static bool InScope(int? employeeDeptId, int? scopeDeptId)

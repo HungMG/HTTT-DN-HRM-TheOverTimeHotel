@@ -233,8 +233,9 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
     public Task<List<LeaveTypeOption>> GetSubmittableTypesAsync() =>
         Task.FromResult<List<LeaveTypeOption>>([.. DemoTypes.OrderBy(t => t.MaLoaiDon)]);
 
-    public Task<List<LeaveRequestItem>> GetMyRequestsAsync(bool chiChoDuyet = false)
+    public Task<List<LeaveRequestItem>> GetMyRequestsAsync(bool chiChoDuyet = false, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var user = _authService.CurrentUser;
         if (user is null || !user.IsLoggedIn)
         {
@@ -349,6 +350,34 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
                 true, "SUBMITTED",
                 $"[DEMO] Đã tạo đơn #{item.MaDon}. Dữ liệu chỉ tồn tại trong phiên Demo, không ghi xuống Supabase.",
                 item.MaDon);
+        }
+    }
+
+    public Task<LeaveReviewResult> WithdrawRequestAsync(int maDon)
+    {
+        var user = _authService.CurrentUser;
+        if (user is null || !user.IsLoggedIn)
+            return Task.FromResult(new LeaveReviewResult(false, "UNAUTHENTICATED", "Chưa đăng nhập."));
+
+        lock (_seedRequests)
+        {
+            var req = _seedRequests.FirstOrDefault(r => r.MaDon == maDon);
+            if (req is null)
+                return Task.FromResult(new LeaveReviewResult(false, "NOT_FOUND", "Không tìm thấy đơn từ."));
+
+            if (req.MaNhanVien != user.MaNhanVien)
+                return Task.FromResult(new LeaveReviewResult(false, "FORBIDDEN", "Bạn không có quyền rút đơn này."));
+
+            if (req.TrangThai != "CHO_DUYET")
+            {
+                if (req.TrangThai == "DA_HUY")
+                    return Task.FromResult(new LeaveReviewResult(false, "ALREADY_WITHDRAWN", "Đơn đã rút trước đó."));
+                return Task.FromResult(new LeaveReviewResult(false, "ALREADY_REVIEWED", "Đơn đã được xử lý, không thể rút."));
+            }
+
+            req.TrangThai = "DA_HUY";
+            _logger.LogInformation("[DEMO] Nhân viên #{MaNhanVien} rút đơn #{MaDon}.", user.MaNhanVien, maDon);
+            return Task.FromResult(new LeaveReviewResult(true, "WITHDRAWN", "Đã rút đơn nghỉ phép thành công."));
         }
     }
 
