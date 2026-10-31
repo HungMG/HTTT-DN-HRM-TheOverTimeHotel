@@ -99,13 +99,19 @@
                    asp-controller="ChamCong" asp-action="CongThang">
                     <i class="bi bi-calendar3-range"></i><span>Tổng hợp công tháng</span>
                 </a>
-                <a class="app-nav-item@(IsCurrent("GiaiTrinhChamCong") ? " is-active" : "")"
+                <a class="app-nav-item@(IsCurrent("GiaiTrinhChamCong") ? " is-active" : "") d-flex align-items-center justify-content-between"
                    asp-controller="GiaiTrinhChamCong" asp-action="Index">
-                    <i class="bi bi-journal-text"></i><span>Giải trình chấm công</span>
+                    <span class="d-flex align-items-center gap-2">
+                        <i class="bi bi-journal-text"></i><span>Giải trình chấm công</span>
+                    </span>
+                    <span class="app-nav-badge badge-gold" id="sidebarPendingGiaiTrinhBadge"></span>
                 </a>
-                <a class="app-nav-item@(IsCurrent("YeuCauDoiCa") ? " is-active" : "")"
+                <a class="app-nav-item@(IsCurrent("YeuCauDoiCa") ? " is-active" : "") d-flex align-items-center justify-content-between"
                    asp-controller="YeuCauDoiCa" asp-action="Index">
-                    <i class="bi bi-arrow-left-right"></i><span>Yêu cầu đổi ca</span>
+                    <span class="d-flex align-items-center gap-2">
+                        <i class="bi bi-arrow-left-right"></i><span>Yêu cầu đổi ca</span>
+                    </span>
+                    <span class="app-nav-badge badge-gold" id="sidebarPendingDoiCaBadge"></span>
                 </a>
             }
 

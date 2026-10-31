@@ -10,6 +10,7 @@ using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
+using OvertimeHotel.HRM.WebAdmin.Services;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
@@ -26,6 +27,8 @@ public class PhanCaController : Controller
     private const string MissingDinhBienBoPhanMessage =
         "Chưa lưu được định biên theo bộ phận vì CSDL chưa có cột ma_phong_ban. " +
         "Hãy chạy migration 20261026_dinh_bien_theo_bo_phan.sql rồi thử lại.";
+
+    private sealed record SharedPositionDept(int MaChucVu, int MaPhongBan, string? TenPhongBan);
 
     private readonly AppDbContext _context;
     private readonly ILogger<PhanCaController> _logger;
@@ -135,73 +138,111 @@ public class PhanCaController : Controller
 
         try
         {
-            // 2. Tải danh mục phòng ban và ca làm việc.
-            // Danh mục bộ phận cũng phải co theo phạm vi: để nguyên toàn bộ thì
-            // Quản lý vẫn đọc được tên các bộ phận khác trong dropdown lọc và trong
-            // lưới định biên, dù không xếp ca cho họ được.
-            // -1 (Quản lý thiếu claim bộ phận) cũng đi vào nhánh lọc và không khớp
-            // phòng ban nào — danh sách rỗng, không phải "bỏ lọc để xem tất cả".
-            var phongBanQuery = _context.PhongBans.AsNoTracking();
-            if (phamViPhongBanId.HasValue)
-            {
-                phongBanQuery = phongBanQuery.Where(p => p.MaPhongBan == phamViPhongBanId.Value);
-            }
+            // 2. Tải danh mục phòng ban và ca làm việc (tái sử dụng từ bộ nhớ đệm SearchListCache)
+            var allPhongBans = await this.SearchDataAsync("phanca:departments", () =>
+                _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync());
 
-            model.DanhSachPhongBan = await phongBanQuery.OrderBy(p => p.TenPhongBan).ToListAsync();
+            model.DanhSachPhongBan = phamViPhongBanId.HasValue
+                ? allPhongBans.Where(p => p.MaPhongBan == phamViPhongBanId.Value).ToList()
+                : allPhongBans;
             model.TenPhamViPhongBan = model.DanhSachPhongBan.FirstOrDefault()?.TenPhongBan;
-            model.DanhSachCa = await _context.CaLamViecs.AsNoTracking()
-                .Where(c => !c.TenCa.StartsWith("EVT-") && !c.TenCa.StartsWith("TEST-"))
-                .OrderBy(c => c.GioBatDau)
-                .ToListAsync();
 
-            // 3. Tải danh sách nhân viên CÒN HỢP ĐỒNG có hiệu lực bao phủ phạm vi lưới tháng
-            var empQuery = _context.NhanViens.AsNoTracking()
-                .Include(n => n.PhongBan)
-                .Include(n => n.ChucVu)
-                .Include(n => n.HopDongs)
-                .Where(n => n.TrangThai == "DANG_LAM");
+            model.DanhSachCa = await this.SearchDataAsync("phanca:shifts", () =>
+                _context.CaLamViecs.AsNoTracking()
+                    .Where(c => !c.TenCa.StartsWith("EVT-") && !c.TenCa.StartsWith("TEST-"))
+                    .OrderBy(c => c.GioBatDau)
+                    .ToListAsync());
 
-            if (phamViPhongBanId.HasValue)
+            // 3. Tải danh sách nhân viên CÒN HỢP ĐỒNG có hiệu lực bao phủ phạm vi lưới tháng (tái sử dụng bộ đệm)
+            var empCacheKey = $"phanca:employees:{gridStart:yyyyMMdd}:{gridEnd:yyyyMMdd}:scope:{phamViPhongBanId}";
+            model.DanhSachNhanVien = await this.SearchDataAsync(empCacheKey, () =>
             {
-                empQuery = empQuery.Where(n => n.MaPhongBan == phamViPhongBanId.Value);
-            }
+                var empQuery = _context.NhanViens.AsNoTracking()
+                    .Include(n => n.PhongBan)
+                    .Include(n => n.ChucVu)
+                    .Include(n => n.HopDongs)
+                    .Where(n => n.TrangThai == "DANG_LAM");
 
-            // RÀNG BUỘC HỢP ĐỒNG: Chỉ hiển thị nhân viên còn hợp đồng hiệu lực trong phạm vi lưới
-            empQuery = empQuery.Where(n => n.HopDongs.Any(h =>
-                h.TrangThai == ContractAttendancePolicy.STATUS_HIEU_LUC &&
-                h.NgayBatDau <= gridEnd &&
-                (!h.NgayKetThuc.HasValue || h.NgayKetThuc.Value >= gridStart)));
+                if (phamViPhongBanId.HasValue)
+                {
+                    empQuery = empQuery.Where(n => n.MaPhongBan == phamViPhongBanId.Value);
+                }
 
-            model.DanhSachNhanVien = await empQuery.OrderBy(n => n.Ten).ThenBy(n => n.Ho).ToListAsync();
+                // RÀNG BUỘC HỢP ĐỒNG: Chỉ hiển thị nhân viên còn hợp đồng hiệu lực trong phạm vi lưới
+                empQuery = empQuery.Where(n => n.HopDongs.Any(h =>
+                    h.TrangThai == ContractAttendancePolicy.STATUS_HIEU_LUC &&
+                    h.NgayBatDau <= gridEnd &&
+                    (!h.NgayKetThuc.HasValue || h.NgayKetThuc.Value >= gridStart)));
 
-            // 4. Tải danh sách phân ca trong phạm vi lưới 42 ngày
-            var phanCaQuery = _context.PhanCas.AsNoTracking()
-                .Include(p => p.NhanVien)
-                    .ThenInclude(n => n!.PhongBan)
-                .Include(p => p.NhanVien)
-                    .ThenInclude(n => n!.ChucVu)
-                .Include(p => p.NhanVien)
-                    .ThenInclude(n => n!.HopDongs)
-                .Include(p => p.CaLamViec)
-                .Include(p => p.ChamCong)
-                .Where(p => p.TrangThai != "DA_HUY" && p.NgayLamViec >= gridStart && p.NgayLamViec <= gridEnd);
+                return empQuery.OrderBy(n => n.Ten).ThenBy(n => n.Ho).ToListAsync();
+            });
 
-            if (phamViPhongBanId.HasValue)
+            // 4. Tải danh sách phân ca trong phạm vi lưới 42 ngày (tái sử dụng bộ đệm)
+            var gridCacheKey = $"phanca:grid:{gridStart:yyyyMMdd}:{gridEnd:yyyyMMdd}:scope:{phamViPhongBanId}:ca:{caId}";
+            var allGridPhanCas = await this.SearchDataAsync(gridCacheKey, () =>
             {
-                phanCaQuery = phanCaQuery.Where(p => p.NhanVien != null && p.NhanVien.MaPhongBan == phamViPhongBanId.Value);
-            }
+                var phanCaQuery = _context.PhanCas.AsNoTracking()
+                    .Include(p => p.NhanVien)
+                        .ThenInclude(n => n!.PhongBan)
+                    .Include(p => p.NhanVien)
+                        .ThenInclude(n => n!.ChucVu)
+                    .Include(p => p.NhanVien)
+                        .ThenInclude(n => n!.HopDongs)
+                    .Include(p => p.CaLamViec)
+                    .Include(p => p.ChamCong)
+                    .Where(p => p.TrangThai != "DA_HUY" && p.NgayLamViec >= gridStart && p.NgayLamViec <= gridEnd);
 
-            if (caId.HasValue && caId.Value > 0)
-            {
-                phanCaQuery = phanCaQuery.Where(p => p.MaCa == caId.Value);
-            }
+                if (phamViPhongBanId.HasValue)
+                {
+                    phanCaQuery = phanCaQuery.Where(p => p.NhanVien != null && p.NhanVien.MaPhongBan == phamViPhongBanId.Value);
+                }
 
-            var allGridPhanCas = await phanCaQuery
-                .OrderBy(p => p.NgayLamViec)
-                .ThenBy(p => p.BatDauDuKien)
-                .ToListAsync();
+                if (caId.HasValue && caId.Value > 0)
+                {
+                    phanCaQuery = phanCaQuery.Where(p => p.MaCa == caId.Value);
+                }
+
+                return phanCaQuery
+                    .OrderBy(p => p.NgayLamViec)
+                    .ThenBy(p => p.BatDauDuKien)
+                    .ToListAsync();
+            });
 
             model.AllGridPhanCa = allGridPhanCas;
+
+            // 4b. Tải danh mục các ca đã hoán đổi thành công qua quy trình Đổi ca (HR / Quản lý duyệt)
+            // để gắn nhãn trực quan trên ma trận tuần và panel nhật ký
+            var swappedShiftsDict = await this.SearchDataAsync(
+                $"phanca:swaps:{gridStart:yyyyMMdd}:{gridEnd:yyyyMMdd}",
+                async () =>
+                {
+                    var approvedSwaps = await _context.YeuCauDoiCas
+                        .AsNoTracking()
+                        .Include(y => y.NhanVienGui)
+                        .Include(y => y.NhanVienNhan)
+                        .Include(y => y.PhanCaGui)
+                        .Include(y => y.PhanCaNhan)
+                        .Where(y => y.TrangThai == "DA_DUYET" &&
+                            ((y.PhanCaGui != null && y.PhanCaGui.NgayLamViec >= gridStart && y.PhanCaGui.NgayLamViec <= gridEnd) ||
+                             (y.PhanCaNhan != null && y.PhanCaNhan.NgayLamViec >= gridStart && y.PhanCaNhan.NgayLamViec <= gridEnd)))
+                        .ToListAsync();
+
+                    var map = new Dictionary<int, string>();
+                    foreach (var s in approvedSwaps)
+                    {
+                        var tenGui = s.NhanVienGui != null ? $"{s.NhanVienGui.Ho} {s.NhanVienGui.Ten}".Trim() : $"NV #{s.MaNhanVienGui}";
+                        var tenNhan = s.NhanVienNhan != null ? $"{s.NhanVienNhan.Ho} {s.NhanVienNhan.Ten}".Trim() : $"NV #{s.MaNhanVienNhan}";
+                        if (s.MaPhanCaGui > 0)
+                        {
+                            map[s.MaPhanCaGui] = $"Đã đổi ca: {tenNhan} nhận trực thay cho {tenGui}";
+                        }
+                        if (s.MaPhanCaNhan > 0)
+                        {
+                            map[s.MaPhanCaNhan] = $"Đã đổi ca: {tenGui} nhận trực thay cho {tenNhan}";
+                        }
+                    }
+                    return map;
+                });
 
             // model.DanhSachPhanCa vẫn giữ cho tuần hiện tại để phục vụ ma trận tuần
             model.DanhSachPhanCa = allGridPhanCas
@@ -209,42 +250,45 @@ public class PhanCaController : Controller
                 .ToList();
 
             // 5. Thêm nhân viên đã nghỉ nhưng còn ca trong tuần vào ma trận tuần
-            var shiftEmpIds = model.DanhSachPhanCa.Select(p => p.MaNhanVien).Distinct().ToList();
+            // Tối ưu: Tái sử dụng p.NhanVien đã nạp sẵn trong model.DanhSachPhanCa, triệt tiêu query lại CSDL
             var knownEmpIds = model.DanhSachNhanVien.Select(n => n.MaNhanVien).ToHashSet();
-            List<NhanVien> extraShiftEmps = new();
-            if (shiftEmpIds.Count > 0)
-            {
-                var candidates = await _context.NhanViens.AsNoTracking()
-                    .Include(n => n.PhongBan)
-                    .Include(n => n.ChucVu)
-                    .Include(n => n.HopDongs)
-                    .Where(n => shiftEmpIds.Contains(n.MaNhanVien))
-                    .ToListAsync();
-                extraShiftEmps = candidates.Where(e => !knownEmpIds.Contains(e.MaNhanVien)).ToList();
-            }
+            var extraShiftEmps = model.DanhSachPhanCa
+                .Where(p => p.NhanVien != null && !knownEmpIds.Contains(p.MaNhanVien))
+                .Select(p => p.NhanVien!)
+                .DistinctBy(n => n.MaNhanVien)
+                .ToList();
 
             var matrixEmps = model.DanhSachNhanVien
                 .Concat(extraShiftEmps)
                 .OrderBy(n => n.Ten).ThenBy(n => n.Ho)
                 .ToList();
 
-            // Tải danh sách ca trực hôm nay độc lập.
-            // Bảng "Ca trực hôm nay" nằm ngoài lưới tháng nên trước đây truy vấn
-            // riêng và KHÔNG lọc bộ phận: Quản lý vẫn thấy nhân sự mọi bộ phận
-            // đang trực hôm nay dù lịch tháng đã bị giới hạn.
-            var homNayQuery = _context.PhanCas.AsNoTracking()
-                .Include(p => p.NhanVien).ThenInclude(n => n!.PhongBan)
-                .Include(p => p.NhanVien).ThenInclude(n => n!.ChucVu)
-                .Include(p => p.CaLamViec)
-                .Include(p => p.ChamCong)
-                .Where(p => p.TrangThai != "DA_HUY" && p.NgayLamViec == today);
-
-            if (phamViPhongBanId.HasValue)
+            // Tải danh sách ca trực hôm nay:
+            // Tối ưu: Nếu hôm nay nằm trong lưới 42 ngày và không lọc ca cụ thể,
+            // tái sử dụng trực tiếp allGridPhanCas từ bộ nhớ để triệt tiêu query thừa.
+            if ((!caId.HasValue || caId.Value <= 0) && today >= gridStart && today <= gridEnd)
             {
-                homNayQuery = homNayQuery.Where(p => p.NhanVien != null && p.NhanVien.MaPhongBan == phamViPhongBanId.Value);
+                model.CaTrucHomNay = allGridPhanCas.Where(p => p.NgayLamViec == today).ToList();
             }
+            else
+            {
+                model.CaTrucHomNay = await this.SearchDataAsync($"phanca:today:{today:yyyyMMdd}:scope:{phamViPhongBanId}", () =>
+                {
+                    var homNayQuery = _context.PhanCas.AsNoTracking()
+                        .Include(p => p.NhanVien).ThenInclude(n => n!.PhongBan)
+                        .Include(p => p.NhanVien).ThenInclude(n => n!.ChucVu)
+                        .Include(p => p.CaLamViec)
+                        .Include(p => p.ChamCong)
+                        .Where(p => p.TrangThai != "DA_HUY" && p.NgayLamViec == today);
 
-            model.CaTrucHomNay = await homNayQuery.ToListAsync();
+                    if (phamViPhongBanId.HasValue)
+                    {
+                        homNayQuery = homNayQuery.Where(p => p.NhanVien != null && p.NhanVien.MaPhongBan == phamViPhongBanId.Value);
+                    }
+
+                    return homNayQuery.ToListAsync();
+                });
+            }
 
             // 6. Tính toán thống kê Bento
             model.TongSoCa = model.DanhSachPhanCa.Count;
@@ -303,6 +347,7 @@ public class PhanCaController : Controller
                 {
                     var emp = p.NhanVien;
                     var hasValidContract = emp != null && ContractAttendancePolicy.HasValidContractOn(emp, model.SelectedDate);
+                    var isSwapped = swappedShiftsDict.TryGetValue(p.MaPhanCa, out var swapNote);
                     shiftGroup.Employees.Add(new AgendaEmployeeItem
                     {
                         MaPhanCa = p.MaPhanCa,
@@ -314,7 +359,9 @@ public class PhanCaController : Controller
                         HasActiveContract = hasValidContract,
                         DisabledReason = !hasValidContract ? $"Nhân viên {emp?.HoTen} có hợp đồng hết hạn / chưa có hiệu lực vào ngày {model.SelectedDate:dd/MM/yyyy}." : null,
                         GioTangCaDuKien = p.GioTangCaDuKien,
-                        GhiChuOt = p.GhiChuOt
+                        GhiChuOt = p.GhiChuOt,
+                        DaDoiCa = isSwapped,
+                        ThongTinDoiCa = swapNote
                     });
                 }
 
@@ -420,29 +467,25 @@ public class PhanCaController : Controller
             // đặt được định biên cho bộ phận đó (SaveDinhBien chặn), nên hiển thị chỉ
             // tạo cảm giác sửa được. Chức danh dùng chung (ma_phong_ban NULL) vẫn giữ
             // để còn dòng theo bộ phận của chính họ bên dưới.
-            IQueryable<ChucVu> chucVuQuery = _context.ChucVus.AsNoTracking().Include(c => c.PhongBan);
-            if (phamViPhongBanId.HasValue)
-            {
-                chucVuQuery = chucVuQuery.Where(c => c.MaPhongBan == null || c.MaPhongBan == phamViPhongBanId.Value);
-            }
+            var allChucVus = await this.SearchDataAsync("phanca:positions", () =>
+                _context.ChucVus.AsNoTracking().Include(c => c.PhongBan).OrderBy(c => c.TenChucVu).ToListAsync());
 
-            var chucVus = await chucVuQuery
-                .OrderBy(c => c.TenChucVu)
-                .ToListAsync();
+            var chucVus = phamViPhongBanId.HasValue
+                ? allChucVus.Where(c => c.MaPhongBan == null || c.MaPhongBan == phamViPhongBanId.Value).ToList()
+                : allChucVus;
 
             // Bộ phận thực tế của từng chức danh dùng chung, suy từ nhân sự đang giữ
-            // chức danh đó. Không suy từ chuc_vu vì cột đó NULL đúng theo thiết kế.
-            var phongBanChucVuQuery = _context.NhanViens.AsNoTracking()
-                .Where(n => n.MaChucVu.HasValue && n.MaPhongBan.HasValue);
-            if (phamViPhongBanId.HasValue)
-            {
-                phongBanChucVuQuery = phongBanChucVuQuery.Where(n => n.MaPhongBan == phamViPhongBanId.Value);
-            }
+            // chức danh đó. Tái sử dụng qua bộ đệm SearchListCache.
+            var allSharedPositionDepts = await this.SearchDataAsync("phanca:shared-position-depts", () =>
+                _context.NhanViens.AsNoTracking()
+                    .Where(n => n.MaChucVu.HasValue && n.MaPhongBan.HasValue)
+                    .Select(n => new SharedPositionDept(n.MaChucVu!.Value, n.MaPhongBan!.Value, n.PhongBan!.TenPhongBan))
+                    .Distinct()
+                    .ToListAsync());
 
-            var phongBanTheoChucVuDungChung = await phongBanChucVuQuery
-                .Select(n => new { n.MaChucVu, n.MaPhongBan, TenPhongBan = n.PhongBan!.TenPhongBan })
-                .Distinct()
-                .ToListAsync();
+            var phongBanTheoChucVuDungChung = phamViPhongBanId.HasValue
+                ? allSharedPositionDepts.Where(n => n.MaPhongBan == phamViPhongBanId.Value).ToList()
+                : allSharedPositionDepts;
 
             // Dùng lại danh mục đã nạp ở bước 2 (đã co theo phạm vi) thay vì truy vấn
             // lại toàn bộ bảng — truy vấn lại là đường vòng đưa danh sách đầy đủ trở
@@ -492,11 +535,12 @@ public class PhanCaController : Controller
             }
 
             var dowNames = new[] { "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật" };
-            var allDinhBienNgayInWeek = await _context.DinhBienNgays.AsNoTracking()
-                .Where(d => d.Ngay >= weekStart && d.Ngay <= weekEnd)
-                .Select(d => d.Ngay)
-                .Distinct()
-                .ToListAsync();
+            var allDinhBienNgayInWeek = await this.SearchDataAsync($"phanca:dinhbien:overrides:{weekStart:yyyyMMdd}:{weekEnd:yyyyMMdd}", () =>
+                _context.DinhBienNgays.AsNoTracking()
+                    .Where(d => d.Ngay >= weekStart && d.Ngay <= weekEnd)
+                    .Select(d => d.Ngay)
+                    .Distinct()
+                    .ToListAsync());
             var daysWithOverride = allDinhBienNgayInWeek.ToHashSet();
 
             var weekDayOptions = new List<DinhBienDayOption>();
@@ -577,21 +621,27 @@ public class PhanCaController : Controller
                             : (isPast ? $"Ngày {currentDate:dd/MM/yyyy} trong quá khứ (Đã khóa)" : null),
                         Shifts = model.DanhSachPhanCa
                             .Where(p => p.MaNhanVien == emp.MaNhanVien && p.NgayLamViec == currentDate)
-                            .Select(p => new PhanCaItemDto
+                            .Select(p =>
                             {
-                                MaPhanCa = p.MaPhanCa,
-                                MaCa = p.MaCa,
-                                TenCa = p.CaLamViec?.TenCa ?? "Ca",
-                                GioBatDau = p.CaLamViec?.GioBatDau ?? TimeOnly.MinValue,
-                                GioKetThuc = p.CaLamViec?.GioKetThuc ?? TimeOnly.MinValue,
-                                QuaDem = p.CaLamViec?.QuaDem ?? false,
-                                LoaiCa = p.CaLamViec?.LoaiCa ?? ShiftWorkModes.XOAY_CA,
-                                SacThai = p.CaLamViec?.SacThaiCa ?? "morning",
-                                TrangThai = p.TrangThai,
-                                HasAttendance = p.ChamCong != null,
-                                IsCheckedIn = p.ChamCong != null && p.ChamCong.GioCheckIn.HasValue,
-                                GioTangCaDuKien = p.GioTangCaDuKien,
-                                GhiChuOt = p.GhiChuOt
+                                var isShiftSwapped = swappedShiftsDict.TryGetValue(p.MaPhanCa, out var shiftSwapNote);
+                                return new PhanCaItemDto
+                                {
+                                    MaPhanCa = p.MaPhanCa,
+                                    MaCa = p.MaCa,
+                                    TenCa = p.CaLamViec?.TenCa ?? "Ca",
+                                    GioBatDau = p.CaLamViec?.GioBatDau ?? TimeOnly.MinValue,
+                                    GioKetThuc = p.CaLamViec?.GioKetThuc ?? TimeOnly.MinValue,
+                                    QuaDem = p.CaLamViec?.QuaDem ?? false,
+                                    LoaiCa = p.CaLamViec?.LoaiCa ?? ShiftWorkModes.XOAY_CA,
+                                    SacThai = p.CaLamViec?.SacThaiCa ?? "morning",
+                                    TrangThai = p.TrangThai,
+                                    HasAttendance = p.ChamCong != null,
+                                    IsCheckedIn = p.ChamCong != null && p.ChamCong.GioCheckIn.HasValue,
+                                    GioTangCaDuKien = p.GioTangCaDuKien,
+                                    GhiChuOt = p.GhiChuOt,
+                                    DaDoiCa = isShiftSwapped,
+                                    ThongTinDoiCa = shiftSwapNote
+                                };
                             }).ToList()
                     };
                     row.Days.Add(cell);
@@ -624,19 +674,8 @@ public class PhanCaController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Đang nạp dữ liệu phân ca đồng bộ chuẩn 20 nhân sự và 4 ca Supabase.");
-            PopulateRealSeededSchedule(model, weekStart, weekEnd);
-
-            // Nhánh dự phòng là dữ liệu mẫu cứng của toàn khách sạn, không đi qua bất
-            // kỳ truy vấn nào đã lọc phạm vi. Không cắt lại ở đây thì đúng lúc CSDL
-            // gặp sự cố, Quản lý lại thấy nhiều bộ phận hơn cả lúc hệ thống bình
-            // thường — hỏng ngược chiều và chỉ xảy ra khi khó chẩn đoán nhất.
-            if (phamViPhongBanId.HasValue)
-            {
-                ApDungPhamViLenDuLieuDuPhong(model, phamViPhongBanId.Value);
-            }
-
-            ViewBag.IsDemoData = false;
+            _logger.LogError(ex, "Lỗi khi nạp dữ liệu phân ca cho tuần {WeekStart}.", weekStart);
+            TempData["Error"] = "Không thể tải dữ liệu phân ca từ hệ thống CSDL: " + ex.Message;
             return View(model);
         }
     }
@@ -644,12 +683,15 @@ public class PhanCaController : Controller
     private async Task<EventActor?> EventActorAsync()
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var accountId)) return null;
-        var account = await _context.TaiKhoans.AsNoTracking().Include(a => a.VaiTro).Include(a => a.NhanVien)
-            .SingleOrDefaultAsync(a => a.MaTaiKhoan == accountId && a.TrangThai);
-        var role = account?.VaiTro?.TenVaiTro.ToUpperInvariant() switch
-        { "ADMIN" => "Admin", "HR" => "HR", "MANAGER" => "Manager", _ => "" };
-        return account?.NhanVien?.TrangThai != "DANG_LAM" || role == "" ? null
-            : new EventActor(account.MaNhanVien, account.MaTaiKhoan, role, account.TenDangNhap);
+        return await this.SearchDataAsync($"phanca:actor:{accountId}", async () =>
+        {
+            var account = await _context.TaiKhoans.AsNoTracking().Include(a => a.VaiTro).Include(a => a.NhanVien)
+                .SingleOrDefaultAsync(a => a.MaTaiKhoan == accountId && a.TrangThai);
+            var role = account?.VaiTro?.TenVaiTro.ToUpperInvariant() switch
+            { "ADMIN" => "Admin", "HR" => "HR", "MANAGER" => "Manager", _ => "" };
+            return account?.NhanVien?.TrangThai != "DANG_LAM" || role == "" ? null
+                : new EventActor(account.MaNhanVien, account.MaTaiKhoan, role, account.TenDangNhap);
+        });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -1469,23 +1511,26 @@ public class PhanCaController : Controller
     /// </summary>
     private async Task<List<DinhBienCa>> DocDinhBienCaAsync()
     {
-        try
+        return await this.SearchDataAsync("phanca:dinhbien:baseline", async () =>
         {
-            return await _context.DinhBienCas.AsNoTracking()
-                .Include(d => d.ChucVu)
-                .Include(d => d.PhongBan)
-                .ToListAsync();
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
-        {
-            _logger.LogWarning(ex, "Bảng dinh_bien_ca chưa tồn tại — bỏ qua đối chiếu định biên.");
-            return new List<DinhBienCa>();
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
-        {
-            _logger.LogWarning(ex, "Cột ma_phong_ban chưa có trên dinh_bien_ca — chưa chạy migration 20261026.");
-            return new List<DinhBienCa>();
-        }
+            try
+            {
+                return await _context.DinhBienCas.AsNoTracking()
+                    .Include(d => d.ChucVu)
+                    .Include(d => d.PhongBan)
+                    .ToListAsync();
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                _logger.LogWarning(ex, "Bảng dinh_bien_ca chưa tồn tại — bỏ qua đối chiếu định biên.");
+                return new List<DinhBienCa>();
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+            {
+                _logger.LogWarning(ex, "Cột ma_phong_ban chưa có trên dinh_bien_ca — chưa chạy migration 20261026.");
+                return new List<DinhBienCa>();
+            }
+        });
     }
 
     /// <summary>
@@ -1494,24 +1539,27 @@ public class PhanCaController : Controller
     /// </summary>
     private async Task<List<DinhBienNgay>> DocDinhBienNgayAsync(DateOnly ngay)
     {
-        try
+        return await this.SearchDataAsync($"phanca:dinhbien:day:{ngay:yyyyMMdd}", async () =>
         {
-            return await _context.DinhBienNgays.AsNoTracking()
-                .Include(d => d.ChucVu)
-                .Include(d => d.PhongBan)
-                .Where(d => d.Ngay == ngay)
-                .ToListAsync();
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
-        {
-            _logger.LogWarning(ex, "Bảng dinh_bien_ngay chưa tồn tại — chỉ dùng mức định biên chung.");
-            return new List<DinhBienNgay>();
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
-        {
-            _logger.LogWarning(ex, "Cột ma_phong_ban chưa có trên dinh_bien_ngay — chưa chạy migration 20261026.");
-            return new List<DinhBienNgay>();
-        }
+            try
+            {
+                return await _context.DinhBienNgays.AsNoTracking()
+                    .Include(d => d.ChucVu)
+                    .Include(d => d.PhongBan)
+                    .Where(d => d.Ngay == ngay)
+                    .ToListAsync();
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                _logger.LogWarning(ex, "Bảng dinh_bien_ngay chưa tồn tại — chỉ dùng mức định biên chung.");
+                return new List<DinhBienNgay>();
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+            {
+                _logger.LogWarning(ex, "Cột ma_phong_ban chưa có trên dinh_bien_ngay — chưa chạy migration 20261026.");
+                return new List<DinhBienNgay>();
+            }
+        });
     }
 
     /// <summary>
@@ -1864,431 +1912,4 @@ public class PhanCaController : Controller
         DayOfWeek.Sunday => "Chủ Nhật",
         _ => ""
     };
-
-    private static List<PhanCa> GenerateDemoPhanCas(List<NhanVien> emps, List<CaLamViec> cas, DateOnly weekStart)
-    {
-        var list = new List<PhanCa>();
-        int id = 1;
-        var rand = new Random(42);
-
-        foreach (var emp in emps.Take(12))
-        {
-            for (int i = 0; i < 7; i++)
-            {
-                // Cho nghỉ 1-2 ngày ngẫu nhiên trong tuần
-                if (i == 5 && rand.Next(10) > 4) continue;
-                if (i == 6 && rand.Next(10) > 3) continue;
-
-                // Chỉ bốc ca khớp chế độ làm việc của chức danh, nếu không dữ liệu
-                // demo sẽ vi phạm chính quy tắc mà ValidateWorkMode chặn ở luồng thật.
-                var chucDanh = emps.FirstOrDefault(e => e.MaNhanVien == emp.MaNhanVien)?.ChucVu;
-                var cheDo = chucDanh?.CheDoLamViec ?? ShiftWorkModes.XOAY_CA;
-                var hopLe = cas.Where(c => c.LoaiCa == cheDo).ToList();
-                if (hopLe.Count == 0) continue;
-
-                var ca = hopLe[rand.Next(hopLe.Count)];
-                var date = weekStart.AddDays(i);
-                var start = date.ToDateTime(ca.GioBatDau);
-                var end = ca.QuaDem ? date.AddDays(1).ToDateTime(ca.GioKetThuc) : date.ToDateTime(ca.GioKetThuc);
-
-                list.Add(new PhanCa
-                {
-                    MaPhanCa = id++,
-                    MaNhanVien = emp.MaNhanVien,
-                    NhanVien = emp,
-                    MaCa = ca.MaCa,
-                    CaLamViec = ca,
-                    NgayLamViec = date,
-                    BatDauDuKien = new DateTimeOffset(start, TimeSpan.FromHours(7)),
-                    KetThucDuKien = new DateTimeOffset(end, TimeSpan.FromHours(7)),
-                    TrangThai = date < DateOnly.FromDateTime(DateTime.Today) ? "HOAN_THANH" : "DA_PHAN"
-                });
-            }
-        }
-        return list;
-    }
-
-    private void PopulateRealSeededSchedule(PhanCaIndexViewModel model, DateOnly weekStart, DateOnly weekEnd)
-    {
-        var bod = new PhongBan { MaPhongBan = 1, TenPhongBan = "Ban Giám Đốc (BOD)" };
-        var hrAcc = new PhongBan { MaPhongBan = 2, TenPhongBan = "Bộ phận Nhân sự & Tài chính (HR & ACC)" };
-        var fo = new PhongBan { MaPhongBan = 3, TenPhongBan = "Bộ phận Tiền sảnh (FO - Front Office)" };
-        var hk = new PhongBan { MaPhongBan = 4, TenPhongBan = "Bộ phận Buồng phòng (HK - Housekeeping)" };
-        var fb = new PhongBan { MaPhongBan = 5, TenPhongBan = "Bộ phận Ẩm thực (F&B - Food & Beverage)" };
-        var kit = new PhongBan { MaPhongBan = 6, TenPhongBan = "Bộ phận Bếp (Kitchen / Culinary)" };
-        var eng = new PhongBan { MaPhongBan = 7, TenPhongBan = "Bộ phận Kỹ thuật (ENG - Engineering)" };
-        var sec = new PhongBan { MaPhongBan = 8, TenPhongBan = "Bộ phận An ninh (Security)" };
-
-        model.DanhSachPhongBan = new List<PhongBan> { bod, hrAcc, fo, hk, fb, kit, eng, sec };
-
-        var caSang = new CaLamViec { MaCa = 1, TenCa = "Ca Sáng (Morning Shift)", GioBatDau = new TimeOnly(6, 0), GioKetThuc = new TimeOnly(14, 0), QuaDem = false, GioLamChuan = 8.00m, LoaiCa = ShiftWorkModes.XOAY_CA };
-        var caChieu = new CaLamViec { MaCa = 2, TenCa = "Ca Chiều (Afternoon Shift)", GioBatDau = new TimeOnly(14, 0), GioKetThuc = new TimeOnly(22, 0), QuaDem = false, GioLamChuan = 8.00m, LoaiCa = ShiftWorkModes.XOAY_CA };
-        var caDem = new CaLamViec { MaCa = 3, TenCa = "Ca Đêm (Night Shift)", GioBatDau = new TimeOnly(22, 0), GioKetThuc = new TimeOnly(6, 0), QuaDem = true, GioLamChuan = 8.00m, LoaiCa = ShiftWorkModes.XOAY_CA };
-        var caHanhChinh = new CaLamViec { MaCa = 4, TenCa = "Ca Hành Chính (Office Hours)", GioBatDau = new TimeOnly(7, 0), GioKetThuc = new TimeOnly(17, 0), QuaDem = false, GioLamChuan = 8.00m, LoaiCa = ShiftWorkModes.HANH_CHINH };
-
-        model.DanhSachCa = new List<CaLamViec> { caSang, caChieu, caDem, caHanhChinh };
-
-        var cvGM = new ChucVu { MaChucVu = 1, TenChucVu = "Tổng Giám Đốc (GM)", CheDoLamViec = ShiftWorkModes.HANH_CHINH };
-        var cvHR = new ChucVu { MaChucVu = 2, TenChucVu = "Chuyên viên Nhân sự & Tiền lương (HR & Payroll)", CheDoLamViec = ShiftWorkModes.HANH_CHINH };
-        var cvHead = new ChucVu { MaChucVu = 3, TenChucVu = "Trưởng Bộ Phận (Department Head)" };
-        var cvSup = new ChucVu { MaChucVu = 4, TenChucVu = "Giám Sát Ca (Shift Supervisor)" };
-        var cvRec = new ChucVu { MaChucVu = 5, TenChucVu = "Nhân viên Lễ tân (Receptionist)" };
-        var cvHK = new ChucVu { MaChucVu = 6, TenChucVu = "Nhân viên Buồng phòng (Housekeeper)" };
-        var cvChef = new ChucVu { MaChucVu = 7, TenChucVu = "Bếp Trưởng (Head Chef)" };
-        var cvFB = new ChucVu { MaChucVu = 8, TenChucVu = "Nhân viên Phục vụ (F&B Staff)" };
-        var cvTech = new ChucVu { MaChucVu = 9, TenChucVu = "Kỹ sư Tòa nhà (Technician)" };
-        var cvSec = new ChucVu { MaChucVu = 10, TenChucVu = "Nhân viên An ninh (Security Guard)" };
-
-        var nv1 = new NhanVien { MaNhanVien = 1, Ho = "Nguyễn Đình", Ten = "Cường", PhongBan = bod, MaPhongBan = 1, ChucVu = cvGM, MaChucVu = 1, TrangThai = "DANG_LAM" };
-        var nv2 = new NhanVien { MaNhanVien = 2, Ho = "Võ Huỳnh Minh", Ten = "Sang", PhongBan = hrAcc, MaPhongBan = 2, ChucVu = cvHR, MaChucVu = 2, TrangThai = "DANG_LAM" };
-        var nv3 = new NhanVien { MaNhanVien = 3, Ho = "Nguyễn Hoàng", Ten = "Long", PhongBan = fo, MaPhongBan = 3, ChucVu = cvHead, MaChucVu = 3, TrangThai = "DANG_LAM" };
-        var nv4 = new NhanVien { MaNhanVien = 4, Ho = "Châu Quốc", Ten = "Bảo", PhongBan = fo, MaPhongBan = 3, ChucVu = cvRec, MaChucVu = 5, TrangThai = "DANG_LAM" };
-        var nv5 = new NhanVien { MaNhanVien = 5, Ho = "Trần Thị", Ten = "Mai", PhongBan = hk, MaPhongBan = 4, ChucVu = cvHead, MaChucVu = 3, TrangThai = "DANG_LAM" };
-        var nv6 = new NhanVien { MaNhanVien = 6, Ho = "Lê Văn", Ten = "Hùng", PhongBan = hk, MaPhongBan = 4, ChucVu = cvHK, MaChucVu = 6, TrangThai = "DANG_LAM" };
-        var nv7 = new NhanVien { MaNhanVien = 7, Ho = "Phạm Thị", Ten = "Lan", PhongBan = hk, MaPhongBan = 4, ChucVu = cvHK, MaChucVu = 6, TrangThai = "DANG_LAM" };
-        var nv8 = new NhanVien { MaNhanVien = 8, Ho = "Vũ Minh", Ten = "Tuấn", PhongBan = fb, MaPhongBan = 5, ChucVu = cvHead, MaChucVu = 3, TrangThai = "DANG_LAM" };
-        var nv9 = new NhanVien { MaNhanVien = 9, Ho = "Hoàng Thị", Ten = "Thảo", PhongBan = fb, MaPhongBan = 5, ChucVu = cvSup, MaChucVu = 4, TrangThai = "DANG_LAM" };
-        var nv10 = new NhanVien { MaNhanVien = 10, Ho = "Đỗ Thành", Ten = "Đạt", PhongBan = fb, MaPhongBan = 5, ChucVu = cvFB, MaChucVu = 8, TrangThai = "DANG_LAM" };
-        var nv11 = new NhanVien { MaNhanVien = 11, Ho = "Bùi Văn", Ten = "Nam", PhongBan = kit, MaPhongBan = 6, ChucVu = cvChef, MaChucVu = 7, TrangThai = "DANG_LAM" };
-        var nv12 = new NhanVien { MaNhanVien = 12, Ho = "Đặng Văn", Ten = "Kiên", PhongBan = kit, MaPhongBan = 6, ChucVu = cvSup, MaChucVu = 4, TrangThai = "DANG_LAM" };
-        var nv13 = new NhanVien { MaNhanVien = 13, Ho = "Ngô Thị", Ten = "Bích", PhongBan = kit, MaPhongBan = 6, ChucVu = cvFB, MaChucVu = 8, TrangThai = "DANG_LAM" };
-        var nv14 = new NhanVien { MaNhanVien = 14, Ho = "Trương Quốc", Ten = "Huy", PhongBan = eng, MaPhongBan = 7, ChucVu = cvHead, MaChucVu = 3, TrangThai = "DANG_LAM" };
-        var nv15 = new NhanVien { MaNhanVien = 15, Ho = "Đinh Văn", Ten = "Phong", PhongBan = eng, MaPhongBan = 7, ChucVu = cvTech, MaChucVu = 9, TrangThai = "DANG_LAM" };
-        var nv16 = new NhanVien { MaNhanVien = 16, Ho = "Phan Hồng", Ten = "Quân", PhongBan = eng, MaPhongBan = 7, ChucVu = cvTech, MaChucVu = 9, TrangThai = "DANG_LAM" };
-        var nv17 = new NhanVien { MaNhanVien = 17, Ho = "Lâm Văn", Ten = "Tiến", PhongBan = sec, MaPhongBan = 8, ChucVu = cvHead, MaChucVu = 3, TrangThai = "DANG_LAM" };
-        var nv18 = new NhanVien { MaNhanVien = 18, Ho = "Hà Trọng", Ten = "Nghĩa", PhongBan = sec, MaPhongBan = 8, ChucVu = cvSec, MaChucVu = 10, TrangThai = "DANG_LAM" };
-        var nv19 = new NhanVien { MaNhanVien = 19, Ho = "Đoàn Văn", Ten = "Thắng", PhongBan = sec, MaPhongBan = 8, ChucVu = cvSec, MaChucVu = 10, TrangThai = "DANG_LAM" };
-        var nv20 = new NhanVien { MaNhanVien = 20, Ho = "Dương Thùy", Ten = "Linh", PhongBan = fo, MaPhongBan = 3, ChucVu = cvRec, MaChucVu = 5, TrangThai = "DANG_LAM" };
-
-        model.DanhSachNhanVien = new List<NhanVien>
-        {
-            nv1, nv2, nv3, nv4, nv5, nv6, nv7, nv8, nv9, nv10,
-            nv11, nv12, nv13, nv14, nv15, nv16, nv17, nv18, nv19, nv20
-        };
-
-        // Danh sách phân ca thực tế chuẩn CSDL (chỉ gồm 4 ca thực tế của NV04 Châu Quốc Bảo từ 15/09/2026 đến 18/09/2026)
-        var allActualShifts = new List<PhanCa>
-        {
-            new()
-            {
-                MaPhanCa = 1,
-                MaNhanVien = 4,
-                NhanVien = nv4,
-                MaCa = 1,
-                CaLamViec = caSang,
-                NgayLamViec = new DateOnly(2026, 9, 15),
-                BatDauDuKien = new DateTimeOffset(new DateTime(2026, 9, 15, 6, 0, 0), TimeSpan.FromHours(7)),
-                KetThucDuKien = new DateTimeOffset(new DateTime(2026, 9, 15, 14, 0, 0), TimeSpan.FromHours(7)),
-                TrangThai = "HOAN_THANH"
-            },
-            new()
-            {
-                MaPhanCa = 2,
-                MaNhanVien = 4,
-                NhanVien = nv4,
-                MaCa = 1,
-                CaLamViec = caSang,
-                NgayLamViec = new DateOnly(2026, 9, 16),
-                BatDauDuKien = new DateTimeOffset(new DateTime(2026, 9, 16, 6, 0, 0), TimeSpan.FromHours(7)),
-                KetThucDuKien = new DateTimeOffset(new DateTime(2026, 9, 16, 14, 0, 0), TimeSpan.FromHours(7)),
-                TrangThai = "HOAN_THANH"
-            },
-            new()
-            {
-                MaPhanCa = 3,
-                MaNhanVien = 4,
-                NhanVien = nv4,
-                MaCa = 2,
-                CaLamViec = caChieu,
-                NgayLamViec = new DateOnly(2026, 9, 17),
-                BatDauDuKien = new DateTimeOffset(new DateTime(2026, 9, 17, 14, 0, 0), TimeSpan.FromHours(7)),
-                KetThucDuKien = new DateTimeOffset(new DateTime(2026, 9, 17, 22, 0, 0), TimeSpan.FromHours(7)),
-                TrangThai = "HOAN_THANH"
-            },
-            new()
-            {
-                MaPhanCa = 4,
-                MaNhanVien = 4,
-                NhanVien = nv4,
-                MaCa = 3,
-                CaLamViec = caDem,
-                NgayLamViec = new DateOnly(2026, 9, 18),
-                BatDauDuKien = new DateTimeOffset(new DateTime(2026, 9, 18, 22, 0, 0), TimeSpan.FromHours(7)),
-                KetThucDuKien = new DateTimeOffset(new DateTime(2026, 9, 19, 6, 0, 0), TimeSpan.FromHours(7)),
-                TrangThai = "HOAN_THANH"
-            },
-            // Hai chức danh khối văn phòng trực ca hành chính để bảng "đang trực hôm nay"
-            // có dữ liệu ở cột thứ tư thay vì rỗng khi demo.
-            new()
-            {
-                MaPhanCa = 5,
-                MaNhanVien = 1,
-                NhanVien = nv1,
-                MaCa = 4,
-                CaLamViec = caHanhChinh,
-                NgayLamViec = new DateOnly(2026, 9, 17),
-                BatDauDuKien = new DateTimeOffset(new DateTime(2026, 9, 17, 7, 0, 0), TimeSpan.FromHours(7)),
-                KetThucDuKien = new DateTimeOffset(new DateTime(2026, 9, 17, 17, 0, 0), TimeSpan.FromHours(7)),
-                TrangThai = "DANG_LAM"
-            },
-            new()
-            {
-                MaPhanCa = 6,
-                MaNhanVien = 2,
-                NhanVien = nv2,
-                MaCa = 4,
-                CaLamViec = caHanhChinh,
-                NgayLamViec = new DateOnly(2026, 9, 17),
-                BatDauDuKien = new DateTimeOffset(new DateTime(2026, 9, 17, 7, 0, 0), TimeSpan.FromHours(7)),
-                KetThucDuKien = new DateTimeOffset(new DateTime(2026, 9, 17, 17, 0, 0), TimeSpan.FromHours(7)),
-                TrangThai = "DANG_LAM"
-            }
-        };
-
-        // Lọc ca thuộc tuần đang xem: Chỉ có tuần 15/09 - 21/09/2026 là có 4 ca, các tuần khác chưa phân ca (0 ca)
-        model.AllGridPhanCa = allActualShifts;
-        model.DanhSachPhanCa = allActualShifts
-            .Where(p => p.NgayLamViec >= weekStart && p.NgayLamViec <= weekEnd)
-            .ToList();
-
-        // Ca trực hôm nay luôn lấy đúng ngày thực tế (17/09/2026) bất kể người dùng đang lướt tuần nào
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        model.CaTrucHomNay = allActualShifts
-            .Where(p => p.NgayLamViec == today || p.NgayLamViec == new DateOnly(2026, 9, 17))
-            .ToList();
-
-        model.TongSoCa = model.DanhSachPhanCa.Count;
-        model.TongNhanVien = model.DanhSachNhanVien.Count;
-        model.SoNhanVienDuocPhan = model.DanhSachPhanCa.Select(p => p.MaNhanVien).Distinct().Count();
-
-        var avatarColors = new[] { "#1E3A8A", "#D97706", "#059669", "#7C3AED", "#DB2777", "#2563EB", "#0891B2" };
-        model.Rows = new List<PhanCaMatrixRow>();
-
-        foreach (var emp in model.DanhSachNhanVien)
-        {
-            var row = new PhanCaMatrixRow
-            {
-                MaNhanVien = emp.MaNhanVien,
-                MaPhongBan = emp.MaPhongBan ?? 0,
-                HoTen = $"{emp.Ho} {emp.Ten}".Trim(),
-                TenPhongBan = emp.PhongBan?.TenPhongBan ?? "Khách sạn",
-                TenChucVu = emp.ChucVu?.TenChucVu ?? "Nhân viên",
-                AvatarColor = avatarColors[Math.Abs(emp.MaNhanVien.GetHashCode()) % avatarColors.Length]
-            };
-
-            for (int i = 0; i < 7; i++)
-            {
-                var currentDate = weekStart.AddDays(i);
-                var cell = new PhanCaDayCell
-                {
-                    Date = currentDate,
-                    DayOfWeekName = GetDayOfWeekName(currentDate.DayOfWeek),
-                    IsToday = currentDate == today,
-                    Shifts = model.DanhSachPhanCa
-                        .Where(p => p.MaNhanVien == emp.MaNhanVien && p.NgayLamViec == currentDate)
-                        .Select(p => new PhanCaItemDto
-                        {
-                            MaPhanCa = p.MaPhanCa,
-                            MaCa = p.MaCa,
-                            TenCa = p.CaLamViec?.TenCa ?? "Ca",
-                            GioBatDau = p.CaLamViec?.GioBatDau ?? TimeOnly.MinValue,
-                            GioKetThuc = p.CaLamViec?.GioKetThuc ?? TimeOnly.MinValue,
-                            QuaDem = p.CaLamViec?.QuaDem ?? false,
-                            LoaiCa = p.CaLamViec?.LoaiCa ?? ShiftWorkModes.XOAY_CA,
-                            SacThai = p.CaLamViec?.SacThaiCa ?? "morning",
-                            TrangThai = p.TrangThai
-                        }).ToList()
-                };
-                row.Days.Add(cell);
-            }
-            model.Rows.Add(row);
-        }
-
-        if (model.CalendarDays.Count == 0)
-        {
-            var calYear = model.Year > 0 ? model.Year : today.Year;
-            var calMonth = model.Month > 0 ? model.Month : today.Month;
-            var monthFirst = new DateOnly(calYear, calMonth, 1);
-            int offsetFromMonday = ((int)monthFirst.DayOfWeek + 6) % 7;
-            var gridStart = monthFirst.AddDays(-offsetFromMonday);
-
-            for (int i = 0; i < 42; i++)
-            {
-                var day = gridStart.AddDays(i);
-                var dayShifts = allActualShifts.Where(p => p.NgayLamViec == day).ToList();
-                model.CalendarDays.Add(new CalendarDaySummary
-                {
-                    Date = day,
-                    SoLuotTheoCa = dayShifts
-                        .GroupBy(p => p.MaCa)
-                        .ToDictionary(g => g.Key, g => g.Count()),
-                    IsOtherMonth = day.Month != calMonth,
-                    IsToday = day == today,
-                    IsWeekend = day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday,
-                    IsPast = day < today,
-                    IsSelected = day == model.SelectedDate
-                });
-            }
-        }
-
-        if (model.SelectedAgenda.Shifts.Count == 0)
-        {
-            model.SelectedAgenda = new AgendaDay { Date = model.SelectedDate };
-            foreach (var ca in model.DanhSachCa)
-            {
-                model.SelectedAgenda.Shifts.Add(new AgendaShiftGroup
-                {
-                    MaCa = ca.MaCa,
-                    TenCa = ca.TenCa,
-                    Gio = $"{ca.GioBatDau:HH\\:mm} - {ca.GioKetThuc:HH\\:mm}",
-                    SacThai = ca.SacThaiCa,
-                    LoaiCa = ca.LoaiCa,
-                    QuaDem = ca.QuaDem
-                });
-            }
-        }
-
-        // Dữ liệu popup định biên ở chế độ dự phòng. Bình thường phần này do
-        // nhánh đọc CSDL dựng (mục 8c); khi rơi vào đây mà để trống thì nút
-        // "Định Biên Ca" sẽ mở ra một lưới không có dòng nào — trông như lỗi.
-        // Dùng đúng danh mục chức vụ/ca vừa dựng ở trên để hai nơi khớp nhau.
-        var chucVuDuPhong = model.DanhSachNhanVien
-            .Where(nv => nv.ChucVu != null)
-            .Select(nv => nv.ChucVu!)
-            .GroupBy(cv => cv.MaChucVu)
-            .Select(g => g.First())
-            .OrderBy(cv => cv.TenChucVu)
-            .ToList();
-
-        model.DinhBien = new DinhBienModalViewModel
-        {
-            Ngay = model.SelectedDate,
-            DanhSachCa = model.DanhSachCa,
-            // Hàm này là nhánh dự phòng đồng bộ; danh mục bộ phận lấy từ danh sách
-            // nhân viên đã nạp sẵn thay vì gọi CSDL thêm một lượt.
-            DanhSachPhongBan = model.DanhSachNhanVien
-                .Where(nv => nv.PhongBan != null)
-                .Select(nv => nv.PhongBan!)
-                .GroupBy(p => p.MaPhongBan)
-                .Select(g => g.First())
-                .OrderBy(p => p.TenPhongBan)
-                .ToList(),
-            ReturnWeek = weekStart.ToString("yyyy-MM-dd"),
-            CoQuyenSua = User.HasPermission(PermissionCodes.AssignShifts),
-            Rows = chucVuDuPhong
-                // Chế độ dự phòng dựng theo nhân sự thật, nên đã biết bộ phận của từng
-                // người: chức danh dùng chung sinh một dòng cho mỗi bộ phận có người.
-                .SelectMany(cv =>
-                {
-                    var phongBans = model.DanhSachNhanVien
-                        .Where(nv => nv.MaChucVu == cv.MaChucVu)
-                        .Select(nv => (nv.MaPhongBan, nv.PhongBan?.TenPhongBan))
-                        .Distinct()
-                        .ToList();
-
-                    if (phongBans.Count == 0)
-                    {
-                        phongBans.Add((null, "Dùng chung mọi bộ phận"));
-                    }
-
-                    return phongBans.Select(pb => (cv, pb.MaPhongBan, pb.TenPhongBan));
-                })
-                .Select(x => new DinhBienMatrixRow
-                {
-                    MaChucVu = x.cv.MaChucVu,
-                    MaPhongBan = x.MaPhongBan,
-                    TenChucVu = x.cv.TenChucVu,
-                    TenPhongBan = x.TenPhongBan ?? "Dùng chung mọi bộ phận",
-                    // Chế độ dự phòng không đọc được bảng định biên, nên để trống
-                    // mức nền thay vì bịa số — người dùng thấy rõ là chưa cấu hình.
-                    HienCoTheoCa = model.DanhSachPhanCa
-                        .Where(p => p.NgayLamViec == model.SelectedDate
-                            && p.TrangThai != "VANG_MAT"
-                            && p.NhanVien?.MaChucVu == x.cv.MaChucVu
-                            && (!x.MaPhongBan.HasValue || (p.NhanVien.MaPhongBan ?? p.NhanVien.ChucVu?.MaPhongBan) == x.MaPhongBan.Value))
-                        .GroupBy(p => p.MaCa)
-                        .ToDictionary(g => g.Key, g => g.Count())
-                }).ToList()
-        };
-    }
-
-    /// <summary>
-    /// Cắt dữ liệu dự phòng xuống đúng một bộ phận.
-    ///
-    /// <para>
-    /// <see cref="PopulateRealSeededSchedule"/> dựng thẳng trong bộ nhớ, không qua
-    /// truy vấn nào, nên mọi bộ lọc <c>phamViPhongBanId</c> ở <see cref="Index"/> đều
-    /// bị bỏ qua. Chỉ nhánh <c>catch</c> gọi tới đây — nghĩa là nếu quên, phạm vi sẽ
-    /// vỡ đúng vào lúc CSDL lỗi, khó tái hiện và dễ bị coi là "lỗi tạm thời".
-    /// </para>
-    /// </summary>
-    private static void ApDungPhamViLenDuLieuDuPhong(PhanCaIndexViewModel model, int maPhongBan)
-    {
-        model.DanhSachPhongBan = model.DanhSachPhongBan
-            .Where(p => p.MaPhongBan == maPhongBan)
-            .ToList();
-        model.TenPhamViPhongBan = model.DanhSachPhongBan.FirstOrDefault()?.TenPhongBan;
-
-        model.DanhSachNhanVien = model.DanhSachNhanVien
-            .Where(n => n.MaPhongBan == maPhongBan)
-            .ToList();
-        var nhanVienTrongPhamVi = model.DanhSachNhanVien
-            .Select(n => n.MaNhanVien)
-            .ToHashSet();
-
-        model.AllGridPhanCa = model.AllGridPhanCa
-            .Where(p => nhanVienTrongPhamVi.Contains(p.MaNhanVien))
-            .ToList();
-        model.DanhSachPhanCa = model.DanhSachPhanCa
-            .Where(p => nhanVienTrongPhamVi.Contains(p.MaNhanVien))
-            .ToList();
-        model.CaTrucHomNay = model.CaTrucHomNay
-            .Where(p => nhanVienTrongPhamVi.Contains(p.MaNhanVien))
-            .ToList();
-
-        model.Rows = model.Rows
-            .Where(r => r.MaPhongBan == maPhongBan)
-            .ToList();
-
-        foreach (var day in model.CalendarDays)
-        {
-            var trongNgay = model.AllGridPhanCa
-                .Where(p => p.NgayLamViec == day.Date)
-                .ToList();
-            day.SoLuotTheoCa = trongNgay
-                .GroupBy(p => p.MaCa)
-                .ToDictionary(g => g.Key, g => g.Count());
-            day.ExpiredContractCount = trongNgay.Count(p =>
-                p.NhanVien != null && !ContractAttendancePolicy.HasValidContractOn(p.NhanVien, day.Date));
-            day.HasContractIssue = day.ExpiredContractCount > 0;
-        }
-
-        foreach (var shift in model.SelectedAgenda.Shifts)
-        {
-            shift.Employees = shift.Employees
-                .Where(e => nhanVienTrongPhamVi.Contains(e.MaNhanVien))
-                .ToList();
-        }
-
-        foreach (var row in model.DinhBien.Rows)
-        {
-            row.HienCoTheoCa = model.DanhSachPhanCa
-                .Where(p => p.NgayLamViec == model.SelectedDate
-                    && p.TrangThai != "VANG_MAT"
-                    && p.NhanVien?.MaChucVu == row.MaChucVu
-                    && (!row.MaPhongBan.HasValue || (p.NhanVien.MaPhongBan ?? p.NhanVien.ChucVu?.MaPhongBan) == row.MaPhongBan.Value))
-                .GroupBy(p => p.MaCa)
-                .ToDictionary(g => g.Key, g => g.Count());
-        }
-
-        model.DinhBien.DanhSachPhongBan = model.DanhSachPhongBan;
-        model.DinhBien.Rows = model.DinhBien.Rows
-            .Where(r => r.MaPhongBan == null || r.MaPhongBan == maPhongBan)
-            .ToList();
-
-        model.TongSoCa = model.DanhSachPhanCa.Count;
-        model.TongNhanVien = model.DanhSachNhanVien.Count;
-        model.SoNhanVienDuocPhan = model.DanhSachPhanCa.Select(p => p.MaNhanVien).Distinct().Count();
-        model.TongCaThieuDinhBien = model.SelectedAgenda.Shifts.Count(s => s.ThieuDinhBien);
-    }
 }

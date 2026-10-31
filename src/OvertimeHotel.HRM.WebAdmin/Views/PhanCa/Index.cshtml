@@ -1018,7 +1018,6 @@
                                     // chấm màu co về 0×0 (vô hình).
                                     // Toàn bộ các thẻ ca mặc định luôn thu lại (collapsed) theo yêu cầu người dùng
                                     var dotClass = "phanca-shift-dot-" + shift.SacThai;
-                                    var startCollapsed = true;
                                     <div class="phanca-agenda-shift-card is-collapsed" data-ma-ca="@shift.MaCa">
                                         <div class="phanca-agenda-shift-header">
                                             <div class="phanca-agenda-shift-title phanca-agenda-shift-toggle" onclick="toggleAgendaShiftCard(this)" title="Bấm để thu gọn / mở rộng nhóm ca này">
@@ -1092,6 +1091,12 @@
                                                                     @if (!emp.HasActiveContract)
                                                                     {
                                                                         <span class="badge bg-danger ms-1" style="font-size:9px;" title="@emp.DisabledReason">Hết hạn HĐ</span>
+                                                                    }
+                                                                    @if (emp.DaDoiCa)
+                                                                    {
+                                                                        <span class="badge bg-info-subtle text-info border border-info border-opacity-25 ms-1 fw-bold" style="font-size: 0.72rem; padding: 2px 6px;" title="@emp.ThongTinDoiCa">
+                                                                            <i class="bi bi-arrow-left-right me-0.5"></i>Đổi ca
+                                                                        </span>
                                                                     }
                                                                     @if (emp.CoTangCa)
                                                                     {
@@ -1330,6 +1335,13 @@
                                                                     {
                                                                         <span class="badge bg-danger text-white border border-danger px-1.5 py-0.5 mt-1 ms-1 fw-bold" style="font-size: 0.7rem; line-height: 1.1;" title="Tăng ca: +@shift.GioTangCaDuKien.ToString("0.#")h. @shift.GhiChuOt">
                                                                             <i class="bi bi-clock-history"></i> +@shift.GioTangCaDuKien.ToString("0.#")h OT
+                                                                        </span>
+                                                                    }
+                                                                    @if (shift.DaDoiCa)
+                                                                    {
+                                                                        <span class="badge bg-info-subtle text-info border border-info border-opacity-50 px-1 mt-1 ms-1 fw-bold d-inline-flex align-items-center gap-1"
+                                                                              style="font-size: 0.65rem; line-height: 1.1;" title="@shift.ThongTinDoiCa">
+                                                                            <i class="bi bi-arrow-left-right"></i> Đổi ca
                                                                         </span>
                                                                     }
                                                                 </div>

@@ -78,3 +78,14 @@ $RECYCLE.BIN/
 .npmcache/
 .worktrees/
 plan.md
+
+## ==============================================================================
+## Documentation, Scripts, Tests & Tooling (Khong dua len GitHub)
+## ==============================================================================
+docs/
+docs project/
+scripts/
+tests/
+test/
+tools/
+tool/

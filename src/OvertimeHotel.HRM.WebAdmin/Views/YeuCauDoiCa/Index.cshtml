@@ -22,25 +22,37 @@
     <partial name="_CatalogAlerts" />
 
     <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #0284c7 !important;">
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Chờ đối tác</span>
+                <h3 class="h3 mb-0 fw-bold text-info-emphasis font-serif kpi-count-up" data-target="@Model.ChoNguoiNhan">@Model.ChoNguoiNhan</h3>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
             <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #b45309 !important;">
                 <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Chờ duyệt</span>
                 <h3 class="h3 mb-0 fw-bold text-warning-emphasis font-serif kpi-count-up" data-target="@Model.ChoDuyet">@Model.ChoDuyet</h3>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-4 col-xl-2">
             <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #059669 !important;">
                 <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đã duyệt</span>
                 <h3 class="h3 mb-0 fw-bold text-success font-serif kpi-count-up" data-target="@Model.DaDuyet">@Model.DaDuyet</h3>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-4 col-xl-2">
             <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #dc2626 !important;">
                 <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Từ chối</span>
                 <h3 class="h3 mb-0 fw-bold text-danger font-serif kpi-count-up" data-target="@Model.TuChoi">@Model.TuChoi</h3>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #64748b !important;">
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đã rút</span>
+                <h3 class="h3 mb-0 fw-bold text-secondary font-serif kpi-count-up" data-target="@Model.DaHuy">@Model.DaHuy</h3>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
             <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #1e3a8a !important;">
                 <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Tổng yêu cầu</span>
                 <h3 class="h3 mb-0 fw-bold text-dark font-serif kpi-count-up" data-target="@Model.TongYeuCau">@Model.TongYeuCau</h3>
@@ -225,6 +237,7 @@
 
                     modal?.hide();
                     reload(1);
+                    window.HotelMotion?.refreshSidebarBadges?.();
                 } catch (e) {
                     errorEl.textContent = 'Không kết nối được máy chủ: ' + e.message;
                     errorEl.classList.remove('d-none');

@@ -431,26 +431,60 @@
   }
 
   // -------------------------------------------------------------
-  // 5.6. TỰ ĐỘNG CẬP NHẬT BADGE ĐƠN TỪ CHỜ DUYỆT TRÊN SIDEBAR
+  // 5.6. TỰ ĐỘNG CẬP NHẬT BADGES CHỜ DUYỆT TRÊN SIDEBAR (ĐƠN TỪ, GIẢI TRÌNH, ĐỔI CA)
   // -------------------------------------------------------------
-  function refreshSidebarDonTuBadge() {
-    const badge = document.getElementById('sidebarPendingDonTuBadge');
+  function updateBadgeElement(badgeId, count) {
+    const badge = document.getElementById(badgeId);
     if (!badge) return;
-    fetch('/DonTu/PendingCount')
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (data && typeof data.count === 'number') {
-          badge.textContent = data.count;
-          badge.style.display = data.count > 0 ? '' : 'none';
-        }
-      })
-      .catch(function () { /* ignore when unauthenticated */ });
+    badge.textContent = count;
+    badge.style.display = count > 0 ? '' : 'none';
+  }
+
+  function refreshSidebarBadges() {
+    // 1. Đơn từ
+    const donTuBadge = document.getElementById('sidebarPendingDonTuBadge');
+    if (donTuBadge) {
+      fetch('/DonTu/PendingCount')
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data && typeof data.count === 'number') {
+            updateBadgeElement('sidebarPendingDonTuBadge', data.count);
+          }
+        })
+        .catch(function () { /* ignore when unauthenticated */ });
+    }
+
+    // 2. Giải trình chấm công
+    const giaiTrinhBadge = document.getElementById('sidebarPendingGiaiTrinhBadge');
+    if (giaiTrinhBadge) {
+      fetch('/GiaiTrinhChamCong/PendingCount')
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data && typeof data.count === 'number') {
+            updateBadgeElement('sidebarPendingGiaiTrinhBadge', data.count);
+          }
+        })
+        .catch(function () { /* ignore when unauthenticated */ });
+    }
+
+    // 3. Yêu cầu đổi ca
+    const doiCaBadge = document.getElementById('sidebarPendingDoiCaBadge');
+    if (doiCaBadge) {
+      fetch('/YeuCauDoiCa/PendingCount')
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data && typeof data.count === 'number') {
+            updateBadgeElement('sidebarPendingDoiCaBadge', data.count);
+          }
+        })
+        .catch(function () { /* ignore when unauthenticated */ });
+    }
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', refreshSidebarDonTuBadge);
+    document.addEventListener('DOMContentLoaded', refreshSidebarBadges);
   } else {
-    refreshSidebarDonTuBadge();
+    refreshSidebarBadges();
   }
 
   // -------------------------------------------------------------
@@ -460,7 +494,8 @@
     applyEntrance: applyPowerPointEntrance,
     applyBlurText: applyBlurTextEffect,
     triggerRipple: triggerSlowMoRipple,
-    refreshDonTuBadge: refreshSidebarDonTuBadge
+    refreshDonTuBadge: refreshSidebarBadges,
+    refreshSidebarBadges: refreshSidebarBadges
   };
 
 })();

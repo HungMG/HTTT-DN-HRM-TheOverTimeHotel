@@ -73,7 +73,7 @@ public class YeuCauDoiCaItemViewModel
         "CHO_DUYET" => "Chờ duyệt",
         "DA_DUYET" => "Đã duyệt",
         "TU_CHOI" => "Từ chối",
-        "DA_HUY" => "Đã huỷ",
+        "DA_HUY" => "Đã rút",
         _ => TrangThai
     };
 
@@ -131,6 +131,7 @@ public class GiaiTrinhIndexViewModel
     public int ChoHr { get; set; }
     public int DaDuyet { get; set; }
     public int TuChoi { get; set; }
+    public int DaHuy { get; set; }
 
     /// <summary>Người đang đăng nhập xác minh được ở cấp Quản lý.</summary>
     public bool CoQuyenQuanLy { get; set; }
@@ -191,6 +192,7 @@ public class GiaiTrinhItemViewModel
         "CHO_HR" => "Chờ HR xác nhận",
         "DA_DUYET" => "Đã duyệt",
         "TU_CHOI" => "Từ chối",
+        "DA_HUY" => "Đã rút",
         _ => TrangThai
     };
 
@@ -203,7 +205,9 @@ public class GiaiTrinhItemViewModel
         "CHO_QUAN_LY" => "bg-warning text-dark",
         "CHO_HR" => "bg-info text-dark",
         "DA_DUYET" => "bg-success",
-        _ => "bg-danger"
+        "TU_CHOI" => "bg-danger",
+        "DA_HUY" => "bg-secondary",
+        _ => "bg-secondary"
     };
 
     /// <summary>Cấp 1 còn chờ Quản lý xác minh.</summary>

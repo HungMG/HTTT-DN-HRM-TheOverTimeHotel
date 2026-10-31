@@ -188,6 +188,12 @@ public class AgendaEmployeeItem
     public decimal GioTangCaDuKien { get; set; }
     public string? GhiChuOt { get; set; }
     public bool CoTangCa => GioTangCaDuKien > 0;
+
+    /// <summary>Đánh dấu ca này thuộc giao dịch đổi ca đã được phê duyệt thành công.</summary>
+    public bool DaDoiCa { get; set; }
+
+    /// <summary>Chi tiết nhân sự trực thay / nhường ca.</summary>
+    public string? ThongTinDoiCa { get; set; }
 }
 
 public class AgendaDay
@@ -251,6 +257,12 @@ public class PhanCaItemDto
 
     /// <summary>Ca có phân công làm thêm tăng ca.</summary>
     public bool CoTangCa => GioTangCaDuKien > 0;
+
+    /// <summary>Đánh dấu ca này thuộc giao dịch đổi ca đã được phê duyệt thành công.</summary>
+    public bool DaDoiCa { get; set; }
+
+    /// <summary>Chi tiết nhân sự trực thay / nhường ca.</summary>
+    public string? ThongTinDoiCa { get; set; }
 }
 
 public class CreatePhanCaInputModel

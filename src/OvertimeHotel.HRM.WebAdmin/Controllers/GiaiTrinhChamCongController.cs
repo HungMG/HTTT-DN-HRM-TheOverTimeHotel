@@ -183,6 +183,7 @@ public class GiaiTrinhChamCongController : Controller
             ChoHr = baseQuery.Count(g => g.TrangThai == STATUS_CHO_HR),
             DaDuyet = baseQuery.Count(g => g.TrangThai == STATUS_DA_DUYET),
             TuChoi = baseQuery.Count(g => g.TrangThai == STATUS_TU_CHOI),
+            DaHuy = baseQuery.Count(g => g.TrangThai == STATUS_DA_HUY),
             CoQuyenQuanLy = User.IsInRole("Manager") || User.IsInRole("Admin"),
             CoQuyenHr = laHr,
             PageNumber = pageNumber,
@@ -718,6 +719,43 @@ public class GiaiTrinhChamCongController : Controller
 
     private bool IsAjaxRequest() =>
         string.Equals(Request.Headers.XRequestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// API trả về số lượng giải trình chấm công đang chờ xử lý thực tế của user hiện tại (để cập nhật Badge).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> PendingCount()
+    {
+        var scopeDept = GetManagerDepartmentScope();
+        var laHr = User.IsInRole("HR") || User.IsInRole("IT");
+
+        var query = _context.GiaiTrinhChamCongs.AsNoTracking();
+
+        if (User.IsInRole("Admin"))
+        {
+            query = query.Where(g => g.TrangThai == STATUS_CHO_QUAN_LY || g.TrangThai == STATUS_CHO_HR);
+        }
+        else if (laHr)
+        {
+            query = query.Where(g => g.TrangThai == STATUS_CHO_HR);
+        }
+        else if (User.IsInRole("Manager"))
+        {
+            if (!scopeDept.HasValue || scopeDept.Value <= 0)
+                return Json(new { count = 0 });
+
+            query = query.Where(g => g.TrangThai == STATUS_CHO_QUAN_LY &&
+                                     g.NhanVien != null &&
+                                     g.NhanVien.MaPhongBan == scopeDept.Value);
+        }
+        else
+        {
+            return Json(new { count = 0 });
+        }
+
+        var count = await query.CountAsync();
+        return Json(new { count });
+    }
 
     /// <summary>
     /// Trả kết quả theo đúng đường mà yêu cầu đến: AJAX nhận JSON để cập nhật

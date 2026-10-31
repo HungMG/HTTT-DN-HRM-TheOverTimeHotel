@@ -675,8 +675,31 @@ public class YeuCauDoiCaController : Controller
         new SelectListItem { Value = STATUS_CHO_DUYET, Text = "Chờ duyệt", Selected = selected == STATUS_CHO_DUYET },
         new SelectListItem { Value = STATUS_DA_DUYET, Text = "Đã duyệt", Selected = selected == STATUS_DA_DUYET },
         new SelectListItem { Value = STATUS_TU_CHOI, Text = "Từ chối", Selected = selected == STATUS_TU_CHOI },
-        new SelectListItem { Value = STATUS_DA_HUY, Text = "Đã huỷ", Selected = selected == STATUS_DA_HUY }
+        new SelectListItem { Value = STATUS_DA_HUY, Text = "Đã rút", Selected = selected == STATUS_DA_HUY }
     ];
+
+    /// <summary>
+    /// API trả về số lượng yêu cầu đổi ca đang chờ duyệt (CHO_DUYET) của user hiện tại (để cập nhật Badge).
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> PendingCount()
+    {
+        var scopeDept = GetManagerDepartmentScope();
+        var query = _context.YeuCauDoiCas.AsNoTracking().Where(y => y.TrangThai == STATUS_CHO_DUYET);
+
+        if (scopeDept.HasValue)
+        {
+            if (scopeDept.Value <= 0)
+                return Json(new { count = 0 });
+
+            query = query.Where(y =>
+                (y.NhanVienGui != null && y.NhanVienGui.MaPhongBan == scopeDept.Value) ||
+                (y.NhanVienNhan != null && y.NhanVienNhan.MaPhongBan == scopeDept.Value));
+        }
+
+        var count = await query.CountAsync();
+        return Json(new { count });
+    }
 
     /// <summary>
     /// Bộ phận mà Quản lý được thao tác. <c>null</c> = không giới hạn (HR/Admin/IT).
