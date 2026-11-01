@@ -283,7 +283,7 @@
 
     // 2. Các ô KPI cards, module cards, khung quản trị: Lướt nhẹ từ dưới lên theo nhịp so le
     const boxes = main.querySelectorAll(
-      '.kpi-card, .module-card, .card:not(.hero-luxury-banner), .shift-timeline-item, .motion-stat, .inspector-card, .account-outline-panel, .account-preview-panel, .account-audit-panel, .catalog-kpi-card, .catalog-card, .stat-card'
+      '.kpi-card, .module-card, .card:not(.hero-luxury-banner), .shift-timeline-item, .motion-stat, .inspector-card, .account-outline-panel, .account-preview-panel, .account-audit-panel, .catalog-kpi-card, .catalog-card, .stat-card, .queue-card, .shift-rail-item, .dash-module-strip'
     );
     boxes.forEach(function (box, idx) {
       box.classList.add('pp-box-anim');

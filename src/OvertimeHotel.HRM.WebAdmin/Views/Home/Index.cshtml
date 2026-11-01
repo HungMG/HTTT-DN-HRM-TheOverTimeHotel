@@ -18,8 +18,8 @@
 
 <!-- Bảng điều khiển chỉ dành cho tài khoản đã đăng nhập. HomeController đã gắn
      [Authorize] nên khách cookie trống bị chuyển thẳng sang /Account/Login. -->
-<!-- ═══ CHÀO MỪNG ═══════════════════════════════════════════════════ -->
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+<!-- ═══ CHÀO MỪNG — dải mở, không đóng khung ═════════════════════════ -->
+    <div class="dash-hero d-flex flex-wrap justify-content-between align-items-end gap-3">
         <div>
             <h2 class="page-greeting mb-1">Xin chào, @fullName</h2>
 
@@ -53,213 +53,227 @@
         </div>
     </div>
 
-    <!-- ═══ CHỈ SỐ ĐIỀU HÀNH ═══════════════════════════════════════════ -->
+    <!-- ═══ CHỈ SỐ ĐIỀU HÀNH — dải KPI mỏng, màu viền theo ý nghĩa như trang Nhân viên ══ -->
     <h3 class="page-section-title">Chỉ số điều hành</h3>
-    <div class="row g-3 mb-4">
+    <div class="row g-3 dash-kpi-row">
         <div class="col-sm-6 col-xl-3">
-            <a class="stat-card" asp-controller="NhanVien" asp-action="Index">
-                <div>
+            <a class="stat-card stat-card--blue" asp-controller="NhanVien" asp-action="Index">
+                <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
+                <div class="stat-body">
                     <div class="stat-label">Nhân sự đang làm</div>
                     <div class="stat-figure">
                         <span data-count-to="@Model.NhanVienDangLam">@Model.NhanVienDangLam</span><span class="stat-figure-unit">người</span>
                     </div>
-                </div>
-                <div class="stat-meta">
-                    @if (Model.NhanVienKyTruoc > 0)
-                    {
-                        <span class="@(chuyenDongNhanSu >= 0 ? "stat-delta-up" : "stat-delta-down")">
-                            <i class="bi bi-arrow-@(chuyenDongNhanSu >= 0 ? "up" : "down") me-1"></i>
-                            @Math.Abs(chuyenDongNhanSu) so với kỳ trước
-                        </span>
-                    }
-                    else
-                    {
-                        <span>Chưa có dữ liệu kỳ trước</span>
-                    }
-                </div>
-            </a>
-        </div>
-
-        <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Đúng giờ hôm nay</div>
-                    <div class="stat-figure"><span data-count-to="@tyLeDungGio">@tyLeDungGio</span><span class="stat-figure-unit">%</span></div>
-                </div>
-                <div class="stat-meta">
-                    @Model.ChamCongDungGioHomNay / @Model.BanGhiChamCongHomNay lượt quẹt thẻ
-                    @if (Model.ChamCongDiTreHomNay > 0)
-                    {
-                        <span class="stat-delta-down ms-1">· @Model.ChamCongDiTreHomNay trễ/về sớm</span>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="col-sm-6 col-xl-3">
-            <a class="stat-card" asp-controller="DonTu" asp-action="Index">
-                <div>
-                    <div class="stat-label">Đơn từ chờ duyệt</div>
-                    <div class="stat-figure"><span data-count-to="@Model.DonTuChoDuyet">@Model.DonTuChoDuyet</span><span class="stat-figure-unit">đơn</span></div>
-                </div>
-                <div class="stat-meta">
-                    @if (Model.DonTuChoDuyet > 0)
-                    {
-                        <span class="stat-delta-down">Cần bạn phê duyệt</span>
-                    }
-                    else
-                    {
-                        <span class="stat-delta-up">Đã xử lý hết</span>
-                    }
-                </div>
-            </a>
-        </div>
-
-        <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Quỹ lương @Model.KyLuongHienTai</div>
-                    <div class="stat-figure"><span data-count-to="@Model.QuyLuongKyHienTai.ToString("N0")">@Model.QuyLuongKyHienTai.ToString("N0")</span><span class="stat-figure-unit">đ</span></div>
-                </div>
-                <div class="stat-meta">
-                    @Model.SoPhieuLuongDaDuyet / @Model.SoPhieuLuongKyHienTai phiếu đã duyệt
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ CẦN BẠN XỬ LÝ ═════════════════════════════════════════════ -->
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <h3 class="page-section-title mb-0">Cần bạn xử lý</h3>
-        @if (Model.ChoXuLy.Count > 0)
-        {
-            <span class="badge rounded-pill bg-danger text-white">@Model.ChoXuLy.Count việc</span>
-        }
-    </div>
-
-    <div class="queue-card mb-4">
-        @if (Model.ChoXuLy.Count == 0)
-        {
-            <div class="empty-state">
-                <i class="bi bi-check-circle-fill"></i>
-                <p class="empty-state-title">Không có việc chờ xử lý</p>
-                <p class="mb-0 small">Toàn bộ đơn từ và hợp đồng đều đã được xử lý.</p>
-            </div>
-        }
-        else
-        {
-            foreach (var item in Model.ChoXuLy)
-            {
-                <div class="queue-row">
-                    <span class="queue-dot queue-dot-@item.Severity"></span>
-                    <div class="queue-main">
-                        <p class="queue-title">
-                            @item.Title
-                            <span class="badge rounded-pill bg-light text-secondary border ms-1">@item.CategoryLabel</span>
-                        </p>
-                        <p class="queue-sub">@item.Subtitle</p>
-                    </div>
-                    <div class="queue-actions">
-                        @if (item.ActionUrl is not null)
+                    <div class="stat-meta">
+                        @if (Model.NhanVienKyTruoc > 0)
                         {
-                            <a class="btn btn-sm btn-outline-primary rounded-pill fw-semibold" href="@item.ActionUrl">
-                                Xem
-                            </a>
+                            <span class="@(chuyenDongNhanSu >= 0 ? "stat-delta-up" : "stat-delta-down")">
+                                <i class="bi bi-arrow-@(chuyenDongNhanSu >= 0 ? "up" : "down") me-1"></i>
+                                @Math.Abs(chuyenDongNhanSu) so với kỳ trước
+                            </span>
                         }
                         else
                         {
-                            <span class="badge rounded-pill bg-light text-dark border">@item.Category</span>
+                            <span>Chưa có dữ liệu kỳ trước</span>
                         }
                     </div>
                 </div>
-            }
-        }
-    </div>
+            </a>
+        </div>
 
-    <!-- ═══ ĐỘI HÌNH CA TRỰC ═══════════════════════════════════════════ -->
-    <h3 class="page-section-title">Đội hình ca trực hôm nay · Đang là Ca @Model.CaDangChay</h3>
-    <div class="row g-3 mb-4">
-        @if (Model.CaTrucHomNay.Count == 0)
-        {
-            <div class="col-12">
-                <div class="empty-state">
-                    <i class="bi bi-calendar-x"></i>
-                    <p class="empty-state-title">Hôm nay chưa có ca nào được xếp</p>
-                    <p class="mb-0 small">Hãy mở ma trận phân ca để bố trí nhân sự.</p>
+        <div class="col-sm-6 col-xl-3">
+            <div class="stat-card stat-card--green">
+                <div class="stat-icon"><i class="bi bi-person-check-fill"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Đúng giờ hôm nay</div>
+                    <div class="stat-figure"><span data-count-to="@tyLeDungGio">@tyLeDungGio</span><span class="stat-figure-unit">%</span></div>
+                    <div class="stat-meta">
+                        @Model.ChamCongDungGioHomNay / @Model.BanGhiChamCongHomNay lượt quẹt thẻ
+                        @if (Model.ChamCongDiTreHomNay > 0)
+                        {
+                            <span class="stat-delta-down ms-1">· @Model.ChamCongDiTreHomNay trễ/về sớm</span>
+                        }
+                    </div>
                 </div>
             </div>
-        }
-        else
-        {
-            foreach (var ca in Model.CaTrucHomNay)
-            {
-                <div class="col-sm-4">
-                    <div class="stat-card">
-                        <div>
-                            <div class="d-flex align-items-center justify-content-between mb-1">
-                                <span class="stat-label">@ca.TenCa</span>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <a class="stat-card stat-card--amber" asp-controller="DonTu" asp-action="Index">
+                <div class="stat-icon"><i class="bi bi-envelope-paper-fill"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Đơn từ chờ duyệt</div>
+                    <div class="stat-figure"><span data-count-to="@Model.DonTuChoDuyet">@Model.DonTuChoDuyet</span><span class="stat-figure-unit">đơn</span></div>
+                    <div class="stat-meta">
+                        @if (Model.DonTuChoDuyet > 0)
+                        {
+                            <span class="stat-delta-down">Cần bạn phê duyệt</span>
+                        }
+                        else
+                        {
+                            <span class="stat-delta-up">Đã xử lý hết</span>
+                        }
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="stat-card stat-card--red">
+                <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">Quỹ lương @Model.KyLuongHienTai</div>
+                    <div class="stat-figure"><span data-count-to="@Model.QuyLuongKyHienTai.ToString("N0")">@Model.QuyLuongKyHienTai.ToString("N0")</span><span class="stat-figure-unit">đ</span></div>
+                    <div class="stat-meta">
+                        @Model.SoPhieuLuongDaDuyet / @Model.SoPhieuLuongKyHienTai phiếu đã duyệt
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ VÙNG MỞ CHÍNH — hàng chờ xử lý (trái) + đội hình ca trực (phải) ══
+         Hai vùng nằm cạnh nhau theo tỷ lệ 8/4 nên trang đọc hết trong một màn
+         hình, không còn dải ngang full-width xếp chồng dài cũ. -->
+    <div class="row g-4 dash-main-grid">
+
+        <!-- ── Cột trái: Cần bạn xử lý ─────────────────────────────────── -->
+        <div class="col-lg-8">
+            <div class="d-flex align-items-center justify-content-between dash-col-head">
+                <h3 class="page-section-title mb-0">Cần bạn xử lý</h3>
+                @if (Model.ChoXuLy.Count > 0)
+                {
+                    <span class="badge rounded-pill bg-danger text-white">@Model.ChoXuLy.Count việc</span>
+                }
+            </div>
+
+            <div class="queue-card">
+                @if (Model.ChoXuLy.Count == 0)
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <p class="empty-state-title">Không có việc chờ xử lý</p>
+                        <p class="mb-0 small">Toàn bộ đơn từ và hợp đồng đều đã được xử lý.</p>
+                    </div>
+                }
+                else
+                {
+                    foreach (var item in Model.ChoXuLy)
+                    {
+                        <div class="queue-row">
+                            <span class="queue-dot queue-dot-@item.Severity"></span>
+                            <div class="queue-main">
+                                <p class="queue-title">
+                                    @item.Title
+                                    <span class="badge rounded-pill bg-light text-secondary border ms-1">@item.CategoryLabel</span>
+                                </p>
+                                <p class="queue-sub">@item.Subtitle</p>
+                            </div>
+                            <div class="queue-actions">
+                                @if (item.ActionUrl is not null)
+                                {
+                                    <a class="btn btn-sm btn-outline-primary rounded-pill fw-semibold" href="@item.ActionUrl">
+                                        Xem
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="badge rounded-pill bg-light text-dark border">@item.Category</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- ── Cột phải: Đội hình ca trực hôm nay dạng rail gọn ────────── -->
+        <div class="col-lg-4">
+            <div class="d-flex align-items-center justify-content-between dash-col-head">
+                <h3 class="page-section-title mb-0">Đội hình ca trực</h3>
+                @if (Model.CaTrucHomNay.Count > 0)
+                {
+                    <span class="dash-running-shift">Đang là Ca @Model.CaDangChay</span>
+                }
+            </div>
+
+            <div class="shift-rail">
+                @if (Model.CaTrucHomNay.Count == 0)
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-calendar-x"></i>
+                        <p class="empty-state-title">Hôm nay chưa có ca nào được xếp</p>
+                        <p class="mb-0 small">Hãy mở ma trận phân ca để bố trí nhân sự.</p>
+                    </div>
+                }
+                else
+                {
+                    foreach (var ca in Model.CaTrucHomNay)
+                    {
+                        <div class="shift-rail-item">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <span class="shift-rail-name">@ca.TenCa</span>
                                 @if (ca.IsCurrent)
                                 {
                                     <span class="badge rounded-pill bg-warning text-dark">Đang trực</span>
                                 }
                             </div>
-                            <div class="stat-figure">
-                                <span data-count-to="@ca.DaCheckIn">@ca.DaCheckIn</span><span style="color: #cbd5e1;">/@ca.TongSo</span>
+                            <div class="d-flex align-items-baseline justify-content-between gap-2 mt-1">
+                                <span class="shift-rail-time">@ca.Gio</span>
+                                <span class="shift-rail-count">
+                                    <span data-count-to="@ca.DaCheckIn">@ca.DaCheckIn</span><span class="shift-rail-count-total">/@ca.TongSo</span>
+                                </span>
                             </div>
                             <div class="shift-progress">
                                 <div class="shift-progress-bar"
                                      style="width: @(ca.TongSo > 0 ? (decimal)ca.DaCheckIn / ca.TongSo * 100 : 0)%"></div>
                             </div>
                         </div>
-                        <div class="stat-meta">@ca.Gio</div>
-                    </div>
-                </div>
-            }
-        }
+                    }
+                }
+            </div>
+        </div>
     </div>
 
-    <!-- ═══ PHÂN HỆ ĐANG MỞ RỘNG ═══════════════════════════════════════ -->
-    <h3 class="page-section-title">Phân hệ đang mở rộng</h3>
-    <div class="row g-3">
-        <div class="col-md-4">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Chấm công quẹt thẻ</div>
-                    <p class="queue-sub mt-2 mb-0">
-                        Kiểm toán vị trí GPS và Wi-Fi đã chạy trên ứng dụng di động.
-                        Màn hình tra cứu trên web đang được phát triển.
-                    </p>
-                </div>
+    <!-- ═══ PHÂN HỆ ĐANG MỞ RỘNG — một dải mở liền mạch ════════════════ -->
+    <h3 class="page-section-title dash-module-title">Phân hệ đang mở rộng</h3>
+    <div class="dash-module-strip">
+        <div class="dash-module-cell">
+            <div class="dash-module-icon"><i class="bi bi-credit-card-2-front"></i></div>
+            <div>
+                <div class="stat-label">Chấm công quẹt thẻ</div>
+                <p class="dash-module-desc">
+                    Kiểm toán vị trí GPS và Wi-Fi đã chạy trên ứng dụng di động.
+                    Màn hình tra cứu trên web đang được phát triển.
+                </p>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Phiếu lương &amp; báo cáo</div>
-                    <p class="queue-sub mt-2 mb-0">
-                        Công thức lương hai tầng Gross → Net đã hoàn thiện.
-                        Sáu báo cáo phân tích nhân sự, quỹ lương và chuyên cần đã có trên Web Admin.
-                        Xuất phiếu lương PDF bằng QuestPDF đang được phát triển.
-                    </p>
-                    @if (canViewReports)
-                    {
-                        <a class="btn btn-sm btn-outline-primary rounded-pill fw-semibold mt-3"
-                           asp-controller="BaoCao" asp-action="Index">
-                            <i class="bi bi-bar-chart-line-fill me-1"></i> Mở Báo cáo &amp; Thống kê
-                        </a>
-                    }
-                </div>
+        <div class="dash-module-cell">
+            <div class="dash-module-icon"><i class="bi bi-cash-stack"></i></div>
+            <div>
+                <div class="stat-label">Phiếu lương &amp; báo cáo</div>
+                <p class="dash-module-desc">
+                    Công thức lương hai tầng Gross → Net đã hoàn thiện.
+                    Sáu báo cáo phân tích nhân sự, quỹ lương và chuyên cần đã có trên Web Admin.
+                    Xuất phiếu lương PDF bằng QuestPDF đang được phát triển.
+                </p>
+                @if (canViewReports)
+                {
+                    <a class="btn btn-sm btn-outline-primary rounded-pill fw-semibold mt-2"
+                       asp-controller="BaoCao" asp-action="Index">
+                        <i class="bi bi-bar-chart-line-fill me-1"></i> Mở Báo cáo &amp; Thống kê
+                    </a>
+                }
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="stat-card">
-                <div>
-                    <div class="stat-label">Nhật ký quản trị</div>
-                    <p class="queue-sub mt-2 mb-0">
-                        Bảng kiểm toán đã ghi nhận thao tác của quản trị viên.
-                        Màn hình tra cứu đang được phát triển.
-                    </p>
-                </div>
+        <div class="dash-module-cell">
+            <div class="dash-module-icon"><i class="bi bi-shield-check"></i></div>
+            <div>
+                <div class="stat-label">Nhật ký quản trị</div>
+                <p class="dash-module-desc">
+                    Bảng kiểm toán đã ghi nhận thao tác của quản trị viên.
+                    Màn hình tra cứu đang được phát triển.
+                </p>
             </div>
         </div>
     </div>

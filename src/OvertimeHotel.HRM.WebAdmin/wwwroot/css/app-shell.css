@@ -555,37 +555,51 @@ body:has(.app-shell) { margin-bottom: 0; }
 }
 
 /* ── Thẻ chỉ số ──────────────────────────────────────────────────────── */
+/* Cùng ngôn ngữ thị giác với .catalog-kpi-card ở trang Nhân viên: viền đỉnh
+   màu ý nghĩa + icon pastel vuông bo góc, hover nâng thẻ với bóng sâu. */
 .stat-card {
   position: relative;
   overflow: hidden;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 16px 18px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 18px 20px;
   height: 100%;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 2px 10px -4px rgba(15, 23, 42, .07);
   transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
 }
 
-/* Vạch vàng mảnh trên đỉnh thẻ, nở ra khi rê chuột */
-.stat-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 3px;
-  width: 38px;
-  background: linear-gradient(90deg, var(--hotel-gold), var(--hotel-gold-light));
-  transition: width .32s cubic-bezier(.22, 1, .36, 1);
-}
+/* Vạch màu đậm trên đỉnh thẻ theo ý nghĩa chỉ số */
+.stat-card--blue  { border-top: 5px solid #2563eb; }
+.stat-card--green { border-top: 5px solid #16a34a; }
+.stat-card--amber { border-top: 5px solid #d97706; }
+.stat-card--red   { border-top: 5px solid #dc2626; }
 
-a.stat-card:hover::before,
-.stat-card:hover::before { width: 100%; }
+.stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(15, 23, 42, .1); }
 
 a.stat-card { text-decoration: none; }
-a.stat-card:hover { border-color: #93c5fd; transform: translateY(-3px); box-shadow: 0 10px 22px -6px rgba(15, 23, 42, .1); }
+
+/* Icon pastel vuông bo góc, màu theo thẻ */
+.stat-icon {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.stat-card--blue .stat-icon { background: #eff6ff; color: #2563eb; }
+.stat-card--green .stat-icon { background: #f0fdf4; color: #16a34a; }
+.stat-card--amber .stat-icon { background: #fffbeb; color: #b45309; }
+.stat-card--red .stat-icon { background: #fef2f2; color: #dc2626; }
+
+.stat-body { flex: 1 1 auto; min-width: 0; }
 
 .stat-label {
   font-size: .7rem;
@@ -614,8 +628,9 @@ a.stat-card:hover { border-color: #93c5fd; transform: translateY(-3px); box-shad
 .queue-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 2px 10px -4px rgba(15, 23, 42, .07);
 }
 
 .queue-row {
@@ -623,13 +638,13 @@ a.stat-card:hover { border-color: #93c5fd; transform: translateY(-3px); box-shad
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 18px;
+  padding: 15px 20px;
   border-bottom: 1px solid #f1f5f9;
   transition: background .18s ease, padding-left .18s ease;
 }
 
 .queue-row:last-child { border-bottom: 0; }
-.queue-row:hover { background: #f8fafc; padding-left: 22px; }
+.queue-row:hover { background: #f8fafc; padding-left: 24px; }
 
 .queue-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
 .queue-dot-danger { background: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, .14); }
@@ -642,7 +657,7 @@ a.stat-card:hover { border-color: #93c5fd; transform: translateY(-3px); box-shad
 .queue-wait { font-size: .74rem; font-weight: 700; color: #dc2626; white-space: nowrap; }
 .queue-actions { display: flex; gap: 6px; flex: 0 0 auto; }
 
-/* ── Thanh tiến độ quẹt thẻ trong thẻ ca trực ───────────────────────── */
+/* ── Thanh tiến độ quẹt thẻ trong rail ca trực ───────────────────────── */
 .shift-progress {
   height: 5px;
   border-radius: 999px;
@@ -658,6 +673,121 @@ a.stat-card:hover { border-color: #93c5fd; transform: translateY(-3px); box-shad
   transition: width .6s cubic-bezier(.22, 1, .36, 1);
 }
 
+/* ── Bố cục mở của bàn làm việc ──────────────────────────────────────── */
+/* Dải chào mừng: nội dung trần không đóng khung, chỉ chừa khoảng thở dưới */
+.dash-hero { margin-bottom: 26px; }
+
+/* Hàng KPI và vùng mở chính được đẩy xuống bằng lề riêng để nhịp dọc
+   đồng đều (26px giữa hero → KPI → vùng chính), không phụ thuộc utility */
+.dash-kpi-row { margin-bottom: 26px; }
+.dash-main-grid { margin-bottom: 6px; }
+
+/* Hai cột của vùng mở chính kéo dài theo chiều cao nhau: thẻ hàng chờ và
+   rail ca trực luôn bằng độ cao, không còn khoảng nền trống lệch hai bên */
+.dash-main-grid > .col-lg-8,
+.dash-main-grid > .col-lg-4 {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-main-grid .queue-card,
+.dash-main-grid .shift-rail { flex: 1 1 auto; }
+
+/* Đầu mỗi cột: tiêu đề + nhãn bên phải, thở 12px trước thẻ nội dung */
+.dash-col-head { margin-bottom: 12px; }
+
+/* Nhãn "Đang là Ca ..." cạnh tiêu đề section đội hình ca trực */
+.dash-running-shift {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--hotel-gold-dark);
+  background: rgba(212, 175, 55, .12);
+  border: 1px solid rgba(212, 175, 55, .35);
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* Rail đội hình ca trực: một tấm duy nhất chia vạch mảnh theo từng ca,
+   thay cho hàng thẻ lớn từng boxed riêng lẻ gây khoảng lệch khi xuống dòng */
+.shift-rail {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 8px 20px;
+  box-shadow: 0 2px 10px -4px rgba(15, 23, 42, .07);
+}
+
+.shift-rail-item {
+  padding: 14px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.shift-rail-item:last-child { border-bottom: 0; }
+
+.shift-rail-name {
+  font-family: var(--font-display);
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--hotel-navy);
+}
+
+.shift-rail-time { font-size: .76rem; color: #64748b; }
+
+.shift-rail-count {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--hotel-navy);
+  line-height: 1;
+}
+
+.shift-rail-count-total { font-size: .85rem; font-weight: 500; color: #94a3b8; }
+
+/* ── Dải phân hệ đang mở rộng: một tấm liền, 3 ô chia vạch dọc ───────── */
+.dash-module-title { margin-top: 26px; }
+
+.dash-module-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 8px 0;
+  box-shadow: 0 2px 10px -4px rgba(15, 23, 42, .07);
+}
+
+.dash-module-cell {
+  display: flex;
+  gap: 13px;
+  padding: 18px 22px;
+  border-left: 1px solid #f1f5f9;
+  min-width: 0;
+}
+
+.dash-module-cell:first-child { border-left: 0; }
+
+.dash-module-icon {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  color: var(--hotel-gold-dark);
+  background: rgba(212, 175, 55, .12);
+  border: 1px solid rgba(212, 175, 55, .28);
+}
+
+.dash-module-desc {
+  font-size: .78rem;
+  color: #64748b;
+  margin: 6px 0 0;
+  line-height: 1.55;
+}
+
 /* ── Trạng thái rỗng ─────────────────────────────────────────────────── */
 .empty-state {
   text-align: center;
@@ -671,7 +801,7 @@ a.stat-card:hover { border-color: #93c5fd; transform: translateY(-3px); box-shad
 /* ── Lời chào trên dashboard ─────────────────────────────────────────── */
 .page-greeting {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.42rem;
   font-weight: 700;
   color: var(--hotel-navy);
   margin: 0 0 6px;
@@ -700,4 +830,16 @@ a.stat-card:hover { border-color: #93c5fd; transform: translateY(-3px); box-shad
   .app-content { padding: 16px; }
   /* Footer phải theo đúng lề của .app-content, nếu không sẽ lệch 8px */
   .app-shell > .app-main > footer { padding-inline: 16px; }
+
+  /* Bố cục mở của bàn làm việc xếp chồng dọc khi hẹp màn hình:
+     rail ca trực trượt xuống dưới hàng chờ xử lý, dải phân hệ
+     chuyển thành 1 cột với vạch phân cách ngang. */
+  .dash-hero { margin-bottom: 18px; }
+  .dash-kpi-row { margin-bottom: 18px; }
+  .dash-module-title { margin-top: 18px; }
+  .page-greeting { font-size: 1.22rem; }
+
+  .dash-module-strip { grid-template-columns: 1fr; padding: 2px 0; }
+  .dash-module-cell { border-left: 0; border-top: 1px solid #f1f5f9; padding: 14px 18px; }
+  .dash-module-cell:first-child { border-top: 0; }
 }
