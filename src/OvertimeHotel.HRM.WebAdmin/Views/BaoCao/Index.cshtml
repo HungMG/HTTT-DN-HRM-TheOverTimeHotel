@@ -26,52 +26,26 @@
 
     <partial name="_CatalogAlerts" />
 
-    <!-- ═════════════ THANH TIÊU ĐỀ ═════════════
-         Đường dẫn về Bàn làm việc: hai trang bổ trợ nhau — Bàn làm việc là việc
-         phải xử lý hôm nay, còn trang này là xu hướng theo kỳ. -->
-    <nav class="baocao-breadcrumb" aria-label="Đường dẫn">
-        <a asp-controller="Home" asp-action="Index">
-            <i class="bi bi-speedometer2 me-1"></i>Bàn làm việc
-        </a>
-        <i class="bi bi-chevron-right baocao-breadcrumb-sep"></i>
-        <span aria-current="page">Báo cáo &amp; Thống kê</span>
-    </nav>
-
-    <header class="baocao-hero">
-        <div class="baocao-hero-text">
-            <div class="baocao-hero-eyebrow">
-                <i class="bi bi-bar-chart-line-fill"></i>
-                <span>Phân hệ Báo cáo &amp; Thống kê Quản trị</span>
-                <span class="baocao-hero-dot">&bull;</span>
-                <span>@Model.NhanKy</span>
-            </div>
-            <h1 class="baocao-hero-title hotel-blur-text">
-                Phân tích nghiệp vụ nhân sự
-            </h1>
-            <p class="baocao-hero-sub">
-                Sáu báo cáo phân tích theo <strong>@Model.PhamViLabel</strong> — số liệu tổng hợp
-                trực tiếp từ CSDL Supabase, không qua bảng sao lưu trung gian.
-            </p>
-        </div>
-
-        <div class="baocao-hero-actions">
-            <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold"
-                    data-baocao-export
-                    title="Tải số liệu của tab đang mở ra tệp CSV mở bằng Excel">
-                <i class="bi bi-file-earmark-excel me-1"></i> Xuất CSV
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-success rounded-3 px-3 fw-semibold"
-                    data-baocao-export-excel
-                    title="Tải số liệu của tab đang mở ra tệp Excel (.xls) có định dạng và màu sắc">
-                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Xuất Excel
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold"
-                    data-baocao-print
-                    title="In báo cáo đang xem theo khổ A4 hoặc lưu PDF">
-                <i class="bi bi-printer me-1"></i> In / PDF
-            </button>
-        </div>
-    </header>
+    <!-- ═════════════ THANH NÚT XUẤT ═════════════
+         Breadcrumb và khung hero bo tròn đã bỏ theo yêu cầu: trang bắt đầu
+         thẳng bằng hàng nút xuất, nội dung dưới được đẩy sát lên trên. -->
+    <div class="baocao-export-row">
+        <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold"
+                data-baocao-export
+                title="Tải số liệu của tab đang mở ra tệp CSV mở bằng Excel">
+            <i class="bi bi-file-earmark-excel me-1"></i> Xuất CSV
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-success rounded-3 px-3 fw-semibold"
+                data-baocao-export-excel
+                title="Tải số liệu của tab đang mở ra tệp Excel (.xls) có định dạng và màu sắc">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Xuất Excel
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold"
+                data-baocao-print
+                title="In báo cáo đang xem theo khổ A4 hoặc lưu PDF">
+            <i class="bi bi-printer me-1"></i> In / PDF
+        </button>
+    </div>
 
     <!-- ═════════════ BỘ LỌC KỲ & PHẠM VI ═════════════
          Mọi thao tác trên thanh này cập nhật TẠI CHỖ: JS chặn submit, gọi AJAX rồi chỉ

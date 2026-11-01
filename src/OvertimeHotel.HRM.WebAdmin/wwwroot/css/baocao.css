@@ -17,99 +17,15 @@
   gap: 1.25rem;
 }
 
-/* ── 1. Thanh tiêu đề ──────────────────────────────────────────────────── */
+/* ── 1. Hàng nút xuất ──────────────────────────────────────────────────── */
 
-/* Đường dẫn về Bàn làm việc. Bám token màu chung, không thêm mã màu mới. */
-.baocao-breadcrumb {
+/* Breadcrumb và khung hero bo tròn đã bỏ: trang mở đầu thẳng bằng hàng nút
+   xuất trần, căn phải như vị trí cũ. Khoảng cách tới bộ lọc do gap của
+   .baocao-page (flex column) đảm nhiệm, không thêm margin thủ công. */
+.baocao-export-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.baocao-breadcrumb a {
-  display: inline-flex;
-  align-items: center;
-  color: var(--hotel-royal, #1e3a8a);
-  text-decoration: none;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  transition: background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.baocao-breadcrumb a:hover {
-  background: rgba(30, 58, 138, 0.07);
-}
-
-.baocao-breadcrumb a:focus-visible {
-  outline: 2px solid var(--hotel-royal, #1e3a8a);
-  outline-offset: 2px;
-}
-
-.baocao-breadcrumb-sep {
-  font-size: 0.65rem;
-  color: #cbd5e1;
-}
-
-.baocao-hero {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.5rem 1.75rem;
-  border-radius: 1.25rem;
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  background:
-    radial-gradient(120% 140% at 0% 0%, rgba(30, 58, 138, 0.06) 0%, transparent 55%),
-    linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px -22px rgba(15, 23, 42, 0.28);
-}
-
-.baocao-hero-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--hotel-royal, #1e3a8a);
-  margin-bottom: 0.5rem;
-}
-
-.baocao-hero-eyebrow i {
-  color: var(--hotel-gold, #d4af37);
-}
-
-.baocao-hero-dot {
-  color: #cbd5e1;
-}
-
-.baocao-hero-title {
-  font-family: var(--font-display, Georgia, serif);
-  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.15rem);
-  font-weight: 700;
-  line-height: 1.15;
-  color: var(--hotel-navy, #0f172a);
-  margin: 0 0 0.4rem;
-}
-
-.baocao-hero-sub {
-  margin: 0;
-  max-width: 62ch;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: #475569;
-}
-
-.baocao-hero-actions {
-  display: flex;
-  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.5rem;
 }
 
@@ -502,10 +418,6 @@
 /* ── 8. Thu gọn khoảng cách khi màn hình hẹp ───────────────────────────── */
 
 @media (max-width: 767.98px) {
-  .baocao-hero {
-    padding: 1.15rem 1.1rem;
-  }
-
   .baocao-field--action {
     margin-left: 0;
     width: 100%;
@@ -515,14 +427,19 @@
     margin-left: 0;
     width: 100%;
   }
+
+  /* Hàng nút xuất chiếm trọn hàng và căn trái khi hẹp, dễ chạm hơn */
+  .baocao-export-row {
+    justify-content: flex-start;
+  }
 }
 
 /* ── 9. Bản in A4 ──────────────────────────────────────────────────────── */
 
 @media print {
-  .baocao-hero-actions,
+  /* Nút xuất và bộ lọc là thao tác màn hình, không in ra giấy */
+  .baocao-export-row,
   .baocao-filter-card,
-  .baocao-breadcrumb,
   .app-sidebar,
   .app-topbar,
   .baocao-loading,
@@ -535,8 +452,7 @@
   }
 
   .catalog-card,
-  .catalog-kpi-card,
-  .baocao-hero {
+  .catalog-kpi-card {
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
     break-inside: avoid;
@@ -547,7 +463,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .baocao-tab,
-  .baocao-breadcrumb a,
   .baocao-board-host.is-loading [data-baocao-board] {
     transition: none;
   }
