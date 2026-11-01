@@ -54,7 +54,7 @@
 
 .event-workspace {
   display: grid;
-  grid-template-columns: minmax(0,1fr);
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 18px;
   align-items: start;
 }
@@ -316,8 +316,16 @@
   color: #aab1bc;
 }
 
+/* Ô hôm nay: nền vàng champagne rất nhạt + viền gold nội tại để nổi bật,
+   không lấn át ô đang chọn về độ chói. Vừa today vừa selected thì today
+   thắng (khai báo sau is-selected) vì "hôm nay" quan trọng hơn khi quét mắt. */
+.event-day.is-today {
+  background: rgba(212, 175, 55, .08);
+  box-shadow: inset 0 0 0 1.5px rgba(212, 175, 55, .5);
+}
+
 .event-day.is-today .event-day-number {
-  color: #254d7d;
+  color: var(--hotel-gold-dark, #b8860b);
   font-weight: 800;
 }
 
@@ -329,7 +337,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #4975aa;
+  background: var(--hotel-gold-dark, #b8860b);
 }
 
 .event-calendar-chip {
@@ -337,8 +345,8 @@
   padding: 5px 8px;
   margin-bottom: 4px;
   border-radius: 6px;
-  background: #eef3fb;
-  color: #354f70;
+  background: #eff6ff;
+  color: #1d4ed8;
   text-decoration: none;
   font-size: 12px;
   line-height: 1.4;
@@ -381,24 +389,32 @@
   font-weight: 500;
 }
 
+/* Bảng màu chip đồng bộ token pastel của catalog-kpi-card (catalog.css):
+   xanh dương = lên kế hoạch, xanh lá = đang diễn ra, vàng = chờ nghiệm thu,
+   chàm/indigo = hoàn thành, xám = đã hủy. Legend dưới lịch phải khớp 1-1. */
+.event-chip-LEN_KE_HOACH {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .event-chip-DANG_DIEN_RA {
-  background: #e4eee5;
-  color: #416a49;
+  background: #f0fdf4;
+  color: #15803d;
 }
 
 .event-chip-CHO_NGHIEM_THU {
-  background: #f8edce;
-  color: #8b6b28;
+  background: #fffbeb;
+  color: #b45309;
 }
 
 .event-chip-HOAN_THANH {
-  background: #e9e7f0;
-  color: #6b5b85;
+  background: #eef2ff;
+  color: #4338ca;
 }
 
 .event-chip-HUY {
-  background: #f0e9e7;
-  color: #8c736d;
+  background: #f8fafc;
+  color: #94a3b8;
 }
 
 .event-calendar-foot {
@@ -408,14 +424,35 @@
   gap: 16px;
   padding-top: 14px;
   font-size: 12px;
-  color: #7d8795;
+  /* Đậm hơn pastel xám cũ (#7d8795) để nhãn chú giải đọc được ngay */
+  color: #52616f;
 }
 
-.event-calendar-foot i {
-  font-size: 8px;
-  vertical-align: middle;
-  margin-right: 4px;
+/* Chấm chú giải kế thừa nền pastel của chính class chip nên luôn khớp 1-1
+   với màu hiển thị trên lịch, kể cả khi bảng màu chip đổi sau này */
+.event-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
+
+.event-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: 0 0 10px;
+  /* Chấm chú giải phải nhìn ra ngay: dùng màu đặc của trạng thái thay vì
+     nền pastel của chip (pastel quá nhạt trên nền trắng lịch). Bảng màu đậm
+     bám token catalog: blue/green/amber/indigo/slate. */
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .15);
+}
+
+.event-legend-swatch.event-chip-LEN_KE_HOACH { background: #2563eb; }
+.event-legend-swatch.event-chip-DANG_DIEN_RA { background: #16a34a; }
+.event-legend-swatch.event-chip-CHO_NGHIEM_THU { background: #d97706; }
+.event-legend-swatch.event-chip-HOAN_THANH { background: #4f46e5; }
+.event-legend-swatch.event-chip-HUY { background: #94a3b8; }
 
 .event-calendar-foot small {
   margin-left: auto;
@@ -423,28 +460,28 @@
   color: #8b94a1;
 }
 
+/* Panel chi tiết ngày đã chọn: cột phải bên cạnh lịch (thay cho dải ngang
+   bên dưới cũ). Bấm ngày nào trên lịch, chi tiết hiện ngay tại đây.
+   Sticky để cuộn lịch dài vẫn luôn nhìn thấy panel. */
 .event-agenda {
   min-width: 0;
-  padding: 20px;
+  position: sticky;
+  top: 78px;
+  padding: 18px;
   background: #fff;
   border: 1px solid #edf0f4;
   border-radius: 14px;
-  display: grid;
-  grid-template-columns: minmax(180px,240px) minmax(0,1fr);
-  gap: 0 24px;
-}
-
-.event-agenda>.event-eyebrow,.event-agenda>h3,.event-agenda>p,.event-agenda>[data-create-event] {
-  grid-column: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .event-agenda h3 {
   font-family: Fraunces,Georgia,serif;
-  font-size: 23px;
+  font-size: 21px;
   line-height: 1.4;
   font-weight: 600;
   text-transform: capitalize;
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
 .event-muted {
@@ -455,7 +492,7 @@
 
 .event-agenda .event-muted {
   font-size: 11px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .event-primary-button,.event-secondary-button {
@@ -503,13 +540,9 @@
 
 .event-agenda-list {
   min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-column: 2;
-  grid-row: 1/5;
-  align-content: start;
-  gap: 12px;
-  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .event-agenda-card {
@@ -625,9 +658,10 @@
 
 .event-panel {
   background: var(--event-paper);
-  padding: 28px;
+  padding: 24px;
   border: 1px solid var(--event-line);
   border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(23, 43, 66, .04);
 }
 
 .event-create-page {
@@ -639,13 +673,13 @@
 
 .event-panel h3 {
   font-family: Fraunces,Georgia,serif;
-  font-size: 23px;
-  margin: 0 0 24px;
+  font-size: 20px;
+  margin: 0 0 16px;
   font-weight: 600;
 }
 
 .event-panel .event-eyebrow {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .events-page .form-label {
@@ -753,9 +787,9 @@
 
 .event-description-list>div {
   display: grid;
-  grid-template-columns: 150px minmax(0,1fr);
-  gap: 16px;
-  margin-bottom: 18px;
+  grid-template-columns: 128px minmax(0,1fr);
+  gap: 14px;
+  margin-bottom: 13px;
 }
 
 .event-description-list dt {
@@ -787,7 +821,7 @@
 .event-progress-list li {
   font-size: 12px;
   border-left: 1px solid #e3d6bb;
-  padding: 0 0 22px 22px;
+  padding: 0 0 17px 22px;
   position: relative;
   color: #8f938e;
 }
@@ -826,21 +860,128 @@
   margin-top: 5px;
 }
 
-.event-cancel-panel {
-  margin-top: 24px;
-  border: 1px solid #ead9d3;
-  border-radius: 10px;
-  padding: 18px 24px;
-  background: #fcf7f3;
-}
-
-.event-cancel-panel summary {
-  color: #a27868;
+/* ── Vùng rủi ro: nút đỏ trên header + popup <dialog> chồng popup chi tiết ── */
+.event-danger-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #dc2626;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
   font-size: 12px;
   font-weight: 600;
+  padding: 8px 15px;
+  line-height: 1.2;
+  transition: background .18s ease, box-shadow .18s ease;
 }
 
-.event-cancel-panel[open] summary {
+.event-danger-button:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(220, 38, 38, .55);
+}
+
+.event-danger-button:focus-visible {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+
+/* <dialog> hiển thị ở top layer nên tự nằm trên modal chi tiết mà không cần
+   chỉnh z-index — đúng kiểu "popup chồng popup". */
+.event-risk-dialog {
+  border: 0;
+  padding: 0;
+  border-radius: 16px;
+  width: min(560px, calc(100vw - 32px));
+  background: #fff;
+  color: var(--event-ink);
+  box-shadow: 0 24px 64px -16px rgba(15, 23, 42, .38);
+}
+
+.event-risk-dialog::backdrop {
+  background: rgba(15, 23, 42, .48);
+}
+
+.event-risk-dialog[open] {
+  animation: eventRiskIn .22s cubic-bezier(.16, 1, .3, 1);
+}
+
+@keyframes eventRiskIn {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+}
+
+.event-risk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 18px;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: #fff;
+  border-radius: 16px 16px 0 0;
+}
+
+.event-risk-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--font-sans, inherit);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.event-risk-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+  font-size: 12px;
+}
+
+.event-risk-close:hover { background: rgba(255, 255, 255, .32); }
+
+.event-risk-dialog > section {
+  padding: 18px 22px 20px;
+  border-bottom: 1px dashed #f3d6cf;
+}
+
+.event-risk-dialog > section:last-child { border-bottom: 0; }
+
+.event-risk-dialog h4 {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #b91c1c;
+  margin: 0 0 4px;
+}
+
+.event-risk-dialog .event-muted { margin-bottom: 10px; }
+
+/* ── Khung popup chi tiết sự kiện ─────────────────────────────────────── */
+/* Nền modal-body xanh pastel nhạt làm các panel trắng nổi khối; viền modal
+   bỏ vì các panel bên trong tự có khung riêng. */
+.event-details-dialog .modal-content {
+  border: 0;
+  overflow: hidden;
+}
+
+.event-details-dialog .modal-body {
+  background: var(--hotel-slate-bg, #f8fafc);
+}
+
+.event-details-dialog .modal-body > .events-page > .event-page-heading {
+  background: #fff;
+  border: 1px solid var(--event-line);
+  border-radius: 12px;
+  padding: 18px 22px;
   margin-bottom: 16px;
 }
 
@@ -901,23 +1042,79 @@
 
 .event-budget-card {
   border: 1px solid var(--event-line);
-  border-radius: 10px;
-  padding: 21px;
+  border-radius: 12px;
+  padding: 15px 18px;
   background: var(--event-paper);
+  box-shadow: 0 1px 2px rgba(23, 43, 66, .04);
 }
 
 .event-budget-card span {
   display: block;
-  font-size: 11px;
-  color: #92998e;
-  margin-bottom: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #6b7280;
+  margin-bottom: 7px;
 }
 
 .event-budget-card strong {
   font-family: Fraunces,Georgia,serif;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 500;
+  color: var(--event-ink);
   white-space: nowrap;
+}
+
+/* Khối cảnh báo nghiệm thu gộp theo lý do (thay cho danh sách lặp từng tên) */
+.event-attention-note {
+  background: #fef9c3;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  padding: 13px 16px;
+  margin: 2px 0 14px;
+}
+
+.event-attention-note > strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #92400e;
+  margin-bottom: 2px;
+}
+
+.event-attention-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 7px 0;
+  border-top: 1px dashed rgba(146, 64, 14, .2);
+}
+
+.event-attention-row:first-of-type { border-top: 0; }
+
+.event-attention-reason {
+  font-weight: 600;
+  color: #92400e;
+  font-size: 12px;
+}
+
+.event-attention-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: #d97706;
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.event-attention-names {
+  color: #a16207;
+  font-size: 11.5px;
+  line-height: 1.6;
 }
 
 .event-review-row {
@@ -1018,25 +1215,13 @@
   .event-workspace {
     grid-template-columns: minmax(0,1fr);
   }
+  /* Rail chi tiết trượt xuống dưới lịch và bỏ sticky khi hẹp màn hình */
   .event-agenda {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0 24px;
-  }
-  .event-agenda>.event-eyebrow,.event-agenda>h3,.event-agenda>p {
-    grid-column: 1;
-  }
-  .event-agenda>[data-create-event] {
-    grid-column: 2;
-    grid-row: 1/4;
-    align-self: center;
+    position: static;
   }
   .event-agenda-list {
-    grid-column: 1/-1;
-    grid-row: auto;
     display: grid;
     grid-template-columns: repeat(2,minmax(0,1fr));
-    margin-top: 12px;
   }
   .event-form-grid {
     gap: 16px;
@@ -1171,15 +1356,6 @@
     margin-left: 0;
     flex-basis: 100%;
     font-size: 8px;
-  }
-  .event-agenda {
-    grid-template-columns: 1fr;
-    padding: 20px;
-  }
-  .event-agenda>[data-create-event] {
-    grid-column: 1;
-    grid-row: auto;
-    margin: 0 0 8px;
   }
   .event-agenda-list {
     grid-template-columns: 1fr;
@@ -1368,7 +1544,7 @@ dialog.event-assignment-dialog::backdrop {
 }
 
 .event-staff-heading,
-.event-department-card > header,
+.event-department-card > summary,
 .event-assigned-member,
 .event-member-option {
   display: flex;
@@ -1388,7 +1564,9 @@ dialog.event-assignment-dialog::backdrop {
 
 .event-staff-heading h3 {
   margin: 0;
-  font-size: 21px;
+  font-family: Fraunces,Georgia,serif;
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .event-staff-filters {
@@ -1485,12 +1663,12 @@ dialog.event-assignment-dialog::backdrop {
   min-width: 0;
 }
 
-.event-department-card > header h4 {
+.event-department-card > summary h4 {
   font-size: 17px;
   margin: 0 0 4px;
 }
 
-.event-department-card > header > button {
+.event-department-card > summary > div:last-child {
   flex-shrink: 0;
 }
 
@@ -1881,6 +2059,28 @@ dialog.event-assignment-dialog::backdrop {
   gap: 12px;
   flex-wrap: wrap;
 }
+
+/* Card phòng ban là <details> thu gọn mặc định: summary nhận toàn bộ cú nhấp
+   để bung danh sách nhân viên; ẩn marker mặc định của trình duyệt. */
+summary.event-department-card__header {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+summary.event-department-card__header::-webkit-details-marker { display: none; }
+
+.event-department-card[open] > summary.event-department-card__header {
+  border-bottom-color: #e8dcc2;
+}
+
+.event-department-chevron {
+  color: #94a3b8;
+  font-size: 13px;
+  transition: rotate .2s ease;
+}
+
+.event-department-card[open] .event-department-chevron { rotate: 180deg; }
 
 .department-icon-badge {
   width: 44px;
@@ -2335,8 +2535,8 @@ dialog.event-assignment-dialog::backdrop {
 .event-acceptance-dialog::backdrop { background: #0f172a99; }
 .event-acceptance-dialog dt { margin-top: .6rem; }
 .event-acceptance-dialog dd { margin: .2rem 0 .5rem; }
-.event-participation-person { border: 1px solid var(--event-line, #e9e1d2); border-radius: 12px; overflow: hidden; }
-.event-participation-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px; background: #faf8f5; }
+.event-participation-person { border: 1px solid var(--event-line, #e9e1d2); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(23, 43, 66, .04); }
+.event-participation-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; background: #faf8f5; }
 .event-participation-table { min-width: 900px; table-layout: fixed; }
 .event-participation-table .participation-source { width: 24%; }
 .event-participation-table .participation-plan { width: 18%; }

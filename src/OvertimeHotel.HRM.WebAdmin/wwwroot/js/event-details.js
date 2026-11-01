@@ -30,7 +30,14 @@
             if (focus) {
                 const pane = root.querySelector('[data-details-pane="' + section + '"]');
                 pane.tabIndex = -1;
-                pane.focus();
+                // preventScroll: focus chỉ để phục vụ bàn phím/screen reader, không
+                // cho trình duyệt cuộn modal-body lên đỉnh pane — hành vi cũ làm
+                // thanh tab và header trượt ra khỏi màn hình sau mỗi lần chuyển tab.
+                pane.focus({ preventScroll: true });
+                // giữ thanh tab luôn trong tầm nhìn (an toàn cho trường hợp người
+                // dùng đang cuộn sâu ở tab cũ)
+                root.querySelector('.event-details-navigation')
+                    ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             }
         }
         function bindContent(body, notify = false) {
@@ -147,6 +154,13 @@
                 void openDetails(link);
                 return;
             }
+            const riskToggle = event.target.closest('[data-risk-toggle]');
+            if (riskToggle && !saving) {
+                riskToggle.closest('[data-event-details]')?.querySelector('[data-risk-dialog]')?.showModal();
+                return;
+            }
+            const riskClose = event.target.closest('[data-risk-close]');
+            if (riskClose) { riskClose.closest('[data-risk-dialog]')?.close(); return; }
             const close = event.target.closest('[data-assignment-close]');
             if (close) { if (!saving) assignment.close(); return; }
             const next = event.target.closest('[data-continue-assignment]');
@@ -159,6 +173,8 @@
                 const department = departmentFilter.dataset.staffDepartmentFilter;
                 directory.querySelectorAll('[data-department-card]').forEach(card => {
                     card.hidden = department !== 'all' && card.dataset.departmentCard !== department;
+                    // Lọc tới một phòng ban cụ thể thì tự bung card để thấy ngay danh sách
+                    if (department !== 'all' && !card.hidden && 'open' in card) card.open = true;
                 });
                 directory.querySelectorAll('[data-staff-department-filter]').forEach(button => {
                     button.setAttribute('aria-pressed', String(button === departmentFilter));
@@ -208,8 +224,14 @@
             picker.querySelector('[data-member-empty]').hidden = options.some(option => !option.hidden);
         });
         document.addEventListener('keydown', event => {
-            if (event.key === 'Escape' && event.target.closest('[data-acceptance-dialog][open]')) event.stopPropagation();
+            if (event.key === 'Escape' && event.target.closest('[data-acceptance-dialog][open], [data-risk-dialog][open]')) event.stopPropagation();
         }, true);
+        document.addEventListener('cancel', event => {
+            if (event.target.matches('[data-risk-dialog]') && saving) event.preventDefault();
+        });
+        document.addEventListener('close', event => {
+            if (event.target.matches('[data-risk-dialog]')) document.querySelector('[data-risk-toggle]')?.focus();
+        });
         document.addEventListener('change', event => {
             if (event.target.matches('[name="Need.Department"]')) updateNeedRoleSuggestions(event.target.form);
             if (event.target.matches('[data-choose-member]')) {

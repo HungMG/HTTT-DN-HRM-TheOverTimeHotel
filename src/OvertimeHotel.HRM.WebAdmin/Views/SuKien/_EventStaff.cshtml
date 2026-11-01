@@ -120,8 +120,11 @@ else
         @foreach (var department in departments)
         {
             var deptActive = department.Assignments.Where(p => p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.TrangThaiThamGia != "DA_HUY").ToList();
-            <section class="event-department-card" id="dept-@department.Code" data-department-card="@department.Code">
-                <header class="event-department-card__header">
+            <!-- details/summary: card thu gọn mặc định, bấm header mới hiện danh
+                 sách nhân viên. Link "Bố trí ca" là phần tử tương tác trong summary
+                 nên bấm nó điều hướng chứ không mở card (chuẩn HTML). -->
+            <details class="event-department-card" id="dept-@department.Code" data-department-card="@department.Code">
+                <summary class="event-department-card__header">
                     <div class="d-flex align-items-center gap-3">
                         <div class="department-icon-badge">
                             <i class="bi @GetDepartmentIcon(department.Code)" aria-hidden="true"></i>
@@ -149,12 +152,13 @@ else
                             </div>
                         </div>
                     </div>
-                    <div>
+                    <div class="d-flex align-items-center gap-2">
                         <a asp-controller="PhanCa" asp-action="Index" asp-route-week="@DateOnly.FromDateTime(HotelEventRules.Local(item.NgayBatDau)).ToString("yyyy-MM-dd")" class="btn btn-sm btn-outline-primary" title="Bố trí ca trong Lịch làm việc">
                             <i class="bi bi-calendar-plus me-1"></i> Bố trí ca
                         </a>
+                        <i class="bi bi-chevron-down event-department-chevron" aria-hidden="true"></i>
                     </div>
-                </header>
+                </summary>
 
                 @if (deptActive.Count > 0)
                 {
@@ -226,7 +230,7 @@ else
                         </a>
                     </div>
                 }
-            </section>
+            </details>
         }
     </div>
 }

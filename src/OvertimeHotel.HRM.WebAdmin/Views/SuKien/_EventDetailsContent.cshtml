@@ -10,13 +10,19 @@
         <div>
             <span class="event-eyebrow">SK-@item.MaDuAn.ToString("D4") · @HotelEventRules.TypeLabels.GetValueOrDefault(item.LoaiDuAn, item.LoaiDuAn)</span>
             <h2>@item.TenDuAn</h2>
-            <p><i class="bi bi-geo-alt" aria-hidden="true"></i> @HotelEventRules.VenueLabel(item.DiaDiem) · @HotelEventRules.Local(item.NgayBatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(item.NgayKetThuc).ToString("dd/MM/yyyy HH:mm")</p>
+            <p><i class="bi bi-geo-alt" aria-hidden="true"></i> @HotelEventRules.VenueLabel(item.DiaDiem) · @HotelEventRules.Local(item.NgayBatDau).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(item.NgayKetThuc).ToString("dd/MM/yyyy HH:mm") · <i class="bi bi-person-badge" aria-hidden="true"></i> HR: @(item.NguoiQuanLy?.HoTen ?? "chưa phân công")</p>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="event-status event-status-@item.TrangThai">@statusLabel</span>
             @if (Model.CanEdit)
             {
                 <a class="event-secondary-button" asp-action="Edit" asp-route-id="@item.MaDuAn" asp-route-returnYear="@Model.ReturnYear" asp-route-returnMonth="@Model.ReturnMonth" asp-route-returnDate="@Model.ReturnDate.ToString("yyyy-MM-dd")"><i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa</a>
+            }
+            @if (Model.CanManage)
+            {
+                <button type="button" class="event-danger-button" data-risk-toggle title="Mở vùng thao tác rủi ro: hủy hoặc dừng sự kiện">
+                    <i class="bi bi-slash-circle-fill" aria-hidden="true"></i> Hủy / Dừng sự kiện
+                </button>
             }
         </div>
     </div>
@@ -30,7 +36,7 @@
         <div class="event-info-note mb-3">@(item.TrangThai == "HOAN_THANH" ? item.NgayNghiemThu.HasValue || item.QuyetToans.Count > 0 ? "Sự kiện đã nghiệm thu. Thông tin và phụ cấp đã được khóa." : "Sự kiện đã được đánh dấu hoàn thành. Dữ liệu chỉ xem; hồ sơ nghiệm thu cần được đối soát." : "Sự kiện đã hủy. " + item.LyDoHuy)</div>
     }
     <nav class="event-details-navigation" aria-label="Nội dung sự kiện">
-        <button type="button" class="event-secondary-button" data-details-section="overview" aria-pressed="@(Model.Tab == "overview" ? "true" : "false")"><i class="bi bi-arrow-left" aria-hidden="true"></i> Thông tin sự kiện</button>
+        <button type="button" class="event-secondary-button" data-details-section="overview" aria-pressed="@(Model.Tab == "overview" ? "true" : "false")">Thông tin sự kiện</button>
         <button type="button" class="event-secondary-button" data-details-section="staff" aria-pressed="@(Model.Tab == "staff" ? "true" : "false")"><i class="bi bi-people" aria-hidden="true"></i> Nhân sự@(Model.StaffLoadFailed ? "" : " · " + employeeCount)</button>
         <button type="button" class="event-secondary-button" data-details-section="acceptance" aria-pressed="@(Model.Tab == "acceptance" ? "true" : "false")"><i class="bi bi-patch-check" aria-hidden="true"></i> Đánh giá &amp; nghiệm thu</button>
     </nav>

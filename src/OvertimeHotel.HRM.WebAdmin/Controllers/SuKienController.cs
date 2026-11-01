@@ -158,9 +158,17 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         if (actor == null) return Forbid();
         var model = await DetailsAsync(actor, id, null, returnYear, returnMonth, returnDate, tab);
         if (model == null) return NotFound();
+        // Chi tiết sự kiện chỉ mở dạng popup trên lịch. URL truy cập trực tiếp
+        // (bookmark, liên kết từ phân ca, Ctrl+click) được đưa về lịch của
+        // tháng sự kiện để bấm chip mở popup, thay vì dựng trang riêng.
+        if (!popup)
+        {
+            var start = HotelEventRules.Local(model.Event.NgayBatDau);
+            return RedirectToAction(nameof(Index), new { year = start.Year, month = start.Month, date = start.ToString("yyyy-MM-dd") });
+        }
         model.IsPopup = popup;
         model.PaymentPeriodId = paymentPeriodId;
-        return popup ? PartialView("_EventDetailsContent", model) : View(model);
+        return PartialView("_EventDetailsContent", model);
     }
 
     [HttpGet]
@@ -326,7 +334,11 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         var result = await DetailsAsync(actor, id, model, model.ReturnYear, model.ReturnMonth, model.ReturnDate, tab, assignmentOptions: assignmentPopup);
         if (result == null) return NotFound();
         result.IsPopup = model.IsPopup;
-        return model.IsPopup ? PartialView(assignmentPopup ? "_AssignmentPopup" : "_EventDetailsContent", result) : View("Details", result);
+        if (model.IsPopup) return PartialView(assignmentPopup ? "_AssignmentPopup" : "_EventDetailsContent", result);
+        // Nhánh không popup chỉ còn khi JS bị tắt (mọi form chi tiết đều gửi
+        // IsPopup=true): đưa về lịch thay vì dựng trang chi tiết riêng.
+        var fallbackStart = HotelEventRules.Local(result.Event.NgayBatDau);
+        return RedirectToAction(nameof(Index), new { year = fallbackStart.Year, month = fallbackStart.Month, date = fallbackStart.ToString("yyyy-MM-dd") });
     }
 
     private async Task<EventFormViewModel> FormAsync(EventFormViewModel model, EventActor actor)

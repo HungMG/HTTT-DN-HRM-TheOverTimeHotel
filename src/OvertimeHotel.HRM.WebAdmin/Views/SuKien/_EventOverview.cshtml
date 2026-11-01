@@ -28,21 +28,24 @@
 }
 <div class="event-form-grid">
                 <div class="event-panel">
-                    <span class="event-eyebrow">THÔNG TIN CHUNG</span>
-                    <h3>Bức tranh tổng thể</h3>
+                    <span class="event-eyebrow">TỔ CHỨC</span>
+                    <h3>Thông tin chung</h3>
                     <dl class="event-description-list">
                         <div><dt>Người quản lý</dt><dd>@(item.NguoiQuanLy?.HoTen ?? "Chưa cập nhật")</dd></div>
                         <div><dt>Khách dự kiến</dt><dd>@item.SoKhachDuKien người</dd></div>
-                        <div><dt>@(item.TinhTheoGio ? "Thu nhập cộng thêm" : item.TinhPhuCapKhiNghiemThu ? "Ngân sách trả nhân viên" : "Ngân sách phụ cấp")</dt><dd>@(item.TinhTheoGio && item.TrangThai != "HOAN_THANH" ? "Lương cơ bản / 26 / 8 × hệ số " + eventRate + " × giờ thực tế được xác nhận" : item.TinhPhuCapKhiNghiemThu && item.TrangThai != "HOAN_THANH" ? "Tính khi nghiệm thu" : Money(item.NganSachPhuCap))</dd></div>
-                        <div><dt>Thời gian</dt><dd>@start.ToString("dd/MM/yyyy HH:mm")<br />@end.ToString("dd/MM/yyyy HH:mm") <small>(UTC+7)</small></dd></div>
+                        <div><dt>@(item.TinhTheoGio ? "Thu nhập cộng thêm" : item.TinhPhuCapKhiNghiemThu ? "Ngân sách trả nhân viên" : "Ngân sách phụ cấp")</dt><dd>@(item.TinhTheoGio && item.TrangThai != "HOAN_THANH" ? "Theo giờ thực tế được xác nhận" : item.TinhPhuCapKhiNghiemThu && item.TrangThai != "HOAN_THANH" ? "Tính khi nghiệm thu" : Money(item.NganSachPhuCap))</dd></div>
                     </dl>
+                    @if (item.TinhTheoGio && item.TrangThai != "HOAN_THANH")
+                    {
+                        <p class="form-text mb-2">Thu nhập sự kiện = lương cơ bản tháng / 26 / 8 × hệ số @eventRate × giờ thực tế được xác nhận trong ca chính thức. Lương ca thường giữ nguyên.</p>
+                    }
                     <hr />
                     <h4 class="h6">Mô tả &amp; ghi chú</h4>
                     <p class="event-preserve-lines">@(string.IsNullOrWhiteSpace(item.MoTa) ? "Chưa có ghi chú cho sự kiện này." : item.MoTa)</p>
                 </div>
                 <div class="event-panel">
-                    <span class="event-eyebrow">ĐIỀU PHỐI SỰ KIỆN</span>
-                    <h3>Theo sát từng chặng</h3>
+                    <span class="event-eyebrow">ĐIỀU PHỐI</span>
+                    <h3>Tiến trình sự kiện</h3>
                     <ol class="event-progress-list">
                         <li class="@(item.TrangThai == "LEN_KE_HOACH" ? "is-current" : "")">Lên kế hoạch <small>Chuẩn bị và phân công đội ngũ</small></li>
                         <li class="@(item.TrangThai == "DANG_DIEN_RA" ? "is-current" : "")">Đang diễn ra <small>Điều phối hoạt động tại sự kiện</small></li>
@@ -78,8 +81,8 @@
             <div class="event-panel mt-4" id="staffing-requirements">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                     <div>
-                        <span class="event-eyebrow">ĐỊNH MỨC &amp; YÊU CẦU NHÂN SỰ</span>
-                        <h3 class="mb-0">Yêu cầu phòng ban &amp; vai trò bắt buộc</h3>
+                        <span class="event-eyebrow">NHÂN SỰ YÊU CẦU</span>
+                        <h3 class="mb-0">Định mức &amp; vai trò bắt buộc</h3>
                     </div>
                     @if (Model.CanEdit && item.TrangThai == "LEN_KE_HOACH")
                     {
@@ -206,37 +209,46 @@
                     </div>
                 }
             </div>
-            @if (Model.CanManage)
-            {
-                <details class="event-cancel-panel">
-                    <summary>Hủy sự kiện</summary>
-                    <p class="event-muted">Lịch địa điểm và nhân sự sẽ được giải phóng. Vui lòng ghi rõ lý do.</p>
-                    <form asp-action="Status" asp-route-id="@item.MaDuAn" method="post">
-                        <partial name="_EventContext" model="Model" />
-                        <input name="version" type="hidden" value="@item.Version" />
-                        <input name="status" type="hidden" value="HUY" />
-                        <label for="cancellationReason" class="form-label">Lý do hủy <span aria-hidden="true">*</span></label>
-                        <textarea id="cancellationReason" name="reason" class="form-control mb-3" rows="2" required maxlength="500">@ViewData.ModelState["reason"]?.AttemptedValue</textarea>
-                        <span class="text-danger">@Html.ValidationMessage("reason")</span>
-                        <button type="submit" class="btn btn-outline-danger">Xác nhận hủy sự kiện</button>
-                    </form>
-                </details>
-            }
-
-
 @if (item.TinhTheoGio && item.KetThucThucTe.HasValue)
 {
     <div class="event-panel mt-3"><h3>Thời gian kết thúc thực tế</h3><p>@HotelEventRules.Local(item.KetThucThucTe.Value).ToString("dd/MM/yyyy HH:mm") (UTC+7)</p><p class="event-preserve-lines">@item.LyDoDung</p></div>
 }
-@if (item.TinhTheoGio && Model.CanManage && item.TrangThai == "DANG_DIEN_RA")
+@if (Model.CanManage)
 {
-    <details class="event-panel mt-3"><summary>Dừng sự kiện và giữ công đã làm</summary>
-        <p>Nhân sự được giải phóng sau giờ dừng. Công đã xác nhận được giữ lại để nghiệm thu.</p>
-        <form asp-action="Stop" asp-route-id="@item.MaDuAn" method="post">
-            <partial name="_EventContext" model="Model" /><input name="version" value="@item.Version" type="hidden" />
-            <label for="event-stop-end" class="form-label">Giờ dừng thực tế (UTC+7)</label><input id="event-stop-end" name="end" type="datetime-local" class="form-control mb-3" required />
-            <label for="event-stop-reason" class="form-label">Lý do dừng</label><textarea id="event-stop-reason" name="reason" maxlength="500" class="form-control mb-3" required></textarea>
-            <button type="submit" class="btn btn-outline-danger">Dừng và chuyển chờ nghiệm thu</button>
-        </form>
-    </details>
+    /* Vùng rủi ro là popup <dialog> chồng lên popup chi tiết (top layer của
+       trình duyệt), mở bằng nút đỏ ở header. Hủy luôn có khi được quản lý,
+       dừng chỉ hiện với sự kiện tính giờ đang diễn ra. Submit được
+       event-details.js chặn toàn cục nên nội dung popup tự làm mới. */
+    <dialog class="event-risk-dialog" data-risk-dialog aria-labelledby="eventRiskTitle">
+        <div class="event-risk-head">
+            <h3 id="eventRiskTitle"><i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i> Hủy hoặc dừng sự kiện</h3>
+            <button type="button" class="event-risk-close" data-risk-close aria-label="Đóng vùng rủi ro"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+        <section>
+            <h4>Hủy sự kiện</h4>
+            <p class="event-muted">Lịch địa điểm và nhân sự sẽ được giải phóng. Vui lòng ghi rõ lý do.</p>
+            <form asp-action="Status" asp-route-id="@item.MaDuAn" method="post">
+                <partial name="_EventContext" model="Model" />
+                <input name="version" type="hidden" value="@item.Version" />
+                <input name="status" type="hidden" value="HUY" />
+                <label for="cancellationReason" class="form-label">Lý do hủy <span aria-hidden="true">*</span></label>
+                <textarea id="cancellationReason" name="reason" class="form-control mb-3" rows="2" required maxlength="500">@ViewData.ModelState["reason"]?.AttemptedValue</textarea>
+                <span class="text-danger">@Html.ValidationMessage("reason")</span>
+                <button type="submit" class="event-danger-button"><i class="bi bi-trash3" aria-hidden="true"></i> Xác nhận hủy sự kiện</button>
+            </form>
+        </section>
+        @if (item.TinhTheoGio && item.TrangThai == "DANG_DIEN_RA")
+        {
+            <section>
+                <h4>Dừng sự kiện và giữ công đã làm</h4>
+                <p class="event-muted">Nhân sự được giải phóng sau giờ dừng. Công đã xác nhận được giữ lại để nghiệm thu.</p>
+                <form asp-action="Stop" asp-route-id="@item.MaDuAn" method="post">
+                    <partial name="_EventContext" model="Model" /><input name="version" value="@item.Version" type="hidden" />
+                    <label for="event-stop-end" class="form-label">Giờ dừng thực tế (UTC+7)</label><input id="event-stop-end" name="end" type="datetime-local" class="form-control mb-3" required />
+                    <label for="event-stop-reason" class="form-label">Lý do dừng</label><textarea id="event-stop-reason" name="reason" maxlength="500" class="form-control mb-3" required></textarea>
+                    <button type="submit" class="event-danger-button"><i class="bi bi-stopwatch" aria-hidden="true"></i> Dừng và chuyển chờ nghiệm thu</button>
+                </form>
+            </section>
+        }
+    </dialog>
 }

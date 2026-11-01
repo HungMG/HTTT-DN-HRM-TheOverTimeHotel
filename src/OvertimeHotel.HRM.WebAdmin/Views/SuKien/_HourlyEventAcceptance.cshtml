@@ -44,8 +44,28 @@
     }
     @if (preview?.Warnings.Count > 0)
     {
-        <div class="alert alert-warning" role="alert"><strong>Cần xử lý trước khi nghiệm thu:</strong>
-            <ul class="mb-0">@foreach (var warning in preview.Warnings.Distinct()) { <li>@warning</li> }</ul>
+        /* Cảnh báo gốc dạng "Tên: lý do." — gộp theo lý do kèm số người và danh
+           sách tên, thay vì liệt kê N dòng giống hệt nhau làm khối vàng phình to. */
+        var groupedWarnings = preview.Warnings.Distinct()
+            .Select(w =>
+            {
+                var separator = w.IndexOf(": ", StringComparison.Ordinal);
+                return separator > 0
+                    ? (Name: w[..separator], Reason: w[(separator + 2)..].TrimEnd('.'))
+                    : (Name: "", Reason: w.TrimEnd('.'));
+            })
+            .GroupBy(w => w.Reason)
+            .ToList();
+        <div class="event-attention-note" role="alert">
+            <strong><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> Cần xử lý trước khi nghiệm thu</strong>
+            @foreach (var group in groupedWarnings)
+            {
+                <div class="event-attention-row">
+                    <span class="event-attention-reason">@group.Key</span>
+                    <span class="event-attention-count">@group.Count() người</span>
+                    <span class="event-attention-names">@string.Join(" · ", group.Where(w => w.Name != "").Select(w => w.Name))</span>
+                </div>
+            }
         </div>
     }
     @if (!item.PhanCongs.Any(p => p.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY")))
