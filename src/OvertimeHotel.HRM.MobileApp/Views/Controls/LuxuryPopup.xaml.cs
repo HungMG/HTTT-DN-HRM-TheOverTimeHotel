@@ -84,8 +84,10 @@ public partial class LuxuryPopup : ContentView
     private async void OnModalConfirmClicked(object? sender, EventArgs e)
     {
         if (sender is VisualElement btn) await btn.SpringTapAsync();
+        // Hide clears the stored action; keep this confirmation before dismissal.
+        var confirmAction = _confirmAction;
         Hide();
 
-        _confirmAction?.Invoke();
+        confirmAction?.Invoke();
     }
 }

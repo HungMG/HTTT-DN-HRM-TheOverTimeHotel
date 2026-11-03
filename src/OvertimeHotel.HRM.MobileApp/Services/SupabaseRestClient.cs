@@ -248,6 +248,17 @@ public sealed class SupabaseRestClient
             return new UnauthorizedAccessException("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         }
 
+        // Only this RPC raises reviewed, user-facing business messages.
+        if (uri.AbsolutePath.EndsWith("/rpc/hrm_shift_swap", StringComparison.Ordinal)
+            || uri.AbsolutePath.EndsWith("/rpc/hrm_shift_swap_partner_options", StringComparison.Ordinal)
+            || uri.AbsolutePath.EndsWith("/rpc/hrm_attendance_explanation", StringComparison.Ordinal))
+        {
+            if (code == "P0001" && !string.IsNullOrWhiteSpace(message))
+                return new InvalidOperationException(message);
+            if (code == "PGRST202")
+                return new InvalidOperationException("Chức năng này chưa được cập nhật trên máy chủ. Vui lòng liên hệ quản trị viên.");
+        }
+
         if (status == HttpStatusCode.Forbidden || (status == HttpStatusCode.NotFound && WasDeniedByPolicy))
         {
             return new InvalidOperationException("Bạn không có thẩm quyền thực hiện thao tác này.");

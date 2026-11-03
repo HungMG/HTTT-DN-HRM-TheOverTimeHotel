@@ -26,6 +26,7 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
     private string _rejectReason = string.Empty;
 
     private EligibleMyShiftDto? _selectedMyShift;
+    private readonly List<EligiblePartnerShiftDto> _allPartnerShifts = [];
     private EligiblePartnerShiftDto? _selectedPartnerShift;
     private string _lyDo = string.Empty;
 
@@ -206,6 +207,7 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
             if (SetProperty(ref _selectedMyShift, value))
             {
                 OnPropertyChanged(nameof(SelectedMyShiftDisplayText));
+                ApplyPartnerShiftFilter();
                 OnPropertyChanged(nameof(CanSubmit));
                 ((Command)SubmitCommand).ChangeCanExecute();
             }
@@ -280,29 +282,15 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
             EligibleMyShifts.Clear();
             foreach (var s in myShifts) EligibleMyShifts.Add(s);
 
-            EligiblePartnerShifts.Clear();
-            foreach (var s in partnerShifts) EligiblePartnerShifts.Add(s);
+            _allPartnerShifts.Clear();
+            _allPartnerShifts.AddRange(partnerShifts);
 
             MyShiftSwaps.Clear();
             foreach (var item in swaps) MyShiftSwaps.Add(item);
 
-            if (SelectedMyShift != null && !EligibleMyShifts.Any(s => s.MaPhanCa == SelectedMyShift.MaPhanCa))
-            {
-                SelectedMyShift = EligibleMyShifts.FirstOrDefault();
-            }
-            else if (SelectedMyShift == null && EligibleMyShifts.Count > 0)
-            {
-                SelectedMyShift = EligibleMyShifts[0];
-            }
-
-            if (SelectedPartnerShift != null && !EligiblePartnerShifts.Any(s => s.MaPhanCa == SelectedPartnerShift.MaPhanCa))
-            {
-                SelectedPartnerShift = EligiblePartnerShifts.FirstOrDefault();
-            }
-            else if (SelectedPartnerShift == null && EligiblePartnerShifts.Count > 0)
-            {
-                SelectedPartnerShift = EligiblePartnerShifts[0];
-            }
+            SelectedMyShift = EligibleMyShifts.FirstOrDefault(s => s.MaPhanCa == SelectedMyShift?.MaPhanCa)
+                ?? EligibleMyShifts.FirstOrDefault();
+            ApplyPartnerShiftFilter();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -328,6 +316,17 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
     public void CancelLoad()
     {
         _loadCancellation?.Cancel();
+    }
+
+    private void ApplyPartnerShiftFilter()
+    {
+        var previousId = SelectedPartnerShift?.MaPhanCa;
+        EligiblePartnerShifts.Clear();
+        if (SelectedMyShift is { } sender)
+            foreach (var partner in _allPartnerShifts.Where(p => p.CompatibleSenderShiftIds?.Contains(sender.MaPhanCa) == true))
+                EligiblePartnerShifts.Add(partner);
+        SelectedPartnerShift = EligiblePartnerShifts.FirstOrDefault(p => p.MaPhanCa == previousId)
+            ?? EligiblePartnerShifts.FirstOrDefault();
     }
 
     public async Task SubmitAsync()

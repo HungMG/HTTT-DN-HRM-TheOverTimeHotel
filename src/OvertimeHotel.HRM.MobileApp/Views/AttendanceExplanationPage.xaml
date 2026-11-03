@@ -11,7 +11,7 @@
              NavigationPage.HasNavigationBar="False"
              Shell.NavBarIsVisible="False">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="16,12,16,0">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Padding="16,12,16,0">
 
         <!-- ==================== BANNER DEMO ==================== -->
         <Border Grid.Row="0"
@@ -102,9 +102,14 @@
             </Grid>
         </Border>
 
+        <Border Grid.Row="3" IsVisible="{Binding HasError}" Margin="0,0,0,12" Padding="12"
+                Stroke="#FCA5A5" BackgroundColor="#FEF2F2" StrokeShape="RoundRectangle 12">
+            <Label Text="{Binding ErrorMessage}" TextColor="#991B1B" FontSize="13" />
+        </Border>
+
         <!-- ==================== SKELETON SHIMMER KHI ĐANG TẢI ==================== -->
         <VerticalStackLayout x:Name="skeletonLayout"
-                             Grid.Row="3"
+                             Grid.Row="4"
                              IsVisible="{Binding IsLoading}"
                              Spacing="12"
                              Margin="0,8">
@@ -126,7 +131,7 @@
         </VerticalStackLayout>
 
         <!-- ==================== TAB 1: FORM LẬP GIẢI TRÌNH ==================== -->
-        <ScrollView Grid.Row="3"
+        <ScrollView Grid.Row="4"
                     IsVisible="{Binding IsCreateMode}"
                     VerticalScrollBarVisibility="Never">
             <VerticalStackLayout Spacing="16" Padding="0,0,0,24">
@@ -664,7 +669,7 @@
         </ScrollView>
 
         <!-- ==================== TAB 2: LỊCH SỬ GIẢI TRÌNH ==================== -->
-        <ScrollView Grid.Row="3"
+        <ScrollView Grid.Row="4"
                     IsVisible="{Binding IsHistoryMode}"
                     VerticalScrollBarVisibility="Never">
             <VerticalStackLayout Spacing="12" Padding="0,0,0,24">

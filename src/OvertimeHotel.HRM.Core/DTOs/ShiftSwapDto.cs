@@ -15,6 +15,7 @@ public class EligibleMyShiftDto
 
 public class EligiblePartnerShiftDto
 {
+    public List<int> CompatibleSenderShiftIds { get; set; } = [];
     public int MaPhanCa { get; set; }
     public int MaNhanVien { get; set; }
     public string TenNhanVien { get; set; } = string.Empty;

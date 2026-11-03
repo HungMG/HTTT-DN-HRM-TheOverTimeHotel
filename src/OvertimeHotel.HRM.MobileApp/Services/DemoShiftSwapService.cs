@@ -159,6 +159,7 @@ public class DemoShiftSwapService : IShiftSwapService
             new()
             {
                 MaPhanCa = 301,
+                CompatibleSenderShiftIds = [201],
                 MaNhanVien = 12,
                 TenNhanVien = "Trần Thị Bích",
                 NgayLamViec = DateOnly.FromDateTime(today.AddDays(1)),
@@ -171,6 +172,7 @@ public class DemoShiftSwapService : IShiftSwapService
             new()
             {
                 MaPhanCa = 302,
+                CompatibleSenderShiftIds = [202],
                 MaNhanVien = 15,
                 TenNhanVien = "Lê Hoàng Nam",
                 NgayLamViec = DateOnly.FromDateTime(today.AddDays(3)),
