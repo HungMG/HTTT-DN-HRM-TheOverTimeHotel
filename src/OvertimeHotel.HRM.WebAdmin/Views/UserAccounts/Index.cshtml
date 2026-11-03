@@ -11,7 +11,7 @@
     <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-4">
         @if (User.IsInRole("Admin") || User.HasClaim("Permission", "QL_PHAN_QUYEN"))
         {
-            <a asp-action="RolePermissions" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-semibold hover-lift" style="font-size: 0.82rem;">
+            <a asp-action="RolePermissions" data-role-permissions-open class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-semibold hover-lift" style="font-size: 0.82rem;">
                 <i class="bi bi-shield-check me-1"></i> Phân Quyền RBAC
             </a>
         }
@@ -184,7 +184,7 @@
             </div>
             @if (User.IsInRole("Admin") || User.HasClaim("Permission", "QL_PHAN_QUYEN"))
             {
-                <a asp-action="RolePermissions" class="small fw-semibold text-primary text-decoration-none hover-lift d-inline-flex align-items-center gap-1">
+                <a asp-action="RolePermissions" data-role-permissions-open class="small fw-semibold text-primary text-decoration-none hover-lift d-inline-flex align-items-center gap-1">
                     Cấu hình chi tiết vai trò <i class="bi bi-arrow-right"></i>
                 </a>
             }
@@ -313,3 +313,19 @@
         </div>
     </div>
 </dialog>
+
+<div class="modal fade" id="rolePermissionsModal" tabindex="-1" aria-labelledby="rolePermissionsTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content rounded-4">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5 fw-bold" id="rolePermissionsTitle">Phân quyền vai trò RBAC</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body bg-light" id="rolePermissionsContent" aria-live="polite"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/role-permissions-modal.js" asp-append-version="true"></script>
+}

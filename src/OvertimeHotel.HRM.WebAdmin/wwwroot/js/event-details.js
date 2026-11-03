@@ -267,8 +267,9 @@
             saving = true;
             originBody = isAssignment ? originBody : form.closest('[data-event-standalone]') || detailsBody;
             const body = isAssignment ? assignmentBody : originBody;
+            const scrollTop = form.matches('[data-preserve-scroll]') ? body.scrollTop : null;
             const buttons = [...body.querySelectorAll('button')].map(button => [button, button.disabled]);
-            const data = new FormData(form);
+            const data = new FormData(form, event.submitter);
             data.set('IsPopup', 'true');
             buttons.forEach(([button]) => button.disabled = true);
             body.setAttribute('aria-busy', 'true');
@@ -280,8 +281,10 @@
                         saving = false;
                         assignment.close();
                     } else {
-                        const status = originBody.querySelector('[role="alert"], [role="status"]');
-                        if (status) { status.tabIndex = -1; status.focus(); }
+                        const error = originBody.querySelector('.validation-summary-errors');
+                        const status = error || originBody.querySelector('[role="alert"], [role="status"]');
+                        if (status) { status.tabIndex = -1; status.focus({ preventScroll: scrollTop !== null && !error }); }
+                        if (scrollTop !== null && !error) body.scrollTop = scrollTop;
                     }
                 } else {
                     replace(body, template);

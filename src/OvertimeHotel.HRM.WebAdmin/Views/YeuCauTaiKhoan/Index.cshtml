@@ -1,4 +1,4 @@
-@model YeuCauTaiKhoanIndexViewModel
+﻿@model YeuCauTaiKhoanIndexViewModel
 @using System.Security.Claims
 @using OvertimeHotel.HRM.Core.Policies
 @using OvertimeHotel.HRM.WebAdmin.Security
@@ -611,7 +611,7 @@
                         roleSelect.value = roleId ? String(roleId) : "";
                     }
                     if (roleDisplayName) {
-                        roleDisplayName.textContent = roleDisplay || (roleId ? "Đã xác định theo HĐLĐ" : "Tự động theo HĐLĐ");
+                        roleDisplayName.textContent = roleDisplay || (roleId ? "Đã xác định theo chức vụ và phòng ban" : "Tự động theo chức vụ và phòng ban");
                     }
                     if (roleBadge) {
                         if (roleDisplay) {

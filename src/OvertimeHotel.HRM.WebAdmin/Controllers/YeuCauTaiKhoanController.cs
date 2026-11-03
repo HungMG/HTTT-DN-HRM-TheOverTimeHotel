@@ -268,34 +268,14 @@ public class YeuCauTaiKhoanController : Controller
             return View(model);
         }
 
-        if (model.RoleId <= 0 && model.EmployeeId > 0)
-        {
-            var empInfo = await _context.NhanViens
-                .AsNoTracking()
-                .Include(nv => nv.ChucVu)
-                .Include(nv => nv.PhongBan)
-                .Where(nv => nv.MaNhanVien == model.EmployeeId)
-                .Select(nv => new { Pos = nv.ChucVu != null ? nv.ChucVu.TenChucVu : null, Dept = nv.PhongBan != null ? nv.PhongBan.TenPhongBan : null })
-                .FirstOrDefaultAsync();
-
-            if (empInfo != null)
-            {
-                var (infRole, _) = ResolveRoleFromPositionAndDepartment(empInfo.Pos, empInfo.Dept, LeaveApprovalPolicy.IsAdmin(GetCurrentRoleName()));
-                var matchedRole = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(r => r.TenVaiTro == infRole);
-                if (matchedRole != null)
-                {
-                    model.RoleId = matchedRole.MaVaiTro;
-                    ModelState.Remove(nameof(model.RoleId));
-                }
-            }
-        }
-
         // Kiểm tra nhân viên: đang làm việc, có email công vụ, chưa có tài khoản,
         // và KHÔNG có yêu cầu nào đang chờ hoặc đang xử lý.
         var employee = await _context.NhanViens
             .AsNoTracking()
             .Where(item => item.MaNhanVien == model.EmployeeId)
-            .Select(item => new { item.MaNhanVien, item.TrangThai, item.EmailCongVu, item.Ho, item.Ten })
+            .Select(item => new { item.MaNhanVien, item.TrangThai, item.EmailCongVu, item.Ho, item.Ten,
+                Position = item.ChucVu != null ? item.ChucVu.TenChucVu : null,
+                Department = item.PhongBan != null ? item.PhongBan.TenPhongBan : null })
             .SingleOrDefaultAsync();
 
         if (employee == null)
@@ -333,15 +313,18 @@ public class YeuCauTaiKhoanController : Controller
             ModelState.AddModelError(nameof(model.Username), "Tên đăng nhập này đang có một yêu cầu chưa xử lý xong.");
         }
 
-        var roleName = await _context.VaiTros
-            .AsNoTracking()
-            .Where(role => role.MaVaiTro == model.RoleId)
-            .Select(role => role.TenVaiTro)
+        // Vai trò phải do máy chủ xác định, không tin giá trị gửi từ trình duyệt.
+        var roleName = employee == null ? null :
+            ResolveRoleFromPositionAndDepartment(employee.Position, employee.Department, LeaveApprovalPolicy.IsAdmin(role)).RoleName;
+        model.RoleId = roleName == null ? 0 : await _context.VaiTros.AsNoTracking()
+            .Where(item => item.TenVaiTro == roleName)
+            .Select(item => item.MaVaiTro)
             .SingleOrDefaultAsync();
+        ModelState.Remove(nameof(model.RoleId));
 
-        if (roleName == null || !SupportedRoles.Contains(roleName))
+        if (model.RoleId == 0 || roleName == null || !SupportedRoles.Contains(roleName))
         {
-            ModelState.AddModelError(nameof(model.RoleId), "Vai trò được chọn không hợp lệ.");
+            ModelState.AddModelError(nameof(model.RoleId), "Không xác định được vai trò phù hợp trong hệ thống.");
         }
         else if (string.Equals(roleName, "Admin", StringComparison.Ordinal) &&
                  !LeaveApprovalPolicy.IsAdmin(GetCurrentRoleName()))
@@ -719,8 +702,7 @@ public class YeuCauTaiKhoanController : Controller
         int GetRoleId(string rName)
         {
             if (roleMapByName.TryGetValue(rName, out var id)) return id;
-            if (roleMapByName.TryGetValue("Employee", out var empId)) return empId;
-            return dbRoles.FirstOrDefault()?.MaVaiTro ?? 0;
+            return 0;
         }
 
         model.EmployeeRoleMap = new Dictionary<int, EmployeeContractRoleInfo>();
@@ -875,6 +857,7 @@ public class YeuCauTaiKhoanController : Controller
         var request = await _context.YeuCauTaiKhoans
             .AsNoTracking()
             .Include(item => item.NhanVien)
+            .Include(item => item.HopDong)
             .FirstOrDefaultAsync(item => item.MaYeuCau == id);
 
         if (request == null)
@@ -913,6 +896,18 @@ public class YeuCauTaiKhoanController : Controller
             return ProcessingFailure(
                 "Yêu cầu này đang được một chuyên viên khác xử lý.",
                 StatusCodes.Status409Conflict);
+        }
+
+        if (request.NhanVien?.TrangThai != "DANG_LAM")
+        {
+            return ProcessingFailure("Nhân viên không còn ở trạng thái đang làm việc. Không thể cấp tài khoản.", StatusCodes.Status400BadRequest);
+        }
+
+        var contract = request.HopDong;
+        if (contract == null || contract.MaNhanVien != request.MaNhanVien ||
+            !LeaveApprovalPolicy.IsValidContractForAccountRequest(contract.TrangThai, contract.NgayBatDau, contract.NgayKetThuc, DateOnly.FromDateTime(DateTime.Today)))
+        {
+            return ProcessingFailure("Hợp đồng của nhân viên không còn hiệu lực. Không thể cấp tài khoản.", StatusCodes.Status400BadRequest);
         }
 
         // Kiểm tra xem đây có phải là yêu cầu thăng chức (nhân viên đã có tài khoản) hay không
@@ -1285,10 +1280,10 @@ public class YeuCauTaiKhoanController : Controller
         var dept = (departmentName ?? string.Empty).Trim();
 
         // 1. CNTT / IT
-        if (dept.Contains("IT", StringComparison.OrdinalIgnoreCase) ||
+        if (System.Text.RegularExpressions.Regex.IsMatch(dept, @"\bIT\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
             dept.Contains("Công nghệ thông tin", StringComparison.OrdinalIgnoreCase) ||
             dept.Contains("CNTT", StringComparison.OrdinalIgnoreCase) ||
-            pos.Contains("IT", StringComparison.OrdinalIgnoreCase) ||
+            System.Text.RegularExpressions.Regex.IsMatch(pos, @"\bIT\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
             pos.Contains("Công nghệ thông tin", StringComparison.OrdinalIgnoreCase) ||
             pos.Contains("CNTT", StringComparison.OrdinalIgnoreCase))
         {
@@ -1297,11 +1292,11 @@ public class YeuCauTaiKhoanController : Controller
 
         // 2. Nhân sự (HR) & Kế toán / Tài chính
         if (dept.Contains("Nhân sự", StringComparison.OrdinalIgnoreCase) ||
-            dept.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
+            System.Text.RegularExpressions.Regex.IsMatch(dept, @"\bHR\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
             dept.Contains("Kế toán", StringComparison.OrdinalIgnoreCase) ||
             dept.Contains("Tài chính", StringComparison.OrdinalIgnoreCase) ||
             pos.Contains("Nhân sự", StringComparison.OrdinalIgnoreCase) ||
-            pos.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
+            System.Text.RegularExpressions.Regex.IsMatch(pos, @"\bHR\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
             pos.Contains("Kế toán", StringComparison.OrdinalIgnoreCase))
         {
             return ("HR", GetVietnameseRoleName("HR"));

@@ -71,6 +71,18 @@ public static class HourlyEventRules
         return Intersect(shiftWindow.Value.Start, shiftWindow.Value.End, checkIn.Value, checkOut.Value);
     }
 
+    public static (DateTimeOffset Start, DateTimeOffset End)? AttendanceWindow(DuAn item, PhanCongDuAn assignment, DateTimeOffset now)
+    {
+        var shift = assignment.PhanCa;
+        if (shift?.ChamCong == null) return null;
+        var window = ResolveActualWindow(assignment.BatDau, assignment.KetThuc, shift.BatDauDuKien, shift.KetThucDuKien,
+            shift.ChamCong.GioCheckIn, shift.ChamCong.GioCheckOut);
+        if (!window.HasValue) return null;
+        var end = item.KetThucThucTe ?? item.NgayKetThuc;
+        window = Intersect(window.Value.Start, window.Value.End, item.NgayBatDau, end);
+        return window.HasValue && CanRecordWork(item, assignment, window.Value.Start, window.Value.End, now) ? window : null;
+    }
+
     public static decimal Amount(IEnumerable<EventPaySlice> work)
     {
         var slices = work.OrderBy(s => s.Start).ToList();

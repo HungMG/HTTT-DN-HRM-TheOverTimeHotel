@@ -33,7 +33,7 @@
     }
     else
     {
-    <p class="event-muted">Giờ phân công được điền sẵn để đối chiếu. Người có quyền cần xác nhận thời gian thực tế; mỗi phân công ghi một khoảng tham gia trong ca nguồn.</p>
+    <p class="event-muted">Giờ tham gia được tính từ giờ chấm công vào/ra, trong giới hạn giờ phân công và ca nguồn. Người có quyền xác nhận tham gia hoặc không tham gia.</p>
     <div class="event-budget-grid mb-3" data-acceptance-staff="@Model.AcceptanceStaffCount" data-acceptance-ready="@Model.ConfirmedStaffCount" data-acceptance-missing-work="@Model.MissingWorkStaffCount" data-acceptance-unreviewed="@Model.UnreviewedStaffCount">
         <div class="event-budget-card"><span>Nhân viên cần xác nhận</span><strong>@Model.AcceptanceStaffCount người</strong></div>
         <div class="event-budget-card"><span>Đã xác nhận đầy đủ</span><strong>@Model.ConfirmedStaffCount người</strong></div>
@@ -87,9 +87,7 @@
                     @foreach (var assignment in person.OrderBy(p => p.BatDau).ThenBy(p => p.MaPhanCong))
                     {
                         var canceled = assignment.TrangThaiThamGia is "HUY_PHAN_CONG" or "DA_HUY";
-                        var preserve = Model.Work.AssignmentId == assignment.MaPhanCong && Model.Work.WorkId == 0;
-                        var workStart = preserve ? Model.Work.Start : HotelEventRules.Local(assignment.BatDau);
-                        var workEnd = preserve ? Model.Work.End : HotelEventRules.Local(assignment.KetThuc);
+                        var actualWindow = HourlyEventRules.AttendanceWindow(item, assignment, DateTimeOffset.UtcNow);
                         var rating = !completed && !canceled && assignment.DanhGia != "KHONG_THAM_GIA"
                             ? HourlyEventRules.AutomaticRating(assignment) : assignment.DanhGia;
                         var resultLabel = canceled ? "Đã gỡ (lịch sử)" : rating == null ? "Thiếu dữ liệu giờ thực tế" : completed && (!assignment.NgayDanhGia.HasValue || rating == "CHUA_DANH_GIA")
@@ -137,27 +135,23 @@
                                         }
                                     </div>
                                 }
-                                @if (canRecord && !canceled && assignment.CongThucTes.Count == 0)
+                                @if (!completed && !canceled && assignment.CongThucTes.Count == 0 && assignment.DanhGia != "KHONG_THAM_GIA")
                                 {
-                                    <details class="mt-3" open="@(preserve && !ViewData.ModelState.IsValid)"><summary>Nhập giờ tham gia</summary>
-                                        <form asp-action="RecordWork" asp-route-id="@item.MaDuAn" method="post" data-event-time-form class="mt-3">
-                                            <partial name="_EventContext" model="Model" /><input name="Work.Version" value="@item.Version" type="hidden" /><input name="Work.AssignmentId" value="@assignment.MaPhanCong" type="hidden" />
-                                            <div class="d-grid gap-2">
-                                                <div><label for="work-start-@assignment.MaPhanCong" class="form-label">Tham gia từ (UTC+7)</label><input id="work-start-@assignment.MaPhanCong" name="Work.Start" value="@workStart.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control" data-event-start required /></div>
-                                                <div><label for="work-end-@assignment.MaPhanCong" class="form-label">Đến (UTC+7)</label><input id="work-end-@assignment.MaPhanCong" name="Work.End" value="@workEnd.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control" data-event-end required /></div>
-                                            </div><button type="submit" class="event-secondary-button mt-2">Lưu giờ tham gia</button>
-                                        </form>
-                                    </details>
+                                    if (actualWindow.HasValue)
+                                    { <p class="event-muted mt-2">Theo chấm công: @HotelEventRules.Local(actualWindow.Value.Start).ToString("dd/MM/yyyy HH:mm") – @HotelEventRules.Local(actualWindow.Value.End).ToString("dd/MM/yyyy HH:mm")</p> }
+                                    else
+                                    { <p class="event-muted mt-2">Chưa đủ giờ check-in/check-out hợp lệ trong ca và phân công.</p> }
                                 }
                             </td>
                             <td>
                                 <span>@resultLabel</span>
-                                @if (canReview && !canceled && assignment.CongThucTes.Count == 0 && assignment.DanhGia != "KHONG_THAM_GIA")
+                                @if (canReview && !canceled && assignment.CongThucTes.Count == 0)
                                 {
-                                    <form asp-action="Review" asp-route-id="@item.MaDuAn" method="post" class="mt-3">
+                                    <form asp-action="Review" asp-route-id="@item.MaDuAn" method="post" class="mt-3" data-preserve-scroll>
                                         <partial name="_EventContext" model="Model" /><input name="Review.Version" value="@item.Version" type="hidden" /><input name="Review.AssignmentId" value="@assignment.MaPhanCong" type="hidden" />
-                                        <input type="hidden" name="Review.Rating" value="KHONG_THAM_GIA" />
-                                        <button type="submit" class="event-secondary-button mt-2">Xác nhận không tham gia</button>
+                                        <button type="submit" name="Review.Rating" value="HOAN_THANH" class="event-secondary-button mt-2" disabled="@(!actualWindow.HasValue)">Xác nhận tham gia</button>
+                                        @if (assignment.DanhGia != "KHONG_THAM_GIA")
+                                        { <button type="submit" name="Review.Rating" value="KHONG_THAM_GIA" class="event-secondary-button mt-2">Xác nhận không tham gia</button> }
                                     </form>
                                 }
                             </td>

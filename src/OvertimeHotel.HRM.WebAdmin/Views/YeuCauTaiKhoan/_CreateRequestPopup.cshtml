@@ -1,4 +1,4 @@
-@model CreateYeuCauTaiKhoanViewModel
+﻿@model CreateYeuCauTaiKhoanViewModel
 
 <form asp-action="Create" asp-route-popup="true" method="post" id="createRequestPopupForm" data-create-request-form>
     @Html.AntiForgeryToken()
@@ -53,13 +53,13 @@
 
             <div class="col-md-5 col-12">
                 <label class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
-                    Vai trò theo hợp đồng lao động
+                    Vai trò theo chức vụ và phòng ban
                 </label>
                 <input type="hidden" asp-for="RoleId" id="popupRoleId" />
                 <div class="form-control bg-white border d-flex align-items-center justify-content-between py-2 ps-2.5 pe-2 rounded-3" style="min-height: 42px;">
                     <div class="d-flex align-items-center gap-2 overflow-hidden">
                         <i class="bi bi-shield-lock-fill text-primary flex-shrink-0"></i>
-                        <span class="fw-semibold text-truncate small" id="popupRoleDisplayName">Tự động theo HĐLĐ</span>
+                        <span class="fw-semibold text-truncate small" id="popupRoleDisplayName">Tự động theo chức vụ và phòng ban</span>
                     </div>
                     <span class="badge bg-primary px-2.5 py-1" id="popupRoleBadge" style="font-size: 0.75rem; display: none;">—</span>
                 </div>
@@ -72,12 +72,12 @@
                     <div class="d-flex align-items-center gap-2">
                         <i class="bi bi-patch-check-fill text-primary fs-5 flex-shrink-0"></i>
                         <div>
-                            <div class="fw-semibold text-secondary" style="font-size: 0.72rem;">Căn cứ vị trí theo hợp đồng lao động:</div>
+                            <div class="fw-semibold text-secondary" style="font-size: 0.72rem;">Chức vụ và phòng ban hiện tại:</div>
                             <div class="fw-bold text-dark" id="popupPositionText">—</div>
                         </div>
                     </div>
                     <div class="text-muted small">
-                        <i class="bi bi-lock-fill text-secondary me-1"></i>Hệ thống tự động cấp quyền theo vị trí ký kết
+                        <i class="bi bi-lock-fill text-secondary me-1"></i>Vai trò được xác định theo chức vụ và phòng ban
                     </div>
                 </div>
             </div>

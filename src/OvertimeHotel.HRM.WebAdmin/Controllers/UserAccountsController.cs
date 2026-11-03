@@ -242,12 +242,12 @@ public class UserAccountsController : Controller
 
     [HttpGet]
     [Authorize(Policy = PermissionCodes.ManagePermissions)]
-    public async Task<IActionResult> RolePermissions(int? roleId)
+    public async Task<IActionResult> RolePermissions(int? roleId, bool popup = false)
     {
         if (roleId.HasValue && await _context.VaiTros.AnyAsync(role => role.MaVaiTro == roleId.Value && role.TenVaiTro == "Admin"))
         {
             TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không cấu hình quyền tại đây.";
-            return RedirectToAction(nameof(RolePermissions));
+            return RedirectToAction(nameof(RolePermissions), new { popup });
         }
 
         var roleOptions = await GetConfigurableRoleOptionsAsync(roleId);
@@ -256,27 +256,29 @@ public class UserAccountsController : Controller
         var role = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(item => item.MaVaiTro == selectedRoleId);
         if (role == null || role.TenVaiTro == "Admin" || !SupportedRoles.Contains(role.TenVaiTro)) return NotFound();
 
-        return View(new RolePermissionsViewModel
+        var model = new RolePermissionsViewModel
         {
             RoleId = role.MaVaiTro,
             RoleName = GetVietnameseRoleName(role.TenVaiTro),
             AffectedAccountCount = await _context.TaiKhoans.CountAsync(account => account.MaVaiTro == role.MaVaiTro),
             RoleOptions = roleOptions,
             PermissionOptions = await GetRolePermissionOptionsAsync(role.MaVaiTro)
-        });
+        };
+        ViewData["RolePopup"] = popup;
+        return popup ? PartialView("_RolePermissionsForm", model) : View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PermissionCodes.ManagePermissions)]
-    public async Task<IActionResult> SaveRolePermissions(RolePermissionsViewModel model)
+    public async Task<IActionResult> SaveRolePermissions(RolePermissionsViewModel model, bool popup = false)
     {
         var role = await _context.VaiTros.FirstOrDefaultAsync(item => item.MaVaiTro == model.RoleId);
         if (role == null) return NotFound();
         if (role.TenVaiTro == "Admin")
         {
             TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không thể chỉnh sửa quyền tại đây.";
-            return RedirectToAction(nameof(RolePermissions));
+            return RedirectToAction(nameof(RolePermissions), new { popup });
         }
         var allowed = await _context.Quyens.AsNoTracking().Where(item => item.MaQuyenCode != PermissionCodes.SystemAdmin)
             .ToDictionaryAsync(item => item.MaQuyen, item => item.TenQuyen);
@@ -290,7 +292,7 @@ public class UserAccountsController : Controller
         if (add.Length == 0 && remove.Length == 0)
         {
             TempData["Success"] = $"Quyền vai trò {GetVietnameseRoleName(role.TenVaiTro)} không thay đổi.";
-            return RedirectToAction(nameof(RolePermissions), new { roleId = role.MaVaiTro });
+            return RedirectToAction(nameof(RolePermissions), new { roleId = role.MaVaiTro, popup });
         }
         _context.VaiTroQuyens.RemoveRange(existing.Where(item => remove.Contains(item.MaQuyen)));
         _context.VaiTroQuyens.AddRange(add.Select(permissionId => new VaiTroQuyen { MaVaiTro = role.MaVaiTro, MaQuyen = permissionId }));
@@ -312,7 +314,7 @@ public class UserAccountsController : Controller
         }
         await _context.SaveChangesAsync();
         TempData["Success"] = $"Đã cập nhật quyền vai trò {GetVietnameseRoleName(role.TenVaiTro)} cho toàn bộ tài khoản thuộc vai trò này. Họ cần đăng xuất và đăng nhập lại.";
-        return RedirectToAction(nameof(RolePermissions), new { roleId = role.MaVaiTro });
+        return RedirectToAction(nameof(RolePermissions), new { roleId = role.MaVaiTro, popup });
     }
 
     [HttpGet]

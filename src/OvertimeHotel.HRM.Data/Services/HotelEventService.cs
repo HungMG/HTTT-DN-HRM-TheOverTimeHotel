@@ -303,9 +303,20 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         Require(assignment!.TrangThaiThamGia is not ("HUY_PHAN_CONG" or "DA_HUY"), "", "Phân công đã hủy; giữ lịch sử, không đánh giá trả tiền.");
         if (item.TinhTheoGio)
         {
-            Require(input.Rating == "KHONG_THAM_GIA", "Review.Rating", "Kết quả tham gia được tính tự động từ giờ thực tế.");
-            Require(input.Rating != "KHONG_THAM_GIA" || assignment.CongThucTes.Count == 0, "", "Đã có công thực tế; HR cần đối soát công trước khi ghi vắng mặt.");
-            Require(input.Rating == "KHONG_THAM_GIA" || assignment.CongThucTes.Count > 0, "", "Ghi công thực tế trước khi đánh giá hoàn thành.");
+            Require(input.Rating is "HOAN_THANH" or "KHONG_THAM_GIA", "Review.Rating", "Chọn tham gia hoặc không tham gia.");
+            Require(assignment.CongThucTes.Count == 0, "", "Đã có công thực tế; HR cần đối soát công trước khi thay đổi kết quả.");
+            if (input.Rating == "HOAN_THANH")
+            {
+                var now = DateTimeOffset.UtcNow;
+                var window = HourlyEventRules.AttendanceWindow(item, assignment, now);
+                Require(window.HasValue, "", "Không thể tính giờ tham gia: kiểm tra giờ check-in, check-out và ca nguồn đã công bố.");
+                var (start, end) = window!.Value;
+                Require(!await db.CongSuKiens.AnyAsync(c => c.PhanCong!.MaNhanVien == assignment.MaNhanVien
+                    && c.BatDau < end && c.KetThuc > start), "", "Giờ tham gia trùng công sự kiện đã xác nhận của nhân viên.");
+                assignment.CongThucTes.Add(new CongSuKien { MaPhanCong = assignment.MaPhanCong, BatDau = start, KetThuc = end,
+                    MaNguoiXacNhan = actor.EmployeeId, NgayXacNhan = now });
+                input.Rating = HourlyEventRules.AutomaticRating(assignment)!;
+            }
         }
         var actualAllowance = item.TinhPhuCapKhiNghiemThu ? 0m : input.ActualAllowance;
         Require(HotelEventRules.IsMoney(actualAllowance), "Review.ActualAllowance", "Phụ cấp thực tế không âm, tối đa 13 chữ số và 2 số thập phân.");
