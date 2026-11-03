@@ -41,8 +41,18 @@ public class AiDataController : ControllerBase
     /// <summary>Phạm vi phiếu lương của chính người đang hỏi.</summary>
     private const string ScopeMyPayslip = "my-payslip";
 
+    /// <summary>Phạm vi tra cứu nhân sự theo từ khóa (tìm nhân viên theo tên).</summary>
+    private const string ScopeDirectory = "directory";
+
     /// <summary>Số kỳ lương gần nhất trả về cho mục cá nhân. Đủ để thấy xu hướng, không phình ngữ cảnh.</summary>
     private const int PersonalPayslipCount = 3;
+
+    /// <summary>
+    /// Giới hạn số nhân viên trả về mỗi lượt tra cứu. Một khách sạn có thể có nhiều người
+    /// trùng tên; trả cả danh sách sẽ phình ngữ cảnh của mô hình, còn cắt bớt kèm tổng số thì
+    /// mô hình vẫn nói đúng "có N người, đây là 10 người đầu tiên".
+    /// </summary>
+    private const int DirectoryResultLimit = 10;
 
     private readonly AiContextTokenService _tokenService;
     private readonly AiKnowledgeAccessService _knowledgeAccessService;
@@ -100,6 +110,7 @@ public class AiDataController : ControllerBase
         {
             ScopeMyPayslip => await BuildPersonalAsync(principal, request),
             ScopeReports => await BuildReportsAsync(principal, request),
+            ScopeDirectory => await BuildDirectoryAsync(principal, request),
             _ => BadRequest(new { message = "Phạm vi dữ liệu không hợp lệ." })
         };
     }
@@ -299,6 +310,136 @@ public class AiDataController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Tra cứu nhân sự theo từ khóa (ví dụ "có nhân viên nào tên Sang không?").
+    ///
+    /// <para>
+    /// <b>Phạm vi dùng lại đúng luật báo cáo:</b> <see cref="ReportPolicy.ResolveScope"/> cho
+    /// Admin/HR/IT xem toàn khách sạn, Quản lý chỉ bộ phận mình, Employee bị từ chối. Không
+    /// kiểm thêm mã quyền chức năng vì tra cứu chỉ đọc tên/phòng ban/chức danh — hẹp hơn trang
+    /// Nhân viên mà các vai trò này vốn được xem.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Chỉ trả thông tin cơ bản</b> (mã, họ tên, phòng ban, chức danh, trạng thái): kết quả
+    /// đi vào ngữ cảnh của mô hình ngôn ngữ, nên điện thoại, email, ngày sinh và lương cố ý
+    /// không được đưa vào. Từ khóa do router của chatbot trích ra từ câu hỏi, chỉ để thu hẹp
+    /// kết quả — không thể mở rộng phạm vi quyền.
+    /// </para>
+    /// </summary>
+    private async Task<IActionResult> BuildDirectoryAsync(ClaimsPrincipal principal, AiDataRequest request)
+    {
+        if (!await IsAccountActiveAsync(principal))
+        {
+            return Unauthorized(new { message = "Tài khoản không còn hiệu lực." });
+        }
+
+        var role = principal.FindFirst(ClaimTypes.Role)?.Value;
+        var scope = ReportPolicy.ResolveScope(role, ReadInt(principal, AiContextTokenService.DepartmentClaim));
+
+        if (!scope.IsAllowed)
+        {
+            return Forbid();
+        }
+
+        var keyword = (request.Keyword ?? string.Empty).Trim();
+        if (keyword.Length == 0)
+        {
+            return BadRequest(new { message = "Thiếu từ khóa tra cứu tên nhân viên." });
+        }
+
+        try
+        {
+            var pattern = $"%{keyword}%";
+            var hasEmployeeCode = int.TryParse(keyword, NumberStyles.Integer, CultureInfo.InvariantCulture, out var employeeCode);
+
+            var query = _context.NhanViens.AsNoTracking();
+
+            // Quản lý bộ phận bị khóa trong phòng ban của mình ngay từ truy vấn — cùng cách
+            // lọc mà trang báo cáo áp dụng, nên không có vai trò nào thấy nhiều hơn trên web.
+            if (!scope.IsWholeHotel)
+            {
+                query = query.Where(n => n.MaPhongBan == scope.DepartmentId);
+            }
+
+            query = query.Where(n =>
+                EF.Functions.ILike(n.Ho + " " + n.Ten, pattern)
+                || EF.Functions.ILike(n.Ho, pattern)
+                || EF.Functions.ILike(n.Ten, pattern)
+                || (hasEmployeeCode && n.MaNhanVien == employeeCode));
+
+            var total = await query.CountAsync(HttpContext.RequestAborted);
+            if (total == 0)
+            {
+                // Vẫn trả một khối Directory rỗng thay vì 404: "không tìm thấy ai khớp từ khóa"
+                // là một câu trả lời nghiệp vụ hợp lệ, không phải lỗi.
+                return Ok(new AiDataDigestDto
+                {
+                    ScopeLabel = scope.IsWholeHotel
+                        ? "Tra cứu nhân sự — toàn khách sạn"
+                        : "Tra cứu nhân sự — bộ phận của bạn",
+                    PeriodLabel = "Dữ liệu hiện hành",
+                    RoleLabel = BaoCaoReportService.ResolveRoleLabel(role),
+                    GeneratedAt = DateTimeOffset.UtcNow,
+                    GhiChu = BuildDirectoryNotes(),
+                    Directory = new AiDataDirectoryDto
+                    {
+                        TuKhoa = keyword,
+                        TongSo = 0,
+                        DanhSach = []
+                    }
+                });
+            }
+
+            var rows = await query
+                .OrderBy(n => n.Ten).ThenBy(n => n.Ho)
+                .Take(DirectoryResultLimit)
+                .Select(n => new AiDataNhanVienDto
+                {
+                    MaNhanVien = n.MaNhanVien,
+                    HoTen = n.Ho + " " + n.Ten,
+                    PhongBan = n.PhongBan == null ? null : n.PhongBan.TenPhongBan,
+                    ChucDanh = n.ChucVu == null ? null : n.ChucVu.TenChucVu,
+                    TrangThai = n.TrangThai
+                })
+                .ToArrayAsync(HttpContext.RequestAborted);
+
+            var tenPhongBanGioiHan = scope.IsWholeHotel
+                ? null
+                : await _context.PhongBans
+                    .AsNoTracking()
+                    .Where(p => p.MaPhongBan == scope.DepartmentId)
+                    .Select(p => p.TenPhongBan)
+                    .FirstOrDefaultAsync(HttpContext.RequestAborted);
+
+            return Ok(new AiDataDigestDto
+            {
+                ScopeLabel = scope.IsWholeHotel
+                    ? "Tra cứu nhân sự — toàn khách sạn"
+                    : $"Tra cứu nhân sự — bộ phận {tenPhongBanGioiHan ?? "của bạn"}",
+                PeriodLabel = "Dữ liệu hiện hành",
+                RoleLabel = BaoCaoReportService.ResolveRoleLabel(role),
+                GeneratedAt = DateTimeOffset.UtcNow,
+                GhiChu = BuildDirectoryNotes(),
+                Directory = new AiDataDirectoryDto
+                {
+                    TuKhoa = keyword,
+                    TongSo = total,
+                    BiGioiHan = total > rows.Length,
+                    DanhSach = [.. rows.Select(MapNhanVien)]
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Trợ lý AI tra cứu nhân sự nhưng không truy vấn được.");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                message = "Chưa lấy được dữ liệu từ hệ thống. Vui lòng thử lại sau."
+            });
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     //  ÁNH XẠ SANG BẢN RÚT GỌN
     // ═══════════════════════════════════════════════════════════════════════
@@ -395,6 +536,16 @@ public class AiDataController : ControllerBase
     private static IReadOnlyList<AiDataNhanDto> MapPhanBo(IReadOnlyList<PhanBoItem> source) =>
         [.. source.Select(p => new AiDataNhanDto { Nhan = p.Nhan, GiaTri = p.GiaTri, TyLe = p.TyLe })];
 
+    private static AiDataNhanVienDto MapNhanVien(AiDataNhanVienDto source) => new()
+    {
+        MaNhanVien = source.MaNhanVien,
+        HoTen = source.HoTen,
+        PhongBan = source.PhongBan,
+        ChucDanh = source.ChucDanh,
+        // Mã trạng thái dịch thành nhãn tiếng Việt ở đây, không để mô hình tự đoán mã CSDL.
+        TrangThai = ResolveEmployeeStatus(source.TrangThai)
+    };
+
     // ═══════════════════════════════════════════════════════════════════════
     //  GHI CHÚ PHƯƠNG PHÁP
     // ═══════════════════════════════════════════════════════════════════════
@@ -418,6 +569,13 @@ public class AiDataController : ControllerBase
         "Phiếu lương ở trạng thái chưa duyệt vẫn có thể thay đổi sau khi khóa sổ."
     ];
 
+    /// <summary>Ghi chú kèm theo kết quả tra cứu nhân sự.</summary>
+    private static List<string> BuildDirectoryNotes() =>
+    [
+        "Đây là kết quả tra cứu theo từ khóa, đã lọc theo phạm vi quyền của người hỏi — không phải toàn bộ danh bạ nhân viên.",
+        "Kết quả chỉ chứa thông tin cơ bản; tuyệt đối không suy diễn lương, số điện thoại hay địa chỉ của các nhân viên được nêu."
+    ];
+
     /// <summary>Nhãn tiếng Việt của trạng thái phiếu lương.</summary>
     private static string ResolvePayslipStatus(string? status) => status?.Trim().ToUpperInvariant() switch
     {
@@ -428,6 +586,15 @@ public class AiDataController : ControllerBase
         "KHOA_SO" => "Đã khóa sổ",
         _ => "Chưa xác định"
     };
+
+    /// <summary>
+    /// Nhãn tiếng Việt của trạng thái nhân viên. Gọi qua <see cref="ReportPolicy"/> để không
+    /// so khớp mã CSDL thủ công — mã thôi việc có hai cách viết đang lệch giữa các tầng.
+    /// </summary>
+    private static string ResolveEmployeeStatus(string? status) =>
+        ReportPolicy.IsWorking(status) ? "Đang làm việc"
+        : ReportPolicy.IsResigned(status) ? "Đã thôi việc"
+        : "Chưa xác định";
 
     // ═══════════════════════════════════════════════════════════════════════
     //  TIỆN ÍCH
@@ -478,11 +645,15 @@ public class AiDataController : ControllerBase
 
 /// <summary>Thân yêu cầu xin số liệu của Trợ lý AI.</summary>
 /// <param name="Token">Vé dữ liệu do Web Admin ký, sống ngắn và dùng được nhiều lần trong hạn đó.</param>
-/// <param name="Scope"><c>reports</c> (mặc định) hoặc <c>my-payslip</c>.</param>
+/// <param name="Scope"><c>reports</c> (mặc định), <c>my-payslip</c> hoặc <c>directory</c>.</param>
 /// <param name="Year">Năm tài chính; bỏ trống thì lấy năm hiện tại.</param>
 /// <param name="Month">Tháng 1–12.</param>
 /// <param name="Quarter">Quý 1–4; có giá trị thì được ưu tiên hơn tháng.</param>
-public sealed record AiDataRequest(string? Token, string? Scope, int? Year, int? Month, int? Quarter);
+/// <param name="Keyword">
+/// Từ khóa tra cứu cho phạm vi <c>directory</c>, do router của chatbot trích từ câu hỏi.
+/// Chỉ dùng để thu hẹp kết quả tìm kiếm; phạm vi quyền vẫn được máy chủ phân giải lại từ vé.
+/// </param>
+public sealed record AiDataRequest(string? Token, string? Scope, int? Year, int? Month, int? Quarter, string? Keyword);
 
 /// <summary>
 /// Thân yêu cầu xin phạm vi kho tri thức.

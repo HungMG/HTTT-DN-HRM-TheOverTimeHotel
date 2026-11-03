@@ -134,16 +134,24 @@ public static class GeofencePolicy
 
         // Lớp 2 — Wi-Fi nội bộ. So sánh không phân biệt hoa thường vì Android trả
         // SSID kèm dấu nháy kép ở một số dòng máy và đổi hoa thường tuỳ ROM.
-        if (!string.IsNullOrWhiteSpace(tenWifiHienTai) &&
+        // Chỉ áp dụng khi wifiSsid được cấu hình (khác rỗng).
+        if (!string.IsNullOrWhiteSpace(wifiSsid) &&
+            !string.IsNullOrWhiteSpace(tenWifiHienTai) &&
             string.Equals(tenWifiHienTai.Trim().Trim('"'), wifiSsid, StringComparison.OrdinalIgnoreCase))
         {
             return new GeofenceCheckResult(true, "WIFI", khoangCach, null);
         }
 
+        var coWifiConfig = !string.IsNullOrWhiteSpace(wifiSsid);
         var thongDiep = khoangCach.HasValue
-            ? string.Create(CultureInfo.InvariantCulture,
-                $"Bạn đang ở cách khách sạn {khoangCach.Value:F0} m, ngoài phạm vi {radiusMeters:F0} m và không kết nối Wi-Fi \"{wifiSsid}\". Vui lòng di chuyển vào trong khuôn viên khách sạn rồi quẹt lại.")
-            : $"Không xác định được vị trí của bạn và thiết bị không kết nối Wi-Fi \"{wifiSsid}\". Vui lòng bật định vị (GPS) hoặc kết nối Wi-Fi nội bộ rồi quẹt lại.";
+            ? (coWifiConfig
+                ? string.Create(CultureInfo.InvariantCulture,
+                    $"Bạn đang ở cách khách sạn {khoangCach.Value:F0} m, ngoài phạm vi {radiusMeters:F0} m và không kết nối Wi-Fi \"{wifiSsid}\". Vui lòng di chuyển vào trong khuôn viên khách sạn rồi quẹt lại.")
+                : string.Create(CultureInfo.InvariantCulture,
+                    $"Bạn đang ở cách khách sạn {khoangCach.Value:F0} m, ngoài phạm vi {radiusMeters:F0} m. Vui lòng di chuyển vào trong khuôn viên khách sạn rồi quẹt lại."))
+            : (coWifiConfig
+                ? $"Không xác định được vị trí của bạn và thiết bị không kết nối Wi-Fi \"{wifiSsid}\". Vui lòng bật định vị (GPS) hoặc kết nối Wi-Fi nội bộ rồi quẹt lại."
+                : "Không xác định được vị trí của bạn. Vui lòng bật định vị (GPS) rồi quẹt lại.");
 
         return new GeofenceCheckResult(false, null, khoangCach, thongDiep);
     }

@@ -49,4 +49,14 @@ export const AgentStateAnnotation = Annotation.Root({
    * their own department, without having to read the whole answer.
    */
   scopeLabel: Annotation<string>(),
+
+  /**
+   * Person's name extracted by the router when the question routes to `directory`, e.g. "Sang"
+   * from "có nhân viên nào tên Sang không?".
+   *
+   * Only ever narrows a search on the WebAdmin side; the permission scope is still re-resolved
+   * there from the ticket, so a wrong or missing keyword can degrade the answer, never widen it.
+   * Empty for every other route.
+   */
+  searchKeyword: Annotation<string>(),
 });

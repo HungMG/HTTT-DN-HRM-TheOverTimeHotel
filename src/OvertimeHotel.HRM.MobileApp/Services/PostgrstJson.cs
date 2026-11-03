@@ -170,7 +170,16 @@ public static class PostgrstJson
     {
         if (!element.TryGetProperty(relation, out var prop))
         {
-            return null;
+            // Dự phòng chuyển đổi qua lại giữa camelCase và snake_case (vd chamCong <-> cham_cong)
+            var alternate = relation.Contains('_')
+                ? string.Concat(relation.Split('_', StringSplitOptions.RemoveEmptyEntries)
+                    .Select((w, i) => i == 0 ? w : char.ToUpperInvariant(w[0]) + w[1..]))
+                : string.Concat(relation.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
+
+            if (!element.TryGetProperty(alternate, out prop))
+            {
+                return null;
+            }
         }
 
         if (prop.ValueKind == JsonValueKind.Object)

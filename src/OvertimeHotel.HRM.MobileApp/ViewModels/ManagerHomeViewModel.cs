@@ -5,14 +5,25 @@ using OvertimeHotel.HRM.MobileApp.Services;
 namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 
 /// <summary>
-/// ViewModel trang chủ nhánh QUẢN LÝ &amp; QUẢN TRỊ: bố cục ưu tiên duyệt đơn từ và
-/// theo dõi phạm vi quản lý. Không dùng GPS — khối định vị chỉ dành cho nhân viên quẹt thẻ.
+/// ViewModel trang chủ nhánh QUẢN LÝ &amp; QUẢN TRỊ: bố cục ưu tiên duyệt đơn từ,
+/// theo dõi phạm vi quản lý và giám sát ca trực vận hành khách sạn.
 /// </summary>
 public class ManagerHomeViewModel : HomeViewModelBase
 {
-    public ManagerHomeViewModel(IAuthService authService, ILeaveApprovalService leaveApprovalService)
+    private readonly IAttendanceService _attendanceService;
+
+    private string _shiftTimeText = "--:-- – --:--";
+    private string _shiftTaskText = "Đang tải ca trực...";
+    private string _nightBadgeText = string.Empty;
+    private bool _hasShiftToday;
+
+    public ManagerHomeViewModel(
+        IAuthService authService,
+        ILeaveApprovalService leaveApprovalService,
+        IAttendanceService attendanceService)
         : base(authService, leaveApprovalService)
     {
+        _attendanceService = attendanceService ?? throw new ArgumentNullException(nameof(attendanceService));
         ApproveCommand = new Command(() => _ = Shell.Current.GoToAsync("LeaveApprovalPage"));
         RefreshManagerScope();
     }
@@ -33,6 +44,34 @@ public class ManagerHomeViewModel : HomeViewModelBase
     /// Quyền hạn hiển thị dưới dòng phạm vi trên thẻ navy.
     /// </summary>
     public string PermissionLabel => CanApproveLeave ? "CÓ QUYỀN DUYỆT ĐƠN" : "CHỈ XEM · KHÔNG DUYỆT ĐƠN";
+
+    /// <summary>Khung giờ ca trực hoặc điều hành hôm nay.</summary>
+    public string ShiftTimeText
+    {
+        get => _shiftTimeText;
+        private set => SetProperty(ref _shiftTimeText, value);
+    }
+
+    /// <summary>Tên nhiệm vụ / ca điều hành hôm nay.</summary>
+    public string ShiftTaskText
+    {
+        get => _shiftTaskText;
+        private set => SetProperty(ref _shiftTaskText, value);
+    }
+
+    /// <summary>Huy hiệu ca trực hoặc quản lý trực ca.</summary>
+    public string NightBadgeText
+    {
+        get => _nightBadgeText;
+        private set => SetProperty(ref _nightBadgeText, value);
+    }
+
+    /// <summary>Hôm nay có ca trực trong phân ca hay không.</summary>
+    public bool HasShiftToday
+    {
+        get => _hasShiftToday;
+        private set => SetProperty(ref _hasShiftToday, value);
+    }
 
     /// <summary>
     /// Số đơn đã xử lý trong phạm vi quyền hạn — chỉ số tiếp theo sau đơn chờ duyệt.
@@ -56,11 +95,12 @@ public class ManagerHomeViewModel : HomeViewModelBase
     }
 
     /// <summary>
-    /// Nhánh Quản lý nạp thêm số đơn đã xử lý. Nhánh Nhân viên không có chỉ số
-    /// riêng nên không cần ghi đè.
+    /// Nhánh Quản lý nạp thêm ca trực hôm nay và số đơn đã xử lý.
     /// </summary>
     protected override async Task LoadBranchKpiAsync(UserSession user)
     {
+        await LoadTodayShiftAsync();
+
         if (!user.CanApproveLeave)
         {
             ReviewedLeaveCount = 0;
@@ -78,6 +118,44 @@ public class ManagerHomeViewModel : HomeViewModelBase
             ReviewedLeaveCount = 0;
         }
     }
+
+    private async Task LoadTodayShiftAsync()
+    {
+        try
+        {
+            var shift = await _attendanceService.GetTodayShiftAsync();
+            HasShiftToday = shift.MaPhanCa > 0;
+
+            if (!HasShiftToday)
+            {
+                ShiftTimeText = "08:00 – 17:00";
+                ShiftTaskText = "Ca điều hành tiêu chuẩn · Giám sát vận hành khách sạn";
+                NightBadgeText = "Giám Sát Ca";
+                return;
+            }
+
+            ShiftTimeText = $"{FormatTime(shift.GioBatDau)} – {FormatTime(shift.GioKetThuc)}";
+            ShiftTaskText = string.IsNullOrWhiteSpace(shift.TenSuKien)
+                ? (string.IsNullOrWhiteSpace(shift.TenCa) ? "Ca điều hành & giám sát" : shift.TenCa)
+                : $"{shift.TenCa} • {shift.TenSuKien}";
+            NightBadgeText = IsNightShift(shift.GioBatDau, shift.GioKetThuc)
+                ? "Ca Đêm · +30%"
+                : "Quản Lý Trực Ca";
+        }
+        catch
+        {
+            HasShiftToday = false;
+            ShiftTimeText = "08:00 – 17:00";
+            ShiftTaskText = "Ca điều hành tiêu chuẩn · Giám sát vận hành khách sạn";
+            NightBadgeText = "Giám Sát Ca";
+        }
+    }
+
+    private static bool IsNightShift(DateTimeOffset start, DateTimeOffset end) =>
+        end.TimeOfDay <= start.TimeOfDay;
+
+    private static string FormatTime(DateTimeOffset value) =>
+        value == default ? "--:--" : value.ToLocalTime().ToString("HH:mm");
 
     private void RefreshManagerScope()
     {

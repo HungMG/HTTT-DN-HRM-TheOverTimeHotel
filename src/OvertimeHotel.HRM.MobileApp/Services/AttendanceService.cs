@@ -203,7 +203,7 @@ public class AttendanceService : IAttendanceService
             return Failure("NOT_FOUND", "Không tìm thấy ca làm việc của bạn. Vui lòng liên hệ quản lý.");
         }
 
-        var chamCong = PostgrstJson.ReadEmbedded(phanCa.Value.Row, "chamCong");
+        var chamCong = PostgrstJson.ReadEmbedded(phanCa.Value.Row, "cham_cong");
         var maChamCong = ReadInt(chamCong, "ma_cham_cong");
 
         return isCheckIn
@@ -460,7 +460,7 @@ public class AttendanceService : IAttendanceService
 
     private static TodayShiftDto ToTodayShift(JsonElement row)
     {
-        var chamCong = PostgrstJson.ReadEmbedded(row, "chamCong");
+        var chamCong = PostgrstJson.ReadEmbedded(row, "cham_cong");
 
         return new TodayShiftDto(
             MaPhanCa: ReadInt(row, "ma_phan_ca"),
@@ -487,7 +487,7 @@ public class AttendanceService : IAttendanceService
     /// </summary>
     private static MonthlyAttendanceDto ToMonthlyRecord(JsonElement row)
     {
-        var chamCong = PostgrstJson.ReadEmbedded(row, "chamCong");
+        var chamCong = PostgrstJson.ReadEmbedded(row, "cham_cong");
 
         return new MonthlyAttendanceDto(
             MaPhanCa: ReadInt(row, "ma_phan_ca"),

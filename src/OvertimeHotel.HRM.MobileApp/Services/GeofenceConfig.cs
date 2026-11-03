@@ -27,10 +27,10 @@ public sealed class GeofenceConfig
     /// <summary>Tên file đóng gói — phải khớp <c>MauiAsset</c> trong .csproj.</summary>
     public const string AssetFileName = "appsettings.json";
 
-    public double HotelLatitude { get; init; } = 10.776889d;
-    public double HotelLongitude { get; init; } = 106.700806d;
-    public double RadiusMeters { get; init; } = GeofencePolicy.DEFAULT_RADIUS_METERS;
-    public string WifiSsid { get; init; } = GeofencePolicy.DEFAULT_WIFI_SSID;
+    public double HotelLatitude { get; init; } = 10.778848d;
+    public double HotelLongitude { get; init; } = 106.687421d;
+    public double RadiusMeters { get; init; } = 250d;
+    public string WifiSsid { get; init; } = "";
 
     /// <summary>
     /// Đọc cấu hình từ gói cài. Luôn trả về một đối tượng dùng được — không bao

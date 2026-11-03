@@ -14,11 +14,15 @@
         <ScrollView>
             <VerticalStackLayout x:Name="pageBody" Spacing="16" Padding="20,0,20,32">
 
-                <!-- ═══ KHỐI 1 · THANH TIÊU ĐỀ ═══ -->
+                <!-- ═══ KHỐI 1 · THANH TIÊU ĐỀ HỒ SƠ QUẢN LÝ ═══ -->
                 <controls:ProfileHeaderBar x:Name="profileHeaderBar"
                                            Opacity="0" />
 
-                <!-- ═══ KHỐI 2 · THẺ PHẠM VI QUẢN LÝ (khối hero navy riêng của nhánh này) ═══ -->
+                <!-- ═══ KHỐI 2 · ĐỒNG HỒ THẬT & BẢN ĐỒ GPS GIÁM SÁT VẬN HÀNH ═══ -->
+                <controls:LocationClockPanel x:Name="locationClockPanel"
+                                            Opacity="0" />
+
+                <!-- ═══ KHỐI 3 · THẺ PHẠM VI QUẢN LÝ (Executive Navy & Gold Bento Card) ═══ -->
                 <Border x:Name="managerScopeCard"
                         Opacity="0"
                         StrokeShape="RoundRectangle 20"
@@ -30,25 +34,25 @@
                         <Shadow Brush="#1E3A8A" Offset="0,6" Radius="16" Opacity="0.25" />
                     </Border.Shadow>
 
-                    <VerticalStackLayout Spacing="12">
+                    <VerticalStackLayout Spacing="14">
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
                             <Border Grid.Column="0"
                                     StrokeShape="RoundRectangle 24"
                                     Stroke="#D4AF37"
                                     StrokeThickness="1.5"
                                     BackgroundColor="#FFFBEB"
-                                    WidthRequest="44"
-                                    HeightRequest="44"
+                                    WidthRequest="46"
+                                    HeightRequest="46"
                                     VerticalOptions="Center">
-                                <Label Text="⚙"
+                                <Label Text="👑"
                                        TextColor="#B45309"
-                                       FontSize="20"
+                                       FontSize="22"
                                        FontFamily="SegoeUIBold"
                                        HorizontalOptions="Center"
                                        VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
-                                <Label Text="BẢNG ĐIỀU KHIỂN QUẢN LÝ"
+                                <Label Text="BẢNG ĐIỀU HÀNH BỘ PHẬN"
                                        TextColor="#FDE047"
                                        FontSize="13"
                                        FontFamily="SegoeUIBold"
@@ -66,7 +70,7 @@
 
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                             <VerticalStackLayout Grid.Column="0" Spacing="3">
-                                <Label Text="QUYỀN HẠN"
+                                <Label Text="VAI TRÒ QUẢN LÝ"
                                        TextColor="#93C5FD"
                                        FontSize="9"
                                        FontFamily="SegoeUIBold"
@@ -78,7 +82,7 @@
                                        FontFamily="SegoeUIBold" />
                             </VerticalStackLayout>
                             <VerticalStackLayout Grid.Column="1" Spacing="3">
-                                <Label Text="PHẠM VI DUYỆT ĐƠN"
+                                <Label Text="PHẠM VI PHỤ TRÁCH"
                                        TextColor="#93C5FD"
                                        FontSize="9"
                                        FontFamily="SegoeUIBold"
@@ -93,13 +97,153 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <!-- ═══ KHỐI 3 · CHỈ SỐ ĐIỀU HÀNH ═══ -->
-                <!--
-                    Cả ba thẻ đều lấy số từ ILeaveApprovalService: đơn chờ duyệt và đơn
-                    đã xử lý cập nhật bất đồng bộ nên ManagerHomePage gán tay trong
-                    ApplyViewModel, không bind thẳng để tránh hiện giá trị mặc định.
-                    Thẻ "Ca đêm" cũ trùng ý nghĩa với nhánh Nhân viên nên đã bỏ.
-                -->
+                <!-- ═══ KHỐI 4 · NHẮC NHỞ DUYỆT ĐƠN KHẨN CẤP (chỉ hiện khi có đơn chờ duyệt) ═══ -->
+                <Border x:Name="urgentApprovalCard"
+                        IsVisible="{Binding HasPendingLeaves}"
+                        StrokeShape="RoundRectangle 16"
+                        Stroke="#F59E0B"
+                        StrokeThickness="1.5"
+                        BackgroundColor="#FFFBEB"
+                        Padding="16,14">
+                    <Border.Shadow>
+                        <Shadow Brush="#D97706" Offset="0,4" Radius="12" Opacity="0.15" />
+                    </Border.Shadow>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Border Grid.Column="0"
+                                StrokeShape="RoundRectangle 20"
+                                BackgroundColor="#FEF3C7"
+                                Stroke="Transparent"
+                                WidthRequest="38"
+                                HeightRequest="38"
+                                VerticalOptions="Center">
+                            <Label Text="⚡"
+                                   TextColor="#D97706"
+                                   FontSize="18"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="ĐƠN CẦN DUYỆT GẤP"
+                                   TextColor="#B45309"
+                                   FontSize="10"
+                                   FontFamily="SegoeUIBold"
+                                   CharacterSpacing="1" />
+                            <Label Text="{Binding UrgentApproveButtonText}"
+                                   TextColor="#78350F"
+                                   FontSize="13"
+                                   FontFamily="SegoeUIBold" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="2"
+                                Text="DUYỆT"
+                                Command="{Binding ApproveCommand}"
+                                BackgroundColor="#1E3A8A"
+                                TextColor="#FFFFFF"
+                                FontFamily="SegoeUIBold"
+                                FontSize="11"
+                                CornerRadius="10"
+                                Padding="14,0"
+                                HeightRequest="36"
+                                VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- ═══ KHỐI 5 · LỊCH TRỰC ĐIỀU HÀNH HÔM NAY ═══ -->
+                <Border x:Name="shiftTimelineCard"
+                        Opacity="0"
+                        StrokeShape="RoundRectangle 20"
+                        Stroke="#1E3A8A"
+                        StrokeThickness="2"
+                        BackgroundColor="#FFFFFF"
+                        Padding="18">
+                    <Border.Shadow>
+                        <Shadow Brush="#1E3A8A" Offset="0,6" Radius="16" Opacity="0.10" />
+                    </Border.Shadow>
+
+                    <VerticalStackLayout Spacing="12">
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <Label Grid.Column="0"
+                                   Text="LỊCH TRỰC ĐIỀU HÀNH HÔM NAY"
+                                   TextColor="#1E3A8A"
+                                   FontSize="12"
+                                   FontFamily="SegoeUIBold"
+                                   CharacterSpacing="1"
+                                   VerticalOptions="Center" />
+                            <Border Grid.Column="1"
+                                    x:Name="nightBadgeBorder"
+                                    StrokeShape="RoundRectangle 10"
+                                    Stroke="#D4AF37"
+                                    StrokeThickness="1"
+                                    BackgroundColor="#FFFBEB"
+                                    Padding="8,3"
+                                    VerticalOptions="Center">
+                                <Label x:Name="lblNightBadge"
+                                       Text="Giám Sát Ca"
+                                       TextColor="#B45309"
+                                       FontSize="10"
+                                       FontFamily="SegoeUIBold" />
+                            </Border>
+                        </Grid>
+
+                        <!-- Dải giờ trực: điểm bắt đầu ─────────── điểm kết thúc -->
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                            <Label Grid.Column="0"
+                                   x:Name="lblTimelineStart"
+                                   Text="--:--"
+                                   TextColor="#1E3A8A"
+                                   FontSize="22"
+                                   FontFamily="SegoeUIBold"
+                                   VerticalOptions="Center" />
+
+                            <BoxView Grid.Column="1"
+                                     HeightRequest="3"
+                                     Color="#D4AF37"
+                                     VerticalOptions="Center"
+                                     Margin="4,0" />
+
+                            <Label Grid.Column="2"
+                                   x:Name="lblTimelineEnd"
+                                   Text="--:--"
+                                   TextColor="#1E3A8A"
+                                   FontSize="22"
+                                   FontFamily="SegoeUIBold"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <Label x:Name="lblTimelineShiftName"
+                               Text="Đang tải ca trực điều hành..."
+                               TextColor="#475569"
+                               FontSize="13"
+                               FontFamily="SegoeUI" />
+
+                        <BoxView HeightRequest="1" Color="#E2E8F0" Margin="0,2" />
+
+                        <!-- Ghi chú điều hành quản lý -->
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Border Grid.Column="0"
+                                    StrokeShape="RoundRectangle 16"
+                                    Stroke="#D4AF37"
+                                    StrokeThickness="1"
+                                    BackgroundColor="#FFFBEB"
+                                    Padding="10,3"
+                                    VerticalOptions="Center">
+                                <Label Text="★ ĐIỀU HÀNH CA"
+                                       TextColor="#B45309"
+                                       FontSize="9"
+                                       FontFamily="SegoeUIBold"
+                                       CharacterSpacing="0.8" />
+                            </Border>
+                            <Label Grid.Column="1"
+                                   Text="Giám sát vận hành 24/7, đôn đốc nhân sự và đối soát chấm công trong ca trực."
+                                   TextColor="#64748B"
+                                   FontSize="11"
+                                   FontFamily="SegoeUI"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ═══ KHỐI 6 · CHỈ SỐ ĐIỀU HÀNH BỘ PHẬN ═══ -->
                 <Grid x:Name="statsGrid"
                       ColumnDefinitions="*,*,*"
                       ColumnSpacing="10"
@@ -117,15 +261,15 @@
                                        SubCaption="trong phạm vi"
                                        ValueColor="#1E3A8A" />
                     <controls:StatTile Grid.Column="2"
-                                       Caption="Ca trực đêm"
-                                       Value="8"
-                                       SubCaption="+30% phụ cấp"
+                                       Caption="Ca trực"
+                                       Value="26"
+                                       SubCaption="tháng này"
                                        ValueColor="#D4AF37" />
                 </Grid>
 
-                <!-- ═══ KHỐI 4 · LƯỚI CHỨC NĂNG ═══ -->
+                <!-- ═══ KHỐI 7 · LƯỚI CHỨC NĂNG ĐIỀU HÀNH BỘ PHẬN ═══ -->
                 <Label x:Name="featuresHeader"
-                       Text="CHỨC NĂNG QUẢN TRỊ"
+                       Text="CHỨC NĂNG ĐIỀU HÀNH BỘ PHẬN"
                        TextColor="#1E3A8A"
                        FontSize="12"
                        FontFamily="SegoeUIBold"
@@ -140,28 +284,28 @@
                     <controls:FeatureTile Grid.Row="0" Grid.Column="0"
                                           Icon="✅"
                                           Title="Duyệt Đơn Từ"
-                                          Description="Nghỉ phép, thôi việc"
+                                          Description="Nghỉ phép, đổi ca"
                                           ActionText="Duyệt Ngay"
                                           ActionColor="#16A34A"
                                           TappedCommand="{Binding ApproveCommand}" />
                     <controls:FeatureTile Grid.Row="0" Grid.Column="1"
+                                          Icon="📅"
+                                          Title="Lịch Ca Bộ Phận"
+                                          Description="Xếp ca 24/7 nhân sự"
+                                          ActionText="Xem Lịch"
+                                          TappedCommand="{Binding FeatureCommand}"
+                                          CommandParameter="Lịch Ca Bộ Phận" />
+                    <controls:FeatureTile Grid.Row="1" Grid.Column="0"
                                           Icon="📊"
                                           Title="Báo Cáo Công"
-                                          Description="Chấm công theo ca"
+                                          Description="Đối soát quẹt thẻ theo ca"
                                           ActionText="Xem Báo Cáo"
                                           TappedCommand="{Binding FeatureCommand}"
                                           CommandParameter="Báo Cáo Công" />
-                    <controls:FeatureTile Grid.Row="1" Grid.Column="0"
-                                          Icon="💰"
-                                          Title="Phiếu Lương"
-                                          Description="Tra cứu lương Net"
-                                          ActionText="Xem Phiếu"
-                                          TappedCommand="{Binding FeatureCommand}"
-                                          CommandParameter="Phiếu Lương" />
                     <controls:FeatureTile Grid.Row="1" Grid.Column="1"
                                           Icon="👤"
-                                          Title="Hồ Sơ"
-                                          Description="Hồ sơ, phòng ban, chức vụ"
+                                          Title="Hồ Sơ Quản Lý"
+                                          Description="Hồ sơ, phòng ban &amp; quyền"
                                           ActionText="Xem Hồ Sơ"
                                           TappedCommand="{Binding ProfileCommand}" />
                 </Grid>
@@ -173,6 +317,7 @@
                                       IsVisible="{Binding CanViewAttendanceSummary}"
                                       TappedCommand="{Binding AttendanceSummaryCommand}" />
 
+                <!-- ═══ KHỐI 8 · DÒNG THÔNG TIN PHIÊN BẢN HỆ THỐNG ═══ -->
                 <Label x:Name="footerLabel"
                        Text="The OverTime Hotel Mobile App v1.0 (.NET MAUI 10) · Supabase Cloud"
                        TextColor="#94A3B8"

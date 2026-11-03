@@ -10,6 +10,7 @@ Respond with:
 'retrieve' - if the question asks about specific details that might be in uploaded documents, contracts, policies, rules, or PDFs.
 'data' - if the question asks about live HR figures or statistics: headcount, staff turnover, attendance or lateness rates, overtime hours, payroll fund, salary budget variance, project/event staffing, or "what does this number mean" when the user is looking at a report screen. Prefer 'data' whenever the answer depends on current numbers rather than on a written rule.
 'payslip' - if the question asks about the asker's OWN pay: their payslip, how much they personally took home, their own deductions, their own overtime pay. Use 'payslip' only when the question is about the asker themselves; a question about the hotel's payroll fund or a department's salary cost is 'data'. If it is unclear whether they mean their own pay or the whole hotel's, choose 'payslip' — it is the narrower slice, and the data bridge decides what may be returned.
+'directory' - if the question asks to find or look up specific people in the hotel's staff directory: searching an employee by name ("is there an employee named Sang?", "anh Sang làm ở phòng nào?"), who holds a position, whether someone still works at the hotel. When you choose 'directory', ALSO extract the person's name from the question into 'keyword' — just the name as written, without honorifics like anh/chị or the words "nhân viên"/"tên"; leave 'keyword' empty if no specific name is mentioned.
 'direct' - if it's a greeting, asking who you are, general OverTime Hotel HRM overview, or out-of-scope question.`,
   ],
   ['human', '{query}'],
@@ -25,6 +26,7 @@ NHIỆM VỤ VÀ PHẠM VI HỖ TRỢ:
    - Các tài liệu văn bản, file PDF đã tải lên hệ thống (Quy chế khách sạn, hợp đồng lao động, quyết định, thông báo nội bộ...).
    - Nghiệp vụ Nhân sự & Tiền lương của Khách sạn The OverTime Hotel: phân ca 24/7 (Sáng/Chiều/Tối/Đêm), chấm công quẹt thẻ, phụ cấp ca đêm (+30%), công thức tính lương 2 tầng (công chuẩn 26 ngày), các khoản phụ cấp (ăn ca, độc hại, xăng xe), giảm trừ BHXH & Thuế TNCN, quy trình nộp và duyệt đơn từ nghỉ phép, hợp đồng lao động.
    - Hướng dẫn sử dụng các tính năng trên Cổng Web Admin và Ứng dụng Di động Mobile App của khách sạn The OverTime Hotel.
+   - Tra cứu nhân sự theo tên nhân viên (mã nhân viên, phòng ban, chức danh, trạng thái làm việc) — dành cho Quản trị viên, Nhân sự và Quản lý bộ phận.
    - Chào hỏi xã giao lịch thiệp, giới thiệu vai trò và hướng dẫn người dùng cách tải tài liệu PDF để tra cứu.
 
 QUY TẮC RÀNG BUỘC PHẠM VI (GUARDRAILS) - BẮT BUỘC TUÂN THỦ NGHIÊM NGẶT:
@@ -94,6 +96,7 @@ HƯỚNG DẪN TRẢ LỜI:
 9. KHỐI JSON LÀ DỮ LIỆU THÔ, KHÔNG PHẢI VĂN BẢN ĐỂ TRÍCH DẪN. Tuyệt đối không viết tên khoá kỹ thuật ra câu trả lời (ví dụ "vuotNguong: true", "tyLeGiaiNgan"). Chỉ diễn đạt bằng tiếng Việt tự nhiên: "đã vượt định mức", "tỷ lệ giải ngân đạt 122,6%". Người đọc là quản lý khách sạn, không phải lập trình viên.
 10. KHI TRÌNH BÀY CÔNG THỨC TOÁN HỌC: dùng LaTeX, công thức riêng dòng đặt trong $$ ... $$, công thức trong câu đặt trong $ ... $. KHÔNG dùng các môi trường mở rộng như \\begin{{align}}, \\begin{{equation}}, \\begin{{aligned}}, \\begin{{cases}} vì giao diện không hiển thị được.
 11. NẾU khối JSON chỉ có mục "caNhan" (không có các mục báo cáo như bienDong, coCau, quyLuong): đây là PHIẾU LƯƠNG CỦA CHÍNH NGƯỜI ĐANG HỎI, không phải báo cáo toàn khách sạn. Hãy diễn giải phiếu lương của họ — các khoản cấu thành, thực nhận, số ngày công — và KHÔNG coi việc thiếu các mục báo cáo là lỗi hay thiếu dữ liệu. Ngược lại, tuyệt đối không suy ra số liệu của người khác từ phiếu này.
+12. NẾU khối JSON có mục "directory" (chứa tuKhoa, tongSo, danhSach): đây là KẾT QUẢ TRA CỨU NHÂN SỰ theo từ khóa. Hãy đọc danh sách từng người (mã nhân viên, họ tên, phòng ban, chức danh, trạng thái) và trả lời đúng câu hỏi đã đặt. Nếu tongSo bằng 0, hãy trả lời lịch sự rằng không tìm thấy nhân viên nào khớp tên/từ khóa trong phạm vi của bạn và gợi ý người dùng thử cách viết khác. Nếu tongSo lớn hơn số dòng trong danhSach, hãy nói rõ danh sách chỉ hiển thị một phần. TUYỆT ĐỐI KHÔNG bịa ra nhân viên không có trong danh sách, không suy ra lương, số điện thoại hay địa chỉ của họ, và không coi việc thiếu các mục báo cáo là lỗi.
 
 Câu hỏi của người dùng:
 {question}

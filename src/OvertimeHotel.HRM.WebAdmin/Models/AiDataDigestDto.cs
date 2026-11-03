@@ -62,6 +62,13 @@ public sealed class AiDataDigestDto
     public AiDataCaNhanDto? CaNhan { get; set; }
 
     /// <summary>
+    /// Kết quả tra cứu nhân sự theo từ khóa; chỉ có khi hỏi đúng phạm vi tra cứu và người hỏi
+    /// đủ quyền. Không kèm khi từ khóa bị thiếu hoặc không khớp ai.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AiDataDirectoryDto? Directory { get; set; }
+
+    /// <summary>
     /// Ghi chú phương pháp cần mô hình nhắc lại khi diễn giải, để người dùng không hiểu nhầm
     /// các con số suy diễn thành số liệu chính thức.
     /// </summary>
@@ -326,5 +333,44 @@ public sealed class AiDataPhieuLuongDto
     public decimal ThucNhan { get; set; }
 
     /// <summary>Trạng thái phiếu lương trong quy trình duyệt.</summary>
+    public string TrangThai { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Kết quả tra cứu nhân sự theo từ khóa, đã lọc theo phạm vi quyền của người hỏi.
+/// </summary>
+public sealed class AiDataDirectoryDto
+{
+    /// <summary>Từ khóa đã tra cứu, để mô hình nhắc lại đúng ý người hỏi.</summary>
+    public string TuKhoa { get; set; } = string.Empty;
+
+    /// <summary>Tổng số nhân viên khớp từ khóa trong phạm vi được phép.</summary>
+    public int TongSo { get; set; }
+
+    /// <summary>True khi số kết quả hiển thị đã bị cắt vì vượt giới hạn an toàn ngữ cảnh.</summary>
+    public bool BiGioiHan { get; set; }
+
+    /// <summary>Danh sách nhân viên khớp từ khóa, tối đa 10 người mỗi lượt tra cứu.</summary>
+    public IReadOnlyList<AiDataNhanVienDto> DanhSach { get; set; } = [];
+}
+
+/// <summary>Một nhân viên trong kết quả tra cứu — chỉ thông tin cơ bản, không dữ liệu cá nhân nhạy cảm.</summary>
+public sealed class AiDataNhanVienDto
+{
+    /// <summary>Mã nhân viên trong hệ thống.</summary>
+    public int MaNhanVien { get; set; }
+
+    /// <summary>Họ tên đầy đủ (họ kèm tên).</summary>
+    public string HoTen { get; set; } = string.Empty;
+
+    /// <summary>Tên phòng ban đang công tác; null khi chưa gán phòng ban.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PhongBan { get; set; }
+
+    /// <summary>Chức danh hiện tại; null khi chưa gán chức vụ.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ChucDanh { get; set; }
+
+    /// <summary>Nhãn tiếng Việt của trạng thái làm việc (Đang làm việc / Đã thôi việc...).</summary>
     public string TrangThai { get; set; } = string.Empty;
 }

@@ -123,5 +123,5 @@ public class EmployeeHomeViewModel : HomeViewModelBase
         end.TimeOfDay <= start.TimeOfDay;
 
     private static string FormatTime(DateTimeOffset value) =>
-        value == default ? "--:--" : value.ToString("HH:mm");
+        value == default ? "--:--" : value.ToLocalTime().ToString("HH:mm");
 }

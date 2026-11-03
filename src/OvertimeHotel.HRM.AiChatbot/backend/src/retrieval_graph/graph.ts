@@ -21,14 +21,24 @@ async function checkQueryType(
   state: typeof AgentStateAnnotation.State,
   config: RunnableConfig,
 ): Promise<{
-  route: 'retrieve' | 'direct' | 'data' | 'payslip';
+  route: 'retrieve' | 'direct' | 'data' | 'payslip' | 'directory';
+  searchKeyword: string;
 }> {
   //schema for routing
   const schema = z.object({
     // `payslip` shares the data bridge node with `data`; it only changes which slice of
     // figures the WebAdmin is asked for. Kept as its own route because the two are told
     // apart by what the user is asking about, not by anything the graph could infer later.
-    route: z.enum(['retrieve', 'direct', 'data', 'payslip']),
+    // `directory` takes the same bridge — its slice is a staff-name search — and carries
+    // the extracted person's name in `keyword`.
+    route: z.enum(['retrieve', 'direct', 'data', 'payslip', 'directory']),
+    keyword: z
+      .string()
+      .optional()
+      .describe(
+        "The person's name mentioned in the question, when route is 'directory'. " +
+          'Just the name, without honorifics or surrounding words. Empty otherwise.',
+      ),
   });
 
   const configuration = ensureAgentConfiguration(config);
@@ -46,13 +56,13 @@ async function checkQueryType(
       .invoke(formattedPrompt.toString());
 
     const route = response.route;
-    return { route };
+    return { route, searchKeyword: (response.keyword ?? '').trim() };
   } catch (err) {
     console.warn(
       'Structured output routing failed, defaulting to retrieve:',
       err,
     );
-    return { route: 'retrieve' };
+    return { route: 'retrieve', searchKeyword: '' };
   }
 }
 
@@ -92,7 +102,7 @@ async function routeQuery(
     return 'retrieveDocuments';
   } else if (route === 'direct') {
     return 'directAnswer';
-  } else if (route === 'data' || route === 'payslip') {
+  } else if (route === 'data' || route === 'payslip' || route === 'directory') {
     // Same node: the scope travels on state, and the WebAdmin decides what each one returns.
     return 'loadDataDigest';
   } else {

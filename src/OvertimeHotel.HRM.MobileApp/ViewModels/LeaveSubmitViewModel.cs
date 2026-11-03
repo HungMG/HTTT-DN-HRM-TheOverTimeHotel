@@ -489,7 +489,7 @@ public class LeaveSubmitViewModel : INotifyPropertyChanged
     {
         if (item is null || !item.CanWithdraw) return;
 
-        bool confirm = await Shell.Current.DisplayAlert(
+        bool confirm = await Shell.Current.DisplayAlertAsync(
             "Xác nhận rút đơn",
             $"Bạn có chắc chắn muốn rút đơn {item.TenLoaiDon} (từ {item.TuNgay:dd/MM/yyyy} đến {item.DenNgay:dd/MM/yyyy}) không?",
             "Rút đơn",
@@ -503,18 +503,18 @@ public class LeaveSubmitViewModel : INotifyPropertyChanged
             var result = await _leaveService.WithdrawRequestAsync(item.MaDon);
             if (result.Success)
             {
-                await Shell.Current.DisplayAlert("Thành công", "Đã rút đơn nghỉ phép thành công.", "Đóng");
+                await Shell.Current.DisplayAlertAsync("Thành công", "Đã rút đơn nghỉ phép thành công.", "Đóng");
                 await RefreshAsync();
             }
             else
             {
-                await Shell.Current.DisplayAlert("Không thể rút đơn", result.Message, "Đóng");
+                await Shell.Current.DisplayAlertAsync("Không thể rút đơn", result.Message, "Đóng");
                 await RefreshAsync();
             }
         }
         catch (Exception)
         {
-            await Shell.Current.DisplayAlert("Lỗi", "Không thể rút đơn lúc này. Vui lòng thử lại sau.", "Đóng");
+            await Shell.Current.DisplayAlertAsync("Lỗi", "Không thể rút đơn lúc này. Vui lòng thử lại sau.", "Đóng");
         }
         finally
         {

@@ -1,14 +1,13 @@
 # PRD 04: Thiết Kế Cơ Sở Dữ Liệu 30 Bảng Chuẩn 3NF (Supabase PostgreSQL)
 
-> **Lưu ý về tên file:** File này vẫn mang tên `04_Thiet_Ke_CSDL_17_Bang.md` (đã được tham chiếu ở nhiều tài liệu và mã nguồn nên **không đổi tên file** để tránh đứt gãy liên kết), nhưng **nội dung thực tế mô tả đầy đủ 30 bảng CSDL chuẩn hóa 3NF**. Hãy luôn đối chiếu con số trong tiêu đề nội dung của tài liệu.
+> **Tài liệu đặc tả kiến trúc dữ liệu cốt lõi:** Tài liệu này mô tả chi tiết toàn bộ **30 bảng CSDL chuẩn hóa dạng chuẩn 3 (3NF)** đang vận hành trực tiếp trên nền tảng Supabase Cloud (PostgreSQL 17.6), hệ thống bảo mật đa tầng **Row Level Security (RLS)**, các hàm **Stored Functions**, hệ thống **Triggers rào chắn** và cơ chế phân định luồng kiểm soát truy cập giữa **Web Admin Portal** và **Mobile App**.
 
-> **Nguồn đối chiếu & Tiến trình chuẩn hóa mở rộng:**
-> Toàn bộ thiết kế CSDL được kiểm chứng và nâng cấp qua 4 giai đoạn tiến hóa kiến trúc:
+> **Nguồn đối chiếu & Tiến trình chuẩn hóa mở rộng qua các giai đoạn:**
 > 1. **17 Bảng gốc:** Thiết kế sơ bộ ban đầu cho các nghiệp vụ cốt lõi (Hồ sơ, Hợp đồng, Tài khoản, Phân ca, Chấm công, Đơn từ, Kỳ lương, Cấu hình lương, Phiếu lương).
 > 2. **24 Bảng chuẩn 3NF (07/10/2026):** Dump từ CSDL vận hành Supabase Cloud (PostgreSQL 17.6). Phân rã chuẩn 3NF phân hệ tiền lương: tách 3 bảng cấu hình tham số (`cau_hinh_phu_cap`, `cau_hinh_khau_tru`, `cau_hinh_tang_ca`); tách 3 bảng chi tiết khấu trừ lương 3 tầng (`chi_tiet_tru_bao_hiem`, `chi_tiet_tru_thue_tncn`, `chi_tiet_tru_vi_pham_tam_ung`); bổ sung bảng kiểm toán an ninh `nhat_ky_quan_tri`; giữ bảng `cau_hinh_khoan_luong` làm bảng Legacy/Bonus.
 > 3. **25 Bảng (09/10/2026):** Bổ sung bảng thứ 25 `yeu_cau_tai_khoan`, tách riêng bộ phận Công nghệ Thông tin (`ma_phong_ban = 9`) và bổ sung nhóm vai trò thứ 5 (`IT`), thiết lập quy trình kiểm soát cấp tài khoản Mobile App: *HR duyệt HĐLĐ -> IT cấp tài khoản* kèm 4 triggers rào chắn CSDL chống tự cấp và leo quyền.
 > 4. **27 Bảng chính thức (14/10/2026):** Bổ sung 2 bảng `du_an` (Bảng 26) và `phan_cong_du_an` (Bảng 27) phục vụ Phân hệ 9 (Quản lý Dự án & Sự kiện Khách sạn: Tiệc cưới, Hội nghị MICE, Gala Dinner, Đoàn VIP...), hỗ trợ phân công nhân sự và kết chuyển thù lao sự kiện vào bảng lương tháng.
-> 5. **30 Bảng chính thức (20/10/2026):** Bổ sung 3 bảng phục vụ nhóm chức năng 3.0 (Phân ca) và 4.0 (Chấm công) của PRD: `dinh_bien_ca` (Bảng 28 — định biên số người tối thiểu theo ca × chức vụ, phát hiện thiếu người khi xếp ca), `giai_trinh_cham_cong` (Bảng 29 — giải trình sai lệch giờ quẹt thẻ, duyệt 2 cấp Quản lý → HR), `yeu_cau_doi_ca` (Bảng 30 — nhân viên tự nguyện đổi ca trực với đồng nghiệp). Đồng thời mở rộng `cham_cong_trang_thai_check` thêm mã `TRE_VA_SOM` (nhân viên vừa đi trễ vừa về sớm trong cùng một ca).
+> 5. **30 Bảng chính thức (20/10/2026):** Bổ sung 3 bảng phục vụ nhóm chức năng 3.0 (Phân ca) và 4.0 (Chấm công) của PRD: `dinh_bien_ca` (Bảng 28 — định biên số người tối thiểu theo ca × chức vụ × bộ phận, phát hiện thiếu người khi xếp ca), `giai_trinh_cham_cong` (Bảng 29 — giải trình sai lệch giờ quẹt thẻ, duyệt 2 cấp Quản lý → HR), `yeu_cau_doi_ca` (Bảng 30 — nhân viên tự nguyện đổi ca trực với đồng nghiệp). Đồng thời mở rộng `cham_cong_trang_thai_check` thêm mã `TRE_VA_SOM` (nhân viên vừa đi trễ vừa về sớm trong cùng một ca).
 
 ---
 
@@ -62,6 +61,8 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ma_chuc_vu` (SERIAL, PK): Mã định danh chức vụ.
 - `ten_chuc_vu` (VARCHAR(100), NOT NULL, UNIQUE): Tên chức danh nghề nghiệp (Bếp trưởng, Lễ tân, Bellman, Trưởng ca, IT Support, IT Manager...).
 - `mo_ta` (VARCHAR(255), NULL): Mô tả tiêu chuẩn chuyên môn.
+- `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NULL, ON DELETE SET NULL): Phòng ban trực thuộc (để `NULL` nếu là chức danh chung trải nhiều bộ phận như Trưởng Bộ Phận, Giám Sát Ca).
+- `che_do_lam_viec` (VARCHAR(50), NOT NULL, DEFAULT 'CA_247'): Chế độ làm việc chuẩn (`CA_247` hoặc `HANH_CHINH`).
 
 ### Bảng 3: `nhan_vien` (Hồ sơ nhân viên)
 - `ma_nhan_vien` (SERIAL, PK): Mã nhân viên duy nhất.
@@ -69,8 +70,8 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ma_chuc_vu` (INT, FK -> chuc_vu.ma_chuc_vu, NOT NULL, ON DELETE RESTRICT): Chức danh đảm nhiệm.
 - `ho` (VARCHAR(100), NOT NULL): Họ và tên đệm của nhân viên.
 - `ten` (VARCHAR(50), NOT NULL): Tên chính của nhân viên.
-- `ngay_sinh` (DATE, NOT NULL): Ngày tháng năm sinh.
-- `gioi_tinh` (VARCHAR(10), NOT NULL, CHECK in ('NAM', 'NU', 'KHAC')): Giới tính.
+- `ngay_sinh` (DATE, NULL): Ngày tháng năm sinh.
+- `gioi_tinh` (VARCHAR(10), NULL, CHECK in ('NAM', 'NU', 'KHAC')): Giới tính.
 - `dien_thoai` (VARCHAR(20), NOT NULL): Số điện thoại liên hệ.
 - `email` (VARCHAR(100), NOT NULL, UNIQUE): **Email công vụ** — định danh tài khoản đăng nhập Mobile App, đối chiếu 1-1 với `claims.email` trong `custom_access_token_hook`. Tuyệt đối không thay đổi tùy tiện vì làm gián đoạn phiên đăng nhập app.
 - `email_ca_nhan` (VARCHAR(100), NULL): **Email cá nhân** — dùng lưu trữ hồ sơ liên lạc nhân sự, nhận thông báo cá nhân; tách biệt hoàn toàn với định danh công vụ để việc cập nhật không ảnh hưởng đến cơ chế xác thực.
@@ -79,6 +80,8 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ngay_vao_lam` (DATE, NOT NULL): Ngày chính thức làm việc.
 - `ngay_thoi_viec` (DATE, NULL): Ngày nghỉ việc thực tế (NULL nếu còn làm việc).
 - `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DANG_LAM', CHECK in ('DANG_LAM', 'NGHI_PHEP', 'DA_THOI_VIEC')): Trạng thái công tác.
+- `is_profile_complete` (BOOLEAN, NOT NULL, DEFAULT FALSE): Cờ đánh dấu nhân sự đã hoàn tất cập nhật hồ sơ cá nhân lần đầu.
+- `so_nguoi_phu_thuoc` (INT, NOT NULL, DEFAULT 0, CHECK >= 0): Số lượng người phụ thuộc đăng ký hợp lệ dùng để tính giảm trừ gia cảnh thuế TNCN.
 
 ### Bảng 4: `hop_dong` (Hợp đồng lao động)
 - `ma_hop_dong` (SERIAL, PK): Mã hợp đồng lao động.
@@ -89,6 +92,7 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ngay_ket_thuc` (DATE, NULL): Ngày hết hạn (NULL nếu vô thời hạn).
 - `luong_co_ban` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Mức lương thỏa thuận pháp lý làm căn cứ đóng BHXH và tính lương công.
 - `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'HIEU_LUC', CHECK in ('HIEU_LUC', 'HET_HAN', 'DA_CHAM_DUT')): Hiệu lực hợp đồng.
+- `hinh_thuc_hop_dong` (VARCHAR(50), NULL): Hình thức làm việc theo hợp đồng (Toàn thời gian `FULL_TIME`, Bán thời gian `PART_TIME`).
 
 ### Bảng 5: `tai_khoan` (Tài khoản người dùng)
 - `ma_tai_khoan` (SERIAL, PK): Mã tài khoản.
@@ -142,6 +146,8 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `gio_bat_dau` (TIME, NOT NULL): Khung giờ mở ca (06:00, 14:00, 22:00).
 - `gio_ket_thuc` (TIME, NOT NULL): Khung giờ đóng ca (14:00, 22:00, 06:00).
 - `qua_dem` (BOOLEAN, NOT NULL, DEFAULT FALSE): Đánh dấu ca làm việc qua nửa đêm để kích hoạt phụ cấp ca đêm 30%.
+- `gio_lam_chuan` (NUMERIC, NOT NULL, DEFAULT 8.00): Số giờ làm việc tiêu chuẩn trong ca (8.0 giờ).
+- `loai_ca` (VARCHAR(50), NOT NULL, DEFAULT 'CA_CHINH'): Phân loại tính chất ca (`CA_CHINH`, `CA_PHU`, `CA_SU_KIEN`).
 
 ### Bảng 11: `phan_ca` (Lịch xếp ca làm việc)
 - `ma_phan_ca` (SERIAL, PK): Mã bản ghi xếp ca.
@@ -163,7 +169,7 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `phut_di_tre` (INT, NOT NULL, DEFAULT 0): Số phút trễ so với `bat_dau_du_kien`.
 - `phut_ve_som` (INT, NOT NULL, DEFAULT 0): Số phút về sớm so với `ket_thuc_du_kien`.
 - `gio_tang_ca_ot` (DECIMAL(4,2), NOT NULL, DEFAULT 0.00): Số giờ làm thêm ngoài ca đã được phê duyệt.
-- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DUNG_GIO', CHECK in ('DUNG_GIO', 'DI_TRE', 'VE_SOM', 'VANG_MAT')): Kết luận chấm công.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DUNG_GIO', CHECK in ('DUNG_GIO', 'DI_TRE', 'VE_SOM', 'VANG_MAT', 'TRE_VA_SOM')): Kết luận chấm công.
 - `phuong_thuc_checkin` (VARCHAR(20), NULL): Phương thức xác thực (`GPS`, `WIFI`, `THU_CONG`).
 - `toa_do_checkin` (VARCHAR(50), NULL): Tọa độ GPS thực tế lúc quẹt thẻ.
 - `thiet_bi_checkin` (VARCHAR(100), NULL): Định danh thiết bị phần cứng gửi lên từ Mobile App chống gian lận.
@@ -173,6 +179,7 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ten_loai_don` (VARCHAR(100), NOT NULL, UNIQUE): Nghỉ phép, Nghỉ bệnh, Thai sản, Thôi việc.
 - `co_huong_luong` (BOOLEAN, NOT NULL, DEFAULT FALSE): Quy định loại nghỉ có được hưởng nguyên lương hay không.
 - `mo_ta` (VARCHAR(255), NULL): Diễn giải quyền lợi đi kèm.
+- `la_nghi_phep` (BOOLEAN, NOT NULL, DEFAULT FALSE): Đánh dấu loại đơn có tính trừ vào số ngày nghỉ phép năm theo luật hay không.
 
 ### Bảng 14: `don_tu` (Đơn từ điện tử)
 - `ma_don` (SERIAL, PK): Mã đơn từ.
@@ -194,6 +201,13 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `tu_ngay` (DATE, NOT NULL): Ngày đầu chu kỳ tính công.
 - `den_ngay` (DATE, NOT NULL): Ngày cuối chu kỳ tính công.
 - `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'MO', CHECK in ('MO', 'DANG_TINH', 'KHOA_SO')): Trạng thái chu kỳ lương.
+- `ngay_gui_duyet` (TIMESTAMPTZ, NULL): Thời điểm HR gửi bảng lương lên Ban Giám đốc.
+- `nguoi_gui_duyet` (VARCHAR(100), NULL): Tên cán bộ HR gửi duyệt bảng lương.
+- `ngay_duyet` (TIMESTAMPTZ, NULL): Thời điểm Ban Giám đốc phê duyệt bảng lương.
+- `nguoi_duyet` (VARCHAR(100), NULL): Tên người phê duyệt bảng lương.
+- `ly_do_tu_choi` (TEXT, NULL): Ý kiến chỉ đạo hoặc lý do từ chối phê duyệt bảng lương.
+- `ngay_khoa_so` (TIMESTAMPTZ, NULL): Thời điểm khóa sổ kỳ lương chính thức.
+- `nguoi_khoa_so` (VARCHAR(100), NULL): Tên người thực hiện thao tác khóa sổ.
 - *Ràng buộc:* `UNIQUE (thang, nam)` — Mỗi tháng/năm chỉ có duy nhất một kỳ tính lương.
 
 ### Bảng 16: `cau_hinh_khoan_luong` (Cấu hình khoản thu chi - Legacy & Khoản Thưởng)
@@ -202,6 +216,8 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `loai_khoan` (VARCHAR(30), NOT NULL, CHECK in ('PHU_CAP', 'THUONG', 'KHAU_TRU')): Phân loại thu chi.
 - `gia_tri_mac_dinh` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Giá trị tiền cố định định mức.
 - `mo_ta` (VARCHAR(255), NULL): Diễn giải cách áp dụng.
+- `loai_du_an` (VARCHAR(50), NULL): Liên kết loại hình sự kiện áp dụng (nếu là thưởng theo sự kiện).
+- `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NULL, ON DELETE SET NULL): Bộ phận áp dụng khoản thưởng riêng (NULL = toàn khách sạn).
 
 > **Vai trò bảng Legacy / Bonus trong kiến trúc:**
 > Bảng này vốn là bảng tham số gốc trong thiết kế 17 bảng ban đầu. Khi hệ thống chuẩn hóa 3NF thành 24 bảng, các cấu hình phụ cấp, khấu trừ và tăng ca được bóc tách sang 3 bảng chuyên dụng (`cau_hinh_phu_cap`, `cau_hinh_khau_tru`, `cau_hinh_tang_ca`). Bảng `cau_hinh_khoan_luong` được giữ lại để **tương thích ngược hoàn toàn (Legacy support)** với các bản ghi cũ và hiện chuyên trách phục vụ quản lý **các khoản Thưởng (Bonus)** với `loai_khoan = 'THUONG'`. Cột `chi_tiet_phieu_luong.ma_khoan` trỏ về bảng này để liên kết các dòng tiền thưởng.
@@ -310,6 +326,19 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ma_nguoi_quan_ly` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Trưởng ban tổ chức / Quản lý điều hành dự án sự kiện (thường là Trưởng bộ phận Event/F&B/Sảnh).
 - `mo_ta` (TEXT, NULL): Kịch bản chi tiết, yêu cầu phục vụ đặc biệt, quy mô số lượng khách, quy chuẩn an ninh và kỹ thuật.
 - `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'LEN_KE_HOACH', CHECK in ('LEN_KE_HOACH', 'DANG_DIEN_RA', 'HOAN_THANH', 'HUY')): Tiến độ vòng đời sự kiện.
+- `ngay_tao` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm khởi tạo dự án sự kiện.
+- `so_khach_du_kien` (INT, NOT NULL, DEFAULT 0, CHECK >= 0): Quy mô khách dự kiến tham gia.
+- `ly_do_huy` (VARCHAR(255), NULL): Lý do hủy sự kiện (nếu trạng thái là `HUY`).
+- `version` (BIGINT, NOT NULL, DEFAULT 1): Số hiệu phiên bản kiểm soát tương tranh lạc quan (Optimistic Concurrency Control).
+- `tinh_phu_cap_khi_nghiem_thu` (BOOLEAN, NOT NULL, DEFAULT TRUE): Cờ chỉ định tự động kết chuyển phụ cấp sự kiện khi hoàn tất nghiệm thu.
+- `tinh_theo_gio` (BOOLEAN, NOT NULL, DEFAULT FALSE): Cách tính thù lao theo giờ làm thực tế hay trọn gói sự kiện.
+- `ket_thuc_thuc_te` (TIMESTAMPTZ, NULL): Thời điểm thực tế sự kiện kết thúc.
+- `ly_do_dung` (VARCHAR(255), NULL): Lý do dừng sự kiện giữa chừng nếu có sự cố.
+- `ma_nguoi_nghiem_thu` (INT, FK -> nhan_vien.ma_nhan_vien, NULL, ON DELETE SET NULL): Quản lý tiến hành nghiệm thu chất lượng sự kiện.
+- `ngay_nghiem_thu` (TIMESTAMPTZ, NULL): Thời điểm ký duyệt nghiệm thu.
+- `ma_dia_diem` (INT, NULL): Khóa ngoại tham chiếu bảng địa điểm tổ chức trong khách sạn.
+- `phut_chuan_bi` (INT, NOT NULL, DEFAULT 0): Số phút chuẩn bị hiện trường trước sự kiện.
+- `phut_thu_don` (INT, NOT NULL, DEFAULT 0): Số phút thu dọn và hoàn trả mặt bằng sau sự kiện.
 
 ### Bảng 27: `phan_cong_du_an` (Phân công nhân sự & Thù lao sự kiện)
 - `ma_phan_cong` (SERIAL, PK): Mã bản ghi phân công nhân sự.
@@ -317,11 +346,19 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE CASCADE): Nhân viên được điều động tham gia sự kiện.
 - `vai_tro_du_an` (VARCHAR(100), NOT NULL): Vai trò chuyên môn được giao trong sự kiện (`DIEU_PHOI`, `KY_THUAT_AM_THANH_AS`, `PHUC_VU_TIEC`, `LE_TAN_DON_KHACH`, `AN_NINH_VIP`, `BEP_TIEC`...).
 - `nhiem_vu_cu_the` (VARCHAR(255), NULL): Chi tiết công việc cụ thể tại vị trí trực chiến.
-- `so_tien_phu_cap` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00, CHECK >= 0): Mức thù lao / phụ cấp sự kiện dành riêng cho nhân sự này.
+- `so_tien_phu_cap` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00, CHECK >= 0): Mức thù lao / phụ cấp sự kiện thực tế chi trả sau đánh giá.
 - `danh_gia` (VARCHAR(30), NOT NULL, DEFAULT 'CHUA_DANH_GIA', CHECK in ('CHUA_DANH_GIA', 'HOAN_THANH', 'XUAT_SAC', 'KHONG_THAM_GIA')): Kết quả đánh giá hiệu suất của quản lý sau khi kết thúc sự kiện.
 - `trang_thai_chi_tra` (VARCHAR(30), NOT NULL, DEFAULT 'CHUA_CHI_TRA', CHECK in ('CHUA_CHI_TRA', 'DA_KET_CHUYEN_LUONG', 'HUY_BO')): Trạng thái thanh toán thù lao. Khi tính lương tháng, các khoản đã nghiệm thu sẽ được chuyển sang `DA_KET_CHUYEN_LUONG`.
 - `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NULL, ON DELETE SET NULL): Khóa ngoại liên kết sang dòng chi tiết phiếu lương sau khi kết chuyển thù lao vào kỳ lương tháng (tạo liên kết 2 chiều minh bạch).
 - `ngay_danh_gia` (TIMESTAMPTZ, NULL): Thời điểm quản lý nghiệm thu và chấm điểm đánh giá.
+- `ngay_phan_cong` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm lập phiếu điều động nhân sự.
+- `phu_cap_du_kien` (DECIMAL(15,2), NOT NULL, DEFAULT 0.00): Mức thù lao dự kiến phân bổ ban đầu.
+- `bat_dau` (TIMESTAMPTZ, NOT NULL): Thời điểm bắt đầu tham gia phục vụ sự kiện.
+- `ket_thuc` (TIMESTAMPTZ, NOT NULL): Thời điểm kết thúc tham gia phục vụ sự kiện.
+- `ma_phong_ban_su_kien` (VARCHAR(50), NULL): Nhóm bộ phận phân bổ tại sự kiện.
+- `ma_phan_ca` (INT, FK -> phan_ca.ma_phan_ca, NULL, ON DELETE SET NULL): Ca trực chính thức liên kết phục vụ sự kiện.
+- `trang_thai_tham_gia` (VARCHAR(30), NOT NULL, DEFAULT 'DA_PHAN', CHECK in ('DA_PHAN', 'DANG_THAM_GIA', 'HOAN_THANH', 'VANG_MAT', 'HUY_PHAN_CONG')): Trạng thái tham gia thực tế của nhân sự.
+- `ly_do_ket_thuc` (VARCHAR(255), NULL): Ghi chú khi kết thúc nhiệm vụ sự kiện hoặc lý do rút lui.
 - *Ràng buộc:* `UNIQUE (ma_du_an, ma_nhan_vien)` — Mỗi nhân viên chỉ được phân công một vị trí chính trong một dự án sự kiện để đảm bảo tập trung trách nhiệm và tránh phân bổ trùng lặp thù lao.
 
 ### Bảng 28: `dinh_bien_ca` (Định biên nhân sự theo ca, chức vụ & bộ phận)
@@ -366,6 +403,9 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ngay_gui` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm gửi yêu cầu.
 - `ngay_duyet` (TIMESTAMPTZ, NULL): Thời điểm ra quyết định duyệt / từ chối.
 - `phan_hoi_duyet` (VARCHAR(500), NULL): Phản hồi của người duyệt.
+- `ben_tu_choi` (VARCHAR(50), NULL): Bên từ chối yêu cầu đổi ca (`NGUOI_NHAN` hoặc `QUAN_LY`).
+- `phan_hoi_nguoi_nhan` (VARCHAR(500), NULL): Ý kiến đồng ý hoặc lý do từ chối từ đồng nghiệp được đề nghị đổi ca.
+- `ngay_nguoi_nhan_phan_hoi` (TIMESTAMPTZ, NULL): Thời điểm đồng nghiệp phản hồi đồng ý hoặc từ chối.
 - *Ràng buộc:*
   - `chk_doi_ca_khac_ca` — `CHECK (ma_phan_ca_gui <> ma_phan_ca_nhan)`: không cho "đổi" một ca với chính nó.
   - `chk_doi_ca_khac_nguoi` — `CHECK (ma_nhan_vien_gui <> ma_nhan_vien_nhan)`: không cho tự đổi ca với chính mình.
@@ -373,49 +413,306 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 
 ---
 
-## 3. Lớp Bảo Mật CSDL (Row Level Security & Quyền Hạn)
+### 2.1. Nhóm 7 Bảng Mở Rộng Chuyên Sâu (Phân Hệ Sự Kiện, Ngân Sách & Vận Hành)
 
-### 3.1. Thiết lập RLS toàn diện trên 30 bảng
-- **Bật RLS: 30/30 bảng** — áp dụng `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` cho toàn bộ các bảng trong schema `public` (đã kiểm chứng trực tiếp trên Supabase Cloud: `pg_class` trả về 30/30 bảng có `relrowsecurity = true`).
-- **Chính sách phân quyền RBAC:**
-  - Nhóm danh mục tĩnh (`phong_ban`, `chuc_vu`, `ca_lam_viec`, `dinh_bien_ca`, `loai_don`, `vai_tro`, `quyen`): Mở quyền đọc (`SELECT`) cho mọi user đã xác thực (`auth.uid() IS NOT NULL`), khóa quyền ghi chỉ dành cho `service_role`.
-  - Nhóm dữ liệu cá nhân (`nhan_vien`, `hop_dong`, `cham_cong`, `don_tu`, `phieu_luong`): Phân quyền đọc dựa trên hàm `nhan_vien_hien_tai()`: nhân viên chỉ xem dữ liệu của chính mình; Quản lý/HR/Admin xem theo phạm vi phân cấp.
-  - Nhóm nghiệp vụ ca & chấm công (`phan_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`): Nhân viên chỉ đọc/ghi hồ sơ gắn với `ma_nhan_vien` của chính mình; Quản lý bộ phận đọc theo phòng ban; cấp HR và Admin đọc toàn bộ để xác nhận cấp 2.
-  - Nhóm dự án & sự kiện (`du_an`, `phan_cong_du_an`): Quản lý sự kiện và Ban Giám đốc có quyền lập kế hoạch và điều phối; nhân viên được phân công có quyền xem thông tin sự kiện và thù lao cá nhân.
-  - Bảng nhạy cảm (`tai_khoan`, `yeu_cau_tai_khoan`, `nhat_ky_quan_tri`): Không cấp quyền truy cập trực tiếp cho client `authenticated`; mọi thao tác đều thực thi qua backend Web Admin bằng `service_role`.
+Bên cạnh 30 bảng nghiệp vụ cốt lõi, CSDL Supabase Cloud của khách sạn còn mở rộng thêm **7 bảng chuyên sâu** phục vụ quản lý sự kiện khách sạn 5★ (Phân hệ 9), lập kế hoạch ngân sách quỹ lương (Phân hệ 10) và quản lý công bố lịch ca:
 
-### 3.2. Hàm bảo mật `SECURITY DEFINER`
-Các policy RLS không đọc trực tiếp bảng phân quyền để tránh lỗi đệ quy vòng lặp (infinite recursion), mà thông qua các hàm tiện ích bảo mật `SECURITY DEFINER`:
+#### Bảng 31: `dia_diem_su_kien` (Khu vực / Sảnh tổ chức sự kiện)
+- `ma_dia_diem` (SERIAL, PK): Mã định danh địa điểm.
+- `ten_dia_diem` (VARCHAR(150), NOT NULL, UNIQUE): Tên sảnh tiệc / hội trường (Grand Ballroom, Lotus Hall, Rooftop Sky Bar...).
+- `suc_chua` (INT, NOT NULL, CHECK >= 0): Sức chứa tối đa số lượng khách.
+- `dang_su_dung` (BOOLEAN, NOT NULL, DEFAULT TRUE): Trạng thái sẵn sàng tiếp nhận sự kiện.
 
-| Hàm | Kiểu trả về | Công dụng trong Policy RLS |
-|:---|:---|:---|
-| `nhan_vien_hien_tai()` | `INT` | Lấy `ma_nhan_vien` của người dùng từ token JWT: `auth.jwt() -> app_metadata ->> 'ma_nhan_vien'`. |
-| `vai_tro_hien_tai()` | `INT` | Lấy `ma_vai_tro` của người dùng từ token JWT: `app_metadata ->> 'ma_vai_tro'`. |
-| `la_quan_ly_hien_tai()` | `BOOLEAN` | Trả về `TRUE` nếu vai trò thuộc nhóm quản lý (mã vai trò ∈ {1, 2, 3} = Admin, HR, Manager). |
-| `phong_ban_hien_tai()` | `INT` | Trả về `ma_phong_ban` của người dùng để Manager chỉ xếp ca và duyệt công trong phạm vi phòng ban mình quản lý. |
-| `phong_ban_cua_don(p_ma_don)` | `INT` | Trả về phòng ban của người nộp đơn phục vụ policy duyệt đơn cấp quản lý phòng ban. |
-| `xac_thuc_dang_nhap(p_ten_dang_nhap, p_mat_khau)` | `TABLE` | Hàm xác thực nội bộ tương thích ngược (đường xác thực chính là GoTrue Supabase Auth). |
+#### Bảng 32: `nhu_cau_su_kien` (Định mức nhân sự cần thiết theo sự kiện)
+- `ma_nhu_cau` (SERIAL, PK): Mã dòng nhu cầu.
+- `ma_du_an` (INT, FK -> du_an.ma_du_an, NOT NULL, ON DELETE CASCADE): Sự kiện cần nhân lực.
+- `ma_phong_ban` (VARCHAR(50), NOT NULL): Bộ phận cung cấp nhân sự (F&B, HK, An ninh...).
+- `vai_tro` (VARCHAR(100), NOT NULL): Vị trí công tác cần bổ sung.
+- `so_nguoi` (INT, NOT NULL, CHECK >= 1): Số lượng nhân sự cần thiết.
+- `la_mau` (BOOLEAN, NOT NULL, DEFAULT FALSE): Đánh dấu định mức mẫu cho các sự kiện cùng loại.
 
-### 3.3. Cơ chế nhúng quyền vào JWT: `custom_access_token_hook`
-Hàm `custom_access_token_hook(event jsonb)` được GoTrue Auth gọi mỗi khi cấp mới hoặc làm mới Access Token:
-1. Đối chiếu `claims.email` với `nhan_vien.email` (không phân biệt hoa thường), nối sang `tai_khoan` để lấy `ma_nhan_vien` và `ma_vai_tro`, kiểm tra cờ tài khoản đang hoạt động `tai_khoan.trang_thai = TRUE`.
-2. Nếu không khớp tài khoản hoạt động nào, trả về claim gốc không bổ sung quyền hạn, khiến mọi policy RLS tự động chặn truy cập.
-3. Nếu khớp, gom danh sách mã quyền dạng chuỗi `quyen.ma_quyen_code` từ bảng `vai_tro_quyen` (VD: `CHAM_CONG_DI_DONG`, `NOP_DON_TU`, `CAP_TAI_KHOAN_MOBILE`...).
-4. Hợp nhất (`||`) `ma_nhan_vien`, `ma_vai_tro` và mảng `quyen` vào `app_metadata` mà vẫn bảo toàn các khóa hệ thống (`provider`, `providers`).
+#### Bảng 33: `cong_su_kien` (Ghi nhận công sự kiện thực tế)
+- `ma_cong` (SERIAL, PK): Mã bản ghi công sự kiện.
+- `ma_phan_cong` (INT, FK -> phan_cong_du_an.ma_phan_cong, NOT NULL, ON DELETE CASCADE): Lượt phân công tương ứng.
+- `bat_dau` (TIMESTAMPTZ, NOT NULL): Thời gian bắt đầu làm việc thực tế tại sự kiện.
+- `ket_thuc` (TIMESTAMPTZ, NOT NULL): Thời gian kết thúc công việc thực tế.
+- `ma_nguoi_xac_nhan` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Quản lý sự kiện xác nhận giờ công.
+- `ngay_xac_nhan` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Mốc thời gian xác nhận.
+
+#### Bảng 34: `quyet_toan_su_kien` (Quyết toán thù lao sự kiện vào kỳ lương)
+- `ma_quyet_toan` (SERIAL, PK): Mã quyết toán.
+- `ma_du_an` (INT, FK -> du_an.ma_du_an, NOT NULL, ON DELETE CASCADE): Dự án sự kiện đã hoàn tất.
+- `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE CASCADE): Nhân sự nhận thù lao.
+- `thang_phat_sinh` (DATE, NOT NULL): Tháng phát sinh sự kiện.
+- `ma_ky_chi_tra` (INT, FK -> ky_luong.ma_ky_luong, NOT NULL, ON DELETE RESTRICT): Kỳ lương chi trả thù lao.
+- `so_phut` (NUMERIC, NOT NULL, CHECK >= 0): Tổng số phút phục vụ sự kiện thực tế.
+- `so_tien` (NUMERIC, NOT NULL, CHECK >= 0): Số tiền thù lao quyết toán.
+- `can_cu_tinh` (TEXT, NOT NULL): Diễn giải công thức và căn cứ tính thù lao.
+- `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NULL, ON DELETE SET NULL): Liên kết sang dòng phụ cấp trên phiếu lương.
+- `ma_nguoi_duyet` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Người duyệt quyết toán.
+- `ngay_duyet` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm duyệt quyết toán.
+
+#### Bảng 35: `ngan_sach_luong` (Lập kế hoạch & kiểm soát ngân sách quỹ lương)
+- `ma_ngan_sach` (UUID, PK, DEFAULT gen_random_uuid()): Mã định danh ngân sách.
+- `version` (BIGINT, NOT NULL, DEFAULT 1): Phiên bản kiểm soát tương tranh.
+- `nam` (INT, NOT NULL): Năm tài chính áp dụng.
+- `thang` (INT, NOT NULL, CHECK (thang BETWEEN 1 AND 12)): Tháng áp dụng ngân sách.
+- `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NOT NULL, ON DELETE RESTRICT): Bộ phận được phân bổ ngân sách quỹ lương.
+- `so_tien_ngan_sach` (NUMERIC, NOT NULL, CHECK >= 0): Hạn mức quỹ lương tối đa cho phép.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'DU_THAO', CHECK in ('DU_THAO', 'CHO_DUYET', 'DA_DUYET', 'KHOA')): Trạng thái phê duyệt ngân sách.
+- `nguoi_tao` (INT, FK -> nhan_vien.ma_nhan_vien, NULL, ON DELETE SET NULL): Người lập kế hoạch ngân sách.
+- `ngay_tao` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm tạo ngân sách.
+- `nguoi_duyet` (INT, FK -> nhan_vien.ma_nhan_vien, NULL, ON DELETE SET NULL): Ban Giám đốc phê duyệt hạn mức.
+- `ngay_duyet` (TIMESTAMPTZ, NULL): Thời điểm phê duyệt.
+- `ghi_chu` (TEXT, NULL): Thuyết minh ngân sách.
+
+#### Bảng 36: `cong_bo_lich_tuan` (Lịch sử công bố lịch phân ca theo tuần)
+- `dau_tuan` (DATE, PK): Ngày thứ Hai đầu tuần công bố lịch.
+- `version` (BIGINT, NOT NULL, DEFAULT 1): Số phiên bản công bố lịch.
+- `ma_nguoi_cong_bo` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Cán bộ HR hoặc Quản lý thực hiện công bố.
+- `ngay_cong_bo` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm công bố lịch tuần cho Mobile App.
+- `ly_do` (VARCHAR(255), NULL): Ghi chú hoặc lý do tái công bố lịch.
+
+#### Bảng 37: `dinh_bien_ngay` (Định biên nhân sự linh hoạt theo ngày cụ thể)
+- `ma_dinh_bien_ngay` (SERIAL, PK): Mã bản ghi định biên ngày.
+- `ngay` (DATE, NOT NULL): Ngày cụ thể áp dụng định biên đặc biệt (ngày lễ, ngày sự kiện cao điểm).
+- `ma_ca` (INT, FK -> ca_lam_viec.ma_ca, NOT NULL, ON DELETE CASCADE): Ca làm việc áp dụng.
+- `ma_chuc_vu` (INT, FK -> chuc_vu.ma_chuc_vu, NOT NULL, ON DELETE CASCADE): Chức vụ cần tăng cường nhân sự.
+- `so_nguoi_toi_thieu` (INT, NOT NULL, DEFAULT 1, CHECK >= 1): Số nhân sự tối thiểu trong ngày đó.
+- `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NULL, ON DELETE CASCADE): Bộ phận áp dụng (NULL = dùng chung).
 
 ---
 
-## 4. Hệ Thống 6 Triggers Rào Chắn Bảo Mật & Toàn Vẹn CSDL
+## 3. Kiến Trúc Bảo Mật Dữ Liệu & Row Level Security (RLS) trên Supabase
 
-Nhằm bảo đảm an toàn dữ liệu ở cấp độ phần cứng CSDL (Database Engine Level), **6 triggers** được kích hoạt tự động để ngăn chặn mọi hành vi vượt quyền, thao tác nhầm hoặc tấn công SQL bypass qua Dashboard — 4 trigger bảo vệ quy trình cấp tài khoản (mục 4.1–4.4) và 2 trigger ràng buộc hợp đồng lao động khi phân ca / chấm công (mục 4.5–4.6):
+### 3.1. Bản Chất Kỹ Thuật: RLS (Row Level Security) là gì trên Supabase / PostgreSQL?
+
+#### Khái niệm & Vị trí trong ngăn xếp CSDL
+**Row Level Security (RLS)** — Bảo mật cấp độ hàng — là cơ chế kiểm soát truy cập dữ liệu chi tiết (fine-grained access control) được tích hợp trực tiếp vào **nhân (Kernel)** của hệ quản trị CSDL PostgreSQL (chính thức từ PostgreSQL 9.5+). 
+
+Trong mô hình kiến trúc phần mềm truyền thống (3-Tier), việc bảo mật và cách ly dữ liệu phụ thuộc hoàn toàn vào tầng ứng dụng (Application Layer): lập trình viên phải nhớ gắn mệnh đề `WHERE user_id = @currentUserId` trong từng câu truy vấn SQL hoặc LINQ. Mô hình này tiềm ẩn rủi ro nghiêm trọng: chỉ cần một lập trình viên sơ suất bỏ quên mệnh đề `WHERE`, hoặc xảy ra lỗi SQL Injection, dữ liệu nhạy cảm của toàn bộ khách sạn (tiền lương, hợp đồng, hồ sơ cá nhân) sẽ bị rò rỉ (Data Leakage) hoặc bị sửa đổi trái phép.
+
+Ngược lại, **RLS trên PostgreSQL chuyển dịch toàn bộ trách nhiệm bảo vệ dữ liệu xuống tầng CSDL (Zero-Trust Data Layer)**:
+- Mỗi bảng dữ liệu được kích hoạt cờ `ENABLE ROW LEVEL SECURITY`.
+- Khi người dùng gửi một câu truy vấn thông thường (ví dụ: `SELECT * FROM phieu_luong;`), bộ lập kế hoạch truy vấn của PostgreSQL (Query Planner / Query Rewriter) sẽ **tự động viết lại câu lệnh SQL một cách vô hình (Invisible Query Rewrite)** trước khi thực thi:
+  ```sql
+  -- Câu lệnh Client gửi lên:
+  SELECT * FROM phieu_luong;
+
+  -- Câu lệnh PostgreSQL thực tế biên dịch và thực thi dưới RLS:
+  SELECT * FROM phieu_luong 
+  WHERE (ma_nhan_vien = public.nhan_vien_hien_tai() OR public.vai_tro_hien_tai() IN (1, 2));
+  ```
+- Kết quả: Người dùng chỉ có thể "nhìn thấy" và thao tác đúng những hàng dữ liệu mà chính sách cho phép. Dù client có cố tình bỏ qua bộ lọc trên giao diện hay cố ý chèn payload độc hại qua API, CSDL vẫn áp đặt bộ lọc phần cứng không thể vượt qua.
+
+#### Cơ chế hoạt động của RLS trên Supabase Cloud qua PostgREST
+Khi ứng dụng di động **The OverTime Hotel Mobile App** (.NET MAUI) kết nối trực tiếp với Supabase Cloud theo mô hình BaaS (xem chi tiết tại `PRD/08_Kien_Truc_Ket_Noi_Mobile_Va_Danh_Gia_Uu_Nhuoc_Diem.md`), luồng kiểm tra RLS diễn ra như sau:
+1. **Tiếp nhận HTTP Request:** Client gửi yêu cầu HTTPS tới endpoint PostgREST (ví dụ: `GET /rest/v1/cham_cong`) kèm header `Authorization: Bearer <JWT_ACCESS_TOKEN>`.
+2. **Khởi tạo Transaction & Thiết lập Phiên:** PostgREST mở một PostgreSQL Transaction và giải mã JWT Token (được ký bởi GoTrue Auth bằng HMAC-SHA256 hoặc Asymmetric Key). PostgREST tự động chạy hai lệnh nội bộ:
+   ```sql
+   SET LOCAL request.jwt.claims = '{"sub":"...", "email":"...", "app_metadata":{"ma_nhan_vien": 12, "ma_vai_tro": 4, "quyen": [...]}}';
+   SET LOCAL role = 'authenticated';
+   ```
+3. **Thực thi với Role `authenticated`:** Toàn bộ câu lệnh SQL trong transaction này chạy với danh tính của PostgreSQL Role `authenticated`.
+4. **Áp đặt 2 mệnh đề then chốt của Policy:**
+   - **`USING (expression)`:** Áp dụng cho các thao tác `SELECT`, `UPDATE`, `DELETE`. Mệnh đề này đóng vai trò như một bộ lọc `WHERE` tự động. Bất kỳ dòng dữ liệu nào trong bảng mà biểu thức `USING` trả về `FALSE` hoặc `NULL` sẽ bị loại bỏ hoàn toàn khỏi tập kết quả (với `SELECT`) hoặc bị xem như không tồn tại (với `UPDATE`, `DELETE`).
+   - **`WITH CHECK (expression)`:** Áp dụng cho các thao tác `INSERT`, `UPDATE`. Mệnh đề này kiểm tra tính hợp lệ của dòng dữ liệu mới chuẩn bị được chèn vào hoặc trạng thái mới sau khi sửa đổi. Nếu biểu thức trả về `FALSE`, PostgreSQL sẽ hủy bỏ ngay transaction và ném mã lỗi `42501 (insufficient_privilege)`.
+
+---
+
+### 3.2. Ma Trận Toàn Bộ Chính Sách RLS Trên 30 Bảng CSDL
+
+Trên Supabase Cloud của khách sạn The OverTime Hotel, **100% các bảng (30/30 bảng)** trong schema `public` đều đã được kích hoạt `ROW LEVEL SECURITY`. Không có bất kỳ bảng nào hoạt động ở trạng thái mở tự do (Unsecured).
+
+#### Bảng Ma Trận Tổng Hợp Phân Quyền RLS 30 Bảng:
+
+| STT | Tên Bảng CSDL | Tên Policy RLS | Lệnh Áp Dụng | Đối Tượng Áp Dụng | Điều Kiện Biểu Thức `USING` / `WITH CHECK` |
+|:---:|:---|:---|:---:|:---:|:---|
+| **1** | `phong_ban` | `doc_danh_muc_phong_ban` | SELECT | `authenticated` | `auth.uid() IS NOT NULL` (Đọc danh mục bộ phận). Ghi khóa chỉ dành cho `service_role`. |
+| **2** | `chuc_vu` | `doc_danh_muc_chuc_vu` | SELECT | `authenticated` | `auth.uid() IS NOT NULL` (Đọc danh mục chức danh). Ghi khóa chỉ dành cho `service_role`. |
+| **3** | `nhan_vien` | `doc_ho_so_nhan_vien` | SELECT | `authenticated` | `ma_nhan_vien = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()`. Nhân viên xem chính mình, Quản lý/HR/Admin xem theo thẩm quyền. |
+| **4** | `hop_dong` | `doc_hop_dong` | SELECT | `authenticated` | `ma_nhan_vien = public.nhan_vien_hien_tai() OR public.vai_tro_hien_tai() IN (1, 2)`. Nhân viên chỉ xem HĐ của mình, HR/Admin xem toàn viện. |
+| **5** | `tai_khoan` | *(Không mở policy)* | ALL | `anon`, `authenticated` | **KHÓA TUYỆT ĐỐI KHỎI CLIENT DI ĐỘNG**. Chỉ `service_role` (Web Admin) mới có quyền truy cập để bảo vệ `mat_khau_bam`. |
+| **6** | `vai_tro` | `doc_danh_muc_vai_tro` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc danh mục 5 vai trò. Ghi khóa chỉ dành cho `service_role`. |
+| **7** | `quyen` | `doc_quyen` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc danh mục 17 mã quyền. |
+| **8** | `vai_tro_quyen` | `doc_vai_tro_quyen` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc ma trận RBAC để Mobile App kiểm tra tính năng. |
+| **9** | `yeu_cau_tai_khoan` | `doc_yeu_cau_tai_khoan`<br>`them_yeu_cau_tai_khoan`<br>`sua_yeu_cau_tai_khoan` | SELECT<br>INSERT<br>UPDATE | `authenticated` | • `doc_yeu_cau_tai_khoan`: `public.vai_tro_hien_tai() IN (1, 5) OR ma_nguoi_gui = public.nhan_vien_hien_tai()`<br>• `them_yeu_cau_tai_khoan`: `public.vai_tro_hien_tai() IN (1, 2)` (Chỉ HR/Admin gửi)<br>• `sua_yeu_cau_tai_khoan`: `public.vai_tro_hien_tai() IN (1, 5)` (Chỉ IT/Admin xử lý). |
+| **10** | `ca_lam_viec` | `doc_danh_muc_ca_lam_viec` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Xem danh mục 3 ca chuẩn 24/7. |
+| **11** | `phan_ca` | `doc_phan_ca`<br>`them_phan_ca_quan_ly`<br>`sua_phan_ca_quan_ly`<br>`sua_phan_ca_cua_toi` | SELECT<br>INSERT<br>UPDATE<br>UPDATE | `authenticated` | • `doc_phan_ca`: `ma_nhan_vien = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()`<br>• `them_phan_ca_quan_ly`: `WITH CHECK (public.la_quan_ly_hien_tai())`<br>• `sua_phan_ca_quan_ly`: `public.vai_tro_hien_tai() IN (1, 2) OR (public.vai_tro_hien_tai() = 3 AND EXISTS (SELECT 1 FROM nhan_vien nv WHERE nv.ma_nhan_vien = phan_ca.ma_nhan_vien AND nv.ma_phong_ban = public.phong_ban_hien_tai()))`<br>• `sua_phan_ca_cua_toi`: `ma_nhan_vien = public.nhan_vien_hien_tai()` (cho phép đổi trạng thái hoàn thành). |
+| **12** | `cham_cong` | `doc_cham_cong`<br>`them_cham_cong_cua_toi`<br>`sua_cham_cong_quan_ly`<br>`sua_cham_cong_cua_toi` | SELECT<br>INSERT<br>UPDATE<br>UPDATE | `authenticated` | • `doc_cham_cong`: `EXISTS (SELECT 1 FROM phan_ca pc WHERE pc.ma_phan_ca = cham_cong.ma_phan_ca AND (pc.ma_nhan_vien = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()))`<br>• `them_cham_cong_cua_toi`: `WITH CHECK (EXISTS (SELECT 1 FROM phan_ca pc WHERE pc.ma_phan_ca = cham_cong.ma_phan_ca AND pc.ma_nhan_vien = public.nhan_vien_hien_tai()))`<br>• `sua_cham_cong_quan_ly`: Quản lý phụ trách ca thuộc phòng ban hoặc HR/Admin<br>• `sua_cham_cong_cua_toi`: Nhân viên tự cập nhật giờ check-out ca của mình. |
+| **13** | `loai_don` | `doc_danh_muc_loai_don` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc danh mục 4 loại đơn. |
+| **14** | `don_tu` | `doc_don_tu`<br>`nop_don_tu_cua_toi`<br>`duyet_don_tu_quan_ly` | SELECT<br>INSERT<br>UPDATE | `authenticated` | • `doc_don_tu`: `ma_nhan_vien = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()`<br>• `nop_don_tu_cua_toi`: `WITH CHECK (ma_nhan_vien = public.nhan_vien_hien_tai())`<br>• `duyet_don_tu_quan_ly`: `(public.vai_tro_hien_tai() IN (1, 2) OR (public.vai_tro_hien_tai() = 3 AND public.phong_ban_cua_don(ma_don) = public.phong_ban_hien_tai())) AND ma_nhan_vien <> public.nhan_vien_hien_tai()` (**Chặn tuyệt đối tự duyệt đơn của mình!**). |
+| **15** | `ky_luong` | `doc_ky_luong` | SELECT | `authenticated` | `public.vai_tro_hien_tai() IN (1, 2) OR EXISTS (SELECT 1 FROM phieu_luong pl WHERE pl.ma_ky_luong = ky_luong.ma_ky_luong AND pl.ma_nhan_vien = public.nhan_vien_hien_tai())`. Nhân viên chỉ thấy kỳ lương mà mình có phiếu lương phát hành. |
+| **16** | `cau_hinh_khoan_luong`| `doc_cau_hinh_khoan_luong` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc cấu hình thưởng KPI/Bonus Legacy. |
+| **17** | `cau_hinh_phu_cap` | `doc_cau_hinh_phu_cap` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc định mức phụ cấp (ăn ca, đêm 30%). |
+| **18** | `cau_hinh_khau_tru` | `doc_cau_hinh_khau_tru` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc định mức khấu trừ BHXH, thuế TNCN. |
+| **19** | `cau_hinh_tang_ca` | `doc_cau_hinh_tang_ca` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc hệ số lương OT (1.5, 2.0, 3.0). |
+| **20** | `phieu_luong` | `doc_phieu_luong` | SELECT | `authenticated` | `ma_nhan_vien = public.nhan_vien_hien_tai() OR public.vai_tro_hien_tai() IN (1, 2)`. Nhân viên chỉ xem phiếu lương của chính mình; HR/Admin xem toàn viện. Toàn bộ thao tác INSERT/UPDATE khóa chặt với `service_role`. |
+| **21** | `chi_tiet_phieu_luong`| `doc_chi_tiet_phieu_luong` | SELECT | `authenticated` | `EXISTS (SELECT 1 FROM phieu_luong pl WHERE pl.ma_phieu_luong = chi_tiet_phieu_luong.ma_phieu_luong AND (pl.ma_nhan_vien = public.nhan_vien_hien_tai() OR public.vai_tro_hien_tai() IN (1, 2)))`. |
+| **22** | `chi_tiet_tru_bao_hiem` | `doc_chi_tiet_tru_bao_hiem` | SELECT | `authenticated` | Khớp theo dòng chi tiết phiếu lương chủ của người dùng hoặc HR/Admin. |
+| **23** | `chi_tiet_tru_thue_tncn` | `doc_chi_tiet_tru_thue_tncn` | SELECT | `authenticated` | Khớp theo dòng chi tiết phiếu lương chủ của người dùng hoặc HR/Admin. |
+| **24** | `chi_tiet_tru_vi_pham_tam_ung` | `doc_chi_tiet_tru_vi_pham_tam_ung` | SELECT | `authenticated` | Khớp theo dòng chi tiết phiếu lương chủ của người dùng hoặc HR/Admin. |
+| **25** | `nhat_ky_quan_tri` | `doc_nhat_ky_quan_tri` | SELECT | `authenticated` | `public.vai_tro_hien_tai() = 1` (**Chỉ duy nhất Quản trị viên Admin mới có quyền xem Audit Log**). Client hoàn toàn không có quyền sửa/xóa/chèn nhật ký. |
+| **26** | `du_an` | `doc_du_an`<br>`them_du_an_quan_ly`<br>`sua_du_an_quan_ly`<br>`xoa_du_an_quan_ly` | SELECT<br>INSERT<br>UPDATE<br>DELETE | `authenticated` | • `doc_du_an`: `auth.uid() IS NOT NULL` (Mọi nhân sự xem lịch sự kiện khách sạn)<br>• Ghi/Sửa/Xóa: `public.vai_tro_hien_tai() IN (1, 2, 3)` (Quản lý sự kiện, HR, Admin). |
+| **27** | `phan_cong_du_an` | `doc_phan_cong_du_an`<br>`them_phan_cong_du_an`<br>`sua_phan_cong_du_an`<br>`xoa_phan_cong_du_an` | SELECT<br>INSERT<br>UPDATE<br>DELETE | `authenticated` | • `doc_phan_cong_du_an`: `ma_nhan_vien = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()` (Nhân viên xem thù lao & vị trí của mình, Quản lý xem toàn bộ sự kiện)<br>• Thao tác điều động/đánh giá: Dành riêng cho cấp Quản lý (`public.la_quan_ly_hien_tai()`). |
+| **28** | `dinh_bien_ca` | `doc_dinh_bien_ca`<br>`ghi_dinh_bien_ca` | SELECT<br>ALL | `authenticated` | • `doc_dinh_bien_ca`: `auth.uid() IS NOT NULL`<br>• `ghi_dinh_bien_ca`: `public.vai_tro_hien_tai() IN (1, 2, 3)` (Chỉ Quản lý/HR/Admin cấu hình định biên). |
+| **29** | `giai_trinh_cham_cong` | `doc_giai_trinh_cham_cong`<br>`them_giai_trinh_cham_cong`<br>`sua_giai_trinh_cham_cong` | SELECT<br>INSERT<br>UPDATE | `authenticated` | • `doc_giai_trinh_cham_cong`: `ma_nhan_vien = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()`<br>• `them_giai_trinh_cham_cong`: `WITH CHECK (ma_nhan_vien = public.nhan_vien_hien_tai())`<br>• `sua_giai_trinh_cham_cong`: Quản lý xác minh cấp 1 và HR xác nhận cấp 2. |
+| **30** | `yeu_cau_doi_ca` | `doc_yeu_cau_doi_ca`<br>`them_yeu_cau_doi_ca`<br>`sua_yeu_cau_doi_ca` | SELECT<br>INSERT<br>UPDATE | `authenticated` | • `doc_yeu_cau_doi_ca`: `ma_nhan_vien_gui = public.nhan_vien_hien_tai() OR ma_nhan_vien_nhan = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()`<br>• `them_yeu_cau_doi_ca`: `WITH CHECK (ma_nhan_vien_gui = public.nhan_vien_hien_tai())`<br>• `sua_yeu_cau_doi_ca`: Người nhận đồng ý (`ma_nhan_vien_nhan = public.nhan_vien_hien_tai()`) hoặc Quản lý phê duyệt (`public.la_quan_ly_hien_tai()`). |
+
+---
+
+### 3.3. Hệ Thống Stored Functions Hỗ Trợ RLS & Toàn Vẹn CSDL (`SECURITY DEFINER`)
+
+#### Khái niệm `SECURITY DEFINER` và giải pháp triệt tiêu đệ quy vô tận (Infinite Recursion)
+Trong PostgreSQL, một hàm mặc định được định nghĩa là `SECURITY INVOKER` (thực thi dưới quyền hạn của người gọi hàm). Tuy nhiên, khi xây dựng Policy RLS:
+- Nếu Policy trên bảng `phan_ca` thực hiện câu truy vấn `SELECT` sang bảng `nhan_vien` để kiểm tra phòng ban của nhân viên đó.
+- Bảng `nhan_vien` cũng đang bật RLS và lại gọi Policy của chính nó.
+- Hiện tượng này tạo thành **vòng lặp đệ quy vô tận (Infinite Recursion)**: Policy gọi Query -> Query kích hoạt Policy -> Policy lại gọi Query... khiến CSDL làm việc quá tải và ném lỗi `infinite recursion detected in policy for relation ...`.
+
+**Giải pháp:** Toàn bộ các hàm tiện ích bảo mật được định nghĩa với từ khóa **`SECURITY DEFINER`**. Khi được gọi, hàm sẽ tạm thời nâng quyền thực thi lên cấp **Database Owner (Superuser `postgres`)**, hoàn toàn bỏ qua (Bypass) các bộ lọc RLS bên trong nội hàm để tra cứu thông tin định danh và phòng ban một cách nhanh chóng, trả về kết quả an toàn và ngăn chặn 100% lỗi đệ quy.
+
+#### Danh mục chi tiết các Stored Functions cốt lõi trong hệ thống:
+
+```sql
+-- 1. Hàm trích xuất mã nhân viên hiện tại từ JWT claims
+CREATE OR REPLACE FUNCTION public.nhan_vien_hien_tai()
+RETURNS INT LANGUAGE sql STABLE SECURITY DEFINER AS $$
+    SELECT NULLIF(auth.jwt() -> 'app_metadata' ->> 'ma_nhan_vien', '')::INT;
+$$;
+
+-- 2. Hàm trích xuất mã vai trò hiện tại từ JWT claims
+CREATE OR REPLACE FUNCTION public.vai_tro_hien_tai()
+RETURNS INT LANGUAGE sql STABLE SECURITY DEFINER AS $$
+    SELECT NULLIF(auth.jwt() -> 'app_metadata' ->> 'ma_vai_tro', '')::INT;
+$$;
+
+-- 3. Hàm kiểm tra người dùng có thuộc nhóm quản lý (Admin, HR, Manager) không
+CREATE OR REPLACE FUNCTION public.la_quan_ly_hien_tai()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+    SELECT public.vai_tro_hien_tai() IN (1, 2, 3);
+$$;
+
+-- 4. Hàm lấy mã phòng ban của người dùng đang đăng nhập
+CREATE OR REPLACE FUNCTION public.phong_ban_hien_tai()
+RETURNS INT LANGUAGE sql STABLE SECURITY DEFINER AS $$
+    SELECT nv.ma_phong_ban
+    FROM public.nhan_vien nv
+    WHERE nv.ma_nhan_vien = public.nhan_vien_hien_tai();
+$$;
+
+-- 5. Hàm lấy mã phòng ban của nhân viên nộp đơn
+CREATE OR REPLACE FUNCTION public.phong_ban_cua_don(p_ma_don INT)
+RETURNS INT LANGUAGE sql STABLE SECURITY DEFINER AS $$
+    SELECT nv.ma_phong_ban
+    FROM public.don_tu dt
+    JOIN public.nhan_vien nv ON dt.ma_nhan_vien = nv.ma_nhan_vien
+    WHERE dt.ma_don = p_ma_don;
+$$;
+
+-- 6. Hàm kiểm tra nhân viên có HĐLĐ còn hiệu lực tại một ngày cụ thể
+CREATE OR REPLACE FUNCTION public.nhan_vien_co_hop_dong_hieu_luc(p_ma_nhan_vien INT, p_ngay DATE)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.hop_dong hd
+        WHERE hd.ma_nhan_vien = p_ma_nhan_vien
+          AND hd.trang_thai = 'HIEU_LUC'
+          AND p_ngay >= hd.ngay_bat_dau
+          AND (hd.ngay_ket_thuc IS NULL OR p_ngay <= hd.ngay_ket_thuc)
+    );
+$$;
+```
+
+#### Hook nhúng định danh & phân quyền vào JWT: `custom_access_token_hook`
+Được đăng ký trực tiếp vào **Supabase GoTrue Authentication Engine**. Mỗi khi người dùng đăng nhập hoặc ứng dụng làm mới token (`Refresh Token`), GoTrue Auth tự động gọi hàm này:
+1. Đọc địa chỉ email từ `event -> 'claims' ->> 'email'`.
+2. Truy vấn đối chiếu trong CSDL: tìm bản ghi `nhan_vien` có email trùng khớp (không phân biệt hoa thường), nối sang `tai_khoan` để kiểm tra tài khoản có cờ `trang_thai = TRUE`.
+3. Nếu tài khoản bị khóa hoặc không tìm thấy: Giữ nguyên claim gốc mà không bổ sung quyền hạn nào (khiến toàn bộ các lệnh truy vấn sau đó đều bị RLS chặn đứng).
+4. Nếu tài khoản hợp lệ: Tập hợp danh sách các mã quyền dạng chuỗi `quyen.ma_quyen_code` từ bảng liên kết `vai_tro_quyen` (ví dụ: `["CHAM_CONG_DI_DONG", "NOP_DON_TU", "XEM_LICH_CA"]`).
+5. Đóng gói và hợp nhất (`||`) `ma_nhan_vien`, `ma_vai_tro` cùng mảng quyền chuỗi `quyen` vào nhánh `app_metadata` của JWT. Nhờ đó, Mobile App và PostgreSQL RLS có thể kiểm tra thẩm quyền ngay lập tức mà không cần tốn thêm truy vấn SQL nào.
+
+---
+
+### 3.4. Cấu Trúc Kiểm Tra Khi Thao Tác: Phân Định Rạch Ròi Giữa Web Admin & Mobile App
+
+Hệ thống Quản lý Nhân sự & Tiền lương The OverTime Hotel áp dụng mô hình phân tách kiến trúc chuyên biệt giữa cổng điều hành quản trị tập trung (Web Admin Portal) và ứng dụng di động phân tán (Mobile App):
 
 ```text
-[Màn hình Web / Script SQL]
-             │
-             ├──> vai_tro_quyen ──────> [trg_chan_cap_quyen_tai_khoan_di_dong] : Chặn gán sai vai trò & chặn leo quyền Admin
-             ├──> vai_tro       ──────> [trg_chan_doi_ten_vai_tro_quan_tri]   : Khóa bất biến tên vai trò Admin & IT
-             └──> yeu_cau_tai_khoan ──> [trg_chan_yeu_cau_tai_khoan_trung]   : Chặn gửi trùng yêu cầu cho người đã có tài khoản
-                                    ──> [trg_chan_yeu_cau_tai_khoan_dung_quyen]: Chặn chốt cấp tài khoản nếu thiếu quyền IT/Admin
+               ┌────────────────────────────────────────────────────────┐
+               │              KIẾN TRÚC BẢO MẬT PHÂN TẦNG                │
+               │          THE OVERTIME HOTEL ENTERPRISE HRM             │
+               └────────────────────────────────────────────────────────┘
+
+     [NHÂN VIÊN / QUẢN LÝ BỘ PHẬN]                 [QUẢN TRỊ VIÊN / HR / IT]
+                   │                                           │
+         .NET MAUI Mobile App                            Web Admin Portal
+         (Android / iOS / Win)                        (ASP.NET Core MVC C#)
+                   │                                           │
+                   │ [HTTPS REST PostgREST]                    │ [Direct TCP ADO.NET Connection]
+                   │ Bearer JWT (Access Token)                 │ Host: aws-0-ap-southeast-1.pooler
+                   │ Port 443                                  │ Username: postgres (Superuser)
+                   ▼                                           ▼
+       ┌────────────────────────┐                  ┌────────────────────────┐
+       │   SUPABASE POSTGREST   │                  │  ASP.NET CORE WEB CORE │
+       │ - Giải mã claims JWT   │                  │ - Cookie Authentication│
+       │ - SET LOCAL role =     │                  │ - [Authorize(Roles=..)]│
+       │   'authenticated'      │                  │ - PermissionHandler    │
+       └───────────┬────────────┘                  │   (17 PermissionCodes) │
+                   │                               │ - IAdminAuditService   │
+                   │                               └───────────┬────────────┘
+                   │                                           │
+                   ▼                                           ▼
+       ┌────────────────────────┐                  ┌────────────────────────┐
+       │ POSTGRESQL RLS ENGINE  │                  │  SUPERUSER CONNECTION  │
+       │ (Row Level Security)   │                  │                        │
+       │ • BẮT BUỘC & ÁP ĐẶT 100%│                  │ • BYPASS RLS HOÀN TOÀN │
+       │ • Invisible Filter     │                  │ • Toàn quyền đọc/ghi   │
+       │ • USING / WITH CHECK   │                  │   đáp ứng tính toán    │
+       │ • Không thể vượt qua   │                  │   lương & quản trị hệ  │
+       └───────────┬────────────┘                  │   thống phức tạp       │
+                   │                               └───────────┬────────────┘
+                   │                                           │
+                   └─────────────────────┬─────────────────────┘
+                                         ▼
+                   ┌───────────────────────────────────────────┐
+                   │        POSTGRESQL DATABASE ENGINE         │
+                   │  - 30 BẢNG CHUẨN 3NF                      │
+                   │  - 8 DATABASE TRIGGERS RÀO CHẮN PHẦN CỨNG  │
+                   │    (Chặn leo quyền, chặn đổi tên vai trò, │
+                   │     chặn phân ca / quẹt thẻ không HĐLĐ,   │
+                   │     khóa chống đua tương tranh nghiệp vụ) │
+                   └───────────────────────────────────────────┘
+```
+
+#### Bảng Đối Chiếu Cơ Chế Kiểm Tra Khi Thao Tác Giữa Hai Phân Hệ:
+
+| Tiêu Chí So Sánh | Web Admin Portal (Web Quản Trị) | Mobile Application (.NET MAUI) |
+| :--- | :--- | :--- |
+| **Đối tượng sử dụng** | Quản trị viên hệ thống (Admin), Trưởng phòng Nhân sự (HR), Chuyên viên Kỹ thuật & Hạ tầng (IT). | Nhân viên phục vụ khách sạn (Employee), Quản lý ca trực / Trưởng bộ phận (Manager). |
+| **Giao thức mạng & Cổng** | TCP ADO.NET qua Npgsql / Entity Framework Core 10 (Cổng `5432` kết nối trực tiếp hoặc `6543` Supavisor Pooler). | HTTPS REST API qua Supabase PostgREST Engine (`https://<ref>.supabase.co/rest/v1/*`, Cổng `443`). |
+| **Tài khoản CSDL kết nối** | `postgres` (Database Owner / Superuser có quyền cao nhất). | `authenticated` (phiên đã đăng nhập) hoặc `anon` (trước khi đăng nhập). |
+| **Cơ chế Row Level Security (RLS)** | **BYPASS RLS HOÀN TOÀN** (Trong PostgreSQL, role Superuser tự động bỏ qua mọi Policy RLS). Lý do: Cần tổng hợp dữ liệu toàn khách sạn, chạy batch tính lương 2 tầng cho hàng ngàn nhân viên và sao lưu CSDL. | **BẮT BUỘC ÁP ĐẶT 100% TẠI NHÂN CSDL**. Mọi câu query đều tự động gắn thêm điều kiện bảo mật vô hình. Không người dùng nào xem được lương hoặc thông tin của đồng nghiệp. |
+| **Xác thực danh tính (AuthN)** | Cookie-based Authentication (`CookieAuthenticationDefaults.AuthenticationScheme`), bảo mật bằng mã hóa AES phân tán trong phiên làm việc. | Supabase GoTrue Auth cấp cặp `access_token` (JWT có hạn sử dụng ngắn) và `refresh_token` lưu trong secure storage điện thoại. |
+| **Phân quyền truy cập (AuthZ)** | • Phân quyền theo vai trò: `[Authorize(Roles = "Admin,HR,IT")]`<br>• Phân quyền theo chức năng chi tiết: `PermissionHandler` đối chiếu 17 mã quyền `PermissionCodes` lưu trong ClaimsPrincipal máy chủ. | • Phân quyền theo dữ liệu thực tế tại CSDL qua RLS Policies.<br>• Token mang `app_metadata.quyen`, client dùng để ẩn/hiện các nút bấm trên giao diện XAML di động. |
+| **Ràng buộc toàn vẹn dữ liệu** | • Business Logic kiểm tra trong C# Controller/Service.<br>• **8 Triggers CSDL kiểm soát bắt buộc**. | • Client Policy (Kiểm tra GPS Geofence < 300m, kiểm tra khung giờ quẹt thẻ).<br>• **8 Triggers CSDL kiểm soát bắt buộc**. |
+| **Ghi vết kiểm toán (Audit Log)** | Mọi hành động can thiệp (tạo mới, sửa quyền, khóa tài khoản, duyệt đơn, khóa kỳ lương) đều tự động ghi vết vào bảng `nhat_ky_quan_tri` qua `IAdminAuditService`. | Lưu vết nghiệp vụ trực tiếp trong các trường thời gian và người duyệt của bảng `don_tu`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`. |
+
+---
+
+## 4. Hệ Thống Toàn Bộ 8 Triggers CSDL (Rào Chắn Bảo Mật & Ràng Buộc Vận Hành)
+
+Nhằm bảo đảm toàn vẹn dữ liệu ở cấp độ phần cứng CSDL (Database Engine Level), **8 triggers** được kích hoạt tự động. Các trigger này tạo thành một mạng lưới rào chắn vững chắc: dù truy cập từ Web Admin hay Mobile App, dù thực thi qua code C# hay script SQL gõ trực tiếp trên Dashboard, CSDL vẫn kiên quyết từ chối mọi thao tác vi phạm nghiệp vụ hoặc có nguy cơ tấn công leo quyền:
+
+```text
+[Mọi Thao Tác: Web Admin / Mobile App / SQL Console]
+                     │
+                     ├──> vai_tro_quyen ──────> [Trigger 1: trg_chan_cap_quyen_tai_khoan_di_dong]
+                     ├──> vai_tro       ──────> [Trigger 2: trg_chan_doi_ten_vai_tro_quan_tri]
+                     ├──> yeu_cau_tai_khoan ──> [Trigger 3: trg_chan_yeu_cau_tai_khoan_trung]
+                     │                  ──────> [Trigger 4: trg_chan_yeu_cau_tai_khoan_dung_quyen]
+                     ├──> phan_ca       ──────> [Trigger 5: trg_chan_phan_ca_khong_hop_dong]
+                     │                  ──────> [Trigger 8: event_shift_changed]
+                     ├──> cham_cong     ──────> [Trigger 6: trg_chan_cham_cong_khong_hop_dong]
+                     └──> 10 Bảng cốt lõi ────> [Trigger 7: event_operations_lock]
 ```
 
 ### 4.1. Trigger 1: `trg_chan_cap_quyen_tai_khoan_di_dong`
@@ -439,10 +736,8 @@ Nhằm bảo đảm an toàn dữ liệu ở cấp độ phần cứng CSDL (Dat
 - **Hàm thực thi:** `public.chan_yeu_cau_tai_khoan_trung()`.
 - **Cơ chế & Mục tiêu an ninh:**
   - Chặn việc gửi yêu cầu cấp tài khoản cho nhân viên đã có tài khoản hoạt động trong hệ thống.
-  - Trigger quét 2 điều kiện:
-    1. `ten_dang_nhap` đã thuộc về một tài khoản đang tồn tại trong bảng `tai_khoan`.
-    2. `ma_nhan_vien` đã được cấp một tài khoản khác trong bảng `tai_khoan`.
-  - *Ngoại lệ hợp lệ:* Khi trạng thái chuyển sang `DA_CAP`, chính yêu cầu đó sẽ trỏ `ma_tai_khoan` tới tài khoản mới được sinh ra. Trigger sử dụng điều kiện `t.ma_tai_khoan IS DISTINCT FROM NEW.ma_tai_khoan` để bỏ qua tài khoản kết quả của chính yêu cầu, đảm bảo luồng cấp phát thành công không bị tự chặn.
+  - Quét 2 điều kiện trùng: `ten_dang_nhap` đã thuộc về một tài khoản đang tồn tại trong bảng `tai_khoan`, hoặc `ma_nhan_vien` đã được cấp một tài khoản khác.
+  - *Ngoại lệ hợp lệ:* Khi trạng thái chuyển sang `DA_CAP`, chính yêu cầu đó sẽ trỏ `ma_tai_khoan` tới tài khoản mới được sinh ra. Trigger sử dụng điều kiện `t.ma_tai_khoan IS DISTINCT FROM NEW.ma_tai_khoan` để bỏ qua tài khoản kết quả của chính yêu cầu. Đồng thời, phiên bản nâng cấp (migration `20261019`) cho phép nhân viên thăng chức / đổi vai trò được tạo yêu cầu cấp lại quyền hợp lệ mà không bị chặn nhầm.
 
 ### 4.4. Trigger 4: `trg_chan_yeu_cau_tai_khoan_dung_quyen`
 - **Bảng áp dụng:** `public.yeu_cau_tai_khoan` (BEFORE INSERT OR UPDATE).
@@ -467,6 +762,21 @@ Nhằm bảo đảm an toàn dữ liệu ở cấp độ phần cứng CSDL (Dat
   - Với bản ghi đã gắn `ma_phan_ca`, tra ngược ra nhân viên và ngày làm việc rồi kiểm tra hợp đồng lao động còn hiệu lực.
   - Ném lỗi `integrity_constraint_violation` kèm thông điệp nêu rõ mã ca, mã nhân viên và ngày sai, giúp người vận hành sửa đúng gốc thay vì dò log.
   - Đây là lớp chặn cuối cùng bảo vệ bảng lương khỏi việc ghi công cho người không còn hợp đồng.
+
+### 4.7. Trigger 7: `event_operations_lock`
+- **Bảng áp dụng:** 10 bảng nghiệp vụ nhạy cảm (`phan_ca`, `don_tu`, `hop_dong`, `ky_luong`, `phieu_luong`, `chi_tiet_phieu_luong`, `cham_cong`, `loai_don`, `dinh_bien_ca`, `dinh_bien_ngay`) — BEFORE INSERT OR UPDATE OR DELETE FOR EACH STATEMENT.
+- **Hàm thực thi:** `public.event_operations_lock()`.
+- **Cơ chế & Mục tiêu an ninh:**
+  - Sử dụng cơ chế khóa cố vấn cấp giao dịch của PostgreSQL: `PERFORM pg_advisory_xact_lock(2026101509);`.
+  - Triệt tiêu hoàn toàn hiện tượng tương tranh (Race Conditions) giữa các tiến trình chạy nền: tính toán và chốt sổ kỳ lương hàng loạt, nghiệm thu thù lao dự án sự kiện, và các thao tác điều chỉnh ca trực / đơn từ đồng thời. Khóa tự động giải phóng ngay khi giao dịch hoàn tất (Commit hoặc Rollback), bảo đảm tính nhất quán dữ liệu ở mức độ tuyệt đối.
+
+### 4.8. Trigger 8: `event_shift_changed`
+- **Bảng áp dụng:** `public.phan_ca` (BEFORE UPDATE OR DELETE FOR EACH ROW).
+- **Hàm thực thi:** `public.event_shift_changed()`.
+- **Cơ chế & Mục tiêu an ninh:**
+  - Giữ vững tính toàn vẹn khi ca làm việc có liên kết với phân công dự án sự kiện (`phan_cong_du_an`):
+    * Nếu ca làm việc đã phát sinh công sự kiện thực tế hoặc dự án sự kiện đã ở trạng thái `HOAN_THANH` / `CHO_NGHIEM_THU`, trigger **nghiêm cấm xóa hoặc sửa đổi ca nguồn** làm mất căn cứ tính công thù lao (ném ngoại lệ mã lỗi `23514`).
+    * Nếu ca làm việc đang ở trạng thái phân công sơ bộ (`DA_PHAN`) mà bị sửa đổi thời gian hoặc chuyển trạng thái `DA_HUY`, trigger tự động cập nhật phân công sự kiện tương ứng sang `HUY_PHAN_CONG`, tăng số hiệu phiên bản dự án (`version = version + 1`) và tự động ghi một dòng lịch sử vào `nhat_ky_quan_tri`.
 
 ---
 

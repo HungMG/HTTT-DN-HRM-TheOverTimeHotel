@@ -963,7 +963,8 @@ public class AttendanceViewModel : INotifyPropertyChanged
         return string.Join('\n', lines);
     }
 
-    private static string FormatTime(DateTimeOffset value) => value.ToString("HH:mm");
+    private static string FormatTime(DateTimeOffset value) =>
+        value == default ? "--:--" : value.ToLocalTime().ToString("HH:mm");
 
     /// <summary>
     /// Hiển thị thông báo qua Custom Modal Popup chuẩn 5 sao.

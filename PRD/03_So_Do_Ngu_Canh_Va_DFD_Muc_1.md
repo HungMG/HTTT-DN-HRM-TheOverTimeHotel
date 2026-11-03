@@ -270,7 +270,7 @@ Bảng đối chiếu khẳng định tính đồng bộ tuyệt đối giữa h
 |:---|:---:|:---|
 | **PRD 03 (Tài liệu này, Mục 2.1 & 2.2)** | **9 kho dữ liệu gom từ 30 bảng CSDL** | Hoàn thành khớp nối 100% (25 bảng nền tảng + 2 bảng dự án/sự kiện `du_an`, `phan_cong_du_an` + 3 bảng ca & chấm công `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`). |
 | **Mã nguồn thực tế `AppDbContext.cs` & Schema DB** | **30 bảng chuẩn hóa 3NF** | Đã định nghĩa đầy đủ các thực thể và cấu hình quan hệ khóa ngoại trên Supabase Cloud. |
-| **PRD 04 (`04_Thiet_Ke_CSDL_17_Bang.md`)** | **30 bảng CSDL Supabase PostgreSQL** | Đã cập nhật từ điển dữ liệu chi tiết cho toàn bộ 30 bảng (bao gồm 2 bảng sự kiện/dự án và 3 bảng ca & chấm công). |
+| **PRD 04 (`04_Thiet_Ke_CSDL_30_Bang.md`)** | **30 bảng CSDL Supabase PostgreSQL** | Đã cập nhật từ điển dữ liệu chi tiết cho toàn bộ 30 bảng (bao gồm 2 bảng sự kiện/dự án và 3 bảng ca & chấm công). |
 | **PRD 02 (`02_Phan_Tich_Chuc_Nang_BFD.md`)** | **11 phân hệ nghiệp vụ Cấp 1** | Khớp nối đồng bộ với 11 tiến trình nghiệp vụ cốt lõi 1.0 đến 11.0 của DFD Mức 1. |
 
 #### Danh mục chi tiết 30 bảng CSDL Supabase phân bổ theo 9 Kho Dữ Liệu DFD:

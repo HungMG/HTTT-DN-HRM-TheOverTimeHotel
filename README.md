@@ -121,10 +121,9 @@ Supabase PostgreSQL, chuẩn hóa 3NF, **RLS bật trên 30/30 bảng**, **6 tri
 
 `17 bảng` (thiết kế gốc) → `24 bảng` (chuẩn 3NF, tách phân hệ lương — 07/10/2026) → `25 bảng` (`yeu_cau_tai_khoan`, tách bộ phận IT — 09/10/2026) → `27 bảng` (`du_an`, `phan_cong_du_an` — 14/10/2026) → **`30 bảng`** (`dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca` — 20/10/2026)
 
-> Từ điển dữ liệu đầy đủ từng cột, khóa ngoại, ràng buộc CHECK và policy RLS: xem [PRD 04](PRD/04_Thiet_Ke_CSDL_17_Bang.md).
-> *Lưu ý:* tên file `04_Thiet_Ke_CSDL_17_Bang.md` được giữ nguyên để không đứt liên kết, nhưng nội dung mô tả đủ 30 bảng.
+> Từ điển dữ liệu đầy đủ từng cột, khóa ngoại, ràng buộc CHECK và policy RLS: xem [PRD 04](PRD/04_Thiet_Ke_CSDL_30_Bang.md).
 
-### 6 Trigger rào chắn
+### 8 Trigger rào chắn & toàn vẹn vận hành
 
 | Trigger | Bảo vệ điều gì |
 | :--- | :--- |
@@ -134,6 +133,8 @@ Supabase PostgreSQL, chuẩn hóa 3NF, **RLS bật trên 30/30 bảng**, **6 tri
 | `trg_chan_yeu_cau_tai_khoan_dung_quyen` | Chặn chốt cấp tài khoản nếu thiếu quyền IT/Admin |
 | `trg_chan_phan_ca_khong_hop_dong` | Không xếp ca cho nhân viên không có HĐLĐ còn hiệu lực |
 | `trg_chan_cham_cong_khong_hop_dong` | Không ghi nhận chấm công khi HĐLĐ đã hết hạn |
+| `event_operations_lock` | Khóa cố vấn cấp giao dịch (`pg_advisory_xact_lock`) triệt tiêu race condition trên 10 bảng cốt lõi |
+| `event_shift_changed` | Bảo vệ toàn vẹn ca trực liên kết với dự án sự kiện, tự động đồng bộ trạng thái phân công |
 
 ---
 
@@ -152,14 +153,15 @@ HTTT-DN/
 │       ├── backend/                              #   LangGraph: ingestion & retrieval graph
 │       └── frontend/                             #   Next.js 14: giao diện chat 5★
 │
-├── PRD/                                          # Bộ hồ sơ đặc tả yêu cầu (7 tài liệu)
+├── PRD/                                          # Bộ hồ sơ đặc tả yêu cầu (8 tài liệu)
 │   ├── 01_Tong_Quan_He_Thong.md                  # Doanh nghiệp, 11 phân hệ, 30 bảng
 │   ├── 02_Phan_Tich_Chuc_Nang_BFD.md             # BFD 57 chức năng & ma trận RBAC
 │   ├── 03_So_Do_Ngu_Canh_Va_DFD_Muc_1.md         # Context diagram, DFD Mức 1, CRUD matrix
-│   ├── 04_Thiet_Ke_CSDL_17_Bang.md               # Từ điển dữ liệu 30 bảng
+│   ├── 04_Thiet_Ke_CSDL_30_Bang.md               # Từ điển dữ liệu 30 bảng CSDL 3NF, RLS & Triggers
 │   ├── 05_Quy_Trinh_Va_Cong_Thuc_Tinh_Luong.md   # Công thức lương 2 tầng Gross → Net
 │   ├── 06_Kien_Truc_He_Thong_Va_Cau_Truc_Thu_Muc.md
-│   └── 07_Tro_Ly_AI_Chatbot_Cau_Truc_Va_Logic.md
+│   ├── 07_Tro_Ly_AI_Chatbot_Cau_Truc_Va_Logic.md
+│   └── 08_Kien_Truc_Ket_Noi_Mobile_Va_Danh_Gia_Uu_Nhuoc_Diem.md # So sánh 3-Tier vs BaaS Supabase Cloud
 │
 ├── docs/                                         # Tài liệu kỹ thuật chuyên đề
 │   ├── hotel-events.md                           #   Đặc tả Phân hệ 9 (Dự án & Sự kiện)
@@ -281,10 +283,11 @@ node tests/account-queue-smoke.mjs
 | [PRD 01 — Tổng quan](PRD/01_Tong_Quan_He_Thong.md) | Bối cảnh khách sạn 5★, cơ cấu tổ chức, 11 phân hệ, quy mô 30 bảng, ma trận NFR |
 | [PRD 02 — BFD & RBAC](PRD/02_Phan_Tich_Chuc_Nang_BFD.md) | Sơ đồ phân rã chức năng 57 chức năng (IPO), ma trận phân quyền 5 vai trò |
 | [PRD 03 — Context & DFD](PRD/03_So_Do_Ngu_Canh_Va_DFD_Muc_1.md) | 5 tác nhân ngoài, 4 kho dữ liệu, DFD Mức 1, ma trận CRUD |
-| [PRD 04 — CSDL 30 bảng](PRD/04_Thiet_Ke_CSDL_17_Bang.md) | Từ điển dữ liệu, RLS, 6 trigger, ERD, ma trận khóa ngoại |
+| [PRD 04 — CSDL 30 bảng](PRD/04_Thiet_Ke_CSDL_30_Bang.md) | Từ điển dữ liệu 30 bảng 3NF, RLS, 8 triggers rào chắn, ma trận phân quyền Web/App |
 | [PRD 05 — Tính lương](PRD/05_Quy_Trinh_Va_Cong_Thuc_Tinh_Luong.md) | Công thức Gross → Net, khóa sổ kỳ lương, quy tắc làm tròn |
 | [PRD 06 — Kiến trúc](PRD/06_Kien_Truc_He_Thong_Va_Cau_Truc_Thu_Muc.md) | Kiến trúc phân tán, cấu trúc thư mục, gói NuGet thực tế |
 | [PRD 07 — Trợ lý AI](PRD/07_Tro_Ly_AI_Chatbot_Cau_Truc_Va_Logic.md) | LangGraph retrieval/ingestion, phân quyền kho tri thức, API cầu dữ liệu |
+| [PRD 08 — Kết nối Mobile & Đánh giá](PRD/08_Kien_Truc_Ket_Noi_Mobile_Va_Danh_Gia_Uu_Nhuoc_Diem.md) | So sánh 3-Tier vs BaaS Supabase Cloud Direct, đánh giá ưu nhược điểm & giải pháp |
 
 Sơ đồ đồ họa tương tác (BFD, ERD, Context, DFD) và báo cáo Word nằm trong `docs project/diagrams/` — thư mục nội bộ của nhóm, không có trên GitHub. Đặc tả Phân hệ 9 nằm tại [docs/hotel-events.md](docs/hotel-events.md).
 
