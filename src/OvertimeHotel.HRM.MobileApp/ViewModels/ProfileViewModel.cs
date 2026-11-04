@@ -43,8 +43,8 @@ public class ProfileViewModel : INotifyPropertyChanged
             RoleName = HomeViewModelBase.LocalizeRole(user.TenVaiTro);
             DepartmentName = user.TenPhongBan;
             PositionName = user.TenChucVu;
-            Email = string.IsNullOrWhiteSpace(user.Email) ? $"{user.TenDangNhap}@overtimehotel.vn" : user.Email;
-            Phone = string.IsNullOrWhiteSpace(user.DienThoai) ? "0908 123 456" : user.DienThoai;
+            Email = string.IsNullOrWhiteSpace(user.Email) ? "Chưa có" : user.Email;
+            Phone = string.IsNullOrWhiteSpace(user.DienThoai) ? "Chưa có" : user.DienThoai;
             EmployeeId = user.MaNhanVien;
 
             if (!string.IsNullOrWhiteSpace(user.HoTen))

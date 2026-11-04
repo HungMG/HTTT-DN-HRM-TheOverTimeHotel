@@ -126,7 +126,7 @@
                             <!-- Email -->
                             <Grid ColumnDefinitions="32,Auto,*">
                                 <Label Grid.Column="0" Text="📧" FontSize="16" VerticalOptions="Center" />
-                                <Label Grid.Column="1" Text="Email:" TextColor="#64748B" FontFamily="SegoeUI" FontSize="13" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Email công vụ:" TextColor="#64748B" FontFamily="SegoeUI" FontSize="13" VerticalOptions="Center" />
                                 <Label Grid.Column="2" Text="{Binding Email}" TextColor="#0F172A" FontFamily="SegoeUI" FontSize="12" HorizontalOptions="End" VerticalOptions="Center" />
                             </Grid>
 
@@ -140,9 +140,46 @@
                     </VerticalStackLayout>
                 </Border>
 
+                <Button Margin="0,16,0,0" Text="Chỉnh sửa thông tin" Clicked="OnEditContactClicked" FontFamily="SegoeUIBold" FontSize="15" HeightRequest="50" BackgroundColor="#1E3A8A" TextColor="White" BorderColor="#D4AF37" BorderWidth="1" CornerRadius="12" />
+                <Label x:Name="profileStatus" FontSize="14" TextColor="#166534" HorizontalOptions="Center" />
+
             </VerticalStackLayout>
         </ScrollView>
 
+        <Grid x:Name="contactOverlay" IsVisible="False" BackgroundColor="#990F172A" ZIndex="999">
+            <ScrollView VerticalOptions="Center" MaximumHeightRequest="650">
+                <Border StrokeShape="RoundRectangle 20" Stroke="#E2E8F0" BackgroundColor="#FFFFFF" Padding="20,24" HorizontalOptions="Fill" VerticalOptions="Center" Margin="20,16">
+                    <VerticalStackLayout Spacing="14">
+                        <Label Text="Chỉnh sửa thông tin" FontFamily="SegoeUIBold" FontSize="17" TextColor="#1E3A8A" />
+                        <Label Text="Thay đổi thông tin liên hệ của bạn." FontFamily="SegoeUI" FontSize="14" TextColor="#475569" />
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Số điện thoại *" FontFamily="SegoeUIBold" FontSize="14" TextColor="#334155" />
+                            <Border StrokeShape="RoundRectangle 12" Stroke="#CBD5E1" BackgroundColor="#F8FAFC" Padding="12,0">
+                                <Entry x:Name="phoneEntry" SemanticProperties.Description="Số điện thoại" Placeholder="Nhập số điện thoại" PlaceholderColor="#64748B" TextColor="#0F172A" FontSize="16" HeightRequest="50" Keyboard="Telephone" MaxLength="20" IsEnabled="False" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Email cá nhân" FontFamily="SegoeUIBold" FontSize="14" TextColor="#334155" />
+                            <Border StrokeShape="RoundRectangle 12" Stroke="#CBD5E1" BackgroundColor="#F8FAFC" Padding="12,0">
+                                <Entry x:Name="personalEmailEntry" SemanticProperties.Description="Email cá nhân" Placeholder="Không bắt buộc" PlaceholderColor="#64748B" TextColor="#0F172A" FontSize="16" HeightRequest="50" Keyboard="Email" MaxLength="100" IsEnabled="False" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Spacing="6">
+                            <Label Text="Địa chỉ" FontFamily="SegoeUIBold" FontSize="14" TextColor="#334155" />
+                            <Border StrokeShape="RoundRectangle 12" Stroke="#CBD5E1" BackgroundColor="#F8FAFC" Padding="12,0">
+                                <Entry x:Name="addressEntry" SemanticProperties.Description="Địa chỉ" Placeholder="Không bắt buộc" PlaceholderColor="#64748B" TextColor="#0F172A" FontSize="16" HeightRequest="50" MaxLength="255" IsEnabled="False" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <Label x:Name="contactStatus" Text="Đang tải thông tin liên hệ..." FontSize="14" TextColor="#475569" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <Button x:Name="cancelContactButton" Grid.Column="0" Text="Hủy" Clicked="OnCancelContactClicked" FontFamily="SegoeUIBold" FontSize="15" HeightRequest="50" BackgroundColor="#EFF6FF" TextColor="#1E3A8A" CornerRadius="12" />
+                            <Button x:Name="saveContactButton" Grid.Column="1" Text="Lưu thay đổi" Clicked="OnSaveContactClicked" IsEnabled="False" FontFamily="SegoeUIBold" FontSize="15" HeightRequest="50" BackgroundColor="#1E3A8A" TextColor="White" BorderColor="#D4AF37" BorderWidth="1" CornerRadius="12" />
+                        </Grid>
+                        <Button x:Name="reloadContactButton" Text="Tải lại thông tin" Clicked="OnReloadContactClicked" IsVisible="False" HeightRequest="48" BackgroundColor="#EFF6FF" TextColor="#1E3A8A" />
+                    </VerticalStackLayout>
+                </Border>
+            </ScrollView>
+        </Grid>
     </Grid>
 
 </ContentPage>
