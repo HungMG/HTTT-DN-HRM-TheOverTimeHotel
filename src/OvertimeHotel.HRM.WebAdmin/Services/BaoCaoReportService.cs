@@ -134,13 +134,15 @@ public sealed class BaoCaoReportService
 
             model.NamOptions = BuildYearOptions(year, today.Year);
 
-            var nhanSu = await LoadEmployeesAsync(departmentId);
+            var nhanSu = await LoadEmployeesAsync(departmentId, to);
 
             model.BienDong = BuildBienDong(nhanSu, from, to, year, quarter, month);
             model.CoCau = BuildCoCau(nhanSu, to);
+            model.CoCau.CoNghiPhepTrongKy = await ApprovedLeaveQuery(from, to, departmentId)
+                .Select(d => d.MaNhanVien).Distinct().CountAsync();
 
             // 10.3 lấy mốc thâm niên tại ngày cuối kỳ báo cáo để số liệu quá khứ vẫn tái lập được.
-            model.HocVanThamNien = BuildHocVanThamNien(nhanSu, to);
+            model.HocVanThamNien = BuildHocVanThamNien(nhanSu, to, model.CanViewPayrollFund);
 
             model.ChuyenCan = await BuildChuyenCanAsync(from, to, year, quarter, month, departmentId);
 
@@ -157,7 +159,7 @@ public sealed class BaoCaoReportService
             var yoyAttendance = await LoadAttendanceAsync(yoyFrom, yoyTo, departmentId);
             var yoyAssessed = yoyAttendance.Where(r => r.TrangThai is not ("NGHI_DA_DUYET" or "THIEU_QUET")).ToArray();
             var comparisons = new List<ReportComparisonItem> {
-                new() {Label="Quân số cuối kỳ", Unit="người", Current=model.BienDong.CuoiKy, Previous=yoyStaff.CuoiKy},
+                new() {Label="Nhân sự còn làm việc cuối kỳ", Unit="người", Current=model.BienDong.CuoiKy, Previous=yoyStaff.CuoiKy},
                 new() {Label="Tuyển mới", Unit="người", Current=model.BienDong.TuyenMoi, Previous=yoyStaff.TuyenMoi},
                 new() {Label="Thôi việc", Unit="người", Current=model.BienDong.NghiViec, Previous=yoyStaff.NghiViec},
                 new() {Label="Chuyên cần", Unit="%", Current=model.ChuyenCan.TyLeChuyenCan,
@@ -423,14 +425,17 @@ public sealed class BaoCaoReportService
     // ── 10.3 Học vấn & thâm niên ──────────────────────────────────────────
 
     /// <summary>
-    /// Dựng báo cáo học vấn &amp; thâm niên.
+    /// Dựng báo cáo học vấn, thâm niên &amp; mức lương nhân sự.
     /// Giới hạn mốc thâm niên tại ngày cuối kỳ báo cáo để số liệu quá khứ vẫn tái lập được,
     /// đồng thời thâm niên người đã thôi việc dừng tại ngày thôi việc.
     /// </summary>
-    internal static HocVanThamNienReport BuildHocVanThamNien(IReadOnlyList<NhanSuRow> nhanSu, DateOnly asOf)
+    internal static HocVanThamNienReport BuildHocVanThamNien(
+        IReadOnlyList<NhanSuRow> nhanSu,
+        DateOnly asOf,
+        bool canViewSalary = false)
     {
         // Chỉ xét những người đã vào làm trước hoặc đúng mốc asOf
-        var cohort = nhanSu.Where(n => n.NgayVaoLam <= asOf).ToList();
+        var cohort = nhanSu.Where(n => ReportPolicy.IsEmployedAt(n.NgayVaoLam, n.TrangThai, n.NgayThoiViec, asOf)).ToList();
         var total = cohort.Count;
 
         var educationCounts = cohort
@@ -474,13 +479,48 @@ public sealed class BaoCaoReportService
             ? 0m
             : Math.Round(cohort.Average(n => (decimal)ReportPolicy.TenureMonths(n.NgayVaoLam, asOf, n.NgayThoiViec)), 1);
 
+        // ── Thống kê phân bổ mức lương (chỉ hiển thị với vai trò có quyền xem lương) ──
+        var theoMucLuong = new List<PhanBoItem>();
+        decimal luongTb = 0m;
+        decimal luongMax = 0m;
+        decimal luongMin = 0m;
+        var nhanSuCoLuong = cohort.Where(n => n.LuongCoBan > 0m).ToList();
+
+        if (canViewSalary && nhanSuCoLuong.Count > 0)
+        {
+            luongTb = Math.Round(nhanSuCoLuong.Average(n => n.LuongCoBan), 0);
+            luongMax = nhanSuCoLuong.Max(n => n.LuongCoBan);
+            luongMin = nhanSuCoLuong.Min(n => n.LuongCoBan);
+
+            var salaryCounts = nhanSuCoLuong
+                .GroupBy(n => ReportPolicy.SalaryBucketLabel(n.LuongCoBan))
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            theoMucLuong = ReportPolicy.SalaryBucketOrder
+                .Select(bucket => new PhanBoItem
+                {
+                    Nhan = bucket,
+                    GiaTri = salaryCounts.GetValueOrDefault(bucket),
+                    TyLe = PhanTram(salaryCounts.GetValueOrDefault(bucket), nhanSuCoLuong.Count)
+                })
+                .ToList();
+        }
+
         return new HocVanThamNienReport
         {
             TheoTrinhDo = theoTrinhDo,
             TheoThamNien = theoThamNien,
             SoDaiHocTroLen = higherCount,
             TyLeDaiHocTroLen = ReportPolicy.HigherEducationRate(higherCount, total),
-            ThamNienTrungBinh = Math.Round(averageMonths / 12m, 1)
+            ThamNienTrungBinh = Math.Round(averageMonths / 12m, 1),
+
+            CanViewSalaryInfo = canViewSalary,
+            TheoMucLuong = theoMucLuong,
+            LuongCoBanTrungBinh = luongTb,
+            LuongCoBanCaoNhat = luongMax,
+            LuongCoBanThapNhat = luongMin,
+            SoNhanSuCoLuong = canViewSalary ? nhanSuCoLuong.Count : 0,
+            SoNhanSuThieuLuong = canViewSalary ? total - nhanSuCoLuong.Count : 0
         };
     }
 
@@ -923,34 +963,43 @@ public sealed class BaoCaoReportService
     /// <summary>
     /// Nạp hồ sơ nhân sự trong phạm vi cho phép, kèm tên phòng ban và chức vụ đã phân giải.
     /// </summary>
-    private async Task<NhanSuRow[]> LoadEmployeesAsync(int? departmentId)
+    private async Task<NhanSuRow[]> LoadEmployeesAsync(int? departmentId, DateOnly asOf)
     {
+        var contractFilter = ReportPolicy.ContractAtDate(asOf);
         var raw = await _context.NhanViens
             .AsNoTracking()
             .Where(n => departmentId == null || n.MaPhongBan == departmentId)
             .Select(n => new
             {
                 n.MaNhanVien,
+                HoTen = n.Ho + " " + n.Ten,
                 TenPhongBan = n.PhongBan != null ? n.PhongBan.TenPhongBan : "(Chưa xếp phòng ban)",
                 n.TrinhDo,
                 n.GioiTinh,
                 TenChucVu = n.ChucVu != null ? n.ChucVu.TenChucVu : "Chưa xếp chức vụ",
                 n.NgayVaoLam,
                 n.NgayThoiViec,
-                n.TrangThai
+                n.TrangThai,
+                LuongCoBan = n.HopDongs.AsQueryable()
+                    .Where(contractFilter)
+                    .OrderByDescending(h => h.NgayBatDau)
+                    .Select(h => (decimal?)h.LuongCoBan)
+                    .FirstOrDefault() ?? 0m
             })
             .ToArrayAsync();
 
         return [.. raw.Select(n => new NhanSuRow
         {
             MaNhanVien = n.MaNhanVien,
+            HoTen = n.HoTen,
             TenPhongBan = n.TenPhongBan,
             TrinhDo = n.TrinhDo,
             GioiTinh = n.GioiTinh ?? string.Empty,
             TenChucVu = n.TenChucVu,
             NgayVaoLam = n.NgayVaoLam,
             NgayThoiViec = n.NgayThoiViec,
-            TrangThai = n.TrangThai
+            TrangThai = n.TrangThai,
+            LuongCoBan = n.LuongCoBan
         })];
     }
 
@@ -989,6 +1038,10 @@ public sealed class BaoCaoReportService
     //  CHI TIẾT ĐỐI CHỨNG DỮ LIỆU NGUỒN (DRILL-DOWN)
     // ═══════════════════════════════════════════════════════════════════════
 
+    private IQueryable<OvertimeHotel.HRM.Core.Models.DonTu> ApprovedLeaveQuery(DateOnly from, DateOnly to, int? departmentId) =>
+        _context.DonTus.AsNoTracking().Where(ReportPolicy.ApprovedLeaveFilter(from, to))
+            .Where(d => departmentId == null || (d.NhanVien != null && d.NhanVien.MaPhongBan == departmentId));
+
     /// <summary>
     /// Nạp dữ liệu nguồn phục vụ đối chứng từ chỉ tiêu KPI (Task 9).
     /// </summary>
@@ -1026,6 +1079,69 @@ public sealed class BaoCaoReportService
 
         switch (type.ToLowerInvariant())
         {
+            case "cuoi-ky":
+                result.TieuDe = "Danh sách nhân sự cuối kỳ";
+                var finalEmployees = await _context.NhanViens.AsNoTracking()
+                    .Where(n => n.NgayVaoLam <= to && (departmentId == null || n.MaPhongBan == departmentId)
+                        && !((n.TrangThai == "THOI_VIEC" || n.TrangThai == "DA_THOI_VIEC") && n.NgayThoiViec.HasValue && n.NgayThoiViec <= to))
+                    .OrderBy(n => n.Ten)
+                    .Select(n => new ChiTietDongItem
+                    {
+                        MaDinhDanh = "NV-" + n.MaNhanVien, TenDoiTuong = n.Ho + " " + n.Ten,
+                        BoPhan = n.PhongBan != null ? n.PhongBan.TenPhongBan : "Chưa xếp",
+                        ChucVuHoacLoai = n.ChucVu != null ? n.ChucVu.TenChucVu : "Chưa xếp",
+                        NgayThang = n.NgayVaoLam,
+                        TrangThai = (n.TrangThai == "THOI_VIEC" || n.TrangThai == "DA_THOI_VIEC") && !n.NgayThoiViec.HasValue ? "Thiếu ngày nghỉ việc" : "Còn làm cuối kỳ"
+                    }).ToArrayAsync();
+                result.DanhSach = finalEmployees;
+                break;
+            case "thong-tin-nhan-su":
+            case "thong-tin-tat-ca":
+                var includeFormer = type.Equals("thong-tin-tat-ca", StringComparison.OrdinalIgnoreCase);
+                result.TieuDe = includeFormer ? "Thông tin nhân sự (gồm người đã nghỉ việc)" : "Thông tin nhân sự còn làm việc cuối kỳ";
+                var personnel = await LoadEmployeesAsync(departmentId, to);
+                var canSeeSalary = ReportPolicy.CanViewPayrollFundReport(role);
+                result.DanhSach = personnel
+                    .Where(n => includeFormer ? n.NgayVaoLam <= to : ReportPolicy.IsEmployedAt(n.NgayVaoLam, n.TrangThai, n.NgayThoiViec, to))
+                    .OrderBy(n => n.TenPhongBan).ThenBy(n => n.HoTen)
+                    .Select(n => new ChiTietDongItem
+                    {
+                        MaDinhDanh = "NV-" + n.MaNhanVien,
+                        TenDoiTuong = n.HoTen,
+                        BoPhan = n.TenPhongBan,
+                        ChucVuHoacLoai = n.TenChucVu,
+                        NgayThang = n.NgayVaoLam,
+                        SoTien = canSeeSalary && n.LuongCoBan > 0 ? n.LuongCoBan : null,
+                        TrangThai = ReportPolicy.IsEmployedAt(n.NgayVaoLam, n.TrangThai, n.NgayThoiViec, to) ? "Còn làm việc cuối kỳ" : "Đã nghỉ việc / chưa rõ ngày",
+                        GhiChu = $"Trình độ: {n.TrinhDo} • Thâm niên: {ReportPolicy.TenureMonths(n.NgayVaoLam, to, n.NgayThoiViec)} tháng"
+                            + (canSeeSalary && n.LuongCoBan <= 0 ? " • Chưa có lương cơ bản phù hợp" : "")
+                    }).ToArray();
+                break;
+            case "nghi-phep-trong-ky":
+                result.TieuDe = "Nhân viên có nghỉ phép trong kỳ (đơn đã duyệt)";
+                var leaveRows = await ApprovedLeaveQuery(from, to, departmentId)
+                    .Select(d => new
+                    {
+                        d.MaNhanVien, d.TuNgay, d.DenNgay,
+                        HoTen = d.NhanVien != null ? d.NhanVien.Ho + " " + d.NhanVien.Ten : "",
+                        PhongBan = d.NhanVien != null && d.NhanVien.PhongBan != null ? d.NhanVien.PhongBan.TenPhongBan : "Chưa xếp",
+                        ChucVu = d.NhanVien != null && d.NhanVien.ChucVu != null ? d.NhanVien.ChucVu.TenChucVu : "Chưa xếp"
+                    }).ToArrayAsync();
+                result.DanhSach = leaveRows.GroupBy(d => d.MaNhanVien).Select(g =>
+                {
+                    var employee = g.First();
+                    return new ChiTietDongItem
+                    {
+                        MaDinhDanh = "NV-" + employee.MaNhanVien,
+                        TenDoiTuong = employee.HoTen,
+                        BoPhan = employee.PhongBan,
+                        ChucVuHoacLoai = employee.ChucVu,
+                        TrangThai = "Đã duyệt",
+                        GhiChu = string.Join("; ", g.OrderBy(d => d.TuNgay).Select(d => $"{d.TuNgay:dd/MM/yyyy} – {d.DenNgay:dd/MM/yyyy}"))
+                    };
+                }).OrderBy(d => d.BoPhan).ThenBy(d => d.TenDoiTuong).ToArray();
+                break;
+
             case "tuyen-moi":
                 result.TieuDe = "Danh sách nhân sự tuyển mới trong kỳ";
                 var tuyen = await _context.NhanViens
@@ -1046,12 +1162,63 @@ public sealed class BaoCaoReportService
                 result.DanhSach = tuyen;
                 break;
 
+            case "dang-lam":
+                result.TieuDe = "Danh sách nhân sự đang làm việc (Tính đến " + to.ToString("dd/MM/yyyy") + ")";
+                var dangLam = await _context.NhanViens
+                    .AsNoTracking()
+                    .Where(n => n.NgayVaoLam <= to
+                                && (n.TrangThai == "DANG_LAM" || ((n.TrangThai == "THOI_VIEC" || n.TrangThai == "DA_THOI_VIEC") && n.NgayThoiViec.HasValue && n.NgayThoiViec.Value > to))
+                                && (departmentId == null || n.MaPhongBan == departmentId))
+                    .OrderBy(n => n.PhongBan != null ? n.PhongBan.TenPhongBan : "")
+                    .ThenBy(n => n.Ten)
+                    .Select(n => new ChiTietDongItem
+                    {
+                        MaDinhDanh = "NV-" + n.MaNhanVien.ToString(),
+                        TenDoiTuong = n.Ho + " " + n.Ten,
+                        BoPhan = n.PhongBan != null ? n.PhongBan.TenPhongBan : "Chưa xếp",
+                        ChucVuHoacLoai = n.ChucVu != null ? n.ChucVu.TenChucVu : "Chưa xếp",
+                        NgayThang = n.NgayVaoLam,
+                        TrangThai = "Đang làm việc",
+                        GhiChu = $"Vào làm: {n.NgayVaoLam:dd/MM/yyyy} • Trình độ: {n.TrinhDo}"
+                    })
+                    .ToArrayAsync();
+                result.DanhSach = dangLam;
+                break;
+
+            case "nghi-phep":
+                result.TieuDe = "Danh sách nhân sự đang nghỉ phép (Tính đến " + to.ToString("dd/MM/yyyy") + ")";
+                var nghiPhep = await _context.NhanViens
+                    .AsNoTracking()
+                    .Where(n => n.NgayVaoLam <= to
+                                && n.TrangThai == "NGHI_PHEP"
+                                && (departmentId == null || n.MaPhongBan == departmentId))
+                    .OrderBy(n => n.PhongBan != null ? n.PhongBan.TenPhongBan : "")
+                    .ThenBy(n => n.Ten)
+                    .Select(n => new ChiTietDongItem
+                    {
+                        MaDinhDanh = "NV-" + n.MaNhanVien.ToString(),
+                        TenDoiTuong = n.Ho + " " + n.Ten,
+                        BoPhan = n.PhongBan != null ? n.PhongBan.TenPhongBan : "Chưa xếp",
+                        ChucVuHoacLoai = n.ChucVu != null ? n.ChucVu.TenChucVu : "Chưa xếp",
+                        NgayThang = n.NgayVaoLam,
+                        TrangThai = "Đang nghỉ phép",
+                        GhiChu = $"Vào làm: {n.NgayVaoLam:dd/MM/yyyy} • Trạng thái: Nghỉ phép"
+                    })
+                    .ToArrayAsync();
+                result.DanhSach = nghiPhep;
+                break;
+
             case "thoi-viec":
-                result.TieuDe = "Danh sách nhân sự thôi việc trong kỳ";
+            case "da-thoi-viec":
+                result.TieuDe = type.ToLowerInvariant() == "da-thoi-viec"
+                    ? "Danh sách nhân sự đã thôi việc"
+                    : "Danh sách nhân sự thôi việc trong kỳ";
                 var thoi = await _context.NhanViens
                     .AsNoTracking()
                     .Where(n => (n.TrangThai == "THOI_VIEC" || n.TrangThai == "DA_THOI_VIEC")
-                                && n.NgayThoiViec >= from && n.NgayThoiViec <= to
+                                && (type.ToLowerInvariant() == "da-thoi-viec"
+                                    ? n.NgayVaoLam <= to && (!n.NgayThoiViec.HasValue || n.NgayThoiViec <= to)
+                                    : n.NgayThoiViec >= from && n.NgayThoiViec <= to)
                                 && (departmentId == null || n.MaPhongBan == departmentId))
                     .OrderBy(n => n.NgayThoiViec)
                     .Select(n => new ChiTietDongItem
@@ -1061,10 +1228,41 @@ public sealed class BaoCaoReportService
                         BoPhan = n.PhongBan != null ? n.PhongBan.TenPhongBan : "Chưa xếp",
                         ChucVuHoacLoai = n.ChucVu != null ? n.ChucVu.TenChucVu : "Chưa xếp",
                         NgayThang = n.NgayThoiViec,
-                        TrangThai = n.TrangThai
+                        TrangThai = "Đã thôi việc",
+                        GhiChu = n.NgayThoiViec.HasValue ? $"Thôi việc: {n.NgayThoiViec.Value:dd/MM/yyyy}" : "Chưa cập nhật ngày thôi việc"
                     })
                     .ToArrayAsync();
                 result.DanhSach = thoi;
+                break;
+
+            case "muc-luong":
+                if (!ReportPolicy.CanViewPayrollFundReport(role))
+                {
+                    result.TieuDe = "Không có quyền truy cập thông tin mức lương";
+                    result.DanhSach = [];
+                    break;
+                }
+                result.TieuDe = "Danh sách mức lương cơ bản nhân sự (Hợp đồng lao động)";
+                var mucLuongRaw = (await LoadEmployeesAsync(departmentId, to))
+                    .Where(n => ReportPolicy.IsEmployedAt(n.NgayVaoLam, n.TrangThai, n.NgayThoiViec, to) && n.LuongCoBan > 0)
+                    .OrderByDescending(n => n.LuongCoBan)
+                    .ThenBy(n => n.HoTen)
+                    .ToArray();
+
+                var mucLuongList = mucLuongRaw.Select(n => new ChiTietDongItem
+                {
+                    MaDinhDanh = "NV-" + n.MaNhanVien.ToString(),
+                    TenDoiTuong = n.HoTen,
+                    BoPhan = n.TenPhongBan,
+                    ChucVuHoacLoai = n.TenChucVu,
+                    NgayThang = n.NgayVaoLam,
+                    SoTien = n.LuongCoBan,
+                    TrangThai = ReportPolicy.SalaryBucketLabel(n.LuongCoBan),
+                    GhiChu = $"Vào làm: {n.NgayVaoLam:dd/MM/yyyy} • Dải lương: {ReportPolicy.SalaryBucketLabel(n.LuongCoBan)}"
+                }).ToArray();
+
+                result.DanhSach = mucLuongList;
+                result.TongTien = mucLuongList.Sum(s => s.SoTien ?? 0m);
                 break;
 
             case "vi-pham":
@@ -1203,11 +1401,11 @@ public sealed class BaoCaoReportService
         return [.. years.OrderByDescending(y => y)];
     }
 
-    /// <summary>Chuẩn hóa tham số tab; giá trị lạ rơi về tab biến động nhân sự.</summary>
+    /// <summary>Chuẩn hóa tham số tab; giá trị lạ rơi về tình hình nhân sự.</summary>
     public static string NormalizeTab(string? tab)
     {
         var value = (tab ?? string.Empty).Trim().ToLowerInvariant();
-        return ValidTabs.Contains(value) ? value : "bien-dong";
+        return ValidTabs.Contains(value) ? value : "co-cau";
     }
 
     /// <summary>Nhãn tiếng Việt của vai trò đang đăng nhập.</summary>
@@ -1246,6 +1444,7 @@ public sealed class BaoCaoReportService
 internal sealed class NhanSuRow
 {
     public int MaNhanVien { get; set; }
+    public string HoTen { get; set; } = string.Empty;
     public string TenPhongBan { get; set; } = string.Empty;
     public string TrinhDo { get; set; } = string.Empty;
     public string GioiTinh { get; set; } = string.Empty;
@@ -1253,6 +1452,7 @@ internal sealed class NhanSuRow
     public DateOnly NgayVaoLam { get; set; }
     public DateOnly? NgayThoiViec { get; set; }
     public string TrangThai { get; set; } = string.Empty;
+    public decimal LuongCoBan { get; set; }
 }
 
 /// <summary>Một lượt chấm công kèm nhân viên và bộ phận suy ra từ lịch phân ca.</summary>

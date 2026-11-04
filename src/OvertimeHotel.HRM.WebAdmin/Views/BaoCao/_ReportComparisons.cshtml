@@ -2,17 +2,19 @@
 @if (Model.SoSanhCungKy.Count > 0)
 {
     <section class="catalog-card p-3 my-3">
-        <h2 class="h5">So sánh cùng kỳ năm trước: @Model.CungKyLabel</h2>
-        <p class="small text-muted">So sánh toàn kỳ đã chọn; kỳ đang diễn ra chưa có dữ liệu đầy đủ. Phòng ban dùng hồ sơ hiện tại, chưa có lịch sử điều chuyển để tái lập hoàn toàn.</p>
+        <h2 class="h5">So sánh với năm trước</h2>
+        <p class="small text-muted">So sánh @Model.NhanKy với @Model.CungKyLabel. Số liệu của thời gian đang diễn ra có thể chưa đầy đủ; phòng ban được tính theo hồ sơ hiện tại.</p>
         <div class="table-responsive">
             <table class="table table-sm">
-                <thead><tr><th>Chỉ tiêu</th><th>Kỳ này</th><th>Cùng kỳ</th><th>Chênh lệch</th><th>Thay đổi (%)</th></tr></thead>
+                <thead><tr><th>Nội dung</th><th>@Model.NhanKy</th><th>@Model.CungKyLabel</th><th>Tăng / giảm</th><th>Thay đổi (%)</th></tr></thead>
                 <tbody>
                     @foreach (var row in Model.SoSanhCungKy)
                     {
-                        <tr><td>@row.Label (@row.Unit)</td><td>@row.Current.ToString("N1")</td><td>@row.Previous.ToString("N1")</td>
-                            <td>@row.Difference.ToString("N1")@(row.Unit == "%" ? " điểm %" : "")</td>
-                            <td>@(row.Percent.HasValue ? row.Percent.Value.ToString("0.#") + "%" : "Không tính: kỳ gốc bằng 0")</td></tr>
+                        var label = row.Label == "Quân số cuối kỳ" ? "Nhân sự còn làm việc cuối kỳ" : row.Label;
+                        var numberFormat = row.Unit == "người" ? "N0" : "N1";
+                        <tr><td>@label (@row.Unit)</td><td>@row.Current.ToString(numberFormat)</td><td>@row.Previous.ToString(numberFormat)</td>
+                            <td>@row.Difference.ToString(numberFormat)@(row.Unit == "%" ? " điểm %" : "")</td>
+                            <td>@(row.Percent.HasValue ? row.Percent.Value.ToString("0.#") + "%" : "Không tính được vì năm trước bằng 0")</td></tr>
                     }
                 </tbody>
             </table>

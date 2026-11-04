@@ -18,6 +18,18 @@
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
 </div>
 <div class="modal-body">
+    @if (Model.LoaiChiTiet is "thong-tin-nhan-su" or "thong-tin-tat-ca")
+    {
+        <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+            <div>
+                <label for="baocaoDetailsSearch" class="form-label mb-1">Tìm theo tên, phòng ban, trình độ hoặc thâm niên</label>
+                <input id="baocaoDetailsSearch" class="form-control form-control-sm" type="search" data-baocao-details-search />
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-baocao-details-switch="@(Model.LoaiChiTiet == "thong-tin-nhan-su" ? "thong-tin-tat-ca" : "thong-tin-nhan-su")">
+                @(Model.LoaiChiTiet == "thong-tin-nhan-su" ? "Bao gồm người đã nghỉ việc" : "Chỉ nhân sự còn làm việc")
+            </button>
+        </div>
+    }
     @if (Model.DanhSach.Count == 0)
     {
         <div class="text-center py-4 text-muted">

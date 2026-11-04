@@ -232,6 +232,9 @@ public class CoCauNhanLucReport
     /// <summary>Số đang nghỉ phép.</summary>
     public int NghiPhep { get; set; }
 
+    /// <summary>Số nhân viên có đơn nghỉ phép đã duyệt giao với kỳ.</summary>
+    public int CoNghiPhepTrongKy { get; set; }
+
     /// <summary>Số đã thôi việc.</summary>
     public int DaThoiViec { get; set; }
 
@@ -269,7 +272,28 @@ public class HocVanThamNienReport
 
     /// <summary>Số nhân sự có trình độ từ đại học trở lên.</summary>
     public int SoDaiHocTroLen { get; set; }
+
+    /// <summary>Phân bổ theo các dải mức lương cơ bản của nhân sự.</summary>
+    public IReadOnlyList<PhanBoItem> TheoMucLuong { get; set; } = [];
+
+    /// <summary>Mức lương cơ bản trung bình của quân số đang xét (VNĐ).</summary>
+    public decimal LuongCoBanTrungBinh { get; set; }
+
+    /// <summary>Mức lương cơ bản cao nhất trong quân số đang xét (VNĐ).</summary>
+    public decimal LuongCoBanCaoNhat { get; set; }
+
+    /// <summary>Mức lương cơ bản thấp nhất trong quân số đang xét (VNĐ).</summary>
+    public decimal LuongCoBanThapNhat { get; set; }
+
+    /// <summary>Số lượng nhân sự có hợp đồng lương xác định.</summary>
+    public int SoNhanSuCoLuong { get; set; }
+
+    public int SoNhanSuThieuLuong { get; set; }
+
+    /// <summary>True nếu tài khoản người xem được phép xem thông tin thống kê mức lương (Admin/HR).</summary>
+    public bool CanViewSalaryInfo { get; set; }
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  10.4 — ĐỐI SOÁT QUỸ LƯƠNG VS NGÂN SÁCH

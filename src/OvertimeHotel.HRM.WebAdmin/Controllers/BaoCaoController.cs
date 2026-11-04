@@ -250,7 +250,7 @@ public class BaoCaoController : Controller
         switch (model.Tab)
         {
             case "co-cau":
-                AppendCoCau(sb, model.CoCau);
+                AppendCoCau(sb, model);
                 break;
             case "hoc-van":
                 AppendHocVan(sb, model.HocVanThamNien);
@@ -271,10 +271,10 @@ public class BaoCaoController : Controller
 
         if (model.SoSanhCungKy.Count > 0)
         {
-            sb.AppendLine(); sb.AppendLine($"SO SÁNH CÙNG KỲ,{Esc(model.CungKyLabel)}");
-            sb.AppendLine("Chỉ tiêu,Đơn vị,Kỳ này,Cùng kỳ,Chênh lệch,Thay đổi (%)");
+            sb.AppendLine(); sb.AppendLine($"SO SÁNH VỚI NĂM TRƯỚC,{Esc(model.CungKyLabel)}");
+            sb.AppendLine("Nội dung,Đơn vị,Thời gian đã chọn,Cùng thời gian năm trước,Tăng / giảm,Thay đổi (%)");
             foreach (var item in model.SoSanhCungKy)
-                sb.AppendLine($"{Esc(item.Label)},{Esc(item.Unit)},{Num(item.Current)},{Num(item.Previous)},{Num(item.Difference)},{(item.Percent.HasValue ? Num(item.Percent.Value) : "Không tính: kỳ gốc bằng 0")}");
+                sb.AppendLine($"{Esc(item.Label)},{Esc(item.Unit)},{Num(item.Current)},{Num(item.Previous)},{Num(item.Difference)},{(item.Percent.HasValue ? Num(item.Percent.Value) : "Không tính được vì năm trước bằng 0")}");
         }
         var safePeriod = model.NhanKy.Replace('/', '-').Replace(' ', '_');
         return ($"BaoCao_{model.Tab}_{safePeriod}.csv", Encoding.UTF8.GetBytes(sb.ToString()));
@@ -284,10 +284,10 @@ public class BaoCaoController : Controller
     {
         sb.AppendLine("BIẾN ĐỘNG NHÂN SỰ");
         sb.AppendLine("Chỉ tiêu,Giá trị");
-        sb.AppendLine($"Quân số đầu kỳ,{report.DauKy}");
+        sb.AppendLine($"Nhân sự đầu kỳ,{report.DauKy}");
         sb.AppendLine($"Tuyển mới trong kỳ,{report.TuyenMoi}");
         sb.AppendLine($"Thôi việc trong kỳ,{report.NghiViec}");
-        sb.AppendLine($"Quân số cuối kỳ,{report.CuoiKy}");
+        sb.AppendLine($"Nhân sự cuối kỳ,{report.CuoiKy}");
         sb.AppendLine($"Biến động ròng,{report.BienDongRong}");
         sb.AppendLine($"Tỷ lệ thôi việc (%),{Num(report.TyLeThoiViec)}");
         sb.AppendLine();
@@ -308,12 +308,19 @@ public class BaoCaoController : Controller
         }
     }
 
-    private static void AppendCoCau(StringBuilder sb, CoCauNhanLucReport report)
+    private static void AppendCoCau(StringBuilder sb, BaoCaoViewModel model)
     {
+        var report = model.CoCau;
         sb.AppendLine("CƠ CẤU NHÂN LỰC");
+        sb.AppendLine($"Nhân sự cuối kỳ,{model.BienDong.CuoiKy}");
+        sb.AppendLine($"Nghỉ việc trong kỳ,{model.BienDong.NghiViec}");
+        sb.AppendLine($"Hồ sơ thôi việc thiếu ngày,{model.BienDong.SoHoSoThieuNgayThoiViec}");
+        sb.AppendLine("Trạng thái và phòng ban trong quá khứ có thể không còn đầy đủ.");
         sb.AppendLine($"Tổng nhân sự,{report.TongNhanSu}");
         sb.AppendLine($"Đang làm việc,{report.DangLam}");
         sb.AppendLine($"Đang nghỉ phép,{report.NghiPhep}");
+        sb.AppendLine($"Có nghỉ phép trong kỳ (đơn đã duyệt, nhân viên duy nhất),{report.CoNghiPhepTrongKy}");
+        sb.AppendLine("Lưu ý: người nghỉ phép có thể đồng thời thuộc nhóm trạng thái khác.");
         sb.AppendLine($"Đã thôi việc,{report.DaThoiViec}");
         sb.AppendLine();
         AppendPhanBo(sb, "THEO PHÒNG BAN", report.TheoPhongBan);
@@ -324,13 +331,25 @@ public class BaoCaoController : Controller
 
     private static void AppendHocVan(StringBuilder sb, HocVanThamNienReport report)
     {
-        sb.AppendLine("HỌC VẤN & THÂM NIÊN");
+        sb.AppendLine("HỌC VẤN, THÂM NIÊN & MỨC LƯƠNG");
         sb.AppendLine($"Số nhân sự từ đại học trở lên,{report.SoDaiHocTroLen}");
         sb.AppendLine($"Tỷ lệ từ đại học trở lên (%),{Num(report.TyLeDaiHocTroLen)}");
         sb.AppendLine($"Thâm niên trung bình (năm),{Num(report.ThamNienTrungBinh)}");
+        if (report.CanViewSalaryInfo)
+        {
+            sb.AppendLine($"Số nhân sự có lương cơ bản,{report.SoNhanSuCoLuong}");
+            sb.AppendLine($"Số nhân sự chưa có lương cơ bản,{report.SoNhanSuThieuLuong}");
+            sb.AppendLine($"Mức lương cơ bản trung bình (đ),{(report.SoNhanSuCoLuong > 0 ? Num(report.LuongCoBanTrungBinh) : "Chưa có dữ liệu")}");
+            sb.AppendLine($"Mức lương cơ bản cao nhất (đ),{(report.SoNhanSuCoLuong > 0 ? Num(report.LuongCoBanCaoNhat) : "Chưa có dữ liệu")}");
+            sb.AppendLine($"Mức lương cơ bản thấp nhất (đ),{(report.SoNhanSuCoLuong > 0 ? Num(report.LuongCoBanThapNhat) : "Chưa có dữ liệu")}");
+        }
         sb.AppendLine();
         AppendPhanBo(sb, "THEO TRÌNH ĐỘ", report.TheoTrinhDo);
         AppendPhanBo(sb, "THEO THÂM NIÊN", report.TheoThamNien);
+        if (report.CanViewSalaryInfo && report.TheoMucLuong.Count > 0)
+        {
+            AppendPhanBo(sb, "THEO DẢI MỨC LƯƠNG CƠ BẢN", report.TheoMucLuong);
+        }
     }
 
     private static void AppendQuyLuong(StringBuilder sb, QuyLuongNganSachReport report)
@@ -499,7 +518,7 @@ public class BaoCaoController : Controller
         switch (model.Tab)
         {
             case "co-cau":
-                AppendExcelCoCau(sb, model.CoCau);
+                AppendExcelCoCau(sb, model);
                 break;
             case "hoc-van":
                 AppendExcelHocVan(sb, model.HocVanThamNien);
@@ -520,10 +539,10 @@ public class BaoCaoController : Controller
 
         if (model.SoSanhCungKy.Count > 0)
         {
-            sb.AppendLine("<Row><Cell><Data ss:Type=\"String\">SO SÁNH CÙNG KỲ " + XmlEsc(model.CungKyLabel) + "</Data></Cell></Row>");
-            sb.AppendLine("<Row><Cell><Data ss:Type=\"String\">Chỉ tiêu (đơn vị)</Data></Cell><Cell><Data ss:Type=\"String\">Kỳ này</Data></Cell><Cell><Data ss:Type=\"String\">Cùng kỳ</Data></Cell><Cell><Data ss:Type=\"String\">Chênh lệch</Data></Cell><Cell><Data ss:Type=\"String\">Thay đổi (%)</Data></Cell></Row>");
+            sb.AppendLine("<Row><Cell><Data ss:Type=\"String\">SO SÁNH VỚI NĂM TRƯỚC " + XmlEsc(model.CungKyLabel) + "</Data></Cell></Row>");
+            sb.AppendLine("<Row><Cell><Data ss:Type=\"String\">Nội dung (đơn vị)</Data></Cell><Cell><Data ss:Type=\"String\">Thời gian đã chọn</Data></Cell><Cell><Data ss:Type=\"String\">Cùng thời gian năm trước</Data></Cell><Cell><Data ss:Type=\"String\">Tăng / giảm</Data></Cell><Cell><Data ss:Type=\"String\">Thay đổi (%)</Data></Cell></Row>");
             foreach (var item in model.SoSanhCungKy)
-                sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.Label)} ({XmlEsc(item.Unit)})</Data></Cell><Cell><Data ss:Type=\"Number\">{Num(item.Current)}</Data></Cell><Cell><Data ss:Type=\"Number\">{Num(item.Previous)}</Data></Cell><Cell><Data ss:Type=\"Number\">{Num(item.Difference)}</Data></Cell><Cell><Data ss:Type=\"String\">{(item.Percent.HasValue ? Num(item.Percent.Value) : "Không tính: kỳ gốc bằng 0")}</Data></Cell></Row>");
+                sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.Label)} ({XmlEsc(item.Unit)})</Data></Cell><Cell><Data ss:Type=\"Number\">{Num(item.Current)}</Data></Cell><Cell><Data ss:Type=\"Number\">{Num(item.Previous)}</Data></Cell><Cell><Data ss:Type=\"Number\">{Num(item.Difference)}</Data></Cell><Cell><Data ss:Type=\"String\">{(item.Percent.HasValue ? Num(item.Percent.Value) : "Không tính được vì năm trước bằng 0")}</Data></Cell></Row>");
         }
         sb.AppendLine("  </Table>");
         sb.AppendLine(" </Worksheet>");
@@ -587,10 +606,10 @@ public class BaoCaoController : Controller
     private static void AppendExcelBienDong(StringBuilder sb, BienDongNhanSuReport report)
     {
         sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">BIẾN ĐỘNG NHÂN SỰ</Data></Cell></Row>");
-        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Quân số đầu kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.DauKy}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Nhân sự đầu kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.DauKy}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tuyển mới trong kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.TuyenMoi}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Thôi việc trong kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.NghiViec}</Data></Cell></Row>");
-        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Quân số cuối kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.CuoiKy}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Nhân sự cuối kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.CuoiKy}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tỷ lệ thôi việc (%)</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{report.TyLeThoiViec.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
         sb.AppendLine("   <Row></Row>");
         sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Phòng ban</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Quân số</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Tuyển mới</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Thôi việc</Data></Cell></Row>");
@@ -600,12 +619,18 @@ public class BaoCaoController : Controller
         }
     }
 
-    private static void AppendExcelCoCau(StringBuilder sb, CoCauNhanLucReport report)
+    private static void AppendExcelCoCau(StringBuilder sb, BaoCaoViewModel model)
     {
+        var report = model.CoCau;
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Nhân sự cuối kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{model.BienDong.CuoiKy}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Nghỉ việc trong kỳ</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{model.BienDong.NghiViec}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Hồ sơ thôi việc thiếu ngày</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{model.BienDong.SoHoSoThieuNgayThoiViec}</Data></Cell></Row>");
+        sb.AppendLine("   <Row><Cell><Data ss:Type=\"String\">Người nghỉ phép có thể thuộc nhóm trạng thái khác; thông tin lịch sử có thể không đầy đủ.</Data></Cell></Row>");
         sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">CƠ CẤU NHÂN LỰC</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng nhân sự</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.TongNhanSu}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Đang làm việc</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.DangLam}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Đang nghỉ phép</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.NghiPhep}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Có nghỉ phép trong kỳ (đơn đã duyệt)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.CoNghiPhepTrongKy}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Đã thôi việc</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.DaThoiViec}</Data></Cell></Row>");
         sb.AppendLine("   <Row></Row>");
         AppendExcelPhanBo(sb, "THEO PHÒNG BAN", report.TheoPhongBan);
@@ -614,13 +639,29 @@ public class BaoCaoController : Controller
 
     private static void AppendExcelHocVan(StringBuilder sb, HocVanThamNienReport report)
     {
-        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">HỌC VẤN & THÂM NIÊN</Data></Cell></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">HỌC VẤN, THÂM NIÊN & MỨC LƯƠNG</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Số nhân sự từ đại học trở lên</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{report.SoDaiHocTroLen}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tỷ lệ từ đại học trở lên (%)</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{report.TyLeDaiHocTroLen.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Thâm niên trung bình (năm)</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{report.ThamNienTrungBinh.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
+        if (report.CanViewSalaryInfo)
+        {
+            sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">Nhân sự có lương cơ bản</Data></Cell><Cell><Data ss:Type=\"Number\">{report.SoNhanSuCoLuong}</Data></Cell></Row>");
+            sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">Nhân sự chưa có lương cơ bản</Data></Cell><Cell><Data ss:Type=\"Number\">{report.SoNhanSuThieuLuong}</Data></Cell></Row>");
+            if (report.SoNhanSuCoLuong > 0)
+            {
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Mức lương cơ bản trung bình (đ)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.LuongCoBanTrungBinh)}</Data></Cell></Row>");
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Mức lương cơ bản cao nhất (đ)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.LuongCoBanCaoNhat)}</Data></Cell></Row>");
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Mức lương cơ bản thấp nhất (đ)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.LuongCoBanThapNhat)}</Data></Cell></Row>");
+            }
+            else sb.AppendLine("<Row><Cell><Data ss:Type=\"String\">Chưa có dữ liệu lương cơ bản</Data></Cell></Row>");
+        }
         sb.AppendLine("   <Row></Row>");
         AppendExcelPhanBo(sb, "THEO TRÌNH ĐỘ", report.TheoTrinhDo);
         AppendExcelPhanBo(sb, "THEO THÂM NIÊN", report.TheoThamNien);
+        if (report.CanViewSalaryInfo && report.TheoMucLuong.Count > 0)
+        {
+            AppendExcelPhanBo(sb, "THEO DẢI MỨC LƯƠNG CƠ BẢN", report.TheoMucLuong);
+        }
     }
 
     private static void AppendExcelQuyLuong(StringBuilder sb, QuyLuongNganSachReport report)

@@ -373,6 +373,15 @@
       });
     },
 
+    "hoc-van-mucluong": function () {
+      var rows = (chartData.HocVanThamNien && chartData.HocVanThamNien.TheoMucLuong) || [];
+      return horizontalBarOption(rows, {
+        color: COLORS.gold,
+        suffix: " người",
+        value: function (item) { return item.GiaTri; }
+      });
+    },
+
     "quy-luong-series": function () {
       var rows = (chartData.QuyLuong && chartData.QuyLuong.Series) || [];
       return {
@@ -862,6 +871,7 @@
     var rows = table.querySelectorAll("tr");
     var csvContent = "\uFEFF"; // UTF-8 BOM
     Array.prototype.forEach.call(rows, function (row) {
+      if (row.hidden) return;
       var cells = row.querySelectorAll("th, td");
       var line = [];
       Array.prototype.forEach.call(cells, function (cell) {
@@ -892,6 +902,12 @@
     var contentEl = document.getElementById("baocaoDetailsContent");
     if (!modalEl || !contentEl) return;
 
+    // Teleport modal ra trực tiếp document.body để không bị giữ trong stacking context
+    // của .in-place-container (will-change: transform) nằm dưới .modal-backdrop.
+    if (modalEl.parentElement !== document.body) {
+      document.body.appendChild(modalEl);
+    }
+
     contentEl.innerHTML = '<div class="p-5 text-center text-muted"><div class="spinner-border text-primary mb-3" role="status"></div><div class="fw-semibold">Đang nạp dữ liệu chi tiết...</div></div>';
 
     var modalInstance = null;
@@ -917,6 +933,20 @@
       }
       var html = await resp.text();
       contentEl.innerHTML = html;
+
+      var detailSearch = contentEl.querySelector("[data-baocao-details-search]");
+      if (detailSearch) {
+        detailSearch.addEventListener("input", function () {
+          var query = detailSearch.value.trim().toLocaleLowerCase("vi");
+          contentEl.querySelectorAll("tbody tr").forEach(function (row) {
+            row.hidden = !row.textContent.toLocaleLowerCase("vi").includes(query);
+          });
+        });
+      }
+      var detailSwitch = contentEl.querySelector("[data-baocao-details-switch]");
+      if (detailSwitch) detailSwitch.addEventListener("click", function () {
+        openDrillDown(detailSwitch.getAttribute("data-baocao-details-switch"));
+      });
 
       var modalExportBtn = contentEl.querySelector("[data-baocao-export-details]");
       if (modalExportBtn) {

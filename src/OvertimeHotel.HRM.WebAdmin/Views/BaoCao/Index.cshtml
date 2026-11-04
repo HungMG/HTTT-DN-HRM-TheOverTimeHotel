@@ -6,9 +6,9 @@
     // khi bấm Xuất CSV để tệp tải về khớp màn hình.
     var tabs = new (string Key, string Label, string Icon)[]
     {
+        ("co-cau", "Tình hình nhân sự", "bi-pie-chart-fill"),
+        ("hoc-van", "Thông tin nhân sự", "bi-mortarboard-fill"),
         ("bien-dong", "Biến động nhân sự", "bi-graph-up-arrow"),
-        ("co-cau", "Cơ cấu nhân lực", "bi-pie-chart-fill"),
-        ("hoc-van", "Học vấn & thâm niên", "bi-mortarboard-fill"),
         ("quy-luong", "Đối soát quỹ lương", "bi-wallet2"),
         ("chuyen-can", "Chuyên cần & vi phạm", "bi-fingerprint"),
         ("su-kien", "Hiệu quả sự kiện", "bi-calendar-event")
@@ -153,6 +153,17 @@
         </div>
 
         <partial name="_BaoCaoBoard" model="Model" />
+    </div>
+</div>
+
+<!-- Modal chi tiết đối chứng (Drill-down) — Đặt ngoài .in-place-container để tránh stacking context trap -->
+<div class="modal fade" id="baocaoDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" id="baocaoDetailsContent">
+            <div class="p-4 text-center text-muted">
+                <span class="spinner-border spinner-border-sm me-2"></span> Đang nạp dữ liệu chi tiết...
+            </div>
+        </div>
     </div>
 </div>
 

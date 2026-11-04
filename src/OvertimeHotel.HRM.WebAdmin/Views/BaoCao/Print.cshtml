@@ -103,11 +103,11 @@
     @* Tab Biến động *@
     @if (Model.Tab == "bien-dong")
     {
-        <h5 class="fw-bold border-bottom pb-1">1. Chỉ tiêu Biến động Nhân sự</h5>
+        <h5 class="fw-bold border-bottom pb-1">1. Tình hình thay đổi nhân sự</h5>
         <div class="row g-2 mb-3">
             <div class="col-3">
                 <div class="border p-2 rounded text-center">
-                    <small class="text-muted d-block">Quân số đầu kỳ</small>
+                    <small class="text-muted d-block">Nhân sự đầu kỳ</small>
                     <span class="fs-5 fw-bold">@Model.BienDong.DauKy</span>
                 </div>
             </div>
@@ -125,7 +125,7 @@
             </div>
             <div class="col-3">
                 <div class="border p-2 rounded text-center">
-                    <small class="text-muted d-block">Quân số cuối kỳ</small>
+                    <small class="text-muted d-block">Nhân sự cuối kỳ</small>
                     <span class="fs-5 fw-bold">@Model.BienDong.CuoiKy</span>
                 </div>
             </div>
@@ -267,6 +267,9 @@
     else if (Model.Tab == "co-cau")
     {
         <h5>Cơ cấu nhân lực: @Model.CoCau.TongNhanSu hồ sơ</h5>
+        <p>Nhân sự cuối kỳ: @Model.BienDong.CuoiKy người. Nghỉ việc trong kỳ: @Model.BienDong.NghiViec người. Hồ sơ thôi việc thiếu ngày: @Model.BienDong.SoHoSoThieuNgayThoiViec.</p>
+        <p>Có nghỉ phép trong kỳ (đơn đã duyệt): @Model.CoCau.CoNghiPhepTrongKy người. Chỉ tiêu này có thể trùng với các nhóm trạng thái.</p>
+        <p>Trạng thái và phòng ban trong quá khứ có thể không còn đầy đủ.</p>
         @foreach (var group in new (string Title, IReadOnlyList<OvertimeHotel.HRM.WebAdmin.Models.PhanBoItem> Rows)[] {
             ("Phòng ban", Model.CoCau.TheoPhongBan), ("Chức vụ", Model.CoCau.TheoChucVu),
             ("Giới tính", Model.CoCau.TheoGioiTinh), ("Trạng thái", Model.CoCau.TheoTrangThai) })
@@ -277,10 +280,22 @@
     }
     else if (Model.Tab == "hoc-van")
     {
-        <h5>Học vấn và thâm niên</h5>
+        <h5>Học vấn, thâm niên & mức lương</h5>
         <p>Đại học trở lên: @Model.HocVanThamNien.SoDaiHocTroLen người (@Model.HocVanThamNien.TyLeDaiHocTroLen%). Thâm niên trung bình: @Model.HocVanThamNien.ThamNienTrungBinh năm.</p>
+        @if (Model.HocVanThamNien.CanViewSalaryInfo)
+        {
+            <p>Nhân sự có lương: @Model.HocVanThamNien.SoNhanSuCoLuong; chưa có lương: @Model.HocVanThamNien.SoNhanSuThieuLuong.</p>
+            @if (Model.HocVanThamNien.SoNhanSuCoLuong > 0)
+            {
+            <p>Lương cơ bản trung bình: @Model.HocVanThamNien.LuongCoBanTrungBinh.ToString("N0") đ (Thấp nhất: @Model.HocVanThamNien.LuongCoBanThapNhat.ToString("N0") đ — Cao nhất: @Model.HocVanThamNien.LuongCoBanCaoNhat.ToString("N0") đ).</p>
+            }
+        }
         <h6>Trình độ</h6><partial name="_ReportDistribution" model="Model.HocVanThamNien.TheoTrinhDo" />
         <h6>Thâm niên</h6><partial name="_ReportDistribution" model="Model.HocVanThamNien.TheoThamNien" />
+        @if (Model.HocVanThamNien.CanViewSalaryInfo && Model.HocVanThamNien.TheoMucLuong.Count > 0)
+        {
+            <h6>Dải mức lương cơ bản</h6><partial name="_ReportDistribution" model="Model.HocVanThamNien.TheoMucLuong" />
+        }
     }
     else if (Model.Tab == "su-kien")
     {

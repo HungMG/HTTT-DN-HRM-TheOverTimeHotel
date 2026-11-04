@@ -24,6 +24,18 @@ namespace OvertimeHotel.HRM.Core.Policies;
 /// </summary>
 public static class ReportPolicy
 {
+    public static Expression<Func<DonTu, bool>> ApprovedLeaveFilter(DateOnly from, DateOnly to) => leave =>
+        leave.TrangThai == "DA_DUYET" && leave.LoaiDon != null && leave.LoaiDon.LaNghiPhep
+        && leave.TuNgay <= to && leave.DenNgay >= from;
+    public static bool IsEmployedAt(NhanVien employee, DateOnly asOf) =>
+        IsEmployedAt(employee.NgayVaoLam, employee.TrangThai, employee.NgayThoiViec, asOf);
+    public static bool IsEmployedAt(DateOnly hired, string status, DateOnly? left, DateOnly asOf) =>
+        hired <= asOf && (!IsResigned(status) || (left.HasValue && left.Value > asOf));
+    public static Expression<Func<HopDong, bool>> ContractAtDate(DateOnly asOf) => h =>
+        (h.TrangThai == "HIEU_LUC" || h.TrangThai == "HET_HAN" || h.TrangThai == "DA_KET_THUC"
+         || h.TrangThai == "DA_CHAM_DUT" || h.TrangThai == "CHAM_DUT" || h.TrangThai == "DA_KY")
+        && h.NgayBatDau <= asOf && (!h.NgayKetThuc.HasValue || h.NgayKetThuc >= asOf)
+        && ((h.TrangThai != "DA_CHAM_DUT" && h.TrangThai != "CHAM_DUT") || h.NgayKetThuc != null);
     // An undated termination cannot be reconstructed as an indefinite active contract.
     public static Expression<Func<HopDong, bool>> ReferenceContractFilter => h =>
         (h.TrangThai == "HIEU_LUC" || h.TrangThai == "HET_HAN" || h.TrangThai == "DA_KET_THUC"
@@ -254,6 +266,42 @@ public static class ReportPolicy
 
     /// <summary>Lượt chấm công đúng giờ, dùng cho tử số của tỷ lệ chuyên cần.</summary>
     public static bool IsOnTime(string? trangThai) => trangThai == "DUNG_GIO";
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  MỨC LƯƠNG NHÂN SỰ
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>Dải lương dưới 7 triệu (thử việc, bán thời gian, thực tập).</summary>
+    public const string SalaryUnder7M = "Dưới 7 triệu";
+
+    /// <summary>Dải lương từ 7 đến dưới 12 triệu (nhân viên tiêu chuẩn).</summary>
+    public const string Salary7MTo12M = "Từ 7 đến dưới 12 triệu";
+
+    /// <summary>Dải lương từ 12 đến dưới 20 triệu (tổ trưởng, chuyên viên, giám sát).</summary>
+    public const string Salary12MTo20M = "Từ 12 đến dưới 20 triệu";
+
+    /// <summary>Dải lương từ 20 triệu trở lên (trưởng bộ phận, ban giám đốc).</summary>
+    public const string SalaryAbove20M = "Từ 20 triệu trở lên";
+
+    /// <summary>Thứ tự hiển thị các dải mức lương.</summary>
+    public static IReadOnlyList<string> SalaryBucketOrder { get; } =
+    [
+        SalaryUnder7M,
+        Salary7MTo12M,
+        Salary12MTo20M,
+        SalaryAbove20M
+    ];
+
+    /// <summary>
+    /// Xếp nhóm dải mức lương cơ bản của nhân sự theo định mức chuẩn khách sạn.
+    /// </summary>
+    public static string SalaryBucketLabel(decimal salary) => salary switch
+    {
+        < 7_000_000m => SalaryUnder7M,
+        < 12_000_000m => Salary7MTo12M,
+        < 20_000_000m => Salary12MTo20M,
+        _ => SalaryAbove20M
+    };
 
     // ═══════════════════════════════════════════════════════════════════════
     //  THÂM NIÊN (PRD 10.3)

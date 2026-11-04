@@ -4,6 +4,7 @@
     // biểu đồ đi kèm trong một khối JSON bên dưới, nên sau khi hoán đổi HTML thì JS
     // không phải gọi thêm endpoint nào khác.
     var tab = Model.Tab;
+    var isMonthly = Model.KyBaoCao == "THANG";
     const string Money = "N0";
 }
 
@@ -53,7 +54,6 @@
                         {
                             <span>So với @Model.BienDong.KyTruocLabel: <strong class="@(Model.BienDong.TuyenMoiThayDoi >= 0 ? "baocao-up" : "baocao-down")">@(Model.BienDong.TuyenMoiThayDoi >= 0 ? "+" : "")@Model.BienDong.TuyenMoiThayDoi</strong> &bull; </span>
                         }
-                        <a href="javascript:void(0)" class="text-decoration-none fw-semibold" data-baocao-drill="tuyen-moi"><i class="bi bi-zoom-in"></i> Chi tiết</a>
                     </p>
                 </div>
             </div>
@@ -67,14 +67,13 @@
                         {
                             <span>So với @Model.BienDong.KyTruocLabel: <strong class="@(Model.BienDong.NghiViecThayDoi <= 0 ? "baocao-up" : "baocao-down")">@(Model.BienDong.NghiViecThayDoi >= 0 ? "+" : "")@Model.BienDong.NghiViecThayDoi</strong> &bull; </span>
                         }
-                        <a href="javascript:void(0)" class="text-decoration-none fw-semibold" data-baocao-drill="thoi-viec"><i class="bi bi-zoom-in"></i> Chi tiết</a>
                     </p>
                 </div>
             </div>
             <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-people-fill"></i></div>
                 <div>
-                    <span class="catalog-kpi-label">Quân số cuối kỳ</span>
+                    <span class="catalog-kpi-label">@(isMonthly ? "Nhân sự cuối tháng" : "Nhân sự cuối kỳ")</span>
                     <h3 class="catalog-kpi-value"><span data-count-to="@Model.BienDong.CuoiKy">@Model.BienDong.CuoiKy</span> <small>người</small></h3>
                     <p class="catalog-kpi-desc">Đầu kỳ @Model.BienDong.DauKy · biến động ròng @(Model.BienDong.BienDongRong >= 0 ? "+" : "")@Model.BienDong.BienDongRong</p>
                 </div>
@@ -137,13 +136,18 @@
 
     @* ══════════════════════ 10.2 — CƠ CẤU NHÂN LỰC ══════════════════════ *@
     <section class="baocao-panel" data-baocao-panel="co-cau" hidden="@(tab != "co-cau")">
+        <p class="text-muted small">Người có nghỉ phép trong kỳ có thể đồng thời thuộc nhóm đang làm việc hoặc nghỉ việc. Trạng thái và phòng ban trong quá khứ có thể không còn đầy đủ.</p>
+        @if (Model.BienDong.SoHoSoThieuNgayThoiViec > 0)
+        {
+            <div class="alert alert-warning">Có @Model.BienDong.SoHoSoThieuNgayThoiViec hồ sơ thôi việc thiếu ngày; quân số có thể chưa chính xác.</div>
+        }
         <div class="baocao-kpi-grid">
             <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-people-fill"></i></div>
                 <div>
-                    <span class="catalog-kpi-label">Tổng nhân sự</span>
-                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.CoCau.TongNhanSu">@Model.CoCau.TongNhanSu</span> <small>hồ sơ</small></h3>
-                    <p class="catalog-kpi-desc">Toàn bộ hồ sơ trong phạm vi được xem</p>
+                    <span class="catalog-kpi-label">@(isMonthly ? "Nhân sự cuối tháng" : "Nhân sự cuối kỳ")</span>
+                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.BienDong.CuoiKy">@Model.BienDong.CuoiKy</span> <small>người</small></h3>
+                    <p class="catalog-kpi-desc">Gồm người đang nghỉ phép</p>
                 </div>
             </div>
             <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
@@ -151,23 +155,29 @@
                 <div>
                     <span class="catalog-kpi-label">Đang làm việc</span>
                     <h3 class="catalog-kpi-value"><span data-count-to="@Model.CoCau.DangLam">@Model.CoCau.DangLam</span> <small>người</small></h3>
-                    <p class="catalog-kpi-desc">Trạng thái DANG_LAM</p>
+                    <p class="catalog-kpi-desc">
+                        <span>Trạng thái hồ sơ cuối kỳ</span>
+                    </p>
                 </div>
             </div>
             <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-airplane"></i></div>
                 <div>
-                    <span class="catalog-kpi-label">Đang nghỉ phép</span>
-                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.CoCau.NghiPhep">@Model.CoCau.NghiPhep</span> <small>người</small></h3>
-                    <p class="catalog-kpi-desc">Trạng thái NGHI_PHEP</p>
+                    <span class="catalog-kpi-label">@(isMonthly ? "Có nghỉ phép trong tháng" : "Có nghỉ phép trong kỳ")</span>
+                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.CoCau.CoNghiPhepTrongKy">@Model.CoCau.CoNghiPhepTrongKy</span> <small>người</small></h3>
+                    <p class="catalog-kpi-desc">
+                        <span>Đơn đã duyệt</span>
+                    </p>
                 </div>
             </div>
             <div class="catalog-kpi-card catalog-kpi-card--deduction shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-person-dash"></i></div>
                 <div>
-                    <span class="catalog-kpi-label">Đã thôi việc</span>
-                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.CoCau.DaThoiViec">@Model.CoCau.DaThoiViec</span> <small>người</small></h3>
-                    <p class="catalog-kpi-desc">Gộp cả THOI_VIEC và DA_THOI_VIEC</p>
+                    <span class="catalog-kpi-label">@(isMonthly ? "Nghỉ việc trong tháng" : "Nghỉ việc trong kỳ")</span>
+                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.BienDong.NghiViec">@Model.BienDong.NghiViec</span> <small>người</small></h3>
+                    <p class="catalog-kpi-desc">
+                        <span>Theo ngày nghỉ việc</span>
+                    </p>
                 </div>
             </div>
         </div>
@@ -207,7 +217,7 @@
                             @foreach (var item in Model.CoCau.TheoTrangThai)
                             {
                                 <tr>
-                                    <td>@item.Nhan</td>
+                                    <td class="fw-semibold">@item.Nhan</td>
                                     <td class="text-end">@item.GiaTri</td>
                                     <td class="text-end">@item.TyLe.ToString("0.#")%</td>
                                 </tr>
@@ -219,8 +229,12 @@
         </section>
     </section>
 
-    @* ══════════════════════ 10.3 — HỌC VẤN & THÂM NIÊN ══════════════════════ *@
+    @* ══════════════════════ 10.3 — HỌC VẤN, THÂM NIÊN & MỨC LƯƠNG ══════════════════════ *@
     <section class="baocao-panel" data-baocao-panel="hoc-van" hidden="@(tab != "hoc-van")">
+        <div class="alert alert-light border mb-3">
+            Thống kê nhân viên còn làm việc tại ngày @Model.DenNgay.ToString("dd/MM/yyyy").
+            Phòng ban, chức vụ và trình độ dựa trên hồ sơ hiện tại; dữ liệu quá khứ có thể không đầy đủ.
+        </div>
         <div class="baocao-kpi-grid">
             <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-mortarboard-fill"></i></div>
@@ -246,6 +260,19 @@
                     <p class="catalog-kpi-desc">Tính tại mốc @Model.DenNgay.ToString("dd/MM/yyyy")</p>
                 </div>
             </div>
+            @if (Model.HocVanThamNien.CanViewSalaryInfo)
+            {
+                <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
+                    <div class="catalog-kpi-icon"><i class="bi bi-cash-stack"></i></div>
+                    <div>
+                        <span class="catalog-kpi-label">Lương cơ bản TB</span>
+                        <h3 class="catalog-kpi-value">@(Model.HocVanThamNien.SoNhanSuCoLuong > 0 ? Model.HocVanThamNien.LuongCoBanTrungBinh.ToString("N0") + " đ" : "Chưa có dữ liệu")</h3>
+                        <p class="catalog-kpi-desc">
+                            <span>Có lương: @Model.HocVanThamNien.SoNhanSuCoLuong người; chưa có: @Model.HocVanThamNien.SoNhanSuThieuLuong người</span>
+                        </p>
+                    </div>
+                </div>
+            }
         </div>
 
         <div class="baocao-grid-2">
@@ -258,6 +285,38 @@
                 <div class="baocao-chart" data-chart="hoc-van-thamnien" style="height:340px"></div>
             </section>
         </div>
+
+        @if (Model.HocVanThamNien.CanViewSalaryInfo && Model.HocVanThamNien.TheoMucLuong.Count > 0)
+        {
+            <div class="baocao-grid-2 mt-3">
+                <section class="catalog-card shadow-sm">
+                    <div class="catalog-toolbar"><h2 class="baocao-card-title">Phân bổ theo dải mức lương cơ bản</h2></div>
+                    <div class="baocao-chart" data-chart="hoc-van-mucluong" style="height:340px"></div>
+                </section>
+                <section class="catalog-card shadow-sm">
+                    <div class="catalog-toolbar d-flex justify-content-between align-items-center">
+                        <h2 class="baocao-card-title">Chi tiết dải mức lương</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table baocao-table align-middle mb-0">
+                            <thead>
+                                <tr><th>Dải mức lương</th><th class="text-end">Số người</th><th class="text-end">Tỷ lệ</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.HocVanThamNien.TheoMucLuong)
+                                {
+                                    <tr>
+                                        <td>@item.Nhan</td>
+                                        <td class="text-end fw-semibold">@item.GiaTri</td>
+                                        <td class="text-end">@item.TyLe.ToString("0.#")%</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        }
 
         <section class="catalog-card shadow-sm">
             <div class="catalog-toolbar"><h2 class="baocao-card-title">Chi tiết trình độ</h2></div>
@@ -286,6 +345,17 @@
                 </div>
             }
         </section>
+        <section class="catalog-card shadow-sm mt-3">
+            <div class="catalog-toolbar"><h2 class="baocao-card-title">Chi tiết thâm niên</h2></div>
+            <div class="table-responsive"><table class="table baocao-table align-middle mb-0">
+                <thead><tr><th>Thâm niên</th><th class="text-end">Số người</th><th class="text-end">Tỷ lệ</th></tr></thead>
+                <tbody>@foreach (var item in Model.HocVanThamNien.TheoThamNien)
+                {
+                    <tr><td>@item.Nhan</td><td class="text-end">@item.GiaTri</td><td class="text-end">@item.TyLe.ToString("0.#")%</td></tr>
+                }</tbody>
+            </table></div>
+        </section>
+
     </section>
 
     @* ══════════════════════ 10.4 — ĐỐI SOÁT QUỸ LƯƠNG ══════════════════════
@@ -635,15 +705,5 @@
         }
     </section>
 
-    <!-- Modal chi tiết đối chứng (Drill-down) -->
-    <div class="modal fade" id="baocaoDetailsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content" id="baocaoDetailsContent">
-                <div class="p-4 text-center text-muted">
-                    <span class="spinner-border spinner-border-sm me-2"></span> Đang nạp dữ liệu chi tiết...
-                </div>
-            </div>
-        </div>
-    </div>
     @if (Model.IsDatabaseOnline) { <partial name="_ReportComparisons" model="Model" /> }
 </div>
