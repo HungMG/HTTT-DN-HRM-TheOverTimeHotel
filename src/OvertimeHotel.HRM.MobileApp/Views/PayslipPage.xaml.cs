@@ -76,6 +76,12 @@ public partial class PayslipPage : ContentPage
 
     protected override bool OnBackButtonPressed()
     {
+        if (_viewModel.IsYearPickerOpen)
+        {
+            _viewModel.CloseYearPickerCommand.Execute(null);
+            return true;
+        }
+
         if (_viewModel.HasDetail)
         {
             _viewModel.CloseDetailCommand.Execute(null);

@@ -69,6 +69,41 @@ public sealed class AiDataDigestDto
     public AiDataDirectoryDto? Directory { get; set; }
 
     /// <summary>
+    /// Kết quả tra cứu hợp đồng lao động theo từ khóa; chỉ có khi hỏi đúng phạm vi tra cứu
+    /// hợp đồng và người hỏi đủ quyền.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AiDataContractDto? Contract { get; set; }
+
+    /// <summary>
+    /// Kết quả tra cứu đơn từ theo từ khóa; chỉ có khi hỏi đúng phạm vi đơn từ và người hỏi
+    /// đủ quyền.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AiDataLeaveDto? Leave { get; set; }
+
+    /// <summary>
+    /// Kết quả tra cứu phân ca theo từ khóa; chỉ có khi hỏi đúng phạm vi phân ca và người hỏi
+    /// đủ quyền.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AiDataShiftDto? Shift { get; set; }
+
+    /// <summary>
+    /// Kết quả tra cứu chấm công theo từ khóa; chỉ có khi hỏi đúng phạm vi chấm công và người hỏi
+    /// đủ quyền.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AiDataAttendanceDto? Attendance { get; set; }
+
+    /// <summary>
+    /// Kết quả tra cứu sự kiện / dự án theo từ khóa; chỉ có khi hỏi đúng phạm vi sự kiện
+    /// và người hỏi đủ quyền.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AiDataEventDto? Event { get; set; }
+
+    /// <summary>
     /// Ghi chú phương pháp cần mô hình nhắc lại khi diễn giải, để người dùng không hiểu nhầm
     /// các con số suy diễn thành số liệu chính thức.
     /// </summary>
@@ -373,4 +408,299 @@ public sealed class AiDataNhanVienDto
 
     /// <summary>Nhãn tiếng Việt của trạng thái làm việc (Đang làm việc / Đã thôi việc...).</summary>
     public string TrangThai { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Kết quả tra cứu hợp đồng lao động theo từ khóa, đã lọc theo phạm vi quyền của người hỏi.
+/// </summary>
+public sealed class AiDataContractDto
+{
+    /// <summary>Từ khóa đã tra cứu, để mô hình nhắc lại đúng ý người hỏi.</summary>
+    public string TuKhoa { get; set; } = string.Empty;
+
+    /// <summary>Tổng số hợp đồng khớp từ khóa trong phạm vi được phép.</summary>
+    public int TongSo { get; set; }
+
+    /// <summary>True khi số kết quả hiển thị đã bị cắt vì vượt giới hạn an toàn ngữ cảnh.</summary>
+    public bool BiGioiHan { get; set; }
+
+    /// <summary>Danh sách hợp đồng khớp từ khóa.</summary>
+    public IReadOnlyList<AiDataHopDongItemDto> DanhSach { get; set; } = [];
+}
+
+/// <summary>Một hợp đồng trong kết quả tra cứu — thông tin lao động, không kèm CMND, SĐT, địa chỉ.</summary>
+public sealed class AiDataHopDongItemDto
+{
+    /// <summary>Mã hợp đồng trong hệ thống.</summary>
+    public int MaHopDong { get; set; }
+
+    /// <summary>Số hợp đồng.</summary>
+    public string SoHopDong { get; set; } = string.Empty;
+
+    /// <summary>Tên nhân viên sở hữu hợp đồng.</summary>
+    public string HoTen { get; set; } = string.Empty;
+
+    /// <summary>Tên phòng ban của nhân viên; null khi chưa gán.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PhongBan { get; set; }
+
+    /// <summary>Tên chức vụ của nhân viên; null khi chưa gán.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ChucDanh { get; set; }
+
+    /// <summary>Tên hiển thị của loại hợp đồng (ví dụ "Xác định thời hạn", "Không xác định thời hạn").</summary>
+    public string LoaiHopDong { get; set; } = string.Empty;
+
+    /// <summary>Ngày bắt đầu hiệu lực.</summary>
+    public DateOnly NgayBatDau { get; set; }
+
+    /// <summary>Ngày kết thúc hiệu lực; null nghĩa là không xác định thời hạn.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateOnly? NgayKetThuc { get; set; }
+
+    /// <summary>Lương cơ bản ghi trên hợp đồng.</summary>
+    public decimal LuongCoBan { get; set; }
+
+    /// <summary>Nhãn tiếng Việt của trạng thái hiệu lực tại thời điểm tra cứu, ví dụ "Đang hiệu lực", "Sắp hết hạn".</summary>
+    public string TrangThai { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Kết quả tra cứu đơn từ (nghỉ phép, ốm đau, thai sản, thôi việc...) theo từ khóa, đã lọc
+/// theo phạm vi quyền của người hỏi.
+/// </summary>
+public sealed class AiDataLeaveDto
+{
+    /// <summary>Từ khóa đã tra cứu, để mô hình nhắc lại đúng ý người hỏi.</summary>
+    public string TuKhoa { get; set; } = string.Empty;
+
+    /// <summary>Tổng số đơn từ khớp từ khóa trong phạm vi được phép.</summary>
+    public int TongSo { get; set; }
+
+    /// <summary>True khi số kết quả hiển thị đã bị cắt vì vượt giới hạn an toàn ngữ cảnh.</summary>
+    public bool BiGioiHan { get; set; }
+
+    /// <summary>Danh sách đơn từ khớp từ khóa.</summary>
+    public IReadOnlyList<AiDataDonTuItemDto> DanhSach { get; set; } = [];
+}
+
+/// <summary>Một đơn từ trong kết quả tra cứu — chỉ thông tin trình duyệt, không dữ liệu nhạy cảm.</summary>
+public sealed class AiDataDonTuItemDto
+{
+    /// <summary>Mã đơn trong hệ thống.</summary>
+    public int MaDon { get; set; }
+
+    /// <summary>Tên loại đơn (ví dụ "Nghỉ phép năm", "Nghỉ ốm đau / BHXH").</summary>
+    public string LoaiDon { get; set; } = string.Empty;
+
+    /// <summary>Tên nhân viên nộp đơn.</summary>
+    public string HoTen { get; set; } = string.Empty;
+
+    /// <summary>Tên phòng ban của nhân viên nộp đơn; null khi chưa gán.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PhongBan { get; set; }
+
+    /// <summary>Ngày bắt đầu nghỉ.</summary>
+    public DateOnly TuNgay { get; set; }
+
+    /// <summary>Ngày kết thúc nghỉ.</summary>
+    public DateOnly DenNgay { get; set; }
+
+    /// <summary>Số ngày nghỉ tính từ khoảng thời gian (bao gồm cả hai đầu).</summary>
+    public int SoNgayNghi { get; set; }
+
+    /// <summary>Nhãn tiếng Việt của trạng thái trình duyệt (Chờ duyệt / Đã duyệt / Từ chối).</summary>
+    public string TrangThai { get; set; } = string.Empty;
+
+    /// <summary>Ngày gửi đơn.</summary>
+    public DateOnly NgayGui { get; set; }
+
+    /// <summary>Lý do nghỉ; null khi nhân viên không ghi.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LyDo { get; set; }
+
+    /// <summary>Phản hồi của người duyệt khi đơn đã duyệt hoặc bị từ chối; null khi chưa duyệt.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PhanHoiDuyet { get; set; }
+}
+
+/// <summary>
+/// Kết quả tra cứu phân ca (lịch làm việc) theo từ khóa, đã lọc theo phạm vi quyền của người hỏi.
+/// </summary>
+public sealed class AiDataShiftDto
+{
+    /// <summary>Từ khóa đã tra cứu, để mô hình nhắc lại đúng ý người hỏi.</summary>
+    public string TuKhoa { get; set; } = string.Empty;
+
+    /// <summary>Tổng số ca trực khớp từ khóa trong phạm vi được phép.</summary>
+    public int TongSo { get; set; }
+
+    /// <summary>True khi số kết quả hiển thị đã bị cắt vì vượt giới hạn an toàn ngữ cảnh.</summary>
+    public bool BiGioiHan { get; set; }
+
+    /// <summary>Ngày bắt đầu của khoảng thời gian đã tra cứu.</summary>
+    public DateOnly TuNgay { get; set; }
+
+    /// <summary>Ngày kết thúc của khoảng thời gian đã tra cứu.</summary>
+    public DateOnly DenNgay { get; set; }
+
+    /// <summary>Danh sách ca trực khớp từ khóa.</summary>
+    public IReadOnlyList<AiDataPhanCaItemDto> DanhSach { get; set; } = [];
+}
+
+/// <summary>Một ca trực trong kết quả tra cứu phân ca — chỉ lịch làm việc, không dữ liệu nhạy cảm.</summary>
+public sealed class AiDataPhanCaItemDto
+{
+    /// <summary>Mã phân ca trong hệ thống.</summary>
+    public int MaPhanCa { get; set; }
+
+    /// <summary>Ngày làm việc.</summary>
+    public DateOnly NgayLamViec { get; set; }
+
+    /// <summary>Tên nhân viên trực ca.</summary>
+    public string HoTen { get; set; } = string.Empty;
+
+    /// <summary>Tên phòng ban của nhân viên; null khi chưa gán.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PhongBan { get; set; }
+
+    /// <summary>Tên ca làm việc (ví dụ "Ca Sáng", "Ca Đêm").</summary>
+    public string TenCa { get; set; } = string.Empty;
+
+    /// <summary>Giờ bắt đầu ca.</summary>
+    public string GioBatDau { get; set; } = string.Empty;
+
+    /// <summary>Giờ kết thúc ca.</summary>
+    public string GioKetThuc { get; set; } = string.Empty;
+
+    /// <summary>True khi ca qua đêm (ví dụ ca 22:00 – 06:00).</summary>
+    public bool QuaDem { get; set; }
+
+    /// <summary>Nhãn tiếng Việt của trạng thái ca (Đã phân / Đã công bố...).</summary>
+    public string TrangThai { get; set; } = string.Empty;
+
+    /// <summary>Số giờ tăng ca dự kiến; 0 khi không có tăng ca.</summary>
+    public decimal GioTangCaDuKien { get; set; }
+}
+
+/// <summary>
+/// Kết quả tra cứu chấm công (quẹt thẻ) theo từ khóa — đã lọc theo phạm vi quyền.
+/// Nhân viên chỉ thấy của chính mình; Manager chỉ bộ phận mình; Admin/HR/IT toàn khách sạn.
+/// </summary>
+public sealed class AiDataAttendanceDto
+{
+    /// <summary>Từ khóa tra cứu do router trích ra; rỗng khi hỏi chung.</summary>
+    public string TuKhoa { get; set; } = string.Empty;
+
+    /// <summary>Tổng số bản ghi chấm công khớp.</summary>
+    public int TongSo { get; set; }
+
+    /// <summary>True khi danh sách bị cắt theo giới hạn mỗi lượt tra cứu.</summary>
+    public bool BiGioiHan { get; set; }
+
+    /// <summary>Ngày bắt đầu của khoảng thời gian đã tra cứu (tuần hiện tại).</summary>
+    public DateOnly TuNgay { get; set; }
+
+    /// <summary>Ngày kết thúc của khoảng thời gian đã tra cứu (tuần hiện tại).</summary>
+    public DateOnly DenNgay { get; set; }
+
+    /// <summary>Danh sách chấm công đã rút gọn.</summary>
+    public IReadOnlyList<AiDataChamCongItemDto> DanhSach { get; set; } = [];
+}
+
+/// <summary>
+/// Một dòng chấm công đã rút gọn — chỉ giờ quẹt, phút trễ/sớm, giờ OT, trạng thái.
+/// Không có tọa độ GPS, thiết bị quẹt, và không suy diễn lý do.
+/// </summary>
+public sealed class AiDataChamCongItemDto
+{
+    /// <summary>Mã phân ca (để đối chiếu với lịch phân ca).</summary>
+    public int MaPhanCa { get; set; }
+
+    /// <summary>Ngày làm việc.</summary>
+    public DateOnly NgayLamViec { get; set; }
+
+    /// <summary>Tên nhân viên.</summary>
+    public string HoTen { get; set; } = string.Empty;
+
+    /// <summary>Tên phòng ban; null khi chưa gán.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PhongBan { get; set; }
+
+    /// <summary>Tên ca làm việc.</summary>
+    public string TenCa { get; set; } = string.Empty;
+
+    /// <summary>Giờ quẹt vào (HH:mm); null khi chưa quẹt.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GioCheckIn { get; set; }
+
+    /// <summary>Giờ quẹt ra (HH:mm); null khi chưa quẹt.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GioCheckOut { get; set; }
+
+    /// <summary>Số phút đi trễ.</summary>
+    public int PhutDiTre { get; set; }
+
+    /// <summary>Số phút về sớm.</summary>
+    public int PhutVeSom { get; set; }
+
+    /// <summary>Số giờ tăng ca (OT) thực tế.</summary>
+    public decimal GioTangCaOt { get; set; }
+
+    /// <summary>Nhãn tiếng Việt: Đúng giờ / Đi trễ / Về sớm / Trễ và sớm / Vắng mặt / Chưa quẹt thẻ.</summary>
+    public string TrangThai { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Kết quả tra cứu sự kiện / dự án theo từ khóa — đã lọc theo phạm vi quyền.
+/// Admin/HR/IT xem toàn khách sạn; Manager chỉ sự kiện có nhân sự bộ phận mình tham gia;
+/// Employee chỉ xem sự kiện mình tham gia (hoặc được phân công).
+/// </summary>
+public sealed class AiDataEventDto
+{
+    /// <summary>Từ khóa tra cứu do router trích ra; rỗng khi hỏi chung.</summary>
+    public string TuKhoa { get; set; } = string.Empty;
+
+    /// <summary>Tổng số sự kiện khớp.</summary>
+    public int TongSo { get; set; }
+
+    /// <summary>True khi danh sách bị cắt theo giới hạn mỗi lượt tra cứu.</summary>
+    public bool BiGioiHan { get; set; }
+
+    /// <summary>Danh sách sự kiện đã rút gọn.</summary>
+    public IReadOnlyList<AiDataSuKienItemTraCuuDto> DanhSach { get; set; } = [];
+}
+
+/// <summary>
+/// Một sự kiện / dự án đã rút gọn — chỉ thông tin tra cứu cơ bản và nhân sự tham gia.
+/// Không có ngân sách phụ cấp chi tiết, số tiền phụ cấp từng người, hay lý do hủy/đóng sự kiện.
+/// </summary>
+public sealed class AiDataSuKienItemTraCuuDto
+{
+    /// <summary>Mã sự kiện / dự án trong hệ thống.</summary>
+    public int MaDuAn { get; set; }
+
+    /// <summary>Tên sự kiện / dự án.</summary>
+    public string TenDuAn { get; set; } = string.Empty;
+
+    /// <summary>Nhãn tiếng Việt của loại sự kiện (Tiệc cưới, Hội nghị, Gala Dinner...).</summary>
+    public string LoaiSuKien { get; set; } = string.Empty;
+
+    /// <summary>Địa điểm tổ chức.</summary>
+    public string DiaDiem { get; set; } = string.Empty;
+
+    /// <summary>Ngày bắt đầu (giờ Việt Nam).</summary>
+    public DateTimeOffset NgayBatDau { get; set; }
+
+    /// <summary>Ngày kết thúc dự kiến (giờ Việt Nam).</summary>
+    public DateTimeOffset NgayKetThuc { get; set; }
+
+    /// <summary>Nhãn tiếng Việt của trạng thái (Lên kế hoạch / Đang diễn ra / ...).</summary>
+    public string TrangThai { get; set; } = string.Empty;
+
+    /// <summary>Số nhân sự đang tham gia sự kiện (không tính phân công đã hủy).</summary>
+    public int SoNhanSuThamGia { get; set; }
+
+    /// <summary>Tên các nhân sự tham gia; tối đa vài tên nổi bật, rỗng khi không có.</summary>
+    public string NhanSuThamGia { get; set; } = string.Empty;
 }

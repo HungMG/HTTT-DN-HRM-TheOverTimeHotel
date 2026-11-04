@@ -11,12 +11,71 @@ using OvertimeHotel.HRM.MobileApp.Services;
 namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 
 /// <summary>
-/// Danh sách phiếu lương của người đang đăng nhập, và chi tiết 2 tầng Gross - Net của một phiếu.
+/// Phần tử đại diện cho một mốc Năm trong bộ lọc năm của màn hình phiếu lương.
+/// </summary>
+public class YearFilterItem : INotifyPropertyChanged
+{
+    private bool _isSelected;
+
+    public int Year { get; }
+    public string Label { get; }
+    public string Subtitle { get; }
+    public bool IsCurrentYear { get; }
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BackgroundColor)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TextColor)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SubtitleColor)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BorderColor)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CheckmarkVisibility)));
+            }
+        }
+    }
+
+    public string BackgroundColor => IsSelected ? "#1E3A8A" : "#FFFFFF";
+    public string TextColor => IsSelected ? "#FFFFFF" : "#0F172A";
+    public string SubtitleColor => IsSelected ? "#BFDBFE" : "#64748B";
+    public string BorderColor => IsSelected ? "#D4AF37" : "#CBD5E1";
+    public bool CheckmarkVisibility => IsSelected;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public YearFilterItem(int year, string label, bool isSelected = false, string subtitle = "")
+    {
+        Year = year;
+        Label = label;
+        _isSelected = isSelected;
+        IsCurrentYear = (year == DateTime.Now.Year);
+        Subtitle = string.IsNullOrWhiteSpace(subtitle)
+            ? (IsCurrentYear ? "Năm hiện tại" : "Lịch sử quyết toán")
+            : subtitle;
+    }
+}
+
+/// <summary>
+/// Danh sách phiếu lương của người đang đăng nhập, bộ lọc năm, xuất PDF năm và chi tiết 2 tầng Gross - Net.
 /// </summary>
 public class PayslipViewModel : INotifyPropertyChanged
 {
     private readonly IPayslipService _service;
     private readonly IAuthService _authService;
+    private readonly IPayslipPdfExportService _pdfExportService;
+    private readonly List<PayslipItemDto> _detailRawItems = [];
+    private readonly List<PayslipRowItem> _allPayslips = [];
+
+    private int _selectedYear = DateTime.Now.Year;
+    private bool _isYearPickerOpen;
+    private bool _isExportingPdf;
+    private bool _isExportingYearlyPdf;
+    private string _exportStatusText = string.Empty;
 
     private CancellationTokenSource? _loadCancellation;
     private CancellationTokenSource? _detailCancellation;
@@ -36,22 +95,38 @@ public class PayslipViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<PayslipRowItem> Payslips { get; } = [];
+    public ObservableCollection<YearFilterItem> YearFilters { get; } = [];
     public ObservableCollection<PayslipItemRowItem> DetailItems { get; } = [];
     public ObservableCollection<PayslipItemRowItem> IncomeItems { get; } = [];
     public ObservableCollection<PayslipItemRowItem> DeductionItems { get; } = [];
 
     public Command RefreshCommand { get; }
     public Command<int> SelectPayslipCommand { get; }
+    public Command<int> SelectYearCommand { get; }
+    public Command PreviousYearCommand { get; }
+    public Command NextYearCommand { get; }
+    public Command OpenYearPickerCommand { get; }
+    public Command CloseYearPickerCommand { get; }
     public Command CloseDetailCommand { get; }
     public Command LoginCommand { get; }
+    public Command ExportPdfCommand { get; }
+    public Command ExportYearlyPdfCommand { get; }
 
-    public PayslipViewModel(IPayslipService service, IAuthService authService)
+    public PayslipViewModel(IPayslipService service, IAuthService authService, IPayslipPdfExportService pdfExportService)
     {
         _service = service;
         _authService = authService;
+        _pdfExportService = pdfExportService;
         RefreshCommand = new Command(async () => await LoadAsync(), () => !IsLoading);
         SelectPayslipCommand = new Command<int>(async id => await LoadDetailAsync(id));
+        SelectYearCommand = new Command<int>(SelectYear);
+        PreviousYearCommand = new Command(GoPreviousYear, () => CanGoPreviousYear);
+        NextYearCommand = new Command(GoNextYear, () => CanGoNextYear);
+        OpenYearPickerCommand = new Command(() => IsYearPickerOpen = true);
+        CloseYearPickerCommand = new Command(() => IsYearPickerOpen = false);
         CloseDetailCommand = new Command(ClearDetail);
+        ExportPdfCommand = new Command(async () => await ExportPdfAsync(), () => _summary != null && !IsDetailLoading && !IsExportingPdf);
+        ExportYearlyPdfCommand = new Command(async () => await ExportYearlyPdfAsync(), () => CanExportYearlyPdf);
         LoginCommand = new Command(async () =>
         {
             await _authService.LogoutAsync();
@@ -67,7 +142,12 @@ public class PayslipViewModel : INotifyPropertyChanged
         get => _isLoading;
         private set
         {
-            if (Set(ref _isLoading, value)) RefreshCommand.ChangeCanExecute();
+            if (Set(ref _isLoading, value))
+            {
+                RefreshCommand.ChangeCanExecute();
+                ExportYearlyPdfCommand.ChangeCanExecute();
+                OnPropertyChanged(nameof(CanExportYearlyPdf));
+            }
         }
     }
 
@@ -84,6 +164,51 @@ public class PayslipViewModel : INotifyPropertyChanged
         get => _employeeName;
         private set => Set(ref _employeeName, value);
     }
+
+    public bool IsYearPickerOpen
+    {
+        get => _isYearPickerOpen;
+        set => Set(ref _isYearPickerOpen, value);
+    }
+
+    public int SelectedYear
+    {
+        get => _selectedYear;
+        private set
+        {
+            if (value <= 0) return;
+            if (Set(ref _selectedYear, value))
+            {
+                OnPropertyChanged(nameof(SelectedYearDisplay));
+                OnPropertyChanged(nameof(SelectedYearText));
+                OnPropertyChanged(nameof(YearSubtitleText));
+                OnPropertyChanged(nameof(ExportYearlyButtonText));
+                OnPropertyChanged(nameof(CanExportYearlyPdf));
+                OnPropertyChanged(nameof(CanGoPreviousYear));
+                OnPropertyChanged(nameof(CanGoNextYear));
+                OnPropertyChanged(nameof(PreviousYearBgColor));
+                OnPropertyChanged(nameof(PreviousYearTextColor));
+                OnPropertyChanged(nameof(NextYearBgColor));
+                OnPropertyChanged(nameof(NextYearTextColor));
+                PreviousYearCommand.ChangeCanExecute();
+                NextYearCommand.ChangeCanExecute();
+                ExportYearlyPdfCommand.ChangeCanExecute();
+            }
+        }
+    }
+
+    public string SelectedYearDisplay => $"Năm {_selectedYear}";
+    public string YearSubtitleText => _selectedYear == DateTime.Now.Year ? "Năm hiện tại" : "Lịch sử quyết toán";
+    public string SelectedYearText => $"Năm {_selectedYear}";
+
+    public bool CanGoPreviousYear => YearFilters.Any(y => y.Year < _selectedYear);
+    public bool CanGoNextYear => YearFilters.Any(y => y.Year > _selectedYear);
+
+    public string PreviousYearBgColor => CanGoPreviousYear ? "#FFFFFF" : "#F1F5F9";
+    public string PreviousYearTextColor => CanGoPreviousYear ? "#1E3A8A" : "#94A3B8";
+
+    public string NextYearBgColor => CanGoNextYear ? "#FFFFFF" : "#F1F5F9";
+    public string NextYearTextColor => CanGoNextYear ? "#1E3A8A" : "#94A3B8";
 
     public bool HasDetail => _summary != null;
     public bool HasListVisible => !HasDetail && HasData;
@@ -108,9 +233,11 @@ public class PayslipViewModel : INotifyPropertyChanged
     {
         get
         {
-            if (_summary == null) return string.Empty;
-            if (!string.IsNullOrWhiteSpace(_summary.TenPhongBan) && !string.IsNullOrWhiteSpace(_summary.TenChucVu))
-                return $"{_summary.TenPhongBan} • {_summary.TenChucVu}";
+            if (_summary != null)
+            {
+                if (!string.IsNullOrWhiteSpace(_summary.TenPhongBan) && !string.IsNullOrWhiteSpace(_summary.TenChucVu))
+                    return $"{_summary.TenPhongBan} • {_summary.TenChucVu}";
+            }
 
             var user = _authService.CurrentUser;
             if (user != null && !string.IsNullOrWhiteSpace(user.TenPhongBan))
@@ -159,8 +286,53 @@ public class PayslipViewModel : INotifyPropertyChanged
     public string DetailFormulaDeduction => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.TongKhauTru)} ₫";
     public string DetailFormulaNet => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.ThucNhan)} ₫";
 
-    public string EmptyText =>
-        "Chưa có phiếu lương nào được gửi. Phiếu lương sẽ tự động hiển thị tại đây sau khi bảng lương được duyệt và khóa sổ trên hệ thống.";
+    public bool IsExportingPdf
+    {
+        get => _isExportingPdf;
+        private set
+        {
+            if (Set(ref _isExportingPdf, value))
+            {
+                ExportPdfCommand.ChangeCanExecute();
+                OnPropertyChanged(nameof(ExportButtonText));
+            }
+        }
+    }
+
+    public bool IsExportingYearlyPdf
+    {
+        get => _isExportingYearlyPdf;
+        private set
+        {
+            if (Set(ref _isExportingYearlyPdf, value))
+            {
+                ExportYearlyPdfCommand.ChangeCanExecute();
+                OnPropertyChanged(nameof(ExportYearlyButtonText));
+                OnPropertyChanged(nameof(CanExportYearlyPdf));
+            }
+        }
+    }
+
+    public string ExportStatusText { get => _exportStatusText; private set => Set(ref _exportStatusText, value); }
+    public bool HasExportStatus => !string.IsNullOrWhiteSpace(_exportStatusText);
+
+    public string ExportButtonText => IsExportingPdf ? "Đang xuất PDF..." : "⤓ Xuất PDF";
+    public bool CanExportPdf => HasDetail && !IsDetailLoading && !IsExportingPdf;
+
+    public string ExportYearlyButtonText => IsExportingYearlyPdf
+        ? "Đang in..."
+        : $"⤓ Bảng Lương {_selectedYear}";
+
+    public bool CanExportYearlyPdf =>
+        HasListVisible &&
+        !IsLoading &&
+        !IsExportingYearlyPdf &&
+        _selectedYear > 0 &&
+        _allPayslips.Any(p => p.Source.Nam == _selectedYear);
+
+    public string EmptyText => _selectedYear > 0
+        ? $"Chưa có phiếu lương được quyết toán trong năm {_selectedYear}. Phiếu lương sẽ tự động hiển thị tại đây sau khi bảng lương được duyệt và khóa sổ trên hệ thống."
+        : "Chưa có phiếu lương nào phù hợp trong năm được chọn.";
 
     public async Task LoadAsync()
     {
@@ -176,6 +348,7 @@ public class PayslipViewModel : INotifyPropertyChanged
         HasData = false;
         IsEmpty = false;
         Payslips.Clear();
+        _allPayslips.Clear();
         ClearDetail();
         try
         {
@@ -190,12 +363,46 @@ public class PayslipViewModel : INotifyPropertyChanged
 
             foreach (var slip in slips)
             {
-                Payslips.Add(new PayslipRowItem(slip));
-                if (Payslips.Count == 1 && !string.IsNullOrWhiteSpace(slip.HoTen))
+                var rowItem = new PayslipRowItem(slip);
+                _allPayslips.Add(rowItem);
+                if (string.IsNullOrWhiteSpace(EmployeeName) && !string.IsNullOrWhiteSpace(slip.HoTen))
                     EmployeeName = slip.HoTen;
             }
+
+            // Xây dựng danh sách mốc Năm lọc động từ dữ liệu thực tế (chỉ năm cụ thể, tuyệt đối không có "Tất cả")
+            var distinctYears = _allPayslips
+                .Where(p => p.Source.Nam > 0)
+                .Select(p => p.Source.Nam)
+                .Distinct()
+                .ToList();
+
+            var currentYear = DateTime.Now.Year;
+            if (!distinctYears.Contains(currentYear))
+            {
+                distinctYears.Add(currentYear);
+            }
+
+            var sortedYears = distinctYears.OrderByDescending(y => y).ToList();
+
+            // Mặc định luôn là năm hiện tại theo yêu cầu người dùng
+            if (_selectedYear <= 0 || !sortedYears.Contains(_selectedYear))
+            {
+                _selectedYear = sortedYears.Contains(currentYear) ? currentYear : sortedYears[0];
+            }
+
+            YearFilters.Clear();
+            // Tuyệt đối không thêm "Tất cả" - mỗi lựa chọn là một năm cụ thể
+            foreach (var y in sortedYears)
+            {
+                YearFilters.Add(new YearFilterItem(
+                    y,
+                    $"Năm {y}",
+                    _selectedYear == y,
+                    y == currentYear ? "Năm hiện tại" : "Lịch sử quyết toán"));
+            }
+
+            ApplyYearFilter();
             HasData = true;
-            IsEmpty = Payslips.Count == 0;
             NotifyDetail();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
@@ -220,6 +427,7 @@ public class PayslipViewModel : INotifyPropertyChanged
                 IsLoading = false;
                 IsRefreshing = false;
                 RefreshCommand.ChangeCanExecute();
+                ExportYearlyPdfCommand.ChangeCanExecute();
                 NotifyDetail();
             }
         }
@@ -235,9 +443,72 @@ public class PayslipViewModel : INotifyPropertyChanged
         IsRefreshing = false;
         IsDetailLoading = false;
         Payslips.Clear();
+        _allPayslips.Clear();
         HasData = false;
         IsEmpty = false;
         ClearDetail();
+    }
+
+    public void SelectYear(int year)
+    {
+        if (year <= 0) return;
+        SelectedYear = year;
+        foreach (var item in YearFilters)
+        {
+            item.IsSelected = (item.Year == year);
+        }
+        IsYearPickerOpen = false;
+        ApplyYearFilter();
+    }
+
+    private void GoPreviousYear()
+    {
+        var prev = YearFilters
+            .Where(y => y.Year < _selectedYear)
+            .OrderByDescending(y => y.Year)
+            .FirstOrDefault();
+
+        if (prev != null)
+        {
+            SelectYear(prev.Year);
+        }
+    }
+
+    private void GoNextYear()
+    {
+        var next = YearFilters
+            .Where(y => y.Year > _selectedYear)
+            .OrderBy(y => y.Year)
+            .FirstOrDefault();
+
+        if (next != null)
+        {
+            SelectYear(next.Year);
+        }
+    }
+
+    private void ApplyYearFilter()
+    {
+        Payslips.Clear();
+        var filtered = _allPayslips.Where(p => p.Source.Nam == _selectedYear);
+
+        foreach (var item in filtered)
+        {
+            Payslips.Add(item);
+        }
+
+        IsEmpty = Payslips.Count == 0;
+        OnPropertyChanged(nameof(EmptyText));
+        ExportYearlyPdfCommand.ChangeCanExecute();
+        OnPropertyChanged(nameof(CanExportYearlyPdf));
+        OnPropertyChanged(nameof(CanGoPreviousYear));
+        OnPropertyChanged(nameof(CanGoNextYear));
+        OnPropertyChanged(nameof(PreviousYearBgColor));
+        OnPropertyChanged(nameof(PreviousYearTextColor));
+        OnPropertyChanged(nameof(NextYearBgColor));
+        OnPropertyChanged(nameof(NextYearTextColor));
+        PreviousYearCommand.ChangeCanExecute();
+        NextYearCommand.ChangeCanExecute();
     }
 
     private async Task LoadDetailAsync(int maPhieuLuong)
@@ -250,17 +521,22 @@ public class PayslipViewModel : INotifyPropertyChanged
         IsDetailLoading = true;
         try
         {
-            _summary = Payslips.FirstOrDefault(p => p.MaPhieuLuong == maPhieuLuong)?.Source;
+            _summary = _allPayslips.FirstOrDefault(p => p.MaPhieuLuong == maPhieuLuong)?.Source;
+            _detailRawItems.Clear();
+            ExportStatusText = string.Empty;
             DetailItems.Clear();
             IncomeItems.Clear();
             DeductionItems.Clear();
             NotifyDetail();
+            ExportPdfCommand.ChangeCanExecute();
 
             var items = await _service.GetPayslipItemsAsync(maPhieuLuong, token);
             if (version != _detailVersion || token.IsCancellationRequested) return;
 
+            _detailRawItems.Clear();
             foreach (var item in items)
             {
+                _detailRawItems.Add(item);
                 var rowItem = new PayslipItemRowItem(item);
                 DetailItems.Add(rowItem);
                 if (rowItem.IsDeduction)
@@ -288,13 +564,116 @@ public class PayslipViewModel : INotifyPropertyChanged
         }
     }
 
-    private void ClearDetail()
+    public void ClearDetail()
     {
         _summary = null;
+        _detailRawItems.Clear();
+        ExportStatusText = string.Empty;
         DetailItems.Clear();
         IncomeItems.Clear();
         DeductionItems.Clear();
         NotifyDetail();
+        ExportPdfCommand.ChangeCanExecute();
+        ExportYearlyPdfCommand.ChangeCanExecute();
+    }
+
+    private async Task ExportPdfAsync()
+    {
+        if (_summary == null || IsDetailLoading || IsExportingPdf) return;
+        var summary = _summary!;
+        var items = _detailRawItems.ToArray();
+        IsExportingPdf = true;
+        ExportStatusText = "Đang tạo file PDF phiếu lương...";
+        NotifyDetail();
+        try
+        {
+            var path = await _pdfExportService.ExportAsync(summary, items);
+            var fileName = Path.GetFileName(path);
+            ExportStatusText = $"Đã tạo PDF: {fileName} (Đã lưu vào mục Tải về)";
+
+            try
+            {
+                await Share.RequestAsync(new ShareFileRequest
+                {
+                    Title = $"Phiếu lương tháng {summary.Thang:00}/{summary.Nam:0000}",
+                    File = new ShareFile(path, "application/pdf"),
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                // Người dùng không chọn chia sẻ — file PDF vẫn đã được tạo và lưu
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PayslipPdf] Lỗi xuất PDF: {ex}");
+            ExportStatusText = $"Lỗi tạo PDF: {ex.Message}";
+        }
+        finally
+        {
+            IsExportingPdf = false;
+            NotifyDetail();
+            ExportPdfCommand.ChangeCanExecute();
+        }
+    }
+
+    private async Task ExportYearlyPdfAsync()
+    {
+        if (IsLoading || IsExportingYearlyPdf || _allPayslips.Count == 0) return;
+
+        var targetYear = SelectedYear > 0
+            ? SelectedYear
+            : (_allPayslips.FirstOrDefault(p => p.Source.Nam > 0)?.Source.Nam ?? DateTime.Now.Year);
+
+        var slipsInYear = _allPayslips
+            .Where(p => p.Source.Nam == targetYear)
+            .Select(p => p.Source)
+            .ToList();
+
+        if (slipsInYear.Count == 0)
+        {
+            slipsInYear = _allPayslips.Select(p => p.Source).ToList();
+        }
+
+        IsExportingYearlyPdf = true;
+        ExportStatusText = $"Đang tạo bảng thu nhập năm {targetYear}...";
+        NotifyDetail();
+
+        try
+        {
+            var empName = !string.IsNullOrWhiteSpace(EmployeeName)
+                ? EmployeeName
+                : (_authService.CurrentUser?.HoTen ?? "Nhân viên");
+            var deptRole = DetailDepartmentRole;
+
+            var path = await _pdfExportService.ExportYearlyAsync(targetYear, empName, deptRole, slipsInYear);
+            var fileName = Path.GetFileName(path);
+            ExportStatusText = $"Đã tạo bảng thu nhập năm {targetYear}: {fileName} (Đã lưu vào mục Tải về)";
+
+            try
+            {
+                await Share.RequestAsync(new ShareFileRequest
+                {
+                    Title = $"Bảng tổng hợp thu nhập năm {targetYear} - {empName}",
+                    File = new ShareFile(path, "application/pdf"),
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                // Người dùng hủy bảng chia sẻ
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[YearlyPayslipPdf] Lỗi xuất PDF năm: {ex}");
+            ExportStatusText = $"Lỗi tạo PDF năm: {ex.Message}";
+        }
+        finally
+        {
+            IsExportingYearlyPdf = false;
+            NotifyDetail();
+            ExportYearlyPdfCommand.ChangeCanExecute();
+        }
     }
 
     private void NotifyDetail()
@@ -332,6 +711,19 @@ public class PayslipViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasDeductionItems));
         OnPropertyChanged(nameof(HasNoDeductions));
         OnPropertyChanged(nameof(IsEmptyDetail));
+        OnPropertyChanged(nameof(CanExportPdf));
+        OnPropertyChanged(nameof(CanExportYearlyPdf));
+        OnPropertyChanged(nameof(ExportYearlyButtonText));
+        OnPropertyChanged(nameof(SelectedYearText));
+        OnPropertyChanged(nameof(SelectedYearDisplay));
+        OnPropertyChanged(nameof(YearSubtitleText));
+        OnPropertyChanged(nameof(CanGoPreviousYear));
+        OnPropertyChanged(nameof(CanGoNextYear));
+        OnPropertyChanged(nameof(PreviousYearBgColor));
+        OnPropertyChanged(nameof(PreviousYearTextColor));
+        OnPropertyChanged(nameof(NextYearBgColor));
+        OnPropertyChanged(nameof(NextYearTextColor));
+        OnPropertyChanged(nameof(HasExportStatus));
         OnPropertyChanged(nameof(DetailItems));
         OnPropertyChanged(nameof(IncomeItems));
         OnPropertyChanged(nameof(DeductionItems));

@@ -59,15 +59,22 @@
                 </HorizontalStackLayout>
             </VerticalStackLayout>
 
-            <!-- Nút Tải lại khi ở danh sách -->
-            <Button Grid.Column="2" Text="↻" FontSize="18" WidthRequest="42" HeightRequest="42" CornerRadius="21" Padding="0"
-                    BackgroundColor="#FFFFFF" BorderColor="#E2E8F0" BorderWidth="1" TextColor="#1E3A8A"
+            <!-- Nút in bảng thu nhập năm trên header danh sách (thay thế nút tải lại trang) -->
+            <Button Grid.Column="2" Text="{Binding ExportYearlyButtonText}" CornerRadius="12" HeightRequest="42"
+                    Padding="14,0" FontFamily="SegoeUIBold" FontSize="12" BackgroundColor="#1E3A8A" TextColor="#FFFFFF"
+                    BorderColor="#D4AF37" BorderWidth="1.5"
+                    Command="{Binding ExportYearlyPdfCommand}"
+                    IsEnabled="{Binding CanExportYearlyPdf}"
                     IsVisible="{Binding IsListHeaderVisible}"
-                    Command="{Binding RefreshCommand}" SemanticProperties.Description="Tải lại phiếu lương" />
+                    SemanticProperties.Description="In bảng thu nhập năm ra file PDF" />
 
-            <!-- Khung giữ cân bằng bố cục khi đang xem chi tiết (đã gỡ nút ✕ theo yêu cầu) -->
-            <ContentView Grid.Column="2" WidthRequest="42" HeightRequest="42"
-                         IsVisible="{Binding HasDetail}" InputTransparent="True" />
+            <!-- Nút xuất PDF phiếu lương trên header chi tiết -->
+            <Button Grid.Column="2" Text="{Binding ExportButtonText}" CornerRadius="12" HeightRequest="42"
+                    Padding="12,0" FontFamily="SegoeUIBold" FontSize="12" BackgroundColor="#B45309" TextColor="#FFFFFF"
+                    BorderColor="#FDE047" BorderWidth="1.5"
+                    Command="{Binding ExportPdfCommand}"
+                    IsEnabled="{Binding CanExportPdf}"
+                    IsVisible="{Binding HasDetail}" SemanticProperties.Description="Xuất PDF phiếu lương" />
         </Grid>
 
         <!-- NỘI DUNG CHÍNH -->
@@ -123,21 +130,66 @@
                          Command="{Binding RefreshCommand}" RefreshColor="#1E3A8A">
                 <CollectionView ItemsSource="{Binding Payslips}" SelectionMode="None">
                     <CollectionView.Header>
-                        <!-- Banner hướng dẫn 5 sao -->
-                        <Border StrokeThickness="0" BackgroundColor="#EFF6FF" StrokeShape="RoundRectangle 14"
-                                Padding="14,10" Margin="0,0,0,14">
-                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalOptions="Center">
-                                <Border WidthRequest="28" HeightRequest="28" StrokeShape="RoundRectangle 14"
-                                        BackgroundColor="#DBEAFE" StrokeThickness="0"
-                                        VerticalOptions="Center" HorizontalOptions="Center">
-                                    <Label Text="ℹ" FontSize="13" TextColor="#1E3A8A" FontFamily="SegoeUIBold"
-                                           HorizontalOptions="Center" VerticalOptions="Center" />
-                                </Border>
-                                <Label Grid.Column="1"
-                                       Text="Chạm vào một phiếu để xem bảng quyết toán chi tiết lương 2 tầng Gross - Net."
-                                       FontSize="12" TextColor="#1E40AF" VerticalOptions="Center" LineHeight="1.3" />
-                            </Grid>
-                        </Border>
+                        <!-- THANH ĐIỀU HƯỚNG NĂM QUYẾT TOÁN (CHỈ NĂM HIỆN TẠI, CHỌN NĂM ĐỂ XEM) -->
+                        <VerticalStackLayout Spacing="10" Margin="0,0,0,14">
+                            <!-- THÔNG BÁO TIẾN TRÌNH XUẤT PDF (TRỰC QUAN TRÊN MÀN DANH SÁCH) -->
+                            <Border BackgroundColor="#EFF6FF" Stroke="#93C5FD" StrokeThickness="1"
+                                    StrokeShape="RoundRectangle 14" Padding="14,10"
+                                    IsVisible="{Binding HasExportStatus}">
+                                <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                                    <Label Text="📄" FontSize="15" VerticalOptions="Center" />
+                                    <Label Text="{Binding ExportStatusText}" TextColor="#1E3A8A" FontFamily="SegoeUIBold"
+                                           FontSize="12" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                                </HorizontalStackLayout>
+                            </Border>
+
+                            <!-- BỘ ĐIỀU HƯỚNG NĂM SANG TRỌNG 5★ (GỌN GÀNG 1 HÀNG, KHÔNG DÀI TRÀN LAN) -->
+                            <Border BackgroundColor="#FFFFFF" Stroke="#E2E8F0" StrokeThickness="1"
+                                    StrokeShape="RoundRectangle 16" Padding="10,8">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalOptions="Center">
+                                    <!-- Nút lùi năm trước (‹) -->
+                                    <Border Grid.Column="0" WidthRequest="40" HeightRequest="40" StrokeShape="RoundRectangle 12"
+                                            BackgroundColor="{Binding PreviousYearBgColor}" Stroke="#E2E8F0" StrokeThickness="1"
+                                            VerticalOptions="Center" HorizontalOptions="Center">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding PreviousYearCommand}" />
+                                        </Border.GestureRecognizers>
+                                        <Label Text="‹" FontFamily="SegoeUIBold" FontSize="24" TextColor="{Binding PreviousYearTextColor}"
+                                               HorizontalOptions="Center" VerticalOptions="Center" Margin="0,-3,0,0" />
+                                    </Border>
+
+                                    <!-- Khung năm hiện tại đang chọn: Chạm để chọn năm khác nếu muốn -->
+                                    <Border Grid.Column="1" BackgroundColor="#F8FAFC" Stroke="#D4AF37" StrokeThickness="1.5"
+                                            StrokeShape="RoundRectangle 12" Padding="12,6">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding OpenYearPickerCommand}" />
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center">
+                                            <Label Text="📅" FontSize="15" VerticalOptions="Center" />
+                                            <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center" HorizontalOptions="Center">
+                                                <Label Text="{Binding SelectedYearDisplay}" FontFamily="SegoeUIBold" FontSize="15"
+                                                       TextColor="#1E3A8A" HorizontalTextAlignment="Center" />
+                                                <Label Text="{Binding YearSubtitleText}" FontSize="10"
+                                                       TextColor="#64748B" HorizontalTextAlignment="Center" />
+                                            </VerticalStackLayout>
+                                            <Label Grid.Column="2" Text="▾" FontFamily="SegoeUIBold" FontSize="13"
+                                                   TextColor="#1E3A8A" VerticalOptions="Center" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Nút tiến năm sau (›) -->
+                                    <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" StrokeShape="RoundRectangle 12"
+                                            BackgroundColor="{Binding NextYearBgColor}" Stroke="#E2E8F0" StrokeThickness="1"
+                                            VerticalOptions="Center" HorizontalOptions="Center">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding NextYearCommand}" />
+                                        </Border.GestureRecognizers>
+                                        <Label Text="›" FontFamily="SegoeUIBold" FontSize="24" TextColor="{Binding NextYearTextColor}"
+                                               HorizontalOptions="Center" VerticalOptions="Center" Margin="0,-3,0,0" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </VerticalStackLayout>
                     </CollectionView.Header>
 
                     <!-- Khối hiển thị khi chưa có phiếu lương (Empty View) -->
@@ -162,83 +214,47 @@
                         </Border>
                     </CollectionView.EmptyView>
 
-                    <!-- Template từng thẻ phiếu lương Luxury Statement Card -->
+                    <!-- Template từng thẻ phiếu lương Luxury Statement Card (Gọn gàng: Chỉ thông tin kỳ lương) -->
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="m:PayslipRowItem">
-                            <Border Stroke="#E2E8F0" BackgroundColor="#FFFFFF" StrokeShape="RoundRectangle 20"
-                                    Padding="18,16" Margin="0,0,0,14">
+                            <Border Stroke="#E2E8F0" BackgroundColor="#FFFFFF" StrokeShape="RoundRectangle 16"
+                                    Padding="16,14" Margin="0,0,0,10">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type vm:PayslipViewModel}}, Path=SelectPayslipCommand}"
                                         CommandParameter="{Binding MaPhieuLuong}" />
                                 </Border.GestureRecognizers>
 
-                                <VerticalStackLayout Spacing="10">
-                                    <!-- Hàng 1: Icon nhận diện 5★ + Kỳ lương + Huy hiệu trạng thái -->
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalOptions="Center">
-                                        <!-- Biểu tượng tiền tệ / tài chính hoàng gia -->
-                                        <Border WidthRequest="42" HeightRequest="42" StrokeShape="RoundRectangle 21"
-                                                BackgroundColor="#FEF3C7" Stroke="#FDE68A" StrokeThickness="1"
-                                                VerticalOptions="Center" HorizontalOptions="Center">
-                                            <Label Text="💰" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
-                                        </Border>
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12" VerticalOptions="Center">
+                                    <!-- Biểu tượng tiền tệ / tài chính hoàng gia -->
+                                    <Border WidthRequest="40" HeightRequest="40" StrokeShape="RoundRectangle 20"
+                                            BackgroundColor="#FEF3C7" Stroke="#FDE68A" StrokeThickness="1"
+                                            VerticalOptions="Center" HorizontalOptions="Center">
+                                        <Label Text="💰" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
 
-                                        <!-- Kỳ lương & ngày công -->
-                                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-                                            <Label Text="{Binding PeriodText}" FontFamily="SegoeUIBold"
-                                                   FontSize="16" TextColor="#0F172A" />
-                                            <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
-                                                <Label Text="{Binding WorkDayText}" FontSize="11" TextColor="#64748B" />
-                                                <Label Text="•" FontSize="11" TextColor="#CBD5E1" />
-                                                <Label Text="{Binding SlipIdText}" FontSize="11" TextColor="#64748B" />
-                                            </HorizontalStackLayout>
-                                        </VerticalStackLayout>
+                                    <!-- Kỳ lương & ngày công -->
+                                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                        <Label Text="{Binding PeriodText}" FontFamily="SegoeUIBold"
+                                               FontSize="15" TextColor="#0F172A" />
+                                        <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                                            <Label Text="{Binding WorkDayText}" FontSize="11" TextColor="#64748B" />
+                                            <Label Text="•" FontSize="11" TextColor="#CBD5E1" />
+                                            <Label Text="{Binding SlipIdText}" FontSize="11" TextColor="#64748B" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
 
-                                        <!-- Huy hiệu trạng thái duyệt / khóa sổ -->
-                                        <Border Grid.Column="2" StrokeThickness="0" BackgroundColor="{Binding StatusBackground}"
-                                                StrokeShape="RoundRectangle 10" Padding="10,5" VerticalOptions="Center">
-                                            <Label Text="{Binding StatusText}" FontFamily="SegoeUIBold" FontSize="11"
-                                                   TextColor="{Binding StatusColor}" />
-                                        </Border>
-                                    </Grid>
+                                    <!-- Huy hiệu trạng thái duyệt / khóa sổ -->
+                                    <Border Grid.Column="2" StrokeThickness="0" BackgroundColor="{Binding StatusBackground}"
+                                            StrokeShape="RoundRectangle 10" Padding="10,5" VerticalOptions="Center">
+                                        <Label Text="{Binding StatusText}" FontFamily="SegoeUIBold" FontSize="11"
+                                               TextColor="{Binding StatusColor}" />
+                                    </Border>
 
-                                    <!-- Đường phân cách tinh tế -->
-                                    <BoxView HeightRequest="1" Color="#F1F5F9" Margin="0,2" />
-
-                                    <!-- Hàng 2: Tóm tắt 2 tầng Thu nhập Gross & Khấu trừ -->
-                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                                        <Border BackgroundColor="#F8FAFC" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="10,6">
-                                            <VerticalStackLayout Spacing="1">
-                                                <Label Text="Tổng thu nhập" FontSize="10" TextColor="#047857" FontFamily="SegoeUIBold" />
-                                                <Label Text="{Binding EarnedText}" FontSize="12" TextColor="#065F46" FontFamily="SegoeUIBold" />
-                                            </VerticalStackLayout>
-                                        </Border>
-                                        <Border Grid.Column="1" BackgroundColor="#F8FAFC" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="10,6">
-                                            <VerticalStackLayout Spacing="1">
-                                                <Label Text="Tổng khấu trừ" FontSize="10" TextColor="#DC2626" FontFamily="SegoeUIBold" />
-                                                <Label Text="{Binding DeductionText}" FontSize="12" TextColor="#991B1B" FontFamily="SegoeUIBold" />
-                                            </VerticalStackLayout>
-                                        </Border>
-                                    </Grid>
-
-                                    <!-- Hàng 3: Thực nhận (Net) to bản + Nút Xem chi tiết -->
-                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" VerticalOptions="Center" Margin="0,2,0,0">
-                                        <VerticalStackLayout Spacing="1">
-                                            <Label Text="THỰC NHẬN (NET)" FontSize="10" FontFamily="SegoeUIBold"
-                                                   TextColor="#64748B" CharacterSpacing="0.8" />
-                                            <Label Text="{Binding NetText}" FontFamily="SegoeUIBold"
-                                                   FontSize="22" TextColor="#1E3A8A" />
-                                        </VerticalStackLayout>
-
-                                        <Border Grid.Column="1" BackgroundColor="#EFF6FF" Stroke="#BFDBFE" StrokeThickness="1"
-                                                StrokeShape="RoundRectangle 12" Padding="12,8" VerticalOptions="Center">
-                                            <HorizontalStackLayout Spacing="4" VerticalOptions="Center">
-                                                <Label Text="Chi tiết" FontFamily="SegoeUIBold" FontSize="12" TextColor="#1E3A8A" VerticalOptions="Center" />
-                                                <Label Text="›" FontFamily="SegoeUIBold" FontSize="14" TextColor="#1E3A8A" VerticalOptions="Center" />
-                                            </HorizontalStackLayout>
-                                        </Border>
-                                    </Grid>
-                                </VerticalStackLayout>
+                                    <!-- Mũi tên điều hướng nhỏ gọn › -->
+                                    <Label Grid.Column="3" Text="›" FontFamily="SegoeUIBold" FontSize="18"
+                                           TextColor="#94A3B8" VerticalOptions="Center" Margin="2,0,0,0" />
+                                </Grid>
                             </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
@@ -253,6 +269,17 @@
             <!-- ═══ MÀN HÌNH CHI TIẾT PHIẾU LƯƠNG REDESIGN (2 TẦNG GROSS - NET) ═══ -->
             <ScrollView IsVisible="{Binding HasDetail}" VerticalScrollBarVisibility="Never" Padding="0,0,0,24">
                 <VerticalStackLayout Spacing="14">
+
+                    <!-- THÔNG BÁO TIẾN TRÌNH XUẤT PDF TRỰC QUAN -->
+                    <Border BackgroundColor="#EFF6FF" Stroke="#93C5FD" StrokeThickness="1"
+                            StrokeShape="RoundRectangle 14" Padding="14,10"
+                            IsVisible="{Binding HasExportStatus}">
+                        <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                            <Label Text="📄" FontSize="15" VerticalOptions="Center" />
+                            <Label Text="{Binding ExportStatusText}" TextColor="#1E3A8A" FontFamily="SegoeUIBold"
+                                   FontSize="12" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                        </HorizontalStackLayout>
+                    </Border>
 
                     <!-- SKELETON KHI ĐANG TẢI CHI TIẾT TỪNG DÒNG -->
                     <Border IsVisible="{Binding IsDetailLoading}" Stroke="#BFDBFE" BackgroundColor="#EFF6FF"
@@ -532,6 +559,9 @@
                         </VerticalStackLayout>
                     </Border>
 
+                    <Label Text="{Binding ExportStatusText}" IsVisible="{Binding HasExportStatus}"
+                           FontSize="12" TextColor="#475569" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+
                     <!-- NÚT QUAY LẠI DANH SÁCH -->
                     <Button Text="← Quay lại danh sách phiếu lương" Command="{Binding CloseDetailCommand}"
                             BackgroundColor="#1E3A8A" TextColor="#FFFFFF" HeightRequest="48"
@@ -554,6 +584,92 @@
                 </Border>
             </VerticalStackLayout>
 
+        </Grid>
+
+        <!-- ═══ MODAL POPUP CHỌN NĂM QUYẾT TOÁN (CUSTOM LUXURY 5★ POPUP) ═══ -->
+        <Grid Grid.RowSpan="3"
+              IsVisible="{Binding IsYearPickerOpen}"
+              ZIndex="999"
+              HorizontalOptions="Fill"
+              VerticalOptions="Fill"
+              Margin="-16,-8,-16,-16">
+            <!-- Lớp phủ nền mờ sang trọng -->
+            <BoxView Color="#B30F172A">
+                <BoxView.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding CloseYearPickerCommand}" />
+                </BoxView.GestureRecognizers>
+            </BoxView>
+
+            <!-- Khung thẻ danh sách năm -->
+            <Border StrokeShape="RoundRectangle 24"
+                    Stroke="#D4AF37"
+                    StrokeThickness="2"
+                    BackgroundColor="#FFFFFF"
+                    WidthRequest="320"
+                    MaximumHeightRequest="420"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"
+                    Padding="20">
+                <VerticalStackLayout Spacing="14">
+                    <!-- Tiêu đề Popup -->
+                    <Grid ColumnDefinitions="Auto,*,Auto" VerticalOptions="Center">
+                        <Label Text="📅" FontSize="20" VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Margin="8,0,0,0" Spacing="2">
+                            <Label Text="CHỌN NĂM QUYẾT TOÁN" FontFamily="SegoeUIBold"
+                                   FontSize="14" TextColor="#1E3A8A" />
+                            <Label Text="Chạm vào một năm để xem phiếu lương"
+                                   FontSize="11" TextColor="#64748B" />
+                        </VerticalStackLayout>
+                        <Border Grid.Column="2" WidthRequest="28" HeightRequest="28"
+                                StrokeShape="RoundRectangle 14" BackgroundColor="#F1F5F9"
+                                StrokeThickness="0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding CloseYearPickerCommand}" />
+                            </Border.GestureRecognizers>
+                            <Label Text="✕" FontSize="12" FontFamily="SegoeUIBold" TextColor="#64748B"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
+
+                    <BoxView HeightRequest="1" Color="#E2E8F0" />
+
+                    <!-- Danh sách các năm thực tế -->
+                    <ScrollView MaximumHeightRequest="240" VerticalScrollBarVisibility="Never">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding YearFilters}" Spacing="8">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:YearFilterItem">
+                                    <Border BackgroundColor="{Binding BackgroundColor}"
+                                            Stroke="{Binding BorderColor}" StrokeThickness="1.5"
+                                            StrokeShape="RoundRectangle 14" Padding="14,10">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:PayslipViewModel}}, Path=SelectYearCommand}"
+                                                CommandParameter="{Binding Year}" />
+                                        </Border.GestureRecognizers>
+                                        <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center">
+                                            <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                                                <Label Text="{Binding Label}" FontFamily="SegoeUIBold" FontSize="14"
+                                                       TextColor="{Binding TextColor}" />
+                                                <Label Text="{Binding Subtitle}" FontSize="11"
+                                                       TextColor="{Binding SubtitleColor}" />
+                                            </VerticalStackLayout>
+                                            <Label Grid.Column="1" Text="✓" FontFamily="SegoeUIBold" FontSize="16"
+                                                   TextColor="#D4AF37" VerticalOptions="Center"
+                                                   IsVisible="{Binding CheckmarkVisibility}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </ScrollView>
+
+                    <!-- Nút đóng -->
+                    <Button Text="Đóng" Command="{Binding CloseYearPickerCommand}"
+                            BackgroundColor="#F8FAFC" TextColor="#475569" FontFamily="SegoeUIBold"
+                            FontSize="13" CornerRadius="12" HeightRequest="40"
+                            BorderColor="#E2E8F0" BorderWidth="1" />
+                </VerticalStackLayout>
+            </Border>
         </Grid>
     </Grid>
 </ContentPage>

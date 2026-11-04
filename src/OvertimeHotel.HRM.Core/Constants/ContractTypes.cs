@@ -63,11 +63,16 @@ public static class ContractTypes
             v.StartsWith("KHONG_XAC_DINH", StringComparison.OrdinalIgnoreCase))
             return KHONG_XAC_DINH_THOI_HAN;
 
-        if (v.Contains("3 năm", StringComparison.OrdinalIgnoreCase) ||
+        if (v.Contains("03 năm", StringComparison.OrdinalIgnoreCase) ||
+            v.Contains("3 năm", StringComparison.OrdinalIgnoreCase) ||
             v.Contains("3_NAM", StringComparison.OrdinalIgnoreCase))
             return XAC_DINH_THOI_HAN_3_NAM;
 
-        if (v.Contains("1 năm", StringComparison.OrdinalIgnoreCase) ||
+        // Nhãn hiển thị dùng dạng hai chữ số ("01 năm"), còn người dùng thường gõ
+        // "1 năm" — phải kiểm cả hai dạng, nếu không tìm kiếm theo loại sẽ ra 0 kết quả
+        // trong khi trang Quản lý Hợp đồng hiển thị nhãn "01 năm" cho cùng loại này.
+        if (v.Contains("01 năm", StringComparison.OrdinalIgnoreCase) ||
+            v.Contains("1 năm", StringComparison.OrdinalIgnoreCase) ||
             v.Contains("1_NAM", StringComparison.OrdinalIgnoreCase))
             return XAC_DINH_THOI_HAN_1_NAM;
 
@@ -105,13 +110,26 @@ public static class ContractTypes
     {
         if (string.IsNullOrWhiteSpace(keyword)) return Array.Empty<string>();
         var k = keyword.Trim();
-        return NhanTiengViet
+        var normalized = Normalize(k);
+        var matched = NhanTiengViet
             .Where(pair =>
                 pair.Value.Contains(k, StringComparison.OrdinalIgnoreCase) ||
-                pair.Key.Contains(k, StringComparison.OrdinalIgnoreCase))
+                pair.Key.Contains(k, StringComparison.OrdinalIgnoreCase) ||
+                (normalized != null &&
+                    (pair.Key == normalized ||
+                        pair.Value.Contains(NormalizeLabel(normalized) ?? string.Empty, StringComparison.OrdinalIgnoreCase))))
             .Select(pair => pair.Key)
             .ToList();
+        return matched;
     }
+
+    /// <summary>Định dạng số năm hai chữ số như nhãn hiển thị: "1 năm" → "01 năm", "3 năm" → "03 năm".</summary>
+    private static string? NormalizeLabel(string code) => code switch
+    {
+        XAC_DINH_THOI_HAN_1_NAM => "01 năm",
+        XAC_DINH_THOI_HAN_3_NAM => "03 năm",
+        _ => null
+    };
 
     /// <summary>
     /// Hợp đồng không xác định thời hạn hay không — dùng cho mức báo trước

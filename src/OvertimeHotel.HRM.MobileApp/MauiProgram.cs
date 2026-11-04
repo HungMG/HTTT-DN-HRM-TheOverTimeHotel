@@ -73,6 +73,7 @@ public static class MauiProgram
 			// trong bộ nhớ sẽ không khớp quyền thật của người đang đăng nhập.
 			builder.Services.AddSingleton<IScheduleService, MobileScheduleService>();
 			builder.Services.AddSingleton<IPayslipService, MobilePayslipService>();
+			builder.Services.AddSingleton<IPayslipPdfExportService, NativePayslipPdfExportService>();
 		}
 
 		// Client PostgREST dùng chung cho các service nghiệp vụ. Singleton để tái

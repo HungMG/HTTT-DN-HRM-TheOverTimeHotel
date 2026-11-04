@@ -21,7 +21,7 @@ async function checkQueryType(
   state: typeof AgentStateAnnotation.State,
   config: RunnableConfig,
 ): Promise<{
-  route: 'retrieve' | 'direct' | 'data' | 'payslip' | 'directory';
+  route: 'retrieve' | 'direct' | 'data' | 'payslip' | 'directory' | 'contract' | 'leave' | 'shift' | 'attendance' | 'event';
   searchKeyword: string;
 }> {
   //schema for routing
@@ -31,13 +31,25 @@ async function checkQueryType(
     // apart by what the user is asking about, not by anything the graph could infer later.
     // `directory` takes the same bridge — its slice is a staff-name search — and carries
     // the extracted person's name in `keyword`.
-    route: z.enum(['retrieve', 'direct', 'data', 'payslip', 'directory']),
+    // `contract` likewise — its slice is a contract search keyed by any of: person's name,
+    // contract number, or contract type.
+    // `leave` likewise — its slice is a leave-request search keyed by a person's name or a
+    // leave type name (e.g. "nghỉ phép năm", "nghỉ ốm").
+    // `shift` likewise — its slice is a shift-schedule search keyed by a person's name or a
+    // shift name (e.g. "ca sáng", "ca đêm").
+    // `attendance` likewise — its slice is a check-in/out search keyed by a person's name,
+    // shift name, or a status phrase (e.g. "đi trễ", "về sớm", "chưa quẹt thẻ").
+    // `event` likewise — its slice is a hotel event / project search keyed by the event name,
+    // event type, status phrase, or a participating person's name (e.g. "sắp có sự kiện gì?",
+    // "tiệc cưới nào đang diễn ra?", "anh Sang có tham gia sự kiện nào không?").
+    route: z.enum(['retrieve', 'direct', 'data', 'payslip', 'directory', 'contract', 'leave', 'shift', 'attendance', 'event']),
     keyword: z
       .string()
       .optional()
       .describe(
-        "The person's name mentioned in the question, when route is 'directory'. " +
-          'Just the name, without honorifics or surrounding words. Empty otherwise.',
+        "The search term mentioned in the question, when route is 'directory', 'contract', 'leave', 'shift', 'attendance' or 'event'. " +
+          "For 'directory': the person's name. For 'contract': the person's name, contract number, or contract type (e.g. 'xác định thời hạn'). For 'leave': the person's name, the leave type name, or the status phrase (e.g. 'chờ duyệt', 'đã duyệt', 'từ chối'). For 'shift': the person's name or the shift name (e.g. 'ca sáng', 'ca đêm'). For 'attendance': the person's name, the shift name, or the status phrase (e.g. 'đi trễ', 'về sớm', 'đúng giờ', 'vắng mặt', 'chưa quẹt thẻ', 'tăng ca'). For 'event': the event name, the event type (e.g. 'tiệc cưới', 'hội nghị', 'gala'), the status phrase (e.g. 'đang diễn ra', 'lên kế hoạch', 'hoàn thành'), or a participating person's name. " +
+          'Just the term, without honorifics or surrounding words. Empty otherwise.',
       ),
   });
 
@@ -102,7 +114,7 @@ async function routeQuery(
     return 'retrieveDocuments';
   } else if (route === 'direct') {
     return 'directAnswer';
-  } else if (route === 'data' || route === 'payslip' || route === 'directory') {
+  } else if (route === 'data' || route === 'payslip' || route === 'directory' || route === 'contract' || route === 'leave' || route === 'shift' || route === 'attendance' || route === 'event') {
     // Same node: the scope travels on state, and the WebAdmin decides what each one returns.
     return 'loadDataDigest';
   } else {
@@ -185,9 +197,24 @@ async function loadDataDigest(
   const dataApiUrl = process.env.DATA_API_URL;
 
   // The scope is chosen here from the route the graph itself picked, never from the browser.
+  // `directory`, `contract`, `leave`, `shift`, `attendance` and `event` carry the extracted keyword in state.searchKeyword.
   // A caller-supplied scope would let anyone ask for the payroll-report slice by naming it in
   // the request; the WebAdmin would still refuse, but there is no reason to forward the claim.
-  const scope = state.route === 'payslip' ? 'my-payslip' : 'reports';
+  const scope = state.route === 'payslip'
+    ? 'my-payslip'
+    : state.route === 'directory'
+      ? 'directory'
+      : state.route === 'contract'
+        ? 'contract'
+        : state.route === 'leave'
+          ? 'leave'
+          : state.route === 'shift'
+            ? 'shift'
+            : state.route === 'attendance'
+              ? 'attendance'
+              : state.route === 'event'
+                ? 'event'
+                : 'reports';
 
   if (!dataApiUrl || !configuration.accessToken) {
     return {
@@ -210,6 +237,13 @@ async function loadDataDigest(
         ...(configuration.year > 0 ? { year: configuration.year } : {}),
         ...(configuration.month > 0 ? { month: configuration.month } : {}),
         ...(configuration.quarter > 0 ? { quarter: configuration.quarter } : {}),
+        // The search keyword extracted by the router for lookups, forwarded only where it is
+        // meaningful. An empty keyword means a general question ("hôm nay ai làm việc?") —
+        // the WebAdmin then returns the default list instead of rejecting the request.
+        // Permissions are still re-resolved from the ticket, so an empty keyword never widens access.
+        ...((scope === 'directory' || scope === 'contract' || scope === 'leave' || scope === 'shift' || scope === 'attendance' || scope === 'event')
+          ? { keyword: state.searchKeyword ?? '' }
+          : {}),
       }),
       // Without a deadline a hung WebAdmin would hold the whole chat turn open.
       signal: AbortSignal.timeout(8000),
