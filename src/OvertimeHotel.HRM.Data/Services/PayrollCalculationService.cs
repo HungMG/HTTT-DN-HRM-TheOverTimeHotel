@@ -107,17 +107,28 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         GhiChu = $"Quyết toán sự kiện #{settlement.MaQuyetToan}; SK-{settlement.MaDuAn}; tháng phát sinh {settlement.ThangPhatSinh:MM/yyyy}"
     };
 
-    private static PhieuLuong BonusOnlyPayslip(int periodId, int employeeId, List<ChiTietPhieuLuong> details)
+    private static PhieuLuong BonusOnlyPayslip(int periodId, int employeeId, int soNguoiPhuThuoc, List<ChiTietPhieuLuong> details)
     {
         var bonus = details.Sum(d => d.SoTien);
-        var taxable = Math.Max(0m, bonus - SalaryConstants.PERSONAL_TAX_DEDUCTION);
+        var giamTruBanThan = SalaryConstants.PERSONAL_TAX_DEDUCTION;
+        var giamTruPhuThuoc = Math.Max(0, soNguoiPhuThuoc) * SalaryConstants.DEPENDENT_TAX_DEDUCTION;
+        var tongGiamTru = giamTruBanThan + giamTruPhuThuoc;
+        var taxable = Math.Max(0m, bonus - tongGiamTru);
         var tax = PersonalIncomeTaxCalculator.CalculateTax(taxable);
         if (tax > 0m)
             details.Add(new ChiTietPhieuLuong
             {
                 MaKhoanTru = 4, LoaiKhoan = "KHAU_TRU", LoaiKhoanLuu = "KHAU_TRU",
                 TenKhoanLuu = "Thuế thu nhập cá nhân (TNCN)", SoTien = tax,
-                ChiTietTruThueTncns = [new() { ThuNhapChiuThue = bonus, GiamTruBanThan = SalaryConstants.PERSONAL_TAX_DEDUCTION, ThuNhapTinhThue = taxable, TienThue = tax }]
+                ChiTietTruThueTncns = [new()
+                {
+                    ThuNhapChiuThue = bonus,
+                    GiamTruBanThan = giamTruBanThan,
+                    SoNguoiPhuThuoc = Math.Max(0, soNguoiPhuThuoc),
+                    GiamTruPhuThuoc = giamTruPhuThuoc,
+                    ThuNhapTinhThue = taxable,
+                    TienThue = tax
+                }]
             });
         return new PhieuLuong
         {
@@ -298,17 +309,18 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .Where(s => IsHoliday(s.NgayLamViec) && s.ChamCong is { GioCheckIn: not null, GioCheckOut: not null })
             .ToList();
         var holidayWorkHours = holidayWorkShifts.Sum(s => s.CaLamViec?.GioLamChuan ?? 8m);
-        var tienLamNgayLe = Math.Round(donGiaGio * holidayWorkHours * 2.0m, MidpointRounding.AwayFromZero);
-        if (holidayWorkHours > 0)
+        var heSoPhuCapLe = Math.Max(0m, config.OtHolidayRate - 1.0m);
+        var tienLamNgayLe = Math.Round(donGiaGio * holidayWorkHours * heSoPhuCapLe, MidpointRounding.AwayFromZero);
+        if (holidayWorkHours > 0 && heSoPhuCapLe > 0)
         {
             details.Add(new ChiTietPhieuLuong
             {
                 MaLoaiOt = 3,
                 LoaiKhoan = "PHU_CAP",
                 LoaiKhoanLuu = "PHU_CAP",
-                TenKhoanLuu = "Phụ cấp đi làm ngày Lễ, Tết (+200%)",
+                TenKhoanLuu = $"Phụ cấp đi làm ngày Lễ, Tết (+{heSoPhuCapLe * 100:N0}%)",
                 SoTien = tienLamNgayLe,
-                GhiChu = $"{holidayWorkShifts.Count} ca ({holidayWorkHours:N1}h) x đơn giá x 2.0 (tổng đạt 300%)"
+                GhiChu = $"{holidayWorkShifts.Count} ca ({holidayWorkHours:N1}h) x đơn giá x {heSoPhuCapLe:N1} (tổng đạt {config.OtHolidayRate * 100:N0}%)"
             });
         }
 
@@ -340,9 +352,13 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         var tienTangCa = tienOtNormal + tienOtWeekend + tienOtHoliday;
 
         // Tính phần chênh lệch làm thêm giờ được miễn thuế theo Luật Thuế TNCN (Thông tư 111/2013/TT-BTC)
-        var tienMienThueOtNormal = Math.Round(donGiaGio * otHoursNormal * Math.Max(0m, config.OtNormalRate - 1.0m), MidpointRounding.AwayFromZero);
-        var tienMienThueOtWeekend = Math.Round(donGiaGio * otHoursWeekend * Math.Max(0m, config.OtWeekendRate - 1.0m), MidpointRounding.AwayFromZero);
-        var tienMienThueOtHoliday = Math.Round(donGiaGio * otHoursHoliday * Math.Max(0m, config.OtHolidayRate - 1.0m), MidpointRounding.AwayFromZero);
+        var ratioNormal = config.OtNormalRate > 1.0m ? (config.OtNormalRate - 1.0m) / config.OtNormalRate : 0m;
+        var ratioWeekend = config.OtWeekendRate > 1.0m ? (config.OtWeekendRate - 1.0m) / config.OtWeekendRate : 0m;
+        var ratioHoliday = config.OtHolidayRate > 1.0m ? (config.OtHolidayRate - 1.0m) / config.OtHolidayRate : 0m;
+
+        var tienMienThueOtNormal = Math.Round(tienOtNormal * ratioNormal, MidpointRounding.AwayFromZero);
+        var tienMienThueOtWeekend = Math.Round(tienOtWeekend * ratioWeekend, MidpointRounding.AwayFromZero);
+        var tienMienThueOtHoliday = Math.Round(tienOtHoliday * ratioHoliday, MidpointRounding.AwayFromZero);
         var tienMienThueOt = tienMienThueOtNormal + tienMienThueOtWeekend + tienMienThueOtHoliday;
 
         if (otHoursNormal > 0)
@@ -420,7 +436,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         // 5. Phụ cấp quản lý & Phụ cấp độc hại buồng phòng
         var chucVuTen = nv.ChucVu?.TenChucVu ?? "";
         var phongBanTen = nv.PhongBan?.TenPhongBan ?? "";
-        var isManager = chucVuTen.Contains("Trưởng") || chucVuTen.Contains("Giám sát") || chucVuTen.Contains("Quản lý") || chucVuTen.Contains("Giám đốc");
+        var isManager = IsManagerPosition(chucVuTen);
 
         if (isManager && ngayCongThucTe > 0)
         {
@@ -448,7 +464,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         }
 
-        var isHousekeeping = phongBanTen.Contains("Buồng") || phongBanTen.Contains("Housekeeping");
+        var isHousekeeping = IsHazardDepartment(phongBanTen);
         var tienDocHai = 0m;
         if (isHousekeeping && workedDays > 0 && config.HousekeepingHazardAllowancePerDay > 0)
         {
@@ -631,14 +647,14 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
                 if (cc.PhutVeSom > 15)
                 {
-                    var fine = config.FineEarlyDeparture;
+                    var fine = cc.PhutVeSom * config.FinePerMinuteLate;
                     tongTienPhat += fine;
                     fineDetails.Add(new ChiTietTruViPhamTamUng
                     {
                         LoaiTru = "VE_SOM",
                         SoPhutViPham = cc.PhutVeSom,
                         SoTienTru = fine,
-                        LyDoChiTiet = $"Về sớm {cc.PhutVeSom} phút ngày {shift.NgayLamViec:dd/MM/yyyy} (>15p định mức {config.FineEarlyDeparture:N0}đ)"
+                        LyDoChiTiet = $"Về sớm {cc.PhutVeSom} phút ngày {shift.NgayLamViec:dd/MM/yyyy} (>15p: {cc.PhutVeSom}p x {config.FinePerMinuteLate:N0}đ)"
                     });
                 }
             }
@@ -664,7 +680,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                     LoaiTru = "KY_LUAT",
                     SoPhutViPham = 480,
                     SoTienTru = fine,
-                    LyDoChiTiet = $"Bỏ ca làm việc không phép ngày {shift.NgayLamViec:dd/MM/yyyy}"
+                    LyDoChiTiet = $"Bỏ ca làm việc không phép ngày {shift.NgayLamViec:dd/MM/yyyy} (không tính ngày công & phạt {fine:N0}đ)"
                 });
             }
         }
@@ -852,7 +868,9 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         foreach (var group in settlements.Where(q => newPayslips.All(p => p.MaNhanVien != q.MaNhanVien)).GroupBy(q => q.MaNhanVien))
         {
             var eventDetails = group.Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
-            newPayslips.Add(BonusOnlyPayslip(period.MaKyLuong, group.Key, eventDetails.Select(x => x.Detail).ToList()));
+            var emp = employees.FirstOrDefault(e => e.MaNhanVien == group.Key);
+            var soNguoiPhuThuoc = emp?.SoNguoiPhuThuoc ?? 0;
+            newPayslips.Add(BonusOnlyPayslip(period.MaKyLuong, group.Key, soNguoiPhuThuoc, eventDetails.Select(x => x.Detail).ToList()));
             settlementsToLink.AddRange(eventDetails);
         }
 
@@ -955,7 +973,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             if (settlements.Count == 0)
                 throw new InvalidOperationException("Nhân viên không có hợp đồng hiệu lực hoặc quyết toán sự kiện trong kỳ; cần HR đối soát phiếu lương.");
             var eventDetails = settlements.Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
-            _context.PhieuLuongs.Add(BonusOnlyPayslip(period.MaKyLuong, employeeId, eventDetails.Select(x => x.Detail).ToList()));
+            _context.PhieuLuongs.Add(BonusOnlyPayslip(period.MaKyLuong, employeeId, nv.SoNguoiPhuThuoc, eventDetails.Select(x => x.Detail).ToList()));
             await _context.SaveChangesAsync(cancellationToken);
             foreach (var (settlement, detail) in eventDetails) settlement.MaChiTiet = detail.MaChiTiet;
             _context.NhatKyQuanTris.Add(new NhatKyQuanTri
@@ -1036,7 +1054,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         payslip.ChiTietPhieuLuongs.Add(detail);
 
         // Cập nhật lại các tổng
-        RecalculateTotals(payslip);
+        var config = await LoadPayrollConfigAsync(cancellationToken);
+        RecalculateTotals(payslip, config);
 
         _context.NhatKyQuanTris.Add(new NhatKyQuanTri
         {
@@ -1081,7 +1100,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         _context.ChiTietPhieuLuongs.Remove(item);
         payslip.ChiTietPhieuLuongs.Remove(item);
 
-        RecalculateTotals(payslip);
+        var config = await LoadPayrollConfigAsync(cancellationToken);
+        RecalculateTotals(payslip, config);
 
         _context.NhatKyQuanTris.Add(new NhatKyQuanTri
         {
@@ -1096,7 +1116,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         return true;
     }
 
-    private static void RecalculateTotals(PhieuLuong payslip)
+    private static void RecalculateTotals(PhieuLuong payslip, PayrollConfigContext? config = null)
     {
         payslip.TongPhuCap = payslip.ChiTietPhieuLuongs.Where(c => c.LoaiKhoan == "PHU_CAP").Sum(c => c.SoTien);
         payslip.TongThuong = payslip.ChiTietPhieuLuongs.Where(c => c.LoaiKhoan == "THUONG").Sum(c => c.SoTien);
@@ -1118,9 +1138,17 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             var tienOtWeekend = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 2 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
             var tienOtHoliday = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 3 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
 
-            var tienMienThueOt = Math.Round(tienOtNormal / 3m, MidpointRounding.AwayFromZero)
-                               + Math.Round(tienOtWeekend / 2m, MidpointRounding.AwayFromZero)
-                               + Math.Round(tienOtHoliday * 2m / 3m, MidpointRounding.AwayFromZero);
+            var normalRate = config?.OtNormalRate ?? SalaryConstants.OVERTIME_NORMAL_RATE;
+            var weekendRate = config?.OtWeekendRate ?? SalaryConstants.OVERTIME_WEEKEND_RATE;
+            var holidayRate = config?.OtHolidayRate ?? SalaryConstants.OVERTIME_HOLIDAY_RATE;
+
+            var ratioNormal = normalRate > 1.0m ? (normalRate - 1.0m) / normalRate : 0m;
+            var ratioWeekend = weekendRate > 1.0m ? (weekendRate - 1.0m) / weekendRate : 0m;
+            var ratioHoliday = holidayRate > 1.0m ? (holidayRate - 1.0m) / holidayRate : 0m;
+
+            var tienMienThueOt = Math.Round(tienOtNormal * ratioNormal, MidpointRounding.AwayFromZero)
+                               + Math.Round(tienOtWeekend * ratioWeekend, MidpointRounding.AwayFromZero)
+                               + Math.Round(tienOtHoliday * ratioHoliday, MidpointRounding.AwayFromZero);
 
             var tongThuNhapMienThue = tienAnCa + tienDocHai + tienLamNgayLe + tienCaDem + tienMienThueOt;
             var thuNhapChiuThue = Math.Max(0m, tongGross - tongThuNhapMienThue);
@@ -1436,4 +1464,19 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         return false;
     }
+private static readonly string[] ManagerTitleKeywords =
+    [
+        "Trưởng", "Giám sát", "Quản lý", "Giám đốc", "Tổ trưởng", "Quản đốc", "Trưởng ca", "Bếp trưởng", "Leader", "Supervisor", "Manager", "Director"
+    ];
+
+    private static readonly string[] HazardDepartmentKeywords =
+    [
+        "Buồng", "Housekeeping", "Vệ sinh", "Laundry", "Giặt là"
+    ];
+
+    private static bool IsManagerPosition(string? title) =>
+        !string.IsNullOrWhiteSpace(title) && ManagerTitleKeywords.Any(k => title.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsHazardDepartment(string? deptName) =>
+        !string.IsNullOrWhiteSpace(deptName) && HazardDepartmentKeywords.Any(k => deptName.Contains(k, StringComparison.OrdinalIgnoreCase));
 }

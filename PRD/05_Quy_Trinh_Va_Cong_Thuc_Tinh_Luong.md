@@ -21,17 +21,19 @@ $$\text{Gross} = \text{Lương Ngày Công} + \text{Tiền Tăng Ca (OT)} + \tex
 2. **Tiền Tăng Ca (Overtime - OT):**
    $$\text{Tiền OT} = \left(\frac{\text{Lương Cơ Bản}}{26 \times 8}\right) \times \text{Số Giờ OT} \times \text{Hệ Số OT}$$
    - Ngày làm việc bình thường: Hệ số = **1.5** (150%).
-   - Ngày nghỉ cuối tuần: Hệ số = **2.0** (200%).
+   - Ngày nghỉ cuối tuần (chỉ ngày Chủ nhật): Hệ số = **2.0** (200%).
    - Ngày Lễ, Tết: Hệ số = **3.0** (300%).
+   - **Thứ Bảy:** được xem là ngày làm việc bình thường; làm thêm vào Thứ Bảy hưởng hệ số **1.5** (150%), không áp dụng hệ số cuối tuần 2.0.
    - **Quy ước áp dụng hệ số 3.0:** hệ số này chỉ dành cho nhân viên **đi làm thực tế** vào ngày Lễ, Tết. Nhân viên **không đi làm** thì hưởng **nghỉ Lễ, Tết bình thường** theo quy định, không tính OT. Cần có danh mục lịch nghỉ lễ để hệ thống tự phân loại ngày.
 
 3. **Phụ Cấp Ca Đêm (Theo Điều 98 Bộ luật Lao động):**
    $$\text{Phụ Cấp Ca Đêm} = \left(\frac{\text{Lương Cơ Bản}}{26 \times 8}\right) \times \text{Số Giờ Làm Việc Ca Đêm} \times 0.30$$
    *(Cộng thêm ít nhất 30% tiền lương tính theo đơn giá tiền lương của ngày làm việc bình thường).*
+   - **Quy ước tính theo ca chuẩn:** Đối với phụ cấp đi làm ngày Lễ/Tết và phụ cấp ca đêm, hệ thống tính theo giờ làm chuẩn của ca (`GioLamChuan`, mặc định 8 giờ/ca), không áp dụng giờ check-in/check-out thực tế. Nếu nhân viên đi trễ hoặc về sớm, số tiền phạt tương ứng vẫn bị trừ tại Tầng 2; phụ cấp theo ca chuẩn không tự động giảm theo thời gian đi trễ.
 
 4. **Phụ Cấp Ăn Ca & Phụ Cấp Khác:**
-   - **Phụ cấp ăn ca:** 30.000 VNĐ / ngày công thực tế có mặt tại khách sạn (khoản không chịu thuế TNCN theo quy định).
-   - **Phụ cấp khác:** Phụ cấp trách nhiệm quản lý, phụ cấp độc hại buồng phòng (theo cấu hình `cau_hinh_phu_cap`). *Chính sách khách sạn không áp dụng phụ cấp điện thoại.*
+   - **Phụ cấp ăn ca:** 30.000 VNĐ / ngày làm việc thực tế có mặt tại khách sạn (`workedDays`, khoản không chịu thuế TNCN theo quy định).
+   - **Phụ cấp khác:** Phụ cấp trách nhiệm quản lý (tính theo ngày công ghi nhận `ngayCongThucTe / 26`, tối đa 26 công), phụ cấp độc hại buồng phòng (theo cấu hình `cau_hinh_phu_cap`, tính theo ngày làm việc thực tế `workedDays`). *Chính sách khách sạn không áp dụng phụ cấp điện thoại.*
 
 5. **Thưởng Dự Án / Sự Kiện Khách Sạn (Event / Project Bonus):**
    - Tiền thưởng chi trả cho nhân viên khi được điều động tham gia phục vụ các sự kiện, tiệc cưới, hội nghị (MICE), gala dinner, festival ẩm thực, hoặc đón đoàn VIP của khách sạn ngoài ca định biên tiêu chuẩn.
@@ -39,7 +41,7 @@ $$\text{Gross} = \text{Lương Ngày Công} + \text{Tiền Tăng Ca (OT)} + \tex
    - Chi tiết về nguồn dữ liệu quét, công thức, cơ chế snapshot liên kết hai chiều và tính chất thuế TNCN được đặc tả tại **Mục 1.1**.
 
 6. **Tiền Thưởng Khác & Phí Phục Vụ (Service Charge & Chuyên Cần):**
-   - **Phí phục vụ (Service Charge):** 1.000.000 VNĐ / tháng chia đều cho nhân sự toàn khách sạn (`ma_khoan = 5` trong `cau_hinh_khoan_luong`).
+   - **Phí phục vụ (Service Charge):** `1.000.000 × min(1, workedDays / 26)` cho mỗi nhân viên (`ma_khoan = 5` trong `cau_hinh_khoan_luong`). Mức cấu hình giới hạn ở mức đầy đủ 1 triệu, sau đó phân bổ theo số ngày làm việc thực tế có mặt tại khách sạn; không cộng ngày nghỉ phép. Nếu `workedDays = 0`, không phát sinh khoản này.
    - **Thưởng chuyên cần:** 500.000 VNĐ / tháng cho nhân viên đạt $\ge 25$ ngày công thực tế và không đi trễ/về sớm (`ma_khoan = 4` trong `cau_hinh_khoan_luong`).
    - Thưởng KPI, thưởng doanh thu hoặc tiền thưởng đột xuất khác theo quyết định của Ban Giám đốc.
 
@@ -111,22 +113,31 @@ Khi chạy tiến trình tính lương kỳ tháng cho từng nhân viên, hệ 
 $$\text{Tổng Khấu Trừ} = \text{Bảo Hiểm Bắt Buộc (10.5%)} + \text{Tiền Phạt Vi Phạm} + \text{Thuế TNCN}$$
 
 1. **Bảo Hiểm Bắt Buộc (Trừ vào lương người lao động 10.5%):**
-   - Bảo hiểm xã hội (BHXH): **8.0%** tính trên lương cơ bản.
-   - Bảo hiểm y tế (BHYT): **1.5%** tính trên lương cơ bản.
-   - Bảo hiểm thất nghiệp (BHTN): **1.0%** tính trên lương cơ bản.
-   - $\text{Tổng Trừ BH} = \text{Lương Cơ Bản} \times 10.5\%$.
+   - Bảo hiểm xã hội (BHXH): **8.0%** tính trên lương đóng bảo hiểm.
+   - Bảo hiểm y tế (BHYT): **1.5%** tính trên lương đóng bảo hiểm.
+   - Bảo hiểm thất nghiệp (BHTN): **1.0%** tính trên lương đóng bảo hiểm.
+   - $\text{Tổng Trừ BH} = \text{BHXH} + \text{BHYT} + \text{BHTN}$.
+   - **Quy tắc căn cứ đóng bảo hiểm (Theo Khoản 3 Điều 85 Luật BHXH & Quyết định 595/QĐ-BHXH):**
+     - **Nguyên tắc tháng trọn vẹn:** Cơ quan BHXH thu tiền đóng theo tháng trọn vẹn dựa trên mức lương HĐLĐ, không thu theo tỷ lệ ngày công thực tế.
+     - **Nếu $\text{ngayCongThucTe} < 14$ ngày:** Thuộc diện nghỉ không hưởng lương $\ge 14$ ngày $\to$ **Miễn đóng bảo hiểm cả tháng đó** (tiền trừ BH = 0đ cho cả NLĐ và NSDLĐ).
+     - **Nếu $\text{ngayCongThucTe} \ge 14$ ngày:** Đủ điều kiện đóng BHXH $\to$ **Trích đóng đủ 10.5% trên mức lương đóng BH theo hợp đồng cả tháng** (không nhân tỷ lệ công $14/26$). Quy định này đảm bảo khớp 100% với số tiền doanh nghiệp phải nộp cho cơ quan BHXH nhà nước, tránh việc DN bị truy thu hoặc phải bù tiền túi.
+     - Không trích đóng bảo hiểm bắt buộc đối với hợp đồng thử việc (`THU_VIEC`).
+   - **Mức trần lương đóng bảo hiểm:**
+     - Lương đóng BHXH và BHYT trần ở mức **46.800.000đ/tháng** (20 lần lương cơ sở 2.340.000đ).
+     - Lương đóng BHTN trần ở mức **99.200.000đ/tháng** (20 lần lương tối thiểu vùng I).
+   - Khi không thuộc diện trích đóng bảo hiểm, phiếu lương vẫn hiển thị dòng bảo hiểm với số tiền **0đ** kèm lý do miễn đóng.
 
 2. **Tiền Phạt Kỷ Luật Lao Động (Tự động từ dữ liệu Chấm công):**
-   - Đi trễ: **2.000 VNĐ / phút** đi trễ (`phut_di_tre * 2.000`, khớp với định mức bảng `cau_hinh_khau_tru` mã 5).
-   - Về sớm: Về sớm quá 15 phút: **50.000 VNĐ / lần**.
-   - Vắng mặt không phép (Bỏ ca): Trừ toàn bộ lương ngày công đó + phạt bổ sung 200.000 VNĐ.
+   - Đi trễ: Bắt đầu phạt từ phút thứ 1 (**không áp dụng dung sai**), mức phạt **2.000 VNĐ / phút** đi trễ (`phut_di_tre * 2.000`, khớp định mức `cau_hinh_khau_tru` mã 5). Bất kỳ ca nào đi trễ $> 0$ phút đều bị phạt tiền và không đạt điều kiện Thưởng chuyên cần (`hasLate = PhutDiTre > 0`).
+   - Về sớm: Áp dụng dung sai bàn giao ca $\le 15$ phút (miễn phạt). Khi về sớm **quá 15 phút**, phạt **2.000 VNĐ / phút** cho toàn bộ số phút về sớm (`phut_ve_som * 2.000`) và không đạt điều kiện Thưởng chuyên cần (`hasEarly = PhutVeSom > 15`).
+   - Vắng mặt không phép (Bỏ ca): Không tính ngày công đó vào Lương công (Tầng 1) và phạt kỷ luật 200.000 VNĐ / lần (Tầng 2).
 
 3. **Thuế Thu Nhập Cá Nhân (TNCN):**
    - Khấu trừ theo biểu thuế lũy tiến từng phần của Nhà nước sau khi trừ gia cảnh bản thân (15.500.000 VNĐ/tháng) và người phụ thuộc (6.200.000 VNĐ/tháng/người). *(Cập nhật theo mức giảm trừ mới: 15,5 triệu đồng cho bản thân và 6,2 triệu đồng cho mỗi người phụ thuộc).*
 
 #### 3.1. Trình tự tính thuế TNCN (thứ tự bắt buộc)
 
-$$\text{Thu nhập chịu thuế} = \text{Tổng Gross (Tầng 1)} - \text{Các khoản không chịu thuế}$$
+$$\text{Thu nhập chịu thuế} = \text{Tổng Gross (Tầng 1)} - \text{Phụ cấp ăn ca} - \text{Phụ cấp độc hại} - \text{Phụ cấp lễ} - \text{Phụ cấp ca đêm} - \text{Phần chênh lệch miễn thuế làm thêm giờ}$$
 
 $$\text{Thu nhập tính thuế} = \text{Thu nhập chịu thuế} - \text{Giảm trừ bản thân} - (\text{Giảm trừ người phụ thuộc} \times \text{Số người phụ thuộc})$$
 
@@ -134,8 +145,10 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 
 - Nếu $\text{Thu nhập tính thuế} \leq 0$ → **Tiền thuế = 0** (không phát sinh nghĩa vụ nộp, không cấp âm).
 - **Phụ cấp ăn ca (30.000đ/ngày) là khoản không chịu thuế** — đã được cờ `chiu_thue_tncn = FALSE` trong bảng `CAU_HINH_PHU_CAP`. Vì vậy khoản này **vẫn cộng vào Gross** (mục 4 Tầng 1) nhưng **không đưa vào Thu nhập chịu thuế**. Đây là lý do dòng "Phụ cấp ăn ca" phải in trên phiếu lương ở bảng Thu Nhập chứ không nằm ở bảng Khấu Trừ.
+- **Các khoản thu nhập được miễn thuế TNCN theo cài đặt hiện tại** gồm: phụ cấp ăn ca, phụ cấp độc hại buồng phòng, phụ cấp đi làm ngày lễ/Tết vượt mức lương của ngày làm việc bình thường, phụ cấp ca đêm, và phần chênh lệch làm thêm giờ vượt mức lương của ngày làm việc bình thường. Các khoản này **vẫn cộng vào Gross** nhưng không đưa vào thu nhập chịu thuế theo Thông tư 111/2013/TT-BTC.
 - **Phụ cấp Dự án / Thù Lao Sự Kiện Khách Sạn là khoản thu nhập chịu thuế TNCN 100%:** Khoản thù lao này phát sinh từ việc nhân viên tham gia phục vụ sự kiện, tiệc cưới, hội nghị của khách sạn, mang tính chất tiền công / tiền thù lao trực tiếp nên **bắt buộc chịu thuế TNCN** (`chiu_thue_tncn = TRUE`). Do đó, khoản phụ cấp này **thuộc Thu nhập chịu thuế** và không được trừ ra khỏi Gross khi tính toán thu nhập chịu thuế.
-- Các khoản cộng/trừ vào thu nhập chịu thuế ngoài các bảo hiểm bắt buộc: Phụ cấp trách nhiệm quản lý (`chiu_thue_tncn = TRUE`). *Lưu ý: Khách sạn đã loại bỏ phụ cấp điện thoại và tạm ứng lương.*
+- Các khoản cộng vào thu nhập chịu thuế ngoài các bảo hiểm bắt buộc: Phụ cấp trách nhiệm quản lý (`chiu_thue_tncn = TRUE`), tiền lương làm thêm giờ đến mức lương của ngày làm việc bình thường, tiền thưởng chuyên cần, phí phục vụ Service Charge và tiền sự kiện. *Lưu ý: Khách sạn đã loại bỏ phụ cấp điện thoại và tạm ứng lương.*
+- Đối với phiếu lương chỉ có tiền sự kiện, hệ thống tính thuế sau khi trừ giảm trừ bản thân và người phụ thuộc; không trừ bảo hiểm bắt buộc và không có khoản miễn thuế.
 
 #### 3.2. Biểu thuế thu nhập cá nhân lũy tiến từng phần (5 bậc mới năm 2026)
 
@@ -209,7 +222,7 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
      | 1 | Lương công thực tế | `(Lương CB / 26) × Số ngày công thực tế` |
      | 2 | Tiền OT | `(Lương CB / 26 / 8) × Số giờ OT × Hệ số` — tách dòng theo hệ số 1.5 / 2.0 / 3.0 nếu kỳ lương có cả 3 loại |
      | 3 | Phụ cấp ca đêm 30% | `(Lương CB / 26 / 8) × Số giờ ca đêm × 0.30` |
-     | 4 | **Phụ cấp ăn ca** | `30.000đ × Số ngày công thực tế` (khoản miễn thuế TNCN) |
+     | 4 | **Phụ cấp ăn ca** | `30.000đ × workedDays` (khoản miễn thuế TNCN; `workedDays` là số ngày làm việc thực tế có mặt) |
      | 5 | Phụ cấp khác | Phụ cấp trách nhiệm quản lý / độc hại buồng phòng theo HĐLĐ hoặc cấu hình (bỏ phụ cấp điện thoại) |
      | 6 | **Phụ cấp Dự án / Sự kiện** | Thu nhập sự kiện từ `quyet_toan_su_kien` (tách từng dòng sự kiện: *Tiền sự kiện SK-&lt;mã&gt;*), số tiền = Lương tháng ÷ 26 ÷ 8 × Số giờ tham gia × Hệ số thưởng sự kiện (mặc định 2.0, cấu hình `ma_khoan = 35`), đã chốt khi nghiệm thu |
      | 7 | Tiền thưởng | Thưởng doanh thu buồng phòng / sự kiện / KPI |
@@ -268,19 +281,9 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 
 > Các trường hợp trong mục này **chưa được khách sạn ban hành nội quy chính thức**. Phần *đề xuất* là phương án mặc định để hệ thống vẫn chạy được; khi có nội quy chính thức sẽ cập nhật lại tại đây.
 
-1. **Đi trễ trên 30 phút:**
-   - PRD hiện chỉ quy định hai bậc: 1–15 phút → 50.000đ; 16–30 phút → 100.000đ. **Từ 31 phút trở lên chưa có bậc nào → chưa chốt.**
-   - **Đề xuất:** từ 31 phút trở lên coi như **vắng mặt không phép (bỏ ca)**, áp dụng nguyên bộ xử lý của mục 2 Tầng 2 (trừ 1 ngày công quy đổi + phạt 200.000đ).
-   - *Lý do đề xuất:* tránh tình trạng nhân viên đi trễ gần hết ca nhưng vẫn được hưởng trọn ngày công thực tế.
-   - **Cần xác minh:** khách sạn có chấp nhận cách xử lý này không, và có nên tách riêng một bậc "31–60 phút" với mức phạt riêng thay vì gộp thẳng vào bỏ ca.
-
-2. **Ca thiếu giờ (ra về sớm):**
-   - **PRD hiện chưa có quy tắc nào cho ca thiếu giờ.**
-   - **Đề xuất (khuyến nghị):** trừ lương theo số giờ thiếu thực tế, dùng chung đơn giá giờ với công thức OT ở Tầng 1:
-     $$\text{Lương bị trừ} = \left(\frac{\text{Lương Cơ Bản}}{26 \times 8}\right) \times \text{Số Giờ Thiếu} \times \text{Hệ số}$$
-   - **Cần xác minh:** hệ số nhân cho giờ thiếu là **1.0** (đơn giá gốc) hay **1.5** (giá OT)? Và có đặt ngưỡng miễn trừ không — ví dụ thiếu ≤ 15 phút thì coi như đủ công, không trừ vì khoản khấu trừ quá nhỏ.
-   - *Ghi chú kỹ thuật:* `AttendanceCalculator.ResolveStatus(...)` đã phân loại sẵn trạng thái *về sớm* qua tham số `PhutVeSom`, nhưng chưa có quy tắc quy đổi `PhutVeSom` → tiền. Cần thống nhất khi chốt.
-   - *Mâu thuẫn cần rà soát:* bảng cấu hình `CAU_HINH_KHAU_TRU` hiện đang đặt mức phạt vi phạm ca làm việc là **2.000đ/phút** (`ty_le_hoac_dinh_muc = 2000.00`), **khác** với bộ ba mức 50.000 / 100.000 / 200.000đ *trên mỗi lần vi phạm* ghi ở PRD này. Cần chốt rõ tính theo *lần vi phạm* hay theo *phút*, rồi sửa seed cho khớp. **Chưa chốt.**
+1. **Quy tắc phạt Đi trễ và Về sớm (Đã thống nhất dứt điểm):**
+   - **Đi trễ:** Phạt từ phút thứ 1 (không có dung sai), mức phạt **2.000 VNĐ / phút** (`phut_di_tre * 2.000`). Bất kỳ ca nào đi trễ $> 0$ phút đều bị phạt tiền và làm mất Thưởng chuyên cần (`hasLate = PhutDiTre > 0`).
+   - **Về sớm:** Áp dụng dung sai bàn giao ca $\le 15$ phút (miễn phạt). Khi về sớm **quá 15 phút**, phạt **2.000 VNĐ / phút** cho toàn bộ số phút về sớm (`phut_ve_som * 2.000`) và làm mất Thưởng chuyên cần (`hasEarly = PhutVeSom > 15`).
 
 3. **Về sớm và đi trễ trong cùng một ca:**
    - **Chưa chốt. Đề xuất:** gộp thành **một** lần vi phạm duy nhất, xếp mức phạt theo **tổng số phút vi phạm** (đi trễ + về sớm), tránh phạt kép một ca. **Cần xác minh** với khách sạn.
@@ -289,14 +292,13 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
    - **Chưa chốt. Đề xuất:** nếu nhân viên check-in hợp lệ nhưng rời ca trước giờ kết thúc dự kiến quá nửa ca, coi như vắng mặt không phép và áp dụng bộ xử lý của mục 2 Tầng 2.
    - **Cần xác minh:** ngưỡng "quá nửa ca" cụ thể là bao nhiêu phút, và có tính đội sớm cho phép (ví dụ 15 phút) trước khi áp phạt không.
 
-5. **Mâu thuẫn giữa "bỏ ca" và "ngày công thực tế" — quy ước đã chốt:**
+5. **Bỏ ca — quy ước đã chốt và thống nhất với cài đặt:**
 
-   Mục 2 Tầng 2 nói bỏ ca thì *trừ toàn bộ lương ngày công đó*, trong khi mục 1 Tầng 1 lấy *số ngày công thực tế* làm cơ sở tính lương. Nếu ngày bỏ ca vốn đã bị loại khỏi "ngày công thực tế" thì không tồn tại khoản lương nào để trừ — hai quy định mâu thuẫn nhau.
-
-   - **Quy ước đã chốt: KHÔNG đưa ngày bỏ ca vào "số ngày công thực tế".** Cụ thể:
+   - **Quy ước đã chốt (theo yêu cầu khách sạn): Ngày bỏ ca KHÔNG tính vào ngày công thực tế, đồng thời phạt cố định 200.000 VNĐ / lần.** Không cộng thêm 1 ngày công quy đổi vào khoản phạt, tránh trừ trùng hai lần.
+   - Cụ thể:
      - `Số ngày công thực tế` = số ca check-in hợp lệ + số ngày nghỉ phép được duyệt *(giữ nguyên định nghĩa ở Tầng 1 mục 1)*.
-     - Ngày bỏ ca không phải ngày công thực tế → **không** cộng vào tổng số ngày công.
-     - Vì vậy, câu *trừ toàn bộ lương ngày công đó* được hiểu là **cơ chế bù trừ**, và cài đặt cụ thể là **trừ trực tiếp `Lương Cơ Bản / 26`** (tức 1 ngày công quy đổi), cộng thêm **phạt 200.000 VNĐ / lần**:
-       $$\text{Phạt bỏ ca} = \left(\frac{\text{Lương Cơ Bản}}{26}\right) + 200.000\ \text{VNĐ}$$
-     - Cách hiểu này **tương đương về kết quả tiền** với việc "tính ngày bỏ ca rồi trừ lại", nhưng không phải sửa lại công thức ngày công thực tế ở Tầng 1 — giữ nguyên Tầng 1 đúng nghĩa *"công thực tế"*.
-   - **Cần xác minh:** nếu trong cùng tháng nhân viên bỏ ca *k* ngày thì công thức trên nhân với *k*. Khách sạn có giới hạn số ngày bỏ ca được phép trong tháng không (đề xuất: cần quy định rõ trong nội quy lao động, chưa chốt).
+     - Ngày bỏ ca không có chấm công vào/ra hợp lệ → **không** được tính là ngày công thực tế → `tienLuongCong` không bao gồm ngày đó.
+     - Khoản phạt kỷ luật cho mỗi ca bỏ ca là **200.000 VNĐ**, hạch toán tại Tầng 2 mục 2 (Tiền phạt kỷ luật):
+       $$\text{Phạt bỏ ca} = 200.000\ \text{VNĐ / ca}$$
+     - Dòng phạt ghi chú trên phiếu lương: *"Bỏ ca làm việc không phép ngày dd/MM/yyyy (không tính ngày công & phạt 200.000đ)"* để NLĐ đối chiếu rõ ràng.
+   - **Hệ quả:** Nếu nhân viên bỏ ca *k* ngày trong tháng, khách sạn áp dụng phạt `200.000 × k` và số ngày công thực tế giảm *k* ngày so với lịch phân ca — hai hiệu ứng này **độc lập, không cộng dồn** thành trừ 2 lần ngày công.
