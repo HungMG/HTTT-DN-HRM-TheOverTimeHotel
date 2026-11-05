@@ -22,7 +22,7 @@ public class ShiftSwapsApiController : ControllerBase
     private const string STATUS_TU_CHOI = "TU_CHOI";
     private const string STATUS_DA_HUY = "DA_HUY";
 
-    private const int SO_NGAY_TOI_CHON_CA = 30;
+    private const int SO_NGAY_TOI_CHON_CA = ShiftSwapPolicy.MaxAdvanceDays;
     private const int MAX_LY_DO = 500;
 
     private readonly AppDbContext _context;
@@ -66,7 +66,7 @@ public class ShiftSwapsApiController : ControllerBase
 
             var myId = account!.MaNhanVien;
             var now = DateTimeOffset.UtcNow;
-            var tuNgay = DateOnly.FromDateTime(DateTime.Today);
+            var tuNgay = DateOnly.FromDateTime(now.ToOffset(ShiftSchedulingPolicy.VietnamOffset).DateTime);
             var denNgay = tuNgay.AddDays(SO_NGAY_TOI_CHON_CA);
 
             var shifts = await _context.PhanCas
@@ -74,7 +74,7 @@ public class ShiftSwapsApiController : ControllerBase
                 .Include(p => p.CaLamViec)
                 .Where(p => p.MaNhanVien == myId &&
                             p.KetThucDuKien > now &&
-                            p.NgayLamViec >= tuNgay &&
+                            p.NgayLamViec > tuNgay &&
                             p.NgayLamViec <= denNgay &&
                             !_context.ChamCongs.Any(c => c.MaPhanCa == p.MaPhanCa) &&
                             !_context.YeuCauDoiCas.Any(y =>
@@ -126,7 +126,7 @@ public class ShiftSwapsApiController : ControllerBase
 
             var myDeptId = myEmployee.MaPhongBan.Value;
             var now = DateTimeOffset.UtcNow;
-            var tuNgay = DateOnly.FromDateTime(DateTime.Today);
+            var tuNgay = DateOnly.FromDateTime(now.ToOffset(ShiftSchedulingPolicy.VietnamOffset).DateTime);
             var denNgay = tuNgay.AddDays(SO_NGAY_TOI_CHON_CA);
 
             // Chỉ đồng nghiệp cùng phòng ban, khác nhân viên hiện tại
@@ -138,7 +138,7 @@ public class ShiftSwapsApiController : ControllerBase
                             p.NhanVien != null &&
                             p.NhanVien.MaPhongBan == myDeptId &&
                             p.KetThucDuKien > now &&
-                            p.NgayLamViec >= tuNgay &&
+                            p.NgayLamViec > tuNgay &&
                             p.NgayLamViec <= denNgay &&
                             !_context.ChamCongs.Any(c => c.MaPhanCa == p.MaPhanCa) &&
                             !_context.YeuCauDoiCas.Any(y =>
@@ -702,6 +702,7 @@ public class ShiftSwapsApiController : ControllerBase
         int MaNhanVien,
         int? MaPhongBan,
         string HoTen,
+        DateOnly NgayLamViec,
         DateTimeOffset BatDauDuKien,
         DateTimeOffset KetThucDuKien);
 
@@ -715,6 +716,7 @@ public class ShiftSwapsApiController : ControllerBase
                 p.MaNhanVien,
                 p.NhanVien == null ? null : p.NhanVien.MaPhongBan,
                 p.NhanVien == null ? "Nhân viên #" + p.MaNhanVien : (p.NhanVien.Ho + " " + p.NhanVien.Ten).Trim(),
+                p.NgayLamViec,
                 p.BatDauDuKien,
                 p.KetThucDuKien))
             .FirstOrDefaultAsync();
@@ -722,6 +724,9 @@ public class ShiftSwapsApiController : ControllerBase
 
     private async Task<ShiftSwapPolicy.SwapValidation> ValidateSwapAsync(CaTrucInfo caGui, CaTrucInfo caNhan)
     {
+        var dateValidation = ShiftSwapPolicy.ValidateDates(caGui.NgayLamViec, caNhan.NgayLamViec);
+        if (!dateValidation.IsValid) return dateValidation;
+
         var lech = TimeSpan.FromHours(7);
         var tuNgay = DateOnly.FromDateTime(caGui.BatDauDuKien.ToOffset(lech).DateTime).AddDays(-3);
         var denNgay = DateOnly.FromDateTime(caNhan.KetThucDuKien.ToOffset(lech).DateTime).AddDays(3);

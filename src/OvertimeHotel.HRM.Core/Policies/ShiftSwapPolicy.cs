@@ -19,6 +19,18 @@ namespace OvertimeHotel.HRM.Core.Policies;
 /// </summary>
 public static class ShiftSwapPolicy
 {
+    public const int MaxAdvanceDays = 30;
+
+    public static SwapValidation ValidateDates(DateOnly ngayCaGui, DateOnly ngayCaNhan, DateTimeOffset? now = null)
+    {
+        var today = DateOnly.FromDateTime((now ?? DateTimeOffset.UtcNow).ToOffset(ShiftSchedulingPolicy.VietnamOffset).DateTime);
+        if (ngayCaGui <= today || ngayCaNhan <= today)
+            return SwapValidation.Invalid("Không được đổi ca trong ngày hoặc ca đã qua. Cả hai ca phải từ ngày mai trở đi.");
+        if (ngayCaGui > today.AddDays(MaxAdvanceDays) || ngayCaNhan > today.AddDays(MaxAdvanceDays))
+            return SwapValidation.Invalid("Chỉ được đổi ca trong khoảng từ ngày mai đến 30 ngày tới.");
+        return SwapValidation.Valid;
+    }
+
     /// <summary>Kết quả đối soát một yêu cầu đổi ca trước khi duyệt.</summary>
     /// <param name="IsValid">Được phép đổi ca hay không.</param>
     /// <param name="ThongDiep">Câu giải thích tiếng Việt khi bị chặn; null khi hợp lệ.</param>

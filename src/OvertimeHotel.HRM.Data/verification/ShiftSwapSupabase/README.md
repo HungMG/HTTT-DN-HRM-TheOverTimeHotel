@@ -11,11 +11,13 @@ python3 src/OvertimeHotel.HRM.Data/verification/ShiftSwapSupabase/concurrency.py
 Kiểm tra bộ lọc trên database fixture mới (sau fixture.sql, trước concurrency.py):
 
 ```sh
-psql -X -v ON_ERROR_STOP=1 -d hrm_swap_test_local -f src/OvertimeHotel.HRM.Data/migrations/20261103_shift_swap_candidate_filter.sql -f src/OvertimeHotel.HRM.Data/verification/ShiftSwapSupabase/candidate-filter.sql
+psql -X -v ON_ERROR_STOP=1 -d hrm_swap_test_local -f src/OvertimeHotel.HRM.Data/migrations/20261103_shift_swap_candidate_filter.sql -f src/OvertimeHotel.HRM.Data/verification/ShiftSwapSupabase/future-dates.sql -f src/OvertimeHotel.HRM.Data/verification/ShiftSwapSupabase/candidate-filter.sql
 dotnet run --project verification/ShiftSwapViewModelChecks/ViewModelChecks.csproj
 ```
 
 candidate-filter.sql thay đổi lịch fixture để kiểm tra cặp khác ngày; không chạy concurrency.py trên cùng DB sau file này. Dùng database fixture riêng cho mỗi nhóm.
+
+`future-dates.sql` chạy trên fixture có migration bộ lọc, trước `candidate-filter.sql`/`concurrency.py`. Nó dùng transaction rollback để kiểm tra ca hôm nay bị ẩn/chặn ở cả hai phía, ngày mai và +30 được phép, +31 bị chặn, yêu cầu cũ không được đồng ý nhưng vẫn được từ chối/rút. Kiểm tra C# bổ sung mốc 16:59:59/17:00 UTC (nửa đêm Việt Nam).
 
 Fixture kiểm tra quyền đọc theo nhân viên/phòng ban, người gửi/nhận, lý do, trạng thái, rút/từ chối/đồng ý, yêu cầu trùng, ca đã chấm công, nghỉ dưới 8 giờ, ca hết hạn, đổi chủ ca, phản hồi thất bại không đổi trạng thái, tài khoản khóa, phiên thiếu identity, role anon và quyền ghi trực tiếp. Concurrency chạy hai transaction đồng thời và yêu cầu đúng một yêu cầu được tạo.
 

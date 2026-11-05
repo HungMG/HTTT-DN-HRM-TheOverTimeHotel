@@ -2,6 +2,8 @@
 
 Android dùng JWT của nhân viên gọi `rest/v1/rpc/hrm_shift_swap` để đọc ca, đọc yêu cầu, gửi, phản hồi và rút. Quản lý duyệt/từ chối trên WebAdmin hiện có, cùng bảng `yeu_cau_doi_ca`. Android không cần WebAdminApiUrl cho đổi ca. Giải trình và các chức năng dùng WebAdmin khác vẫn cần cấu hình API như trước.
 
+Từ migration `20261105_shift_swap_future_dates.sql`, cả hai ca phải có ngày làm việc từ **ngày mai đến hôm nay +30 ngày**, tính theo giờ Việt Nam. Ca hôm nay không xuất hiện trong hai danh sách và bị chặn khi gửi hoặc đồng ý. WebAdmin/API áp dụng cùng quy tắc khi tạo và duyệt; yêu cầu cũ đã sang ngày hiện tại không được duyệt nhưng vẫn có thể rút/từ chối. Bộ lọc đồng nghiệp kế thừa quy tắc từ RPC chính, không cần cập nhật APK để bộ lọc mới có hiệu lực. Migration chỉ thay định nghĩa hàm, giữ nguyên dữ liệu và quyền; dừng nếu định nghĩa hiện tại không khớp. Rollback tương ứng chỉ hoàn nguyên quy tắc ngày.
+
 Danh sách ca đồng nghiệp dùng `hrm_shift_swap_partner_options()` sau migration `20261103_shift_swap_candidate_filter.sql`. Mỗi ca trả các mã ca nhường tương thích; Android lọc ngay khi người dùng đổi ca nhường và xóa lựa chọn đã mất hiệu lực. RPC gửi/nhận vẫn kiểm tra lại lịch hiện tại. Triển khai migration bộ lọc trước bản Android tương ứng; rollback client trước khi gỡ hàm bộ lọc. Hàm không thay đổi dữ liệu nghiệp vụ.
 
 ## Trước triển khai Supabase thật

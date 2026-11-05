@@ -17,6 +17,7 @@ INSERT INTO phan_ca SELECT n,n,1,current_date+1,(current_date+1+time '06:00') AT
 SELECT set_config('test.uid','00000000-0000-0000-0000-000000000001',false),set_config('test.employee','1',false);
 -- This call must fail before the migration exists.
 \ir ../../migrations/20261103_shift_swap_supabase_rpc.sql
+\ir ../../migrations/20261105_shift_swap_future_dates.sql
 SET ROLE authenticated;
 SELECT public.hrm_shift_swap('my-shifts');
 RESET ROLE;

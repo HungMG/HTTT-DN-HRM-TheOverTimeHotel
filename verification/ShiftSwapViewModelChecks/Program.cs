@@ -1,7 +1,25 @@
 using System.Windows.Input;
 using OvertimeHotel.HRM.Core.DTOs;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.MobileApp.Services;
 using OvertimeHotel.HRM.MobileApp.ViewModels;
+
+// 17:00 UTC is midnight in Vietnam, even when the host still sees Nov 5.
+var beforeMidnight = DateTimeOffset.Parse("2026-11-05T16:59:59Z");
+var midnight = DateTimeOffset.Parse("2026-11-05T17:00:00Z");
+var nov5 = new DateOnly(2026, 11, 5);
+var nov6 = new DateOnly(2026, 11, 6);
+var nov7 = new DateOnly(2026, 11, 7);
+Check(!ShiftSwapPolicy.ValidateDates(nov5, nov6, beforeMidnight).IsValid, "Today sender is rejected");
+Check(!ShiftSwapPolicy.ValidateDates(nov6, nov5, beforeMidnight).IsValid, "Today receiver is rejected");
+Check(ShiftSwapPolicy.ValidateDates(nov6, nov6, beforeMidnight).IsValid, "Tomorrow is allowed before Vietnam midnight");
+Check(!ShiftSwapPolicy.ValidateDates(nov6, nov7, midnight).IsValid, "Sender becomes ineligible at Vietnam midnight");
+Check(!ShiftSwapPolicy.ValidateDates(nov7, nov6, midnight).IsValid, "Receiver becomes ineligible at Vietnam midnight");
+Check(ShiftSwapPolicy.ValidateDates(nov7, new DateOnly(2026, 12, 6), midnight).IsValid, "Tomorrow through exactly +30 days is allowed");
+Check(!ShiftSwapPolicy.ValidateDates(new DateOnly(2026, 12, 7), nov7, midnight).IsValid, "Sender +31 is rejected");
+Check(!ShiftSwapPolicy.ValidateDates(nov7, new DateOnly(2026, 12, 7), midnight).IsValid, "Receiver +31 is rejected");
+Check(!ShiftSwapPolicy.ValidateDates(nov5, nov7, midnight).IsValid, "Past work date is rejected");
+Console.WriteLine("PASS: date window for both shifts, Vietnam midnight, tomorrow, +30/+31, past date");
 
 var service = new FixtureService();
 var vm = new ShiftSwapViewModel(service);

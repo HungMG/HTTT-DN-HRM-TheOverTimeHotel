@@ -42,7 +42,7 @@ public class YeuCauDoiCaController : Controller
     /// Số ngày tới được phép chọn ca khi tạo yêu cầu. Lịch phân ca lập theo tuần;
     /// 30 ngày đủ để phủ trọn tháng đang xếp mà danh sách chọn vẫn đọc được.
     /// </summary>
-    private const int SO_NGAY_TOI_CHON_CA = 30;
+    private const int SO_NGAY_TOI_CHON_CA = ShiftSwapPolicy.MaxAdvanceDays;
 
     private const int PAGE_SIZE = 10;
 
@@ -526,6 +526,7 @@ public class YeuCauDoiCaController : Controller
         int MaNhanVien,
         int? MaPhongBan,
         string HoTen,
+        DateOnly NgayLamViec,
         DateTimeOffset BatDauDuKien,
         DateTimeOffset KetThucDuKien);
 
@@ -539,6 +540,7 @@ public class YeuCauDoiCaController : Controller
                 p.MaNhanVien,
                 p.NhanVien == null ? null : p.NhanVien.MaPhongBan,
                 p.NhanVien == null ? "Nhân viên #" + p.MaNhanVien : (p.NhanVien.Ho + " " + p.NhanVien.Ten).Trim(),
+                p.NgayLamViec,
                 p.BatDauDuKien,
                 p.KetThucDuKien))
             .FirstOrDefaultAsync();
@@ -550,6 +552,9 @@ public class YeuCauDoiCaController : Controller
     /// </summary>
     private async Task<ShiftSwapPolicy.SwapValidation> ValidateSwapAsync(CaTrucInfo caGui, CaTrucInfo caNhan)
     {
+        var dateValidation = ShiftSwapPolicy.ValidateDates(caGui.NgayLamViec, caNhan.NgayLamViec);
+        if (!dateValidation.IsValid) return dateValidation;
+
         // Cửa sổ ±3 ngày là đủ: một ca chỉ dài tối đa 12 tiếng nên mọi xung đột
         // chồng giờ hoặc nghỉ dưới 8 tiếng đều phải nằm trong khoảng này.
         var lech = TimeSpan.FromHours(7);
@@ -611,14 +616,14 @@ public class YeuCauDoiCaController : Controller
     {
         var scopeDept = GetManagerDepartmentScope();
         var now = DateTimeOffset.UtcNow;
-        var tuNgay = DateOnly.FromDateTime(DateTime.Today);
+        var tuNgay = DateOnly.FromDateTime(now.ToOffset(ShiftSchedulingPolicy.VietnamOffset).DateTime);
         var denNgay = tuNgay.AddDays(SO_NGAY_TOI_CHON_CA);
 
         var caQuery = _context.PhanCas
             .AsNoTracking()
             .Include(p => p.NhanVien)!.ThenInclude(n => n!.PhongBan)
             .Include(p => p.CaLamViec)
-            .Where(p => p.NgayLamViec >= tuNgay && p.NgayLamViec <= denNgay && p.KetThucDuKien > now);
+            .Where(p => p.NgayLamViec > tuNgay && p.NgayLamViec <= denNgay && p.KetThucDuKien > now);
 
         if (scopeDept.HasValue)
         {
