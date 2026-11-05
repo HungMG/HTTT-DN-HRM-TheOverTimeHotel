@@ -583,11 +583,13 @@
         .demo-chip.hr-chip { border-left: 3.5px solid #2563EB; }
         .demo-chip.mgr-chip { border-left: 3.5px solid #D97706; }
         .demo-chip.emp-chip { border-left: 3.5px solid #16A34A; }
+        .demo-chip.it-chip { border-left: 3.5px solid #7C3AED; }
 
         .demo-chip.admin-chip:hover { border-color: #F87171; color: #DC2626; }
         .demo-chip.hr-chip:hover { border-color: #60A5FA; color: #2563EB; }
         .demo-chip.mgr-chip:hover { border-color: #FBBF24; color: #D97706; }
         .demo-chip.emp-chip:hover { border-color: #4ADE80; color: #16A34A; }
+        .demo-chip.it-chip:hover { border-color: #A78BFA; color: #7C3AED; }
 
         /* GỢN SÓNG ÁNH SÁNG SLOW-MO KHI NHẤN NÚT (SLOW-MO RIPPLE) */
         .hotel-login-ripple {
@@ -973,7 +975,7 @@
                 </div>
             </form>
 
-            <!-- KHU VỰC TEST NHANH 4 TÀI KHOẢN DEMO -->
+            <!-- KHU VỰC TÀI KHOẢN DEMO -->
             <div class="mt-4 pt-3 border-top">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="small fw-bold text-uppercase text-muted" style="letter-spacing: 0.5px; font-size: 0.75rem;">
@@ -982,11 +984,14 @@
                     <span class="badge bg-light text-secondary border font-monospace">Click để điền</span>
                 </div>
                 <div class="alert alert-info py-2 px-3 small border-0 mb-3" style="font-size: 0.8rem; background-color: #f0f9ff; color: #0369a1;">
-                    <i class="bi bi-info-circle-fill me-1 text-info"></i> <strong>Lưu ý:</strong> Chọn tài khoản <strong class="text-danger">Admin (Cường)</strong> để truy cập tất cả chức năng quản trị.
+                    <i class="bi bi-info-circle-fill me-1 text-info"></i> Chọn <strong>IT (Bảo)</strong> để quản lý tài khoản, phân quyền và sao lưu.
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <button type="button" class="demo-chip admin-chip" onclick="fillAccount('admin', 'Admin@123')">
-                        <i class="bi bi-shield-shaded text-danger"></i> Admin (Cường) <span class="badge bg-danger text-white ms-1" style="font-size: 0.65rem;">Full</span>
+                        <i class="bi bi-shield-shaded text-danger"></i> Admin (Cường)
+                    </button>
+                    <button type="button" class="demo-chip it-chip" onclick="fillAccount('it_bao', 'Overtime@2026')">
+                        <i class="bi bi-terminal-fill" style="color: #7C3AED;"></i> IT (Bảo)
                     </button>
                     <button type="button" class="demo-chip hr-chip" onclick="fillAccount('hr_sang', 'Hr@123')">
                         <i class="bi bi-person-badge text-primary"></i> HR (Sang)

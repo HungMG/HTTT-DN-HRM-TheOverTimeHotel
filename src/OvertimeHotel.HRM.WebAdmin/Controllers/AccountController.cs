@@ -154,7 +154,7 @@ public class AccountController : Controller
             return Redirect(model.ReturnUrl);
         }
 
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction("Index", roleName == "IT" ? "UserAccounts" : "Home");
     }
 
     [HttpGet]

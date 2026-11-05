@@ -180,11 +180,13 @@
 </div>
 
 @section Scripts {
+<script src="~/js/account-request-popup.js" asp-append-version="true"></script>
 <script>
-    function openEmployeeProfile(id) {
+    function openEmployeeProfile(id, message) {
         const modalEl = document.getElementById('employeeProfileModal');
         const modalBody = document.getElementById('employeeProfileModalBody');
         if (!modalEl || !modalBody) return;
+        document.getElementById('employeeProfileModalLabel').textContent = 'Chi Tiết Hồ Sơ Nhân Sự';
 
         const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
         bsModal.show();
@@ -224,6 +226,15 @@
             })
             .then(html => {
                 modalBody.innerHTML = html;
+                if (message) {
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success';
+                    alert.setAttribute('role', 'status');
+                    alert.textContent = message;
+                    modalBody.prepend(alert);
+                    const tab = modalBody.querySelector('#tab-account-btn');
+                    if (tab) bootstrap.Tab.getOrCreateInstance(tab).show();
+                }
                 if (window.HotelMotion && window.HotelMotion.applyEntrance) {
                     window.HotelMotion.applyEntrance(modalBody);
                 }
@@ -238,6 +249,37 @@
                 `;
             });
     }
+
+    document.getElementById('employeeProfileModalBody')?.addEventListener('click', async (event) => {
+        const link = event.target.closest('[data-employee-request]');
+        if (!link) return;
+        event.preventDefault();
+        const body = document.getElementById('employeeProfileModalBody');
+        const employeeId = link.dataset.employeeRequest;
+        document.getElementById('employeeProfileModalLabel').textContent = 'Gửi yêu cầu cấp tài khoản';
+        body.textContent = 'Đang tải biểu mẫu...';
+        try {
+            const response = await fetch(link.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!response.ok) throw new Error('Không thể tải biểu mẫu gửi yêu cầu.');
+            body.innerHTML = await response.text();
+            if (body.querySelector('[data-account-request-unavailable]')) {
+                document.getElementById('employeeProfileModalLabel').textContent = 'Không thể yêu cầu cấp tài khoản';
+                return;
+            }
+            window.initAccountRequestPopup(body, message => {
+                openEmployeeProfile(employeeId, message);
+                loadEmployeeTable({}, false);
+            }, message => {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger';
+                alert.setAttribute('role', 'alert');
+                alert.textContent = message;
+                body.prepend(alert);
+            });
+        } catch (error) {
+            body.textContent = error.message || 'Không thể tải biểu mẫu gửi yêu cầu.';
+        }
+    });
 
     // =========================================================================
     // ZERO FULL-PAGE RELOAD IN-PLACE PAGINATION & FILTERING (TARGETED ISOLATION)

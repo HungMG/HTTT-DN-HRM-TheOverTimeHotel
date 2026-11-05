@@ -9,7 +9,7 @@
 
     <!-- THANH THAO TÁC HỆ THỐNG -->
     <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-4">
-        @if (User.IsInRole("Admin") || User.HasClaim("Permission", "QL_PHAN_QUYEN"))
+        @if (User.HasPermission(PermissionCodes.ManagePermissions))
         {
             <a asp-action="RolePermissions" data-role-permissions-open class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-semibold hover-lift" style="font-size: 0.82rem;">
                 <i class="bi bi-shield-check me-1"></i> Phân Quyền RBAC
@@ -176,13 +176,13 @@
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pt-1">
             <div class="d-flex flex-wrap align-items-center gap-3 small text-muted">
                 <span class="fw-bold text-dark"><i class="bi bi-shield-lock me-1 text-primary"></i>Phạm vi vai trò:</span>
-                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-shield-fill-check" style="color: #d97706;"></i> <b>Quản trị viên:</b> Toàn quyền hệ thống</span>
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-shield-fill-check" style="color: #d97706;"></i> <b>Giám đốc:</b> Quản lý nghiệp vụ</span>
                 <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-person-badge-fill" style="color: #9333ea;"></i> <b>Nhân sự:</b> Hồ sơ &amp; HĐLĐ</span>
                 <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-star-fill" style="color: #0284c7;"></i> <b>Quản lý:</b> Phê duyệt vận hành</span>
                 <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-person-vcard-fill" style="color: #16a34a;"></i> <b>Nhân viên:</b> Tự phục vụ cá nhân</span>
                 <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-terminal-fill" style="color: #4f46e5;"></i> <b>CNTT:</b> Cấp phát tài khoản</span>
             </div>
-            @if (User.IsInRole("Admin") || User.HasClaim("Permission", "QL_PHAN_QUYEN"))
+            @if (User.HasPermission(PermissionCodes.ManagePermissions))
             {
                 <a asp-action="RolePermissions" data-role-permissions-open class="small fw-semibold text-primary text-decoration-none hover-lift d-inline-flex align-items-center gap-1">
                     Cấu hình chi tiết vai trò <i class="bi bi-arrow-right"></i>

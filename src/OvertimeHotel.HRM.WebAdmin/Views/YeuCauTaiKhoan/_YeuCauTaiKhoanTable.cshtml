@@ -17,7 +17,7 @@
     string StatusBadge(string status) => status switch
     {
         "CHO_IT" => "bg-warning-subtle text-warning-emphasis border-warning-subtle",
-        "DANG_XU_LY" => "bg-purple-subtle text-purple border-purple-subtle",
+        "DANG_XU_LY" => "bg-warning-subtle text-warning-emphasis border-warning-subtle",
         "DA_CAP" => "bg-success-subtle text-success border-success-subtle",
         _ => "bg-danger-subtle text-danger border-danger-subtle"
     };
@@ -162,7 +162,7 @@
                                     <i class="bi bi-check2 me-1"></i>@(item.IsPromotion ? "Đã thăng chức @" + item.GrantedUsername : "Tài khoản #" + item.GrantedUsername)
                                 </div>
                             }
-                            else if (!string.IsNullOrWhiteSpace(item.HandlerUsername))
+                            else if (isFinished && !string.IsNullOrWhiteSpace(item.HandlerUsername))
                             {
                                 <div class="text-muted mt-1 small" style="font-size: 0.72rem;">
                                     <i class="bi bi-person-check text-primary me-1"></i>Xử lý: @item.HandlerUsername
@@ -175,48 +175,21 @@
                             @if (canProcess)
                             {
                                 <div class="d-inline-flex align-items-center gap-2">
-                                    @if (item.Status == "CHO_IT")
+                                    @if (item.Status is "CHO_IT" or "DANG_XU_LY")
                                     {
-                                        <form asp-action="Claim" asp-route-id="@item.RequestId" method="post" class="d-inline" data-request-action-form>
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold hover-lift shadow-sm" title="Nhận xử lý yêu cầu này" style="font-size: 0.78rem;">
-                                                <i class="bi bi-hand-index-thumb me-1"></i>Nhận việc
-                                            </button>
-                                        </form>
-                                    }
-                                    else if (item.Status == "DANG_XU_LY")
-                                    {
-                                        var isHandler = isAdmin || (item.HandlerUsername != null && string.Equals(item.HandlerUsername, currentUsername, StringComparison.OrdinalIgnoreCase));
-                                        if (isHandler)
+                                        @if (!item.IsPromotion)
                                         {
                                             <form asp-action="Complete" asp-route-id="@item.RequestId" method="post" class="d-inline" data-request-action-form>
                                                 @Html.AntiForgeryToken()
-                                                @if (item.IsPromotion)
-                                                {
-                                                    <button type="submit" class="btn btn-sm btn-warning rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm text-dark" title="Duyệt nâng quyền tài khoản lên Quản lý" style="font-size: 0.78rem;">
-                                                        <i class="bi bi-arrow-up-circle-fill me-1"></i>Duyệt thăng chức
-                                                    </button>
-                                                }
-                                                else
-                                                {
-                                                    <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm" title="Kích hoạt &amp; cấp tài khoản Supabase" style="font-size: 0.78rem;">
-                                                        <i class="bi bi-key-fill me-1"></i>Cấp tài khoản
-                                                    </button>
-                                                }
+                                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm" style="font-size: 0.78rem;">
+                                                    <i class="bi bi-key-fill me-1"></i>Cấp tài khoản
+                                                </button>
                                             </form>
-                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold hover-lift" title="Từ chối yêu cầu"
-                                                    data-request-reject="@item.RequestId"
-                                                    data-request-reject-username="@item.Username"
-                                                    style="font-size: 0.78rem;">
-                                                <i class="bi bi-x-circle me-1"></i>Từ chối
-                                            </button>
                                         }
-                                        else
-                                        {
-                                            <span class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
-                                                <i class="bi bi-person-fill-gear me-1"></i>Đang được @item.HandlerUsername xử lý
-                                            </span>
-                                        }
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold hover-lift"
+                                                data-request-reject="@item.RequestId" data-request-reject-username="@item.Username" style="font-size: 0.78rem;">
+                                            <i class="bi bi-x-circle me-1"></i>Từ chối
+                                        </button>
                                     }
                                 </div>
                             }

@@ -18,7 +18,7 @@ Tin học hóa toàn diện công tác quản trị nhân sự và tính lương
 
 | Mục tiêu | Cách hiện thực |
 | :--- | :--- |
-| **Tách biệt cổng quản trị** | Web Admin (ASP.NET Core MVC) dành riêng Quản trị viên: tài khoản, RBAC 5 vai trò, nhật ký kiểm toán |
+| **Tách biệt cổng quản trị** | IT quản lý tài khoản, RBAC và sao lưu; các vai trò nghiệp vụ truy cập chức năng theo quyền được giao |
 | **Ứng dụng di động tiện ích** | .NET MAUI cho Quản lý xếp ca và Nhân viên tự phục vụ: quẹt thẻ GPS/Wi-Fi, nộp 4 loại đơn, xem phiếu lương |
 | **Dữ liệu đám mây đồng bộ** | Supabase PostgreSQL — **30 bảng chuẩn 3NF**, RLS bật 30/30 bảng |
 | **Tính lương 2 tầng minh bạch** | Gross → Net: ngày công thực tế, phụ cấp ca đêm 30%, OT theo hệ số, khấu trừ BH bắt buộc 10.5% |
@@ -98,7 +98,7 @@ Hệ thống phân rã thành **11 phân hệ cấp 1 · 57 chức năng cấp 2
 
 `Admin` · `HR` · `Manager` (Quản lý bộ phận) · `Employee` (Nhân viên) · `IT` (Công nghệ thông tin)
 
-Quyền được gán theo mã chuỗi qua bảng trung gian `vai_tro_quyen` (N–N). Đặc biệt, quy trình cấp tài khoản Mobile tách riêng: **HR duyệt HĐLĐ → tạo yêu cầu → IT cấp tài khoản**, có 3 trigger CSDL chặn tự cấp quyền và leo thang đặc quyền.
+Quyền được gán theo mã chuỗi qua bảng trung gian `vai_tro_quyen` (N–N). HR và Admin gửi yêu cầu cấp tài khoản Nhân viên từ hồ sơ; IT xử lý yêu cầu, trực tiếp cấp tài khoản và đổi vai trò khi thăng chức. IT quản lý tài khoản, RBAC và sao lưu; vai trò Admin dành cho giám đốc không truy cập ba khu vực này. Phiên web phải đăng nhập lại khi vai trò hoặc quyền thay đổi.
 
 ---
 

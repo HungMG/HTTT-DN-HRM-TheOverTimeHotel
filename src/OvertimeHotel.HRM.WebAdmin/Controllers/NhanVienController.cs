@@ -46,12 +46,14 @@ public class NhanVienController : Controller
             // Thực thi tuần tự trên cùng DbContext instance để đảm bảo an toàn đơn luồng (Thread-safe)
             var depts = await this.SearchDataAsync("employees:departments", () => _context.PhongBans.AsNoTracking().OrderBy(item => item.TenPhongBan).ToListAsync());
             var poss = await this.SearchDataAsync("employees:positions", () => _context.ChucVus.AsNoTracking().OrderBy(item => item.TenChucVu).ToListAsync());
-            var allEmployees = await this.SearchDataAsync("employees:list", () => _context.NhanViens.AsNoTracking().Where(employee => employee.IsProfileComplete)
+            var allEmployees = await this.SearchDataAsync("employees:list", () => _context.NhanViens.AsNoTracking().AsSplitQuery().Where(employee => employee.IsProfileComplete)
                 .Include(employee => employee.PhongBan)
                 .Include(employee => employee.ChucVu)
                 .Include(employee => employee.HopDongs)
                 .Include(employee => employee.TaiKhoan)
                     .ThenInclude(t => t!.VaiTro)
+                .Include(employee => employee.YeuCauTaiKhoanCuaNhanVien.OrderByDescending(request => request.NgayGui)
+                    .ThenByDescending(request => request.MaYeuCau).Take(1))
                 .ToListAsync());
 
             // Lọc trên bản sao danh sách trong cache, không truy vấn lại theo keyword.

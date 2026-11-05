@@ -164,8 +164,19 @@ builder.Services.AddAuthentication(options =>
                 if (int.TryParse(userIdStr, out var userId))
                 {
                     var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                    var account = await dbContext.TaiKhoans.AsNoTracking().FirstOrDefaultAsync(t => t.MaTaiKhoan == userId);
-                    if (account == null || !account.TrangThai)
+                    var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).FirstOrDefaultAsync(t => t.MaTaiKhoan == userId);
+                    if (account == null || !account.TrangThai || account.VaiTro?.TenVaiTro != context.Principal?.FindFirst(ClaimTypes.Role)?.Value)
+                    {
+                        context.RejectPrincipal();
+                        await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                        return;
+                    }
+
+                    var permissions = await dbContext.VaiTroQuyens.AsNoTracking()
+                        .Where(p => p.MaVaiTro == account.MaVaiTro)
+                        .Select(p => p.Quyen!.MaQuyenCode).ToListAsync();
+                    var sessionPermissions = context.Principal!.FindAll(PermissionCodes.ClaimType).Select(c => c.Value).ToHashSet();
+                    if (!sessionPermissions.SetEquals(permissions))
                     {
                         context.RejectPrincipal();
                         await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -255,12 +266,11 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization(options =>
 {
     // Đăng ký policy RBAC cho từng mã quyền trong bảng QUYEN.
-    // Admin luôn đạt mọi policy vì chỉ nắm quyền gốc SYS_ADMIN, các quyền chi tiết
-    // được cấp cho HR và Manager mới đi qua claim "Permission".
+    // Các quyền quản trị thuộc riêng IT; Admin được truy cập các quyền nghiệp vụ.
     void AddPermissionPolicy(string permissionCode)
     {
         options.AddPolicy(permissionCode, policy => policy.RequireAssertion(context =>
-            context.User.IsInRole("Admin") || context.User.HasClaim(PermissionCodes.ClaimType, permissionCode)));
+            context.User.HasPermission(permissionCode)));
     }
 
     AddPermissionPolicy(PermissionCodes.ManageAccounts);
@@ -326,6 +336,7 @@ builder.Services.AddScoped<AiChatbotUrlBuilder>();
 
 // Đăng ký dịch vụ sao lưu & phục hồi CSDL
 builder.Services.AddScoped<IBackupService, BackupService>();
+builder.Services.AddScoped<IAccountRequestLock, AccountRequestLock>();
 
 // Dọn toàn bộ nhật ký quản trị quá 30 ngày, độc lập với việc mở trang nhật ký.
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -410,6 +421,24 @@ app.UseRouting();
 
 // Thứ tự Middleware quan trọng: UseAuthentication phải trước UseAuthorization
 app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    if (context.User.IsInRole("IT"))
+    {
+        var controller = context.GetRouteValue("controller")?.ToString();
+        if (controller == "Home")
+        {
+            context.Response.Redirect("/UserAccounts");
+            return;
+        }
+        if (controller != null && controller is not ("UserAccounts" or "YeuCauTaiKhoan" or "Backup" or "Account"))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+    }
+    await next();
+});
 app.UseAuthorization();
 
 app.MapControllers();

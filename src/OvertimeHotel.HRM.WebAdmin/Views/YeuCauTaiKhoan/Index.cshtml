@@ -14,10 +14,10 @@
         <a asp-controller="UserAccounts" asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold hover-lift" style="font-size: 0.82rem;">
             <i class="bi bi-people me-1"></i> Danh Sách Tài Khoản
         </a>
-        @if (Model.CanSubmitRequest)
+        @if (User.IsInRole("IT"))
         {
             <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-pill px-3.5 py-1.5 fw-bold hover-lift shadow-sm text-white" style="font-size: 0.82rem;" data-open-create-request-modal>
-                <i class="bi bi-plus-circle-fill me-1"></i> Gửi Yêu Cầu Cấp Tài Khoản
+                <i class="bi bi-plus-circle-fill me-1"></i> Cấp tài khoản
             </a>
         }
     </div>
@@ -45,7 +45,7 @@
     </div>
 
     <!-- BENTO 5 THẺ KPI DÀN ĐỀU TRÊN 1 HÀNG -->
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-3 mb-4">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 mb-4">
         <!-- 01: TỔNG YÊU CẦU -->
         <div class="col">
             <div class="card border-0 shadow-sm rounded-4 h-100 motion-stat position-relative overflow-hidden p-3" style="border-top: 4px solid #1e3a8a !important;">
@@ -67,24 +67,9 @@
                     <i class="bi bi-hourglass-split" style="color: #d4af37; font-size: 1.1rem;"></i>
                 </div>
                 <div class="h2 fw-bold text-dark mb-1 font-serif" style="color: #b45309 !important;" data-request-pending>@Model.PendingRequests</div>
-                <div class="text-muted small" style="font-size: 0.72rem;">Đang chờ nhận việc</div>
+                <div class="text-muted small" style="font-size: 0.72rem;">Đang chờ cấp tài khoản</div>
                 <div class="motion-stat-track mt-2">
                     <span data-request-pending-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.PendingRequests * 100d / Model.TotalRequests) : 0)%; background: #d4af37;"></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 03: ĐANG XỬ LÝ -->
-        <div class="col">
-            <div class="card border-0 shadow-sm rounded-4 h-100 motion-stat position-relative overflow-hidden p-3" style="border-top: 4px solid #8b5cf6 !important;">
-                <div class="d-flex align-items-center justify-content-between text-muted mb-1">
-                    <span class="text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.8px;">03 / Đang Xử Lý</span>
-                    <i class="bi bi-person-workspace text-purple" style="font-size: 1.1rem; color: #8b5cf6;"></i>
-                </div>
-                <div class="h2 fw-bold text-dark mb-1 font-serif" style="color: #7c3aed !important;" data-request-processing>@Model.ProcessingRequests</div>
-                <div class="text-muted small" style="font-size: 0.72rem;">CNTT đã nhận việc</div>
-                <div class="motion-stat-track mt-2">
-                    <span data-request-processing-track style="width: @(Model.TotalRequests > 0 ? Math.Round(Model.ProcessingRequests * 100d / Model.TotalRequests) : 0)%; background: #8b5cf6;"></span>
                 </div>
             </div>
         </div>
@@ -142,7 +127,6 @@
                 <select asp-for="TrangThai" class="form-select" data-request-status-select>
                     <option value="" selected="@(string.IsNullOrEmpty(Model.TrangThai))">-- Tất cả trạng thái --</option>
                     <option value="CHO_IT" selected="@(Model.TrangThai == "CHO_IT")">Chờ bộ phận IT xử lí</option>
-                    <option value="DANG_XU_LY" selected="@(Model.TrangThai == "DANG_XU_LY")">Đang xử lý</option>
                     <option value="DA_CAP" selected="@(Model.TrangThai == "DA_CAP")">Đã cấp</option>
                     <option value="TU_CHOI" selected="@(Model.TrangThai == "TU_CHOI")">Từ chối</option>
                 </select>
@@ -197,7 +181,7 @@
     </div>
 </dialog>
 
-@if (Model.CanSubmitRequest)
+@if (User.IsInRole("IT"))
 {
     <!-- MODAL POPUP GỬI YÊU CẦU CẤP TÀI KHOẢN -->
     <div class="modal fade" id="createRequestModal" tabindex="-1" aria-labelledby="createRequestModalLabel" aria-hidden="true" data-create-request-modal>
@@ -209,7 +193,7 @@
                             <i class="bi bi-person-plus-fill"></i>
                         </span>
                         <div>
-                            <h5 class="modal-title fw-bold text-dark font-serif mb-0" id="createRequestModalLabel" style="font-size: 1.05rem;">Gửi Yêu Cầu Cấp Tài Khoản</h5>
+                            <h5 class="modal-title fw-bold text-dark font-serif mb-0" id="createRequestModalLabel" style="font-size: 1.05rem;">Cấp tài khoản</h5>
                             <small class="text-muted" style="font-size: 0.74rem;">Kiểm tra hợp đồng lao động và tự động xác định vai trò</small>
                         </div>
                     </div>
@@ -217,7 +201,6 @@
                 </div>
                 <div class="modal-body p-4" data-create-request-modal-body>
                     <div class="text-center py-4 text-muted">
-                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                         <span>Đang nạp biểu mẫu...</span>
                     </div>
                 </div>
@@ -227,6 +210,7 @@
 }
 
 @section Scripts {
+    <script src="~/js/account-request-popup.js" asp-append-version="true"></script>
     <script>
         (() => {
             "use strict";
@@ -306,7 +290,6 @@
                 const pairs = [
                     ["[data-request-total]", data.totalRequests],
                     ["[data-request-pending]", data.pendingRequests],
-                    ["[data-request-processing]", data.processingRequests],
                     ["[data-request-granted]", data.grantedRequests],
                     ["[data-request-rejected]", data.rejectedRequests]
                 ];
@@ -319,7 +302,6 @@
                 const total = Number(data.totalRequests || 0);
                 const tracks = [
                     ["[data-request-pending-track]", data.pendingRequests],
-                    ["[data-request-processing-track]", data.processingRequests],
                     ["[data-request-granted-track]", data.grantedRequests],
                     ["[data-request-rejected-track]", data.rejectedRequests]
                 ];
@@ -387,7 +369,6 @@
                     updateStatistics({
                         totalRequests: Number(headers.get("X-Total-Requests") || 0),
                         pendingRequests: Number(headers.get("X-Pending-Requests") || 0),
-                        processingRequests: Number(headers.get("X-Processing-Requests") || 0),
                         grantedRequests: Number(headers.get("X-Granted-Requests") || 0),
                         rejectedRequests: Number(headers.get("X-Rejected-Requests") || 0),
                         totalFilteredRequests: Number(headers.get("X-Result-Count") || 0)
@@ -543,202 +524,11 @@
             const createModalBody = createModalEl?.querySelector("[data-create-request-modal-body]");
             let createModalInstance = null;
 
-            const initPopupForm = (container) => {
-                const empSelect = container.querySelector("#popupEmployeeId");
-                const roleSelect = container.querySelector("#popupRoleId");
-                const contractSelect = container.querySelector("[data-contract-select]");
-                const usernameInput = container.querySelector("[data-username-input]");
-                const submitBtn = container.querySelector("#popupBtnSubmit");
-                const roleNotice = container.querySelector("#popupRoleNotice");
-                const posText = container.querySelector("#popupPositionText");
-                const roleBadge = container.querySelector("#popupRoleBadge");
-                const noContractAlert = container.querySelector("#popupNoContractAlert");
-                const contractHelpText = container.querySelector("#popupContractHelpText");
-
-                let roleMap = {};
-                try {
-                    const raw = container.querySelector("#popup-employee-role-data")?.textContent;
-                    if (raw) roleMap = JSON.parse(raw);
-                } catch (e) {
-                    console.warn("Failed to parse popup role data", e);
-                }
-
-                const stripDiacritics = (value) =>
-                    value
-                        .normalize("NFD")
-                        .replace(/[\u0300-\u036f]/g, "")
-                        .replace(/đ/g, "d")
-                        .replace(/Đ/g, "D");
-
-                const suggestUsername = () => {
-                    if (!empSelect || !usernameInput || usernameInput.value.trim()) return;
-                    const option = empSelect.selectedOptions[0];
-                    if (!option || !option.value) return;
-
-                    const fullName = option.text.split("·")[0].trim();
-                    const parts = fullName.split(/\s+/).filter(Boolean);
-                    if (parts.length === 0) return;
-                    const last = parts[parts.length - 1];
-                    const first = parts[0];
-                    const initial = stripDiacritics(first).charAt(0).toLowerCase();
-                    usernameInput.value = `${initial}.${stripDiacritics(last).toLowerCase().replace(/\s+/g, "")}`;
-                };
-
-                const updateRole = () => {
-                    const empId = Number(empSelect?.value || 0);
-                    const selectedContract = contractSelect?.selectedOptions[0];
-                    let roleId = 0;
-                    let posName = "";
-                    let roleDisplay = "";
-
-                    if (selectedContract && selectedContract.value && selectedContract.dataset.roleId) {
-                        roleId = Number(selectedContract.dataset.roleId);
-                        const pos = selectedContract.dataset.position || "";
-                        const dept = selectedContract.dataset.department || "";
-                        posName = pos && dept ? `${pos} · ${dept}` : (pos || dept);
-                        roleDisplay = selectedContract.dataset.roleDisplay || selectedContract.dataset.roleName || "";
-                    } else if (empId && roleMap[empId]) {
-                        const info = roleMap[empId];
-                        roleId = info.roleId || info.RoleId;
-                        const pos = info.positionName || info.PositionName || "";
-                        const dept = info.departmentName || info.DepartmentName || "";
-                        posName = pos && dept ? `${pos} · ${dept}` : (pos || dept);
-                        roleDisplay = info.roleDisplayName || info.RoleDisplayName || "";
-                    }
-
-                    const roleDisplayName = container.querySelector("#popupRoleDisplayName");
-                    if (roleSelect) {
-                        roleSelect.value = roleId ? String(roleId) : "";
-                    }
-                    if (roleDisplayName) {
-                        roleDisplayName.textContent = roleDisplay || (roleId ? "Đã xác định theo chức vụ và phòng ban" : "Tự động theo chức vụ và phòng ban");
-                    }
-                    if (roleBadge) {
-                        if (roleDisplay) {
-                            roleBadge.textContent = roleDisplay;
-                            roleBadge.style.display = "inline-block";
-                        } else {
-                            roleBadge.style.display = "none";
-                        }
-                    }
-
-                    if (roleNotice) {
-                        if (roleId && posName.trim()) {
-                            roleNotice.style.display = "block";
-                            if (posText) posText.textContent = posName;
-                            if (roleBadge) roleBadge.textContent = roleDisplay;
-                        } else {
-                            roleNotice.style.display = "none";
-                        }
-                    }
-                };
-
-                const filterContracts = () => {
-                    if (!contractSelect) return;
-                    const empId = empSelect?.value || "";
-                    let visibleCount = 0;
-                    let firstValid = null;
-
-                    Array.from(contractSelect.options).forEach((opt) => {
-                        if (!opt.value) return;
-                        const matches = !!empId && opt.dataset.employeeId === empId;
-                        opt.hidden = !matches;
-                        opt.disabled = !matches;
-                        if (matches) {
-                            visibleCount++;
-                            if (!firstValid) firstValid = opt;
-                        }
-                    });
-
-                    if (!empId) {
-                        contractSelect.disabled = true;
-                        contractSelect.selectedIndex = 0;
-                        if (noContractAlert) {
-                            noContractAlert.classList.add("d-none");
-                            noContractAlert.classList.remove("d-flex");
-                        }
-                        if (contractHelpText) contractHelpText.classList.remove("d-none");
-                        if (submitBtn) submitBtn.disabled = true;
-                        updateRole();
-                        return;
-                    }
-
-                    if (visibleCount === 0) {
-                        contractSelect.disabled = true;
-                        contractSelect.selectedIndex = 0;
-                        if (noContractAlert) {
-                            noContractAlert.classList.remove("d-none");
-                            noContractAlert.classList.add("d-flex");
-                        }
-                        if (contractHelpText) contractHelpText.classList.add("d-none");
-                        if (submitBtn) submitBtn.disabled = true;
-                    } else {
-                        contractSelect.disabled = false;
-                        if (noContractAlert) {
-                            noContractAlert.classList.add("d-none");
-                            noContractAlert.classList.remove("d-flex");
-                        }
-                        if (contractHelpText) contractHelpText.classList.remove("d-none");
-
-                        if (visibleCount === 1) {
-                            if (firstValid) contractSelect.value = firstValid.value;
-                            if (submitBtn) submitBtn.disabled = false;
-                        } else {
-                            const cur = contractSelect.selectedOptions[0];
-                            if (!cur || cur.dataset.employeeId !== empId) contractSelect.selectedIndex = 0;
-                            if (submitBtn) submitBtn.disabled = !contractSelect.value;
-                        }
-                    }
-                    updateRole();
-                };
-
-                empSelect?.addEventListener("change", () => {
-                    suggestUsername();
-                    filterContracts();
-                });
-
-                contractSelect?.addEventListener("change", () => {
-                    if (submitBtn && empSelect?.value) {
-                        submitBtn.disabled = !contractSelect.value;
-                    }
-                    updateRole();
-                });
-
-                const form = container.querySelector("[data-create-request-form]");
-                form?.addEventListener("submit", async (e) => {
-                    e.preventDefault();
-                    if (submitBtn) submitBtn.disabled = true;
-                    try {
-                        const response = await fetch(form.action, {
-                            method: "POST",
-                            headers: { "X-Requested-With": "XMLHttpRequest" },
-                            body: new FormData(form)
-                        });
-                        const contentType = response.headers.get("content-type") || "";
-                        if (contentType.includes("application/json")) {
-                            const result = await response.json();
-                            if (result.success) {
-                                if (createModalInstance) createModalInstance.hide();
-                                showToast(result.message || "Đã gửi yêu cầu cấp tài khoản thành công.");
-                                await loadRequests(null, { quiet: true });
-                                return;
-                            }
-                        }
-                        const html = await response.text();
-                        if (createModalBody) {
-                            createModalBody.innerHTML = html;
-                            initPopupForm(createModalBody);
-                        }
-                    } catch (err) {
-                        showToast(err instanceof Error ? err.message : "Lỗi khi gửi yêu cầu.", "danger");
-                    } finally {
-                        if (submitBtn) submitBtn.disabled = false;
-                    }
-                });
-
-                suggestUsername();
-                filterContracts();
-            };
+            const initPopupForm = (container) => window.initAccountRequestPopup(container, async message => {
+                createModalInstance?.hide();
+                showToast(message);
+                await loadRequests(null, { quiet: true });
+            }, message => showToast(message, "danger"));
 
             const openCreateRequestModal = async () => {
                 if (!createModalEl || typeof bootstrap === "undefined") return;
@@ -748,7 +538,6 @@
                 if (createModalBody) {
                     createModalBody.innerHTML = `
                         <div class="text-center py-4 text-muted">
-                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                             <span>Đang nạp biểu mẫu...</span>
                         </div>`;
                 }

@@ -4,8 +4,8 @@ namespace OvertimeHotel.HRM.WebAdmin.Security;
 
 /// <summary>
 /// Tiện ích kiểm tra quyền RBAC dùng chung cho tầng giao diện (Razor View).
-/// Nội dung phải khớp với đăng ký policy trong <c>Program.cs</c>: Admin luôn đạt
-/// mọi quyền do chỉ nắm quyền gốc SYS_ADMIN, các vai trò khác cần có claim "Permission".
+/// Nội dung phải khớp với đăng ký policy trong <c>Program.cs</c>: chỉ IT có
+/// quyền quản trị tài khoản, phân quyền, cấp tài khoản và sao lưu.
 /// </summary>
 public static class WebAdminPermissions
 {
@@ -21,6 +21,11 @@ public static class WebAdminPermissions
             return false;
         }
 
+        var itAdministration = permissionCode is PermissionCodes.ManageAccounts
+            or PermissionCodes.ManagePermissions or PermissionCodes.ProvisionMobileAccount
+            or PermissionCodes.BackupDatabase;
+        if (itAdministration) return user.IsInRole("IT");
+        if (user.IsInRole("IT")) return false;
         return user.IsInRole("Admin") || user.HasClaim(PermissionCodes.ClaimType, permissionCode);
     }
 }

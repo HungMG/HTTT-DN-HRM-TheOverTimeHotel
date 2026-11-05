@@ -1,6 +1,6 @@
 ﻿@model CreateYeuCauTaiKhoanViewModel
 
-<form asp-action="Create" asp-route-popup="true" method="post" id="createRequestPopupForm" data-create-request-form>
+<form asp-action="Create" asp-route-popup="true" method="post" id="createRequestPopupForm" data-create-request-form data-employee-only="@((!User.IsInRole("IT")).ToString().ToLowerInvariant())">
     @Html.AntiForgeryToken()
 
     @if (!ViewData.ModelState.IsValid)
@@ -14,6 +14,10 @@
         </div>
     }
 
+    <div class="alert alert-warning" role="alert" data-role-restriction hidden>
+        Không thể gửi yêu cầu cho vai trò này. HR và Admin chỉ được yêu cầu cấp tài khoản Nhân viên; vui lòng liên hệ IT để cấp tài khoản.
+    </div>
+
     <!-- KHỐI 1: NHÂN SỰ & CĂN CỨ HỢP ĐỒNG -->
     <div class="card border-0 bg-light rounded-3 p-3 mb-3">
         <div class="d-flex align-items-center justify-content-between mb-3">
@@ -25,6 +29,22 @@
         </div>
 
         <div class="row g-3">
+            @if (User.IsInRole("IT"))
+            {
+                <div class="col-12">
+                    <label for="popupRoleFilter" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Lọc theo vai trò cần cấp</label>
+                    <select id="popupRoleFilter" class="form-select py-2 rounded-3" data-role-filter>
+                        <option value="">Tất cả vai trò</option>
+                        <option value="Employee">Nhân viên</option>
+                        <option value="HR">Nhân sự (HR)</option>
+                        <option value="Manager">Quản lý</option>
+                        <option value="Admin">Giám đốc</option>
+                        <option value="IT">Công nghệ thông tin (IT)</option>
+                    </select>
+                    <small class="text-muted d-block mt-1">Danh sách bên dưới được lọc theo chức vụ và phòng ban của nhân viên.</small>
+                    <small class="text-warning-emphasis mt-1" data-role-filter-empty hidden>Không có nhân viên phù hợp với vai trò này.</small>
+                </div>
+            }
             <div class="col-md-7 col-12">
                 <label asp-for="EmployeeId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
                     Nhân viên đề xuất <span class="text-danger">*</span>
@@ -148,7 +168,7 @@
             Hủy bỏ
         </button>
         <button type="submit" id="popupBtnSubmit" class="btn btn-hotel-primary rounded-pill px-4 py-2 fw-bold text-white shadow-sm d-flex align-items-center gap-2" disabled="@(Model.EmployeeOptions.Count == 0)" style="font-size: 0.84rem;">
-            <i class="bi bi-send-fill fs-6"></i> Gửi Yêu Cầu Cấp Tài Khoản
+            <i class="bi bi-send-fill fs-6"></i> @(User.IsInRole("IT") ? "Cấp tài khoản" : "Gửi yêu cầu cấp tài khoản")
         </button>
     </div>
 </form>

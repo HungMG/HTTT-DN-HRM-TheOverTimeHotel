@@ -102,11 +102,10 @@
                                     <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
                                         <i class="bi bi-shield-lock-fill"></i>
                                     </span>
-                                    <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select border-start-0 py-2 ps-3 rounded-end-3 bg-light text-muted" disabled id="RoleId"></select>
-                                    <input asp-for="RoleId" type="hidden" />
+                                    <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select border-start-0 py-2 ps-3 rounded-end-3" id="RoleId"></select>
                                 </div>
                                 <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
-                                    <i class="bi bi-lock-fill text-warning me-1"></i> Vai trò được khóa cố định theo hồ sơ tài khoản và không thể thay đổi tại đây.
+                                    Thay đổi vai trò khi nhân viên được điều chuyển hoặc thăng chức.
                                 </small>
                                 <span asp-validation-for="RoleId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
                             </div>

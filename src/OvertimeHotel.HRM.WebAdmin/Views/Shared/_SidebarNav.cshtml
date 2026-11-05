@@ -29,8 +29,7 @@
     var canViewAccounts = User.HasPermission(PermissionCodes.ManageAccounts)
                           || User.HasPermission(PermissionCodes.ManagePermissions)
                           || User.HasPermission(PermissionCodes.ProvisionMobileAccount);
-    var canViewSystem = User.HasPermission(PermissionCodes.BackupDatabase)
-                        || User.HasPermission(PermissionCodes.ManageCatalog);
+    var canViewSystem = User.HasPermission(PermissionCodes.BackupDatabase);
 
     var hasAnyGroup = canViewPeople || canViewShift || canViewPayroll || canViewReports
                       || canViewApproval || canViewAccounts || canViewSystem;
@@ -49,11 +48,14 @@
 
     <nav class="app-sidebar-nav" aria-label="Điều hướng chính">
         <!-- 1. TỔNG QUAN -->
+        @if (!User.IsInRole("IT"))
+        {
         <div class="app-sidebar-section-label">Tổng quan</div>
         <a class="app-nav-item@(IsCurrent("Home") && !IsCurrentAction("Home", "Privacy") ? " is-active" : "")"
            asp-controller="Home" asp-action="Index">
             <i class="bi bi-speedometer2"></i><span>Bàn làm việc</span>
         </a>
+        }
 
         @if (User.IsInRole("Admin") || User.IsInRole("HR") || User.IsInRole("Manager"))
         {

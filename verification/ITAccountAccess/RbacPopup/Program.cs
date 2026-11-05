@@ -1,0 +1,32 @@
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using OvertimeHotel.HRM.Core.Models;
+using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.Data.Services;
+using OvertimeHotel.HRM.WebAdmin.Controllers;
+using OvertimeHotel.HRM.WebAdmin.Models;
+await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+db.AddRange(new VaiTro { MaVaiTro=1, TenVaiTro="Employee" }, new VaiTro { MaVaiTro=2, TenVaiTro="Manager" }, new VaiTro { MaVaiTro=3, TenVaiTro="Admin" }, new VaiTro { MaVaiTro=4, TenVaiTro="IT" }, new Quyen { MaQuyen=1, MaQuyenCode="XEM_DEMO", TenQuyen="Example" }, new NhanVien { MaNhanVien=1, Ho="Test", Ten="Employee" }, new TaiKhoan { MaTaiKhoan=1, MaNhanVien=1, MaVaiTro=1, TenDangNhap="employee", MatKhauBam="hash", TrangThai=true }); await db.SaveChangesAsync();
+var controller = new UserAccountsController(db, NullLogger<UserAccountsController>.Instance, new Provisioner());
+var http = new DefaultHttpContext(); controller.ControllerContext = new ControllerContext { HttpContext = http }; controller.TempData = new TempDataDictionary(http, new MemoryTempData());
+if (await controller.RolePermissions(2,true) is not PartialViewResult { ViewName: "_RolePermissionsForm", Model: RolePermissionsViewModel { RoleId: 2 } }) throw new Exception("Popup did not load requested role");
+if (await controller.RolePermissions(1,false) is not ViewResult) throw new Exception("Standalone page changed");
+var result = await controller.SaveRolePermissions(new RolePermissionsViewModel { RoleId=2, PermissionIds = new List<int> { 1 }, ChangeReason="Test" },true);
+if (result is not RedirectToActionResult redirect || !Equals(redirect.RouteValues?["popup"],true) || !await db.VaiTroQuyens.AnyAsync(x => x.MaVaiTro==2 && x.MaQuyen==1)) throw new Exception("Popup save failed");
+var invalid = await controller.SaveRolePermissions(new RolePermissionsViewModel { RoleId=2, PermissionIds = new List<int> { 999 }, ChangeReason="Test" },true);
+if (invalid is not BadRequestObjectResult || !await db.VaiTroQuyens.AnyAsync(x => x.MaVaiTro==2 && x.MaQuyen==1)) throw new Exception("Invalid permission was accepted");
+Console.WriteLine("PASS popup load, standalone page, save and invalid permission rejection");
+var edit = new EditAccountViewModel { AccountId=1, Username="employee", RoleId=2, ChangeReason="Thăng chức" };
+await controller.Edit(1, edit);
+if ((await db.TaiKhoans.FindAsync(1))?.MaVaiTro != 2) throw new Exception("Promotion did not change the existing account");
+controller.ModelState.Clear();
+await controller.Edit(1, new EditAccountViewModel { AccountId=1, Username="employee", RoleId=4, ChangeReason="Test" });
+if ((await db.TaiKhoans.FindAsync(1))?.MaVaiTro != 2) throw new Exception("An IT role was assigned through account edit");
+var itResult = await controller.SaveRolePermissions(new RolePermissionsViewModel { RoleId=4, PermissionIds = new List<int> { 1 }, ChangeReason="Test" },true);
+if (itResult is not RedirectToActionResult || await db.VaiTroQuyens.AnyAsync(x => x.MaVaiTro == 4 && x.MaQuyen == 1)) throw new Exception("IT role permissions were changed");
+Console.WriteLine("PASS promotion and IT privilege safeguards");
+sealed class MemoryTempData : ITempDataProvider { public IDictionary<string,object> LoadTempData(HttpContext context)=>new Dictionary<string,object>(); public void SaveTempData(HttpContext context,IDictionary<string,object> values){} }
+sealed class Provisioner : ISupabaseUserProvisioningService { public bool IsConfigured=>false; public Task<bool> DeleteUserAsync(string id,CancellationToken cancellationToken=default)=>Task.FromResult(true); public Task<SupabaseUserProvisionResult> CreateUserAsync(string email,string password,CancellationToken cancellationToken=default)=>throw new Exception(); }

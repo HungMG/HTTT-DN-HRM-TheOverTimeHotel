@@ -31,6 +31,14 @@ public class EmployeeListItemViewModel
     public HopDong? LatestContract { get; init; }
     public int? ContractDaysRemaining { get; init; }
     public string ContractState { get; init; } = "CHUA_CO";
+    public string AccountStatus => Employee.TaiKhoan != null ? "DA_CAP" :
+        Employee.YeuCauTaiKhoanCuaNhanVien.OrderByDescending(request => request.NgayGui)
+            .ThenByDescending(request => request.MaYeuCau).FirstOrDefault()?.TrangThai switch
+        {
+            "CHO_IT" or "DANG_XU_LY" => "CHO_CAP",
+            "TU_CHOI" => "TU_CHOI",
+            _ => "CHUA_CAP"
+        };
 }
 
 public class NhanVienProfileModalViewModel

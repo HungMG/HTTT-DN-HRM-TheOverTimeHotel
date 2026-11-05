@@ -244,7 +244,7 @@ public class UserAccountsController : Controller
     [Authorize(Policy = PermissionCodes.ManagePermissions)]
     public async Task<IActionResult> RolePermissions(int? roleId, bool popup = false)
     {
-        if (roleId.HasValue && await _context.VaiTros.AnyAsync(role => role.MaVaiTro == roleId.Value && role.TenVaiTro == "Admin"))
+        if (roleId.HasValue && await _context.VaiTros.AnyAsync(role => role.MaVaiTro == roleId.Value && (role.TenVaiTro == "Admin" || role.TenVaiTro == "IT")))
         {
             TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không cấu hình quyền tại đây.";
             return RedirectToAction(nameof(RolePermissions), new { popup });
@@ -275,7 +275,7 @@ public class UserAccountsController : Controller
     {
         var role = await _context.VaiTros.FirstOrDefaultAsync(item => item.MaVaiTro == model.RoleId);
         if (role == null) return NotFound();
-        if (role.TenVaiTro == "Admin")
+        if (role.TenVaiTro is "Admin" or "IT")
         {
             TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không thể chỉnh sửa quyền tại đây.";
             return RedirectToAction(nameof(RolePermissions), new { popup });
@@ -375,8 +375,10 @@ public class UserAccountsController : Controller
         model.EmployeeEmail = account.NhanVien?.EmailCongVu ?? string.Empty;
         model.IsActive = account.TrangThai;
 
-        // Khóa cứng vai trò: không cho phép thay đổi tại màn hình chỉnh sửa tài khoản
-        model.RoleId = account.MaVaiTro;
+        var requestedRole = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(role => role.MaVaiTro == model.RoleId);
+        if (requestedRole == null || !SupportedRoles.Contains(requestedRole.TenVaiTro) ||
+            (model.RoleId != account.MaVaiTro && (requestedRole.TenVaiTro == "IT" || account.VaiTro?.TenVaiTro == "IT")))
+            ModelState.AddModelError(nameof(model.RoleId), "Không thể thay đổi vai trò IT.");
 
         var oldUsername = account.TenDangNhap;
 
@@ -394,7 +396,8 @@ public class UserAccountsController : Controller
 
         var usernameChanged = !string.Equals(oldUsername, model.Username, StringComparison.Ordinal);
         var passwordChanged = !string.IsNullOrWhiteSpace(model.NewPassword);
-        var hasChanges = usernameChanged || passwordChanged;
+        var roleChanged = model.RoleId != account.MaVaiTro;
+        var hasChanges = usernameChanged || passwordChanged || roleChanged;
 
         if (hasChanges && string.IsNullOrWhiteSpace(model.ChangeReason))
         {
@@ -416,6 +419,14 @@ public class UserAccountsController : Controller
         var oldValues = new List<string>();
         var newValues = new List<string>();
         var changedFields = new List<string>();
+
+        if (roleChanged)
+        {
+            oldValues.Add($"Vai trò: {account.VaiTro?.TenVaiTro}");
+            newValues.Add($"Vai trò: {requestedRole!.TenVaiTro}");
+            changedFields.Add("vai trò");
+            account.MaVaiTro = model.RoleId;
+        }
 
         if (usernameChanged)
         {
@@ -479,7 +490,7 @@ public class UserAccountsController : Controller
         {
             return NotFound();
         }
-        if (account.VaiTro?.TenVaiTro == "Admin")
+        if (account.VaiTro?.TenVaiTro is "Admin" or "IT")
         {
             TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không thể chỉnh sửa quyền tại đây.";
             return RedirectToAction(nameof(Edit), new { id = account.MaTaiKhoan });
@@ -709,7 +720,7 @@ public class UserAccountsController : Controller
     {
         var roles = await _context.VaiTros
             .AsNoTracking()
-            .Where(role => SupportedRoles.Contains(role.TenVaiTro) && role.TenVaiTro != "Admin")
+            .Where(role => SupportedRoles.Contains(role.TenVaiTro) && role.TenVaiTro != "Admin" && role.TenVaiTro != "IT")
             .OrderBy(role => role.MaVaiTro)
             .Select(role => new SelectListItem
             {
