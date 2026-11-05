@@ -43,6 +43,7 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute("AttendanceExplanationPage", typeof(AttendanceExplanationPage));
 		Routing.RegisterRoute("ShiftSwapPage", typeof(ShiftSwapPage));
 		Routing.RegisterRoute("AttendanceSummaryPage", typeof(AttendanceSummaryPage));
+		Routing.RegisterRoute("PersonalAttendancePage", typeof(PersonalAttendancePage));
 		Routing.RegisterRoute("SchedulePage", typeof(SchedulePage));
 		Routing.RegisterRoute("PayslipPage", typeof(PayslipPage));
 		Routing.RegisterRoute("ProfilePage", typeof(ProfilePage));

@@ -9,41 +9,10 @@ public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
     private int _appearingVersion;
     private CancellationTokenSource? _skeletonCts;
 
-    /// <summary>
-    /// Đã dựng theo kiểu trang gốc của tab hay chưa — dùng để chỉ cấu hình lần đầu.
-    /// </summary>
-    private bool? _isTabRoot;
-
     public AttendanceSummaryPage(AttendanceSummaryViewModel viewModel)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
-    }
-
-    /// <summary>
-    /// Cùng một lớp trang phục vụ hai kiến trúc Shell khác nhau nên phần đầu trang
-    /// phải bám theo vai trò đang dùng:
-    ///
-    /// · Nhân viên vào thẳng từ tab "Giấy Tờ" — không có trang trước để quay lại
-    ///   nên ẩn nút ←.
-    ///
-    /// · Quản lý / nhân sự push tới từ ô chức năng ở trang chủ — cần nút ←.
-    ///
-    /// Khoảng đệm trên đầu thì cả hai nhánh đều giống nhau: Shell đã tự chừa sẵn
-    /// chỗ cho thanh trạng thái ở cả trang gốc lẫn trang push, nên không cộng thêm
-    /// (xem <see cref="SafeAreaInset"/>).
-    ///
-    /// Một phiên bản của lớp không đổi vai trò giữa các lần hiện, nên chỉ cấu
-    /// hình một lần rồi bỏ qua các lần hiện sau.
-    /// </summary>
-    private void SyncShellContext()
-    {
-        bool isTabRoot = Navigation.NavigationStack.Count <= 1;
-
-        if (_isTabRoot == isTabRoot) return;
-
-        _isTabRoot = isTabRoot;
-        backButton.IsVisible = !isTabRoot;
     }
 
     /// <summary>
@@ -98,7 +67,6 @@ public partial class AttendanceSummaryPage : ContentPage, IQueryAttributable
     {
         base.OnAppearing();
         var version = ++_appearingVersion;
-        SyncShellContext();
         var cts = StartSkeletonLoop();
         headerBar.Opacity = 0;
         headerBar.TranslationY = -12;

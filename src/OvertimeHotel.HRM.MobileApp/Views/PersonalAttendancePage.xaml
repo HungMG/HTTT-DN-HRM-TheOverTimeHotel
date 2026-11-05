@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OvertimeHotel.HRM.MobileApp.ViewModels"
+             xmlns:models="clr-namespace:OvertimeHotel.HRM.MobileApp.Models"
+             x:Class="OvertimeHotel.HRM.MobileApp.Views.PersonalAttendancePage"
+             x:Name="page" x:DataType="vm:AttendanceViewModel"
+             BackgroundColor="#F8FAFC" Shell.NavBarIsVisible="False">
+    <Grid>
+        <ScrollView>
+            <VerticalStackLayout Padding="16,0,16,24" Spacing="12">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <Button Text="←" Clicked="OnBackClicked" WidthRequest="44" HeightRequest="44"
+                            CornerRadius="22" BackgroundColor="#EFF6FF" TextColor="#1E3A8A"
+                            SemanticProperties.Description="Quay lại" />
+                    <Label Grid.Column="1" Text="Bảng công" FontFamily="SegoeUIBold" FontSize="18"
+                           TextColor="#0F172A" VerticalOptions="Center" />
+                </Grid>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button x:Name="requestsTab" Text="Đơn từ đã gửi" Clicked="OnRequestsTabClicked"
+                            BackgroundColor="#1E3A8A" TextColor="White" FontFamily="SegoeUIBold" FontSize="12" />
+                    <Button x:Name="historyTab" Grid.Column="1" Text="Lịch sử chấm công" Clicked="OnHistoryTabClicked"
+                            BackgroundColor="#EFF6FF" TextColor="#1E3A8A" FontFamily="SegoeUIBold" FontSize="12" />
+                </Grid>
+                <VerticalStackLayout x:Name="requestsPanel" BindingContext="{Binding Source={x:Reference page}, Path=Requests}"
+                                     x:DataType="vm:RequestsViewModel" Spacing="8">
+                    <Label Text="Đang tải đơn từ…" IsVisible="{Binding IsLoading}" />
+                    <Label Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" TextColor="#B91C1C" />
+                    <Button Text="Thử lại" Command="{Binding LoadCommand}" IsVisible="{Binding HasError}" />
+                    <Label Text="Chưa có đơn từ đã gửi." IsVisible="{Binding IsEmpty}" TextColor="#64748B" />
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding RecentRequests}" Spacing="8">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="models:LeaveRequestItem">
+                                <Border Stroke="#E2E8F0" BackgroundColor="White" StrokeShape="RoundRectangle 14" Padding="14">
+                                    <VerticalStackLayout Spacing="5">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <Label Text="{Binding TenLoaiDon}" FontFamily="SegoeUIBold" TextColor="#0F172A" />
+                                            <Label Grid.Column="1" Text="{Binding StatusText}" TextColor="{Binding StatusColor}" />
+                                        </Grid>
+                                        <Label Text="{Binding PeriodDisplay}" TextColor="#334155" />
+                                        <Label Text="{Binding LyDo}" TextColor="#64748B" />
+                                        <Label Text="{Binding PhanHoiDuyet}" IsVisible="{Binding HasPhanHoi}" TextColor="#334155" />
+                                        <Label Text="{Binding NgayGuiDisplay, StringFormat='Gửi lúc: {0}'}" FontSize="11" TextColor="#64748B" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+                <VerticalStackLayout x:Name="historyPanel" IsVisible="False" Spacing="12">
+                <Button x:Name="filterToggle" Text="Bộ lọc ▾" Clicked="OnFilterToggleClicked" BackgroundColor="#EFF6FF" TextColor="#1E3A8A" FontFamily="SegoeUIBold" />
+                <VerticalStackLayout x:Name="filterPanel" IsVisible="False" Spacing="8">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Label Text="Ngày công" VerticalOptions="Center" FontFamily="SegoeUIBold" TextColor="#1E3A8A" />
+                    <DatePicker x:Name="historyDate" Grid.Column="1" Format="dd/MM/yyyy" SemanticProperties.Description="Chọn ngày công" />
+                </Grid>
+                <Label x:Name="historyDateLabel" Text="Đang xem tất cả ngày trong tháng" TextColor="#64748B" FontSize="12" />
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6" BindableLayout.ItemsSource="{Binding StatusFilters}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="models:AttendanceStatusFilter">
+                            <Border Grid.Column="{Binding ColumnIndex}" BackgroundColor="{Binding BackgroundColor}" Stroke="{Binding BorderColor}" StrokeShape="RoundRectangle 12" Padding="4,7">
+                                <Border.GestureRecognizers><TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:AttendanceViewModel}}, Path=FilterStatusCommand}" CommandParameter="{Binding .}" /></Border.GestureRecognizers>
+                                <VerticalStackLayout><Label Text="{Binding Name}" FontSize="10" TextColor="{Binding TextColor}" HorizontalOptions="Center" /><Label Text="{Binding Count}" FontFamily="SegoeUIBold" TextColor="{Binding CountColor}" HorizontalOptions="Center" /></VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </Grid>
+                </VerticalStackLayout>
+                <Label Text="Đang tải lịch sử chấm công…" IsVisible="{Binding IsLoading}" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button x:Name="todayTab" Text="Hôm nay" Clicked="OnTodayTabClicked" FontFamily="SegoeUIBold" BackgroundColor="#1E3A8A" TextColor="White" />
+                    <Button x:Name="monthTab" Grid.Column="1" Text="Trong tháng" Clicked="OnMonthTabClicked" FontFamily="SegoeUIBold" BackgroundColor="#EFF6FF" TextColor="#1E3A8A" />
+                </Grid>
+                <VerticalStackLayout x:Name="todayPanel" Spacing="8">
+                <Label Text="Không có chấm công hôm nay phù hợp bộ lọc." IsVisible="{Binding HasNoTodayRecord}" TextColor="#64748B" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding TodayRecords}" Spacing="8">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="models:AttendanceRecord">
+                            <Border Stroke="#E2E8F0" BackgroundColor="White" StrokeShape="RoundRectangle 14" Padding="14">
+                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnRecordTapped" /></Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <VerticalStackLayout><Label Text="{Binding NgayLamViec}" FontFamily="SegoeUIBold" TextColor="#0F172A" /><Label Text="{Binding TenCa}" TextColor="#64748B" /></VerticalStackLayout>
+                                    <Label Grid.Column="1" Text="{Binding TrangThaiText}" TextColor="{Binding TrangThaiTextColor}" VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+                </VerticalStackLayout>
+                <VerticalStackLayout x:Name="monthPanel" IsVisible="False" Spacing="8">
+                <Label Text="{Binding MonthLabel}" TextColor="#64748B" />
+                <Label Text="{Binding HistoryEmptyMessage}" IsVisible="{Binding HasNoMonthlyRecords}" TextColor="#64748B" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding MonthlyRecords}" Spacing="8">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="models:AttendanceRecord">
+                            <Border Stroke="#E2E8F0" BackgroundColor="White" StrokeShape="RoundRectangle 14" Padding="14">
+                                <Border.GestureRecognizers><TapGestureRecognizer Tapped="OnRecordTapped" /></Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <VerticalStackLayout><Label Text="{Binding NgayLamViec}" FontFamily="SegoeUIBold" TextColor="#0F172A" /><Label Text="{Binding TenCa}" TextColor="#64748B" /></VerticalStackLayout>
+                                    <Label Grid.Column="1" Text="{Binding TrangThaiText}" TextColor="{Binding TrangThaiTextColor}" VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+                </VerticalStackLayout>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

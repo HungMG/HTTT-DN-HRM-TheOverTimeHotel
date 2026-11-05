@@ -48,7 +48,7 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
                 AttendanceSummaryForbidden?.Invoke(this, EventArgs.Empty);
                 return;
             }
-            _ = Shell.Current.GoToAsync("AttendanceSummaryPage");
+            _ = Shell.Current.GoToAsync("PersonalAttendancePage");
         });
     }
 

@@ -68,6 +68,8 @@ public class AttendanceViewModel : INotifyPropertyChanged
 
     private int _monthLabelYear = DateTime.Now.Year;
     private int _monthLabelMonth = DateTime.Now.Month;
+    private DateOnly? _historyDate;
+    private int _monthlyLoadVersion;
 
     public AttendanceViewModel(IAttendanceService attendanceService, IGeoLocationService geoLocationService, IAuthService authService)
     {
@@ -237,7 +239,14 @@ public class AttendanceViewModel : INotifyPropertyChanged
     public bool IsLoading
     {
         get => _isLoading;
-        private set => SetProperty(ref _isLoading, value);
+        private set
+        {
+            if (SetProperty(ref _isLoading, value))
+            {
+                OnPropertyChanged(nameof(HasNoMonthlyRecords));
+                OnPropertyChanged(nameof(HasNoTodayRecord));
+            }
+        }
     }
 
     public bool IsBusy
@@ -346,6 +355,7 @@ public class AttendanceViewModel : INotifyPropertyChanged
     /// CollectionView không phải sửa binding.
     /// </summary>
     public ObservableCollection<AttendanceRecord> MonthlyRecords { get; } = new();
+    public ObservableCollection<AttendanceRecord> TodayRecords { get; } = new();
 
     /// <summary>
     /// Toàn bộ bản ghi của tháng, chưa lọc. Bộ lọc chỉ chiếu lại từ danh sách này
@@ -372,14 +382,14 @@ public class AttendanceViewModel : INotifyPropertyChanged
     public bool HasMonthlyRecords => MonthlyRecords.Count > 0;
 
     /// <summary>Trạng thái nghịch đảo, dùng để ẩn CollectionView khi danh sách rỗng.</summary>
-    public bool HasNoMonthlyRecords => MonthlyRecords.Count == 0;
+    public bool HasNoMonthlyRecords => !IsLoading && MonthlyRecords.Count == 0;
 
     /// <summary>
     /// Câu báo khi danh sách rỗng. Tách hai trường hợp để người dùng không tưởng
     /// tháng đó mất dữ liệu chỉ vì bộ lọc đang chọn không khớp ngày nào.
     /// </summary>
-    public string HistoryEmptyMessage => _allMonthlyRecords.Count == 0
-        ? "Chưa có dữ liệu chấm công trong tháng này"
+    public string HistoryEmptyMessage => !_allMonthlyRecords.Any(r => !_historyDate.HasValue || r.NgayLamViecDate == _historyDate.Value)
+        ? "Chưa có dữ liệu chấm công trong thời gian đã chọn"
         : "Không có ngày nào khớp bộ lọc đã chọn";
 
     public bool CanGoNextMonth => _monthLabelYear < DateTime.Now.Year
@@ -423,9 +433,7 @@ public class AttendanceViewModel : INotifyPropertyChanged
     public string CollapseToggleIcon => _isHistoryCollapsed ? "▼" : "▲";
 
     /// <summary>Bản ghi chấm công của ngày hôm nay (nếu có trong tháng).</summary>
-    public AttendanceRecord? TodayRecord =>
-        _allMonthlyRecords.FirstOrDefault(r => r.NgayLamViecDate == DateOnly.FromDateTime(DateTime.Now))
-        ?? (_allMonthlyRecords.Count > 0 ? _allMonthlyRecords[0] : null);
+    public AttendanceRecord? TodayRecord => TodayRecords.FirstOrDefault();
 
     public bool HasTodayRecord => TodayRecord != null;
 
@@ -539,7 +547,9 @@ public class AttendanceViewModel : INotifyPropertyChanged
 
     private async Task LoadMonthlyAsync()
     {
+        var version = ++_monthlyLoadVersion;
         var records = await _attendanceService.GetMonthlyAttendanceAsync(_monthLabelYear, _monthLabelMonth);
+        if (version != _monthlyLoadVersion) return;
 
         _allMonthlyRecords.Clear();
         foreach (var record in records)
@@ -560,17 +570,18 @@ public class AttendanceViewModel : INotifyPropertyChanged
     /// </summary>
     private void RefreshFilterCounts()
     {
+        var records = _allMonthlyRecords.Where(r => !_historyDate.HasValue || r.NgayLamViecDate == _historyDate.Value).ToList();
         foreach (var filter in StatusFilters)
         {
             filter.Count = filter.Code switch
             {
-                FilterAll => _allMonthlyRecords.Count,
-                FilterOnTime => _allMonthlyRecords.Count(r => r.TrangThaiCode == AttendanceCalculator.STATUS_DUNG_GIO),
-                FilterLate => _allMonthlyRecords.Count(r => r.TrangThaiCode
+                FilterAll => records.Count,
+                FilterOnTime => records.Count(r => r.TrangThaiCode == AttendanceCalculator.STATUS_DUNG_GIO),
+                FilterLate => records.Count(r => r.TrangThaiCode
                     is AttendanceCalculator.STATUS_DI_TRE
                     or AttendanceCalculator.STATUS_VE_SOM
                     or AttendanceCalculator.STATUS_TRE_VA_SOM),
-                FilterAbsent => _allMonthlyRecords.Count(r => r.TrangThaiCode == AttendanceCalculator.STATUS_VANG),
+                FilterAbsent => records.Count(r => r.TrangThaiCode == AttendanceCalculator.STATUS_VANG),
                 _ => 0
             };
         }
@@ -595,15 +606,22 @@ public class AttendanceViewModel : INotifyPropertyChanged
         }
 
         MonthlyRecords.Clear();
-        foreach (var record in _allMonthlyRecords.Where(MatchesActiveFilter))
+        TodayRecords.Clear();
+        foreach (var record in _allMonthlyRecords.Where(r => (!_historyDate.HasValue || r.NgayLamViecDate == _historyDate.Value) && MatchesActiveFilter(r)))
         {
             MonthlyRecords.Add(record);
+            if (record.NgayLamViecDate == DateOnly.FromDateTime(DateTime.Now)) TodayRecords.Add(record);
         }
 
         OnPropertyChanged(nameof(HasMonthlyRecords));
         OnPropertyChanged(nameof(HasNoMonthlyRecords));
         OnPropertyChanged(nameof(HistoryEmptyMessage));
+        OnPropertyChanged(nameof(TodayRecord));
+        OnPropertyChanged(nameof(HasTodayRecord));
+        OnPropertyChanged(nameof(HasNoTodayRecord));
     }
+
+    public bool HasNoTodayRecord => !IsLoading && TodayRecords.Count == 0;
 
     private bool MatchesActiveFilter(AttendanceRecord record) => _activeStatusFilter switch
     {
@@ -615,6 +633,47 @@ public class AttendanceViewModel : INotifyPropertyChanged
         FilterAbsent => record.TrangThaiCode == AttendanceCalculator.STATUS_VANG,
         _ => true
     };
+
+    public async Task SelectHistoryDateAsync(DateTime date)
+    {
+        _historyDate = DateOnly.FromDateTime(date);
+        if (_historyDate.Value.Year == _monthLabelYear && _historyDate.Value.Month == _monthLabelMonth)
+        {
+            RefreshFilterCounts();
+            ApplyStatusFilter(StatusFilters.First(f => f.Code == _activeStatusFilter));
+            return;
+        }
+
+        _monthLabelYear = _historyDate.Value.Year;
+        _monthLabelMonth = _historyDate.Value.Month;
+        OnPropertyChanged(nameof(MonthLabel));
+        _allMonthlyRecords.Clear();
+        RefreshFilterCounts();
+        ApplyStatusFilter(StatusFilters.First(f => f.Code == _activeStatusFilter));
+        IsLoading = true;
+        var load = LoadMonthlyAsync();
+        var version = _monthlyLoadVersion;
+        try { await load; }
+        catch (Exception ex)
+        {
+            if (version == _monthlyLoadVersion)
+            {
+                if (ex is UnauthorizedAccessException) _isSessionExpired = true;
+                ShowPopup("Lỗi Tải Dữ Liệu", ex.Message, false);
+            }
+        }
+        finally
+        {
+            if (version == _monthlyLoadVersion) IsLoading = false;
+        }
+    }
+
+    public void ClearHistoryDate()
+    {
+        _historyDate = null;
+        RefreshFilterCounts();
+        ApplyStatusFilter(StatusFilters.First(f => f.Code == _activeStatusFilter));
+    }
 
     /// <summary>
     /// Quẹt thẻ vào ca, tự lấy toạ độ và tên thiết bị trước khi gửi lên máy chủ.

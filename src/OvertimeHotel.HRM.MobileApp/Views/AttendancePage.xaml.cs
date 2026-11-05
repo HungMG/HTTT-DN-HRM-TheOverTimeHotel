@@ -34,9 +34,6 @@ public partial class AttendancePage : ContentPage
         pageHeader.TranslationY = -22;
         shiftCard.TranslationY = 30;
         noShiftCard.TranslationY = 30;
-        todayCard.TranslationY = 30;
-        historySection.TranslationY = 30;
-        historyCard.TranslationY = 30;
 
         await Task.Delay(60);
 
@@ -52,16 +49,6 @@ public partial class AttendancePage : ContentPage
         var visibleCards = stateCards.Where(c => c.IsVisible).ToList();
         await visibleCards.StaggerCascadeAsync(SlideDirection.Up, delayBetweenMs: 70, duration: 380);
 
-        await Task.Delay(90);
-
-        _ = Task.WhenAll(
-            todayCard.FadeToAsync(1.0, 400, Easing.CubicOut),
-            todayCard.TranslateToAsync(0, 0, 440, Easing.CubicOut),
-            historySection.FadeToAsync(1.0, 400, Easing.CubicOut),
-            historySection.TranslateToAsync(0, 0, 440, Easing.CubicOut),
-            historyCard.FadeToAsync(1.0, 400, Easing.CubicOut),
-            historyCard.TranslateToAsync(0, 0, 440, Easing.CubicOut)
-        );
     }
 
     /// <summary>
@@ -242,7 +229,7 @@ public partial class AttendancePage : ContentPage
     private async void OnAttendanceSummaryTapped(object? sender, EventArgs e)
     {
         if (sender is VisualElement card) await card.SpringTapAsync();
-        await Shell.Current.GoToAsync("AttendanceSummaryPage");
+        await Shell.Current.GoToAsync("PersonalAttendancePage");
     }
 
     /// <summary>Mở màn phiếu lương (nút dưới nút Lịch Ca 24/7).</summary>

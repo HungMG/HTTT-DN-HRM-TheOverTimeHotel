@@ -129,6 +129,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<ShiftSwapPage>();
 		builder.Services.AddTransient<AttendancePage>();
 		builder.Services.AddTransient<AttendanceSummaryPage>();
+		builder.Services.AddTransient<PersonalAttendancePage>();
 		builder.Services.AddTransient<SchedulePage>();
 		builder.Services.AddTransient<PayslipPage>();
 

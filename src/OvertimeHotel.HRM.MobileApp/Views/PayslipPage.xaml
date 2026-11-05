@@ -562,11 +562,6 @@
                     <Label Text="{Binding ExportStatusText}" IsVisible="{Binding HasExportStatus}"
                            FontSize="12" TextColor="#475569" HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
 
-                    <!-- NÚT QUAY LẠI DANH SÁCH -->
-                    <Button Text="← Quay lại danh sách phiếu lương" Command="{Binding CloseDetailCommand}"
-                            BackgroundColor="#1E3A8A" TextColor="#FFFFFF" HeightRequest="48"
-                            CornerRadius="14" Margin="0,4,0,16" />
-
                 </VerticalStackLayout>
             </ScrollView>
 
