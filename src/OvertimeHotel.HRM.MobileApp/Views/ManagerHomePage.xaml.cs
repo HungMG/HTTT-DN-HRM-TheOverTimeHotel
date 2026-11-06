@@ -131,7 +131,7 @@ public partial class ManagerHomePage : ContentPage
         lblTimelineShiftName.Text = viewModel.ShiftTaskText;
 
         lblNightBadge.Text = string.IsNullOrEmpty(viewModel.NightBadgeText)
-            ? "Giám Sát Ca"
+            ? "Trưởng Bộ Phận"
             : viewModel.NightBadgeText;
         nightBadgeBorder.IsVisible = viewModel.HasShiftToday;
     }

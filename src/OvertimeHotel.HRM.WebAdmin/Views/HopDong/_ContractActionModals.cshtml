@@ -1,4 +1,11 @@
 @using OvertimeHotel.HRM.Core.Constants
+@{
+    var promptEmpId = TempData["PromotionPrompt_EmployeeId"]?.ToString();
+    var promptContractId = TempData["PromotionPrompt_ContractId"]?.ToString();
+    var promptEmpName = TempData["PromotionPrompt_EmployeeName"]?.ToString();
+    var promptContractNo = TempData["PromotionPrompt_ContractNo"]?.ToString();
+    var promptPosName = TempData["PromotionPrompt_PositionName"]?.ToString();
+}
 <div class="modal fade" id="terminateContractModal" tabindex="-1" aria-labelledby="terminateContractModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -46,6 +53,42 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="promotionPromptModal" tabindex="-1" aria-labelledby="promotionPromptModalLabel" aria-hidden="true" data-bs-backdrop="static"
+     data-employee-id="@promptEmpId" data-contract-id="@promptContractId">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-primary bg-opacity-10 px-4 pt-4 pb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-primary text-white p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="bi bi-award-fill"></i>
+                    </div>
+                    <div>
+                        <h2 class="modal-title h5 font-serif text-primary mb-0" id="promotionPromptModalLabel">Đề xuất thăng chức sang IT</h2>
+                        <small class="text-muted">Nhân sự vừa được ký hợp đồng cấp Quản lý</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+                <p class="text-dark mb-2">
+                    Đã lập thành công hợp đồng <strong>@promptContractNo</strong> cho nhân sự <strong>@promptEmpName</strong> với chức danh <strong class="text-primary">@promptPosName</strong>.
+                </p>
+                <div class="bg-light border rounded-3 p-3 mb-3 small text-secondary">
+                    <i class="bi bi-info-circle-fill text-info me-1"></i>
+                    Nhân sự này hiện đang có tài khoản cấp <strong>Nhân viên (Employee)</strong>. Bạn có muốn gửi yêu cầu nâng quyền <strong>Quản lý (Manager)</strong> sang bộ phận IT ngay bây giờ không?
+                </div>
+                <div class="alert alert-danger d-none small mb-0" data-prompt-error></div>
+            </div>
+            <div class="modal-footer bg-light px-4 py-3 justify-content-between">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Để sau</button>
+                <button type="button" class="btn btn-hotel-primary rounded-pill px-4 fw-semibold shadow-sm" id="btnSubmitPromotionPrompt">
+                    <i class="bi bi-send-fill me-1"></i> Gửi yêu cầu sang IT ngay
+                </button>
+            </div>
         </div>
     </div>
 </div>

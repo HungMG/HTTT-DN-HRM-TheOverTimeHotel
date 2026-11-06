@@ -589,6 +589,74 @@ public class YeuCauTaiKhoanController : Controller
     }
 
     /// <summary>
+    /// Gửi nhanh yêu cầu thăng chức từ popup khi lập hợp đồng thăng chức mới thành công.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickSubmitPromotion(int employeeId, int contractId)
+    {
+        var role = GetCurrentRoleName();
+        if (!LeaveApprovalPolicy.CanSubmitPromotionRequest(role))
+        {
+            return Json(new { success = false, message = "Bạn không có thẩm quyền gửi yêu cầu thăng chức." });
+        }
+
+        var senderEmployeeId = GetCurrentEmployeeId();
+        if (!senderEmployeeId.HasValue)
+        {
+            return Json(new { success = false, message = "Không xác định được danh tính nhân sự đang đăng nhập." });
+        }
+
+        var employee = await _context.NhanViens
+            .Include(e => e.TaiKhoan)
+            .Include(e => e.ChucVu)
+            .FirstOrDefaultAsync(e => e.MaNhanVien == employeeId);
+
+        if (employee == null || employee.TaiKhoan == null)
+        {
+            return Json(new { success = false, message = "Nhân viên chưa có tài khoản để thăng chức." });
+        }
+
+        var managerRole = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(r => r.TenVaiTro == "Manager");
+        if (managerRole == null)
+        {
+            return Json(new { success = false, message = "Không tìm thấy vai trò Quản lý trong hệ thống." });
+        }
+
+        var contract = await _context.HopDongs.FindAsync(contractId);
+        if (contract == null || contract.MaNhanVien != employeeId)
+        {
+            return Json(new { success = false, message = "Hợp đồng không hợp lệ." });
+        }
+
+        // Kiểm tra xem đã có yêu cầu thăng chức đang chờ xử lý chưa
+        var hasPending = await _context.YeuCauTaiKhoans.AnyAsync(r => r.MaNhanVien == employeeId &&
+            (r.TrangThai == STATUS_CHO_IT || r.TrangThai == STATUS_DANG_XU_LY));
+
+        if (hasPending)
+        {
+            return Json(new { success = false, message = "Nhân viên này đã có một yêu cầu cấp/thăng chức tài khoản đang chờ IT xử lý." });
+        }
+
+        var request = new YeuCauTaiKhoan
+        {
+            MaNhanVien = employeeId,
+            MaHopDong = contractId,
+            TenDangNhap = employee.TaiKhoan.TenDangNhap,
+            MaVaiTro = managerRole.MaVaiTro,
+            TrangThai = STATUS_CHO_IT,
+            NgayGui = DateTimeOffset.UtcNow,
+            MaNguoiGui = senderEmployeeId.Value,
+            GhiChuTuChoi = $"[THANG_CHUC] Thăng chức lên {employee.ChucVu?.TenChucVu ?? "Quản lý"} theo hợp đồng {contract.SoHopDong}"
+        };
+
+        _context.YeuCauTaiKhoans.Add(request);
+        await _context.SaveChangesAsync();
+
+        return Json(new { success = true, message = $"Đã gửi yêu cầu thăng chức cho {employee.HoTen} sang bộ phận IT thành công!" });
+    }
+
+    /// <summary>
     /// Nạp danh sách nhân viên vai trò Employee và hợp đồng còn hiệu lực cho form thăng chức.
     /// </summary>
     private async Task LoadPromotionOptionsAsync(CreatePromotionRequestViewModel model)
@@ -862,7 +930,66 @@ public class YeuCauTaiKhoanController : Controller
             .FirstOrDefaultAsync(t => t.MaNhanVien == request.MaNhanVien);
 
         if (existingAccount != null)
-            return ProcessingFailure("Nhân viên đã có tài khoản. IT cần thay đổi vai trò trực tiếp trên tài khoản hiện có.", StatusCodes.Status409Conflict);
+        {
+            var isPromotion = (request.GhiChuTuChoi != null && request.GhiChuTuChoi.StartsWith("[THANG_CHUC]")) || existingAccount.MaVaiTro != request.MaVaiTro;
+            if (!isPromotion)
+            {
+                return ProcessingFailure("Nhân viên đã có tài khoản với đúng vai trò này. Không cần cấp lại.", StatusCodes.Status409Conflict);
+            }
+
+            var targetRole = await _context.VaiTros.FindAsync(request.MaVaiTro);
+            if (targetRole == null)
+            {
+                return ProcessingFailure("Vai trò chỉ định không tồn tại trong hệ thống.", StatusCodes.Status400BadRequest);
+            }
+
+            var oldRoleName = existingAccount.VaiTro?.TenVaiTro ?? "Chưa rõ";
+            try
+            {
+                var executionStrategy = _context.Database.CreateExecutionStrategy();
+                await executionStrategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                    existingAccount.MaVaiTro = request.MaVaiTro;
+                    _context.TaiKhoans.Update(existingAccount);
+
+                    _context.NhatKyQuanTris.Add(CreateAuditLog(
+                        targetAccountId: existingAccount.MaTaiKhoan,
+                        targetUsername: existingAccount.TenDangNhap,
+                        action: "UPGRADE_ACCOUNT_ROLE",
+                        description: $"Nâng vai trò tài khoản từ '{oldRoleName}' lên '{targetRole.TenVaiTro}' theo yêu cầu thăng chức #{request.MaYeuCau}.",
+                        oldValue: $"Vai trò: {oldRoleName}",
+                        newValue: $"Vai trò: {targetRole.TenVaiTro}",
+                        reason: request.GhiChuTuChoi ?? "Phê duyệt thăng chức theo hợp đồng lao động mới."));
+
+                    await _context.SaveChangesAsync();
+
+                    var completed = await _context.YeuCauTaiKhoans
+                        .Where(item => item.MaYeuCau == id && (item.TrangThai == STATUS_CHO_IT || item.TrangThai == STATUS_DANG_XU_LY))
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(item => item.TrangThai, STATUS_DA_CAP)
+                            .SetProperty(item => item.MaTaiKhoan, existingAccount.MaTaiKhoan)
+                            .SetProperty(item => item.MaNguoiXuLy, accountId.Value)
+                            .SetProperty(item => item.NgayXuLy, DateTimeOffset.UtcNow));
+
+                    if (completed == 0)
+                    {
+                        throw new InvalidOperationException($"Yêu cầu #{id} đã chuyển trạng thái trước khi hoàn tất.");
+                    }
+
+                    await transaction.CommitAsync();
+                });
+
+                return ProcessingSuccess($"Đã phê duyệt thăng chức! Tài khoản '{existingAccount.TenDangNhap}' đã được nâng quyền lên vai trò {targetRole.TenVaiTro}.", await GetStatusOptionsForRefresh(role));
+            }
+            catch (Exception ex)
+            {
+                _context.ChangeTracker.Clear();
+                _logger.LogError(ex, "Không thể nâng vai trò cho tài khoản của yêu cầu #{RequestId}.", id);
+                return ProcessingFailure("Không thể cập nhật vai trò tài khoản. Vui lòng thử lại sau.", StatusCodes.Status500InternalServerError);
+            }
+        }
 
         var workEmail = request.NhanVien?.EmailCongVu;
         if (string.IsNullOrWhiteSpace(workEmail))
@@ -1199,13 +1326,10 @@ public class YeuCauTaiKhoanController : Controller
             return ("Manager", GetVietnameseRoleName("Manager"));
         }
 
-        // 4. Quản lý / Trưởng bộ phận / Giám sát ca
+        // 4. Quản lý / Trưởng bộ phận
         if (pos.Contains("Trưởng Bộ Phận", StringComparison.OrdinalIgnoreCase) ||
             pos.Contains("Trưởng phòng", StringComparison.OrdinalIgnoreCase) ||
             pos.Contains("Department Head", StringComparison.OrdinalIgnoreCase) ||
-            pos.Contains("Giám Sát Ca", StringComparison.OrdinalIgnoreCase) ||
-            pos.Contains("Giám Sát", StringComparison.OrdinalIgnoreCase) ||
-            pos.Contains("Supervisor", StringComparison.OrdinalIgnoreCase) ||
             pos.Contains("Bếp Trưởng", StringComparison.OrdinalIgnoreCase) ||
             pos.Contains("Quản lý", StringComparison.OrdinalIgnoreCase) ||
             pos.Contains("Manager", StringComparison.OrdinalIgnoreCase))

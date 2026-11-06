@@ -175,6 +175,16 @@
         <div class="form-text small text-muted" data-contract-end-hint>@(isProbation ? "Nhập ngày kết thúc thử việc; hệ thống giữ khoảng thời gian bạn chọn." : "Tự động tính theo thời hạn 1 năm, 3 năm; để trống nếu không xác định thời hạn.")</div>
         <span asp-validation-for="Contract.NgayKetThuc" class="text-danger small"></span>
     </div>
+
+    <div class="col-12 mt-1">
+        <div class="form-check p-2 bg-light rounded-3 border border-dashed">
+            <input class="form-check-input ms-1" type="checkbox" asp-for="ClosePreviousContract" id="@(formIdPrefix + "closePreviousContractCheck")" />
+            <label class="form-check-label ms-2 small fw-semibold text-primary" for="@(formIdPrefix + "closePreviousContractCheck")">
+                <i class="bi bi-arrow-repeat me-1"></i> Chuyển tiếp / Thăng chức: Tự động khép lại hợp đồng cũ trước ngày bắt đầu hợp đồng mới
+            </label>
+            <div class="text-muted small ms-4" style="font-size: 0.76rem;">Tích chọn nếu nhân sự đang có hợp đồng cũ còn hiệu lực nhưng được thăng chức hoặc chuyển ngạch (HĐ cũ sẽ đóng lại mà không làm gián đoạn trạng thái làm việc).</div>
+        </div>
+    </div>
 </div>
 
 <!-- ========================================================================= -->

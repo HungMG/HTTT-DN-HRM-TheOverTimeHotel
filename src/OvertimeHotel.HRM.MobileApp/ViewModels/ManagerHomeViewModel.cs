@@ -129,14 +129,14 @@ public class ManagerHomeViewModel : HomeViewModelBase
             if (!HasShiftToday)
             {
                 ShiftTimeText = "08:00 – 17:00";
-                ShiftTaskText = "Ca điều hành tiêu chuẩn · Giám sát vận hành khách sạn";
-                NightBadgeText = "Giám Sát Ca";
+                ShiftTaskText = "Ca điều hành tiêu chuẩn · Quản lý vận hành khách sạn";
+                NightBadgeText = "Trưởng Bộ Phận";
                 return;
             }
 
             ShiftTimeText = $"{FormatTime(shift.GioBatDau)} – {FormatTime(shift.GioKetThuc)}";
             ShiftTaskText = string.IsNullOrWhiteSpace(shift.TenSuKien)
-                ? (string.IsNullOrWhiteSpace(shift.TenCa) ? "Ca điều hành & giám sát" : shift.TenCa)
+                ? (string.IsNullOrWhiteSpace(shift.TenCa) ? "Ca điều hành & quản lý" : shift.TenCa)
                 : $"{shift.TenCa} • {shift.TenSuKien}";
             NightBadgeText = IsNightShift(shift.GioBatDau, shift.GioKetThuc)
                 ? "Ca Đêm · +30%"
@@ -146,8 +146,8 @@ public class ManagerHomeViewModel : HomeViewModelBase
         {
             HasShiftToday = false;
             ShiftTimeText = "08:00 – 17:00";
-            ShiftTaskText = "Ca điều hành tiêu chuẩn · Giám sát vận hành khách sạn";
-            NightBadgeText = "Giám Sát Ca";
+            ShiftTaskText = "Ca điều hành tiêu chuẩn · Quản lý vận hành khách sạn";
+            NightBadgeText = "Trưởng Bộ Phận";
         }
     }
 

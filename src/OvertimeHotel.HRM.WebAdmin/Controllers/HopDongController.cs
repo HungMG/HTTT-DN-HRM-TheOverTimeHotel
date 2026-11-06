@@ -261,7 +261,7 @@ public class HopDongController : Controller
             model.Contract.TrangThai = "HIEU_LUC";
         if (model.Contract.TrangThai != "HIEU_LUC")
             ModelState.AddModelError("Contract.TrangThai", "Hợp đồng mới không được ở trạng thái hết hạn, thanh lý hoặc chấm dứt.");
-        await ValidateContractAsync(model.Contract);
+        await ValidateContractAsync(model.Contract, model.ClosePreviousContract);
         if (model.Contract.NgayKetThuc < today)
             ModelState.AddModelError("Contract.NgayKetThuc", "Hợp đồng mới không được có ngày kết thúc trong quá khứ.");
 
@@ -279,9 +279,45 @@ public class HopDongController : Controller
                 employee.MaChucVu = model.PositionId;
                 if (!string.IsNullOrWhiteSpace(model.PersonalEmail)) employee.EmailCaNhan = model.PersonalEmail.Trim();
                 model.Contract.NhanVien = employee;
+
+                if (model.ClosePreviousContract)
+                {
+                    var olderContracts = await _context.HopDongs
+                        .Where(item => item.MaNhanVien == employee.MaNhanVien && item.TrangThai != "DA_CHAM_DUT" && item.NgayBatDau < model.Contract.NgayBatDau)
+                        .ToListAsync();
+
+                    foreach (var old in olderContracts)
+                    {
+                        old.NgayKetThuc = model.Contract.NgayBatDau.AddDays(-1);
+                        old.TrangThai = "DA_CHAM_DUT";
+                        old.LoaiChamDut = ContractTerminationTypes.KHAC;
+                        old.LyDoChamDut = "Chuyển tiếp ký hợp đồng mới / thăng chức";
+                    }
+                }
             }
             _context.HopDongs.Add(model.Contract);
             await _context.SaveChangesAsync();
+
+            // Kiểm tra xem đây có phải là thăng chức lên Quản lý (đối với nhân sự đang có tài khoản Employee) không
+            if (employee != null)
+            {
+                var employeeAccount = await _context.TaiKhoans
+                    .Include(t => t.VaiTro)
+                    .FirstOrDefaultAsync(t => t.MaNhanVien == employee.MaNhanVien);
+
+                if (employeeAccount != null && employeeAccount.VaiTro?.TenVaiTro == "Employee")
+                {
+                    var targetPosition = await _context.ChucVus.FindAsync(model.PositionId);
+                    if (targetPosition != null && IsManagerPosition(targetPosition.TenChucVu))
+                    {
+                        TempData["PromotionPrompt_EmployeeId"] = employee.MaNhanVien;
+                        TempData["PromotionPrompt_EmployeeName"] = employee.HoTen;
+                        TempData["PromotionPrompt_ContractId"] = model.Contract.MaHopDong;
+                        TempData["PromotionPrompt_ContractNo"] = model.Contract.SoHopDong;
+                        TempData["PromotionPrompt_PositionName"] = targetPosition.TenChucVu;
+                    }
+                }
+            }
 
             string emailNotice = "";
             var finalEmail = !string.IsNullOrWhiteSpace(model.PersonalEmail) ? model.PersonalEmail.Trim() : employee?.EmailCaNhan;
@@ -489,7 +525,7 @@ public class HopDongController : Controller
     }
 
 
-    private async Task ValidateContractAsync(HopDong model, int? currentId = null)
+    private async Task ValidateContractAsync(HopDong model, bool closePreviousContract = false, int? currentId = null)
     {
         model.LoaiHopDong = model.LoaiHopDong?.Trim() ?? string.Empty;
         model.HinhThucHopDong = model.HinhThucHopDong?.Trim() ?? "CHINH_THUC";
@@ -578,13 +614,27 @@ public class HopDongController : Controller
 
                 if (overlap)
                 {
+                    // Nếu người dùng đồng ý khép HĐ cũ và HĐ mới bắt đầu sau ngày bắt đầu của HĐ cũ -> Hợp lệ chuyển tiếp/thăng chức
+                    if (closePreviousContract && mStart > oStart)
+                    {
+                        continue;
+                    }
+
                     var oEndStr = other.NgayKetThuc.HasValue ? other.NgayKetThuc.Value.ToString("dd/MM/yyyy") : "Không thời hạn";
                     ModelState.AddModelError("Contract.NgayBatDau",
-                        $"Nhân sự này đã có hợp đồng '{other.SoHopDong}' ({other.NgayBatDau:dd/MM/yyyy} - {oEndStr}) đang có hiệu lực. Một nhân sự không thể có 2 hợp đồng trùng lặp thời gian.");
+                        $"Nhân sự này đã có hợp đồng '{other.SoHopDong}' ({other.NgayBatDau:dd/MM/yyyy} - {oEndStr}) đang có hiệu lực. Nếu đây là HĐ thăng chức/chuyển tiếp, vui lòng tích chọn 'Chuyển tiếp / Thăng chức' ở bên dưới.");
                     break;
                 }
             }
         }
+    }
+
+    private static bool IsManagerPosition(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return false;
+        var t = title.ToLowerInvariant();
+        return t.Contains("trưởng") || t.Contains("quản lý") ||
+               t.Contains("manager") || t.Contains("chef") || t.Contains("giám đốc");
     }
 
     private async Task<string> GenerateUniqueContractNumberAsync(string? hinhThucHopDong)

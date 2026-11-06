@@ -87,6 +87,9 @@ public class HopDongFormViewModel
     [Display(Name = "Gửi thông báo qua email cá nhân")]
     public string EmailNotificationOption { get; set; } = "KHONG_GUI";
 
+    [Display(Name = "Khép hợp đồng cũ để chuyển tiếp/thăng chức")]
+    public bool ClosePreviousContract { get; set; }
+
     public IReadOnlyList<SelectListItem> DepartmentOptions { get; set; } = [];
     public IReadOnlyList<SelectListItem> PositionOptions { get; set; } = [];
     public IReadOnlyList<SelectListItem> EmployeeOptions { get; set; } = [];

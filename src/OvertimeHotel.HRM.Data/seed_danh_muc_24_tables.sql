@@ -25,7 +25,6 @@ SELECT setval('phong_ban_ma_phong_ban_seq', (SELECT MAX(ma_phong_ban) FROM PHONG
 INSERT INTO CHUC_VU (ma_chuc_vu, ma_phong_ban, ten_chuc_vu, mo_ta) VALUES
 (1, 1, 'Tổng Giám Đốc (General Manager)', 'Lãnh đạo tối cao, phê duyệt ngân sách và chính sách nhân sự'),
 (2, NULL, 'Trưởng Bộ Phận (Department Head)', 'Quản lý vận hành phòng ban, duyệt lịch ca và duyệt phép'),
-(3, 2, 'Giám Sát Ca (Shift Supervisor)', 'Giám sát ca trực 24/7, phân chia công việc tại chỗ'),
 (4, 2, 'Nhân Viên Lễ Tân (Receptionist)', 'Tiếp đón khách, làm thủ tục buồng phòng, xử lý giao dịch'),
 (5, 3, 'Nhân Viên Buồng Phòng (Room Attendant)', 'Làm vệ sinh phòng khách, thay drap giường, bổ sung minibar'),
 (6, 4, 'Đầu Bếp Chính (Chef de Partie)', 'Chế biến món ăn theo thực đơn, bảo đảm vệ sinh ATTP'),
