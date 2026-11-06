@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/ScheduleEventMapper.cs" Link="ScheduleEventMapper.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Services/PostgrstJson.cs" Link="PostgrstJson.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Models/ScheduleEventItem.cs" Link="ScheduleEventItem.cs" />
+  </ItemGroup>
+</Project>

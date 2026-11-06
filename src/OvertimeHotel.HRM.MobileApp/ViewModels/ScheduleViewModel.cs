@@ -24,7 +24,13 @@ public class ScheduleViewModel : INotifyPropertyChanged
 
     private CancellationTokenSource? _loadCancellation;
     private int _loadVersion;
-    private DateOnly _weekStart = StartOfWeek(Today());
+    private DateOnly _selectedDate = Today();
+    private DateOnly _month = new(Today().Year, Today().Month, 1);
+    private bool _showWeek;
+    private IReadOnlyList<PhanCa> _shifts = [];
+    private IReadOnlyList<ScheduleEventItem> _events = [];
+    private bool _eventLoadFailed;
+    private DateOnly _weekStart => StartOfWeek(_selectedDate);
     private bool _isLoading;
     private bool _isRefreshing;
     private bool _hasError;
@@ -42,6 +48,9 @@ public class ScheduleViewModel : INotifyPropertyChanged
     public Command NextWeekCommand { get; }
     public Command CurrentWeekCommand { get; }
     public Command LoginCommand { get; }
+    public Command PreviousMonthCommand { get; }
+    public Command NextMonthCommand { get; }
+    public Command ShowWeekCommand { get; }
 
     public ScheduleViewModel(IScheduleService service, IAuthService authService)
     {
@@ -58,10 +67,15 @@ public class ScheduleViewModel : INotifyPropertyChanged
         NextWeekCommand = new Command(async () => await MoveWeekAsync(1));
         CurrentWeekCommand = new Command(async () =>
         {
-            _weekStart = StartOfWeek(Today());
+            _selectedDate = Today();
+            _month = new DateOnly(_selectedDate.Year, _selectedDate.Month, 1);
+            _showWeek = true;
             NotifyWeekLabels();
             await LoadAsync();
         });
+        PreviousMonthCommand = new Command(async () => await MoveMonthAsync(-1));
+        NextMonthCommand = new Command(async () => await MoveMonthAsync(1));
+        ShowWeekCommand = new Command(() => { _showWeek = true; UpdateVisibleDays(); });
         LoginCommand = new Command(async () =>
         {
             await _authService.LogoutAsync();
@@ -69,6 +83,8 @@ public class ScheduleViewModel : INotifyPropertyChanged
             await Shell.Current.GoToAsync("//LoginPage");
         });
     }
+
+    public bool EventLoadFailed { get => _eventLoadFailed; private set => Set(ref _eventLoadFailed, value); }
 
     public bool IsDemoMode => _service.IsDemoMode;
     public bool IsLoading
@@ -92,14 +108,44 @@ public class ScheduleViewModel : INotifyPropertyChanged
         private set => Set(ref _isEmpty, value);
     }
 
+    public DateOnly SelectedDate => _selectedDate;
+    public DateOnly Month => _month;
+    public DateOnly CalendarStart => ScheduleCalendar.GridStart(_month);
+    public DateOnly CalendarEnd => ScheduleCalendar.GridEnd(_month);
+    public bool ShowWeek => _showWeek;
+    public string MonthText => $"Tháng {_month.Month:00} / {_month.Year}";
+    public string SelectionText => _showWeek ? $"Ca làm trong tuần · {PeriodText}" : $"Ca làm ngày {_selectedDate:dd/MM/yyyy}";
+    public bool HasShift(DateOnly date) => _shifts.Any(s => s.NgayLamViec == date);
+    public bool HasEvent(DateOnly date) => _shifts.Any(s => s.NgayLamViec == date && _events.Any(e => e.ShiftId == s.MaPhanCa));
+
+    public async Task SelectDateAsync(DateOnly date)
+    {
+        _selectedDate = date;
+        _showWeek = false;
+        if (date.Month != _month.Month || date.Year != _month.Year)
+        {
+            _month = new DateOnly(date.Year, date.Month, 1);
+            NotifyWeekLabels();
+            await LoadAsync();
+        }
+        else UpdateVisibleDays();
+    }
+
+    private async Task MoveMonthAsync(int offset)
+    {
+        _month = _month.AddMonths(offset);
+        _selectedDate = _month;
+        _showWeek = false;
+        NotifyWeekLabels();
+        await LoadAsync();
+    }
+
     public string PeriodText => $"{_weekStart:dd/MM} – {_weekStart.AddDays(6):dd/MM/yyyy}";
 
     // Nêu rõ khoảng thời gian đang xem: lịch trong CSDL rời rạc theo tháng, nên
     // gặp một tuần trống là chuyện thường gặp chứ không phải tải lỗi. Ghi kèm
     // mốc thời gian giúp người dùng tự biết mà bấm ‹ › thay vì nghĩ app kẹt.
-    public string EmptyText =>
-        $"Không có ca nào trong tuần {_weekStart:dd/MM} – {_weekStart.AddDays(6):dd/MM/yyyy}. " +
-        "Dùng ‹ › để xem tuần khác, hoặc liên hệ quản lý nếu bạn cho rằng lịch đang thiếu.";
+    public string EmptyText => _showWeek ? "Không có ca làm trong tuần này." : "Không có ca làm trong ngày này.";
 
     public async Task LoadAsync()
     {
@@ -109,6 +155,7 @@ public class ScheduleViewModel : INotifyPropertyChanged
         // tiếp vẫn an toàn. Chặn cứng sẽ nuốt mất lần bấm kèm — nhãn kỳ đã đổi
         // sang tuần mới trong khi dữ liệu vẫn là tuần cũ.
         var version = ++_loadVersion;
+        _loadCancellation?.Cancel();
         _loadCancellation?.Dispose();
         _loadCancellation = new CancellationTokenSource();
         var token = _loadCancellation.Token;
@@ -118,26 +165,30 @@ public class ScheduleViewModel : INotifyPropertyChanged
         ErrorMessage = "";
         HasData = false;
         IsEmpty = false;
+        EventLoadFailed = false;
+        _events = [];
         Days.Clear();
         try
         {
             if (_authService.CurrentUser?.IsLoggedIn != true)
                 throw new UnauthorizedAccessException("Vui lòng đăng nhập để xem lịch phân ca.");
 
-            var to = _weekStart.AddDays(6);
-            var shifts = await _service.GetScheduleAsync(_weekStart, to, token);
+            var shifts = await _service.GetScheduleAsync(CalendarStart, CalendarEnd, token);
             if (version != _loadVersion || token.IsCancellationRequested) return;
-
-            var today = Today();
-            foreach (var group in shifts
-                         .Where(s => s.NgayLamViec >= _weekStart && s.NgayLamViec <= to)
-                         .GroupBy(s => s.NgayLamViec)
-                         .OrderBy(g => g.Key))
-                Days.Add(new ScheduleDayItem(group.Key,
-                    group.Select(s => new ScheduleShiftItem(s)).ToArray(),
-                    group.Key == today));
+            _shifts = shifts;
+            try
+            {
+                _events = await _service.GetEventsAsync(shifts, token);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+            catch (Exception)
+            {
+                if (version != _loadVersion) return;
+                EventLoadFailed = true;
+            }
+            if (version != _loadVersion || token.IsCancellationRequested) return;
             HasData = true;
-            IsEmpty = Days.Count == 0;
+            UpdateVisibleDays();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex)
@@ -178,7 +229,9 @@ public class ScheduleViewModel : INotifyPropertyChanged
 
     private async Task MoveWeekAsync(int offset)
     {
-        _weekStart = _weekStart.AddDays(offset * 7);
+        _selectedDate = _selectedDate.AddDays(offset * 7);
+        _month = new DateOnly(_selectedDate.Year, _selectedDate.Month, 1);
+        _showWeek = true;
         NotifyWeekLabels();
         await LoadAsync();
     }
@@ -188,8 +241,24 @@ public class ScheduleViewModel : INotifyPropertyChanged
     /// sót nhãn nào khi đổi tuần — bỏ sót thì nhãn hiện thuộc tuần trước trong khi
     /// dữ liệu đã sang tuần mới, người dùng tưởng app lỗi.
     /// </summary>
+    private void UpdateVisibleDays()
+    {
+        Days.Clear();
+        var from = _showWeek ? _weekStart : _selectedDate;
+        var to = _showWeek ? _weekStart.AddDays(6) : _selectedDate;
+        foreach (var group in _shifts.Where(s => s.NgayLamViec >= from && s.NgayLamViec <= to)
+                     .GroupBy(s => s.NgayLamViec).OrderBy(g => g.Key))
+            Days.Add(new ScheduleDayItem(group.Key, group.Select(s => new ScheduleShiftItem(s, _events.Where(e => e.ShiftId == s.MaPhanCa).ToArray())).ToArray(), group.Key == Today()));
+        IsEmpty = Days.Count == 0;
+        NotifyWeekLabels();
+        OnPropertyChanged(nameof(Days));
+    }
+
     private void NotifyWeekLabels()
     {
+        OnPropertyChanged(nameof(MonthText));
+        OnPropertyChanged(nameof(SelectionText));
+        OnPropertyChanged(nameof(ShowWeek));
         OnPropertyChanged(nameof(PeriodText));
         OnPropertyChanged(nameof(EmptyText));
     }

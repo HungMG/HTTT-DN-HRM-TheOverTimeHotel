@@ -81,11 +81,13 @@ public partial class SchedulePage : ContentPage
         }
 
         RebuildDayCards();
+        RebuildCalendar();
     }
 
     protected override void OnDisappearing()
     {
         DisposeSkeleton();
+        detailOverlay.IsVisible = false;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         _viewModel.CancelLoad();
         base.OnDisappearing();
@@ -95,8 +97,44 @@ public partial class SchedulePage : ContentPage
     {
         // Days bị thay cả danh sách nên phải dựng lại thẻ, không chỉ reset
         // một thuộc tính. Mọi thay đổi khác không cần vẽ lại.
-        if (e.PropertyName != nameof(ScheduleViewModel.Days)) return;
-        MainThread.BeginInvokeOnMainThread(RebuildDayCards);
+        if (e.PropertyName == nameof(ScheduleViewModel.Days))
+            MainThread.BeginInvokeOnMainThread(() => { RebuildDayCards(); RebuildCalendar(); });
+    }
+
+    private void RebuildCalendar()
+    {
+        calendarGrid.Children.Clear();
+        calendarGrid.RowDefinitions.Clear();
+        var start = _viewModel.CalendarStart;
+        var count = _viewModel.CalendarEnd.DayNumber - start.DayNumber + 1;
+        for (var row = 0; row < count / 7; row++) calendarGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        for (var i = 0; i < count; i++)
+        {
+            var date = start.AddDays(i);
+            var selected = date == _viewModel.SelectedDate;
+            var hasShift = _viewModel.HasShift(date);
+            var button = new Button
+            {
+                Text = date.Day.ToString(),
+                FontSize = 14, Padding = 0, HeightRequest = 42, MinimumHeightRequest = 42,
+                CornerRadius = 21,
+                BackgroundColor = selected ? Color.FromArgb(_viewModel.HasEvent(date) ? "#DC2626" : "#1E3A8A") : Colors.Transparent,
+                TextColor = selected ? Colors.White : date.Month == _viewModel.Month.Month ? Color.FromArgb("#334155") : Color.FromArgb("#CBD5E1")
+            };
+            SemanticProperties.SetDescription(button, $"Ngày {date:dd/MM/yyyy}" + (hasShift ? ", có ca làm" : "") + (_viewModel.HasEvent(date) ? ", có sự kiện" : ""));
+            button.Clicked += async (_, _) => await _viewModel.SelectDateAsync(date);
+            var cell = new Grid { WidthRequest = 42, HeightRequest = 42, HorizontalOptions = LayoutOptions.Center };
+            cell.Add(button);
+            if (hasShift)
+                cell.Add(new Ellipse
+                {
+                    WidthRequest = 3, HeightRequest = 3, StrokeThickness = 0,
+                    Fill = selected ? Colors.White : Color.FromArgb("#1E3A8A"),
+                    HorizontalOptions = LayoutOptions.End, VerticalOptions = LayoutOptions.Center,
+                    Margin = new Thickness(0, 0, date.Day < 10 ? 11 : 7, 0), InputTransparent = true
+                });
+            calendarGrid.Add(cell, i % 7, i / 7);
+        }
     }
 
     private void RebuildDayCards()
@@ -105,7 +143,7 @@ public partial class SchedulePage : ContentPage
         foreach (var day in _viewModel.Days) daysHost.Add(BuildDayCard(day));
     }
 
-    private static Border BuildDayCard(ScheduleDayItem day)
+    private Border BuildDayCard(ScheduleDayItem day)
     {
         var card = new Border
         {
@@ -132,8 +170,7 @@ public partial class SchedulePage : ContentPage
             Spacing = 2,
             Children =
             {
-                new Label { Text = day.DateText, FontFamily = "SegoeUIBold", FontSize = 18, TextColor = Color.FromArgb("#0F172A") },
-                new Label { Text = day.Weekday, FontSize = 11 }
+                new Label { Text = $"{day.DateText}  {day.Weekday}", FontFamily = "SegoeUIBold", FontSize = 18, TextColor = Color.FromArgb("#0F172A") }
             }
         });
         if (day.IsToday)
@@ -149,12 +186,78 @@ public partial class SchedulePage : ContentPage
             }, 1);
         }
         body.Add(heading);
-        body.Add(new Label { Text = day.SummaryText, FontFamily = "SegoeUIBold", TextColor = Color.FromArgb("#334155") });
 
-        foreach (var shift in day.Shifts) body.Add(BuildShiftRow(shift));
+        foreach (var shift in day.Shifts)
+        {
+            body.Add(BuildShiftRow(shift));
+            foreach (var eventItem in shift.Events)
+            {
+                body.Add(new VerticalStackLayout
+                {
+                    Spacing = 3,
+                    Padding = new Thickness(12, 2, 0, 6),
+                    Children =
+                    {
+                        new Label { Text = $"Sự kiện - {eventItem.Name}", FontFamily = "SegoeUIBold", FontSize = 14, TextColor = Color.FromArgb("#1E3A8A") },
+                        new Label { Text = eventItem.TimeText, TextColor = Color.FromArgb("#64748B") }
+                    }
+                });
+            }
+        }
+        body.Add(new Label { Text = "Nhấn để xem chi tiết ›", FontSize = 12, TextColor = Color.FromArgb("#1E3A8A") });
         card.Content = body;
+        SemanticProperties.SetDescription(card, $"Xem chi tiết lịch ngày {day.DateText}, {day.Weekday}");
+        var tap = new TapGestureRecognizer();
+        tap.Tapped += (_, _) => ShowDetails(day);
+        card.GestureRecognizers.Add(tap);
         return card;
     }
+
+    private void ShowDetails(ScheduleDayItem day)
+    {
+        detailTitle.Text = $"Chi tiết · {day.DateText} {day.Weekday}";
+        detailContent.Clear();
+        foreach (var shift in day.Shifts)
+        {
+            detailContent.Add(new Border
+            {
+                Stroke = Color.FromArgb("#DBEAFE"), BackgroundColor = Color.FromArgb("#EFF6FF"),
+                StrokeShape = new RoundRectangle { CornerRadius = 14 }, Padding = new Thickness(14),
+                Content = new VerticalStackLayout
+                {
+                    Spacing = 5,
+                    Children =
+                    {
+                        new Label { Text = "CA LÀM CHÍNH", FontFamily = "SegoeUIBold", FontSize = 10, TextColor = Color.FromArgb("#1E3A8A") },
+                        new Label { Text = shift.Name, FontFamily = "SegoeUIBold", FontSize = 15, TextColor = Color.FromArgb("#0F172A") },
+                        new Label { Text = $"{shift.TimeText}  ·  {shift.StatusText}", FontSize = 13, TextColor = Color.FromArgb("#334155") },
+                        new Label { Text = $"Vào: {shift.CheckInText}   •   Ra: {shift.CheckOutText}", FontSize = 12, TextColor = Color.FromArgb("#64748B") }
+                    }
+                }
+            });
+            foreach (var eventItem in shift.Events)
+            {
+                detailContent.Add(new Border
+                {
+                    Stroke = Color.FromArgb("#FECACA"), BackgroundColor = Color.FromArgb("#FEF2F2"),
+                    StrokeShape = new RoundRectangle { CornerRadius = 14 }, Padding = new Thickness(14),
+                    Content = new VerticalStackLayout
+                    {
+                        Spacing = 5,
+                        Children =
+                        {
+                            new Label { Text = "SỰ KIỆN", FontFamily = "SegoeUIBold", FontSize = 10, TextColor = Color.FromArgb("#B91C1C") },
+                            new Label { Text = eventItem.Name, FontFamily = "SegoeUIBold", FontSize = 14, TextColor = Color.FromArgb("#0F172A") },
+                            new Label { Text = eventItem.TimeText, FontSize = 13, TextColor = Color.FromArgb("#B91C1C") }
+                        }
+                    }
+                });
+            }
+        }
+        detailOverlay.IsVisible = true;
+    }
+
+    private void OnCloseDetailClicked(object? sender, EventArgs e) => detailOverlay.IsVisible = false;
 
     private static Grid BuildShiftRow(ScheduleShiftItem shift)
     {

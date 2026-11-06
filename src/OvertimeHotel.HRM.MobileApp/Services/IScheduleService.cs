@@ -1,4 +1,5 @@
 using OvertimeHotel.HRM.Core.Models;
+using OvertimeHotel.HRM.MobileApp.Models;
 
 namespace OvertimeHotel.HRM.MobileApp.Services;
 
@@ -14,6 +15,8 @@ namespace OvertimeHotel.HRM.MobileApp.Services;
 public interface IScheduleService
 {
     bool IsDemoMode { get; }
+
+    Task<IReadOnlyList<ScheduleEventItem>> GetEventsAsync(IReadOnlyList<PhanCa> shifts, CancellationToken cancellationToken = default);
 
     /// <summary>Lấy các ca trong khoảng <paramref name="from"/>..<paramref name="to"/> (bao trọn hai đầu).</summary>
     Task<IReadOnlyList<PhanCa>> GetScheduleAsync(DateOnly from, DateOnly to,

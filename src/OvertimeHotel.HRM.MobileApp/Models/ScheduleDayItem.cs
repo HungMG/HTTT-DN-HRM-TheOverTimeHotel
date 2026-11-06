@@ -4,7 +4,7 @@ using OvertimeHotel.HRM.Core.Models;
 namespace OvertimeHotel.HRM.MobileApp.Models;
 
 /// <summary>Một ca trực hiển thị trên màn lịch 24/7.</summary>
-public class ScheduleShiftItem(PhanCa shift)
+public class ScheduleShiftItem(PhanCa shift, IReadOnlyList<ScheduleEventItem>? events = null)
 {
     // Giờ CSDL lưu theo TIMESTAMPTZ (UTC). Khách sạn ở múi giờ +7 nên mọi
     // giờ hiển thị đều quy đổi về giờ khách sạn trước khi in ra.
@@ -13,6 +13,10 @@ public class ScheduleShiftItem(PhanCa shift)
 
     private static DateTimeOffset ToHotelTime(DateTimeOffset value) =>
         TimeZoneInfo.ConvertTime(value, HotelTimeZone);
+
+    public IReadOnlyList<ScheduleEventItem> Events => events ?? [];
+    public string CheckInText => shift.ChamCong?.GioCheckIn is { } time ? ToHotelTime(time).ToString("HH:mm") : "Chưa ghi nhận";
+    public string CheckOutText => shift.ChamCong?.GioCheckOut is { } time ? ToHotelTime(time).ToString("HH:mm") : "Chưa ghi nhận";
 
     public string Name => shift.CaLamViec?.TenCa is { Length: > 0 } name ? name : $"Ca #{shift.MaCa}";
 

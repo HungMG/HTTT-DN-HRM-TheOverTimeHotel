@@ -1,6 +1,7 @@
 using System.Text.Json;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Services;
+using OvertimeHotel.HRM.MobileApp.Models;
 
 namespace OvertimeHotel.HRM.MobileApp.Services;
 
@@ -43,6 +44,19 @@ public sealed class MobileScheduleService(SupabaseRestClient rest, IAuthService 
             cancellationToken);
 
         return rows.Select(AttendanceSummaryPostgrstMapper.ToShift).ToArray();
+    }
+
+    public async Task<IReadOnlyList<ScheduleEventItem>> GetEventsAsync(IReadOnlyList<PhanCa> shifts, CancellationToken cancellationToken = default)
+    {
+        var user = authService.CurrentUser;
+        if (user?.IsLoggedIn != true || user.MaNhanVien <= 0)
+            throw new UnauthorizedAccessException("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        var ownShifts = shifts.Where(s => s.MaNhanVien == user.MaNhanVien).ToArray();
+        if (ownShifts.Length == 0) return [];
+        var from = ownShifts.Min(s => s.NgayLamViec);
+        var to = ownShifts.Max(s => s.NgayLamViec);
+        var rows = await LoadRowsAsync($"rpc/hrm_my_schedule_events?p_from={from:yyyy-MM-dd}&p_to={to:yyyy-MM-dd}", cancellationToken);
+        return rows.Select(ScheduleEventMapper.Parse).ToArray();
     }
 
     private async Task<List<JsonElement>> LoadRowsAsync(string query, CancellationToken cancellationToken)

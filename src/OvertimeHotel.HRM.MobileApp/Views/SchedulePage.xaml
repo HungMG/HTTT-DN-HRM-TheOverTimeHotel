@@ -71,31 +71,34 @@
             <ScrollView>
                 <VerticalStackLayout Spacing="0" Padding="0,12,0,0">
 
-                    <!-- Điều hướng tuần: đặt TRONG danh sách để dùng chung một vùng cuộn -->
-                    <Border Stroke="#E2E8F0" BackgroundColor="#FFFFFF" StrokeShape="RoundRectangle 14" Padding="4"
-                            Margin="0,0,0,12">
-                        <Grid ColumnDefinitions="44,*,44" RowDefinitions="Auto,Auto">
-                            <Button Text="‹" FontSize="24" Padding="0" Command="{Binding PreviousWeekCommand}"
-                                    BackgroundColor="Transparent" SemanticProperties.Description="Tuần trước" />
-                            <Label Grid.Column="1" Text="{Binding PeriodText}" FontFamily="SegoeUIBold" FontSize="16"
-                                   TextColor="#1E3A8A" VerticalOptions="Center" HorizontalOptions="Center" />
-                            <Button Grid.Column="2" Text="›" FontSize="24" Padding="0" Command="{Binding NextWeekCommand}"
-                                    BackgroundColor="Transparent" SemanticProperties.Description="Tuần sau" />
-                            <Button Grid.Row="1" Grid.ColumnSpan="3" Text="Về tuần hiện tại" BackgroundColor="Transparent"
-                                    Command="{Binding CurrentWeekCommand}" />
-                        </Grid>
-                    </Border>
-
-                    <Border BackgroundColor="#1E3A8A" Stroke="#1E3A8A" StrokeShape="RoundRectangle 18" Padding="20"
-                            Margin="0,0,0,12">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="LỊCH TRỰC TRONG TUẦN" TextColor="#DBEAFE" FontFamily="SegoeUIBold"
-                                   FontSize="11" CharacterSpacing="1" />
-                            <Label Text="{Binding PeriodText}" FontFamily="SegoeUIBold" FontSize="24" TextColor="White" />
-                            <Label Text="Ca đêm bắt đầu trước 06:00 được tính thêm 30% phụ cấp." TextColor="#DBEAFE" />
+                    <Border Stroke="#E2E8F0" BackgroundColor="White" StrokeShape="RoundRectangle 22" Padding="14" Margin="0,0,0,18">
+                        <VerticalStackLayout Spacing="10">
+                            <Grid ColumnDefinitions="44,*,44">
+                                <Button Text="‹" FontSize="24" Padding="0" BackgroundColor="Transparent" Command="{Binding PreviousMonthCommand}" SemanticProperties.Description="Tháng trước" />
+                                <Label Grid.Column="1" Text="{Binding MonthText}" FontFamily="SegoeUIBold" FontSize="20" TextColor="#1E3A8A" HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Button Grid.Column="2" Text="›" FontSize="24" Padding="0" BackgroundColor="Transparent" Command="{Binding NextMonthCommand}" SemanticProperties.Description="Tháng sau" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*,*,*,*,*,*">
+                                <Label Text="T2" HorizontalOptions="Center" /><Label Grid.Column="1" Text="T3" HorizontalOptions="Center" />
+                                <Label Grid.Column="2" Text="T4" HorizontalOptions="Center" /><Label Grid.Column="3" Text="T5" HorizontalOptions="Center" />
+                                <Label Grid.Column="4" Text="T6" HorizontalOptions="Center" /><Label Grid.Column="5" Text="T7" HorizontalOptions="Center" />
+                                <Label Grid.Column="6" Text="CN" HorizontalOptions="Center" />
+                            </Grid>
+                            <Grid x:Name="calendarGrid" ColumnDefinitions="*,*,*,*,*,*,*" RowSpacing="2" />
+                            <Label Text="●  Có ca làm" TextColor="#1E3A8A" FontSize="11" />
                         </VerticalStackLayout>
                     </Border>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,12">
+                        <Label Text="{Binding SelectionText}" FontFamily="SegoeUIBold" FontSize="17" TextColor="#0F172A" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="Xem tuần" Command="{Binding ShowWeekCommand}" SemanticProperties.Description="Xem ca cả tuần của ngày đã chọn" />
+                    </Grid>
+                    <Grid ColumnDefinitions="44,*,44" IsVisible="{Binding ShowWeek}" Margin="0,0,0,12">
+                        <Button Text="‹" FontSize="24" Padding="0" Command="{Binding PreviousWeekCommand}" SemanticProperties.Description="Tuần trước" />
+                        <Label Grid.Column="1" Text="{Binding PeriodText}" HorizontalOptions="Center" VerticalOptions="Center" FontFamily="SegoeUIBold" />
+                        <Button Grid.Column="2" Text="›" FontSize="24" Padding="0" Command="{Binding NextWeekCommand}" SemanticProperties.Description="Tuần sau" />
+                    </Grid>
 
+                    <Label IsVisible="{Binding EventLoadFailed}" Text="Không tải được lịch sự kiện. Kéo xuống để thử lại." TextColor="#B45309" Margin="0,0,0,12" />
                     <VerticalStackLayout x:Name="daysHost" Spacing="0" />
 
                     <Label IsVisible="{Binding IsEmpty}"
@@ -117,5 +120,14 @@
             <Button Text="Thử lại" Command="{Binding RefreshCommand}" BackgroundColor="#1E3A8A" TextColor="White" />
             <Button Text="Đăng nhập lại" IsVisible="{Binding RequiresLogin}" Command="{Binding LoginCommand}" />
         </VerticalStackLayout>
+        <Grid x:Name="detailOverlay" Grid.RowSpan="3" IsVisible="False" BackgroundColor="#990F172A" Padding="12,24" ZIndex="100">
+            <Border Stroke="#D4AF37" StrokeThickness="1" StrokeShape="RoundRectangle 22" BackgroundColor="White" Padding="20" VerticalOptions="Center">
+                <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="14">
+                    <Label x:Name="detailTitle" FontFamily="SegoeUIBold" FontSize="19" TextColor="#0F172A" />
+                    <ScrollView Grid.Row="1" MaximumHeightRequest="320"><VerticalStackLayout x:Name="detailContent" Spacing="10" /></ScrollView>
+                    <Button Grid.Row="2" Text="Đóng" Clicked="OnCloseDetailClicked" BackgroundColor="#1E3A8A" TextColor="White" />
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </ContentPage>
