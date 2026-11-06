@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Security;
 
@@ -189,12 +190,8 @@ public class ChucVuController : Controller
     {
         try
         {
-            var query = _context.ChucVus.AsNoTracking().AsQueryable();
-            if (departmentId is > 0)
-            {
-                // Trả về các chức vụ thuộc phòng ban được chọn hoặc chức danh dùng chung (MaPhongBan == null)
-                query = query.Where(x => x.MaPhongBan == departmentId.Value || x.MaPhongBan == null);
-            }
+            var department = await _context.PhongBans.AsNoTracking().FirstOrDefaultAsync(x => x.MaPhongBan == departmentId);
+            var query = _context.ChucVus.AsNoTracking().Where(OrganizationPositionPolicy.ForDepartment(department));
 
             var list = await query
                 .OrderBy(x => x.TenChucVu)
@@ -212,8 +209,10 @@ public class ChucVuController : Controller
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Không thể tải danh sách chức vụ theo phòng ban {DepartmentId}.", departmentId);
-            return Json(GetFallbackItems()
-                .Where(x => !departmentId.HasValue || x.MaPhongBan == departmentId || x.MaPhongBan == null)
+            var fallback = GetFallbackItems();
+            var department = fallback.Select(x => x.PhongBan).FirstOrDefault(x => x?.MaPhongBan == departmentId);
+            return Json(fallback
+                .Where(OrganizationPositionPolicy.ForDepartment(department).Compile())
                 .Select(x => new
                 {
                     maChucVu = x.MaChucVu,

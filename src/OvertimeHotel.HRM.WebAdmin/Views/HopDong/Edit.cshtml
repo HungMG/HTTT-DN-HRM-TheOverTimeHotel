@@ -44,7 +44,7 @@
             <h6 class="text-danger fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i>Khu vực nguy hiểm</h6>
             <p class="text-muted small mb-0">Xóa hợp đồng lao động sẽ loại bỏ dữ liệu pháp lý của nhân viên này khỏi hệ thống.</p>
         </div>
-        <form asp-action="Delete" asp-route-id="@Model.Contract.MaHopDong" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa vĩnh viễn hợp đồng @Model.Contract.SoHopDong?');">
+        <form asp-action="Delete" asp-route-id="@Model.Contract.MaHopDong" method="post" class="catalog-delete-form" data-catalog-name="@Model.Contract.SoHopDong">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-danger rounded-pill px-4 btn-sm fw-semibold">
                 <i class="bi bi-trash me-1"></i>Xóa hợp đồng này
@@ -54,23 +54,13 @@
 </div>
 
 @section Scripts {
+    <script src="~/js/contract-form.js" asp-append-version="true"></script>
     <partial name="_ValidationScriptsPartial" />
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
             if (hinhThucSelect) {
                 hinhThucSelect.addEventListener('change', onHinhThucHopDongChange);
-            }
-
-            const loaiHdSelect = document.getElementById('contractLoaiHopDong');
-            if (loaiHdSelect) {
-                loaiHdSelect.addEventListener('change', autoCalculateContractEndDate);
-            }
-
-            const startInput = document.getElementById('contractNgayBatDau');
-            if (startInput) {
-                startInput.addEventListener('change', autoCalculateContractEndDate);
-                startInput.addEventListener('input', autoCalculateContractEndDate);
             }
         });
 
@@ -111,34 +101,6 @@
             if (!hinhThucSelect || !soHopDongInput) return;
 
             generateRandomContractNumber(true);
-        }
-
-        // 2. Tự động tính ngày kết thúc
-        function autoCalculateContractEndDate() {
-            const startInput = document.getElementById('contractNgayBatDau');
-            const endInput = document.getElementById('contractNgayKetThuc');
-            const loaiHdSelect = document.getElementById('contractLoaiHopDong');
-            
-            if (!startInput || !endInput || !loaiHdSelect) return;
-            
-            const startDateVal = startInput.value;
-            if (!startDateVal) return;
-            
-            const loaiHd = loaiHdSelect.value;
-            const startDate = new Date(startDateVal);
-            if (isNaN(startDate.getTime())) return;
-            
-            if (loaiHd === 'XAC_DINH_THOI_HAN_1_NAM' || loaiHd.includes('1_NAM') || loaiHd.includes('1 năm')) {
-                const endDate = new Date(startDate);
-                endDate.setFullYear(endDate.getFullYear() + 1);
-                endInput.value = endDate.toISOString().split('T')[0];
-            } else if (loaiHd === 'XAC_DINH_THOI_HAN_3_NAM' || loaiHd.includes('3_NAM') || loaiHd.includes('3 năm')) {
-                const endDate = new Date(startDate);
-                endDate.setFullYear(endDate.getFullYear() + 3);
-                endInput.value = endDate.toISOString().split('T')[0];
-            } else if (loaiHd === 'KHONG_XAC_DINH_THOI_HAN' || loaiHd.includes('KHONG_XAC_DINH') || loaiHd.includes('không')) {
-                endInput.value = '';
-            }
         }
 
         function printContractDocument() {
@@ -226,10 +188,10 @@
 
     <p>Hai bên tự nguyện thỏa thuận ký kết hợp đồng lao động với các điều khoản cụ thể sau đây:</p>
     
-    <div class="section-title">ĐIỀU 1: THỜI HẠN & HÌNH THỨC HỢP ĐỒNG</div>
+    <div class="section-title">ĐIỀU 1: THỜI HẠN & GIAI ĐOẠN HỢP ĐỒNG</div>
     <table class="info-table">
         <tr><td style="width: 220px;">- Thời hạn hợp đồng:</td><td><strong>${loaiHd}</strong></td></tr>
-        <tr><td>- Hình thức hợp đồng:</td><td><strong>${hinhThuc}</strong></td></tr>
+        <tr><td>- Giai đoạn hợp đồng:</td><td><strong>${hinhThuc}</strong></td></tr>
         <tr><td>- Ngày bắt đầu có hiệu lực:</td><td>${ngayBatDau}</td></tr>
         <tr><td>- Ngày kết thúc hợp đồng:</td><td>${ngayKetThuc}</td></tr>
     </table>

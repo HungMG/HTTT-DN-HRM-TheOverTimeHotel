@@ -296,6 +296,7 @@
       '.table-responsive, table, .catalog-table-container, form:not(.account-toggle-form), .nav-pills, .account-catalog-stage, .account-table-shell'
     );
     tables.forEach(function (tbl, idx) {
+      if (tbl.closest('.modal')) return;
       tbl.classList.add('pp-table-anim');
       const delay = 0.12 + Math.min(idx * 0.06, 0.35);
       tbl.style.animationDelay = delay.toFixed(2) + 's';

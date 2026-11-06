@@ -15,6 +15,7 @@
 
 <div class="catalog-page">
     <partial name="_CatalogAlerts" />
+    <div class="alert d-none" role="status" data-contract-notice tabindex="-1"></div>
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">
@@ -22,7 +23,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-file-earmark-check-fill" aria-hidden="true"></i></div>
                 <div>
                     <span class="catalog-kpi-label">Đang hiệu lực</span>
-                    <h3 class="catalog-kpi-value"><span>@Model.ActiveContracts</span> <small>hợp đồng</small></h3>
+                    <h3 class="catalog-kpi-value"><span data-contract-kpi="active">@Model.ActiveContracts</span> <small>hợp đồng</small></h3>
                     <p class="catalog-kpi-desc">Đã bắt đầu, còn trên 30 ngày hoặc vô thời hạn</p>
                 </div>
             </div>
@@ -32,7 +33,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-hourglass-split" aria-hidden="true"></i></div>
                 <div>
                     <span class="catalog-kpi-label">Sắp hết hạn</span>
-                    <h3 class="catalog-kpi-value"><span>@Model.ExpiringContracts</span> <small>hợp đồng</small></h3>
+                    <h3 class="catalog-kpi-value"><span data-contract-kpi="expiring">@Model.ExpiringContracts</span> <small>hợp đồng</small></h3>
                     <p class="catalog-kpi-desc">Đã bắt đầu, còn từ 0 đến 30 ngày</p>
                 </div>
             </div>
@@ -42,7 +43,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-file-earmark-x-fill" aria-hidden="true"></i></div>
                 <div>
                     <span class="catalog-kpi-label">Đã hết hạn</span>
-                    <h3 class="catalog-kpi-value"><span>@Model.ExpiredContracts</span> <small>hợp đồng</small></h3>
+                    <h3 class="catalog-kpi-value"><span data-contract-kpi="expired">@Model.ExpiredContracts</span> <small>hợp đồng</small></h3>
                     <p class="catalog-kpi-desc">Đã qua ngày kết thúc, chưa chấm dứt</p>
                 </div>
             </div>
@@ -146,7 +147,11 @@
 </div>
 
 
+<partial name="_ContractActionModals" />
+
 @section Scripts {
+    <script src="~/js/contract-form.js" asp-append-version="true"></script>
+<script src="~/js/contracts.js" asp-append-version="true"></script>
 <script>
     // =========================================================================
     // XEM CHI TIẾT HỢP ĐỒNG (MODAL AJAX) & IN MẪU HỢP ĐỒNG A4
@@ -250,23 +255,23 @@
         const fetchUrl = new URL(url.toString());
         fetchUrl.searchParams.set('isPartial', 'true');
 
-        fetch(fetchUrl.toString(), {
+        return fetch(fetchUrl.toString(), {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'text/html'
             }
         })
         .then(res => {
+            if (res.redirected) throw new Error('Phiên đăng nhập đã thay đổi. Vui lòng tải lại trang.');
             if (!res.ok) throw new Error('Lỗi cập nhật danh sách hợp đồng (Mã lỗi ' + res.status + ')');
             return res.text();
         })
         .then(html => {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = html;
-            const newContainer = tempDiv.querySelector('#contractTableContainer') || tempDiv.firstElementChild;
-            if (newContainer && container) {
-                container.outerHTML = newContainer.outerHTML;
-            }
+            const newContainer = tempDiv.querySelector('#contractTableContainer');
+            if (!newContainer) throw new Error('Không nhận được danh sách hợp đồng.');
+            container.outerHTML = newContainer.outerHTML;
 
             if (shouldPushState) {
                 window.history.pushState({ path: url.toString() }, '', url.toString());
@@ -277,11 +282,15 @@
             if (toolbarCount && newBadge) {
                 toolbarCount.innerHTML = newBadge.innerHTML;
             }
+            document.querySelectorAll("[data-contract-kpi]").forEach(item => {
+                item.textContent = newContainer.dataset[item.dataset.contractKpi];
+            });
 
             if (window.HotelMotion && window.HotelMotion.applyEntrance) {
                 const updatedContainer = document.getElementById('contractTableContainer');
                 if (updatedContainer) window.HotelMotion.applyEntrance(updatedContainer);
             }
+            return true;
         })
         .catch(err => {
             console.error('Lỗi nạp bảng hợp đồng:', err);
@@ -290,6 +299,7 @@
                 currentContainer.style.opacity = '1';
                 currentContainer.style.pointerEvents = 'auto';
             }
+            return false;
         });
     }
 
@@ -403,18 +413,6 @@
             hinhThucSelect.addEventListener('change', onHinhThucHopDongChange);
         }
 
-        // Lắng nghe thay đổi Loại hợp đồng hoặc Ngày bắt đầu -> Tự động tính Ngày kết thúc
-        const loaiHdSelect = document.getElementById('contractLoaiHopDong');
-        if (loaiHdSelect) {
-            loaiHdSelect.addEventListener('change', autoCalculateContractEndDate);
-        }
-
-        const startInput = document.getElementById('contractNgayBatDau');
-        if (startInput) {
-            startInput.addEventListener('change', autoCalculateContractEndDate);
-            startInput.addEventListener('input', autoCalculateContractEndDate);
-        }
-
         // Tự động kiểm tra và tính ngày kết thúc lần đầu
         autoCalculateContractEndDate();
     }
@@ -465,30 +463,7 @@
     // 2. TỰ ĐỘNG TÍNH NGÀY KẾT THÚC DỰA VÀO LOẠI HỢP ĐỒNG & NGÀY BẮT ĐẦU
     // =========================================================================
     function autoCalculateContractEndDate() {
-        const startInput = document.getElementById('contractNgayBatDau');
-        const endInput = document.getElementById('contractNgayKetThuc');
-        const loaiHdSelect = document.getElementById('contractLoaiHopDong');
-        
-        if (!startInput || !endInput || !loaiHdSelect) return;
-        
-        const startDateVal = startInput.value;
-        if (!startDateVal) return;
-        
-        const loaiHd = loaiHdSelect.value;
-        const startDate = new Date(startDateVal);
-        if (isNaN(startDate.getTime())) return;
-        
-        if (loaiHd === 'XAC_DINH_THOI_HAN_1_NAM' || loaiHd.includes('1_NAM') || loaiHd.includes('1 năm')) {
-            const endDate = new Date(startDate);
-            endDate.setFullYear(endDate.getFullYear() + 1);
-            endInput.value = endDate.toISOString().split('T')[0];
-        } else if (loaiHd === 'XAC_DINH_THOI_HAN_3_NAM' || loaiHd.includes('3_NAM') || loaiHd.includes('3 năm')) {
-            const endDate = new Date(startDate);
-            endDate.setFullYear(endDate.getFullYear() + 3);
-            endInput.value = endDate.toISOString().split('T')[0];
-        } else if (loaiHd === 'KHONG_XAC_DINH_THOI_HAN' || loaiHd.includes('KHONG_XAC_DINH') || loaiHd.includes('không')) {
-            endInput.value = '';
-        }
+        window.ContractForm.calculate(document.getElementById('contractNgayBatDau')?.form);
     }
 
     // =========================================================================
@@ -658,39 +633,40 @@
     // =========================================================================
     // IN HỢP ĐỒNG LAO ĐỘNG (CHUẨN FORM A4 PHÁP LÝ THE OVERTIME HOTEL)
     // =========================================================================
-    function printContractDocument() {
-        const soHopDong = (document.getElementById('contractSoHopDong')?.value || 'HDLD-2026/MAU').trim();
-        const employeeInput = document.getElementById('contractEmployeeInput');
-        const selectedEmployee = Array.from(document.querySelectorAll('#employeeDatalist option')).find(option => option.value === employeeInput?.value);
-        const hoTen = (document.getElementById('renewEmployeeNameDisplay')?.value || selectedEmployee?.dataset.name ||
-                       document.getElementById('contractEmployeeInput')?.value || 
+    function printContractDocument(root = document) {
+        const field = id => root === document ? document.getElementById(id) : root.querySelector('[id="edit_' + id + '"]');
+        const soHopDong = (field('contractSoHopDong')?.value || 'HDLD-2026/MAU').trim();
+        const employeeInput = field('contractEmployeeInput');
+        const selectedEmployee = Array.from(root.querySelectorAll('#employeeDatalist option')).find(option => option.value === employeeInput?.value);
+        const hoTen = (field('renewEmployeeNameDisplay')?.value || selectedEmployee?.dataset.name ||
+                       field('contractEmployeeInput')?.value ||
                        '..................................................').trim();
-        const deptSelect = document.getElementById('contractDepartmentSelect');
-        const phongBan = (document.getElementById('renewDepartmentDisplay')?.value || 
-                          document.getElementById('contractDepartmentDisplay')?.value || 
-                          (deptSelect && deptSelect.selectedIndex > 0 ? deptSelect.options[deptSelect.selectedIndex].text : '') || 
+        const deptSelect = field('contractDepartmentSelect');
+        const phongBan = (field('renewDepartmentDisplay')?.value ||
+                          field('contractDepartmentDisplay')?.value ||
+                          (deptSelect && deptSelect.selectedIndex > 0 ? deptSelect.options[deptSelect.selectedIndex].text : '') ||
                           'Khách sạn The OverTime').trim();
-        
-        const posSelect = document.getElementById('contractPositionSelect');
-        const chucVu = (document.getElementById('renewPositionDisplay')?.value || 
-                        document.getElementById('contractPositionDisplay')?.value ||
-                        (posSelect && posSelect.selectedIndex > 0 ? posSelect.options[posSelect.selectedIndex].text : '') || 
+
+        const posSelect = field('contractPositionSelect');
+        const chucVu = (field('renewPositionDisplay')?.value ||
+                        field('contractPositionDisplay')?.value ||
+                        (posSelect && posSelect.selectedIndex > 0 ? posSelect.options[posSelect.selectedIndex].text : '') ||
                         'Nhân viên').trim();
 
-        const loaiHdSelect = document.getElementById('contractLoaiHopDong');
+        const loaiHdSelect = field('contractLoaiHopDong');
         const loaiHd = loaiHdSelect ? loaiHdSelect.options[loaiHdSelect.selectedIndex].text : 'Hợp đồng lao động';
-        
-        const hinhThucSelect = document.getElementById('contractHinhThucHopDong');
+
+        const hinhThucSelect = field('contractHinhThucHopDong');
         const hinhThuc = hinhThucSelect ? hinhThucSelect.options[hinhThucSelect.selectedIndex].text : 'Chính thức';
-        
-        const ngayBatDauRaw = document.getElementById('contractNgayBatDau')?.value;
-        const ngayKetThucRaw = document.getElementById('contractNgayKetThuc')?.value;
+
+        const ngayBatDauRaw = field('contractNgayBatDau')?.value;
+        const ngayKetThucRaw = field('contractNgayKetThuc')?.value;
         const ngayBatDau = ngayBatDauRaw ? new Date(ngayBatDauRaw).toLocaleDateString('vi-VN') : '..../..../2026';
         const ngayKetThuc = ngayKetThucRaw ? new Date(ngayKetThucRaw).toLocaleDateString('vi-VN') : 'Không xác định thời hạn';
-        
-        const luongRaw = document.getElementById('contractLuongCoBan')?.value;
+
+        const luongRaw = field('contractLuongCoBan')?.value;
         const luong = luongRaw && Number(luongRaw) > 0 ? Number(luongRaw).toLocaleString('vi-VN') + ' VNĐ/tháng' : '...................... VNĐ/tháng';
-        const email = (document.getElementById('contractPersonalEmailInput')?.value || '').trim();
+        const email = (field('contractPersonalEmailInput')?.value || '').trim();
 
         const printWin = window.open('', '_blank', 'width=860,height=960');
         if (!printWin) {
@@ -758,10 +734,10 @@
 
     <p>Hai bên tự nguyện thỏa thuận ký kết hợp đồng lao động với các điều khoản cụ thể sau đây:</p>
     
-    <div class="section-title">ĐIỀU 1: THỜI HẠN & HÌNH THỨC HỢP ĐỒNG</div>
+    <div class="section-title">ĐIỀU 1: THỜI HẠN & GIAI ĐOẠN HỢP ĐỒNG</div>
     <table class="info-table">
         <tr><td style="width: 220px;">- Thời hạn hợp đồng:</td><td><strong>${loaiHd}</strong></td></tr>
-        <tr><td>- Hình thức hợp đồng:</td><td><strong>${hinhThuc}</strong></td></tr>
+        <tr><td>- Giai đoạn hợp đồng:</td><td><strong>${hinhThuc}</strong></td></tr>
         <tr><td>- Ngày bắt đầu có hiệu lực:</td><td>${ngayBatDau}</td></tr>
         <tr><td>- Ngày kết thúc hợp đồng:</td><td>${ngayKetThuc}</td></tr>
     </table>

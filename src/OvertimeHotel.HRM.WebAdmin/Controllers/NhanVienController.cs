@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Constants;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
@@ -122,7 +123,7 @@ public class NhanVienController : Controller
 
             var deptOptions = depts.Select(item => new SelectListItem(item.TenPhongBan, item.MaPhongBan.ToString(), item.MaPhongBan == departmentId)).ToList();
             var posOptions = departmentId is > 0
-                ? poss.Where(x => x.MaPhongBan == departmentId.Value || x.MaPhongBan == null)
+                ? poss.Where(OrganizationPositionPolicy.ForDepartment(depts.FirstOrDefault(d => d.MaPhongBan == departmentId)).Compile())
                       .Select(item => new SelectListItem(item.TenChucVu, item.MaChucVu.ToString(), item.MaChucVu == positionId))
                       .ToList()
                 : new List<SelectListItem>();
@@ -368,11 +369,8 @@ public class NhanVienController : Controller
     {
         model.DepartmentOptions = await _context.PhongBans.AsNoTracking().OrderBy(item => item.TenPhongBan).Select(item => new SelectListItem(item.TenPhongBan, item.MaPhongBan.ToString(), item.MaPhongBan == model.Employee.MaPhongBan)).ToListAsync();
 
-        var cvQuery = _context.ChucVus.AsNoTracking().AsQueryable();
-        if (model.Employee.MaPhongBan > 0)
-        {
-            cvQuery = cvQuery.Where(item => item.MaPhongBan == model.Employee.MaPhongBan || item.MaPhongBan == null);
-        }
+        var department = await _context.PhongBans.AsNoTracking().FirstOrDefaultAsync(x => x.MaPhongBan == model.Employee.MaPhongBan);
+        var cvQuery = _context.ChucVus.AsNoTracking().Where(OrganizationPositionPolicy.ForDepartment(department));
 
         model.PositionOptions = await cvQuery.OrderBy(item => item.TenChucVu).Select(item => new SelectListItem(item.TenChucVu, item.MaChucVu.ToString(), item.MaChucVu == model.Employee.MaChucVu)).ToListAsync();
         return model;
@@ -399,19 +397,10 @@ public class NhanVienController : Controller
         }
         if (string.IsNullOrWhiteSpace(model.Ho)) ModelState.AddModelError("Employee.Ho", "Vui lòng nhập họ.");
         if (string.IsNullOrWhiteSpace(model.Ten)) ModelState.AddModelError("Employee.Ten", "Vui lòng nhập tên.");
-        if (model.MaPhongBan <= 0 || !await _context.PhongBans.AnyAsync(item => item.MaPhongBan == model.MaPhongBan)) ModelState.AddModelError("Employee.MaPhongBan", "Vui lòng chọn phòng ban hợp lệ.");
-        if (model.MaChucVu <= 0 || !await _context.ChucVus.AnyAsync(item => item.MaChucVu == model.MaChucVu))
-        {
-            ModelState.AddModelError("Employee.MaChucVu", "Vui lòng chọn chức vụ hợp lệ.");
-        }
-        else if (model.MaPhongBan > 0)
-        {
-            var cv = await _context.ChucVus.AsNoTracking().FirstOrDefaultAsync(item => item.MaChucVu == model.MaChucVu);
-            if (cv != null && cv.MaPhongBan.HasValue && cv.MaPhongBan.Value != model.MaPhongBan)
-            {
-                ModelState.AddModelError("Employee.MaChucVu", "Chức vụ này không thuộc phòng ban đã chọn.");
-            }
-        }
+        var department = await _context.PhongBans.AsNoTracking().FirstOrDefaultAsync(item => item.MaPhongBan == model.MaPhongBan);
+        if (department == null) ModelState.AddModelError("Employee.MaPhongBan", "Vui lòng chọn phòng ban hợp lệ.");
+        if (!await _context.ChucVus.Where(OrganizationPositionPolicy.ForDepartment(department)).AnyAsync(item => item.MaChucVu == model.MaChucVu))
+            ModelState.AddModelError("Employee.MaChucVu", "Vui lòng chọn chức vụ thuộc phòng ban đã chọn.");
         if (!model.NgaySinh.HasValue || model.NgaySinh == DateOnly.MinValue)
             ModelState.AddModelError("Employee.NgaySinh", "Vui lòng nhập ngày sinh.");
         else if (model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today))

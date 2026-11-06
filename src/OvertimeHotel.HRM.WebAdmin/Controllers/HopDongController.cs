@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
@@ -52,9 +53,6 @@ public class HopDongController : Controller
                 .ToListAsync());
             var allDepartments = await this.SearchDataAsync("contracts:departments", () => _context.PhongBans.AsNoTracking()
                 .OrderBy(p => p.TenPhongBan)
-                .ToListAsync());
-            var allPositions = await this.SearchDataAsync("contracts:positions", () => _context.ChucVus.AsNoTracking()
-                .OrderBy(cv => cv.TenChucVu)
                 .ToListAsync());
 
             // Lọc trên bộ nhớ máy chủ (0ms)
@@ -122,7 +120,7 @@ public class HopDongController : Controller
 
             var employeeOptions = allEmployees.Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien:D3}", item.MaNhanVien.ToString())).ToList();
             var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
-            var positionOptions = allPositions.Select(cv => new SelectListItem(cv.TenChucVu + (cv.MaPhongBan == null ? " (Chung)" : ""), cv.MaChucVu.ToString())).ToList();
+            var positionOptions = new List<SelectListItem>();
 
             ViewBag.EmployeeOptions = employeeOptions;
             ViewBag.DepartmentOptions = departmentOptions;
@@ -271,33 +269,16 @@ public class HopDongController : Controller
             model.Contract.SoHopDong = await GenerateUniqueContractNumberAsync(model.Contract.HinhThucHopDong);
         }
 
-        // Tự động tính ngày kết thúc nếu để trống theo loại hợp đồng
-        if (!model.Contract.NgayKetThuc.HasValue)
-        {
-            // So khớp qua ContractTypes thay vì so tuyệt đối với hai mã: dữ liệu
-            // cũ còn câu tiếng Việt ("HĐLĐ Xác định thời hạn (3 năm)"), so tuyệt
-            // đối thì rơi vào cả hai nhánh đều trượt và hợp đồng ra đời không có
-            // ngày kết thúc — tức bị đọc thành vô thời hạn.
-            switch (ContractTypes.Normalize(model.Contract.LoaiHopDong))
-            {
-                case ContractTypes.XAC_DINH_THOI_HAN_1_NAM:
-                    model.Contract.NgayKetThuc = model.Contract.NgayBatDau.AddYears(1);
-                    break;
-                case ContractTypes.XAC_DINH_THOI_HAN_3_NAM:
-                    model.Contract.NgayKetThuc = model.Contract.NgayBatDau.AddYears(3);
-                    break;
-            }
-        }
-
-        // Đảm bảo trạng thái hợp đồng mới tạo luôn là HIEU_LUC nếu chưa quá hạn kết thúc
+        // Lập mới chỉ tạo hợp đồng đã ký. Hết hạn được suy ra từ ngày;
+        // chấm dứt/thanh lý được xử lý sau khi hợp đồng đã tồn tại.
         var today = DateOnly.FromDateTime(DateTime.Today);
-        if (string.IsNullOrWhiteSpace(model.Contract.TrangThai) ||
-            (model.Contract.TrangThai == "HET_HAN" && (!model.Contract.NgayKetThuc.HasValue || model.Contract.NgayKetThuc.Value >= today)))
-        {
+        if (string.IsNullOrWhiteSpace(model.Contract.TrangThai))
             model.Contract.TrangThai = "HIEU_LUC";
-        }
-
+        if (model.Contract.TrangThai != "HIEU_LUC")
+            ModelState.AddModelError("Contract.TrangThai", "Hợp đồng mới không được ở trạng thái hết hạn, thanh lý hoặc chấm dứt.");
         await ValidateContractAsync(model.Contract);
+        if (model.Contract.NgayKetThuc < today)
+            ModelState.AddModelError("Contract.NgayKetThuc", "Hợp đồng mới không được có ngày kết thúc trong quá khứ.");
 
         if (!ModelState.IsValid)
         {
@@ -364,17 +345,14 @@ public class HopDongController : Controller
         var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString(), d.MaPhongBan == empDeptId)).ToList();
         ViewBag.DepartmentOptions = departmentOptions;
 
-        var cvQuery = _context.ChucVus.AsNoTracking().AsQueryable();
-        if (empDeptId.HasValue && empDeptId.Value > 0)
-        {
-            cvQuery = cvQuery.Where(x => x.MaPhongBan == empDeptId.Value || x.MaPhongBan == null);
-        }
+        var cvQuery = _context.ChucVus.AsNoTracking()
+            .Where(OrganizationPositionPolicy.ForDepartment(allDepartments.FirstOrDefault(d => d.MaPhongBan == empDeptId)));
         var positionOptions = await cvQuery.OrderBy(x => x.TenChucVu)
             .Select(x => new SelectListItem(x.TenChucVu + (x.MaPhongBan == null ? " (Chung)" : ""), x.MaChucVu.ToString(), x.MaChucVu == empPosId))
             .ToListAsync();
         ViewBag.PositionOptions = positionOptions;
 
-        return View(new HopDongFormViewModel
+        return EditFormResult(new HopDongFormViewModel
         {
             EmployeeId = contract.MaNhanVien,
             EmployeeName = contract.NhanVien?.HoTen ?? "Nhân viên",
@@ -444,10 +422,10 @@ public class HopDongController : Controller
         {
             var allDepts = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
             ViewBag.DepartmentOptions = allDepts.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
-            var cvQuery = _context.ChucVus.AsNoTracking().AsQueryable();
-            if (model.DepartmentId > 0) cvQuery = cvQuery.Where(x => x.MaPhongBan == model.DepartmentId || x.MaPhongBan == null);
+            var cvQuery = _context.ChucVus.AsNoTracking()
+                .Where(OrganizationPositionPolicy.ForDepartment(allDepts.FirstOrDefault(d => d.MaPhongBan == model.DepartmentId)));
             ViewBag.PositionOptions = await cvQuery.OrderBy(x => x.TenChucVu).Select(x => new SelectListItem(x.TenChucVu, x.MaChucVu.ToString())).ToListAsync();
-            return View(model);
+            return EditFormResult(model, invalid: true);
         }
 
         var contract = await _context.HopDongs.FindAsync(id);
@@ -476,7 +454,10 @@ public class HopDongController : Controller
                     emailNotice = $" (Đã gửi thông báo tới email cá nhân: {finalEmail})";
                 }
             }
-            TempData["Success"] = $"Đã cập nhật hợp đồng “{contract.SoHopDong}”.{emailNotice}";
+            var message = $"Đã cập nhật hợp đồng “{contract.SoHopDong}”.{emailNotice}";
+            if (Request.Headers.XRequestedWith == "XMLHttpRequest")
+                return Json(new { success = true, message });
+            TempData["Success"] = message;
             return RedirectToAction(nameof(Index));
         }
         catch (DbUpdateException ex)
@@ -485,11 +466,19 @@ public class HopDongController : Controller
             ModelState.AddModelError(string.Empty, "Không thể cập nhật hợp đồng. Vui lòng kiểm tra dữ liệu.");
             var allDepts = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
             ViewBag.DepartmentOptions = allDepts.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
-            var cvQuery = _context.ChucVus.AsNoTracking().AsQueryable();
-            if (model.DepartmentId > 0) cvQuery = cvQuery.Where(x => x.MaPhongBan == model.DepartmentId || x.MaPhongBan == null);
+            var cvQuery = _context.ChucVus.AsNoTracking()
+                .Where(OrganizationPositionPolicy.ForDepartment(allDepts.FirstOrDefault(d => d.MaPhongBan == model.DepartmentId)));
             ViewBag.PositionOptions = await cvQuery.OrderBy(x => x.TenChucVu).Select(x => new SelectListItem(x.TenChucVu, x.MaChucVu.ToString())).ToListAsync();
-            return View(model);
+            return EditFormResult(model, invalid: true);
         }
+    }
+
+    private IActionResult EditFormResult(HopDongFormViewModel model, bool invalid = false)
+    {
+        if (Request.Headers.XRequestedWith != "XMLHttpRequest") return View("Edit", model);
+        ViewData["IsContractModal"] = true;
+        if (invalid) Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+        return PartialView("_EditContractModalContent", model);
     }
 
     [HttpPost]
@@ -501,8 +490,23 @@ public class HopDongController : Controller
             return NotFound();
 
         _context.HopDongs.Remove(contract);
-        await _context.SaveChangesAsync();
-        TempData["Success"] = $"Đã xóa hợp đồng “{contract.SoHopDong}”.";
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Không thể xóa hợp đồng {ContractId}.", id);
+            const string error = "Không thể xóa hợp đồng do có dữ liệu liên quan. Vui lòng kiểm tra lại.";
+            if (Request.Headers.XRequestedWith == "XMLHttpRequest")
+                return Conflict(new { success = false, message = error });
+            TempData["Error"] = error;
+            return RedirectToAction(nameof(Index));
+        }
+        var message = $"Đã xóa hợp đồng “{contract.SoHopDong}”.";
+        if (Request.Headers.XRequestedWith == "XMLHttpRequest")
+            return Json(new { success = true, message });
+        TempData["Success"] = message;
         return RedirectToAction(nameof(Index));
     }
 
@@ -613,7 +617,38 @@ public class HopDongController : Controller
             model.SoHopDong = model.SoHopDong.Trim().ToUpper();
         }
 
-        if (string.IsNullOrWhiteSpace(model.LoaiHopDong)) ModelState.AddModelError("Contract.LoaiHopDong", "Vui lòng nhập loại hợp đồng.");
+        var duration = ContractTypes.Normalize(model.LoaiHopDong);
+        if (model.HinhThucHopDong is not ("CHINH_THUC" or "THU_VIEC"))
+            ModelState.AddModelError("Contract.HinhThucHopDong", "Vui lòng chọn giai đoạn hợp đồng hợp lệ.");
+        if (model.HinhThucHopDong == "THU_VIEC")
+        {
+            if (duration != ContractTypes.THU_VIEC)
+                ModelState.AddModelError("Contract.LoaiHopDong", "Thử việc phải dùng thời hạn theo ngày bắt đầu và ngày kết thúc.");
+            if (!model.NgayKetThuc.HasValue)
+                ModelState.AddModelError("Contract.NgayKetThuc", "Vui lòng nhập ngày kết thúc thử việc.");
+        }
+        else if (duration is null or ContractTypes.THU_VIEC)
+            ModelState.AddModelError("Contract.LoaiHopDong", "Vui lòng chọn thời hạn hợp đồng chính thức: 1 năm, 3 năm hoặc không xác định thời hạn.");
+        if (duration != null) model.LoaiHopDong = duration;
+        if (model.NgayBatDau == default)
+            ModelState.AddModelError("Contract.NgayBatDau", "Vui lòng nhập ngày bắt đầu hợp đồng.");
+        if (model.HinhThucHopDong == "CHINH_THUC" && !model.NgayKetThuc.HasValue && model.NgayBatDau != default)
+        {
+            var years = duration switch
+            {
+                ContractTypes.XAC_DINH_THOI_HAN_1_NAM => 1,
+                ContractTypes.XAC_DINH_THOI_HAN_3_NAM => 3,
+                _ => 0
+            };
+            if (years > 0)
+            {
+                try { model.NgayKetThuc = model.NgayBatDau.AddYears(years); }
+                catch (ArgumentOutOfRangeException)
+                {
+                    ModelState.AddModelError("Contract.NgayBatDau", "Ngày bắt đầu không phù hợp với thời hạn hợp đồng đã chọn.");
+                }
+            }
+        }
         if (model.NgayKetThuc.HasValue && model.NgayKetThuc < model.NgayBatDau) ModelState.AddModelError("Contract.NgayKetThuc", "Ngày kết thúc phải sau ngày bắt đầu.");
         if (model.LuongCoBan < 0) ModelState.AddModelError("Contract.LuongCoBan", "Lương cơ bản không được âm.");
         if (await _context.HopDongs.AnyAsync(item => item.MaHopDong != currentId && item.SoHopDong.ToLower() == model.SoHopDong.ToLower()))
@@ -714,9 +749,10 @@ public class HopDongController : Controller
 
     private async Task ValidateOrganizationAsync(HopDongFormViewModel model)
     {
-        if (!model.DepartmentId.HasValue || !await _context.PhongBans.AnyAsync(x => x.MaPhongBan == model.DepartmentId))
+        var department = await _context.PhongBans.AsNoTracking().FirstOrDefaultAsync(x => x.MaPhongBan == model.DepartmentId);
+        if (department == null)
             ModelState.AddModelError("DepartmentId", "Vui lòng chọn phòng ban hợp lệ.");
-        if (!model.PositionId.HasValue || !await _context.ChucVus.AnyAsync(x => x.MaChucVu == model.PositionId && (x.MaPhongBan == null || x.MaPhongBan == model.DepartmentId)))
+        if (!model.PositionId.HasValue || !await _context.ChucVus.Where(OrganizationPositionPolicy.ForDepartment(department)).AnyAsync(x => x.MaChucVu == model.PositionId))
             ModelState.AddModelError("PositionId", "Vui lòng chọn chức vụ thuộc phòng ban đã chọn.");
         if (!string.IsNullOrWhiteSpace(model.PersonalEmail) && !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.PersonalEmail))
             ModelState.AddModelError("PersonalEmail", "Email cá nhân không đúng định dạng.");

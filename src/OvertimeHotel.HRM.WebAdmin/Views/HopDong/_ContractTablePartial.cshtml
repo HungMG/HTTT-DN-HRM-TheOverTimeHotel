@@ -15,7 +15,8 @@
     var lastPage = Math.Min(Model.TotalPages, Model.PageNumber + 2);
 }
 
-<div data-catalog-results id="contractTableContainer" class="contract-table-container">
+<div data-catalog-results id="contractTableContainer" class="contract-table-container"
+     data-active="@Model.ActiveContracts" data-expiring="@Model.ExpiringContracts" data-expired="@Model.ExpiredContracts">
     <!-- HIDDEN BADGE VALUE ĐỂ CATALOG.JS TỰ ĐỒNG BỘ SỐ LƯỢNG TRÊN TOOLBAR -->
     <span class="d-none" data-catalog-count>
         <i class="bi bi-file-earmark-text-fill me-1"></i> @Model.TotalFilteredContracts hợp đồng
@@ -166,14 +167,12 @@
                             <a href="javascript:void(0)" onclick="printContractA4(@contract.MaHopDong); event.stopPropagation();" class="btn btn-sm btn-light border rounded-circle me-1 text-primary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="In mẫu hợp đồng A4">
                                 <i class="bi bi-printer"></i>
                             </a>
-                            <a asp-action="Edit" asp-route-id="@contract.MaHopDong" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hợp đồng">
+                            <button type="button" data-contract-edit-url="@Url.Content($"~/HopDong/Edit/{contract.MaHopDong}")" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hợp đồng" aria-label="Chỉnh sửa hợp đồng @contract.SoHopDong">
                                 <i class="bi bi-pencil"></i>
-                            </a>
-                            <form asp-action="Delete" asp-route-id="@contract.MaHopDong" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hợp đồng @contract.SoHopDong?');">
-                                <button type="submit" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Xóa hợp đồng">
+                            </button>
+                                <button type="button" data-contract-delete-url="@Url.Content($"~/HopDong/Delete/{contract.MaHopDong}")" data-contract-number="@contract.SoHopDong" data-contract-employee="@item.EmployeeName" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Xóa hợp đồng" aria-label="Xóa hợp đồng @contract.SoHopDong">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                            </form>
                         </td>
                     </tr>
                 }

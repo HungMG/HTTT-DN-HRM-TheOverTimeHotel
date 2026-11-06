@@ -113,11 +113,13 @@
                     <strong class="font-monospace text-primary">@contract.SoHopDong</strong>
                 </div>
                 <div class="contract-prop-row">
-                    <span class="text-muted small">Loại hợp đồng:</span>
-                    <span class="badge bg-light text-dark border">@ContractTypes.ToDisplayName(contract.LoaiHopDong)</span>
+                    <span class="text-muted small">Thời hạn hợp đồng:</span>
+                    <span class="badge bg-light text-dark border">@(contract.HinhThucHopDong == "THU_VIEC"
+                        ? $"{contract.NgayBatDau:dd/MM/yyyy} – {contract.NgayKetThuc:dd/MM/yyyy}"
+                        : ContractTypes.ToDisplayName(contract.LoaiHopDong))</span>
                 </div>
                 <div class="contract-prop-row">
-                    <span class="text-muted small">Hình thức hợp đồng:</span>
+                    <span class="text-muted small">Giai đoạn hợp đồng:</span>
                     @if (contract.HinhThucHopDong == "THU_VIEC")
                     {
                         <span class="badge bg-warning-subtle text-warning-emphasis border">Thử việc</span>

@@ -1,0 +1,36 @@
+<div class="modal fade" id="editContractModal" tabindex="-1" aria-labelledby="editContractModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" id="editContractModalContent"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteContractModal" tabindex="-1" aria-labelledby="deleteContractModalLabel" aria-describedby="deleteContractDescription" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 px-4 pt-4 pb-2">
+                <h2 class="modal-title h5 font-serif" id="deleteContractModalLabel">Xóa hợp đồng?</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <form method="post" data-contract-delete-form>
+                @Html.AntiForgeryToken()
+                <div class="modal-body px-4 pt-2 pb-4">
+                    <p class="text-secondary" id="deleteContractDescription">Hợp đồng sẽ bị xóa khỏi hệ thống. Thao tác này không thể hoàn tác.</p>
+                    <div class="bg-light border rounded-3 p-3 d-flex align-items-start gap-3">
+                        <i class="bi bi-file-earmark-x fs-4 text-danger" aria-hidden="true"></i>
+                        <div class="overflow-hidden">
+                            <strong class="d-block text-break" data-contract-delete-number></strong>
+                            <span class="small text-secondary text-break" data-contract-delete-employee></span>
+                        </div>
+                    </div>
+                    <div class="alert alert-danger mt-3 mb-0 d-none" role="alert" data-contract-form-error></div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-semibold">
+                        <i class="bi bi-trash me-1" aria-hidden="true"></i>Xóa hợp đồng
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

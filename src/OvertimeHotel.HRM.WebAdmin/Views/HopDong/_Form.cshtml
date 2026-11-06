@@ -1,6 +1,9 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.HopDongFormViewModel
 @{
     var isEditMode = Model.Contract.MaHopDong > 0;
+    var isModal = ViewData["IsContractModal"] is true;
+    var formIdPrefix = isModal ? "edit_" : "";
+    var isProbation = Model.Contract.HinhThucHopDong == "THU_VIEC";
     var employeeList = (ViewBag.EmployeeList as IEnumerable<HopDongEmployeeOptionItem>) ?? Model.EmployeeList ?? Enumerable.Empty<HopDongEmployeeOptionItem>();
     var departmentOptions = ViewBag.DepartmentOptions as IEnumerable<SelectListItem> ?? Enumerable.Empty<SelectListItem>();
     var positionOptions = ViewBag.PositionOptions as IEnumerable<SelectListItem> ?? Model.PositionOptions ?? Enumerable.Empty<SelectListItem>();
@@ -15,28 +18,28 @@
 <div class="row g-3 mb-3">
     <!-- CỘT 1: NHÂN SỰ -->
     <div class="col-md-4">
-        <label asp-for="EmployeeName" class="form-label fw-semibold text-dark">
+        <label asp-for="EmployeeName" for="@(formIdPrefix + "contractEmployeeInput")" class="form-label fw-semibold text-dark">
             Nhân sự <span class="text-danger">*</span>
         </label>
         @if (isEditMode)
         {
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person-badge-fill text-primary"></i></span>
-                <input type="text" class="form-control bg-light border-start-0 fw-semibold text-dark" value="@Model.EmployeeName" readonly />
+                <input type="text" id="@(formIdPrefix + "contractEmployeeInput")" class="form-control bg-light border-start-0 fw-semibold text-dark" value="@Model.EmployeeName" readonly />
                 <input type="hidden" asp-for="EmployeeId" />
-                <input type="hidden" asp-for="EmployeeName" />
+                <input type="hidden" asp-for="EmployeeName" id="@(formIdPrefix + "employeeNameHidden")" />
             </div>
         }
         else
         {
             <!-- Chế độ Lập mới: Ô nhập tay tên nhân viên kèm danh sách gợi ý datalist -->
-            <div id="createEmployeeWrapper">
+            <div id="@(formIdPrefix + "createEmployeeWrapper")">
                 <div class="input-group">
                     <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-person-fill text-primary"></i></span>
-                    <input asp-for="EmployeeName" id="contractEmployeeInput" list="employeeDatalist" class="form-control border-start-0" placeholder="Nhập họ và tên..." autocomplete="off" />
-                    <input type="hidden" asp-for="EmployeeId" id="contractEmployeeIdHidden" value="@Model.EmployeeId" />
+                    <input asp-for="EmployeeName" id="@(formIdPrefix + "contractEmployeeInput")" list="employeeDatalist" class="form-control border-start-0" placeholder="Nhập họ và tên..." autocomplete="off" />
+                    <input type="hidden" asp-for="EmployeeId" id="@(formIdPrefix + "contractEmployeeIdHidden")" value="@Model.EmployeeId" />
                 </div>
-                <datalist id="employeeDatalist">
+                <datalist id="@(formIdPrefix + "employeeDatalist")">
                     @foreach (var emp in employeeList)
                     {
                         <option value="@emp.Code — @emp.FullName" data-name="@emp.FullName" data-id="@emp.Id" data-dept-id="@emp.DepartmentId" data-dept-name="@emp.DepartmentName" data-pos-id="@emp.PositionId" data-pos-name="@emp.PositionName" data-email="@emp.PersonalEmail">
@@ -48,10 +51,10 @@
             </div>
 
             <!-- Chế độ Gia hạn: Hiển thị cố định thông tin nhân viên -->
-            <div id="renewEmployeeDisplayWrapper" class="d-none">
+            <div id="@(formIdPrefix + "renewEmployeeDisplayWrapper")" class="d-none">
                 <div class="input-group">
                     <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person-check-fill text-success"></i></span>
-                    <input type="text" id="renewEmployeeNameDisplay" class="form-control bg-light border-start-0 fw-semibold text-dark" readonly />
+                    <input type="text" id="@(formIdPrefix + "renewEmployeeNameDisplay")" class="form-control bg-light border-start-0 fw-semibold text-dark" readonly />
                 </div>
             </div>
         }
@@ -60,13 +63,13 @@
 
     <!-- CỘT 2: PHÒNG BAN -->
     <div class="col-md-4">
-        <label class="form-label fw-semibold text-dark">
+        <label for="@(formIdPrefix + "contractDepartmentSelect")" class="form-label fw-semibold text-dark">
             Phòng ban <span class="text-danger">*</span>
         </label>
-        <div id="createDepartmentWrapper">
+        <div id="@(formIdPrefix + "createDepartmentWrapper")">
             <div class="input-group">
                 <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-building text-secondary"></i></span>
-                <select asp-for="DepartmentId" id="contractDepartmentSelect" class="form-select border-start-0">
+                <select asp-for="DepartmentId" id="@(formIdPrefix + "contractDepartmentSelect")" class="form-select border-start-0">
                     <option value="">-- Chọn phòng ban --</option>
                     @foreach (var dept in departmentOptions)
                     {
@@ -77,10 +80,10 @@
             <div class="form-text small text-muted">Phòng ban công tác của nhân sự.</div>
         </div>
 
-        <div id="renewDepartmentWrapper" class="d-none">
+        <div id="@(formIdPrefix + "renewDepartmentWrapper")" class="d-none">
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-building-check text-success"></i></span>
-                <input type="text" id="renewDepartmentDisplay" class="form-control bg-light border-start-0 text-dark fw-semibold" readonly />
+                <input type="text" id="@(formIdPrefix + "renewDepartmentDisplay")" class="form-control bg-light border-start-0 text-dark fw-semibold" readonly />
             </div>
         </div>
         <span asp-validation-for="DepartmentId" class="text-danger small"></span>
@@ -88,13 +91,13 @@
 
     <!-- CỘT 3: CHỨC VỤ -->
     <div class="col-md-4">
-        <label class="form-label fw-semibold text-dark">
+        <label for="@(formIdPrefix + "contractPositionSelect")" class="form-label fw-semibold text-dark">
             Chức vụ <span class="text-danger">*</span>
         </label>
-        <div id="createPositionWrapper">
+        <div id="@(formIdPrefix + "createPositionWrapper")">
             <div class="input-group">
                 <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-person-badge text-secondary"></i></span>
-                <select asp-for="PositionId" id="contractPositionSelect" class="form-select border-start-0">
+                <select asp-for="PositionId" id="@(formIdPrefix + "contractPositionSelect")" class="form-select border-start-0">
                     <option value="">-- Chọn chức vụ --</option>
                     @foreach (var pos in positionOptions)
                     {
@@ -105,10 +108,10 @@
             <div class="form-text small text-muted">Vị trí việc làm tương ứng với phòng ban.</div>
         </div>
 
-        <div id="renewPositionWrapper" class="d-none">
+        <div id="@(formIdPrefix + "renewPositionWrapper")" class="d-none">
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-person-badge-fill text-success"></i></span>
-                <input type="text" id="renewPositionDisplay" class="form-control bg-light border-start-0 text-dark fw-semibold" readonly />
+                <input type="text" id="@(formIdPrefix + "renewPositionDisplay")" class="form-control bg-light border-start-0 text-dark fw-semibold" readonly />
             </div>
         </div>
         <span asp-validation-for="PositionId" class="text-danger small"></span>
@@ -116,28 +119,30 @@
 </div>
 
 <!-- ========================================================================= -->
-<!-- HÀNG 2: LOẠI HỢP ĐỒNG * (ĐÃ BỎ THỬ VIỆC) | HÌNH THỨC HỢP ĐỒNG *          -->
+<!-- GIAI ĐOẠN VÀ THỜI HẠN HỢP ĐỒNG -->
 <!-- ========================================================================= -->
 <div class="row g-3 mb-3">
     <div class="col-md-6">
-        <label asp-for="Contract.LoaiHopDong" class="form-label fw-semibold text-dark">
-            Loại hợp đồng <span class="text-danger">*</span>
+        <label asp-for="Contract.LoaiHopDong" for="@(formIdPrefix + (isProbation ? "contractProbationDuration" : "contractLoaiHopDong"))" class="form-label fw-semibold text-dark" data-contract-duration-label>
+            Thời hạn hợp đồng <span class="text-danger">*</span>
         </label>
-        <select asp-for="Contract.LoaiHopDong" id="contractLoaiHopDong" class="form-select" required>
+        <select asp-for="Contract.LoaiHopDong" id="@(formIdPrefix + "contractLoaiHopDong")" class="form-select" required="@(!isProbation)" hidden="@isProbation">
             <option value="XAC_DINH_THOI_HAN_1_NAM">HĐ lao động 01 năm</option>
             <option value="XAC_DINH_THOI_HAN_3_NAM">HĐ lao động 03 năm</option>
             <option value="KHONG_XAC_DINH_THOI_HAN">HĐ lao động không xác định thời hạn</option>
+            <option value="THU_VIEC" hidden>Thử việc theo ngày bắt đầu / kết thúc</option>
         </select>
+        <input type="text" readonly class="form-control bg-light" id="@(formIdPrefix + "contractProbationDuration")" data-contract-probation-duration hidden="@(!isProbation)" value="Theo ngày bắt đầu và ngày kết thúc" />
         <span asp-validation-for="Contract.LoaiHopDong" class="text-danger small"></span>
     </div>
 
     <div class="col-md-6">
-        <label asp-for="Contract.HinhThucHopDong" class="form-label fw-semibold text-dark">
-            Hình thức hợp đồng <span class="text-danger">*</span>
+        <label asp-for="Contract.HinhThucHopDong" for="@(formIdPrefix + "contractHinhThucHopDong")" class="form-label fw-semibold text-dark">
+            Giai đoạn hợp đồng <span class="text-danger">*</span>
         </label>
-        <select asp-for="Contract.HinhThucHopDong" id="contractHinhThucHopDong" class="form-select" required>
-            <option value="CHINH_THUC">Chính thức (Hợp đồng tiêu chuẩn)</option>
-            <option value="THU_VIEC">Thử việc (Hợp đồng thử việc)</option>
+        <select asp-for="Contract.HinhThucHopDong" id="@(formIdPrefix + "contractHinhThucHopDong")" class="form-select" required>
+            <option value="CHINH_THUC">Chính thức</option>
+            <option value="THU_VIEC">Thử việc</option>
         </select>
         <div class="form-text small text-muted">Phân biệt rõ giai đoạn thử việc hoặc ký chính thức.</div>
         <span asp-validation-for="Contract.HinhThucHopDong" class="text-danger small"></span>
@@ -149,25 +154,25 @@
 <!-- ========================================================================= -->
 <div class="row g-3 mb-3">
     <div class="col-md-6">
-        <label asp-for="Contract.NgayBatDau" class="form-label fw-semibold text-dark">
+        <label asp-for="Contract.NgayBatDau" for="@(formIdPrefix + "contractNgayBatDau")" class="form-label fw-semibold text-dark">
             Ngày bắt đầu <span class="text-danger">*</span>
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-calendar-event"></i></span>
-            <input asp-for="Contract.NgayBatDau" id="contractNgayBatDau" type="date" class="form-control border-start-0" required />
+            <input asp-for="Contract.NgayBatDau" id="@(formIdPrefix + "contractNgayBatDau")" type="date" class="form-control border-start-0" required />
         </div>
         <span asp-validation-for="Contract.NgayBatDau" class="text-danger small"></span>
     </div>
 
     <div class="col-md-6">
-        <label asp-for="Contract.NgayKetThuc" class="form-label fw-semibold text-dark">
-            Ngày kết thúc
+        <label asp-for="Contract.NgayKetThuc" for="@(formIdPrefix + "contractNgayKetThuc")" class="form-label fw-semibold text-dark">
+            Ngày kết thúc <span class="text-danger" data-contract-end-required hidden="@(!isProbation)">*</span>
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-calendar-check"></i></span>
-            <input asp-for="Contract.NgayKetThuc" id="contractNgayKetThuc" type="date" class="form-control border-start-0" placeholder="Ngày kết thúc, không bắt buộc" />
+            <input asp-for="Contract.NgayKetThuc" id="@(formIdPrefix + "contractNgayKetThuc")" type="date" class="form-control border-start-0" required="@isProbation" />
         </div>
-        <div class="form-text small text-muted">Tự động tính theo Loại hợp đồng (1 năm, 3 năm) hoặc để trống nếu vô thời hạn.</div>
+        <div class="form-text small text-muted" data-contract-end-hint>@(isProbation ? "Nhập ngày kết thúc thử việc; hệ thống giữ khoảng thời gian bạn chọn." : "Tự động tính theo thời hạn 1 năm, 3 năm; để trống nếu không xác định thời hạn.")</div>
         <span asp-validation-for="Contract.NgayKetThuc" class="text-danger small"></span>
     </div>
 </div>
@@ -178,17 +183,17 @@
 <div class="row g-3 mb-3">
     <div class="col-md-6">
         <div class="d-flex justify-content-between align-items-center mb-1">
-            <label asp-for="Contract.SoHopDong" class="form-label fw-semibold text-dark mb-0">
+            <label asp-for="Contract.SoHopDong" for="@(formIdPrefix + "contractSoHopDong")" class="form-label fw-semibold text-dark mb-0">
                 Mã hợp đồng <span class="text-danger">*</span>
             </label>
-            <button type="button" class="btn btn-link p-0 text-decoration-none small text-primary fw-semibold" onclick="generateRandomContractNumber(true)" title="Tạo mã hợp đồng ngẫu nhiên mới">
+            <button type="button" class="btn btn-link p-0 text-decoration-none small text-primary fw-semibold" onclick="@(isModal ? null : "generateRandomContractNumber(true)")" data-contract-generate="@isModal.ToString().ToLowerInvariant()" title="Tạo mã hợp đồng ngẫu nhiên mới">
                 <i class="bi bi-arrow-clockwise me-1"></i>Tạo mã mới
             </button>
         </div>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-file-earmark-code"></i></span>
-            <input asp-for="Contract.SoHopDong" id="contractSoHopDong" class="form-control border-start-0 border-end-0 font-monospace text-uppercase fw-bold text-primary" placeholder="HDLD-@DateTime.Now.Year/01/OTH" required />
-            <button type="button" class="btn btn-light border border-start-0 text-primary" onclick="generateRandomContractNumber(true)" title="Sinh số ngẫu nhiên mới">
+            <input asp-for="Contract.SoHopDong" id="@(formIdPrefix + "contractSoHopDong")" class="form-control border-start-0 border-end-0 font-monospace text-uppercase fw-bold text-primary" placeholder="HDLD-@DateTime.Now.Year/01/OTH" required />
+            <button type="button" class="btn btn-light border border-start-0 text-primary" onclick="@(isModal ? null : "generateRandomContractNumber(true)")" data-contract-generate="@isModal.ToString().ToLowerInvariant()" title="Sinh số ngẫu nhiên mới">
                 <i class="bi bi-shuffle"></i>
             </button>
         </div>
@@ -197,12 +202,12 @@
     </div>
 
     <div class="col-md-6">
-        <label asp-for="Contract.LuongCoBan" class="form-label fw-semibold text-dark">
+        <label asp-for="Contract.LuongCoBan" for="@(formIdPrefix + "contractLuongCoBan")" class="form-label fw-semibold text-dark">
             Lương cơ bản (VNĐ) <span class="text-danger">*</span>
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-cash-stack text-success"></i></span>
-            <input asp-for="Contract.LuongCoBan" id="contractLuongCoBan" type="number" min="0" step="any" class="form-control border-start-0 font-monospace fw-bold text-success" placeholder="Nhập mức lương (VD: 10000000)" required />
+            <input asp-for="Contract.LuongCoBan" id="@(formIdPrefix + "contractLuongCoBan")" type="number" min="0" step="any" class="form-control border-start-0 font-monospace fw-bold text-success" placeholder="Nhập mức lương (VD: 10000000)" required />
             <span class="input-group-text bg-light text-muted">₫</span>
         </div>
         <div class="form-text small text-muted">Căn cứ pháp lý tính đơn giá ngày công và bảo hiểm bắt buộc.</div>
@@ -215,27 +220,36 @@
 <!-- ========================================================================= -->
 <div class="row g-3 mb-2">
     <div class="col-md-6">
-        <label asp-for="Contract.TrangThai" class="form-label fw-semibold text-dark">
+        <label asp-for="Contract.TrangThai" for="@(isEditMode ? formIdPrefix + "contractTrangThai" : "newContractStateDescription")" class="form-label fw-semibold text-dark">
             Trạng thái hợp đồng
         </label>
-        <div class="input-group">
-            <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-check2-circle text-primary"></i></span>
-            <select asp-for="Contract.TrangThai" id="contractTrangThai" class="form-select border-start-0">
-                <option value="HIEU_LUC">Đã ký / Đang hiệu lực</option>
-                <option value="HET_HAN">Hết hạn</option>
-                <option value="DA_CHAM_DUT">Thanh lý / Chấm dứt</option>
-            </select>
-        </div>
+        @if (isEditMode)
+        {
+            <div class="input-group">
+                <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-check2-circle text-primary"></i></span>
+                <select asp-for="Contract.TrangThai" id="@(formIdPrefix + "contractTrangThai")" class="form-select border-start-0">
+                    <option value="HIEU_LUC">Đã ký / Đang hiệu lực</option>
+                    <option value="HET_HAN">Hết hạn</option>
+                    <option value="DA_CHAM_DUT">Thanh lý / Chấm dứt</option>
+                </select>
+            </div>
+        }
+        else
+        {
+            <input type="hidden" name="Contract.TrangThai" id="@(formIdPrefix + "contractTrangThai")" value="HIEU_LUC" />
+            <input type="text" readonly class="form-control bg-light text-secondary" id="newContractStateDescription" value="Tự động theo thời hạn hợp đồng" aria-describedby="newContractStateHint" />
+            <div class="form-text small text-muted" id="newContractStateHint">Chưa tới ngày bắt đầu: Chưa hiệu lực. Hết thời hạn: Hết hạn. Thanh lý / chấm dứt được xử lý sau khi lập hợp đồng.</div>
+        }
         <span asp-validation-for="Contract.TrangThai" class="text-danger small"></span>
     </div>
 
     <div class="col-md-6">
-        <label asp-for="EmailNotificationOption" class="form-label fw-semibold text-dark">
+        <label asp-for="EmailNotificationOption" for="@(formIdPrefix + "contractEmailOption")" class="form-label fw-semibold text-dark">
             Gửi thông báo cho nhân viên qua email
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-send-fill text-info"></i></span>
-            <select asp-for="EmailNotificationOption" id="contractEmailOption" class="form-select border-start-0">
+            <select asp-for="EmailNotificationOption" id="@(formIdPrefix + "contractEmailOption")" class="form-select border-start-0">
                 <option value="KHONG_GUI">Không gửi email</option>
                 <option value="GUI_EMAIL">Gửi thông báo qua email cá nhân</option>
             </select>
@@ -249,14 +263,14 @@
 <!-- ========================================================================= -->
 <div class="row g-3 mb-3">
     <div class="col-12">
-        <label asp-for="PersonalEmail" class="form-label fw-semibold text-dark">
+        <label asp-for="PersonalEmail" for="@(formIdPrefix + "contractPersonalEmailInput")" class="form-label fw-semibold text-dark">
             <i class="bi bi-envelope-at text-primary me-1"></i>Email cá nhân nhận thông báo
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-at text-primary"></i></span>
-            <input asp-for="PersonalEmail" id="contractPersonalEmailInput" type="email" class="form-control border-start-0 font-monospace" placeholder="Nhập email cá nhân của nhân viên (ví dụ: nhanvien@gmail.com)..." />
+            <input asp-for="PersonalEmail" id="@(formIdPrefix + "contractPersonalEmailInput")" type="email" class="form-control border-start-0 font-monospace" placeholder="Nhập email cá nhân của nhân viên (ví dụ: nhanvien@gmail.com)..." />
         </div>
-        <div class="form-text small text-muted" id="personalEmailHintText">
+        <div class="form-text small text-muted" id="@(formIdPrefix + "personalEmailHintText")">
             <i class="bi bi-info-circle me-1"></i>Hệ thống tự động điền email nếu nhân viên đã có trong hồ sơ; nếu chưa có, bạn có thể tự nhập tay vào ô này.
         </div>
     </div>
@@ -274,12 +288,14 @@
         </div>
     </div>
     <div>
-        <button type="button" class="btn btn-hotel-primary rounded-pill px-4 fw-semibold shadow-sm" onclick="printContractDocument()">
+        <button type="button" class="btn btn-hotel-primary rounded-pill px-4 fw-semibold shadow-sm" onclick="@(isModal ? null : "printContractDocument()")" data-contract-print="@(isModal ? Model.Contract.MaHopDong : null)">
             <i class="bi bi-printer-fill me-1"></i> In hợp đồng
         </button>
     </div>
 </div>
 
+@if (!isModal)
+{
 <script>
     (function () {
         function bindContractDeptAndPos() {
@@ -329,3 +345,4 @@
         window.bindContractDeptAndPos = bindContractDeptAndPos;
     })();
 </script>
+}
