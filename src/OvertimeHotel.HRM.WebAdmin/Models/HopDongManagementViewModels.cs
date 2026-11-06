@@ -7,7 +7,6 @@ public class HopDongIndexViewModel
 {
     public HopDongFormViewModel CreateContractForm { get; set; } = new();
     public string? Keyword { get; set; }
-    public string? Status { get; set; }
     public string? ContractFilter { get; set; }
     public IReadOnlyList<SelectListItem> EmployeeOptions { get; set; } = [];
     public IReadOnlyList<HopDongListItemViewModel> Contracts { get; set; } = [];
@@ -31,6 +30,7 @@ public class HopDongListItemViewModel
     public int? DaysRemaining { get; init; }
     public string State { get; init; } = string.Empty;
     public bool IsRenewed { get; init; }
+    public bool EmployeeHasOtherContract { get; init; }
 }
 
 public class HopDongDetailsModalViewModel
@@ -46,3 +46,9 @@ public class HopDongDetailsModalViewModel
     public HopDong? NextContract { get; init; }
 }
 
+public class HopDongTerminateViewModel
+{
+    public DateOnly? NgayChamDut { get; set; }
+    public string? LoaiChamDut { get; set; }
+    public string? LyDoChamDut { get; set; }
+}

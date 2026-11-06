@@ -4,7 +4,6 @@
     Func<int, string> pageUrl = page => Url.Action("Index", new
     {
         keyword = Model.Keyword,
-        status = Model.Status,
         contractFilter = Model.ContractFilter,
         page,
         pageSize = Model.PageSize
@@ -22,9 +21,9 @@
             <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-file-earmark-check-fill" aria-hidden="true"></i></div>
                 <div>
-                    <span class="catalog-kpi-label">Đang hiệu lực</span>
+                    <span class="catalog-kpi-label">Đang làm việc</span>
                     <h3 class="catalog-kpi-value"><span data-contract-kpi="active">@Model.ActiveContracts</span> <small>hợp đồng</small></h3>
-                    <p class="catalog-kpi-desc">Đã bắt đầu, còn trên 30 ngày hoặc vô thời hạn</p>
+                    <p class="catalog-kpi-desc">Hợp đồng đang còn dùng (gồm sắp hết hạn, chưa hiệu lực)</p>
                 </div>
             </div>
         </div>
@@ -42,9 +41,9 @@
             <div class="catalog-kpi-card catalog-kpi-card--deduction shadow-sm">
                 <div class="catalog-kpi-icon"><i class="bi bi-file-earmark-x-fill" aria-hidden="true"></i></div>
                 <div>
-                    <span class="catalog-kpi-label">Đã hết hạn</span>
+                    <span class="catalog-kpi-label">Cần xử lý</span>
                     <h3 class="catalog-kpi-value"><span data-contract-kpi="expired">@Model.ExpiredContracts</span> <small>hợp đồng</small></h3>
-                    <p class="catalog-kpi-desc">Đã qua ngày kết thúc, chưa chấm dứt</p>
+                    <p class="catalog-kpi-desc">Hết hạn, chờ gia hạn hoặc chấm dứt</p>
                 </div>
             </div>
         </div>
@@ -60,26 +59,18 @@
                     <kbd class="catalog-search-shortcut" title="Phím tắt tìm kiếm">Ctrl K</kbd>
                 </div>
 
-                <div style="min-width: 150px; flex: 1;">
-                    <select name="status" class="form-select">
-                        <option value="">-- Trạng thái --</option>
-                        <option value="HIEU_LUC" selected="@(Model.Status == "HIEU_LUC")">Hiệu lực</option>
-                        <option value="HET_HAN" selected="@(Model.Status == "HET_HAN")">Hết hạn</option>
-                        <option value="DA_CHAM_DUT" selected="@(Model.Status == "DA_CHAM_DUT")">Thanh lý</option>
-                    </select>
-                </div>
-
-                <div style="min-width: 170px; flex: 1;">
-                    <select name="contractFilter" class="form-select">
-                        <option value="" selected="@(string.IsNullOrWhiteSpace(Model.ContractFilter))">-- Hợp đồng chưa kết thúc --</option>
-                        <option value="DA_HET_HAN" selected="@(Model.ContractFilter == "DA_HET_HAN")">Đã hết hạn</option>
+                <div style="min-width: 220px; flex: 1;">
+                    <select name="contractFilter" class="form-select" aria-label="Lọc theo trạng thái hợp đồng">
+                        <option value="" selected="@(string.IsNullOrWhiteSpace(Model.ContractFilter))">Đang làm việc</option>
                         <option value="SAP_HET_HAN" selected="@(Model.ContractFilter == "SAP_HET_HAN")">Sắp hết hạn (&le; 30 ngày)</option>
-                        <option value="HIEU_LUC" selected="@(Model.ContractFilter == "HIEU_LUC")">Đang hiệu lực (trên 30 ngày / vô thời hạn)</option>
+                        <option value="CAN_XU_LY" selected="@(Model.ContractFilter == "CAN_XU_LY")">Cần xử lý (hết hạn, chưa gia hạn)</option>
+                        <option value="CHUA_HIEU_LUC" selected="@(Model.ContractFilter == "CHUA_HIEU_LUC")">Chưa hiệu lực</option>
+                        <option value="DA_CHAM_DUT" selected="@(Model.ContractFilter == "DA_CHAM_DUT")">Đã chấm dứt</option>
                         <option value="TAT_CA" selected="@(Model.ContractFilter == "TAT_CA")">Tất cả hợp đồng</option>
                     </select>
                 </div>
 
-                @if (!string.IsNullOrWhiteSpace(Model.Keyword) || !string.IsNullOrWhiteSpace(Model.Status) || !string.IsNullOrWhiteSpace(Model.ContractFilter))
+                @if (!string.IsNullOrWhiteSpace(Model.Keyword) || !string.IsNullOrWhiteSpace(Model.ContractFilter))
                 {
                     <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
                 }
@@ -321,7 +312,7 @@
             form.reset();
             form.querySelectorAll('input, select').forEach(c => c.value = '');
         }
-        loadContractTable({ keyword: '', status: '', contractFilter: '', page: 1 });
+        loadContractTable({ keyword: '', contractFilter: '', page: 1 });
     }
 
     document.addEventListener('DOMContentLoaded', () => {

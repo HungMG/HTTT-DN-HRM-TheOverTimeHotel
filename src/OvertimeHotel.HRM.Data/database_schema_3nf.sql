@@ -47,7 +47,10 @@ CREATE TABLE IF NOT EXISTS HOP_DONG (
     ngay_bat_dau DATE NOT NULL,
     ngay_ket_thuc DATE,
     luong_co_ban DECIMAL(15,2) NOT NULL CHECK (luong_co_ban >= 0),
-    trang_thai VARCHAR(30) NOT NULL DEFAULT 'HIEU_LUC' CHECK (trang_thai IN ('HIEU_LUC', 'HET_HAN', 'CHAM_DUT')),
+    trang_thai VARCHAR(30) NOT NULL DEFAULT 'HIEU_LUC' CHECK (trang_thai IN ('HIEU_LUC', 'HET_HAN', 'DA_CHAM_DUT')),
+    hinh_thuc_hop_dong VARCHAR(50) NOT NULL DEFAULT 'CHINH_THUC',
+    loai_cham_dut VARCHAR(30),
+    ly_do_cham_dut VARCHAR(500),
     CONSTRAINT chk_ngay_hop_dong CHECK (ngay_ket_thuc IS NULL OR ngay_ket_thuc >= ngay_bat_dau)
 );
 

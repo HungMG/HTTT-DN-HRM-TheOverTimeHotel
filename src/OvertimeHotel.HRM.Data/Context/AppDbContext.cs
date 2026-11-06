@@ -141,6 +141,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.LuongCoBan).HasColumnName("luong_co_ban").HasPrecision(15, 2).IsRequired();
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("HIEU_LUC").IsRequired();
             entity.Property(e => e.HinhThucHopDong).HasColumnName("hinh_thuc_hop_dong").HasMaxLength(50).HasDefaultValue("CHINH_THUC").IsRequired();
+            entity.Property(e => e.LoaiChamDut).HasColumnName("loai_cham_dut").HasMaxLength(30);
+            entity.Property(e => e.LyDoChamDut).HasColumnName("ly_do_cham_dut").HasMaxLength(500);
 
             entity.HasIndex(e => e.SoHopDong).IsUnique();
 

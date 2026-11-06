@@ -75,4 +75,27 @@ public static class DatabaseSchemaInitializer
 
         return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
+
+    public static Task EnsureContractTerminationSchemaAsync(AppDbContext context, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            ALTER TABLE public.hop_dong
+                ADD COLUMN IF NOT EXISTS loai_cham_dut varchar(30) NULL,
+                ADD COLUMN IF NOT EXISTS ly_do_cham_dut varchar(500) NULL;
+
+            UPDATE public.hop_dong
+            SET loai_cham_dut = 'KHAC',
+                ly_do_cham_dut = COALESCE(ly_do_cham_dut, 'Dữ liệu cũ')
+            WHERE trang_thai IN ('DA_CHAM_DUT', 'CHAM_DUT') AND loai_cham_dut IS NULL;
+
+            ALTER TABLE public.hop_dong DROP CONSTRAINT IF EXISTS chk_hop_dong_cham_dut;
+            ALTER TABLE public.hop_dong ADD CONSTRAINT chk_hop_dong_cham_dut CHECK (
+                (trang_thai NOT IN ('DA_CHAM_DUT', 'CHAM_DUT') OR loai_cham_dut IS NOT NULL)
+                AND (loai_cham_dut IS NULL OR loai_cham_dut IN ('HET_HAN_KHONG_TAI_KY', 'NHAN_VIEN_XIN_NGHI', 'SA_THAI_VI_PHAM', 'KHAC'))
+                AND (loai_cham_dut IS DISTINCT FROM 'KHAC' OR NULLIF(BTRIM(ly_do_cham_dut), '') IS NOT NULL)
+            );
+            """;
+
+        return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+    }
 }

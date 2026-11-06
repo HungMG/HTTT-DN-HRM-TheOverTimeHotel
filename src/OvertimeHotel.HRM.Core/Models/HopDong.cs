@@ -12,6 +12,12 @@ public class HopDong
     public string TrangThai { get; set; } = "HIEU_LUC";
     public string HinhThucHopDong { get; set; } = "CHINH_THUC";
 
+    /// <summary>Loại chấm dứt (xem <c>ContractTerminationTypes</c>); chỉ có khi hợp đồng đã chấm dứt.</summary>
+    public string? LoaiChamDut { get; set; }
+
+    /// <summary>Ghi chú / lý do chấm dứt; bắt buộc khi loại là KHAC.</summary>
+    public string? LyDoChamDut { get; set; }
+
     public virtual NhanVien? NhanVien { get; set; }
 
     /// <summary>

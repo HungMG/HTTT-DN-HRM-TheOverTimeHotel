@@ -1,33 +1,48 @@
-<div class="modal fade" id="editContractModal" tabindex="-1" aria-labelledby="editContractModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" id="editContractModalContent"></div>
-    </div>
-</div>
-
-<div class="modal fade" id="deleteContractModal" tabindex="-1" aria-labelledby="deleteContractModalLabel" aria-describedby="deleteContractDescription" aria-hidden="true">
+@using OvertimeHotel.HRM.Core.Constants
+<div class="modal fade" id="terminateContractModal" tabindex="-1" aria-labelledby="terminateContractModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header border-0 px-4 pt-4 pb-2">
-                <h2 class="modal-title h5 font-serif" id="deleteContractModalLabel">Xóa hợp đồng?</h2>
+                <h2 class="modal-title h5 font-serif" id="terminateContractModalLabel">Chấm dứt hợp đồng</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
-            <form method="post" data-contract-delete-form>
+            <form method="post" data-contract-terminate-form>
                 @Html.AntiForgeryToken()
                 <div class="modal-body px-4 pt-2 pb-4">
-                    <p class="text-secondary" id="deleteContractDescription">Hợp đồng sẽ bị xóa khỏi hệ thống. Thao tác này không thể hoàn tác.</p>
-                    <div class="bg-light border rounded-3 p-3 d-flex align-items-start gap-3">
+                    <div class="alert alert-warning small" role="note" data-terminate-note></div>
+                    <div class="bg-light border rounded-3 p-3 d-flex align-items-start gap-3 mb-3">
                         <i class="bi bi-file-earmark-x fs-4 text-danger" aria-hidden="true"></i>
                         <div class="overflow-hidden">
-                            <strong class="d-block text-break" data-contract-delete-number></strong>
-                            <span class="small text-secondary text-break" data-contract-delete-employee></span>
+                            <strong class="d-block text-break" data-terminate-number></strong>
+                            <span class="d-block small text-secondary text-break" data-terminate-employee></span>
+                            <span class="d-block small text-secondary" data-terminate-period></span>
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="terminateDate" class="form-label fw-semibold">Ngày chấm dứt <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="terminateDate" name="NgayChamDut" required />
+                        <div class="form-text" data-terminate-date-hint></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="terminateType" class="form-label fw-semibold">Loại chấm dứt <span class="text-danger">*</span></label>
+                        <select class="form-select" id="terminateType" name="LoaiChamDut" required>
+                            <option value="">-- Chọn loại --</option>
+                            @foreach (var type in ContractTerminationTypes.All)
+                            {
+                                <option value="@type.Code">@type.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-1">
+                        <label for="terminateReason" class="form-label fw-semibold">Ghi chú <span class="text-danger d-none" data-terminate-reason-required>*</span></label>
+                        <textarea class="form-control" id="terminateReason" name="LyDoChamDut" rows="3" maxlength="500" placeholder="Bắt buộc nếu chọn loại &quot;Khác&quot;"></textarea>
                     </div>
                     <div class="alert alert-danger mt-3 mb-0 d-none" role="alert" data-contract-form-error></div>
                 </div>
                 <div class="modal-footer bg-light px-4 py-3">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
                     <button type="submit" class="btn btn-danger rounded-pill px-4 fw-semibold">
-                        <i class="bi bi-trash me-1" aria-hidden="true"></i>Xóa hợp đồng
+                        <i class="bi bi-person-x me-1" aria-hidden="true"></i>Xác nhận chấm dứt
                     </button>
                 </div>
             </form>

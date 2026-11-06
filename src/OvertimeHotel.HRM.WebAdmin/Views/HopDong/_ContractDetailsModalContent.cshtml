@@ -51,7 +51,7 @@
                     @if (Model.State == "DA_CHAM_DUT")
                     {
                         <span class="badge bg-secondary rounded-pill px-3 py-1">
-                            <i class="bi bi-archive-fill me-1"></i>Đã thanh lý
+                            <i class="bi bi-archive-fill me-1"></i>Đã chấm dứt
                         </span>
                     }
                     else if (Model.State == "DA_HET_HAN")
@@ -95,6 +95,17 @@
             </div>
         </div>
     </div>
+
+    @if (Model.State == "DA_CHAM_DUT")
+    {
+        <div class="alert alert-secondary small mb-3" role="note">
+            <strong>Đã chấm dứt:</strong> @OvertimeHotel.HRM.Core.Constants.ContractTerminationTypes.Label(contract.LoaiChamDut)
+            @if (!string.IsNullOrWhiteSpace(contract.LyDoChamDut))
+            {
+                <span> &mdash; @contract.LyDoChamDut</span>
+            }
+        </div>
+    }
 
     <!-- NỘI DUNG CHI TIẾT HỢP ĐỒNG -->
     <div class="row g-3">

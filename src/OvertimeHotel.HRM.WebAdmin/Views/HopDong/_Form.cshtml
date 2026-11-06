@@ -220,26 +220,12 @@
 <!-- ========================================================================= -->
 <div class="row g-3 mb-2">
     <div class="col-md-6">
-        <label asp-for="Contract.TrangThai" for="@(isEditMode ? formIdPrefix + "contractTrangThai" : "newContractStateDescription")" class="form-label fw-semibold text-dark">
+        <label asp-for="Contract.TrangThai" for="newContractStateDescription" class="form-label fw-semibold text-dark">
             Trạng thái hợp đồng
         </label>
-        @if (isEditMode)
-        {
-            <div class="input-group">
-                <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-check2-circle text-primary"></i></span>
-                <select asp-for="Contract.TrangThai" id="@(formIdPrefix + "contractTrangThai")" class="form-select border-start-0">
-                    <option value="HIEU_LUC">Đã ký / Đang hiệu lực</option>
-                    <option value="HET_HAN">Hết hạn</option>
-                    <option value="DA_CHAM_DUT">Thanh lý / Chấm dứt</option>
-                </select>
-            </div>
-        }
-        else
-        {
-            <input type="hidden" name="Contract.TrangThai" id="@(formIdPrefix + "contractTrangThai")" value="HIEU_LUC" />
-            <input type="text" readonly class="form-control bg-light text-secondary" id="newContractStateDescription" value="Tự động theo thời hạn hợp đồng" aria-describedby="newContractStateHint" />
-            <div class="form-text small text-muted" id="newContractStateHint">Chưa tới ngày bắt đầu: Chưa hiệu lực. Hết thời hạn: Hết hạn. Thanh lý / chấm dứt được xử lý sau khi lập hợp đồng.</div>
-        }
+        <input type="hidden" name="Contract.TrangThai" id="@(formIdPrefix + "contractTrangThai")" value="HIEU_LUC" />
+        <input type="text" readonly class="form-control bg-light text-secondary" id="newContractStateDescription" value="Tự động theo thời hạn hợp đồng" aria-describedby="newContractStateHint" />
+        <div class="form-text small text-muted" id="newContractStateHint">Chưa tới ngày bắt đầu: Chưa hiệu lực. Hết thời hạn: Hết hạn. Chấm dứt hợp đồng được xử lý sau khi lập hợp đồng.</div>
         <span asp-validation-for="Contract.TrangThai" class="text-danger small"></span>
     </div>
 

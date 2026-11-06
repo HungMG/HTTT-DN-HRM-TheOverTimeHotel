@@ -141,9 +141,6 @@
                             }
                         </td>
                         <td class="text-end text-nowrap">
-                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 me-1" onclick="openEmployeeProfile(@employee.MaNhanVien); event.stopPropagation();" title="Xem hồ sơ chi tiết (4 tab)">
-                                <i class="bi bi-person-lines-fill me-1"></i>Hồ sơ
-                            </button>
                             <a asp-action="Edit" asp-route-id="@employee.MaNhanVien" onclick="event.stopPropagation();" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hồ sơ">
                                 <i class="bi bi-pencil"></i>
                             </a>

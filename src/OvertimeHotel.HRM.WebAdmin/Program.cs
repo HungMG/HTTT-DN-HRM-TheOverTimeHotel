@@ -388,6 +388,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     {
         await DatabaseSchemaInitializer.EnsureAdminAuditLogTableAsync(schemaContext);
         await DatabaseSchemaInitializer.EnsureShiftAutoPublishSchemaAsync(schemaContext);
+        await DatabaseSchemaInitializer.EnsureContractTerminationSchemaAsync(schemaContext);
     }
     catch (Exception ex)
     {

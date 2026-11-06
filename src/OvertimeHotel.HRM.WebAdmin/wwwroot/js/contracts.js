@@ -1,12 +1,19 @@
 (function () {
     'use strict';
-    const editModal = document.getElementById('editContractModal');
-    const deleteModal = document.getElementById('deleteContractModal');
-    if (!editModal || !deleteModal) return;
-    const content = document.getElementById('editContractModalContent');
+    const modal = document.getElementById('terminateContractModal');
+    if (!modal) return;
+    const form = modal.querySelector('form');
     const headers = { 'X-Requested-With': 'XMLHttpRequest' };
-    let editRequest;
+    const dateInput = form.elements.NgayChamDut;
+    const typeSelect = form.elements.LoaiChamDut;
+    const reason = form.elements.LyDoChamDut;
     let opener;
+
+    const fmt = value => value ? value.split('-').reverse().join('/') : 'Không thời hạn';
+    const today = () => {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    };
 
     function responseError(response) {
         if (response.status === 401 || response.redirected) return 'Phiên đăng nhập đã thay đổi. Vui lòng tải lại trang và đăng nhập lại.';
@@ -16,7 +23,7 @@
         return null;
     }
 
-    function showError(form, message) {
+    function showError(message) {
         const error = form.querySelector('[data-contract-form-error]');
         error.textContent = message;
         error.classList.remove('d-none');
@@ -24,145 +31,86 @@
         error.focus();
     }
 
-    async function refreshList(message) {
-        const refreshed = await window.loadContractTable({}, false);
-        const notice = document.querySelector('[data-contract-notice]');
-        notice.textContent = refreshed ? message : message + ' Danh sách chưa cập nhật được; vui lòng tải lại trang.';
-        notice.className = 'alert ' + (refreshed ? 'alert-success' : 'alert-warning');
-        notice.focus();
-    }
-
-    function setBusy(form, busy) {
+    function setBusy(busy) {
         form.dataset.submitting = busy ? 'true' : 'false';
         form.setAttribute('aria-busy', String(busy));
-        const modal = form.closest('.modal');
         modal.querySelectorAll('button').forEach(button => { button.disabled = busy; });
-        form.querySelector('button[type="submit"]').textContent = busy ? 'Đang xử lý…' :
-            (form.matches('[data-contract-edit-form]') ? 'Lưu thay đổi' : 'Xóa hợp đồng');
+        form.querySelector('button[type="submit"]').textContent = busy ? 'Đang xử lý…' : 'Xác nhận chấm dứt';
     }
 
-    async function openEdit(button) {
+    function syncReasonRequired() {
+        const required = typeSelect.value === 'KHAC';
+        reason.required = required;
+        form.querySelector('[data-terminate-reason-required]').classList.toggle('d-none', !required);
+    }
+
+    function open(button) {
         opener = button;
-        editRequest?.abort();
-        editRequest = new AbortController();
-        const request = editRequest;
-        content.innerHTML = '<div class="modal-header px-4"><h2 class="modal-title h5" id="editContractModalLabel">Chỉnh sửa hợp đồng</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div><div class="modal-body p-4 text-secondary" role="status">Đang tải thông tin hợp đồng…</div>';
-        bootstrap.Modal.getOrCreateInstance(editModal).show();
-        try {
-            const response = await fetch(button.dataset.contractEditUrl, { headers, signal: request.signal });
-            const error = responseError(response);
-            if (error || !response.ok) throw new Error(error || 'Không thể tải hợp đồng. Vui lòng thử lại.');
-            const html = await response.text();
-            if (request.signal.aborted) return;
-            content.innerHTML = html;
-            window.ContractForm.init(content);
-            content.querySelector('input:not([type="hidden"]):not([readonly]), select')?.focus();
-        } catch (error) {
-            if (error.name === 'AbortError') return;
-            const body = content.querySelector('.modal-body');
-            body.setAttribute('role', 'alert');
-            body.textContent = error.message;
+        const d = button.dataset;
+        const state = d.contractState;
+        form.reset();
+        form.action = d.contractTerminateUrl;
+        form.querySelector('[data-terminate-number]').textContent = d.contractNumber;
+        form.querySelector('[data-terminate-employee]').textContent = d.contractEmployee;
+        form.querySelector('[data-terminate-period]').textContent = fmt(d.contractStart) + ' → ' + fmt(d.contractEnd);
+        form.querySelector('[data-contract-form-error]').classList.add('d-none');
+
+        const note = form.querySelector('[data-terminate-note]');
+        note.textContent = d.contractHasOther === 'true'
+            ? 'Nhân viên vẫn còn hợp đồng khác nên sẽ KHÔNG chuyển sang nghỉ việc. Thao tác không thể hoàn tác.'
+            : 'Nhân viên sẽ chuyển sang trạng thái nghỉ việc. Thao tác không thể hoàn tác.';
+
+        const hint = form.querySelector('[data-terminate-date-hint]');
+        if (state === 'DA_HET_HAN') {
+            dateInput.value = d.contractEnd; dateInput.readOnly = true;
+            hint.textContent = 'Hợp đồng đã hết hạn: ngày chấm dứt là ngày kết thúc hợp đồng.';
+            typeSelect.value = 'HET_HAN_KHONG_TAI_KY';
+        } else if (state === 'CHUA_HIEU_LUC') {
+            dateInput.value = d.contractStart; dateInput.readOnly = true;
+            hint.textContent = 'Hợp đồng chưa bắt đầu: ngày chấm dứt là ngày bắt đầu hợp đồng.';
+        } else {
+            dateInput.readOnly = false;
+            dateInput.min = d.contractStart;
+            dateInput.max = d.contractEnd && d.contractEnd < today() ? d.contractEnd : today();
+            dateInput.value = today();
+            hint.textContent = 'Chọn ngày nghỉ thực tế, từ ' + fmt(d.contractStart) + ' đến hôm nay.';
         }
+        syncReasonRequired();
+        bootstrap.Modal.getOrCreateInstance(modal).show();
     }
 
-    document.addEventListener('click', async event => {
-        const editButton = event.target.closest('[data-contract-edit-url]');
-        if (editButton) {
-            event.preventDefault();
-            openEdit(editButton);
-            return;
-        }
-        const deleteButton = event.target.closest('[data-contract-delete-url]');
-        if (deleteButton) {
-            event.preventDefault();
-            opener = deleteButton;
-            const form = deleteModal.querySelector('form');
-            form.action = deleteButton.dataset.contractDeleteUrl;
-            form.querySelector('[data-contract-delete-number]').textContent = deleteButton.dataset.contractNumber;
-            form.querySelector('[data-contract-delete-employee]').textContent = deleteButton.dataset.contractEmployee;
-            form.querySelector('[data-contract-form-error]').classList.add('d-none');
-            bootstrap.Modal.getOrCreateInstance(deleteModal).show();
-        }
-        const generate = event.target.closest('[data-contract-generate="true"]');
-        if (generate) await generateNumber(generate.closest('form'));
-        const print = event.target.closest('[data-contract-print]');
-        if (print && print.closest('[data-contract-edit-form]')) window.printContractDocument(print.closest('form'));
+    document.addEventListener('click', event => {
+        const button = event.target.closest('[data-contract-terminate-url]');
+        if (!button) return;
+        event.preventDefault();
+        open(button);
     });
 
-    async function generateNumber(form) {
-        try {
-            const response = await fetch('/HopDong/GenerateContractNumber?hinhThuc=' + encodeURIComponent(form.elements['Contract.HinhThucHopDong'].value), { headers });
-            const error = responseError(response);
-            if (error || !response.ok) throw new Error(error || 'Không thể tạo mã hợp đồng. Vui lòng thử lại.');
-            const data = await response.json();
-            if (!data.contractNumber) throw new Error('Không nhận được mã hợp đồng mới. Vui lòng thử lại.');
-            form.elements['Contract.SoHopDong'].value = data.contractNumber;
-        } catch (error) { showError(form, error.message); }
-    }
+    typeSelect.addEventListener('change', syncReasonRequired);
 
-    editModal.addEventListener('change', async event => {
-        const field = event.target;
-        const form = field.closest('form');
-        if (!form) return;
-        if (field.name === 'DepartmentId') {
-            const positions = form.elements.PositionId;
-            positions.replaceChildren(new Option('Đang tải chức vụ…', ''));
-            positions.disabled = true;
-            const departmentId = field.value;
-            try {
-                const response = await fetch('/ChucVu/GetByDepartment?departmentId=' + encodeURIComponent(departmentId), { headers });
-                const error = responseError(response);
-                if (error || !response.ok) throw new Error(error || 'Không thể tải chức vụ. Hãy chọn lại phòng ban.');
-                const data = await response.json();
-                if (field.value !== departmentId) return;
-                positions.replaceChildren(new Option('-- Chọn chức vụ --', ''));
-                data.forEach(item => positions.add(new Option(item.tenChucVu + (item.tenPhongBan ? ' (' + item.tenPhongBan + ')' : ' (Chung)'), item.maChucVu)));
-            } catch (error) {
-                if (field.value !== departmentId) return;
-                positions.replaceChildren(new Option('Không thể tải chức vụ', ''));
-                showError(form, error.message);
-            } finally {
-                if (field.value === departmentId) positions.disabled = false;
-            }
-        }
-        if (field.name === 'Contract.HinhThucHopDong') await generateNumber(form);
-    });
-
-    document.addEventListener('submit', async event => {
-        const form = event.target.closest('[data-contract-edit-form], [data-contract-delete-form]');
-        if (!form) return;
+    form.addEventListener('submit', async event => {
         event.preventDefault();
         if (form.dataset.submitting === 'true' || !form.reportValidity()) return;
-        setBusy(form, true);
+        setBusy(true);
         try {
             const response = await fetch(form.action, { method: 'POST', headers, body: new FormData(form) });
             const error = responseError(response);
             if (error) throw new Error(error);
-            if (response.status === 422 && form.matches('[data-contract-edit-form]')) {
-                content.innerHTML = await response.text();
-                window.ContractForm.init(content);
-                const validation = content.querySelector('.field-validation-error, .validation-summary-errors');
-                if (validation) { validation.tabIndex = -1; validation.focus(); }
-                return;
-            }
             const data = response.headers.get('content-type')?.includes('application/json') ? await response.json() : null;
-            if (!response.ok || !data?.success) throw new Error(data?.message || 'Không thể lưu thay đổi. Vui lòng thử lại.');
-            const modal = form.closest('.modal');
-            setBusy(form, false);
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'Không thể chấm dứt hợp đồng. Vui lòng thử lại.');
+            setBusy(false);
             bootstrap.Modal.getOrCreateInstance(modal).hide();
-            await refreshList(data.message);
-        } catch (error) { showError(form, error.message || 'Mất kết nối. Vui lòng thử lại.'); }
-        finally { if (form.isConnected) setBusy(form, false); }
+            const refreshed = await window.loadContractTable({}, false);
+            const notice = document.querySelector('[data-contract-notice]');
+            notice.textContent = refreshed ? data.message : data.message + ' Danh sách chưa cập nhật được; vui lòng tải lại trang.';
+            notice.className = 'alert ' + (refreshed ? 'alert-success' : 'alert-warning');
+            notice.focus();
+        } catch (error) { showError(error.message || 'Mất kết nối. Vui lòng thử lại.'); }
+        finally { if (form.isConnected) setBusy(false); }
     });
 
-    [editModal, deleteModal].forEach(modal => {
-        modal.addEventListener('hide.bs.modal', event => {
-            if (modal.querySelector('[data-submitting="true"]')) event.preventDefault();
-        });
-        modal.addEventListener('hidden.bs.modal', () => {
-            if (modal === editModal) { editRequest?.abort(); content.replaceChildren(); }
-            if (opener?.isConnected) opener.focus();
-        });
+    modal.addEventListener('hide.bs.modal', event => {
+        if (form.dataset.submitting === 'true') event.preventDefault();
     });
-    deleteModal.addEventListener('shown.bs.modal', () => deleteModal.querySelector('[data-bs-dismiss="modal"].btn').focus());
+    modal.addEventListener('hidden.bs.modal', () => { if (opener?.isConnected) opener.focus(); });
 })();

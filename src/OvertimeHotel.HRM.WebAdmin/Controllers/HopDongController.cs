@@ -28,10 +28,9 @@ public class HopDongController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, string? status, string? contractFilter, int page = 1, int pageSize = 10, bool isPartial = false)
+    public async Task<IActionResult> Index(string? keyword, string? contractFilter, int page = 1, int pageSize = 10, bool isPartial = false)
     {
         keyword = keyword?.Trim();
-        status = string.IsNullOrWhiteSpace(status) ? null : status;
         contractFilter = string.IsNullOrWhiteSpace(contractFilter) ? null : contractFilter;
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 5, 50);
@@ -70,13 +69,15 @@ public class HopDongController : Controller
                     (contract.NhanVien != null && (contract.NhanVien.Ho.ToLower().Contains(value) || contract.NhanVien.Ten.ToLower().Contains(value))));
             }
 
-            var items = filtered.Select(contract =>
-            {
-                var days = contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null;
-                var isRenewed = allContracts.Any(other => other.MaNhanVien == contract.MaNhanVien &&
+            bool IsRenewed(HopDong contract) => allContracts.Any(other => other.MaNhanVien == contract.MaNhanVien &&
                                                           other.MaHopDong != contract.MaHopDong &&
                                                           other.NgayBatDau >= (contract.NgayKetThuc ?? contract.NgayBatDau) &&
                                                           (other.TrangThai == "HIEU_LUC" || !other.NgayKetThuc.HasValue || other.NgayKetThuc.Value >= today));
+
+            var items = filtered.Select(contract =>
+            {
+                var days = contract.NgayKetThuc is DateOnly endDate ? endDate.DayNumber - today.DayNumber : (int?)null;
+                var isRenewed = IsRenewed(contract);
                 return new HopDongListItemViewModel
                 {
                     Contract = contract,
@@ -86,37 +87,22 @@ public class HopDongController : Controller
                     PersonalEmail = contract.NhanVien?.EmailCaNhan,
                     DaysRemaining = days,
                     State = ContractState.Classify(contract, today),
-                    IsRenewed = isRenewed
+                    IsRenewed = isRenewed,
+                    EmployeeHasOtherContract = allContracts.Any(other => other.MaNhanVien == contract.MaNhanVien && other.MaHopDong != contract.MaHopDong
+                        && other.TrangThai != "DA_CHAM_DUT" && other.TrangThai != "CHAM_DUT" && (!other.NgayKetThuc.HasValue || other.NgayKetThuc.Value >= today))
                 };
             });
 
-            if (!string.IsNullOrWhiteSpace(status))
-                items = items.Where(item => status switch
-                {
-                    "HIEU_LUC" => item.State is "HIEU_LUC" or "SAP_HET_HAN",
-                    "HET_HAN" => item.State == "DA_HET_HAN",
-                    "DA_CHAM_DUT" or "CHAM_DUT" => item.State == "DA_CHAM_DUT",
-                    _ => false
-                });
-
-            if (string.IsNullOrWhiteSpace(contractFilter) && string.IsNullOrWhiteSpace(status))
+            // Một bộ lọc trạng thái duy nhất; mặc định chỉ hiện hợp đồng đang làm việc.
+            items = contractFilter switch
             {
-                // Mặc định ẩn hợp đồng đã hết hạn hoặc đã chấm dứt
-                items = items.Where(item => item.State != "DA_HET_HAN" && item.State != "DA_CHAM_DUT");
-            }
-            else if (contractFilter == "DA_HET_HAN")
-            {
-                items = items.Where(item => item.State == "DA_HET_HAN");
-            }
-            else if (contractFilter == "SAP_HET_HAN")
-            {
-                items = items.Where(item => item.State == "SAP_HET_HAN");
-            }
-            else if (contractFilter == "HIEU_LUC")
-            {
-                items = items.Where(item => item.State == "HIEU_LUC" && (!item.DaysRemaining.HasValue || item.DaysRemaining.Value > 30));
-            }
-            // contractFilter == "TAT_CA" -> hiển thị toàn bộ không lọc trạng thái
+                "SAP_HET_HAN" => items.Where(item => item.State == "SAP_HET_HAN"),
+                "CAN_XU_LY" => items.Where(item => item.State == "DA_HET_HAN" && !item.IsRenewed),
+                "CHUA_HIEU_LUC" => items.Where(item => item.State == "CHUA_HIEU_LUC"),
+                "DA_CHAM_DUT" => items.Where(item => item.State == "DA_CHAM_DUT"),
+                "TAT_CA" => items,
+                _ => items.Where(item => item.State is "HIEU_LUC" or "SAP_HET_HAN" or "CHUA_HIEU_LUC")
+            };
 
             var employeeOptions = allEmployees.Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien:D3}", item.MaNhanVien.ToString())).ToList();
             var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
@@ -164,7 +150,6 @@ public class HopDongController : Controller
                     EmployeeList = employeeItems
                 },
                 Keyword = keyword,
-                Status = status,
                 ContractFilter = contractFilter,
                 Contracts = pagedContracts,
                 EmployeeOptions = employeeOptions,
@@ -173,9 +158,10 @@ public class HopDongController : Controller
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalPages = totalPages,
-                ActiveContracts = allContracts.Count(contract => ContractState.Classify(contract, today) == "HIEU_LUC"),
+                ActiveContracts = allContracts.Count(contract => ContractState.Classify(contract, today) is "HIEU_LUC" or "SAP_HET_HAN" or "CHUA_HIEU_LUC"),
                 ExpiringContracts = allContracts.Count(contract => ContractState.Classify(contract, today) == "SAP_HET_HAN"),
-                ExpiredContracts = allContracts.Count(contract => ContractState.Classify(contract, today) == "DA_HET_HAN")
+                // "Cần xử lý": hết hạn nhưng chưa có hợp đồng nối tiếp (cùng điều kiện với bộ lọc CAN_XU_LY).
+                ExpiredContracts = allContracts.Count(contract => ContractState.Classify(contract, today) == "DA_HET_HAN" && !IsRenewed(contract))
             };
 
             if (isPartial || Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -207,7 +193,6 @@ public class HopDongController : Controller
                     }
                 },
                 Keyword = keyword,
-                Status = status,
                 ContractFilter = contractFilter,
                 Contracts = new List<HopDongListItemViewModel>(),
                 EmployeeOptions = new List<SelectListItem>()
@@ -324,189 +309,91 @@ public class HopDongController : Controller
         }
     }
 
-    [HttpGet]
-    public async Task<IActionResult> Edit(int id)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Terminate(int id, HopDongTerminateViewModel model)
     {
-        ViewBag.EmployeeOptions = await GetEmployeeOptionsAsync();
         var contract = await _context.HopDongs
             .Include(item => item.NhanVien)
-                .ThenInclude(nv => nv!.PhongBan)
-            .Include(item => item.NhanVien)
-                .ThenInclude(nv => nv!.ChucVu)
-            .AsNoTracking()
             .FirstOrDefaultAsync(item => item.MaHopDong == id);
+        if (contract == null)
+            return NotFound();
 
-        if (contract == null) return NotFound();
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var state = ContractState.Classify(contract, today);
 
-        var empDeptId = contract.NhanVien?.MaPhongBan;
-        var empPosId = contract.NhanVien?.MaChucVu;
+        string? error = null;
+        if (state == "DA_CHAM_DUT")
+            error = "Hợp đồng này đã được chấm dứt trước đó.";
+        else if (!ContractTerminationTypes.IsValid(model.LoaiChamDut))
+            error = "Vui lòng chọn loại chấm dứt.";
+        else if (model.LoaiChamDut == ContractTerminationTypes.KHAC && string.IsNullOrWhiteSpace(model.LyDoChamDut))
+            error = "Vui lòng nhập ghi chú khi chọn loại chấm dứt \"Khác\".";
 
-        var allDepartments = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
-        var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString(), d.MaPhongBan == empDeptId)).ToList();
-        ViewBag.DepartmentOptions = departmentOptions;
-
-        var cvQuery = _context.ChucVus.AsNoTracking()
-            .Where(OrganizationPositionPolicy.ForDepartment(allDepartments.FirstOrDefault(d => d.MaPhongBan == empDeptId)));
-        var positionOptions = await cvQuery.OrderBy(x => x.TenChucVu)
-            .Select(x => new SelectListItem(x.TenChucVu + (x.MaPhongBan == null ? " (Chung)" : ""), x.MaChucVu.ToString(), x.MaChucVu == empPosId))
+        var otherContracts = await _context.HopDongs
+            .AsNoTracking()
+            .Where(item => item.MaNhanVien == contract.MaNhanVien && item.MaHopDong != contract.MaHopDong
+                           && item.TrangThai != "DA_CHAM_DUT" && item.TrangThai != "CHAM_DUT")
             .ToListAsync();
-        ViewBag.PositionOptions = positionOptions;
 
-        return EditFormResult(new HopDongFormViewModel
+        // Đã có hợp đồng nối tiếp thì hợp đồng này đã được gia hạn, không còn gì để chấm dứt.
+        if (error == null && otherContracts.Any(other => other.NgayBatDau >= (contract.NgayKetThuc ?? contract.NgayBatDau)))
+            error = "Hợp đồng này đã được gia hạn bằng hợp đồng mới nên không thể chấm dứt.";
+
+        // Ngày chấm dứt: hợp đồng chưa bắt đầu hoặc đã hết hạn thì cố định, còn lại do người dùng chọn
+        // nhưng phải nằm trong thời hạn hợp đồng và không ở tương lai.
+        DateOnly endDate = default;
+        if (error == null)
         {
-            EmployeeId = contract.MaNhanVien,
-            EmployeeName = contract.NhanVien?.HoTen ?? "Nhân viên",
-            DepartmentId = contract.NhanVien?.MaPhongBan,
-            DepartmentName = contract.NhanVien?.PhongBan?.TenPhongBan ?? "Chưa phân bổ",
-            PositionId = contract.NhanVien?.MaChucVu,
-            PositionName = contract.NhanVien?.ChucVu?.TenChucVu ?? "Chưa phân bổ",
-            PersonalEmail = contract.NhanVien?.EmailCaNhan,
-            DepartmentOptions = departmentOptions,
-            PositionOptions = positionOptions,
-            Contract = contract
-        });
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, HopDongFormViewModel model)
-    {
-        ViewBag.EmployeeOptions = await GetEmployeeOptionsAsync();
-        if (id != model.Contract.MaHopDong)
-            return BadRequest();
-
-        model.Contract.MaNhanVien = model.EmployeeId ?? 0;
-        if (string.IsNullOrWhiteSpace(model.Contract.HinhThucHopDong))
-        {
-            model.Contract.HinhThucHopDong = "CHINH_THUC";
-        }
-
-        await ValidateContractAsync(model.Contract, id);
-        await ValidateOrganizationAsync(model);
-        var employee = await _context.NhanViens
-            .Include(nv => nv.PhongBan)
-            .Include(nv => nv.ChucVu)
-            .FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
-
-        if (employee == null)
-        {
-            ModelState.AddModelError(nameof(model.EmployeeId), "Vui lòng chọn nhân viên.");
-        }
-        else
-        {
-            model.EmployeeName = employee.HoTen;
-            model.DepartmentName = employee.PhongBan?.TenPhongBan ?? string.Empty;
-            model.PositionName = employee.ChucVu?.TenChucVu ?? string.Empty;
-
-            // Cập nhật email cá nhân nếu người dùng nhập mới / chỉnh sửa
-            if (!string.IsNullOrWhiteSpace(model.PersonalEmail) && employee.EmailCaNhan != model.PersonalEmail.Trim())
+            if (state == "CHUA_HIEU_LUC") endDate = contract.NgayBatDau;
+            else if (state == "DA_HET_HAN") endDate = contract.NgayKetThuc!.Value;
+            else
             {
-                employee.EmailCaNhan = model.PersonalEmail.Trim();
+                endDate = model.NgayChamDut ?? today;
+                if (endDate < contract.NgayBatDau || endDate > today || (contract.NgayKetThuc.HasValue && endDate > contract.NgayKetThuc.Value))
+                    error = "Ngày chấm dứt phải nằm trong thời hạn hợp đồng và không được ở tương lai.";
             }
-
-            // Cập nhật phòng ban nếu người dùng thay đổi trên form
-            if (model.DepartmentId.HasValue && model.DepartmentId.Value > 0)
-            {
-                employee.MaPhongBan = model.DepartmentId.Value;
-            }
-
-            // Cập nhật chức vụ nếu người dùng thay đổi trên form
-            if (model.PositionId.HasValue && model.PositionId.Value > 0)
-            {
-                employee.MaChucVu = model.PositionId.Value;
-            }
-
         }
 
-        if (!ModelState.IsValid)
+        if (error != null)
+            return TerminateResult(false, error, StatusCodes.Status422UnprocessableEntity);
+
+        contract.TrangThai = "DA_CHAM_DUT";
+        contract.NgayKetThuc = endDate;
+        contract.LoaiChamDut = model.LoaiChamDut;
+        contract.LyDoChamDut = string.IsNullOrWhiteSpace(model.LyDoChamDut) ? null : model.LyDoChamDut.Trim();
+
+        // Nhân viên chỉ nghỉ việc khi không còn hợp đồng nào khác còn hiệu lực hoặc sắp tới.
+        var hasOtherActive = otherContracts.Any(other => !other.NgayKetThuc.HasValue || other.NgayKetThuc.Value >= today);
+        var employee = contract.NhanVien;
+        var employeeLeft = false;
+        if (employee != null && !hasOtherActive)
         {
-            var allDepts = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
-            ViewBag.DepartmentOptions = allDepts.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
-            var cvQuery = _context.ChucVus.AsNoTracking()
-                .Where(OrganizationPositionPolicy.ForDepartment(allDepts.FirstOrDefault(d => d.MaPhongBan == model.DepartmentId)));
-            ViewBag.PositionOptions = await cvQuery.OrderBy(x => x.TenChucVu).Select(x => new SelectListItem(x.TenChucVu, x.MaChucVu.ToString())).ToListAsync();
-            return EditFormResult(model, invalid: true);
+            employee.TrangThai = "DA_THOI_VIEC";
+            employee.NgayThoiViec = endDate;
+            employeeLeft = true;
         }
 
-        var contract = await _context.HopDongs.FindAsync(id);
-        if (contract == null)
-            return NotFound();
-
-        contract.MaNhanVien = model.EmployeeId ?? contract.MaNhanVien;
-        contract.SoHopDong = model.Contract.SoHopDong.Trim();
-        contract.LoaiHopDong = model.Contract.LoaiHopDong.Trim();
-        contract.HinhThucHopDong = model.Contract.HinhThucHopDong.Trim();
-        contract.NgayBatDau = model.Contract.NgayBatDau;
-        contract.NgayKetThuc = model.Contract.NgayKetThuc;
-        contract.LuongCoBan = model.Contract.LuongCoBan;
-        contract.TrangThai = model.Contract.TrangThai;
-
-        try
-        {
-            await _context.SaveChangesAsync();
-            string emailNotice = "";
-            var finalEmail = !string.IsNullOrWhiteSpace(model.PersonalEmail) ? model.PersonalEmail.Trim() : employee?.EmailCaNhan;
-            if (model.EmailNotificationOption == "GUI_EMAIL")
-            {
-                if (!string.IsNullOrWhiteSpace(finalEmail))
-                {
-                    _logger.LogInformation("Gửi thông báo cập nhật hợp đồng '{ContractNumber}' tới email cá nhân: {Email}", contract.SoHopDong, finalEmail);
-                    emailNotice = $" (Đã gửi thông báo tới email cá nhân: {finalEmail})";
-                }
-            }
-            var message = $"Đã cập nhật hợp đồng “{contract.SoHopDong}”.{emailNotice}";
-            if (Request.Headers.XRequestedWith == "XMLHttpRequest")
-                return Json(new { success = true, message });
-            TempData["Success"] = message;
-            return RedirectToAction(nameof(Index));
-        }
-        catch (DbUpdateException ex)
-        {
-            _logger.LogError(ex, "Không thể cập nhật hợp đồng {ContractId}.", id);
-            ModelState.AddModelError(string.Empty, "Không thể cập nhật hợp đồng. Vui lòng kiểm tra dữ liệu.");
-            var allDepts = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync();
-            ViewBag.DepartmentOptions = allDepts.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
-            var cvQuery = _context.ChucVus.AsNoTracking()
-                .Where(OrganizationPositionPolicy.ForDepartment(allDepts.FirstOrDefault(d => d.MaPhongBan == model.DepartmentId)));
-            ViewBag.PositionOptions = await cvQuery.OrderBy(x => x.TenChucVu).Select(x => new SelectListItem(x.TenChucVu, x.MaChucVu.ToString())).ToListAsync();
-            return EditFormResult(model, invalid: true);
-        }
-    }
-
-    private IActionResult EditFormResult(HopDongFormViewModel model, bool invalid = false)
-    {
-        if (Request.Headers.XRequestedWith != "XMLHttpRequest") return View("Edit", model);
-        ViewData["IsContractModal"] = true;
-        if (invalid) Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
-        return PartialView("_EditContractModalContent", model);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var contract = await _context.HopDongs.FindAsync(id);
-        if (contract == null)
-            return NotFound();
-
-        _context.HopDongs.Remove(contract);
         try
         {
             await _context.SaveChangesAsync();
         }
         catch (DbUpdateException ex)
         {
-            _logger.LogError(ex, "Không thể xóa hợp đồng {ContractId}.", id);
-            const string error = "Không thể xóa hợp đồng do có dữ liệu liên quan. Vui lòng kiểm tra lại.";
-            if (Request.Headers.XRequestedWith == "XMLHttpRequest")
-                return Conflict(new { success = false, message = error });
-            TempData["Error"] = error;
-            return RedirectToAction(nameof(Index));
+            _logger.LogError(ex, "Không thể chấm dứt hợp đồng {ContractId}.", id);
+            return TerminateResult(false, "Không thể chấm dứt hợp đồng. Vui lòng kiểm tra lại dữ liệu.", StatusCodes.Status409Conflict);
         }
-        var message = $"Đã xóa hợp đồng “{contract.SoHopDong}”.";
+
+        var message = $"Đã chấm dứt hợp đồng “{contract.SoHopDong}”." +
+                      (employeeLeft ? " Nhân viên đã chuyển sang trạng thái nghỉ việc." : " Nhân viên vẫn còn hợp đồng khác nên giữ trạng thái đang làm.");
+        return TerminateResult(true, message);
+    }
+
+    private IActionResult TerminateResult(bool success, string message, int statusCode = StatusCodes.Status200OK)
+    {
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
-            return Json(new { success = true, message });
-        TempData["Success"] = message;
+            return StatusCode(statusCode, new { success, message });
+        TempData[success ? "Success" : "Error"] = message;
         return RedirectToAction(nameof(Index));
     }
 

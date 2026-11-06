@@ -3,7 +3,6 @@
     Func<int, string> pageUrl = page => Url.Action("Index", new
     {
         keyword = Model.Keyword,
-        status = Model.Status,
         contractFilter = Model.ContractFilter,
         page,
         pageSize = Model.PageSize
@@ -137,7 +136,7 @@
                             @if (item.State == "DA_CHAM_DUT")
                             {
                                 <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle rounded-pill px-3 py-1">
-                                    <i class="bi bi-archive-fill me-1"></i>Thanh lý
+                                    <i class="bi bi-archive-fill me-1"></i>Đã chấm dứt
                                 </span>
                             }
                             else if (item.State == "DA_HET_HAN")
@@ -167,12 +166,12 @@
                             <a href="javascript:void(0)" onclick="printContractA4(@contract.MaHopDong); event.stopPropagation();" class="btn btn-sm btn-light border rounded-circle me-1 text-primary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="In mẫu hợp đồng A4">
                                 <i class="bi bi-printer"></i>
                             </a>
-                            <button type="button" data-contract-edit-url="@Url.Content($"~/HopDong/Edit/{contract.MaHopDong}")" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hợp đồng" aria-label="Chỉnh sửa hợp đồng @contract.SoHopDong">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                                <button type="button" data-contract-delete-url="@Url.Content($"~/HopDong/Delete/{contract.MaHopDong}")" data-contract-number="@contract.SoHopDong" data-contract-employee="@item.EmployeeName" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Xóa hợp đồng" aria-label="Xóa hợp đồng @contract.SoHopDong">
-                                    <i class="bi bi-trash"></i>
+                            @if (item.State != "DA_CHAM_DUT" && !item.IsRenewed)
+                            {
+                                <button type="button" data-contract-terminate-url="@Url.Content($"~/HopDong/Terminate/{contract.MaHopDong}")" data-contract-number="@contract.SoHopDong" data-contract-employee="@item.EmployeeName" data-contract-start="@contract.NgayBatDau.ToString("yyyy-MM-dd")" data-contract-end="@(contract.NgayKetThuc?.ToString("yyyy-MM-dd"))" data-contract-state="@item.State" data-contract-has-other="@(item.EmployeeHasOtherContract ? "true" : "false")" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chấm dứt hợp đồng" aria-label="Chấm dứt hợp đồng @contract.SoHopDong">
+                                    <i class="bi bi-person-x"></i>
                                 </button>
+                            }
                         </td>
                     </tr>
                 }
