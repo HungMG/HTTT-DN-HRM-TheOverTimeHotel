@@ -27,6 +27,8 @@ public partial class AppShell : Shell
 	private const string TAB_BAR_TITLE = "#1E3A8A";
 
 	private readonly IAuthService _authService;
+	private readonly IDispatcherTimer _sessionTimer;
+	private bool _checkingSession;
 	private bool _tabsBuilt;
 
 	public AppShell(IAuthService authService)
@@ -34,6 +36,9 @@ public partial class AppShell : Shell
 		_authService = authService ?? throw new ArgumentNullException(nameof(authService));
 
 		InitializeComponent();
+		_sessionTimer = Dispatcher.CreateTimer();
+		_sessionTimer.Interval = TimeSpan.FromSeconds(10);
+		_sessionTimer.Tick += async (_, _) => await CheckSessionAsync();
 
 		// Đăng ký các route toàn cục
 		Routing.RegisterRoute("LeaveApprovalPage", typeof(LeaveApprovalPage));
@@ -70,11 +75,29 @@ public partial class AppShell : Shell
 			isManager: user?.IsManager == true);
 
 		await GoToAsync(HomeRoute);
+		_sessionTimer.Start();
+	}
+
+	private async Task CheckSessionAsync()
+	{
+		var user = _authService.CurrentUser;
+		if (_checkingSession || user == null || _authService.IsDemoMode) return;
+		_checkingSession = true;
+		try
+		{
+			var status = await _authService.CheckSessionAsync();
+			if (status != SessionStatus.Invalid || !ReferenceEquals(user, _authService.CurrentUser)) return;
+			await _authService.LogoutAsync();
+			ClearRoleTabs();
+			await GoToAsync("//LoginPage");
+		}
+		finally { _checkingSession = false; }
 	}
 
 	/// <summary>Gỡ toàn bộ tab của nhánh đã đăng nhập (dùng khi thoát tài khoản).</summary>
 	public void ClearRoleTabs()
 	{
+		_sessionTimer.Stop();
 		foreach (TabBar bar in Items.OfType<TabBar>().ToList())
 		{
 			Items.Remove(bar);
@@ -182,7 +205,7 @@ public partial class AppShell : Shell
 		else if (isManager)
 		{
 			// ═══ NHÁNH QUẢN LÝ BỘ PHẬN (MANAGER) ═══
-			// 1: Trang chủ | 2: Chấm công | 3: Duyệt đơn | 4: Cài đặt
+			// Trang chủ, chấm công, đơn của bản thân, duyệt đơn và cài đặt.
 			var managerHomeTab = new ShellContent
 			{
 				Title = "Quản Lý",
@@ -204,13 +227,22 @@ public partial class AppShell : Shell
 				Route = "LeaveApproval",
 				ContentTemplate = new DataTemplate(typeof(LeaveApprovalPage))
 			};
+			var requestsTab = new ShellContent
+			{
+				Title = "Đơn Từ",
+				Icon = TAB_ICON_DOCS,
+				Route = "Requests",
+				ContentTemplate = new DataTemplate(typeof(RequestsPage))
+			};
 
 			ApplyTabAppearance(managerHomeTab);
 			ApplyTabAppearance(attendanceTab);
+			ApplyTabAppearance(requestsTab);
 			ApplyTabAppearance(leaveApprovalTab);
 
 			mainTabs.Items.Add(managerHomeTab);
 			mainTabs.Items.Add(attendanceTab);
+			mainTabs.Items.Add(requestsTab);
 			mainTabs.Items.Add(leaveApprovalTab);
 			mainTabs.Items.Add(settingsTab);
 		}

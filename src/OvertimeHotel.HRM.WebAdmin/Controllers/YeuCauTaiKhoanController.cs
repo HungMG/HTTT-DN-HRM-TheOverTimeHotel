@@ -124,6 +124,8 @@ public class YeuCauTaiKhoanController : Controller
                 SenderName = item.NguoiGui == null
                     ? "Không xác định"
                     : (item.NguoiGui.Ho + " " + item.NguoiGui.Ten).Trim(),
+                SenderRole = item.NguoiGui != null && item.NguoiGui.TaiKhoan != null && item.NguoiGui.TaiKhoan.VaiTro != null
+                    ? item.NguoiGui.TaiKhoan.VaiTro.TenVaiTro : null,
                 HandlerUsername = item.NguoiXuLy == null ? null : item.NguoiXuLy.TenDangNhap,
                 RejectionNote = item.GhiChuTuChoi,
                 SentAt = item.NgayGui,
@@ -229,7 +231,8 @@ public class YeuCauTaiKhoanController : Controller
                 .Select(item => new { Position = item.ChucVu != null ? item.ChucVu.TenChucVu : null,
                     Department = item.PhongBan != null ? item.PhongBan.TenPhongBan : null })
                 .SingleOrDefaultAsync();
-            if (employee != null && ResolveRoleFromPositionAndDepartment(employee.Position, employee.Department, false).RoleName != "Employee")
+            var targetRole = employee == null ? null : ResolveRoleFromPositionAndDepartment(employee.Position, employee.Department).RoleName;
+            if (targetRole != null && targetRole != "Employee" && !(LeaveApprovalPolicy.IsHR(role) && targetRole == "Manager"))
                 return PartialView("_AccountRequestUnavailable");
         }
 
@@ -315,9 +318,10 @@ public class YeuCauTaiKhoanController : Controller
 
         // Vai trò phải do máy chủ xác định, không tin giá trị gửi từ trình duyệt.
         var roleName = employee == null ? null :
-            ResolveRoleFromPositionAndDepartment(employee.Position, employee.Department, LeaveApprovalPolicy.IsIT(role)).RoleName;
-        if (!LeaveApprovalPolicy.IsIT(role) && roleName != null && roleName != "Employee")
-            ModelState.AddModelError(nameof(model.EmployeeId), "Không thể gửi yêu cầu cho vai trò này. HR và Admin chỉ được yêu cầu cấp tài khoản Nhân viên; vui lòng liên hệ IT.");
+            ResolveRoleFromPositionAndDepartment(employee.Position, employee.Department).RoleName;
+        if (!LeaveApprovalPolicy.IsIT(role) && roleName != null && roleName != "Employee" &&
+            !(LeaveApprovalPolicy.IsHR(role) && roleName == "Manager"))
+            ModelState.AddModelError(nameof(model.EmployeeId), "HR chỉ được yêu cầu cấp tài khoản Nhân viên và Quản lý; các vai trò khác do IT xử lý.");
         model.RoleId = roleName == null ? 0 : await _context.VaiTros.AsNoTracking()
             .Where(item => item.TenVaiTro == roleName)
             .Select(item => item.MaVaiTro)
@@ -482,6 +486,7 @@ public class YeuCauTaiKhoanController : Controller
         var employee = await _context.NhanViens
             .AsNoTracking()
             .Include(item => item.TaiKhoan)!.ThenInclude(tk => tk!.VaiTro)
+            .Include(item => item.ChucVu)
             .FirstOrDefaultAsync(item => item.MaNhanVien == model.EmployeeId);
 
         if (employee == null)
@@ -491,6 +496,10 @@ public class YeuCauTaiKhoanController : Controller
         else if (employee.TaiKhoan == null)
         {
             ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên chưa có tài khoản. Vui lòng gửi yêu cầu cấp mới tài khoản trước khi thăng chức.");
+        }
+        else if (!HopDongController.IsManagerPosition(employee.ChucVu?.TenChucVu))
+        {
+            ModelState.AddModelError(nameof(model.EmployeeId), "Chỉ gửi yêu cầu cho nhân viên đã lập hợp đồng Quản lý.");
         }
         else if (!string.Equals(employee.TrangThai, "DANG_LAM", StringComparison.Ordinal))
         {
@@ -520,11 +529,16 @@ public class YeuCauTaiKhoanController : Controller
                 .Select(c => new { c.TrangThai, c.NgayBatDau, c.NgayKetThuc })
                 .SingleOrDefaultAsync();
 
-            if (contract == null || !LeaveApprovalPolicy.IsValidContractForAccountRequest(contract.TrangThai, contract.NgayBatDau, contract.NgayKetThuc, today))
+            if (contract == null || contract.TrangThai != "HIEU_LUC" || (contract.NgayKetThuc.HasValue && contract.NgayKetThuc.Value < today))
             {
                 ModelState.AddModelError(nameof(model.ContractId), "Hợp đồng không hợp lệ hoặc đã hết hạn (chỉ chấp nhận HĐ đang hiệu lực, đã bắt đầu và chưa hết hạn).");
             }
         }
+
+        if (model.ContractId.HasValue && await _context.HopDongs.AnyAsync(c => c.MaNhanVien == model.EmployeeId &&
+            c.TrangThai == "HIEU_LUC" && _context.HopDongs.Any(selected => selected.MaHopDong == model.ContractId &&
+                selected.MaNhanVien == model.EmployeeId && c.NgayBatDau > selected.NgayBatDau)))
+            ModelState.AddModelError(nameof(model.ContractId), "Hãy chọn hợp đồng mới nhất của nhân viên.");
 
         if (string.IsNullOrWhiteSpace(model.Reason))
         {
@@ -608,13 +622,20 @@ public class YeuCauTaiKhoanController : Controller
         }
 
         var employee = await _context.NhanViens
-            .Include(e => e.TaiKhoan)
+            .Include(e => e.TaiKhoan)!.ThenInclude(t => t!.VaiTro)
             .Include(e => e.ChucVu)
             .FirstOrDefaultAsync(e => e.MaNhanVien == employeeId);
 
         if (employee == null || employee.TaiKhoan == null)
         {
             return Json(new { success = false, message = "Nhân viên chưa có tài khoản để thăng chức." });
+        }
+
+        if (employee.TrangThai != "DANG_LAM" ||
+            employee.TaiKhoan.VaiTro?.TenVaiTro != "Employee" ||
+            !HopDongController.IsManagerPosition(employee.ChucVu?.TenChucVu))
+        {
+            return Json(new { success = false, message = "Chỉ gửi yêu cầu cho nhân viên đã lập hợp đồng Quản lý." });
         }
 
         var managerRole = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(r => r.TenVaiTro == "Manager");
@@ -624,7 +645,10 @@ public class YeuCauTaiKhoanController : Controller
         }
 
         var contract = await _context.HopDongs.FindAsync(contractId);
-        if (contract == null || contract.MaNhanVien != employeeId)
+        if (contract == null || contract.MaNhanVien != employeeId || contract.TrangThai != "HIEU_LUC" ||
+            (contract.NgayKetThuc.HasValue && contract.NgayKetThuc.Value < DateOnly.FromDateTime(DateTime.Today)) ||
+            await _context.HopDongs.AnyAsync(c => c.MaNhanVien == employeeId && c.MaHopDong != contractId &&
+                c.TrangThai == "HIEU_LUC" && c.NgayBatDau > contract.NgayBatDau))
         {
             return Json(new { success = false, message = "Hợp đồng không hợp lệ." });
         }
@@ -650,8 +674,22 @@ public class YeuCauTaiKhoanController : Controller
             GhiChuTuChoi = $"[THANG_CHUC] Thăng chức lên {employee.ChucVu?.TenChucVu ?? "Quản lý"} theo hợp đồng {contract.SoHopDong}"
         };
 
-        _context.YeuCauTaiKhoans.Add(request);
-        await _context.SaveChangesAsync();
+        var created = await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(2026101601, {employeeId})");
+            if (await _context.YeuCauTaiKhoans.AnyAsync(r => r.MaNhanVien == employeeId &&
+                (r.TrangThai == STATUS_CHO_IT || r.TrangThai == STATUS_DANG_XU_LY))) return false;
+            _context.YeuCauTaiKhoans.Add(request);
+            _context.NhatKyQuanTris.Add(CreateAuditLog(employee.TaiKhoan.MaTaiKhoan, employee.TaiKhoan.TenDangNhap,
+                "CREATE_PROMOTION_REQUEST", "Gửi yêu cầu thăng chức lên Quản lý.", "Employee", "Manager",
+                $"Hợp đồng #{contractId}"));
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return true;
+        });
+        if (!created)
+            return Json(new { success = false, message = "Nhân viên đã có yêu cầu đang chờ IT xử lý." });
 
         return Json(new { success = true, message = $"Đã gửi yêu cầu thăng chức cho {employee.HoTen} sang bộ phận IT thành công!" });
     }
@@ -695,7 +733,6 @@ public class YeuCauTaiKhoanController : Controller
             .AsNoTracking()
             .Where(contract =>
                 contract.TrangThai == "HIEU_LUC" &&
-                contract.NgayBatDau <= today &&
                 (contract.NgayKetThuc == null || contract.NgayKetThuc.Value >= today))
             .OrderBy(contract => contract.NgayKetThuc ?? DateOnly.MaxValue)
             .ThenBy(contract => contract.SoHopDong)
@@ -785,7 +822,7 @@ public class YeuCauTaiKhoanController : Controller
         {
             var pName = emp.ChucVu?.TenChucVu ?? "Chưa phân bổ";
             var dName = emp.PhongBan?.TenPhongBan ?? "Khách sạn";
-            var (rName, rDisplay) = ResolveRoleFromPositionAndDepartment(pName, dName, senderIsAdmin);
+            var (rName, rDisplay) = ResolveRoleFromPositionAndDepartment(pName, dName);
             model.EmployeeRoleMap[emp.MaNhanVien] = new EmployeeContractRoleInfo
             {
                 EmployeeId = emp.MaNhanVien,
@@ -816,7 +853,7 @@ public class YeuCauTaiKhoanController : Controller
         {
             var pName = contract.NhanVien?.ChucVu?.TenChucVu ?? "Chưa phân bổ";
             var dName = contract.NhanVien?.PhongBan?.TenPhongBan ?? "Khách sạn";
-            var (rName, rDisplay) = ResolveRoleFromPositionAndDepartment(pName, dName, senderIsAdmin);
+            var (rName, rDisplay) = ResolveRoleFromPositionAndDepartment(pName, dName);
             return new ActiveContractOptionViewModel
             {
                 ContractId = contract.MaHopDong,
@@ -895,7 +932,15 @@ public class YeuCauTaiKhoanController : Controller
             return ProcessingFailure("Không tìm thấy yêu cầu cần cấp tài khoản.", StatusCodes.Status404NotFound);
         }
 
-        if (request.VaiTro?.TenVaiTro != "Employee" && request.NguoiGui?.TaiKhoan?.VaiTro?.TenVaiTro != "IT")
+        var isManagerPromotion = request.VaiTro?.TenVaiTro == "Manager" &&
+            request.GhiChuTuChoi?.StartsWith("[THANG_CHUC]", StringComparison.Ordinal) == true;
+        if (request.NguoiGui?.TaiKhoan?.VaiTro?.TenVaiTro == "HR" && !LeaveApprovalPolicy.IsIT(role))
+            return ProcessingFailure("Chỉ IT được duyệt yêu cầu do HR gửi.", StatusCodes.Status403Forbidden);
+        if (isManagerPromotion && !LeaveApprovalPolicy.IsIT(role))
+            return ProcessingFailure("Chỉ IT được duyệt yêu cầu thăng chức Quản lý.", StatusCodes.Status403Forbidden);
+        if (!isManagerPromotion && request.VaiTro?.TenVaiTro != "Employee" &&
+            !(request.VaiTro?.TenVaiTro == "Manager" && request.NguoiGui?.TaiKhoan?.VaiTro?.TenVaiTro == "HR" && LeaveApprovalPolicy.IsIT(role)) &&
+            request.NguoiGui?.TaiKhoan?.VaiTro?.TenVaiTro != "IT")
             return ProcessingFailure("Yêu cầu cũ cho vai trò quản lý không còn hợp lệ. IT cần cấp hoặc đổi vai trò trực tiếp.", StatusCodes.Status403Forbidden);
 
         if (request.TrangThai is not (STATUS_CHO_IT or STATUS_DANG_XU_LY))
@@ -929,8 +974,14 @@ public class YeuCauTaiKhoanController : Controller
             .Include(t => t.VaiTro)
             .FirstOrDefaultAsync(t => t.MaNhanVien == request.MaNhanVien);
 
+        if (isManagerPromotion && existingAccount == null)
+            return ProcessingFailure("Không tìm thấy tài khoản nhân viên cần thăng chức.", StatusCodes.Status409Conflict);
+
         if (existingAccount != null)
         {
+            if (isManagerPromotion && (existingAccount.VaiTro?.TenVaiTro != "Employee" ||
+                !HopDongController.IsManagerPosition((await _context.ChucVus.FindAsync(request.NhanVien!.MaChucVu))?.TenChucVu)))
+                return ProcessingFailure("Tài khoản hoặc chức vụ không còn phù hợp với yêu cầu thăng chức.", StatusCodes.Status409Conflict);
             var isPromotion = (request.GhiChuTuChoi != null && request.GhiChuTuChoi.StartsWith("[THANG_CHUC]")) || existingAccount.MaVaiTro != request.MaVaiTro;
             if (!isPromotion)
             {
@@ -1284,11 +1335,16 @@ public class YeuCauTaiKhoanController : Controller
 
     private static (string RoleName, string RoleDisplayName) ResolveRoleFromPositionAndDepartment(
         string? positionName,
-        string? departmentName,
-        bool senderIsAdmin)
+        string? departmentName)
     {
         var pos = (positionName ?? string.Empty).Trim();
         var dept = (departmentName ?? string.Empty).Trim();
+
+        if (dept.Contains("Ban Giám Đốc", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Giám đốc", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("General Manager", StringComparison.OrdinalIgnoreCase) ||
+            pos.Contains("Director", StringComparison.OrdinalIgnoreCase))
+            return ("Admin", GetVietnameseRoleName("Admin"));
 
         // 1. CNTT / IT
         if (System.Text.RegularExpressions.Regex.IsMatch(dept, @"\bIT\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
@@ -1311,19 +1367,6 @@ public class YeuCauTaiKhoanController : Controller
             pos.Contains("Kế toán", StringComparison.OrdinalIgnoreCase))
         {
             return ("HR", GetVietnameseRoleName("HR"));
-        }
-
-        // 3. Ban Giám Đốc / Tổng Giám Đốc (Admin nếu sender là Admin; Manager nếu sender không phải Admin)
-        if (dept.Contains("Ban Giám Đốc", StringComparison.OrdinalIgnoreCase) ||
-            pos.Contains("Tổng Giám Đốc", StringComparison.OrdinalIgnoreCase) ||
-            pos.Contains("General Manager", StringComparison.OrdinalIgnoreCase) ||
-            pos.Contains("Giám đốc điều hành", StringComparison.OrdinalIgnoreCase))
-        {
-            if (senderIsAdmin)
-            {
-                return ("Admin", GetVietnameseRoleName("Admin"));
-            }
-            return ("Manager", GetVietnameseRoleName("Manager"));
         }
 
         // 4. Quản lý / Trưởng bộ phận

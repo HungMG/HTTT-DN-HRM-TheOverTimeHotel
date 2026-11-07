@@ -261,7 +261,23 @@ public class HopDongController : Controller
             model.Contract.TrangThai = "HIEU_LUC";
         if (model.Contract.TrangThai != "HIEU_LUC")
             ModelState.AddModelError("Contract.TrangThai", "Hợp đồng mới không được ở trạng thái hết hạn, thanh lý hoặc chấm dứt.");
-        await ValidateContractAsync(model.Contract, model.ClosePreviousContract);
+        HopDong? sameDayPromotionContract = null;
+        if (model.ClosePreviousContract && employee?.MaNhanVien > 0 && model.PositionId.HasValue)
+        {
+            var position = await _context.ChucVus.FindAsync(model.PositionId);
+            if (IsManagerPosition(position?.TenChucVu) && await _context.TaiKhoans.AnyAsync(t =>
+                    t.MaNhanVien == employee.MaNhanVien && t.VaiTro!.TenVaiTro == "Employee"))
+            {
+                var matches = await _context.HopDongs.Where(h => h.MaNhanVien == employee.MaNhanVien &&
+                    h.TrangThai == "HIEU_LUC" && h.NgayBatDau == model.Contract.NgayBatDau).Take(2).ToListAsync();
+                if (matches.Count == 1)
+                {
+                    sameDayPromotionContract = matches[0];
+                    model.Contract.SoHopDong = sameDayPromotionContract.SoHopDong;
+                }
+            }
+        }
+        await ValidateContractAsync(model.Contract, model.ClosePreviousContract, sameDayPromotionContract?.MaHopDong);
         if (model.Contract.NgayKetThuc < today)
             ModelState.AddModelError("Contract.NgayKetThuc", "Hợp đồng mới không được có ngày kết thúc trong quá khứ.");
 
@@ -273,12 +289,18 @@ public class HopDongController : Controller
 
         try
         {
+            var oldContractValues = sameDayPromotionContract == null ? null : System.Text.Json.JsonSerializer.Serialize(new
+            {
+                sameDayPromotionContract.LoaiHopDong, sameDayPromotionContract.HinhThucHopDong,
+                sameDayPromotionContract.NgayBatDau, sameDayPromotionContract.NgayKetThuc, sameDayPromotionContract.LuongCoBan,
+                employee!.MaPhongBan, employee.MaChucVu
+            });
             if (employee != null)
             {
                 employee.MaPhongBan = model.DepartmentId;
                 employee.MaChucVu = model.PositionId;
                 if (!string.IsNullOrWhiteSpace(model.PersonalEmail)) employee.EmailCaNhan = model.PersonalEmail.Trim();
-                model.Contract.NhanVien = employee;
+                if (sameDayPromotionContract == null) model.Contract.NhanVien = employee;
 
                 if (model.ClosePreviousContract)
                 {
@@ -295,28 +317,50 @@ public class HopDongController : Controller
                     }
                 }
             }
-            _context.HopDongs.Add(model.Contract);
+            var targetPosition = await _context.ChucVus.FindAsync(model.PositionId);
+            var employeeAccount = employee != null && employee.MaNhanVien > 0
+                ? await _context.TaiKhoans.Include(t => t.VaiTro).FirstOrDefaultAsync(t => t.MaNhanVien == employee.MaNhanVien)
+                : null;
+            var isManagerPromotion = employeeAccount?.VaiTro?.TenVaiTro == "Employee" &&
+                IsManagerPosition(targetPosition?.TenChucVu);
+
+            if (sameDayPromotionContract == null)
+                _context.HopDongs.Add(model.Contract);
+            else
+            {
+                sameDayPromotionContract.LoaiHopDong = model.Contract.LoaiHopDong;
+                sameDayPromotionContract.HinhThucHopDong = model.Contract.HinhThucHopDong;
+                sameDayPromotionContract.NgayKetThuc = model.Contract.NgayKetThuc;
+                sameDayPromotionContract.LuongCoBan = model.Contract.LuongCoBan;
+                model.Contract = sameDayPromotionContract;
+                int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var actorId);
+                _context.NhatKyQuanTris.Add(new NhatKyQuanTri
+                {
+                    MaTaiKhoanThucHien = actorId > 0 ? actorId : null,
+                    MaTaiKhoanBiTacDong = employeeAccount?.MaTaiKhoan,
+                    TenNguoiThucHien = User.Identity?.Name ?? "Không xác định",
+                    TenTaiKhoanBiTacDong = employeeAccount?.TenDangNhap ?? string.Empty,
+                    HanhDong = "UPDATE_CONTRACT_PROMOTION",
+                    NoiDung = $"Cập nhật hợp đồng {sameDayPromotionContract.SoHopDong} khi thăng chức cùng ngày.",
+                    GiaTriCu = oldContractValues,
+                    GiaTriMoi = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        sameDayPromotionContract.LoaiHopDong, sameDayPromotionContract.HinhThucHopDong,
+                        sameDayPromotionContract.NgayBatDau, sameDayPromotionContract.NgayKetThuc, sameDayPromotionContract.LuongCoBan,
+                        employee!.MaPhongBan, employee.MaChucVu
+                    }),
+                    ThoiGian = DateTimeOffset.UtcNow
+                });
+            }
             await _context.SaveChangesAsync();
 
-            // Kiểm tra xem đây có phải là thăng chức lên Quản lý (đối với nhân sự đang có tài khoản Employee) không
-            if (employee != null)
+            if (isManagerPromotion)
             {
-                var employeeAccount = await _context.TaiKhoans
-                    .Include(t => t.VaiTro)
-                    .FirstOrDefaultAsync(t => t.MaNhanVien == employee.MaNhanVien);
-
-                if (employeeAccount != null && employeeAccount.VaiTro?.TenVaiTro == "Employee")
-                {
-                    var targetPosition = await _context.ChucVus.FindAsync(model.PositionId);
-                    if (targetPosition != null && IsManagerPosition(targetPosition.TenChucVu))
-                    {
-                        TempData["PromotionPrompt_EmployeeId"] = employee.MaNhanVien;
-                        TempData["PromotionPrompt_EmployeeName"] = employee.HoTen;
-                        TempData["PromotionPrompt_ContractId"] = model.Contract.MaHopDong;
-                        TempData["PromotionPrompt_ContractNo"] = model.Contract.SoHopDong;
-                        TempData["PromotionPrompt_PositionName"] = targetPosition.TenChucVu;
-                    }
-                }
+                TempData["PromotionPrompt_EmployeeId"] = employee!.MaNhanVien;
+                TempData["PromotionPrompt_EmployeeName"] = employee.HoTen;
+                TempData["PromotionPrompt_ContractId"] = model.Contract.MaHopDong;
+                TempData["PromotionPrompt_ContractNo"] = model.Contract.SoHopDong;
+                TempData["PromotionPrompt_PositionName"] = targetPosition!.TenChucVu;
             }
 
             string emailNotice = "";
@@ -334,7 +378,9 @@ public class HopDongController : Controller
                 }
             }
 
-            TempData["Success"] = $"Đã lập hợp đồng “{model.Contract.SoHopDong}” cho {employee!.HoTen}.{emailNotice}";
+            TempData["Success"] = sameDayPromotionContract == null
+                ? $"Đã lập hợp đồng “{model.Contract.SoHopDong}” cho {employee!.HoTen}.{emailNotice}"
+                : $"Đã cập nhật hợp đồng “{model.Contract.SoHopDong}” của {employee!.HoTen} theo thông tin thăng chức.{emailNotice}";
             return RedirectToAction(nameof(Index));
         }
         catch (DbUpdateException ex)
@@ -629,12 +675,13 @@ public class HopDongController : Controller
         }
     }
 
-    private static bool IsManagerPosition(string? title)
+    internal static bool IsManagerPosition(string? title)
     {
         if (string.IsNullOrWhiteSpace(title)) return false;
         var t = title.ToLowerInvariant();
+        if (t.Contains("giám đốc") || t.Contains("general manager") || t.Contains("director")) return false;
         return t.Contains("trưởng") || t.Contains("quản lý") ||
-               t.Contains("manager") || t.Contains("chef") || t.Contains("giám đốc");
+               t.Contains("manager") || t.Contains("chef");
     }
 
     private async Task<string> GenerateUniqueContractNumberAsync(string? hinhThucHopDong)

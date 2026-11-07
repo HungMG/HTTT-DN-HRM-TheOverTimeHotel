@@ -1,6 +1,6 @@
 ﻿@model CreateYeuCauTaiKhoanViewModel
 
-<form asp-action="Create" asp-route-popup="true" method="post" id="createRequestPopupForm" data-create-request-form data-employee-only="@((!User.IsInRole("IT")).ToString().ToLowerInvariant())">
+<form asp-action="Create" asp-route-popup="true" method="post" id="createRequestPopupForm" data-create-request-form data-employee-only="@((!User.IsInRole("IT")).ToString().ToLowerInvariant())" data-manager-allowed="@(User.IsInRole("HR").ToString().ToLowerInvariant())">
     @Html.AntiForgeryToken()
 
     @if (!ViewData.ModelState.IsValid)
@@ -15,7 +15,7 @@
     }
 
     <div class="alert alert-warning" role="alert" data-role-restriction hidden>
-        Không thể gửi yêu cầu cho vai trò này. HR và Admin chỉ được yêu cầu cấp tài khoản Nhân viên; vui lòng liên hệ IT để cấp tài khoản.
+        Không thể gửi yêu cầu cho vai trò này. HR được yêu cầu cấp tài khoản Nhân viên và Quản lý; vui lòng liên hệ IT cho các vai trò khác.
     </div>
 
     <!-- KHỐI 1: NHÂN SỰ & CĂN CỨ HỢP ĐỒNG -->

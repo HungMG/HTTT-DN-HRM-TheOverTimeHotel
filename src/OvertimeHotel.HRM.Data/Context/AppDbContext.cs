@@ -174,6 +174,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.TenDangNhap).HasColumnName("ten_dang_nhap").HasMaxLength(50).IsRequired();
             entity.Property(e => e.MatKhauBam).HasColumnName("mat_khau_bam").HasMaxLength(255).IsRequired();
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasDefaultValue(true);
+            entity.Property(e => e.PhienHopLeSau).HasColumnName("phien_hop_le_sau");
 
             entity.HasIndex(e => e.TenDangNhap).IsUnique();
             entity.HasIndex(e => e.MaNhanVien).IsUnique();

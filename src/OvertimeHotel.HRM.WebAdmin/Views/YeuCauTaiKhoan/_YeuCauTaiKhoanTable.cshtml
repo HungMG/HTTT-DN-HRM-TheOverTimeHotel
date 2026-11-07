@@ -177,12 +177,12 @@
                                 <div class="d-inline-flex align-items-center gap-2">
                                     @if (item.Status is "CHO_IT" or "DANG_XU_LY")
                                     {
-                                        @if (!item.IsPromotion)
+                                        @if (User.IsInRole("IT") || (!item.IsPromotion && item.SenderRole != "HR"))
                                         {
                                             <form asp-action="Complete" asp-route-id="@item.RequestId" method="post" class="d-inline" data-request-action-form>
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 fw-semibold hover-lift shadow-sm" style="font-size: 0.78rem;">
-                                                    <i class="bi bi-key-fill me-1"></i>Cấp tài khoản
+                                                    <i class="bi bi-key-fill me-1"></i>@(item.IsPromotion ? "Duyệt thăng chức" : "Cấp tài khoản")
                                                 </button>
                                             </form>
                                         }

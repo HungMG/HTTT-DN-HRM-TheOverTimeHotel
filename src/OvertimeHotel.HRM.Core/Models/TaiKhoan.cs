@@ -8,6 +8,7 @@ public class TaiKhoan
     public string TenDangNhap { get; set; } = string.Empty;
     public string MatKhauBam { get; set; } = string.Empty;
     public bool TrangThai { get; set; } = true;
+    public DateTimeOffset PhienHopLeSau { get; set; } = DateTimeOffset.UnixEpoch;
 
     public virtual NhanVien? NhanVien { get; set; }
     public virtual VaiTro? VaiTro { get; set; }

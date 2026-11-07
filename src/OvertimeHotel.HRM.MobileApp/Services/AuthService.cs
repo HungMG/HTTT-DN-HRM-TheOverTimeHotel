@@ -109,6 +109,16 @@ public class AuthService : IAuthService
         return token;
     }
 
+    public async Task<SessionStatus> CheckSessionAsync()
+    {
+        var user = CurrentUser;
+        if (user == null || !user.IsLoggedIn) return SessionStatus.Invalid;
+        var token = await GetTokenAsync();
+        return string.IsNullOrWhiteSpace(token)
+            ? SessionStatus.Unavailable
+            : await SessionStatusProbe.CheckAsync(_restClient, token, user.MaNhanVien);
+    }
+
     public async Task<LoginResponse> LoginAsync(string username, string password, bool rememberMe = true)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
@@ -285,6 +295,11 @@ public class AuthService : IAuthService
         }
 
         var profile = await FetchProfileAsync(token, maNhanVien.Value);
+        if (profile == null)
+        {
+            _logger.LogWarning("Không thể truy cập hồ sơ nhân viên {MaNhanVien}; từ chối phiên đăng nhập.", maNhanVien);
+            return null;
+        }
 
         return new UserSession
         {

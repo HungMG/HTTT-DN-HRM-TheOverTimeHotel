@@ -165,7 +165,9 @@ builder.Services.AddAuthentication(options =>
                 {
                     var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
                     var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).FirstOrDefaultAsync(t => t.MaTaiKhoan == userId);
-                    if (account == null || !account.TrangThai || account.VaiTro?.TenVaiTro != context.Principal?.FindFirst(ClaimTypes.Role)?.Value)
+                    if (account == null || !account.TrangThai ||
+                        context.Properties.IssuedUtc == null || context.Properties.IssuedUtc <= account.PhienHopLeSau ||
+                        account.VaiTro?.TenVaiTro != context.Principal?.FindFirst(ClaimTypes.Role)?.Value)
                     {
                         context.RejectPrincipal();
                         await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -240,7 +242,19 @@ builder.Services.AddAuthentication(options =>
                 {
                     var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
                     var account = await dbContext.TaiKhoans.AsNoTracking().FirstOrDefaultAsync(t => t.MaNhanVien == maNhanVien.Value);
-                    if (account != null && !account.TrangThai)
+                    var issued = context.Principal?.FindFirst("iat")?.Value;
+                    if (!Guid.TryParse(context.Principal?.FindFirst("session_id")?.Value, out var sessionId) ||
+                        !Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out var authUserId))
+                    {
+                        context.Fail("Phiên đăng nhập không hợp lệ.");
+                        return;
+                    }
+                    var sessionCreated = await dbContext.Database.SqlQuery<DateTimeOffset?>($"SELECT (SELECT created_at FROM auth.sessions WHERE id = {sessionId} AND user_id = {authUserId}) AS \"Value\"").SingleAsync();
+                    if (account == null || !account.TrangThai ||
+                        SupabaseClaims.GetMaVaiTro(context.Principal) != account.MaVaiTro ||
+                        !long.TryParse(issued, out var issuedSeconds) ||
+                        issuedSeconds <= account.PhienHopLeSau.ToUnixTimeSeconds() ||
+                        sessionCreated == null || sessionCreated <= account.PhienHopLeSau)
                     {
                         context.Fail("Tài khoản của bạn đã bị khóa bởi Quản trị viên.");
                         return;
@@ -259,6 +273,7 @@ builder.Services.AddAuthentication(options =>
                         return;
                     }
                 }
+                else context.Fail("Phiên đăng nhập không có thông tin tài khoản hợp lệ.");
             }
         };
     });

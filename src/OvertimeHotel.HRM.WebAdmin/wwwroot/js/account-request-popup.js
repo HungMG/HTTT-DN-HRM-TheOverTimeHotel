@@ -68,7 +68,8 @@ window.initAccountRequestPopup = (container, onSuccess, onError) => {
                         roleName = info.roleName || info.RoleName || "";
                     }
 
-                    const restricted = form?.dataset?.employeeOnly === "true" && roleName && roleName !== "Employee";
+                    const restricted = form?.dataset?.employeeOnly === "true" && roleName && roleName !== "Employee" &&
+                        !(roleName === "Manager" && form?.dataset?.managerAllowed === "true");
                     if (roleRestriction) roleRestriction.hidden = !restricted;
                     if (submitBtn && restricted) submitBtn.disabled = true;
 

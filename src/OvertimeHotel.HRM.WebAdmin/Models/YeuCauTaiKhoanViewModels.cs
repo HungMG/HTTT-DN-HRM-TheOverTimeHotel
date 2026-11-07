@@ -58,6 +58,7 @@ public class YeuCauTaiKhoanListItemViewModel
     public string? ContractNo { get; set; }
 
     public string SenderName { get; set; } = string.Empty;
+    public string? SenderRole { get; set; }
     public string? HandlerUsername { get; set; }
     public string? RejectionNote { get; set; }
     public DateTimeOffset SentAt { get; set; }

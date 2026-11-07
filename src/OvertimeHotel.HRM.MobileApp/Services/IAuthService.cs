@@ -29,6 +29,8 @@ public interface IAuthService
     /// </summary>
     Task<string?> GetTokenAsync();
 
+    Task<SessionStatus> CheckSessionAsync();
+
     /// <summary>
     /// Thực hiện đăng nhập với tên người dùng và mật khẩu.
     /// </summary>

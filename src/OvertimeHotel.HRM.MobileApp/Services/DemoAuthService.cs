@@ -16,6 +16,8 @@ public class DemoAuthService : IAuthService
     public UserSession? CurrentUser { get; private set; }
     public bool IsAuthenticated => CurrentUser != null && CurrentUser.IsLoggedIn;
 
+    public Task<SessionStatus> CheckSessionAsync() => Task.FromResult(SessionStatus.Valid);
+
     public DemoAuthService(ILogger<DemoAuthService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
