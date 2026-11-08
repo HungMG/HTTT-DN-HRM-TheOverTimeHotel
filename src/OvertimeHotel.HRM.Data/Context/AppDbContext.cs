@@ -42,7 +42,6 @@ public class AppDbContext : DbContext
     public DbSet<CongSuKien> CongSuKiens => Set<CongSuKien>();
     public DbSet<QuyetToanSuKien> QuyetToanSuKiens => Set<QuyetToanSuKien>();
     public DbSet<CongBoLichTuan> CongBoLichTuans => Set<CongBoLichTuan>();
-    public DbSet<DiaDiemSuKien> DiaDiemSuKiens => Set<DiaDiemSuKien>();
 
     // Bổ sung theo PRD 3.4 (đổi ca), 3.5 (định biên tối thiểu), 4.5 (giải trình chấm công)
     public DbSet<YeuCauDoiCa> YeuCauDoiCas => Set<YeuCauDoiCa>();

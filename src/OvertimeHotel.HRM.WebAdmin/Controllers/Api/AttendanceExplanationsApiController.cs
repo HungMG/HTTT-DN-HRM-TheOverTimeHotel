@@ -2,6 +2,7 @@ using System.Data.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.DTOs;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Data.Context;
@@ -72,8 +73,18 @@ public class AttendanceExplanationsApiController : ControllerBase
 
             var openShiftSet = new HashSet<int>(openShiftIds);
 
+            // Lọc bỏ các ca thuộc kỳ lương đã khóa sổ hoặc đã thanh toán
+            var lockedPeriods = await _context.KyLuongs
+                .AsNoTracking()
+                .Where(k => k.TrangThai == SalaryConstants.PERIOD_LOCKED || k.TrangThai == "DA_THANH_TOAN")
+                .Select(k => new { k.Thang, k.Nam, k.TuNgay, k.DenNgay })
+                .ToListAsync();
+
             var result = shifts
-                .Where(p => !openShiftSet.Contains(p.MaPhanCa))
+                .Where(p => !openShiftSet.Contains(p.MaPhanCa) &&
+                            !lockedPeriods.Any(k =>
+                                (k.Thang == p.NgayLamViec.Month && k.Nam == p.NgayLamViec.Year) ||
+                                (k.TuNgay <= p.NgayLamViec && k.DenNgay >= p.NgayLamViec)))
                 .Select(p => new EligibleShiftDto(
                     MaPhanCa: p.MaPhanCa,
                     NgayLamViec: p.NgayLamViec,
@@ -258,6 +269,19 @@ public class AttendanceExplanationsApiController : ControllerBase
             if (hasOpen)
             {
                 return StatusCode(409, new AttendanceExplanationOperationResult(false, "ALREADY_OPEN", "Ca này đang có một giải trình chờ xử lý."));
+            }
+
+            // Chặn nộp giải trình nếu kỳ lương của ca trực đã khóa sổ hoặc đã thanh toán
+            var thangCa = ca.NgayLamViec.Month;
+            var namCa = ca.NgayLamViec.Year;
+            var kyLuongDaKhoa = await _context.KyLuongs
+                .AsNoTracking()
+                .AnyAsync(k => (k.Thang == thangCa && k.Nam == namCa || (k.TuNgay <= ca.NgayLamViec && k.DenNgay >= ca.NgayLamViec))
+                            && (k.TrangThai == SalaryConstants.PERIOD_LOCKED || k.TrangThai == "DA_THANH_TOAN"));
+
+            if (kyLuongDaKhoa)
+            {
+                return BadRequest(new AttendanceExplanationOperationResult(false, "PERIOD_LOCKED", $"Kỳ lương tháng {thangCa:D2}/{namCa} đã khóa sổ tài chính. Cổng giải trình cho ca trực này đã đóng."));
             }
 
             var entity = new GiaiTrinhChamCong

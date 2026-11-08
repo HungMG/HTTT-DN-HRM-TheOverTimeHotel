@@ -47,14 +47,14 @@
                         var topName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Quý khách";
                         var initial = !string.IsNullOrEmpty(topName) ? topName.Substring(0, 1).ToUpperInvariant() : "U";
 
-                        <div class="dropdown">
+                        <div class="dropdown app-user-wrap">
                             <a class="app-user-pill dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <span class="app-user-avatar">@initial</span>
-                                <span class="d-none d-md-flex flex-column" style="line-height: 1.2;">
+                                <span class="app-user-meta d-none d-md-flex">
                                     <span class="app-user-name">@topName</span>
                                     <span class="app-role-badge bg-primary text-white">@topRole</span>
                                 </span>
-                                <i class="bi bi-chevron-down text-muted" style="font-size: .72rem;"></i>
+                                <i class="bi bi-chevron-down text-muted flex-shrink-0" style="font-size: .72rem;"></i>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2" style="min-width: 250px;">
                                 <li><h6 class="dropdown-header">@User.Identity?.Name (@topRole)</h6></li>

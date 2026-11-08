@@ -55,20 +55,35 @@ public static class HourlyEventRules
     /// <summary>
     /// Tính khoảng thời gian làm việc thực tế cho sự kiện từ phân công, ca nguồn và bản ghi chấm công.
     /// Giới hạn chặt chẽ theo giờ hết ca nguồn (không phát sinh OT ngoài ca) và đối soát giờ quẹt thẻ thực tế.
+    ///
+    /// <para>
+    /// Xử lý "quên quẹt ra" (đã có <paramref name="checkIn"/> nhưng
+    /// <paramref name="checkOut"/> null): tự chốt theo giờ kết thúc ca nguồn
+    /// (<paramref name="shiftEnd"/>) thay vì trả null (tính 0 tiền). Đầu ra kèm
+    /// <c>TuChotTheoCa</c> để nơi hiển thị có thể cảnh báo cho người dùng.
+    /// </para>
     /// </summary>
-    public static (DateTimeOffset Start, DateTimeOffset End)? ResolveActualWindow(
+    public static (DateTimeOffset Start, DateTimeOffset End, bool TuChotTheoCa)? ResolveActualWindow(
         DateTimeOffset assignmentStart, DateTimeOffset assignmentEnd,
         DateTimeOffset shiftStart, DateTimeOffset shiftEnd,
         DateTimeOffset? checkIn, DateTimeOffset? checkOut)
     {
-        if (!checkIn.HasValue || !checkOut.HasValue || checkOut.Value <= checkIn.Value)
+        if (!checkIn.HasValue)
+            return null;
+
+        var effectiveCheckOut = checkOut ?? shiftEnd;
+        if (effectiveCheckOut <= checkIn.Value)
             return null;
 
         var shiftWindow = Intersect(assignmentStart, assignmentEnd, shiftStart, shiftEnd);
         if (!shiftWindow.HasValue)
             return null;
 
-        return Intersect(shiftWindow.Value.Start, shiftWindow.Value.End, checkIn.Value, checkOut.Value);
+        var window = Intersect(shiftWindow.Value.Start, shiftWindow.Value.End, checkIn.Value, effectiveCheckOut);
+        if (!window.HasValue)
+            return null;
+
+        return (window.Value.Start, window.Value.End, !checkOut.HasValue);
     }
 
     public static (DateTimeOffset Start, DateTimeOffset End)? AttendanceWindow(DuAn item, PhanCongDuAn assignment, DateTimeOffset now)
@@ -79,8 +94,10 @@ public static class HourlyEventRules
             shift.ChamCong.GioCheckIn, shift.ChamCong.GioCheckOut);
         if (!window.HasValue) return null;
         var end = item.KetThucThucTe ?? item.NgayKetThuc;
-        window = Intersect(window.Value.Start, window.Value.End, item.NgayBatDau, end);
-        return window.HasValue && CanRecordWork(item, assignment, window.Value.Start, window.Value.End, now) ? window : null;
+        var clipped = Intersect(window.Value.Start, window.Value.End, item.NgayBatDau, end);
+        return clipped.HasValue && CanRecordWork(item, assignment, clipped.Value.Start, clipped.Value.End, now)
+            ? (clipped.Value.Start, clipped.Value.End)
+            : null;
     }
 
     public static decimal Amount(IEnumerable<EventPaySlice> work)

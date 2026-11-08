@@ -361,18 +361,19 @@
   right: 24px;
   display: grid;
   gap: 12px;
-  width: min(410px, calc(100vw - 32px));
+  width: min(560px, calc(100vw - 32px));
+  min-width: min(460px, calc(100vw - 32px));
   pointer-events: none;
 }
 .account-popup {
   --popup-color: #1e3a8a;
   position: relative;
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 30px;
+  grid-template-columns: 56px minmax(0, 1fr) 36px;
   align-items: center;
-  gap: 12px;
-  min-height: 92px;
-  padding: 14px 13px 15px 15px;
+  gap: 14px;
+  min-height: 108px;
+  padding: 18px 16px 19px 18px;
   overflow: hidden;
   color: #172554;
   border: 1px solid #dbe4f0;
@@ -392,18 +393,18 @@
 .account-popup-icon {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 54px;
+  height: 54px;
   color: #fff;
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--popup-color);
   box-shadow: 0 8px 18px color-mix(in srgb, var(--popup-color) 26%, transparent);
-  font-size: 1.25rem;
+  font-size: 1.5rem;
 }
-.account-popup-copy { display: grid; gap: 3px; min-width: 0; }
-.account-popup-copy small { color: var(--popup-color); font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.account-popup-copy strong { color: #172554; font-size: .9rem; font-weight: 650; line-height: 1.45; }
-.account-popup > button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; color: #94a3b8; border: 0; border-radius: 7px; background: transparent; }
+.account-popup-copy { display: grid; gap: 4px; min-width: 0; }
+.account-popup-copy small { color: var(--popup-color); font-size: .8rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.account-popup-copy strong { color: #172554; font-size: 1rem; font-weight: 650; line-height: 1.45; }
+.account-popup > button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; color: #94a3b8; border: 0; border-radius: 7px; background: transparent; }
 .account-popup > button:hover { color: #172554; background: #f1f5f9; }
 .account-popup-progress { position: absolute; right: 0; bottom: 0; left: 0; height: 3px; background: var(--popup-color); transform-origin: left; animation: accountPopupProgress 5.2s linear forwards; }
 

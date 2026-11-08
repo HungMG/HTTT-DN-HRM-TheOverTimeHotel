@@ -9,25 +9,6 @@ namespace OvertimeHotel.HRM.Data.Services;
 
 public sealed partial class HotelEventService
 {
-    public async Task<IReadOnlyList<DiaDiemSuKien>> VenuesAsync() =>
-        await db.DiaDiemSuKiens.AsNoTracking().Where(v => v.DangSuDung).OrderBy(v => v.TenDiaDiem).ToListAsync();
-
-    public Task<int> SaveVenueAsync(EventActor actor, string name, int capacity) => Write(async () =>
-    {
-        actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR/Admin quản lý địa điểm.", true);
-        name = Text(name, 255, "name", "Tên địa điểm");
-        Require(capacity > 0, "capacity", "Sức chứa phải lớn hơn 0.");
-        Require(!await db.DiaDiemSuKiens.AnyAsync(v => v.TenDiaDiem.ToLower() == name.ToLower()), "name", "Tên địa điểm đã có.");
-        var venue = new DiaDiemSuKien { TenDiaDiem = name, SucChua = capacity };
-        db.Add(venue);
-        await db.SaveChangesAsync();
-        db.NhatKyQuanTris.Add(new NhatKyQuanTri { MaTaiKhoanThucHien = actor.AccountId,
-            TenNguoiThucHien = actor.Name.Length > 100 ? actor.Name[..100] : actor.Name,
-            TenTaiKhoanBiTacDong = $"DIA_DIEM-{venue.MaDiaDiem}", HanhDong = "TAO_DIA_DIEM", NoiDung = $"Tạo địa điểm; sức chứa {capacity}." });
-        return venue.MaDiaDiem;
-    });
-
     public Task<CongBoLichTuan?> PublishedWeekAsync(DateOnly weekStart) => db.CongBoLichTuans.AsNoTracking()
         .SingleOrDefaultAsync(w => w.DauTuan == HourlyEventRules.WeekStart(weekStart));
 
@@ -37,9 +18,12 @@ public sealed partial class HotelEventService
         Require(actor.IsOffice, "", "Chỉ HR/Admin được công bố lịch tuần.", true);
         Require(weekStart == HourlyEventRules.WeekStart(weekStart), "weekStart", "Tuần phải bắt đầu từ thứ Hai.");
         Require(weekStart.Year is >= 1900 and <= 2100, "weekStart", "Tuần không hợp lệ.");
-        var today = DateOnly.FromDateTime(HotelEventRules.Local(DateTimeOffset.UtcNow));
-        if (today.DayOfWeek != DayOfWeek.Saturday || weekStart != HourlyEventRules.WeekStart(today).AddDays(7))
-            reason = Text(reason, 500, "reason", "Lý do công bố bổ sung/ngoài thứ Bảy");
+        var now = DateTimeOffset.UtcNow;
+        // Công bố định kỳ: Chủ Nhật 17:00 (1 giờ sau khi cổng phân ca của Quản lý
+        // đóng lúc 16:00) cho tuần bắt đầu Thứ Hai hôm sau. Ngoài mốc này là
+        // công bố bổ sung/ngoài giờ — bắt buộc ghi lý do.
+        if (!ShiftSchedulingPolicy.IsWeeklyPublishSchedule(now, weekStart))
+            reason = Text(reason, 500, "reason", "Lý do công bố bổ sung/ngoài mốc định kỳ (Chủ Nhật 17:00)");
         else if (!string.IsNullOrWhiteSpace(reason)) reason = Text(reason, 500, "reason", "Lý do");
         var publication = await db.CongBoLichTuans.SingleOrDefaultAsync(w => w.DauTuan == weekStart);
         Require((publication?.Version ?? 0) == version, "", "Lịch đã được công bố/cập nhật; tải lại trước khi tiếp tục.");

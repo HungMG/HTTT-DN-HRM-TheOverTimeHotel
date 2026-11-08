@@ -643,20 +643,20 @@
                 </div>
                 <div>
                     <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.95rem;">
-                        <span>Cổng Phân Ca Định Kỳ Đang Đóng (Mở Thứ Bảy &amp; Chủ Nhật)</span>
+                        <span>Cổng Phân Ca Định Kỳ Đang Đóng (Mở @ShiftSchedulingPolicy.ManagerWindowLabel)</span>
                         <span class="badge bg-warning text-dark border border-warning-subtle rounded-pill px-2.5 py-0.5" style="font-size: 0.7rem;">
                             <i class="bi bi-lock-fill me-1"></i>Chỉ xem đối với Quản lý
                         </span>
                     </div>
                     <div class="text-secondary small mt-0.5" style="font-size: 0.8rem; max-width: 850px;">
-                        Theo quy định quản lý khách sạn The OverTime Hotel, Quản lý bộ phận chỉ được xếp ca mới và điều chỉnh lịch trực vào <strong>Thứ Bảy (00:00) đến hết Chủ Nhật (23:59)</strong> hàng tuần để chuẩn bị cho tuần kế tiếp.
-                        Hiện tại (Thứ Hai – Thứ Sáu) cổng đang tạm khóa để bảo đảm ổn định vận hành ca trực. Nếu có phát sinh đột xuất, vui lòng liên hệ Admin hoặc HR.
+                        Theo quy định quản lý khách sạn The OverTime Hotel, Quản lý bộ phận chỉ được xếp ca mới và điều chỉnh lịch trực vào <strong>@ShiftSchedulingPolicy.ManagerWindowLabel</strong> hàng tuần để chuẩn bị cho tuần kế tiếp.
+                        Hiện tại (@ShiftSchedulingPolicy.ManagerWindowClosedPeriod) cổng đang tạm khóa để bảo đảm ổn định vận hành ca trực. Khung giờ công bố lịch tuần định kỳ vào Chủ Nhật lúc 17:00 (sau 1 giờ đệm hoàn tất phân ca). Nếu có phát sinh đột xuất, vui lòng liên hệ Admin hoặc HR.
                     </div>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-white text-secondary border rounded-pill px-3 py-1.5 shadow-xs" style="font-size: 0.74rem;">
-                    <i class="bi bi-clock-history text-primary me-1"></i>Mở lại: 00:00 Thứ Bảy
+                    <i class="bi bi-clock-history text-primary me-1"></i>Mở lại: 00:00 Thứ Sáu
                 </span>
             </div>
         </div>
@@ -736,8 +736,8 @@
                     @if (Model.IsManagerSchedulingWindowClosed)
                     {
                         <button type="button" class="btn btn-hotel-secondary btn-sm rounded-pill px-3 py-1 fw-bold opacity-75 shadow-xs"
-                                disabled title="Cổng phân ca định kỳ dành cho Quản lý chỉ mở vào Thứ Bảy & Chủ Nhật hàng tuần. Hiện tại cổng đang đóng.">
-                            <i class="bi bi-lock-fill text-warning me-1"></i> Phân Ca Đang Đóng (T7 &amp; CN)
+                                disabled title="Cổng phân ca định kỳ dành cho Quản lý chỉ mở @ShiftSchedulingPolicy.ManagerWindowLabel. Hiện tại cổng đang đóng (@ShiftSchedulingPolicy.ManagerWindowClosedPeriod).">
+                            <i class="bi bi-lock-fill text-warning me-1"></i> Phân Ca Đang Đóng (T6 – CN 16h)
                         </button>
                     }
                     else
@@ -2005,7 +2005,7 @@
                         @if (Model.IsManagerSchedulingWindowClosed)
                         {
                             <span class="badge bg-warning text-dark border border-warning-subtle rounded-pill px-3 py-1.5" style="font-size: 0.74rem;">
-                                <i class="bi bi-lock-fill me-1"></i>Cổng phân ca đang đóng (Chỉ mở T7 &amp; CN)
+                                <i class="bi bi-lock-fill me-1"></i>Cổng phân ca đang đóng (Mở @ShiftSchedulingPolicy.ManagerWindowLabel)
                             </span>
                             <button type="submit" class="btn btn-secondary rounded-pill px-4 fw-bold shadow-sm" id="btnSubmitPhanCa" disabled>
                                 <i class="bi bi-lock-fill me-1"></i> Đang Khóa Phân Ca
@@ -4212,16 +4212,19 @@
         if (!toast) {
             toast = document.createElement('div');
             toast.id = 'quickShiftToast';
-            toast.className = 'position-fixed bottom-0 end-0 p-3';
+            toast.className = 'position-fixed top-0 end-0 p-3';
             toast.style.zIndex = '1090';
+            toast.style.marginTop = '72px';
+            toast.style.minWidth = '460px';
+            toast.style.maxWidth = '560px';
             toast.innerHTML = `
                 <div id="quickToastCard" class="toast align-items-center text-white bg-dark border-0 shadow-lg rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
                     <div class="d-flex">
-                        <div class="toast-body small fw-semibold d-flex align-items-center gap-2">
-                            <i class="bi bi-check2-circle text-warning fs-6"></i>
+                        <div class="toast-body fw-semibold d-flex align-items-center gap-3" style="font-size: 1rem; line-height: 1.45; padding: 1.1rem 1.2rem;">
+                            <i class="bi bi-check2-circle text-warning" style="font-size: 1.6rem;"></i>
                             <span id="quickToastMsg"></span>
                         </div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        <button type="button" class="btn-close btn-close-white me-3 ms-2 m-auto" data-bs-dismiss="toast" aria-label="Close" style="font-size: 1.1rem;"></button>
                     </div>
                 </div>`;
             document.body.appendChild(toast);
@@ -4229,7 +4232,7 @@
         document.getElementById('quickToastMsg').textContent = msg;
         const toastEl = document.getElementById('quickToastCard');
         if (window.bootstrap && bootstrap.Toast) {
-            const bsToast = new bootstrap.Toast(toastEl, { delay: 2500 });
+            const bsToast = new bootstrap.Toast(toastEl, { delay: 3500 });
             bsToast.show();
         }
     }

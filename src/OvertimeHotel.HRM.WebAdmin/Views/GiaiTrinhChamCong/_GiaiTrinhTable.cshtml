@@ -61,6 +61,14 @@ else
                         </td>
                         <td>
                             <span class="badge @item.TrangThaiCss rounded-pill px-2.5 py-1">@item.TrangThaiNhan</span>
+                            @if (item.KyLuongDaKhoa)
+                            {
+                                <div>
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5 mt-1" style="font-size: 0.7rem;">
+                                        <i class="bi bi-lock-fill me-1"></i>Kỳ lương đã khóa
+                                    </span>
+                                </div>
+                            }
 
                             @if (!string.IsNullOrWhiteSpace(item.TenQuanLyXacMinh))
                             {
@@ -97,29 +105,57 @@ else
                         <td class="text-end">
                             @if (item.ChoQuanLy && Model.CoQuyenQuanLy)
                             {
-                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold"
-                                        data-giai-trinh-verify="@item.MaGiaiTrinh"
-                                        data-giai-trinh-label="#@item.MaGiaiTrinh">
-                                    <i class="bi bi-check2-circle me-1"></i>Xác minh
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold mt-1 w-100"
-                                        data-giai-trinh-reject="@item.MaGiaiTrinh"
-                                        data-giai-trinh-label="#@item.MaGiaiTrinh">
-                                    <i class="bi bi-x-lg me-1"></i>Từ chối
-                                </button>
+                                @if (item.KyLuongDaKhoa)
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1 small d-block mb-1" title="Kỳ lương đã khóa sổ, không thể sửa công">
+                                        <i class="bi bi-lock-fill me-1"></i>Kỳ lương đã khóa
+                                    </span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold w-100"
+                                            data-giai-trinh-reject="@item.MaGiaiTrinh"
+                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                        <i class="bi bi-x-lg me-1"></i>Từ chối
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold"
+                                            data-giai-trinh-verify="@item.MaGiaiTrinh"
+                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                        <i class="bi bi-check2-circle me-1"></i>Xác minh
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold mt-1 w-100"
+                                            data-giai-trinh-reject="@item.MaGiaiTrinh"
+                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                        <i class="bi bi-x-lg me-1"></i>Từ chối
+                                    </button>
+                                }
                             }
                             else if (item.ChoHr && Model.CoQuyenHr)
                             {
-                                <button type="button" class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold"
-                                        data-giai-trinh-confirm="@item.MaGiaiTrinh"
-                                        data-giai-trinh-label="#@item.MaGiaiTrinh">
-                                    <i class="bi bi-check2-circle me-1"></i>Xác nhận
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold mt-1 w-100"
-                                        data-giai-trinh-reject="@item.MaGiaiTrinh"
-                                        data-giai-trinh-label="#@item.MaGiaiTrinh">
-                                    <i class="bi bi-x-lg me-1"></i>Từ chối
-                                </button>
+                                @if (item.KyLuongDaKhoa)
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1 small d-block mb-1" title="Kỳ lương đã khóa sổ, không thể sửa công">
+                                        <i class="bi bi-lock-fill me-1"></i>Kỳ lương đã khóa
+                                    </span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold w-100"
+                                            data-giai-trinh-reject="@item.MaGiaiTrinh"
+                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                        <i class="bi bi-x-lg me-1"></i>Từ chối
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold"
+                                            data-giai-trinh-confirm="@item.MaGiaiTrinh"
+                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                        <i class="bi bi-check2-circle me-1"></i>Xác nhận
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold mt-1 w-100"
+                                            data-giai-trinh-reject="@item.MaGiaiTrinh"
+                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                        <i class="bi bi-x-lg me-1"></i>Từ chối
+                                    </button>
+                                }
                             }
                             else if (item.TrangThai == "DA_HUY")
                             {

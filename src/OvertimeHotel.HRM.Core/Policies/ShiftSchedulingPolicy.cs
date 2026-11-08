@@ -267,17 +267,74 @@ public static class ShiftSchedulingPolicy
     /// </summary>
     public static readonly TimeSpan VietnamOffset = TimeSpan.FromHours(7);
 
+    /// <summary>Giờ mở cổng phân ca định kỳ cho Quản lý: <b>00:00 Thứ Sáu</b> (giờ VN).</summary>
+    public static readonly TimeOnly ManagerWindowOpenTime = new(0, 0);
+
+    /// <summary>
+    /// Giờ đóng cổng phân ca định kỳ cho Quản lý: <b>16:00 Chủ Nhật</b> (giờ VN).
+    /// Sau mốc này HR/Admin có 1 giờ "vùng đệm" để rà soát/chỉnh sửa trước khi
+    /// công bố lịch tuần lúc 17:00.
+    /// </summary>
+    public static readonly TimeOnly ManagerWindowCloseTime = new(16, 0);
+
+    /// <summary>
+    /// Giờ công bố lịch tuần định kỳ: <b>17:00 Chủ Nhật</b> (giờ VN) — 1 giờ sau
+    /// khi cổng phân ca của Quản lý đóng, để HR/Admin kịp thay đổi phân ca nếu cần.
+    /// </summary>
+    public static readonly TimeOnly WeeklyPublishTime = new(17, 0);
+
+    /// <summary>Tên hiển thị khung cổng phân ca, dùng cho thông báo trên giao diện.</summary>
+    public const string ManagerWindowLabel = "Thứ Sáu 00:00 – Chủ Nhật 16:00";
+
+    /// <summary>Mô tả khung thời gian đang đóng của cổng, dùng cho thông báo.</summary>
+    public const string ManagerWindowClosedPeriod = "Chủ Nhật 16:00 – Thứ Sáu 00:00";
+
     /// <summary>
     /// Kiểm tra xem cổng phân ca định kỳ dành cho Quản lý (Manager) có đang mở hay không.
-    /// Theo quy trình vận hành khách sạn: Quản lý các bộ phận thực hiện xếp ca vào Thứ Bảy (00:00)
-    /// và Chủ Nhật (hết 23:59:59) hàng tuần cho tuần tiếp theo.
-    /// Từ Thứ Hai đến hết Thứ Sáu cổng đóng để giữ ổn định lịch trực đã công bố.
+    /// Theo quy trình vận hành khách sạn: cổng mở <b>từ 00:00 Thứ Sáu đến 16:00 Chủ Nhật</b>
+    /// hàng tuần (giờ Việt Nam) cho tuần tiếp theo. Sau 16:00 Chủ Nhật cổng đóng,
+    /// HR/Admin có 1 giờ rà soát/chỉnh sửa rồi công bố lịch tuần lúc 17:00.
+    /// Từ 16:00 Chủ Nhật đến hết Thứ Năm cổng đóng để giữ ổn định lịch trực đã công bố.
     /// Quản trị viên (Admin) và Nhân sự (HR) có toàn quyền điều phối 24/7 mọi lúc.
     /// </summary>
     public static bool IsManagerSchedulingWindowOpen(DateTimeOffset? now = null)
     {
         var vnNow = (now ?? DateTimeOffset.UtcNow).ToOffset(VietnamOffset);
-        return vnNow.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+        return vnNow.DayOfWeek switch
+        {
+            DayOfWeek.Friday or DayOfWeek.Saturday => true,
+            DayOfWeek.Sunday => vnNow.TimeOfDay < ManagerWindowCloseTime.ToTimeSpan(),
+            _ => false,
+        };
+    }
+
+    /// <summary>
+    /// Mốc công bố lịch tuần định kỳ gần nhất: 17:00 Chủ Nhật (giờ VN).
+    /// Dùng để phân biệt công bố định kỳ với công bố bổ sung/ngoài giờ.
+    /// </summary>
+    public static DateTimeOffset WeeklyPublishAnchor(DateTimeOffset? now = null)
+    {
+        var vnNow = (now ?? DateTimeOffset.UtcNow).ToOffset(VietnamOffset);
+        var daysBack = ((int)vnNow.DayOfWeek - (int)DayOfWeek.Sunday + 7) % 7;
+        var sunday = vnNow.Date.AddDays(-daysBack);
+        var anchor = new DateTimeOffset(DateOnly.FromDateTime(sunday), WeeklyPublishTime, VietnamOffset);
+        if (vnNow.DayOfWeek == DayOfWeek.Sunday && vnNow.TimeOfDay < WeeklyPublishTime.ToTimeSpan())
+        {
+            anchor = anchor.AddDays(-7);
+        }
+        return anchor;
+    }
+
+    /// <summary>
+    /// Thời điểm công bố có thuộc "công bố định kỳ" hay không: công bố vào Chủ Nhật
+    /// từ 17:00 trở đi cho tuần bắt đầu ngay ngày hôm sau (Thứ Hai).
+    /// </summary>
+    public static bool IsWeeklyPublishSchedule(DateTimeOffset publishedAt, DateOnly weekStart)
+    {
+        var vn = publishedAt.ToOffset(VietnamOffset);
+        return vn.DayOfWeek == DayOfWeek.Sunday
+            && vn.TimeOfDay >= WeeklyPublishTime.ToTimeSpan()
+            && weekStart == HourlyEventRules.WeekStart(DateOnly.FromDateTime(vn.DateTime)).AddDays(7);
     }
 
     /// <summary>

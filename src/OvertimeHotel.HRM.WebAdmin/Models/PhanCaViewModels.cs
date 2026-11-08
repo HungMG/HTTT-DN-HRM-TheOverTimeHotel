@@ -61,7 +61,8 @@ public class PhanCaIndexViewModel
     public int TongCaThieuDinhBien { get; set; }
 
     /// <summary>
-    /// Cổng phân ca định kỳ dành cho Quản lý (Manager) đang bị đóng (Thứ 2 đến Thứ 6).
+    /// Cổng phân ca định kỳ dành cho Quản lý (Manager) đang bị đóng
+    /// (Chủ Nhật 16:00 – Thứ Sáu 00:00, giờ VN).
     /// Chỉ Quản lý mới bị áp dụng cờ này; Admin và HR luôn là false (toàn quyền 24/7).
     /// </summary>
     public bool IsManagerSchedulingWindowClosed { get; set; }

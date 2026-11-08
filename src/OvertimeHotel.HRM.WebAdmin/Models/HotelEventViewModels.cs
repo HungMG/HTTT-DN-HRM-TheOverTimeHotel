@@ -21,11 +21,8 @@ public class EventFormViewModel
     [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
     public string? ExistingType { get; set; }
     public IReadOnlyList<SelectListItem> Managers { get; set; } = [];
-    public IReadOnlyList<DiaDiemSuKien> Venues { get; set; } = [];
     /// <summary>Hệ số thưởng sự kiện theo giờ đang áp dụng (đọc từ cấu hình khoản lương).</summary>
     public decimal HourlyEventRate { get; set; } = OvertimeHotel.HRM.Core.Constants.SalaryConstants.EVENT_HOURLY_RATE;
-    public string VenueName { get; set; } = "";
-    public int VenueCapacity { get; set; }
     public int ReturnYear { get; set; }
     public int ReturnMonth { get; set; }
     public DateOnly ReturnDate { get; set; }
