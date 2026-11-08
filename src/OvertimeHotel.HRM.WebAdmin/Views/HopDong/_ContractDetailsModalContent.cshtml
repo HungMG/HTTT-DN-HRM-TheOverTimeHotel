@@ -6,16 +6,41 @@
 }
 
 <style>
+.contract-modal-body { max-width: 100%; width: 100%; box-sizing: border-box; }
+.contract-modal-hero {
+  flex-shrink: 0;
+  width: 100%;
+  overflow: visible !important;
+}
+.contract-modal-hero .hero-icon {
+  position: relative !important;
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: .08;
+  font-size: 7.5rem;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+.contract-modal-hero .flex-grow-1 { min-width: 0; flex: 1 1 auto; }
+.contract-modal-hero .badge { overflow: visible; white-space: nowrap; }
+.contract-modal-hero h3, .contract-modal-hero .text-white-50 { overflow: visible; white-space: normal; }
+.contract-modal-hero .text-white-50 span { overflow: visible; white-space: nowrap; }
 .contract-prop-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    min-width: 0;
     padding: 8px 0;
     border-bottom: 1px dashed #e2e8f0;
+    gap: 12px;
 }
 .contract-prop-row:last-child {
     border-bottom: 0;
 }
+.contract-prop-row > *:first-child { flex-shrink: 0; }
+.contract-prop-row > *:last-child { text-align: right; }
 .contract-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -23,22 +48,23 @@
     padding: 18px 20px;
     height: 100%;
     transition: all 0.2s ease;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 .contract-card:hover {
     border-color: #cbd5e1;
     box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
 }
+.contract-modal-body .row > [class*="col-"] { min-width: 0; }
 </style>
 
-<div class="p-4">
-    <!-- HEADER HERO BANNER -->
-    <div class="p-4 rounded-4 mb-4 position-relative overflow-hidden shadow-sm"
+<div class="contract-modal-body p-3 p-md-4">
+    <!-- HEADER HERO BANNER — icon trang tri nam theo luong, khong absolute/overflow-hidden -->
+    <div class="contract-modal-hero p-4 rounded-4 mb-4 shadow-sm d-flex align-items-center gap-3"
          style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #172554 100%); color: #fff;">
-        <div class="position-absolute end-0 top-0 p-4 opacity-10 pe-none" style="font-size: 7.5rem; line-height: 1;">
-            <i class="bi bi-file-earmark-text"></i>
-        </div>
 
-        <div class="d-flex flex-wrap align-items-center gap-3 position-relative z-1">
+        <div class="d-flex align-items-center gap-3 position-relative z-1 flex-grow-1" style="min-width: 0;">
             <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold shadow flex-shrink-0"
                  style="width: 70px; height: 70px; font-size: 1.8rem; background: linear-gradient(135deg, #1e40af, #3b82f6); border: 2.5px solid #d4af37; color: #fff;">
                 @initials
@@ -92,8 +118,9 @@
                     <span>&bull;</span>
                     <span><i class="bi bi-briefcase me-1"></i>@Model.PositionName</span>
                 </div>
+                </div>
             </div>
-        </div>
+            <div class="hero-icon"><i class="bi bi-file-earmark-text"></i></div>
     </div>
 
     @if (Model.State == "DA_CHAM_DUT")

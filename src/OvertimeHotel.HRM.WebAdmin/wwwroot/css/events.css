@@ -2380,69 +2380,69 @@ summary.event-department-card__header::-webkit-details-marker { display: none; }
 /* Toast Notifications */
 .hotel-toast-stack {
   position: fixed;
-  bottom: 24px;
+  top: 82px;
   right: 24px;
   z-index: 1095;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   pointer-events: none;
 }
 
 .hotel-toast {
   pointer-events: auto;
-  min-width: 320px;
-  max-width: 440px;
+  min-width: 460px;
+  max-width: 560px;
   background: #0f172a;
   color: #ffffff;
   border: 1px solid #1e3a8a;
-  border-radius: 14px;
-  padding: 14px 18px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.28);
+  border-radius: 16px;
+  padding: 20px 22px;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.32);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   animation: hotelToastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .hotel-toast.is-leaving {
   opacity: 0;
-  transform: translateY(12px) scale(0.96);
+  transform: translateY(-12px) scale(0.96);
 }
 
 .hotel-toast--success {
-  border-left: 4px solid var(--hotel-gold);
+  border-left: 5px solid var(--hotel-gold);
 }
 
 .hotel-toast--success > i {
   color: var(--hotel-gold);
-  font-size: 20px;
+  font-size: 26px;
 }
 
 .hotel-toast--danger {
-  border-left: 4px solid #ef4444;
+  border-left: 5px solid #ef4444;
 }
 
 .hotel-toast--danger > i {
   color: #ef4444;
-  font-size: 20px;
+  font-size: 26px;
 }
 
 .hotel-toast-body {
   flex: 1;
-  font-size: 13.5px;
+  font-size: 16px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .hotel-toast-close {
   background: transparent;
   border: 0;
   color: #94a3b8;
-  font-size: 16px;
+  font-size: 20px;
   cursor: pointer;
-  padding: 2px;
+  padding: 4px;
   transition: color 0.15s ease;
 }
 

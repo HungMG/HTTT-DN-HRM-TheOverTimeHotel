@@ -35,10 +35,6 @@ internal static class EventOperationsConfiguration
         week.HasKey(e => e.DauTuan);
         week.Property(e => e.Version).IsConcurrencyToken();
         week.Property(e => e.LyDo).HasMaxLength(500);
-        var venue = Table<DiaDiemSuKien>(model, "dia_diem_su_kien");
-        venue.HasKey(e => e.MaDiaDiem);
-        venue.Property(e => e.TenDiaDiem).HasMaxLength(255);
-        venue.HasIndex(e => e.TenDiaDiem).IsUnique();
 
         var events = model.Entity<DuAn>();
         events.Property(e => e.TinhTheoGio).HasColumnName("tinh_theo_gio");

@@ -126,13 +126,14 @@
     </div>
 </div>
 
-<!-- MODAL XEM CHI TIẾT HỢP ĐỒNG LAO ĐỘNG -->
+<!-- MODAL XEM CHI TIẾT HỢP ĐỒNG LAO ĐỘNG — rộng gần full màn hình -->
 <div class="modal fade" id="contractDetailsModal" tabindex="-1" aria-labelledby="contractDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 24px; overflow: hidden;">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-contract-details">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 24px; overflow: hidden; width: 100%;">
             <div class="modal-body p-0" id="contractDetailsModalBody">
                 <!-- Nội dung được nạp động qua AJAX từ /HopDong/DetailsModal/{id} -->
             </div>
+            <button type="button" class="btn-close contract-modal-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
         </div>
     </div>
 </div>

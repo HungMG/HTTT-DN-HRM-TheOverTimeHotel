@@ -5,23 +5,11 @@
 
 <div class="container-fluid px-3 px-md-4 py-3">
 
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div>
-            <h1 class="h4 mb-1 fw-bold text-dark font-serif hotel-blur-text">Giải trình chấm công</h1>
-            <p class="text-muted mb-0" style="font-size: 0.85rem;">
-                Hai cấp: Quản lý bộ phận xác minh có mặt, sau đó Phòng HR xác nhận mới ghi vào bảng công.
-            </p>
-        </div>
-        <div class="d-flex gap-2">
-            <a asp-controller="ChamCong" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2"
-               style="font-size: 0.85rem;">
-                <i class="bi bi-fingerprint me-1"></i>Nhật ký chấm công
-            </a>
-            <a asp-action="Create" class="btn btn-hotel-primary rounded-pill px-4 py-2 fw-bold shadow-sm hover-lift"
-               style="font-size: 0.85rem;">
-                <i class="bi bi-plus-circle-fill me-1"></i> Lập giải trình
-            </a>
-        </div>
+    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-3">
+        <a asp-controller="ChamCong" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2"
+           style="font-size: 0.85rem;">
+            <i class="bi bi-fingerprint me-1"></i>Nhật ký chấm công
+        </a>
     </div>
 
     <partial name="_CatalogAlerts" />

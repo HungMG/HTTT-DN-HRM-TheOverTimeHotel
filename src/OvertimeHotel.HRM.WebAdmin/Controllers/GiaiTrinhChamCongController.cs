@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
@@ -148,6 +149,12 @@ public class GiaiTrinhChamCongController : Controller
             })
             .ToList();
 
+        var lockedPeriods = await _context.KyLuongs
+            .AsNoTracking()
+            .Where(k => k.TrangThai == SalaryConstants.PERIOD_LOCKED || k.TrangThai == "DA_THANH_TOAN")
+            .Select(k => new { k.Thang, k.Nam, k.TuNgay, k.DenNgay })
+            .ToListAsync();
+
         var model = new GiaiTrinhIndexViewModel
         {
             TrangThai = trangThai,
@@ -176,6 +183,9 @@ public class GiaiTrinhChamCongController : Controller
                 TenHrXacNhan = r.TenHrXacNhan,
                 NgayHrXacNhan = r.NgayHrXacNhan,
                 YKienHr = r.YKienHr,
+                KyLuongDaKhoa = lockedPeriods.Any(k =>
+                    (k.Thang == r.NgayLamViec.Month && k.Nam == r.NgayLamViec.Year) ||
+                    (k.TuNgay <= r.NgayLamViec && k.DenNgay >= r.NgayLamViec)),
                 NgayGui = r.NgayGui
             }).ToList(),
             TongGiaiTrinh = baseQuery.Count(),
@@ -302,6 +312,20 @@ public class GiaiTrinhChamCongController : Controller
             if (daCoDangMo)
             {
                 ModelState.AddModelError(string.Empty, "Ca này đang có giải trình chờ xử lý. Vui lòng chờ kết quả trước khi gửi tiếp.");
+            }
+
+            // Chặn giải trình nếu kỳ lương của ca trực đã khóa sổ hoặc đã thanh toán
+            var thangCa = ca.NgayLamViec.Month;
+            var namCa = ca.NgayLamViec.Year;
+            var kyLuongDaKhoa = await _context.KyLuongs
+                .AsNoTracking()
+                .AnyAsync(k => (k.Thang == thangCa && k.Nam == namCa || (k.TuNgay <= ca.NgayLamViec && k.DenNgay >= ca.NgayLamViec))
+                            && (k.TrangThai == SalaryConstants.PERIOD_LOCKED || k.TrangThai == "DA_THANH_TOAN"));
+
+            if (kyLuongDaKhoa)
+            {
+                ModelState.AddModelError(string.Empty,
+                    $"Kỳ lương tháng {thangCa:D2}/{namCa} đã khóa sổ tài chính. Cổng giải trình cho các ca trực trong kỳ này đã đóng.");
             }
         }
 
@@ -480,6 +504,19 @@ public class GiaiTrinhChamCongController : Controller
 
         var ca = giaiTrinh.PhanCa;
 
+        // Chặn HR duyệt nếu kỳ lương của ca trực đã khóa sổ hoặc đã thanh toán
+        var thangCa = ca.NgayLamViec.Month;
+        var namCa = ca.NgayLamViec.Year;
+        var kyLuongDaKhoa = await _context.KyLuongs
+            .AsNoTracking()
+            .AnyAsync(k => (k.Thang == thangCa && k.Nam == namCa || (k.TuNgay <= ca.NgayLamViec && k.DenNgay >= ca.NgayLamViec))
+                        && (k.TrangThai == SalaryConstants.PERIOD_LOCKED || k.TrangThai == "DA_THANH_TOAN"));
+
+        if (kyLuongDaKhoa)
+        {
+            return Finish(false, $"Kỳ lương tháng {thangCa:D2}/{namCa} đã khóa sổ tài chính. Không thể duyệt giải trình để sửa dữ liệu công của kỳ này.");
+        }
+
         try
         {
             await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
@@ -651,6 +688,22 @@ public class GiaiTrinhChamCongController : Controller
                 p.NgayLamViec
             })
             .ToListAsync();
+
+        // Lọc bỏ các ca thuộc kỳ lương đã khóa sổ hoặc đã thanh toán
+        var lockedPeriods = await _context.KyLuongs
+            .AsNoTracking()
+            .Where(k => k.TrangThai == SalaryConstants.PERIOD_LOCKED || k.TrangThai == "DA_THANH_TOAN")
+            .Select(k => new { k.Thang, k.Nam, k.TuNgay, k.DenNgay })
+            .ToListAsync();
+
+        if (lockedPeriods.Count > 0)
+        {
+            cacCa = cacCa
+                .Where(p => !lockedPeriods.Any(k =>
+                    (k.Thang == p.NgayLamViec.Month && k.Nam == p.NgayLamViec.Year) ||
+                    (k.TuNgay <= p.NgayLamViec && k.DenNgay >= p.NgayLamViec)))
+                .ToList();
+        }
 
         model.CaOptions = cacCa
             .Select(p => new SelectListItem

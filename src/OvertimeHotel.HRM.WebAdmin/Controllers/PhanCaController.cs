@@ -725,11 +725,13 @@ public class PhanCaController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreatePhanCaInputModel input)
     {
-        // KHUNG GIỜ PHÂN CA QUẢN LÝ: Quản lý chỉ được phân ca vào Thứ Bảy & Chủ Nhật hàng tuần.
-        // Ngoài khung giờ này (Thứ 2 đến Thứ 6), chỉ Admin và HR mới có quyền điều phối đột xuất.
+        // KHUNG GIỜ PHÂN CA QUẢN LÝ: cổng mở từ 00:00 Thứ Sáu đến 16:00 Chủ Nhật
+        // hàng tuần. Sau 16:00 Chủ Nhật cổng đóng, HR/Admin có 1 giờ rà soát rồi
+        // công bố lịch tuần lúc 17:00. Ngoài khung giờ này, chỉ Admin và HR mới
+        // có quyền điều phối đột xuất.
         if (GetManagerDepartmentScope().HasValue && !ShiftSchedulingPolicy.IsManagerSchedulingWindowOpen())
         {
-            TempData["Error"] = TempData["ErrorMessage"] = "Cổng phân ca định kỳ dành cho Quản lý chỉ mở vào Thứ Bảy và Chủ Nhật hàng tuần. Hiện tại cổng đang đóng (Thứ Hai – Thứ Sáu). Vui lòng liên hệ Admin hoặc HR nếu cần phân ca đột xuất.";
+            TempData["Error"] = TempData["ErrorMessage"] = $"Cổng phân ca định kỳ dành cho Quản lý chỉ mở {ShiftSchedulingPolicy.ManagerWindowLabel}. Hiện tại cổng đang đóng ({ShiftSchedulingPolicy.ManagerWindowClosedPeriod}). Vui lòng liên hệ Admin hoặc HR nếu cần phân ca đột xuất.";
             if (!string.IsNullOrWhiteSpace(input.ReturnUrl) && Url.IsLocalUrl(input.ReturnUrl))
             {
                 return Redirect(input.ReturnUrl);
@@ -1043,10 +1045,10 @@ public class PhanCaController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> QuickWeekSchedule(int maNhanVien, int maCa, string weekStartStr)
     {
-        // KHUNG GIỜ PHÂN CA QUẢN LÝ: Quản lý chỉ được phân ca vào Thứ Bảy & Chủ Nhật hàng tuần.
+        // KHUNG GIỜ PHÂN CA QUẢN LÝ: cổng mở từ 00:00 Thứ Sáu đến 16:00 Chủ Nhật.
         if (GetManagerDepartmentScope().HasValue && !ShiftSchedulingPolicy.IsManagerSchedulingWindowOpen())
         {
-            TempData["Error"] = TempData["ErrorMessage"] = "Cổng phân ca định kỳ dành cho Quản lý chỉ mở vào Thứ Bảy và Chủ Nhật hàng tuần. Hiện tại cổng đang đóng (Thứ Hai – Thứ Sáu). Vui lòng liên hệ Admin hoặc HR nếu cần xếp ca đột xuất.";
+            TempData["Error"] = TempData["ErrorMessage"] = $"Cổng phân ca định kỳ dành cho Quản lý chỉ mở {ShiftSchedulingPolicy.ManagerWindowLabel}. Hiện tại cổng đang đóng ({ShiftSchedulingPolicy.ManagerWindowClosedPeriod}). Vui lòng liên hệ Admin hoặc HR nếu cần xếp ca đột xuất.";
             return RedirectToAction(nameof(Index), new { week = weekStartStr });
         }
 
@@ -1251,10 +1253,10 @@ public class PhanCaController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id, string? returnWeek, string? changeReason)
     {
-        // KHUNG GIỜ PHÂN CA QUẢN LÝ: Quản lý chỉ được phân ca/hủy ca vào Thứ Bảy & Chủ Nhật hàng tuần.
+        // KHUNG GIỜ PHÂN CA QUẢN LÝ: cổng mở từ 00:00 Thứ Sáu đến 16:00 Chủ Nhật.
         if (GetManagerDepartmentScope().HasValue && !ShiftSchedulingPolicy.IsManagerSchedulingWindowOpen())
         {
-            TempData["Error"] = TempData["ErrorMessage"] = "Cổng điều chỉnh phân ca dành cho Quản lý chỉ mở vào Thứ Bảy và Chủ Nhật hàng tuần. Hiện tại cổng đang đóng (Thứ Hai – Thứ Sáu). Vui lòng liên hệ Admin hoặc HR nếu cần hủy ca đột xuất.";
+            TempData["Error"] = TempData["ErrorMessage"] = $"Cổng điều chỉnh phân ca dành cho Quản lý chỉ mở {ShiftSchedulingPolicy.ManagerWindowLabel}. Hiện tại cổng đang đóng ({ShiftSchedulingPolicy.ManagerWindowClosedPeriod}). Vui lòng liên hệ Admin hoặc HR nếu cần hủy ca đột xuất.";
             return RedirectToAction(nameof(Index), new { week = returnWeek });
         }
 
@@ -1679,10 +1681,10 @@ public class PhanCaController : Controller
             return Json(new { success = false, message = "Không thể phân ca hoặc sửa ca cho ngày trong quá khứ." });
         }
 
-        // KHUNG GIỜ PHÂN CA QUẢN LÝ: Quản lý chỉ được phân ca vào Thứ Bảy & Chủ Nhật hàng tuần.
+        // KHUNG GIỜ PHÂN CA QUẢN LÝ: cổng mở từ 00:00 Thứ Sáu đến 16:00 Chủ Nhật.
         if (GetManagerDepartmentScope().HasValue && !ShiftSchedulingPolicy.IsManagerSchedulingWindowOpen())
         {
-            return Json(new { success = false, message = "Cổng phân ca định kỳ dành cho Quản lý chỉ mở vào Thứ Bảy và Chủ Nhật hàng tuần. Hiện tại cổng đang đóng (Thứ Hai – Thứ Sáu). Vui lòng liên hệ Admin hoặc HR nếu cần điều phối đột xuất." });
+            return Json(new { success = false, message = $"Cổng phân ca định kỳ dành cho Quản lý chỉ mở {ShiftSchedulingPolicy.ManagerWindowLabel}. Hiện tại cổng đang đóng ({ShiftSchedulingPolicy.ManagerWindowClosedPeriod}). Vui lòng liên hệ Admin hoặc HR nếu cần điều phối đột xuất." });
         }
 
         try

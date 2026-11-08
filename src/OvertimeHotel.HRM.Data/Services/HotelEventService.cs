@@ -226,6 +226,8 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
     {
         var start = Utc(input.Start, "Assignment.Start");
         var end = Utc(input.End, "Assignment.End");
+        // Chặn gán trong quá khứ: giờ bắt đầu phải từ thời điểm hiện tại trở đi.
+        Require(start >= DateTimeOffset.UtcNow, "Assignment.Start", "Không thể gán phân công cho thời gian đã qua. Vui lòng chọn thời gian bắt đầu từ thời điểm hiện tại.");
         Require(start >= item.NgayBatDau && start < end && end <= item.NgayKetThuc, "Assignment.End", "Thời gian tham gia phải nằm trong giờ bắt đầu đến kết thúc sự kiện.");
         PhanCa? source = null;
         if (item.TinhTheoGio)
@@ -253,6 +255,18 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         Require(!await db.PhanCongDuAns.AnyAsync(p => p.MaNhanVien == input.EmployeeId && p.MaDuAn != item.MaDuAn
             && p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.DuAn!.TrangThai != "HUY" && p.BatDau < end && p.KetThuc > start), "Assignment.EmployeeId", "Nhân viên đã tham gia sự kiện khác trong khoảng thời gian này.");
         Require(item.TinhPhuCapKhiNghiemThu || item.PhanCongs.Sum(p => p.PhuCapDuKien) + allowance <= item.NganSachPhuCap, "Assignment.Allowance", "Tổng phụ cấp dự kiến vượt ngân sách sự kiện.");
+        // Chặn vượt nhu cầu sự kiện: nhu cầu (NhuCauSuKien) khóa theo phòng ban + vai trò.
+        // Ưu tiên nhu cầu tùy chỉnh (!LaMau), nếu chưa sửa thì dùng định biên mẫu (LaMau).
+        // Đã gán tính số phân công chưa hủy giao với khoảng thời gian mới.
+        var need = item.NhuCaus.FirstOrDefault(n => !n.LaMau && n.MaPhongBan == empDept && n.VaiTro == role)
+            ?? item.NhuCaus.FirstOrDefault(n => n.MaPhongBan == empDept && n.VaiTro == role);
+        if (need != null && need.SoNguoi > 0)
+        {
+            var assignedCount = item.PhanCongs.Count(p => p.MaPhongBanSuKien == empDept && p.VaiTroDuAn == role
+                && p.TrangThaiThamGia != "HUY_PHAN_CONG" && p.BatDau < end && p.KetThuc > start);
+            Require(assignedCount + 1 <= need.SoNguoi, "Assignment.Role",
+                $"Vai trò {role} của bộ phận {empDept} đã gán đủ nhu cầu ({assignedCount}/{need.SoNguoi} người giao nhau trong khoảng thời gian này).");
+        }
         var assignment = new PhanCongDuAn
         {
             MaNhanVien = input.EmployeeId, VaiTroDuAn = role!, MaPhongBanSuKien = empDept,

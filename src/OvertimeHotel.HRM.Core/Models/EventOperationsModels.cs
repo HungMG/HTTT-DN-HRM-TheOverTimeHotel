@@ -48,11 +48,3 @@ public class CongBoLichTuan
     public DateTimeOffset NgayCongBo { get; set; }
     public string? LyDo { get; set; }
 }
-
-public class DiaDiemSuKien
-{
-    public int MaDiaDiem { get; set; }
-    public string TenDiaDiem { get; set; } = "";
-    public int SucChua { get; set; }
-    public bool DangSuDung { get; set; } = true;
-}

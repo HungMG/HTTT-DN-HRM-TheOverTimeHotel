@@ -31,8 +31,6 @@ public interface IHotelEventService
     Task<IReadOnlyList<KyLuong>> PaymentPeriodsAsync(EventActor actor);
     Task<int> EnsurePaymentPeriodAsync(EventActor actor, int month, int year);
     Task ReconcileLegacyAsync(EventActor actor, int id, long version, int paymentPeriodId, string reason);
-    Task<IReadOnlyList<DiaDiemSuKien>> VenuesAsync();
-    Task<int> SaveVenueAsync(EventActor actor, string name, int capacity);
     Task PublishWeekAsync(EventActor actor, DateOnly weekStart, long version, string? reason);
     Task<CongBoLichTuan?> PublishedWeekAsync(DateOnly weekStart);
     Task<int> AutoCancelExpiredEventsAsync();

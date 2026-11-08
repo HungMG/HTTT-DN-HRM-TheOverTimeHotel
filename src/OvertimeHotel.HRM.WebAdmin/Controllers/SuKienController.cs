@@ -258,44 +258,6 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     public Task<IActionResult> ReconcileLegacy(int id, long version, int paymentPeriodId, string reason, EventDetailsViewModel model) =>
         MutateAsync(id, model, "acceptance", a => events.ReconcileLegacyAsync(a, id, version, paymentPeriodId, reason));
 
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveVenue(EventFormViewModel model)
-    {
-        var actor = await ActorAsync();
-        if (actor?.IsOffice != true) return Forbid();
-        SetContext(model, model.ReturnYear, model.ReturnMonth, model.ReturnDate);
-        if (!ModelState.IsValid)
-        {
-            model.Venues = await events.VenuesAsync();
-            return View("Venues", model);
-        }
-        try
-        {
-            model.Input.VenueId = await events.SaveVenueAsync(actor, model.VenueName, model.VenueCapacity);
-            ModelState.Remove("Input.VenueId");
-            model.VenueName = "";
-            model.VenueCapacity = 0;
-            return RedirectToAction(nameof(Create), new { date = model.ReturnDate.ToString("yyyy-MM-dd"), returnYear = model.ReturnYear, returnMonth = model.ReturnMonth, returnDate = model.ReturnDate.ToString("yyyy-MM-dd") });
-        }
-        catch (EventOperationException ex)
-        {
-            if (ex.Forbidden) return Forbid();
-            ModelState.AddModelError(ex.Field, ex.Message);
-        }
-        model.Venues = await events.VenuesAsync();
-        return View("Venues", model);
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Venues(int? returnYear, int? returnMonth, DateOnly? returnDate)
-    {
-        if ((await ActorAsync())?.IsOffice != true) return Forbid();
-        var model = new EventFormViewModel();
-        SetContext(model, returnYear, returnMonth, returnDate);
-        model.Venues = await events.VenuesAsync();
-        return View(model);
-    }
-
     private async Task<IActionResult> MutateAsync(int id, EventDetailsViewModel model, string tab, Func<EventActor, Task> operation, bool assignmentPopup = false)
     {
         var actor = await ActorAsync();

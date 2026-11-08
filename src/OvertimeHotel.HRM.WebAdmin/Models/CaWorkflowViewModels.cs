@@ -178,6 +178,9 @@ public class GiaiTrinhItemViewModel
     public DateTimeOffset? NgayHrXacNhan { get; set; }
     public string? YKienHr { get; set; }
 
+    /// <summary>Kỳ lương tương ứng của ca trực này đã khóa sổ hoặc đã thanh toán.</summary>
+    public bool KyLuongDaKhoa { get; set; }
+
     public DateTimeOffset NgayGui { get; set; }
 
     public string GioDeXuatVaoDisplay => FormatGio(GioDeXuatVao);
