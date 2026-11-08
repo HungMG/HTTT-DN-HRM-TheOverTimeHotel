@@ -63,16 +63,35 @@ public class GiaiTrinhChamCongController : Controller
     }
 
     // =====================================================================
-    //  INDEX — DANH SÁCH GIẢI TRÌNH
+    //  INDEX — DANH SÁCH GIẢI TRÌNH (TÁCH 2 CẤP QUẢN LÝ / HR & ĐA BỐI CẢNH)
     // =====================================================================
     [HttpGet]
-    public async Task<IActionResult> Index(string? trangThai, string? keyword, int page = 1)
+    public async Task<IActionResult> Index(string? tab, string? loaiCongViec, string? trangThai, string? keyword, int page = 1)
     {
         trangThai = IsKnownStatus(trangThai) ? trangThai : null;
         keyword = keyword?.Trim();
         page = Math.Max(1, page);
 
         var laHr = User.IsInRole("HR") || User.IsInRole("Admin") || User.IsInRole("IT");
+        var laQuanLy = User.IsInRole("Manager") || User.IsInRole("Admin");
+
+        // Tự động chọn Tab phù hợp vai trò nếu người dùng chưa chỉ định:
+        if (string.IsNullOrWhiteSpace(tab))
+        {
+            if (laQuanLy && !User.IsInRole("HR"))
+            {
+                tab = "quan-ly";
+            }
+            else if (laHr && !User.IsInRole("Manager") && !User.IsInRole("Admin"))
+            {
+                tab = "hr";
+            }
+            else
+            {
+                tab = "quan-ly";
+            }
+        }
+
         var scopeDept = GetManagerDepartmentScope();
 
         var baseQuery = _context.GiaiTrinhChamCongs
@@ -93,13 +112,50 @@ public class GiaiTrinhChamCongController : Controller
 
         var visibleItems = await this.SearchDataAsync($"attendance-explanations:scope:{scopeDept}", () => baseQuery.ToListAsync());
         baseQuery = visibleItems.AsQueryable();
+
+        // Nạp danh sách ca thuộc sự kiện để phân loại bối cảnh làm việc
+        var eventShiftIds = await _context.PhanCongDuAns
+            .AsNoTracking()
+            .Where(p => p.MaPhanCa.HasValue)
+            .Select(p => p.MaPhanCa!.Value)
+            .Distinct()
+            .ToListAsync();
+        var eventShiftSet = eventShiftIds.ToHashSet();
+
         var query = baseQuery;
 
-        if (!string.IsNullOrWhiteSpace(trangThai))
+        // 1. Phân luồng theo Tab cấp độ duyệt
+        switch (tab)
         {
-            query = query.Where(g => g.TrangThai == trangThai);
+            case "quan-ly":
+                query = query.Where(g => g.TrangThai == STATUS_CHO_QUAN_LY);
+                break;
+            case "hr":
+                query = query.Where(g => g.TrangThai == STATUS_CHO_HR);
+                break;
+            case "hoan-tat":
+                query = query.Where(g => g.TrangThai == STATUS_DA_DUYET || g.TrangThai == STATUS_TU_CHOI || g.TrangThai == STATUS_DA_HUY);
+                break;
+            case "tat-ca":
+            default:
+                if (!string.IsNullOrWhiteSpace(trangThai))
+                {
+                    query = query.Where(g => g.TrangThai == trangThai);
+                }
+                break;
         }
 
+        // 2. Lọc theo Bối cảnh công việc (Ca thường 24/7 vs Sự kiện theo giờ)
+        if (loaiCongViec == "SU_KIEN")
+        {
+            query = query.Where(g => eventShiftSet.Contains(g.MaPhanCa));
+        }
+        else if (loaiCongViec == "CA_THUONG")
+        {
+            query = query.Where(g => !eventShiftSet.Contains(g.MaPhanCa));
+        }
+
+        // 3. Tìm kiếm từ khóa
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var value = keyword.ToLowerInvariant();
@@ -113,7 +169,7 @@ public class GiaiTrinhChamCongController : Controller
         var pageNumber = Math.Clamp(page, 1, totalPages);
 
         var rows = query
-            .OrderBy(g => g.TrangThai == STATUS_CHO_QUAN_LY || g.TrangThai == STATUS_CHO_HR ? 0 : 1)
+            .OrderBy(g => g.TrangThai == STATUS_CHO_QUAN_LY ? 0 : (g.TrangThai == STATUS_CHO_HR ? 1 : 2))
             .ThenByDescending(g => g.NgayGui)
             .Skip((pageNumber - 1) * PAGE_SIZE)
             .Take(PAGE_SIZE)
@@ -149,6 +205,26 @@ public class GiaiTrinhChamCongController : Controller
             })
             .ToList();
 
+        // Nạp thông tin sự kiện cho các ca phân công được hiển thị trên trang hiện tại
+        var pagedShiftIds = rows.Select(r => r.MaPhanCa).Distinct().ToList();
+        var eventAssignments = await _context.PhanCongDuAns
+            .AsNoTracking()
+            .Include(p => p.DuAn)
+            .Where(p => p.MaPhanCa.HasValue && pagedShiftIds.Contains(p.MaPhanCa.Value))
+            .Select(p => new
+            {
+                MaPhanCa = p.MaPhanCa!.Value,
+                p.MaDuAn,
+                TenDuAn = p.DuAn != null ? p.DuAn.TenDuAn : "Sự kiện",
+                LoaiDuAn = p.DuAn != null ? p.DuAn.LoaiDuAn : null,
+                p.VaiTroDuAn
+            })
+            .ToListAsync();
+
+        var eventMap = eventAssignments
+            .GroupBy(p => p.MaPhanCa)
+            .ToDictionary(g => g.Key, g => g.First());
+
         var lockedPeriods = await _context.KyLuongs
             .AsNoTracking()
             .Where(k => k.TrangThai == SalaryConstants.PERIOD_LOCKED || k.TrangThai == "DA_THANH_TOAN")
@@ -157,36 +233,48 @@ public class GiaiTrinhChamCongController : Controller
 
         var model = new GiaiTrinhIndexViewModel
         {
+            ActiveTab = tab,
+            LoaiCongViec = loaiCongViec,
             TrangThai = trangThai,
             Keyword = keyword,
             TrangThaiOptions = BuildStatusOptions(trangThai),
-            Items = rows.Select(r => new GiaiTrinhItemViewModel
+            LoaiCongViecOptions = BuildLoaiCongViecOptions(loaiCongViec),
+            Items = rows.Select(r =>
             {
-                MaGiaiTrinh = r.MaGiaiTrinh,
-                MaPhanCa = r.MaPhanCa,
-                MaNhanVien = r.MaNhanVien,
-                TenNhanVien = r.TenNhanVien,
-                TenPhongBan = r.TenPhongBan,
-                NgayLamViec = r.NgayLamViec,
-                TenCa = r.TenCa,
-                GioCa = r.TenCa == "—" ? "—" : $"{r.GioBatDau:HH\\:mm} – {r.GioKetThuc:HH\\:mm}",
-                GioDeXuatVao = r.GioDeXuatVao,
-                GioDeXuatRa = r.GioDeXuatRa,
-                GioVaoHienTai = r.GioVaoHienTai,
-                GioRaHienTai = r.GioRaHienTai,
-                LyDo = r.LyDo,
-                MinhChung = r.MinhChung,
-                TrangThai = r.TrangThai,
-                TenQuanLyXacMinh = r.TenQuanLyXacMinh,
-                NgayQuanLyXacMinh = r.NgayQuanLyXacMinh,
-                YKienQuanLy = r.YKienQuanLy,
-                TenHrXacNhan = r.TenHrXacNhan,
-                NgayHrXacNhan = r.NgayHrXacNhan,
-                YKienHr = r.YKienHr,
-                KyLuongDaKhoa = lockedPeriods.Any(k =>
-                    (k.Thang == r.NgayLamViec.Month && k.Nam == r.NgayLamViec.Year) ||
-                    (k.TuNgay <= r.NgayLamViec && k.DenNgay >= r.NgayLamViec)),
-                NgayGui = r.NgayGui
+                var isEvent = eventMap.TryGetValue(r.MaPhanCa, out var ev);
+                return new GiaiTrinhItemViewModel
+                {
+                    MaGiaiTrinh = r.MaGiaiTrinh,
+                    MaPhanCa = r.MaPhanCa,
+                    MaNhanVien = r.MaNhanVien,
+                    TenNhanVien = r.TenNhanVien,
+                    TenPhongBan = r.TenPhongBan,
+                    NgayLamViec = r.NgayLamViec,
+                    TenCa = r.TenCa,
+                    GioCa = r.TenCa == "—" ? "—" : $"{r.GioBatDau:HH\\:mm} – {r.GioKetThuc:HH\\:mm}",
+                    LaSuKien = isEvent,
+                    MaDuAn = isEvent ? ev!.MaDuAn : null,
+                    TenSuKien = isEvent ? ev!.TenDuAn : null,
+                    VaiTroSuKien = isEvent ? ev!.VaiTroDuAn : null,
+                    LoaiSuKien = isEvent ? ev!.LoaiDuAn : null,
+                    GioDeXuatVao = r.GioDeXuatVao,
+                    GioDeXuatRa = r.GioDeXuatRa,
+                    GioVaoHienTai = r.GioVaoHienTai,
+                    GioRaHienTai = r.GioRaHienTai,
+                    LyDo = r.LyDo,
+                    MinhChung = r.MinhChung,
+                    TrangThai = r.TrangThai,
+                    TenQuanLyXacMinh = r.TenQuanLyXacMinh,
+                    NgayQuanLyXacMinh = r.NgayQuanLyXacMinh,
+                    YKienQuanLy = r.YKienQuanLy,
+                    TenHrXacNhan = r.TenHrXacNhan,
+                    NgayHrXacNhan = r.NgayHrXacNhan,
+                    YKienHr = r.YKienHr,
+                    KyLuongDaKhoa = lockedPeriods.Any(k =>
+                        (k.Thang == r.NgayLamViec.Month && k.Nam == r.NgayLamViec.Year) ||
+                        (k.TuNgay <= r.NgayLamViec && k.DenNgay >= r.NgayLamViec)),
+                    NgayGui = r.NgayGui
+                };
             }).ToList(),
             TongGiaiTrinh = baseQuery.Count(),
             ChoQuanLy = baseQuery.Count(g => g.TrangThai == STATUS_CHO_QUAN_LY),
@@ -194,6 +282,8 @@ public class GiaiTrinhChamCongController : Controller
             DaDuyet = baseQuery.Count(g => g.TrangThai == STATUS_DA_DUYET),
             TuChoi = baseQuery.Count(g => g.TrangThai == STATUS_TU_CHOI),
             DaHuy = baseQuery.Count(g => g.TrangThai == STATUS_DA_HUY),
+            SoLuongSuKien = baseQuery.Count(g => eventShiftSet.Contains(g.MaPhanCa)),
+            SoLuongCaThuong = baseQuery.Count(g => !eventShiftSet.Contains(g.MaPhanCa)),
             CoQuyenQuanLy = User.IsInRole("Manager") || User.IsInRole("Admin"),
             CoQuyenHr = laHr,
             PageNumber = pageNumber,
@@ -753,6 +843,13 @@ public class GiaiTrinhChamCongController : Controller
         new SelectListItem { Value = STATUS_DA_DUYET, Text = "Đã duyệt", Selected = selected == STATUS_DA_DUYET },
         new SelectListItem { Value = STATUS_TU_CHOI, Text = "Từ chối", Selected = selected == STATUS_TU_CHOI },
         new SelectListItem { Value = STATUS_DA_HUY, Text = "Đã rút", Selected = selected == STATUS_DA_HUY }
+    ];
+
+    private static IReadOnlyList<SelectListItem> BuildLoaiCongViecOptions(string? selected) =>
+    [
+        new SelectListItem { Value = string.Empty, Text = "-- Tất cả loại công việc --", Selected = string.IsNullOrWhiteSpace(selected) },
+        new SelectListItem { Value = "CA_THUONG", Text = "Ca làm việc 24/7 (Ca thường)", Selected = selected == "CA_THUONG" },
+        new SelectListItem { Value = "SU_KIEN", Text = "Sự kiện / Tiệc theo giờ", Selected = selected == "SU_KIEN" }
     ];
 
     private static bool InScope(int? employeeDeptId, int? scopeDeptId)

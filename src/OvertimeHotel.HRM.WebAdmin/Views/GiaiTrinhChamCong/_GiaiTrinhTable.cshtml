@@ -3,9 +3,15 @@
 @if (Model.Items.Count == 0)
 {
     <div class="text-center py-5 text-muted">
-        <i class="bi bi-journal-text d-block mb-3" style="font-size: 2.4rem; opacity: 0.35;"></i>
-        <div class="fw-semibold">Chưa có giải trình nào khớp bộ lọc</div>
-        <div class="small mt-1">Nhân viên gửi giải trình từ ứng dụng di động khi quên quẹt thẻ.</div>
+        <div class="mb-3">
+            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light border p-3" style="width: 72px; height: 72px;">
+                <i class="bi bi-journal-text text-secondary" style="font-size: 2rem; opacity: 0.5;"></i>
+            </span>
+        </div>
+        <div class="fw-bold text-dark fs-6">Chưa có giải trình nào khớp bộ lọc</div>
+        <div class="small text-muted mt-1 max-w-md mx-auto">
+            Nhân viên gửi giải trình từ ứng dụng di động khi có sự cố quẹt thẻ trong ca làm việc hoặc sự kiện.
+        </div>
     </div>
 }
 else
@@ -14,121 +20,255 @@ else
         <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
             <thead class="table-light">
                 <tr>
-                    <th style="width: 60px;">Mã</th>
-                    <th>Nhân viên / Ca trực</th>
-                    <th>Giờ hiện tại → Đề xuất</th>
-                    <th style="min-width: 190px;">Lý do</th>
-                    <th style="width: 250px;">Tiến trình duyệt</th>
-                    <th style="width: 150px;" class="text-end">Xử lý</th>
+                    <th style="width: 75px;" class="text-center">Mã</th>
+                    <th style="min-width: 170px;">Bối cảnh & Nhân sự</th>
+                    <th style="min-width: 190px;">Đối chiếu giờ vào / ra</th>
+                    <th style="min-width: 190px;">Lý do & Minh chứng</th>
+                    <th style="min-width: 250px;">Quy trình duyệt 2 cấp</th>
+                    <th style="width: 160px;" class="text-end">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var item in Model.Items)
                 {
                     <tr data-giai-trinh-row="@item.MaGiaiTrinh">
-                        <td class="font-monospace fw-bold text-primary">#@item.MaGiaiTrinh</td>
-                        <td>
-                            <div class="fw-semibold text-dark">@item.TenNhanVien</div>
-                            <div class="text-muted" style="font-size: 0.75rem;">
-                                <span class="font-monospace">@item.MaNhanVienFormat</span> · @item.TenPhongBan
-                            </div>
-                            <div class="text-muted mt-1" style="font-size: 0.75rem;">
-                                <i class="bi bi-clock-history me-1"></i>@item.TenCa · @item.NgayLamViec.ToString("dd/MM/yyyy") · @item.GioCa
-                            </div>
-                        </td>
-                        <td>
-                            <div style="font-size: 0.78rem;">
-                                <span class="text-muted">Vào:</span>
-                                <span class="text-dark">@(item.GioVaoHienTai ?? "chưa quẹt")</span>
-                                <i class="bi bi-arrow-right mx-1 text-warning"></i>
-                                <span class="fw-semibold text-primary">@(item.GioDeXuatVao.HasValue ? item.GioDeXuatVaoDisplay : "—")</span>
-                            </div>
-                            <div style="font-size: 0.78rem;">
-                                <span class="text-muted">Ra:</span>
-                                <span class="text-dark">@(item.GioRaHienTai ?? "chưa quẹt")</span>
-                                <i class="bi bi-arrow-right mx-1 text-warning"></i>
-                                <span class="fw-semibold text-primary">@(item.GioDeXuatRa.HasValue ? item.GioDeXuatRaDisplay : "—")</span>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="text-dark">@item.LyDo</div>
-                            @if (!string.IsNullOrWhiteSpace(item.MinhChung))
-                            {
-                                <div class="text-muted mt-1" style="font-size: 0.75rem;">
-                                    <i class="bi bi-paperclip me-1"></i>@item.MinhChung
-                                </div>
-                            }
-                        </td>
-                        <td>
-                            <span class="badge @item.TrangThaiCss rounded-pill px-2.5 py-1">@item.TrangThaiNhan</span>
-                            @if (item.KyLuongDaKhoa)
-                            {
-                                <div>
-                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5 mt-1" style="font-size: 0.7rem;">
-                                        <i class="bi bi-lock-fill me-1"></i>Kỳ lương đã khóa
+                        <td class="text-center align-top pt-3">
+                            <span class="font-monospace fw-bold text-primary">#@item.MaGiaiTrinh</span>
+                            <div class="mt-1">
+                                @if (item.LaSuKien)
+                                {
+                                    <span class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill px-2 py-0.5" style="font-size: 0.68rem;" title="Sự cố trong sự kiện theo giờ">
+                                        <i class="bi bi-stars me-0.5"></i>Sự kiện
                                     </span>
-                                </div>
-                            }
-
-                            @if (!string.IsNullOrWhiteSpace(item.TenQuanLyXacMinh))
-                            {
-                                <div class="text-muted mt-1" style="font-size: 0.73rem;">
-                                    <i class="bi bi-person-check text-success me-1"></i>
-                                    @item.TenQuanLyXacMinh
-                                    @if (item.NgayQuanLyXacMinh.HasValue)
-                                    {
-                                        <text>· @item.NgayQuanLyXacMinh.Value.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM HH:mm")</text>
-                                    }
-                                </div>
-                                @if (!string.IsNullOrWhiteSpace(item.YKienQuanLy))
-                                {
-                                    <div class="text-muted fst-italic" style="font-size: 0.73rem;">“@item.YKienQuanLy”</div>
-                                }
-                            }
-
-                            @if (!string.IsNullOrWhiteSpace(item.TenHrXacNhan))
-                            {
-                                <div class="text-muted mt-1" style="font-size: 0.73rem;">
-                                    <i class="bi bi-shield-check text-primary me-1"></i>
-                                    @item.TenHrXacNhan
-                                    @if (item.NgayHrXacNhan.HasValue)
-                                    {
-                                        <text>· @item.NgayHrXacNhan.Value.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM HH:mm")</text>
-                                    }
-                                </div>
-                                @if (!string.IsNullOrWhiteSpace(item.YKienHr))
-                                {
-                                    <div class="text-muted fst-italic" style="font-size: 0.73rem;">“@item.YKienHr”</div>
-                                }
-                            }
-                        </td>
-                        <td class="text-end">
-                            @if (item.ChoQuanLy && Model.CoQuyenQuanLy)
-                            {
-                                @if (item.KyLuongDaKhoa)
-                                {
-                                    <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1 small d-block mb-1" title="Kỳ lương đã khóa sổ, không thể sửa công">
-                                        <i class="bi bi-lock-fill me-1"></i>Kỳ lương đã khóa
-                                    </span>
-                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold w-100"
-                                            data-giai-trinh-reject="@item.MaGiaiTrinh"
-                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
-                                        <i class="bi bi-x-lg me-1"></i>Từ chối
-                                    </button>
                                 }
                                 else
                                 {
-                                    <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold"
+                                    <span class="badge bg-light text-secondary border rounded-pill px-2 py-0.5" style="font-size: 0.68rem;" title="Sự cố trong ca thường 24/7">
+                                        <i class="bi bi-clock-history me-0.5"></i>Ca 24/7
+                                    </span>
+                                }
+                            </div>
+                        </td>
+                        <td class="align-top pt-3">
+                            <div class="fw-bold text-dark">@item.TenNhanVien</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">
+                                <span class="font-monospace fw-semibold">@item.MaNhanVienFormat</span> · @item.TenPhongBan
+                            </div>
+
+                            @if (item.LaSuKien)
+                            {
+                                <div class="p-2 rounded-3 bg-purple-subtle bg-opacity-25 border border-purple-subtle mt-2" style="font-size: 0.75rem;">
+                                    <div class="fw-semibold text-purple text-truncate" title="@item.TenSuKien">
+                                        <i class="bi bi-calendar-event me-1"></i>@item.TenSuKien
+                                    </div>
+                                    <div class="text-muted mt-0.5">
+                                        <span class="badge bg-white text-purple border border-purple-subtle px-1.5 py-0.5">@item.VaiTroSuKien</span>
+                                        <span class="ms-1">@item.NgayLamViec.ToString("dd/MM/yyyy")</span>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mt-2 text-muted" style="font-size: 0.75rem;">
+                                    <span class="badge bg-light text-dark border px-2 py-0.5"><i class="bi bi-calendar3 me-1"></i>@item.TenCa</span>
+                                    <div class="mt-1 text-muted">@item.NgayLamViec.ToString("dd/MM/yyyy") (@item.GioCa)</div>
+                                </div>
+                            }
+                        </td>
+                        <td class="align-top pt-3">
+                            <div class="p-2 rounded-3 bg-light border" style="font-size: 0.78rem;">
+                                <div class="d-flex align-items-center justify-content-between mb-1 pb-1 border-bottom border-light-subtle">
+                                    <span class="text-muted small">Check-in:</span>
+                                    <div>
+                                        <span class="text-secondary text-decoration-line-through me-1">@(item.GioVaoHienTai ?? "chưa quẹt")</span>
+                                        <i class="bi bi-arrow-right text-warning small"></i>
+                                        <span class="fw-bold text-primary ms-1">@(item.GioDeXuatVao.HasValue ? item.GioDeXuatVaoDisplay : "—")</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <span class="text-muted small">Check-out:</span>
+                                    <div>
+                                        <span class="text-secondary text-decoration-line-through me-1">@(item.GioRaHienTai ?? "chưa quẹt")</span>
+                                        <i class="bi bi-arrow-right text-warning small"></i>
+                                        <span class="fw-bold text-primary ms-1">@(item.GioDeXuatRa.HasValue ? item.GioDeXuatRaDisplay : "—")</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-muted mt-1" style="font-size: 0.72rem;">
+                                <i class="bi bi-send me-1"></i>Gửi lúc: @item.NgayGui.ToOffset(TimeSpan.FromHours(7)).ToString("HH:mm dd/MM/yyyy")
+                            </div>
+                        </td>
+                        <td class="align-top pt-3">
+                            <div class="text-dark fw-normal" style="font-size: 0.82rem; line-height: 1.4;">
+                                @item.LyDo
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(item.MinhChung))
+                            {
+                                <div class="mt-2 p-1.5 px-2 bg-light rounded-2 border text-muted" style="font-size: 0.74rem;">
+                                    <i class="bi bi-paperclip me-1 text-primary"></i><span class="text-break">@item.MinhChung</span>
+                                </div>
+                            }
+                        </td>
+                        <td class="align-top pt-3">
+                            <div class="timeline-stepper p-2 rounded-3 bg-white border shadow-xs" style="font-size: 0.76rem;">
+                                <!-- CẤP 1: QUẢN LÝ BỘ PHẬN -->
+                                <div class="d-flex align-items-start gap-2 mb-1.5">
+                                    @if (item.ChoQuanLy)
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-circle p-1" style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-hourglass-split"></i>
+                                        </span>
+                                        <div>
+                                            <div class="fw-bold text-warning-emphasis">Cấp 1: Chờ Quản lý xác minh</div>
+                                            <div class="text-muted small">Kiểm tra thực tế hiện trường ca / sự kiện</div>
+                                        </div>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(item.TenQuanLyXacMinh))
+                                    {
+                                        var isRejectedByManager = item.TrangThai == "TU_CHOI" && string.IsNullOrWhiteSpace(item.TenHrXacNhan);
+                                        <span class="badge @(isRejectedByManager ? "bg-danger-subtle text-danger border-danger-subtle" : "bg-success-subtle text-success border-success-subtle") border rounded-circle p-1" style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="bi @(isRejectedByManager ? "bi-x-lg" : "bi-check-lg")"></i>
+                                        </span>
+                                        <div>
+                                            <div class="fw-bold @(isRejectedByManager ? "text-danger" : "text-success")">
+                                                Cấp 1: @(isRejectedByManager ? "Quản lý từ chối" : "Quản lý đã xác minh")
+                                            </div>
+                                            <div class="text-dark small">
+                                                <i class="bi bi-person-check me-1"></i>@item.TenQuanLyXacMinh
+                                                @if (item.NgayQuanLyXacMinh.HasValue)
+                                                {
+                                                    <span class="text-muted">· @item.NgayQuanLyXacMinh.Value.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM HH:mm")</span>
+                                                }
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(item.YKienQuanLy))
+                                            {
+                                                <div class="text-muted fst-italic small bg-light p-1 rounded mt-0.5">“@item.YKienQuanLy”</div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-secondary border rounded-circle p-1" style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-dash"></i>
+                                        </span>
+                                        <div>
+                                            <div class="text-muted">Cấp 1: Bỏ qua / Trực tiếp</div>
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="ms-2 ps-1 border-start border-2 border-secondary-subtle" style="height: 10px; margin-top: -4px; margin-bottom: 2px;"></div>
+
+                                <!-- CẤP 2: PHÒNG NHÂN SỰ -->
+                                <div class="d-flex align-items-start gap-2">
+                                    @if (item.ChoQuanLy)
+                                    {
+                                        <span class="badge bg-light text-muted border rounded-circle p-1" style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-circle"></i>
+                                        </span>
+                                        <div>
+                                            <div class="text-muted">Cấp 2: Chờ Quản lý xác minh xong</div>
+                                            <div class="text-muted small">Thẩm định quy chế & ghi đè bảng công</div>
+                                        </div>
+                                    }
+                                    else if (item.ChoHr)
+                                    {
+                                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-circle p-1" style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-hourglass-top"></i>
+                                        </span>
+                                        <div>
+                                            <div class="fw-bold text-info-emphasis">Cấp 2: Chờ HR phê duyệt</div>
+                                            <div class="text-muted small">Thẩm định quy chế & đối soát kỳ lương</div>
+                                        </div>
+                                    }
+                                    else if (item.TrangThai == "DA_DUYET")
+                                    {
+                                        <span class="badge bg-hotel-primary text-white rounded-circle p-1" style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-patch-check-fill"></i>
+                                        </span>
+                                        <div>
+                                            <div class="fw-bold text-hotel-primary">Cấp 2: HR đã duyệt & Cập nhật công</div>
+                                            <div class="text-dark small">
+                                                <i class="bi bi-shield-check me-1"></i>@item.TenHrXacNhan
+                                                @if (item.NgayHrXacNhan.HasValue)
+                                                {
+                                                    <span class="text-muted">· @item.NgayHrXacNhan.Value.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM HH:mm")</span>
+                                                }
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(item.YKienHr))
+                                            {
+                                                <div class="text-muted fst-italic small bg-light p-1 rounded mt-0.5">“@item.YKienHr”</div>
+                                            }
+                                        </div>
+                                    }
+                                    else if (item.TrangThai == "TU_CHOI" && !string.IsNullOrWhiteSpace(item.TenHrXacNhan))
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border-danger-subtle border rounded-circle p-1" style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-x-lg"></i>
+                                        </span>
+                                        <div>
+                                            <div class="fw-bold text-danger">Cấp 2: HR từ chối hồ sơ</div>
+                                            <div class="text-dark small">
+                                                <i class="bi bi-shield-x me-1"></i>@item.TenHrXacNhan
+                                                @if (item.NgayHrXacNhan.HasValue)
+                                                {
+                                                    <span class="text-muted">· @item.NgayHrXacNhan.Value.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM HH:mm")</span>
+                                                }
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(item.YKienHr))
+                                            {
+                                                <div class="text-muted fst-italic small bg-light p-1 rounded mt-0.5">“@item.YKienHr”</div>
+                                            }
+                                        </div>
+                                    }
+                                    else if (item.TrangThai == "DA_HUY")
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary rounded-circle p-1" style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-slash-circle"></i>
+                                        </span>
+                                        <div>
+                                            <div class="text-secondary fw-semibold">Đã rút bởi nhân viên</div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-muted border rounded-circle p-1" style="width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-dash"></i>
+                                        </span>
+                                        <div>
+                                            <div class="text-muted">Chưa xử lý</div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (item.KyLuongDaKhoa)
+                            {
+                                <div class="mt-1">
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5" style="font-size: 0.7rem;">
+                                        <i class="bi bi-lock-fill me-1"></i>Kỳ lương đã khóa sổ
+                                    </span>
+                                </div>
+                            }
+                        </td>
+                        <td class="text-end align-top pt-3">
+                            @if (item.ChoQuanLy && Model.CoQuyenQuanLy)
+                            {
+                                <div class="d-flex flex-column gap-1.5">
+                                    <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold shadow-xs"
                                             data-giai-trinh-verify="@item.MaGiaiTrinh"
-                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
-                                        <i class="bi bi-check2-circle me-1"></i>Xác minh
+                                            data-giai-trinh-label="#@item.MaGiaiTrinh"
+                                            data-giai-trinh-staff="@item.TenNhanVien"
+                                            data-giai-trinh-context="@(item.LaSuKien ? $"Sự kiện: {item.TenSuKien}" : $"Ca: {item.TenCa}")">
+                                        <i class="bi bi-check2-circle me-1"></i>Xác minh (C1)
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold mt-1 w-100"
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold"
                                             data-giai-trinh-reject="@item.MaGiaiTrinh"
-                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                            data-giai-trinh-label="#@item.MaGiaiTrinh"
+                                            data-giai-trinh-level="ManagerVerify">
                                         <i class="bi bi-x-lg me-1"></i>Từ chối
                                     </button>
-                                }
+                                </div>
                             }
                             else if (item.ChoHr && Model.CoQuyenHr)
                             {
@@ -139,23 +279,53 @@ else
                                     </span>
                                     <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold w-100"
                                             data-giai-trinh-reject="@item.MaGiaiTrinh"
-                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
+                                            data-giai-trinh-label="#@item.MaGiaiTrinh"
+                                            data-giai-trinh-level="HrConfirm">
                                         <i class="bi bi-x-lg me-1"></i>Từ chối
                                     </button>
                                 }
                                 else
                                 {
-                                    <button type="button" class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold"
-                                            data-giai-trinh-confirm="@item.MaGiaiTrinh"
-                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
-                                        <i class="bi bi-check2-circle me-1"></i>Xác nhận
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold mt-1 w-100"
-                                            data-giai-trinh-reject="@item.MaGiaiTrinh"
-                                            data-giai-trinh-label="#@item.MaGiaiTrinh">
-                                        <i class="bi bi-x-lg me-1"></i>Từ chối
-                                    </button>
+                                    <div class="d-flex flex-column gap-1.5">
+                                        <button type="button" class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold shadow-xs"
+                                                data-giai-trinh-confirm="@item.MaGiaiTrinh"
+                                                data-giai-trinh-label="#@item.MaGiaiTrinh"
+                                                data-giai-trinh-staff="@item.TenNhanVien"
+                                                data-giai-trinh-context="@(item.LaSuKien ? $"Sự kiện: {item.TenSuKien}" : $"Ca: {item.TenCa}")">
+                                            <i class="bi bi-check2-circle me-1"></i>HR Duyệt công (C2)
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold"
+                                                data-giai-trinh-reject="@item.MaGiaiTrinh"
+                                                data-giai-trinh-label="#@item.MaGiaiTrinh"
+                                                data-giai-trinh-level="HrConfirm">
+                                            <i class="bi bi-x-lg me-1"></i>Từ chối
+                                        </button>
+                                    </div>
                                 }
+                            }
+                            else if (item.ChoQuanLy)
+                            {
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2.5 py-1 small">
+                                    <i class="bi bi-hourglass-split me-1"></i>Chờ QL duyệt
+                                </span>
+                            }
+                            else if (item.ChoHr)
+                            {
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-2.5 py-1 small">
+                                    <i class="bi bi-hourglass-top me-1"></i>Chờ HR duyệt
+                                </span>
+                            }
+                            else if (item.TrangThai == "DA_DUYET")
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 small">
+                                    <i class="bi bi-check2-all me-1"></i>Đã chốt công
+                                </span>
+                            }
+                            else if (item.TrangThai == "TU_CHOI")
+                            {
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1 small">
+                                    <i class="bi bi-x-circle me-1"></i>Đã từ chối
+                                </span>
                             }
                             else if (item.TrangThai == "DA_HUY")
                             {

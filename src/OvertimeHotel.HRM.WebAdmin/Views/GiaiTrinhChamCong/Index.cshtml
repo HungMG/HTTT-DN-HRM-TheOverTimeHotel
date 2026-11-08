@@ -5,104 +5,219 @@
 
 <div class="container-fluid px-3 px-md-4 py-3">
 
-    <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-3">
-        <a asp-controller="ChamCong" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2"
-           style="font-size: 0.85rem;">
-            <i class="bi bi-fingerprint me-1"></i>Nhật ký chấm công
-        </a>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+            <h4 class="mb-0 fw-bold font-serif text-dark hotel-blur-text">
+                <i class="bi bi-shield-check text-hotel-primary me-2"></i>Quy Trình Duyệt Giải Trình Chấm Công
+            </h4>
+            <div class="text-muted small mt-1">
+                Phê duyệt 2 cấp phân định rõ: <strong class="text-warning-emphasis">Cấp 1 (Quản lý xác minh thực tế)</strong> ➔ <strong class="text-primary">Cấp 2 (HR thẩm định & chốt công)</strong> cho Ca 24/7 và Sự kiện.
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a asp-controller="ChamCong" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2 shadow-xs"
+               style="font-size: 0.85rem;">
+                <i class="bi bi-fingerprint me-1"></i>Nhật ký chấm công
+            </a>
+        </div>
     </div>
 
     <partial name="_CatalogAlerts" />
 
+    <!-- 1. CÁC THẺ KPI THỐNG KÊ NHỊP SỐ COUNT-UP -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-4 col-xl-2">
             <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #b45309 !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Chờ Quản lý</span>
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Cấp 1: Chờ Quản lý</span>
                 <h3 class="h3 mb-0 fw-bold text-warning-emphasis font-serif kpi-count-up" data-target="@Model.ChoQuanLy">@Model.ChoQuanLy</h3>
+                <span class="text-muted mt-1" style="font-size: 0.68rem;">Xác minh hiện trường</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
             <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #0284c7 !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Chờ HR</span>
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Cấp 2: Chờ HR</span>
                 <h3 class="h3 mb-0 fw-bold text-info-emphasis font-serif kpi-count-up" data-target="@Model.ChoHr">@Model.ChoHr</h3>
+                <span class="text-muted mt-1" style="font-size: 0.68rem;">Thẩm định & chốt công</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
             <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #059669 !important;">
                 <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đã duyệt</span>
                 <h3 class="h3 mb-0 fw-bold text-success font-serif kpi-count-up" data-target="@Model.DaDuyet">@Model.DaDuyet</h3>
+                <span class="text-muted mt-1" style="font-size: 0.68rem;">Đã cập nhật bảng công</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
             <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #dc2626 !important;">
                 <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Từ chối</span>
                 <h3 class="h3 mb-0 fw-bold text-danger font-serif kpi-count-up" data-target="@Model.TuChoi">@Model.TuChoi</h3>
+                <span class="text-muted mt-1" style="font-size: 0.68rem;">Không hợp lệ</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #64748b !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đã rút</span>
-                <h3 class="h3 mb-0 fw-bold text-secondary font-serif kpi-count-up" data-target="@Model.DaHuy">@Model.DaHuy</h3>
+            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #9333ea !important;">
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Sự kiện / Tiệc</span>
+                <h3 class="h3 mb-0 fw-bold text-purple font-serif kpi-count-up" data-target="@Model.SoLuongSuKien">@Model.SoLuongSuKien</h3>
+                <span class="text-muted mt-1" style="font-size: 0.68rem;">Sự cố tiệc & MICE</span>
             </div>
         </div>
         <div class="col-6 col-md-4 col-xl-2">
             <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #1e3a8a !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Tổng hồ sơ</span>
-                <h3 class="h3 mb-0 fw-bold text-dark font-serif kpi-count-up" data-target="@Model.TongGiaiTrinh">@Model.TongGiaiTrinh</h3>
+                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Ca thường 24/7</span>
+                <h3 class="h3 mb-0 fw-bold text-hotel-primary font-serif kpi-count-up" data-target="@Model.SoLuongCaThuong">@Model.SoLuongCaThuong</h3>
+                <span class="text-muted mt-1" style="font-size: 0.68rem;">Sự cố quẹt thẻ ca</span>
             </div>
         </div>
     </div>
 
-    <form class="card border-0 shadow-sm rounded-4 mb-3" id="giaiTrinhFilterForm" data-giai-trinh-filter>
-        @Html.AntiForgeryToken()
-        <div class="card-body p-3">
-            <div class="row g-2 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold text-muted mb-1" for="filterStatus">Trạng thái</label>
-                    <select class="form-select form-select-sm rounded-3" id="filterStatus" name="trangThai">
-                        @foreach (var option in Model.TrangThaiOptions)
-                        {
-                            <option value="@option.Value" selected="@option.Selected">@option.Text</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-5">
-                    <label class="form-label small fw-semibold text-muted mb-1" for="filterKeyword">Tìm kiếm</label>
-                    <input type="search" class="form-control form-control-sm rounded-3" id="filterKeyword"
-                           name="keyword" value="@Model.Keyword" placeholder="Tên nhân viên hoặc nội dung giải trình…" />
-                </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold flex-grow-1">
-                        <i class="bi bi-funnel me-1"></i>Lọc
+    <!-- 2. SEGMENTED LEVEL TABS: PHÂN TÁCH RÕ LUỒNG QUẢN LÝ / HR -->
+    <div class="card border-0 shadow-sm rounded-4 mb-3 overflow-hidden">
+        <div class="card-header bg-white border-0 px-3 pt-3 pb-0">
+            <ul class="nav nav-tabs border-0 flex-nowrap overflow-x-auto hotel-segmented-tabs" id="levelTabs" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "quan-ly" ? "active" : "")"
+                            type="button" data-giai-trinh-tab="quan-ly">
+                        <i class="bi bi-person-badge-fill text-warning"></i>
+                        <span>Cấp 1: Chờ Quản lý xác minh</span>
+                        <span class="badge @(Model.ChoQuanLy > 0 ? "bg-warning text-dark" : "bg-light text-secondary") rounded-pill ms-1">
+                            @Model.ChoQuanLy
+                        </span>
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
-                            data-giai-trinh-reset>
-                        Xoá lọc
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "hr" ? "active" : "")"
+                            type="button" data-giai-trinh-tab="hr">
+                        <i class="bi bi-shield-check text-primary"></i>
+                        <span>Cấp 2: Chờ HR phê duyệt</span>
+                        <span class="badge @(Model.ChoHr > 0 ? "bg-info text-dark" : "bg-light text-secondary") rounded-pill ms-1">
+                            @Model.ChoHr
+                        </span>
                     </button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "hoan-tat" ? "active" : "")"
+                            type="button" data-giai-trinh-tab="hoan-tat">
+                        <i class="bi bi-clock-history text-secondary"></i>
+                        <span>Đã giải quyết</span>
+                        <span class="badge bg-light text-secondary border rounded-pill ms-1">
+                            @(Model.DaDuyet + Model.TuChoi + Model.DaHuy)
+                        </span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "tat-ca" ? "active" : "")"
+                            type="button" data-giai-trinh-tab="tat-ca">
+                        <i class="bi bi-collection text-secondary"></i>
+                        <span>Tất cả hồ sơ</span>
+                        <span class="badge bg-light text-secondary border rounded-pill ms-1">
+                            @Model.TongGiaiTrinh
+                        </span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 3. BỘ LỌC ĐA BỐI CẢNH (CA THƯỜNG / SỰ KIỆN / TÌM KIẾM) -->
+        <div class="card-body p-3 border-top bg-light bg-opacity-40">
+            <form id="giaiTrinhFilterForm" data-giai-trinh-filter>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="tab" id="filterTab" value="@Model.ActiveTab" />
+
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold text-muted mb-1" for="filterLoaiCongViec">
+                            <i class="bi bi-briefcase me-1"></i>Bối cảnh công việc
+                        </label>
+                        <select class="form-select form-select-sm rounded-3" id="filterLoaiCongViec" name="loaiCongViec">
+                            @foreach (var opt in Model.LoaiCongViecOptions)
+                            {
+                                <option value="@opt.Value" selected="@opt.Selected">@opt.Text</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 @(Model.ActiveTab != "tat-ca" ? "d-none" : "")" id="containerFilterStatus">
+                        <label class="form-label small fw-semibold text-muted mb-1" for="filterStatus">
+                            <i class="bi bi-funnel me-1"></i>Trạng thái
+                        </label>
+                        <select class="form-select form-select-sm rounded-3" id="filterStatus" name="trangThai">
+                            @foreach (var option in Model.TrangThaiOptions)
+                            {
+                                <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="@(Model.ActiveTab != "tat-ca" ? "col-md-6" : "col-md-3")">
+                        <label class="form-label small fw-semibold text-muted mb-1" for="filterKeyword">
+                            <i class="bi bi-search me-1"></i>Tìm kiếm nhanh
+                        </label>
+                        <input type="search" class="form-control form-control-sm rounded-3" id="filterKeyword"
+                               name="keyword" value="@Model.Keyword" placeholder="Tên nhân viên, lý do giải trình…" />
+                    </div>
+
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold flex-grow-1 shadow-xs">
+                            <i class="bi bi-funnel me-1"></i>Lọc
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
+                                data-giai-trinh-reset>
+                            Xoá lọc
+                        </button>
+                    </div>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. VÙNG BẢNG DỮ LIỆU ĐƯỢC CÁCH LY CHUYỂN ĐỔI TẠI CHỖ (ZERO FULL-PAGE RELOAD) -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden position-relative">
+        <div id="giaiTrinhLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-flex align-items-center justify-content-center d-none" style="z-index: 10;">
+            <div class="text-center p-3 rounded-4 shadow-sm bg-white border">
+                <div class="spinner-border text-hotel-primary spinner-border-sm mb-2" role="status"></div>
+                <div class="small fw-semibold text-muted">Đang cập nhật danh sách...</div>
             </div>
         </div>
-    </form>
-
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div data-giai-trinh-table>
             <partial name="_GiaiTrinhTable" model="Model" />
         </div>
     </div>
 </div>
 
+<!-- 5. MODAL XỬ LÝ DUYỆT / TỪ CHỐI (CẤP 1 QUẢN LÝ & CẤP 2 HR) -->
 <div class="modal fade" id="giaiTrinhActionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow-lg">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold font-serif" id="giaiTrinhActionTitle">Xác nhận</h5>
+                <div>
+                    <span class="badge rounded-pill px-2.5 py-1 mb-1.5" id="giaiTrinhActionBadge">Cấp duyệt</span>
+                    <h5 class="modal-title fw-bold font-serif" id="giaiTrinhActionTitle">Xác nhận</h5>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted mb-3" id="giaiTrinhActionHint"></p>
-                <label class="form-label small fw-semibold text-muted mb-1" for="giaiTrinhActionNote">Ý kiến xử lý</label>
-                <textarea class="form-control rounded-3" id="giaiTrinhActionNote" rows="3" maxlength="500"
-                          placeholder="Ghi chú gửi tới nhân viên…"></textarea>
+                <div class="alert alert-light border rounded-3 p-2.5 mb-3" id="giaiTrinhContextCard">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="text-muted small">Nhân viên:</span>
+                        <strong class="text-dark" id="modalStaffName">—</strong>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="text-muted small">Bối cảnh:</span>
+                        <span class="text-secondary small fw-semibold" id="modalShiftContext">—</span>
+                    </div>
+                </div>
+
+                <div class="alert rounded-3 small mb-3" id="giaiTrinhActionBanner">
+                    <p class="mb-0" id="giaiTrinhActionHint"></p>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold text-muted mb-1" for="giaiTrinhActionNote">
+                        Ý kiến phê duyệt / Lý do <span class="text-danger d-none" id="noteRequiredMark">*</span>
+                    </label>
+                    <textarea class="form-control rounded-3" id="giaiTrinhActionNote" rows="3" maxlength="500"
+                              placeholder="Nhập ý kiến xử lý (bắt buộc nêu lý do nếu từ chối)…"></textarea>
+                </div>
                 <div class="text-danger small mt-2 d-none" id="giaiTrinhActionError"></div>
             </div>
             <div class="modal-footer border-0 pt-0">
@@ -118,45 +233,107 @@
         (function () {
             const tableHost = document.querySelector('[data-giai-trinh-table]');
             const filterForm = document.querySelector('[data-giai-trinh-filter]');
+            const filterTab = document.getElementById('filterTab');
+            const overlay = document.getElementById('giaiTrinhLoadingOverlay');
+            const containerFilterStatus = document.getElementById('containerFilterStatus');
+
             const modalEl = document.getElementById('giaiTrinhActionModal');
             const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
             const noteEl = document.getElementById('giaiTrinhActionNote');
+            const noteRequiredMark = document.getElementById('noteRequiredMark');
             const errorEl = document.getElementById('giaiTrinhActionError');
             const confirmBtn = document.getElementById('giaiTrinhActionConfirm');
+            const modalTitle = document.getElementById('giaiTrinhActionTitle');
+            const modalBadge = document.getElementById('giaiTrinhActionBadge');
+            const modalHint = document.getElementById('giaiTrinhActionHint');
+            const modalBanner = document.getElementById('giaiTrinhActionBanner');
+            const modalStaffName = document.getElementById('modalStaffName');
+            const modalShiftContext = document.getElementById('modalShiftContext');
+
             let pending = null;
 
             function buildParams(page) {
                 const params = new URLSearchParams();
+                const tab = filterTab?.value;
+                const loaiCongViec = document.getElementById('filterLoaiCongViec')?.value;
                 const status = document.getElementById('filterStatus')?.value;
                 const keyword = document.getElementById('filterKeyword')?.value?.trim();
-                if (status) { params.set('trangThai', status); }
+
+                if (tab) { params.set('tab', tab); }
+                if (loaiCongViec) { params.set('loaiCongViec', loaiCongViec); }
+                if (status && tab === 'tat-ca') { params.set('trangThai', status); }
                 if (keyword) { params.set('keyword', keyword); }
                 if (page && page > 1) { params.set('page', page); }
                 return params;
             }
 
             async function reload(page) {
+                if (overlay) overlay.classList.remove('d-none');
                 const params = buildParams(page);
                 const url = '/GiaiTrinhChamCong/Index?' + params.toString();
-                const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-                if (!response.ok) { return; }
-                tableHost.innerHTML = await response.text();
-                history.pushState(null, '', params.toString() ? url : '/GiaiTrinhChamCong');
+
+                try {
+                    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!response.ok) { return; }
+                    tableHost.innerHTML = await response.text();
+                    history.pushState(null, '', params.toString() ? url : '/GiaiTrinhChamCong');
+                } catch (err) {
+                    console.error('Lỗi nạp bảng giải trình:', err);
+                } finally {
+                    if (overlay) overlay.classList.add('d-none');
+                }
             }
+
+            // Xử lý chuyển Tab cấp độ (Segmented Tabs) không reload trang
+            document.querySelectorAll('[data-giai-trinh-tab]').forEach(tabBtn => {
+                tabBtn.addEventListener('click', function () {
+                    const tabKey = this.dataset.giaiTrinhTab;
+                    if (filterTab) filterTab.value = tabKey;
+
+                    document.querySelectorAll('[data-giai-trinh-tab]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+
+                    // Ẩn/Hiện dropdown trạng thái tùy theo tab
+                    if (containerFilterStatus) {
+                        if (tabKey === 'tat-ca') {
+                            containerFilterStatus.classList.remove('d-none');
+                        } else {
+                            containerFilterStatus.classList.add('d-none');
+                            const statusSelect = document.getElementById('filterStatus');
+                            if (statusSelect) statusSelect.value = '';
+                        }
+                    }
+
+                    reload(1);
+                });
+            });
 
             filterForm?.addEventListener('submit', function (event) {
                 event.preventDefault();
                 reload(1);
             });
 
-            document.querySelector('[data-giai-trinh-reset]')?.addEventListener('click', function () {
-                const status = document.getElementById('filterStatus');
-                const keyword = document.getElementById('filterKeyword');
-                if (status) { status.value = ''; }
-                if (keyword) { keyword.value = ''; }
+            document.getElementById('filterLoaiCongViec')?.addEventListener('change', function () {
                 reload(1);
             });
 
+            document.getElementById('filterStatus')?.addEventListener('change', function () {
+                reload(1);
+            });
+
+            document.querySelector('[data-giai-trinh-reset]')?.addEventListener('click', function () {
+                const loaiSelect = document.getElementById('filterLoaiCongViec');
+                const statusSelect = document.getElementById('filterStatus');
+                const keywordInput = document.getElementById('filterKeyword');
+
+                if (loaiSelect) loaiSelect.value = '';
+                if (statusSelect) statusSelect.value = '';
+                if (keywordInput) keywordInput.value = '';
+
+                reload(1);
+            });
+
+            // Bắt sự kiện click trên các nút trong Table
             tableHost?.addEventListener('click', function (event) {
                 const pageLink = event.target.closest('[data-giai-trinh-page]');
                 if (pageLink) {
@@ -165,41 +342,100 @@
                     return;
                 }
 
-                const verify = event.target.closest('[data-giai-trinh-verify]');
-                if (verify) {
-                    openDialog(verify.dataset.giaiTrinhVerify, 'ManagerVerify', true, verify.dataset.giaiTrinhLabel);
+                // Cấp 1: Quản lý xác minh
+                const verifyBtn = event.target.closest('[data-giai-trinh-verify]');
+                if (verifyBtn) {
+                    openDialog(
+                        verifyBtn.dataset.giaiTrinhVerify,
+                        'ManagerVerify',
+                        true,
+                        verifyBtn.dataset.giaiTrinhLabel,
+                        verifyBtn.dataset.giaiTrinhStaff,
+                        verifyBtn.dataset.giaiTrinhContext
+                    );
                     return;
                 }
 
-                const confirm = event.target.closest('[data-giai-trinh-confirm]');
-                if (confirm) {
-                    openDialog(confirm.dataset.giaiTrinhConfirm, 'HrConfirm', true, confirm.dataset.giaiTrinhLabel);
+                // Cấp 2: HR phê duyệt & chốt công
+                const confirmBtnEl = event.target.closest('[data-giai-trinh-confirm]');
+                if (confirmBtnEl) {
+                    openDialog(
+                        confirmBtnEl.dataset.giaiTrinhConfirm,
+                        'HrConfirm',
+                        true,
+                        confirmBtnEl.dataset.giaiTrinhLabel,
+                        confirmBtnEl.dataset.giaiTrinhStaff,
+                        confirmBtnEl.dataset.giaiTrinhContext
+                    );
                     return;
                 }
 
-                const reject = event.target.closest('[data-giai-trinh-reject]');
-                if (reject) {
-                    // Cấp nào đang mở nút từ chối thì gửi về đúng cấp đó.
-                    const isManagerLevel = reject.closest('tr')?.querySelector('[data-giai-trinh-verify]') != null;
-                    openDialog(reject.dataset.giaiTrinhReject,
-                        isManagerLevel ? 'ManagerVerify' : 'HrConfirm',
-                        false, reject.dataset.giaiTrinhLabel);
+                // Từ chối (Quản lý hoặc HR)
+                const rejectBtn = event.target.closest('[data-giai-trinh-reject]');
+                if (rejectBtn) {
+                    const level = rejectBtn.dataset.giaiTrinhLevel || 'ManagerVerify';
+                    openDialog(
+                        rejectBtn.dataset.giaiTrinhReject,
+                        level,
+                        false,
+                        rejectBtn.dataset.giaiTrinhLabel,
+                        rejectBtn.closest('tr')?.querySelector('.fw-bold.text-dark')?.textContent || '—',
+                        'Giải trình ' + rejectBtn.dataset.giaiTrinhLabel
+                    );
                 }
             });
 
-            function openDialog(id, action, isApprove, label) {
+            function openDialog(id, action, isApprove, label, staffName, contextInfo) {
                 pending = { id: id, action: action, approve: isApprove };
-                document.getElementById('giaiTrinhActionTitle').textContent =
-                    (isApprove ? 'Chấp thuận giải trình ' : 'Từ chối giải trình ') + label;
-                document.getElementById('giaiTrinhActionHint').textContent = action === 'ManagerVerify'
-                    ? 'Sau khi bạn xác minh, hồ sơ chuyển sang Phòng HR xác nhận và ghi bảng công.'
-                    : 'HR xác nhận là bước cuối: giờ công và phút trễ/về sớm sẽ được tính lại ngay.';
-                confirmBtn.className = 'btn rounded-pill px-4 fw-bold ' + (isApprove ? 'btn-success' : 'btn-danger');
-                confirmBtn.textContent = isApprove
-                    ? (action === 'ManagerVerify' ? 'Xác minh' : 'Xác nhận')
-                    : 'Từ chối';
+
+                modalStaffName.textContent = staffName || '—';
+                modalShiftContext.textContent = contextInfo || '—';
+
+                if (action === 'ManagerVerify') {
+                    modalBadge.className = 'badge bg-warning text-dark rounded-pill px-2.5 py-1 mb-1.5';
+                    modalBadge.textContent = 'Cấp 1: Quản lý bộ phận xác minh';
+
+                    if (isApprove) {
+                        modalTitle.textContent = 'Xác minh sự việc ' + label;
+                        modalBanner.className = 'alert alert-warning border-warning-subtle small mb-3';
+                        modalHint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Bạn đang xác nhận tính trung thực của sự việc tại ca làm/sự kiện. Sau khi bạn xác minh, hồ sơ sẽ chuyển tới <strong>Phòng HR</strong> để thẩm định quy chế và ghi đè bảng công.';
+                        confirmBtn.className = 'btn btn-success rounded-pill px-4 fw-bold shadow-xs';
+                        confirmBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Xác minh & Chuyển HR';
+                        noteRequiredMark.classList.add('d-none');
+                        noteEl.placeholder = 'Ghi chú thêm cho HR hoặc nhân viên (không bắt buộc)…';
+                    } else {
+                        modalTitle.textContent = 'Từ chối giải trình ' + label;
+                        modalBanner.className = 'alert alert-danger border-danger-subtle small mb-3';
+                        modalHint.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Hồ sơ sẽ bị dừng lại và thông báo từ chối tới nhân viên. Bắt buộc nêu rõ lý do.';
+                        confirmBtn.className = 'btn btn-danger rounded-pill px-4 fw-bold shadow-xs';
+                        confirmBtn.innerHTML = '<i class="bi bi-x-lg me-1"></i>Xác nhận từ chối';
+                        noteRequiredMark.classList.remove('d-none');
+                        noteEl.placeholder = 'Vui lòng nêu rõ lý do từ chối để nhân viên nắm thông tin…';
+                    }
+                } else {
+                    modalBadge.className = 'badge bg-hotel-primary text-white rounded-pill px-2.5 py-1 mb-1.5';
+                    modalBadge.textContent = 'Cấp 2: Phòng Nhân sự phê duyệt & Ghi công';
+
+                    if (isApprove) {
+                        modalTitle.textContent = 'HR Phê duyệt & Chốt công ' + label;
+                        modalBanner.className = 'alert alert-primary border-primary-subtle small mb-3';
+                        modalHint.innerHTML = '<i class="bi bi-patch-check me-1"></i>HR xác nhận là bước cuối cùng: hệ thống sẽ <strong>tự động ghi đè giờ Check-in / Check-out vào bảng chấm công</strong>, tính toán lại phút trễ, phút về sớm, giờ tăng ca OT và ghi nhật ký quản trị.';
+                        confirmBtn.className = 'btn btn-hotel-primary rounded-pill px-4 fw-bold shadow-xs';
+                        confirmBtn.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i>Phê duyệt & Ghi nhận công';
+                        noteRequiredMark.classList.add('d-none');
+                        noteEl.placeholder = 'Ghi chú kiểm duyệt của HR (không bắt buộc)…';
+                    } else {
+                        modalTitle.textContent = 'HR Từ chối giải trình ' + label;
+                        modalBanner.className = 'alert alert-danger border-danger-subtle small mb-3';
+                        modalHint.innerHTML = '<i class="bi bi-shield-x me-1"></i>Hồ sơ không đáp ứng quy chế chấm công của khách sạn. Bắt buộc nêu rõ căn cứ từ chối.';
+                        confirmBtn.className = 'btn btn-danger rounded-pill px-4 fw-bold shadow-xs';
+                        confirmBtn.innerHTML = '<i class="bi bi-x-lg me-1"></i>Xác nhận từ chối';
+                        noteRequiredMark.classList.remove('d-none');
+                        noteEl.placeholder = 'Căn cứ quy chế hoặc lý do không phê duyệt…';
+                    }
+                }
+
                 noteEl.value = '';
-                noteEl.required = !isApprove;
                 errorEl.classList.add('d-none');
                 modal?.show();
             }
@@ -207,10 +443,18 @@
             confirmBtn?.addEventListener('click', async function () {
                 if (!pending) { return; }
 
+                const noteVal = noteEl.value.trim();
+                if (!pending.approve && !noteVal) {
+                    errorEl.textContent = 'Vui lòng nhập lý do từ chối để nhân viên nắm được thông tin.';
+                    errorEl.classList.remove('d-none');
+                    noteEl.focus();
+                    return;
+                }
+
                 const body = new URLSearchParams();
                 body.set('id', pending.id);
                 body.set('dongY', pending.approve ? 'true' : 'false');
-                body.set('yKien', noteEl.value.trim());
+                body.set('yKien', noteVal);
 
                 confirmBtn.disabled = true;
                 try {

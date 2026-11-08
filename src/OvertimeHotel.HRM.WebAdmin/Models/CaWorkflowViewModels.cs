@@ -114,15 +114,18 @@ public class YeuCauDoiCaCreateViewModel
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  PRD 4.5 — GIẢI TRÌNH CHẤM CÔNG
+//  PRD 4.5 — GIẢI TRÌNH CHẤM CÔNG (QUY TRÌNH DUYỆT 2 CẤP & ĐA BỐI CẢNH)
 // ═══════════════════════════════════════════════════════════════════════════
 
 public class GiaiTrinhIndexViewModel
 {
+    public string ActiveTab { get; set; } = "quan-ly"; // "quan-ly", "hr", "hoan-tat", "tat-ca"
+    public string? LoaiCongViec { get; set; } // null, "CA_THUONG", "SU_KIEN"
     public string? TrangThai { get; set; }
     public string? Keyword { get; set; }
 
     public IReadOnlyList<SelectListItem> TrangThaiOptions { get; set; } = [];
+    public IReadOnlyList<SelectListItem> LoaiCongViecOptions { get; set; } = [];
 
     public IReadOnlyList<GiaiTrinhItemViewModel> Items { get; set; } = [];
 
@@ -132,6 +135,8 @@ public class GiaiTrinhIndexViewModel
     public int DaDuyet { get; set; }
     public int TuChoi { get; set; }
     public int DaHuy { get; set; }
+    public int SoLuongSuKien { get; set; }
+    public int SoLuongCaThuong { get; set; }
 
     /// <summary>Người đang đăng nhập xác minh được ở cấp Quản lý.</summary>
     public bool CoQuyenQuanLy { get; set; }
@@ -158,6 +163,14 @@ public class GiaiTrinhItemViewModel
     public DateOnly NgayLamViec { get; set; }
     public string TenCa { get; set; } = string.Empty;
     public string GioCa { get; set; } = string.Empty;
+
+    // Bối cảnh sự việc: Ca làm việc thường nhật vs Sự kiện theo giờ
+    public bool LaSuKien { get; set; }
+    public int? MaDuAn { get; set; }
+    public string? TenSuKien { get; set; }
+    public string? VaiTroSuKien { get; set; }
+    public string? LoaiSuKien { get; set; }
+    public string LoaiCongViecNhan => LaSuKien ? "Sự kiện / Tiệc theo giờ" : "Ca làm việc 24/7";
 
     public DateTimeOffset? GioDeXuatVao { get; set; }
     public DateTimeOffset? GioDeXuatRa { get; set; }
@@ -192,25 +205,21 @@ public class GiaiTrinhItemViewModel
     public string TrangThaiNhan => TrangThai switch
     {
         "CHO_QUAN_LY" => "Chờ Quản lý xác minh",
-        "CHO_HR" => "Chờ HR xác nhận",
+        "CHO_HR" => "Chờ HR phê duyệt",
         "DA_DUYET" => "Đã duyệt",
         "TU_CHOI" => "Từ chối",
         "DA_HUY" => "Đã rút",
         _ => TrangThai
     };
 
-    /// <summary>
-    /// Cấp 1 và cấp 2 dùng hai sắc vàng khác nhau để nhìn là biết hồ sơ đang kẹt
-    /// ở ai, không phải mở ra đọc.
-    /// </summary>
     public string TrangThaiCss => TrangThai switch
     {
         "CHO_QUAN_LY" => "bg-warning text-dark",
         "CHO_HR" => "bg-info text-dark",
-        "DA_DUYET" => "bg-success",
-        "TU_CHOI" => "bg-danger",
-        "DA_HUY" => "bg-secondary",
-        _ => "bg-secondary"
+        "DA_DUYET" => "bg-success text-white",
+        "TU_CHOI" => "bg-danger text-white",
+        "DA_HUY" => "bg-secondary text-white",
+        _ => "bg-secondary text-white"
     };
 
     /// <summary>Cấp 1 còn chờ Quản lý xác minh.</summary>
