@@ -26,7 +26,14 @@ public class UserSession
     public bool IsHR => LeaveApprovalPolicy.IsHR(TenVaiTro);
     public bool IsAdmin => LeaveApprovalPolicy.IsAdmin(TenVaiTro);
     public bool IsIT => LeaveApprovalPolicy.IsIT(TenVaiTro);
-    public bool CanApproveLeave => IsLoggedIn && (IsManager || IsHR || IsAdmin) && (!IsManager || MaPhongBan.HasValue);
+    public HashSet<string> Permissions { get; set; } = new(StringComparer.Ordinal);
+    public bool HasPermission(string code) => IsLoggedIn && Permissions.Contains(code);
+    public bool CanReviewRequest(int type) => type is >= 1 and <= 5 && CanApproveLeave
+        && LeaveApprovalPolicy.GetReviewableRequestTypes(TenVaiTro).Contains(type)
+        && HasPermission(MobilePermissionPolicy.ReviewPermission(type));
+    public bool CanApproveLeave => IsLoggedIn && (IsManager || IsHR || IsAdmin) && (!IsManager || MaPhongBan.HasValue)
+        && (HasPermission(MobilePermissionPolicy.ApproveLeave)
+            || HasPermission(MobilePermissionPolicy.ApproveResignation));
     public bool IsEmployee => LeaveApprovalPolicy.NormalizeRole(TenVaiTro) == RoleType.Employee;
 
     /// <summary>

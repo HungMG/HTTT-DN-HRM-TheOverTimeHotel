@@ -31,6 +31,9 @@ public interface IAuthService
 
     Task<SessionStatus> CheckSessionAsync();
 
+    // Demo sessions keep their explicit permissions; production reloads from the database.
+    Task RefreshPermissionsAsync() => Task.CompletedTask;
+
     /// <summary>
     /// Thực hiện đăng nhập với tên người dùng và mật khẩu.
     /// </summary>

@@ -99,6 +99,7 @@ public class LeaveApprovalService : ILeaveApprovalService
     public async Task<LeaveRequestListResponse> GetLeaveRequestsAsync(string view = "pending", string type = "all",
         int? departmentId = null, int offset = 0, int? pageSize = null)
     {
+        await _authService.RefreshPermissionsAsync();
         var user = RequireSession();
 
         // Fail-closed: Employee và vai trò lạ không được chạm vào dữ liệu duyệt đơn.
@@ -158,6 +159,7 @@ public class LeaveApprovalService : ILeaveApprovalService
     {
         try
         {
+            await _authService.RefreshPermissionsAsync();
             var user = RequireSession();
             var donTu = await LoadRequestSnapshotAsync(maDon);
 
@@ -165,6 +167,9 @@ public class LeaveApprovalService : ILeaveApprovalService
             {
                 return new LeaveReviewResult(false, "NOT_FOUND", "Không tìm thấy đơn từ yêu cầu.");
             }
+
+            if (!user.CanReviewRequest(donTu.Value.MaLoaiDon))
+                return new LeaveReviewResult(false, "FORBIDDEN", "Bạn không còn quyền xử lý loại đơn này.");
 
             var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateReviewAction(
                 role: user.TenVaiTro,
@@ -345,7 +350,10 @@ public class LeaveApprovalService : ILeaveApprovalService
     {
         try
         {
+            await _authService.RefreshPermissionsAsync();
             var user = RequireSession();
+            if (!user.HasPermission(OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.SubmitRequest))
+                return new LeaveSubmitResult(false, "FORBIDDEN", "Bạn không có quyền nộp đơn từ.");
             var today = DateOnly.FromDateTime(DateTime.Today);
 
             // Zero Trust: mã nhân viên lấy TỪ PHIÊN, không nhận từ tham số —
@@ -504,7 +512,8 @@ public class LeaveApprovalService : ILeaveApprovalService
             filters.Add($"ma_nhan_vien=neq.{user.MaNhanVien}");
         }
 
-        var allowedTypes = LeaveApprovalPolicy.GetReviewableRequestTypes(user.TenVaiTro);
+        var allowedTypes = LeaveApprovalPolicy.GetReviewableRequestTypes(user.TenVaiTro)
+            .Where(user.CanReviewRequest).ToList();
         if (allowedTypes.Count > 0)
         {
             filters.Add($"ma_loai_don=in.({string.Join(',', allowedTypes.OrderBy(t => t))})");

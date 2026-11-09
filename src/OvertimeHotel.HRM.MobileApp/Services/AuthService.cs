@@ -119,6 +119,27 @@ public class AuthService : IAuthService
             : await SessionStatusProbe.CheckAsync(_restClient, token, user.MaNhanVien);
     }
 
+    public async Task RefreshPermissionsAsync()
+    {
+        var user = CurrentUser;
+        if (user == null) return;
+        var token = await GetTokenAsync();
+        if (string.IsNullOrWhiteSpace(token)) throw new UnauthorizedAccessException("Phiên đăng nhập đã hết hạn.");
+        var permissions = await LoadPermissionsAsync(token);
+        if (ReferenceEquals(user, CurrentUser)) user.Permissions = permissions;
+    }
+
+    private async Task<HashSet<string>> LoadPermissionsAsync(string token)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "rpc/hrm_my_permissions");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        using var response = await _restClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return JsonSerializer.Deserialize<HashSet<string>>(await response.Content.ReadAsStringAsync())
+            ?? throw new InvalidOperationException("Không tải được quyền truy cập.");
+    }
+
     public async Task<LoginResponse> LoginAsync(string username, string password, bool rememberMe = true)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
@@ -304,6 +325,7 @@ public class AuthService : IAuthService
         return new UserSession
         {
             Token = token,
+            Permissions = await LoadPermissionsAsync(token),
             IsLoggedIn = true,
             ThoiGianDangNhap = DateTime.UtcNow,
 

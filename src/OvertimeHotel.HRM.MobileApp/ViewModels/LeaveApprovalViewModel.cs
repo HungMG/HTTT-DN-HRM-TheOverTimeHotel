@@ -153,6 +153,12 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool CanReviewAnnualLeave => _authService.CurrentUser?.CanReviewRequest(1) == true;
+    public bool CanReviewSickLeave => _authService.CurrentUser?.CanReviewRequest(2) == true;
+    public bool CanReviewMaternityLeave => _authService.CurrentUser?.CanReviewRequest(3) == true;
+    public bool CanReviewUnpaidLeave => _authService.CurrentUser?.CanReviewRequest(4) == true;
+    public bool CanReviewResignation => _authService.CurrentUser?.CanReviewRequest(5) == true;
+
     public bool CanFilterDepartments => _authService.CurrentUser is { } user && (user.IsAdmin || user.IsHR);
     public bool IsDepartmentPickerEnabled => !IsLoading && !IsLoadingMore;
 
@@ -256,7 +262,17 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
 
         try
         {
+            await _authService.RefreshPermissionsAsync();
+            if (version != _loadVersion) return;
             var user = _authService.CurrentUser;
+            OnPropertyChanged(nameof(CanReviewAnnualLeave));
+            OnPropertyChanged(nameof(CanReviewSickLeave));
+            OnPropertyChanged(nameof(CanReviewMaternityLeave));
+            OnPropertyChanged(nameof(CanReviewUnpaidLeave));
+            OnPropertyChanged(nameof(CanReviewResignation));
+            if (SelectedTypeFilter != "ALL" && (!int.TryParse(SelectedTypeFilter, out var selectedType)
+                || user?.CanReviewRequest(selectedType) != true))
+                SelectedTypeFilter = "ALL";
             // Fail-closed: Kiểm tra quyền đăng nhập và vai trò
             if (user == null || !user.CanApproveLeave)
             {
@@ -315,6 +331,8 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     private async Task ApplyTypeFilterAsync(string? typeId)
     {
         if (string.IsNullOrWhiteSpace(typeId) || SelectedTypeFilter == typeId) return;
+        if (typeId != "ALL" && (!int.TryParse(typeId, out var requestType)
+            || _authService.CurrentUser?.CanReviewRequest(requestType) != true)) return;
         IsDepartmentDropdownOpen = false;
         SelectedTypeFilter = typeId;
         await LoadDataAsync();

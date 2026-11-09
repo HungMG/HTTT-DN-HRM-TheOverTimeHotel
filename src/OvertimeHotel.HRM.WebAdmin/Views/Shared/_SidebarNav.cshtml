@@ -57,7 +57,7 @@
         </a>
         }
 
-        @if (User.IsInRole("Admin") || User.IsInRole("HR") || User.IsInRole("Manager"))
+        @if (User.HasPermission(PermissionCodes.ManageHotelEvents))
         {
             <a class="app-nav-item@(IsCurrent("SuKien") ? " is-active" : "")"
                asp-controller="SuKien" asp-action="Index">

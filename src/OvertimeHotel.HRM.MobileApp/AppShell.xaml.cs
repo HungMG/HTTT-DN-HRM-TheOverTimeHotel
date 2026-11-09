@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.MobileApp.Services;
 using OvertimeHotel.HRM.MobileApp.Views;
 
@@ -30,6 +31,7 @@ public partial class AppShell : Shell
 	private readonly IDispatcherTimer _sessionTimer;
 	private bool _checkingSession;
 	private bool _tabsBuilt;
+    private string _permissionSnapshot = string.Empty;
 
 	public AppShell(IAuthService authService)
 	{
@@ -39,6 +41,22 @@ public partial class AppShell : Shell
 		_sessionTimer = Dispatcher.CreateTimer();
 		_sessionTimer.Interval = TimeSpan.FromSeconds(10);
 		_sessionTimer.Tick += async (_, _) => await CheckSessionAsync();
+
+        Navigating += (_, e) =>
+        {
+            var route = e.Target.Location.OriginalString.Split('?')[0].Split('/').LastOrDefault();
+            var user = _authService.CurrentUser;
+            if (user == null) return;
+            var allowed = route switch
+            {
+                "Attendance" => user.HasPermission(MobilePermissionPolicy.CheckIn),
+                "LeaveApproval" or "LeaveApprovalPage" or "LeaveDetailPage" => user.CanApproveLeave,
+                "Requests" or "RequestsPage" or "LeaveSubmitPage" or "AttendanceExplanationPage" or "ShiftSwapPage" => user.HasPermission(MobilePermissionPolicy.SubmitRequest),
+                "HrStatisticsPage" => user.HasPermission(MobilePermissionPolicy.Reports),
+                _ => true
+            };
+            if (!allowed && e.CanCancel) e.Cancel();
+        };
 
 		// Đăng ký các route toàn cục
 		Routing.RegisterRoute("LeaveApprovalPage", typeof(LeaveApprovalPage));
@@ -74,9 +92,12 @@ public partial class AppShell : Shell
 			isAdmin: user?.IsAdmin == true,
 			isManager: user?.IsManager == true);
 
+        _permissionSnapshot = string.Join(",", user?.Permissions.Order() ?? Enumerable.Empty<string>());
 		await GoToAsync(HomeRoute);
 		_sessionTimer.Start();
 	}
+
+    public Task RefreshAccessAsync() => CheckSessionAsync();
 
 	private async Task CheckSessionAsync()
 	{
@@ -86,7 +107,23 @@ public partial class AppShell : Shell
 		try
 		{
 			var status = await _authService.CheckSessionAsync();
-			if (status != SessionStatus.Invalid || !ReferenceEquals(user, _authService.CurrentUser)) return;
+            if (!ReferenceEquals(user, _authService.CurrentUser)) return;
+            if (status != SessionStatus.Invalid)
+            {
+                try { await _authService.RefreshPermissionsAsync(); }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or UnauthorizedAccessException or InvalidOperationException or System.Text.Json.JsonException)
+                {
+                    // Fail closed while the current permission set cannot be verified.
+                    user.Permissions.Clear();
+                }
+                if (_permissionSnapshot != string.Join(",", user.Permissions.Order()))
+                {
+                    await GoToAsync("//LoginPage");
+                    ClearRoleTabs();
+                    await OpenHomeAsync();
+                }
+                return;
+            }
 			await _authService.LogoutAsync();
 			ClearRoleTabs();
 			await GoToAsync("//LoginPage");
@@ -282,6 +319,16 @@ public partial class AppShell : Shell
 			mainTabs.Items.Add(settingsTab);
 		}
 
+        foreach (var tab in mainTabs.Items.ToList())
+        {
+            var route = tab.Items.FirstOrDefault()?.Route ?? tab.Route;
+            var user = _authService.CurrentUser;
+            if ((route == "Attendance" && user?.HasPermission(MobilePermissionPolicy.CheckIn) != true)
+                || (route == "LeaveApproval" && user?.CanApproveLeave != true)
+                || (route == "Requests" && user?.HasPermission(MobilePermissionPolicy.SubmitRequest) != true)
+                || (route == "Statistics" && user?.HasPermission(MobilePermissionPolicy.Reports) != true))
+                mainTabs.Items.Remove(tab);
+        }
 		Items.Add(mainTabs);
 		_tabsBuilt = true;
 	}

@@ -87,6 +87,12 @@ public class LeaveRequestsController : ControllerBase
             .Include(d => d.NguoiDuyet)
             .AsQueryable();
 
+        var canReviewLeave = OvertimeHotel.HRM.WebAdmin.Security.WebAdminPermissions.HasPermission(User, "DUYET_DON_NGHI");
+        var canReviewResignation = OvertimeHotel.HRM.WebAdmin.Security.WebAdminPermissions.HasPermission(User, "DUYET_THOI_VIEC");
+        if (!canReviewLeave && !canReviewResignation)
+            return StatusCode(403, new LeaveReviewResult(false, "FORBIDDEN", "Bạn không có quyền duyệt đơn."));
+        baseQuery = baseQuery.Where(d => d.MaLoaiDon == 5 ? canReviewResignation : canReviewLeave);
+
         // 3. Áp dụng RBAC filtering trên server
         IQueryable<Core.Models.DonTu> authorizedQuery;
         if (normalizedRole == RoleType.Admin)
@@ -208,6 +214,10 @@ public class LeaveRequestsController : ControllerBase
             return NotFound(new LeaveReviewResult(false, "NOT_FOUND", "Không tìm thấy đơn từ yêu cầu."));
         }
 
+        var permission = OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.ReviewPermission(donTu.MaLoaiDon);
+        if (!OvertimeHotel.HRM.WebAdmin.Security.WebAdminPermissions.HasPermission(User, permission))
+            return StatusCode(403, new LeaveReviewResult(false, "FORBIDDEN", "Bạn không còn quyền xử lý loại đơn này."));
+
         // 3. Thẩm định qua LeaveApprovalPolicy
         var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateReviewAction(
             role: role,
@@ -268,6 +278,7 @@ public class LeaveRequestsController : ControllerBase
     /// Nhân viên rút đơn nghỉ phép đang ở trạng thái CHO_DUYET.
     /// Hỗ trợ cả 2 route để tương thích tuyệt đối.
     /// </summary>
+    [Authorize(AuthenticationSchemes = "MobileBearer", Policy = OvertimeHotel.HRM.WebAdmin.Security.PermissionCodes.SubmitRequest)]
     [HttpPost("{maDon:int}/withdraw")]
     [HttpPost("/api/leaverequests/{maDon:int}/withdraw")]
     public async Task<IActionResult> WithdrawLeaveRequest([FromRoute] int maDon)

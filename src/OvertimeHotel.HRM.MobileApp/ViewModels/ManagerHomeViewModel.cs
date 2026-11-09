@@ -38,6 +38,9 @@ public class ManagerHomeViewModel : HomeViewModelBase
     public string CommandScope { get; private set; } = "Toàn khách sạn";
 
     /// <summary>Người dùng hiện tại có thẩm quyền phê duyệt đơn hay không.</summary>
+    public bool CanAssignShifts => AuthService.CurrentUser?.HasPermission(OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.AssignShifts) == true;
+    public bool CanViewDepartmentAttendance => AuthService.CurrentUser?.HasPermission(OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.DepartmentAttendance) == true;
+
     public bool CanApproveLeave => AuthService.CurrentUser?.CanApproveLeave == true;
 
     /// <summary>

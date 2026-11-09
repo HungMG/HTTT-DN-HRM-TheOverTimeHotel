@@ -19,14 +19,31 @@ public static class AttendanceSummaryPostgrstMapper
     public static PhanCa ToShift(JsonElement row)
     {
         var attendance = PostgrstJson.ReadEmbedded(row, "cham_cong");
+        var date = ReadDate(row, "ngay_lam_viec");
+        var shiftType = PostgrstJson.ReadEmbedded(row, "ca_lam_viec");
+        var start = ReadPlannedTimestamp(row, "bat_dau_du_kien");
+        var end = ReadPlannedTimestamp(row, "ket_thuc_du_kien");
+        // Legacy EF records contain PostgreSQL -infinity for unset planned times.
+        // Reconstruct only planned hours from the employee's assigned shift template.
+        if (start is null || end is null)
+        {
+            if (shiftType is not { } template
+                || !TimeOnly.TryParse(PostgrstJson.ReadString(template, "gio_bat_dau"), CultureInfo.InvariantCulture, out var templateStart)
+                || !TimeOnly.TryParse(PostgrstJson.ReadString(template, "gio_ket_thuc"), CultureInfo.InvariantCulture, out var templateEnd))
+                throw new JsonException("Thiếu giờ dự kiến và khung giờ ca làm việc.");
+            var overnight = PostgrstJson.ReadBool(template, "qua_dem") || templateEnd <= templateStart;
+            start ??= new DateTimeOffset(date.ToDateTime(templateStart), TimeSpan.FromHours(7)).ToUniversalTime();
+            end ??= new DateTimeOffset((overnight ? date.AddDays(1) : date).ToDateTime(templateEnd), TimeSpan.FromHours(7)).ToUniversalTime();
+        }
+        if (end <= start) throw new JsonException("Giờ kết thúc ca phải sau giờ bắt đầu.");
         return new PhanCa
         {
             MaPhanCa = ReadId(row, "ma_phan_ca"),
             MaNhanVien = ReadId(row, "ma_nhan_vien"),
             MaCa = ReadId(row, "ma_ca"),
-            NgayLamViec = ReadDate(row, "ngay_lam_viec"),
-            BatDauDuKien = ReadTimestamp(row, "bat_dau_du_kien") ?? throw new JsonException("Thiếu giờ bắt đầu ca."),
-            KetThucDuKien = ReadTimestamp(row, "ket_thuc_du_kien") ?? throw new JsonException("Thiếu giờ kết thúc ca."),
+            NgayLamViec = date,
+            BatDauDuKien = start.Value,
+            KetThucDuKien = end.Value,
             TrangThai = row.GetProperty("trang_thai").GetString() ?? "",
             CaLamViec = new CaLamViec { TenCa = PostgrstJson.ReadEmbeddedString(row, "ca_lam_viec", "ten_ca") },
             ChamCong = attendance is { } value ? new ChamCong
@@ -70,6 +87,14 @@ public static class AttendanceSummaryPostgrstMapper
         DateOnly.TryParseExact(row.GetProperty(column).GetString(), "yyyy-MM-dd",
             CultureInfo.InvariantCulture, DateTimeStyles.None, out var value)
             ? value : throw new JsonException($"Ngày {column} không hợp lệ.");
+
+    private static DateTimeOffset? ReadPlannedTimestamp(JsonElement row, string column)
+    {
+        if (!row.TryGetProperty(column, out var value) || value.ValueKind == JsonValueKind.Null
+            || (value.ValueKind == JsonValueKind.String && value.GetString() is "-infinity" or "infinity"))
+            return null;
+        return ReadTimestamp(row, column);
+    }
 
     private static DateTimeOffset? ReadTimestamp(JsonElement row, string column)
     {

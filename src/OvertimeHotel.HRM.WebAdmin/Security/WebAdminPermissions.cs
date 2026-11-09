@@ -26,6 +26,10 @@ public static class WebAdminPermissions
             or PermissionCodes.BackupDatabase;
         if (itAdministration) return user.IsInRole("IT");
         if (user.IsInRole("IT")) return false;
+        // Event access is explicitly granted; Admin does not bypass this permission.
+        if (permissionCode == PermissionCodes.ManageHotelEvents)
+            return (user.IsInRole("HR") || user.IsInRole("Manager") || user.IsInRole("Admin"))
+                && user.HasClaim(PermissionCodes.ClaimType, permissionCode);
         return user.IsInRole("Admin") || user.HasClaim(PermissionCodes.ClaimType, permissionCode);
     }
 }

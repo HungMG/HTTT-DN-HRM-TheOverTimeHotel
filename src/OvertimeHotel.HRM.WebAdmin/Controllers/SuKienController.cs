@@ -9,10 +9,11 @@ using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.WebAdmin.Models;
+using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
-[Authorize]
+[Authorize(Policy = PermissionCodes.ManageHotelEvents)]
 public class SuKienController(AppDbContext db, IHotelEventService events, ILogger<SuKienController> logger) : Controller
 {
     private static DateOnly Today => DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(7)).DateTime);

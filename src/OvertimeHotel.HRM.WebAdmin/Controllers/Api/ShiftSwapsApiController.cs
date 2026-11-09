@@ -13,7 +13,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers.Api;
 
 [ApiController]
 [Route("api/mobile/shift-swaps")]
-[Authorize(AuthenticationSchemes = "MobileBearer")]
+[Authorize(AuthenticationSchemes = "MobileBearer", Policy = PermissionCodes.SubmitRequest)]
 public class ShiftSwapsApiController : ControllerBase
 {
     private const string STATUS_CHO_NGUOI_NHAN = "CHO_NGUOI_NHAN";

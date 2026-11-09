@@ -195,7 +195,8 @@ public sealed class SupabaseRestClient
 
         // PATCH không khớp dòng nào trả 204 với body rỗng — KHÔNG phải lỗi, mà là
         // tín hiệu "đối tượng đã đổi trạng thái". Người gọi đọc NoRowsMatched.
-        if (status == HttpStatusCode.NoContent || string.IsNullOrWhiteSpace(body))
+        if (status == HttpStatusCode.NoContent ||
+            ((int)status is >= 200 and < 300 && string.IsNullOrWhiteSpace(body)))
         {
             if (request.Method != HttpMethod.Get)
             {
@@ -207,6 +208,9 @@ public sealed class SupabaseRestClient
 
         if (status == HttpStatusCode.OK || status == HttpStatusCode.Created)
         {
+            // RLS may hide every UPDATE target and PostgREST returns 200 with [].
+            // Do not report a successful write when no row was modified.
+            if (request.Method == HttpMethod.Patch && body.Trim() == "[]") NoRowsMatched = true;
             return body;
         }
 

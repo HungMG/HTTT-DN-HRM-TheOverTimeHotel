@@ -12,7 +12,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers.Api;
 
 [ApiController]
 [Route("api/mobile/attendance-explanations")]
-[Authorize(AuthenticationSchemes = "MobileBearer")]
+[Authorize(AuthenticationSchemes = "MobileBearer", Policy = PermissionCodes.SubmitRequest)]
 public class AttendanceExplanationsApiController : ControllerBase
 {
     private const string STATUS_CHO_QUAN_LY = "CHO_QUAN_LY";

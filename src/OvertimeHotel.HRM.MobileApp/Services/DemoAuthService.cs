@@ -65,6 +65,7 @@ public class DemoAuthService : IAuthService
             DienThoai = account.Phone,
             MaPhongBan = account.MaPhongBan,
             Token = "demo-session-token-jwt",
+            Permissions = new HashSet<string>(new[] { "CHAM_CONG_DI_DONG", "NOP_DON_TU", "DUYET_DON_NGHI", "DUYET_THOI_VIEC", "DUYET_TANG_CA_OT", "XEP_CA_LAM", "XEM_CHAM_CONG_BO_PHAN", "REPORT_VIEW" }),
             IsLoggedIn = true,
             ThoiGianDangNhap = DateTime.UtcNow
         };

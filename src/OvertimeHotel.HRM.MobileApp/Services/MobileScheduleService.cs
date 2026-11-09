@@ -36,7 +36,7 @@ public sealed class MobileScheduleService(SupabaseRestClient rest, IAuthService 
 
         var rows = await LoadRowsAsync(
             "phan_ca?select=ma_phan_ca,ma_nhan_vien,ma_ca,ngay_lam_viec,bat_dau_du_kien," +
-            "ket_thuc_du_kien,trang_thai,ca_lam_viec(ten_ca),cham_cong(ma_cham_cong,gio_check_in," +
+            "ket_thuc_du_kien,trang_thai,ca_lam_viec(ten_ca,gio_bat_dau,gio_ket_thuc,qua_dem),cham_cong(ma_cham_cong,gio_check_in," +
             "gio_check_out,trang_thai)" +
             $"&ma_nhan_vien=eq.{user.MaNhanVien}" +
             $"&ngay_lam_viec=gte.{from:yyyy-MM-dd}&ngay_lam_viec=lte.{to:yyyy-MM-dd}" +

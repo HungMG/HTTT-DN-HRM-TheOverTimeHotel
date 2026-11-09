@@ -7,10 +7,12 @@ namespace OvertimeHotel.HRM.MobileApp.Views;
 public partial class PersonalAttendancePage : ContentPage
 {
     private readonly AttendanceViewModel _attendance;
+    private readonly OvertimeHotel.HRM.MobileApp.Services.IAuthService _auth;
     public RequestsViewModel Requests { get; }
 
-    public PersonalAttendancePage(AttendanceViewModel attendance, RequestsViewModel requests)
+    public PersonalAttendancePage(AttendanceViewModel attendance, RequestsViewModel requests, OvertimeHotel.HRM.MobileApp.Services.IAuthService auth)
     {
+        _auth = auth;
         Requests = requests;
         InitializeComponent();
         BindingContext = _attendance = attendance;
@@ -24,7 +26,10 @@ public partial class PersonalAttendancePage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await Task.WhenAll(_attendance.LoadDataAsync(), Requests.LoadAsync());
+        var canSubmit = _auth.CurrentUser?.HasPermission(OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.SubmitRequest) == true;
+        requestsTab.IsVisible = canSubmit;
+        if (!canSubmit) SelectTab(showRequests: false);
+        await Task.WhenAll(_attendance.LoadDataAsync(), canSubmit ? Requests.LoadAsync() : Task.CompletedTask);
     }
 
     protected override void OnDisappearing()

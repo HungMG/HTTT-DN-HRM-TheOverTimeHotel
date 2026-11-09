@@ -50,6 +50,8 @@ public class AttendanceController : ControllerBase
                 return Unauthorized(new AttendanceApiError("UNAUTHENTICATED", "Phiên đăng nhập không còn hợp lệ."));
 
             var targetId = employeeId ?? account.MaNhanVien;
+            if (targetId != account.MaNhanVien && !User.HasPermission(PermissionCodes.ViewDepartmentAttendance))
+                return StatusCode(403, new AttendanceApiError("FORBIDDEN", "Bạn không có quyền xem chấm công bộ phận."));
             var target = await _context.NhanViens.AsNoTracking().Where(e => e.MaNhanVien == targetId)
                 .Select(e => new { e.MaNhanVien, e.MaPhongBan }).SingleOrDefaultAsync(cancellationToken);
             if (target == null || !AttendanceAccessPolicy.CanView(account.VaiTro?.TenVaiTro,

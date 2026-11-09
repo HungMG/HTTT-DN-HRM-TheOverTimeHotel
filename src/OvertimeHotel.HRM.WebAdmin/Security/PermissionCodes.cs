@@ -33,6 +33,8 @@ public static class PermissionCodes
     public const string ManageContracts = "QL_HOP_DONG";
 
     // ── Nhóm: Vận hành ca & chấm công ──────────────────────────────────────
+    public const string ManageHotelEvents = "QL_SU_KIEN";
+
     public const string AssignShifts = "XEP_CA_LAM";
     public const string ViewDepartmentAttendance = "XEM_CHAM_CONG_BO_PHAN";
     public const string MobileCheckIn = "CHAM_CONG_DI_DONG";

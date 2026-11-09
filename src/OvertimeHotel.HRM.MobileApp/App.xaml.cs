@@ -29,6 +29,7 @@ public partial class App : Application
 			MaximumWidth = 480
 		};
 
+        window.Resumed += async (_, _) => await shell.RefreshAccessAsync();
 		return window;
 	}
 }

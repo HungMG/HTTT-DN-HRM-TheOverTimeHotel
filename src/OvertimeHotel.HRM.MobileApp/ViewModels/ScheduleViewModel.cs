@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.MobileApp.Models;
 using OvertimeHotel.HRM.MobileApp.Services;
@@ -21,6 +22,7 @@ public class ScheduleViewModel : INotifyPropertyChanged
 {
     private readonly IScheduleService _service;
     private readonly IAuthService _authService;
+    private readonly ILogger<ScheduleViewModel>? _logger;
 
     private CancellationTokenSource? _loadCancellation;
     private int _loadVersion;
@@ -52,10 +54,11 @@ public class ScheduleViewModel : INotifyPropertyChanged
     public Command NextMonthCommand { get; }
     public Command ShowWeekCommand { get; }
 
-    public ScheduleViewModel(IScheduleService service, IAuthService authService)
+    public ScheduleViewModel(IScheduleService service, IAuthService authService, ILogger<ScheduleViewModel>? logger = null)
     {
         _service = service;
         _authService = authService;
+        _logger = logger;
         RefreshCommand = new Command(async () => await LoadAsync(), () => !IsLoading);
 
         // Chuyển tuần CỐ Ý không khoá theo IsLoading. Lịch nạp qua mạng nên
@@ -194,6 +197,7 @@ public class ScheduleViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             if (version != _loadVersion) return;
+            _logger?.LogError(ex, "Không tải được lịch phân ca từ {From} đến {To}.", CalendarStart, CalendarEnd);
             HasError = true;
             RequiresLogin = ex is UnauthorizedAccessException;
             ErrorMessage = ex switch

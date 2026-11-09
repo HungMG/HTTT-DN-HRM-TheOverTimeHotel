@@ -18,6 +18,7 @@ public sealed class MobileAttendanceSummaryService(SupabaseRestClient rest, IAut
         if (year is < 1 or > 9999 || month is < 1 or > 12 || employeeId is <= 0)
             throw new InvalidOperationException("Tháng, năm hoặc mã nhân viên không hợp lệ.");
 
+        await authService.RefreshPermissionsAsync();
         var user = authService.CurrentUser;
         if (user?.IsLoggedIn != true || user.MaNhanVien <= 0)
             throw new UnauthorizedAccessException("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
@@ -27,7 +28,8 @@ public sealed class MobileAttendanceSummaryService(SupabaseRestClient rest, IAut
             throw new AttendanceSummaryUnavailableException();
 
         // Employee sessions must never send queries for another employee.
-        if (targetId != user.MaNhanVien && !(user.IsManager || user.IsHR || user.IsAdmin))
+        if (targetId != user.MaNhanVien && (!(user.IsManager || user.IsHR || user.IsAdmin)
+            || !user.HasPermission(MobilePermissionPolicy.DepartmentAttendance)))
             throw new InvalidOperationException("Bạn không có quyền xem bảng công này.");
 
         var employees = AttendanceSummaryPostgrstMapper.ReadRows(await rest.GetAsync(
@@ -45,7 +47,7 @@ public sealed class MobileAttendanceSummaryService(SupabaseRestClient rest, IAut
         var toText = to.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var shifts = await LoadRowsAsync(
             "phan_ca?select=ma_phan_ca,ma_nhan_vien,ma_ca,ngay_lam_viec,bat_dau_du_kien," +
-            "ket_thuc_du_kien,trang_thai,ca_lam_viec(ten_ca)," +
+            "ket_thuc_du_kien,trang_thai,ca_lam_viec(ten_ca,gio_bat_dau,gio_ket_thuc,qua_dem)," +
             "cham_cong(ma_cham_cong,gio_check_in,gio_check_out,trang_thai)" +
             $"&ma_nhan_vien=eq.{targetId}&ngay_lam_viec=gte.{fromText}&ngay_lam_viec=lte.{toText}" +
             "&order=ma_phan_ca.asc", cancellationToken);

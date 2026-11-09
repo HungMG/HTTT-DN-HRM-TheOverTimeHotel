@@ -173,6 +173,9 @@ public class AttendanceService : IAttendanceService
     /// </summary>
     private async Task<CheckInResponse> SendCheckAsync(bool isCheckIn, int maPhanCa, string? toaDo, string? thietBi)
     {
+        await _authService.RefreshPermissionsAsync();
+        if (_authService.CurrentUser?.HasPermission(OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.CheckIn) != true)
+            return Failure("FORBIDDEN", "Bạn không có quyền chấm công trên ứng dụng.");
         var maNhanVien = RequireEmployeeId();
 
         // RÀNG BUỘC HỢP ĐỒNG: Chỉ nhân viên còn hợp đồng lao động có hiệu lực mới được chấm công

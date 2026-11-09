@@ -260,6 +260,17 @@ builder.Services.AddAuthentication(options =>
                         return;
                     }
 
+                    // Replace stale JWT permission claims with the current role grants on every request.
+                    var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
+                    if (identity != null)
+                    {
+                        foreach (var claim in identity.FindAll(PermissionCodes.ClaimType).ToList()) identity.RemoveClaim(claim);
+                        var codes = await dbContext.VaiTroQuyens.AsNoTracking()
+                            .Where(vq => vq.MaVaiTro == account.MaVaiTro && vq.Quyen != null)
+                            .Select(vq => vq.Quyen!.MaQuyenCode).ToListAsync();
+                        foreach (var code in codes) identity.AddClaim(new System.Security.Claims.Claim(PermissionCodes.ClaimType, code));
+                    }
+
                     var latestContract = await dbContext.HopDongs
                         .AsNoTracking()
                         .Where(h => h.MaNhanVien == maNhanVien.Value)
@@ -298,11 +309,13 @@ builder.Services.AddAuthorization(options =>
     AddPermissionPolicy(PermissionCodes.ManageEmployees);
     AddPermissionPolicy(PermissionCodes.ManageContracts);
     AddPermissionPolicy(PermissionCodes.AssignShifts);
+    AddPermissionPolicy(PermissionCodes.ManageHotelEvents);
     AddPermissionPolicy(PermissionCodes.ViewDepartmentAttendance);
     // Quẹt thẻ check-in/out trên Mobile là thao tác GHI dữ liệu chấm công, nên
     // phải qua RBAC chứ không chỉ cần token hợp lệ. Mã quyền tương ứng là
     // quyen.ma_quyen_code = 'CHAM_CONG_DI_DONG' (ma_quyen = 15 trong CSDL).
     AddPermissionPolicy(PermissionCodes.MobileCheckIn);
+    AddPermissionPolicy(PermissionCodes.SubmitRequest);
     AddPermissionPolicy(PermissionCodes.CalculatePayroll);
     AddPermissionPolicy(PermissionCodes.ExportPayslipPdf);
     AddPermissionPolicy(PermissionCodes.ApproveResignation);

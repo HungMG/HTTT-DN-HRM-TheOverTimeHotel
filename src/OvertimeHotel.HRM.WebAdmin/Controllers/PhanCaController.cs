@@ -653,7 +653,7 @@ public class PhanCaController : Controller
             try
             {
                 var actor = await EventActorAsync();
-                if (actor != null)
+                if (actor != null && User.HasPermission(PermissionCodes.ManageHotelEvents))
                 {
                     model.CanViewEventDemand = actor.IsOffice;
                     model.CanPublishWeek = actor.IsOffice;
