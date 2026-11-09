@@ -8,11 +8,8 @@
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
             <h4 class="mb-0 fw-bold font-serif text-dark hotel-blur-text">
-                <i class="bi bi-shield-check text-hotel-primary me-2"></i>Quy Trình Duyệt Giải Trình Chấm Công
+                <i class="bi bi-shield-check text-hotel-primary me-2"></i>Giải Trình Chấm Công
             </h4>
-            <div class="text-muted small mt-1">
-                Phê duyệt 2 cấp phân định rõ: <strong class="text-warning-emphasis">Cấp 1 (Quản lý xác minh thực tế)</strong> ➔ <strong class="text-primary">Cấp 2 (HR thẩm định & chốt công)</strong> cho Ca 24/7 và Sự kiện.
-            </div>
         </div>
         <div class="d-flex align-items-center gap-2">
             <a asp-controller="ChamCong" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 py-2 shadow-xs"
@@ -24,96 +21,231 @@
 
     <partial name="_CatalogAlerts" />
 
-    <!-- 1. CÁC THẺ KPI THỐNG KÊ NHỊP SỐ COUNT-UP -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #b45309 !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Cấp 1: Chờ Quản lý</span>
-                <h3 class="h3 mb-0 fw-bold text-warning-emphasis font-serif kpi-count-up" data-target="@Model.ChoQuanLy">@Model.ChoQuanLy</h3>
-                <span class="text-muted mt-1" style="font-size: 0.68rem;">Xác minh hiện trường</span>
+    <!-- BANNER PHÂN ĐỊNH VAI TRÒ & THẨM QUYỀN DUYỆT TINH GỌN (QUẢN LÝ VS HR) -->
+    @if (Model.BiGioiHanTheoBoPhan)
+    {
+        <div class="alert border-0 rounded-4 shadow-xs py-2 px-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2"
+             style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a !important;">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-person-badge-fill text-warning fs-5"></i>
+                <span class="small fw-bold text-dark">Quản lý bộ phận · @(Model.TenPhamViPhongBan ?? "Bộ phận phụ trách")</span>
+                <span class="text-muted small d-none d-md-inline">| Xác minh hiện trường (Cấp 1) trước khi chuyển tiếp lên HR</span>
             </div>
+            <span class="badge bg-white text-secondary border rounded-pill px-2.5 py-1 shadow-xs" style="font-size: 0.72rem;">
+                <i class="bi bi-check2-circle text-success me-1"></i>Thẩm quyền Cấp 1
+            </span>
         </div>
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #0284c7 !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Cấp 2: Chờ HR</span>
-                <h3 class="h3 mb-0 fw-bold text-info-emphasis font-serif kpi-count-up" data-target="@Model.ChoHr">@Model.ChoHr</h3>
-                <span class="text-muted mt-1" style="font-size: 0.68rem;">Thẩm định & chốt công</span>
+    }
+    else
+    {
+        <div class="alert border-0 rounded-4 shadow-xs py-2 px-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2"
+             style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe !important;">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-shield-check text-primary fs-5"></i>
+                <span class="small fw-bold text-dark">Phòng Nhân Sự (HR) · Toàn Khách Sạn</span>
+                <span class="text-muted small d-none d-md-inline">| Thẩm định quy chế &amp; chốt công Cấp 2 (tự động cập nhật công &amp; lương)</span>
             </div>
+            <span class="badge bg-white text-primary border border-primary-subtle rounded-pill px-2.5 py-1 shadow-xs" style="font-size: 0.72rem;">
+                <i class="bi bi-patch-check-fill text-primary me-1"></i>Thẩm quyền Cấp 2 &amp; Chốt công
+            </span>
         </div>
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #059669 !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Đã duyệt</span>
-                <h3 class="h3 mb-0 fw-bold text-success font-serif kpi-count-up" data-target="@Model.DaDuyet">@Model.DaDuyet</h3>
-                <span class="text-muted mt-1" style="font-size: 0.68rem;">Đã cập nhật bảng công</span>
-            </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #dc2626 !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Từ chối</span>
-                <h3 class="h3 mb-0 fw-bold text-danger font-serif kpi-count-up" data-target="@Model.TuChoi">@Model.TuChoi</h3>
-                <span class="text-muted mt-1" style="font-size: 0.68rem;">Không hợp lệ</span>
-            </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #9333ea !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Sự kiện / Tiệc</span>
-                <h3 class="h3 mb-0 fw-bold text-purple font-serif kpi-count-up" data-target="@Model.SoLuongSuKien">@Model.SoLuongSuKien</h3>
-                <span class="text-muted mt-1" style="font-size: 0.68rem;">Sự cố tiệc & MICE</span>
-            </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3px solid #1e3a8a !important;">
-                <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Ca thường 24/7</span>
-                <h3 class="h3 mb-0 fw-bold text-hotel-primary font-serif kpi-count-up" data-target="@Model.SoLuongCaThuong">@Model.SoLuongCaThuong</h3>
-                <span class="text-muted mt-1" style="font-size: 0.68rem;">Sự cố quẹt thẻ ca</span>
-            </div>
-        </div>
-    </div>
+    }
 
-    <!-- 2. SEGMENTED LEVEL TABS: PHÂN TÁCH RÕ LUỒNG QUẢN LÝ / HR -->
+    <!-- 1. CÁC THẺ KPI THỐNG KÊ THIẾT KẾ RIÊNG THEO VAI TRÒ (QUẢN LÝ / HR) -->
+    @if (Model.BiGioiHanTheoBoPhan)
+    {
+        <!-- BỐ CỤC THỐNG KÊ QUẢN LÝ BỘ PHẬN -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item position-relative" style="border-top: 3.5px solid #d97706 !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Cần xác minh (Cấp 1)</span>
+                        <span class="badge @(Model.ChoQuanLy > 0 ? "bg-warning text-dark" : "bg-light text-muted") rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">
+                            @(Model.ChoQuanLy > 0 ? "Cần xử lý" : "Đã xong")
+                        </span>
+                    </div>
+                    <h3 class="h3 mb-0 fw-bold text-warning-emphasis font-serif kpi-count-up" data-target="@Model.ChoQuanLy">@Model.ChoQuanLy</h3>
+                    <span class="text-muted mt-1 small" style="font-size: 0.72rem;">Xác minh sự cố hiện trường</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3.5px solid #0284c7 !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Đang chờ HR (Cấp 2)</span>
+                        <i class="bi bi-hourglass-split text-info"></i>
+                    </div>
+                    <h3 class="h3 mb-0 fw-bold text-info-emphasis font-serif kpi-count-up" data-target="@Model.ChoHr">@Model.ChoHr</h3>
+                    <span class="text-muted mt-1 small" style="font-size: 0.72rem;">Đã chuyển tiếp lên HR thẩm định</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3.5px solid #059669 !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Đã hoàn tất</span>
+                        <i class="bi bi-check2-circle text-success"></i>
+                    </div>
+                    <h3 class="h3 mb-0 fw-bold text-success font-serif kpi-count-up" data-target="@Model.DaDuyet">@Model.DaDuyet</h3>
+                    <span class="text-muted mt-1 small" style="font-size: 0.72rem;">Đã ghi nhận vào bảng công</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3.5px solid #dc2626 !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Từ chối / Hủy</span>
+                        <i class="bi bi-x-circle text-danger"></i>
+                    </div>
+                    <h3 class="h3 mb-0 fw-bold text-danger font-serif kpi-count-up" data-target="@(Model.TuChoi + Model.DaHuy)">@(Model.TuChoi + Model.DaHuy)</h3>
+                    <span class="text-muted mt-1 small" style="font-size: 0.72rem;">Không hợp lệ hoặc đã hủy</span>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- BỐ CỤC THỐNG KÊ PHÒNG NHÂN SỰ (HR) & ADMIN -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item position-relative" style="border-top: 3.5px solid #1e3a8a !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Cần HR duyệt (Cấp 2)</span>
+                        <span class="badge @(Model.ChoHr > 0 ? "bg-primary text-white" : "bg-light text-muted") rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">
+                            @(Model.ChoHr > 0 ? "Cần xử lý ngay" : "Đã xong")
+                        </span>
+                    </div>
+                    <h3 class="h3 mb-0 fw-bold text-primary font-serif kpi-count-up" data-target="@Model.ChoHr">@Model.ChoHr</h3>
+                    <span class="text-muted mt-1 small" style="font-size: 0.72rem;">Thẩm định quy chế &amp; chốt công</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3.5px solid #d97706 !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Chờ Quản lý (Cấp 1)</span>
+                        <i class="bi bi-person-badge text-warning"></i>
+                    </div>
+                    <h3 class="h3 mb-0 fw-bold text-warning-emphasis font-serif kpi-count-up" data-target="@Model.ChoQuanLy">@Model.ChoQuanLy</h3>
+                    <span class="text-muted mt-1 small" style="font-size: 0.72rem;">Các bộ phận đang xác minh hiện trường</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3.5px solid #059669 !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Đã chốt công &amp; Lương</span>
+                        <i class="bi bi-patch-check-fill text-success"></i>
+                    </div>
+                    <h3 class="h3 mb-0 fw-bold text-success font-serif kpi-count-up" data-target="@Model.DaDuyet">@Model.DaDuyet</h3>
+                    <span class="text-muted mt-1 small" style="font-size: 0.72rem;">Tự động cập nhật công &amp; truy lĩnh</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 rounded-4 shadow-sm p-3 bg-white h-100 kpi-card-item" style="border-top: 3.5px solid #6366f1 !important;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="small text-muted fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Phân loại bối cảnh</span>
+                        <i class="bi bi-pie-chart-fill text-primary"></i>
+                    </div>
+                    <h3 class="h3 mb-0 fw-bold text-dark font-serif kpi-count-up" data-target="@Model.TongGiaiTrinh">@Model.TongGiaiTrinh</h3>
+                    <div class="mt-1 d-flex flex-wrap gap-1">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.68rem;">
+                            <i class="bi bi-clock-history me-1"></i>Ca 24/7: @Model.SoLuongCaThuong
+                        </span>
+                        <span class="badge bg-purple-subtle text-purple border border-purple-subtle" style="font-size: 0.68rem;">
+                            <i class="bi bi-calendar-event me-1"></i>Sự kiện: @Model.SoLuongSuKien
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- 2. SEGMENTED LEVEL TABS: PHÂN TÁCH RÕ LUỒNG THIẾT KẾ RIÊNG CHO QUẢN LÝ VÀ HR -->
     <div class="card border-0 shadow-sm rounded-4 mb-3 overflow-hidden">
         <div class="card-header bg-white border-0 px-3 pt-3 pb-0">
             <ul class="nav nav-tabs border-0 flex-nowrap overflow-x-auto hotel-segmented-tabs" id="levelTabs" role="tablist">
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "quan-ly" ? "active" : "")"
-                            type="button" data-giai-trinh-tab="quan-ly">
-                        <i class="bi bi-person-badge-fill text-warning"></i>
-                        <span>Cấp 1: Chờ Quản lý xác minh</span>
-                        <span class="badge @(Model.ChoQuanLy > 0 ? "bg-warning text-dark" : "bg-light text-secondary") rounded-pill ms-1">
-                            @Model.ChoQuanLy
-                        </span>
-                    </button>
-                </li>
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "hr" ? "active" : "")"
-                            type="button" data-giai-trinh-tab="hr">
-                        <i class="bi bi-shield-check text-primary"></i>
-                        <span>Cấp 2: Chờ HR phê duyệt</span>
-                        <span class="badge @(Model.ChoHr > 0 ? "bg-info text-dark" : "bg-light text-secondary") rounded-pill ms-1">
-                            @Model.ChoHr
-                        </span>
-                    </button>
-                </li>
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "hoan-tat" ? "active" : "")"
-                            type="button" data-giai-trinh-tab="hoan-tat">
-                        <i class="bi bi-clock-history text-secondary"></i>
-                        <span>Đã giải quyết</span>
-                        <span class="badge bg-light text-secondary border rounded-pill ms-1">
-                            @(Model.DaDuyet + Model.TuChoi + Model.DaHuy)
-                        </span>
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "tat-ca" ? "active" : "")"
-                            type="button" data-giai-trinh-tab="tat-ca">
-                        <i class="bi bi-collection text-secondary"></i>
-                        <span>Tất cả hồ sơ</span>
-                        <span class="badge bg-light text-secondary border rounded-pill ms-1">
-                            @Model.TongGiaiTrinh
-                        </span>
-                    </button>
-                </li>
+                @if (Model.BiGioiHanTheoBoPhan)
+                {
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "quan-ly" ? "active" : "")"
+                                type="button" data-giai-trinh-tab="quan-ly">
+                            <i class="bi bi-clipboard-check text-warning"></i>
+                            <span>1. Cần Xác Minh (Cấp 1)</span>
+                            <span class="badge @(Model.ChoQuanLy > 0 ? "bg-warning text-dark" : "bg-light text-secondary") rounded-pill ms-1">
+                                @Model.ChoQuanLy
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "hr" ? "active" : "")"
+                                type="button" data-giai-trinh-tab="hr">
+                            <i class="bi bi-arrow-up-right-circle text-primary"></i>
+                            <span>2. Đã Chuyển HR</span>
+                            <span class="badge @(Model.ChoHr > 0 ? "bg-info text-dark" : "bg-light text-secondary") rounded-pill ms-1">
+                                @Model.ChoHr
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "hoan-tat" ? "active" : "")"
+                                type="button" data-giai-trinh-tab="hoan-tat">
+                            <i class="bi bi-check2-circle text-success"></i>
+                            <span>3. Đã Hoàn Tất</span>
+                            <span class="badge bg-light text-secondary border rounded-pill ms-1">
+                                @(Model.DaDuyet + Model.TuChoi + Model.DaHuy)
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "tat-ca" ? "active" : "")"
+                                type="button" data-giai-trinh-tab="tat-ca">
+                            <i class="bi bi-collection text-secondary"></i>
+                            <span>4. Tất Cả Hồ Sơ</span>
+                            <span class="badge bg-light text-secondary border rounded-pill ms-1">
+                                @Model.TongGiaiTrinh
+                            </span>
+                        </button>
+                    </li>
+                }
+                else
+                {
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "hr" ? "active" : "")"
+                                type="button" data-giai-trinh-tab="hr">
+                            <i class="bi bi-patch-check-fill text-primary"></i>
+                            <span>1. Cần HR Phê Duyệt (Cấp 2)</span>
+                            <span class="badge @(Model.ChoHr > 0 ? "bg-primary text-white" : "bg-light text-secondary") rounded-pill ms-1">
+                                @Model.ChoHr
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "quan-ly" ? "active" : "")"
+                                type="button" data-giai-trinh-tab="quan-ly">
+                            <i class="bi bi-person-badge text-warning"></i>
+                            <span>2. Chờ Quản Lý Xác Minh (Cấp 1)</span>
+                            <span class="badge @(Model.ChoQuanLy > 0 ? "bg-warning text-dark" : "bg-light text-secondary") rounded-pill ms-1">
+                                @Model.ChoQuanLy
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "hoan-tat" ? "active" : "")"
+                                type="button" data-giai-trinh-tab="hoan-tat">
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                            <span>3. Đã Chốt Công</span>
+                            <span class="badge bg-light text-secondary border rounded-pill ms-1">
+                                @(Model.DaDuyet + Model.TuChoi + Model.DaHuy)
+                            </span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-top-3 px-3 py-2.5 fw-semibold d-flex align-items-center gap-2 @(Model.ActiveTab == "tat-ca" ? "active" : "")"
+                                type="button" data-giai-trinh-tab="tat-ca">
+                            <i class="bi bi-collection text-secondary"></i>
+                            <span>4. Toàn Bộ Khách Sạn</span>
+                            <span class="badge bg-light text-secondary border rounded-pill ms-1">
+                                @Model.TongGiaiTrinh
+                            </span>
+                        </button>
+                    </li>
+                }
             </ul>
         </div>
 
@@ -124,6 +256,36 @@
                 <input type="hidden" name="tab" id="filterTab" value="@Model.ActiveTab" />
 
                 <div class="row g-2 align-items-end">
+                    @if (Model.BiGioiHanTheoBoPhan)
+                    {
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold text-muted mb-1">
+                                <i class="bi bi-shield-lock me-1"></i>Bộ phận
+                            </label>
+                            <div>
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-3 px-2.5 py-1.5 w-100 d-inline-flex align-items-center justify-content-center text-truncate"
+                                      style="font-size: 0.74rem;" title="Phạm vi giải trình của bạn được giới hạn theo bộ phận phụ trách">
+                                    <i class="bi bi-lock-fill me-1"></i>@(Model.TenPhamViPhongBan ?? "Bộ phận của bạn")
+                                </span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold text-muted mb-1" for="filterPhongBan">
+                                <i class="bi bi-building me-1"></i>Phòng ban
+                            </label>
+                            <select class="form-select form-select-sm rounded-3" id="filterPhongBan" name="phongBanId">
+                                <option value="">-- Tất cả bộ phận --</option>
+                                @foreach (var pb in Model.PhongBanOptions)
+                                {
+                                    <option value="@pb.Value" selected="@pb.Selected">@pb.Text</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold text-muted mb-1" for="filterLoaiCongViec">
                             <i class="bi bi-briefcase me-1"></i>Bối cảnh công việc
@@ -136,7 +298,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-3 @(Model.ActiveTab != "tat-ca" ? "d-none" : "")" id="containerFilterStatus">
+                    <div class="col-md-2 @(Model.ActiveTab != "tat-ca" ? "d-none" : "")" id="containerFilterStatus">
                         <label class="form-label small fw-semibold text-muted mb-1" for="filterStatus">
                             <i class="bi bi-funnel me-1"></i>Trạng thái
                         </label>
@@ -148,21 +310,21 @@
                         </select>
                     </div>
 
-                    <div class="@(Model.ActiveTab != "tat-ca" ? "col-md-6" : "col-md-3")">
+                    <div class="@(Model.ActiveTab != "tat-ca" ? "col-md-3" : "col-md-3")">
                         <label class="form-label small fw-semibold text-muted mb-1" for="filterKeyword">
                             <i class="bi bi-search me-1"></i>Tìm kiếm nhanh
                         </label>
                         <input type="search" class="form-control form-control-sm rounded-3" id="filterKeyword"
-                               name="keyword" value="@Model.Keyword" placeholder="Tên nhân viên, lý do giải trình…" />
+                               name="keyword" value="@Model.Keyword" placeholder="Tên nhân viên, lý do…" />
                     </div>
 
-                    <div class="col-md-3 d-flex gap-2">
+                    <div class="col-md-2 d-flex gap-2">
                         <button type="submit" class="btn btn-sm btn-hotel-primary rounded-pill px-3 fw-semibold flex-grow-1 shadow-xs">
                             <i class="bi bi-funnel me-1"></i>Lọc
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
                                 data-giai-trinh-reset>
-                            Xoá lọc
+                            Xoá
                         </button>
                     </div>
                 </div>
@@ -256,11 +418,13 @@
                 const params = new URLSearchParams();
                 const tab = filterTab?.value;
                 const loaiCongViec = document.getElementById('filterLoaiCongViec')?.value;
+                const phongBanId = document.getElementById('filterPhongBan')?.value;
                 const status = document.getElementById('filterStatus')?.value;
                 const keyword = document.getElementById('filterKeyword')?.value?.trim();
 
                 if (tab) { params.set('tab', tab); }
                 if (loaiCongViec) { params.set('loaiCongViec', loaiCongViec); }
+                if (phongBanId) { params.set('phongBanId', phongBanId); }
                 if (status && tab === 'tat-ca') { params.set('trangThai', status); }
                 if (keyword) { params.set('keyword', keyword); }
                 if (page && page > 1) { params.set('page', page); }
@@ -317,16 +481,22 @@
                 reload(1);
             });
 
+            document.getElementById('filterPhongBan')?.addEventListener('change', function () {
+                reload(1);
+            });
+
             document.getElementById('filterStatus')?.addEventListener('change', function () {
                 reload(1);
             });
 
             document.querySelector('[data-giai-trinh-reset]')?.addEventListener('click', function () {
                 const loaiSelect = document.getElementById('filterLoaiCongViec');
+                const pbSelect = document.getElementById('filterPhongBan');
                 const statusSelect = document.getElementById('filterStatus');
                 const keywordInput = document.getElementById('filterKeyword');
 
                 if (loaiSelect) loaiSelect.value = '';
+                if (pbSelect) pbSelect.value = '';
                 if (statusSelect) statusSelect.value = '';
                 if (keywordInput) keywordInput.value = '';
 
@@ -359,13 +529,15 @@
                 // Cấp 2: HR phê duyệt & chốt công
                 const confirmBtnEl = event.target.closest('[data-giai-trinh-confirm]');
                 if (confirmBtnEl) {
+                    const isLocked = confirmBtnEl.dataset.giaiTrinhLocked === 'true';
                     openDialog(
                         confirmBtnEl.dataset.giaiTrinhConfirm,
                         'HrConfirm',
                         true,
                         confirmBtnEl.dataset.giaiTrinhLabel,
                         confirmBtnEl.dataset.giaiTrinhStaff,
-                        confirmBtnEl.dataset.giaiTrinhContext
+                        confirmBtnEl.dataset.giaiTrinhContext,
+                        isLocked
                     );
                     return;
                 }
@@ -385,7 +557,7 @@
                 }
             });
 
-            function openDialog(id, action, isApprove, label, staffName, contextInfo) {
+            function openDialog(id, action, isApprove, label, staffName, contextInfo, isLocked = false) {
                 pending = { id: id, action: action, approve: isApprove };
 
                 modalStaffName.textContent = staffName || '—';
@@ -417,11 +589,19 @@
                     modalBadge.textContent = 'Cấp 2: Phòng Nhân sự phê duyệt & Ghi công';
 
                     if (isApprove) {
-                        modalTitle.textContent = 'HR Phê duyệt & Chốt công ' + label;
-                        modalBanner.className = 'alert alert-primary border-primary-subtle small mb-3';
-                        modalHint.innerHTML = '<i class="bi bi-patch-check me-1"></i>HR xác nhận là bước cuối cùng: hệ thống sẽ <strong>tự động ghi đè giờ Check-in / Check-out vào bảng chấm công</strong>, tính toán lại phút trễ, phút về sớm, giờ tăng ca OT và ghi nhật ký quản trị.';
-                        confirmBtn.className = 'btn btn-hotel-primary rounded-pill px-4 fw-bold shadow-xs';
-                        confirmBtn.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i>Phê duyệt & Ghi nhận công';
+                        if (isLocked) {
+                            modalTitle.textContent = 'HR Duyệt & Truy lĩnh ' + label;
+                            modalBanner.className = 'alert alert-warning border-warning-subtle small mb-3';
+                            modalHint.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i><strong>Kỳ lương của ca trực này đã khóa sổ tài chính.</strong> Việc phê duyệt sẽ cập nhật bảng công lịch sử và hệ thống sẽ <strong>tự động tính chênh lệch để kết chuyển khoản Truy lĩnh</strong> vào kỳ lương mở tiếp theo cho nhân viên (không làm sai lệch sổ cái kỳ cũ).';
+                            confirmBtn.className = 'btn btn-warning text-dark rounded-pill px-4 fw-bold shadow-xs';
+                            confirmBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Duyệt & Kết chuyển truy lĩnh';
+                        } else {
+                            modalTitle.textContent = 'HR Phê duyệt & Chốt công ' + label;
+                            modalBanner.className = 'alert alert-primary border-primary-subtle small mb-3';
+                            modalHint.innerHTML = '<i class="bi bi-patch-check me-1"></i>HR xác nhận là bước cuối cùng: hệ thống sẽ <strong>tự động ghi đè giờ Check-in / Check-out vào bảng chấm công</strong>, đồng bộ quyết toán sự kiện (nếu có) và <strong>tự động tính toán lại phiếu lương nháp</strong> của nhân viên.';
+                            confirmBtn.className = 'btn btn-hotel-primary rounded-pill px-4 fw-bold shadow-xs';
+                            confirmBtn.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i>Phê duyệt & Ghi nhận công';
+                        }
                         noteRequiredMark.classList.add('d-none');
                         noteEl.placeholder = 'Ghi chú kiểm duyệt của HR (không bắt buộc)…';
                     } else {

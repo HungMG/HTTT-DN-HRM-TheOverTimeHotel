@@ -1,5 +1,6 @@
 using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -8,6 +9,7 @@ using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
+using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.WebAdmin.Models;
 using OvertimeHotel.HRM.WebAdmin.Security;
 
@@ -54,11 +56,16 @@ public class GiaiTrinhChamCongController : Controller
     private const int MAX_Y_KIEN = 500;
 
     private readonly AppDbContext _context;
+    private readonly IPayrollCalculationService _payrollService;
     private readonly ILogger<GiaiTrinhChamCongController> _logger;
 
-    public GiaiTrinhChamCongController(AppDbContext context, ILogger<GiaiTrinhChamCongController> logger)
+    public GiaiTrinhChamCongController(
+        AppDbContext context,
+        IPayrollCalculationService payrollService,
+        ILogger<GiaiTrinhChamCongController> logger)
     {
         _context = context;
+        _payrollService = payrollService;
         _logger = logger;
     }
 
@@ -66,33 +73,27 @@ public class GiaiTrinhChamCongController : Controller
     //  INDEX — DANH SÁCH GIẢI TRÌNH (TÁCH 2 CẤP QUẢN LÝ / HR & ĐA BỐI CẢNH)
     // =====================================================================
     [HttpGet]
-    public async Task<IActionResult> Index(string? tab, string? loaiCongViec, string? trangThai, string? keyword, int page = 1)
+    public async Task<IActionResult> Index(string? tab, string? loaiCongViec, string? trangThai, string? keyword, int? phongBanId, int page = 1)
     {
         trangThai = IsKnownStatus(trangThai) ? trangThai : null;
         keyword = keyword?.Trim();
         page = Math.Max(1, page);
 
-        var laHr = User.IsInRole("HR") || User.IsInRole("Admin") || User.IsInRole("IT");
-        var laQuanLy = User.IsInRole("Manager") || User.IsInRole("Admin");
+        var scopeDept = GetManagerDepartmentScope();
+        var phamViPhongBanId = User.ResolveEffectiveDepartmentId(phongBanId);
+        var biGioiHanTheoBoPhan = scopeDept.HasValue;
 
         // Tự động chọn Tab phù hợp vai trò nếu người dùng chưa chỉ định:
+        // Quản lý ưu tiên Tab 1: Cần xác minh Cấp 1 ("quan-ly")
+        // HR & Admin ưu tiên Tab 1: Cần HR phê duyệt Cấp 2 ("hr")
         if (string.IsNullOrWhiteSpace(tab))
         {
-            if (laQuanLy && !User.IsInRole("HR"))
-            {
-                tab = "quan-ly";
-            }
-            else if (laHr && !User.IsInRole("Manager") && !User.IsInRole("Admin"))
-            {
-                tab = "hr";
-            }
-            else
-            {
-                tab = "quan-ly";
-            }
+            tab = biGioiHanTheoBoPhan ? "quan-ly" : "hr";
         }
 
-        var scopeDept = GetManagerDepartmentScope();
+        var allPhongBans = await this.SearchDataAsync("giai-trinh:departments", () =>
+            _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync());
+        var tenPhamVi = allPhongBans.FirstOrDefault(p => p.MaPhongBan == (phamViPhongBanId ?? 0))?.TenPhongBan;
 
         var baseQuery = _context.GiaiTrinhChamCongs
             .AsNoTracking()
@@ -103,14 +104,14 @@ public class GiaiTrinhChamCongController : Controller
             .Include(g => g.HrXacNhan)
             .AsQueryable();
 
-        if (scopeDept.HasValue)
+        if (phamViPhongBanId.HasValue)
         {
-            baseQuery = scopeDept.Value <= 0
+            baseQuery = phamViPhongBanId.Value <= 0
                 ? baseQuery.Where(_ => false)
-                : baseQuery.Where(g => g.NhanVien != null && g.NhanVien.MaPhongBan == scopeDept.Value);
+                : baseQuery.Where(g => g.NhanVien != null && g.NhanVien.MaPhongBan == phamViPhongBanId.Value);
         }
 
-        var visibleItems = await this.SearchDataAsync($"attendance-explanations:scope:{scopeDept}", () => baseQuery.ToListAsync());
+        var visibleItems = await this.SearchDataAsync($"attendance-explanations:scope:{phamViPhongBanId}", () => baseQuery.ToListAsync());
         baseQuery = visibleItems.AsQueryable();
 
         // Nạp danh sách ca thuộc sự kiện để phân loại bối cảnh làm việc
@@ -237,6 +238,16 @@ public class GiaiTrinhChamCongController : Controller
             LoaiCongViec = loaiCongViec,
             TrangThai = trangThai,
             Keyword = keyword,
+            SelectedPhongBanId = phongBanId,
+            PhamViPhongBanId = phamViPhongBanId,
+            TenPhamViPhongBan = tenPhamVi,
+            BiGioiHanTheoBoPhan = biGioiHanTheoBoPhan,
+            PhongBanOptions = allPhongBans.Select(p => new SelectListItem
+            {
+                Value = p.MaPhongBan.ToString(),
+                Text = p.TenPhongBan,
+                Selected = phamViPhongBanId == p.MaPhongBan
+            }).ToList(),
             TrangThaiOptions = BuildStatusOptions(trangThai),
             LoaiCongViecOptions = BuildLoaiCongViecOptions(loaiCongViec),
             Items = rows.Select(r =>
@@ -285,7 +296,7 @@ public class GiaiTrinhChamCongController : Controller
             SoLuongSuKien = baseQuery.Count(g => eventShiftSet.Contains(g.MaPhanCa)),
             SoLuongCaThuong = baseQuery.Count(g => !eventShiftSet.Contains(g.MaPhanCa)),
             CoQuyenQuanLy = User.IsInRole("Manager") || User.IsInRole("Admin"),
-            CoQuyenHr = laHr,
+            CoQuyenHr = User.IsInRole("HR") || User.IsInRole("Admin"),
             PageNumber = pageNumber,
             PageSize = PAGE_SIZE,
             TotalPages = totalPages,
@@ -593,19 +604,32 @@ public class GiaiTrinhChamCongController : Controller
         }
 
         var ca = giaiTrinh.PhanCa;
-
-        // Chặn HR duyệt nếu kỳ lương của ca trực đã khóa sổ hoặc đã thanh toán
         var thangCa = ca.NgayLamViec.Month;
         var namCa = ca.NgayLamViec.Year;
+
+        // Kiểm tra xem kỳ lương của ca trực này đã khóa sổ tài chính hay chưa
         var kyLuongDaKhoa = await _context.KyLuongs
             .AsNoTracking()
             .AnyAsync(k => (k.Thang == thangCa && k.Nam == namCa || (k.TuNgay <= ca.NgayLamViec && k.DenNgay >= ca.NgayLamViec))
                         && (k.TrangThai == SalaryConstants.PERIOD_LOCKED || k.TrangThai == "DA_THANH_TOAN"));
 
-        if (kyLuongDaKhoa)
-        {
-            return Finish(false, $"Kỳ lương tháng {thangCa:D2}/{namCa} đã khóa sổ tài chính. Không thể duyệt giải trình để sửa dữ liệu công của kỳ này.");
-        }
+        // Thu thập thông số chấm công cũ để tính toán chênh lệch truy lĩnh nếu kỳ đã khóa
+        var oldChamCong = await _context.ChamCongs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.MaPhanCa == ca.MaPhanCa);
+
+        var oldPhutDiTre = oldChamCong?.PhutDiTre ?? 0;
+        var oldPhutVeSom = oldChamCong?.PhutVeSom ?? 0;
+        var oldOtHours = oldChamCong?.GioTangCaOt ?? 0m;
+        var oldHadPunch = oldChamCong?.GioCheckIn != null && oldChamCong?.GioCheckOut != null;
+
+        var eventMsg = "";
+        var newEventAmount = 0m;
+        var oldEventAmount = 0m;
+        var newPhutDiTre = 0;
+        var newPhutVeSom = 0;
+        var newOtHours = 0m;
+        var newHadPunch = false;
 
         try
         {
@@ -653,6 +677,11 @@ public class GiaiTrinhChamCongController : Controller
                     : 0m;
                 chamCong.TrangThai = AttendanceCalculator.ResolveStatus(chamCong.PhutDiTre, chamCong.PhutVeSom);
 
+                newPhutDiTre = chamCong.PhutDiTre;
+                newPhutVeSom = chamCong.PhutVeSom;
+                newOtHours = chamCong.GioTangCaOt;
+                newHadPunch = chamCong.GioCheckIn.HasValue && chamCong.GioCheckOut.HasValue;
+
                 // Xoá dấu vết chấm công trước đó để bảng công thể hiện đây là
                 // bản ghi do HR chỉnh tay, có hồ sơ giải trình chống lưng.
                 chamCong.PhuongThucCheckIn = "MANUAL";
@@ -672,13 +701,90 @@ public class GiaiTrinhChamCongController : Controller
                     throw new InvalidOperationException("Giải trình vừa được người khác xử lý. Không ghi bảng công.");
                 }
 
+                // =====================================================================
+                //  LOGIC ĐỒNG BỘ CÔNG & QUYẾT TOÁN SỰ KIỆN (NẾU CA THUỘC SỰ KIỆN)
+                // =====================================================================
+                var phanCong = await _context.PhanCongDuAns
+                    .Include(pc => pc.DuAn)
+                    .Include(pc => pc.CongThucTes)
+                    .FirstOrDefaultAsync(pc => pc.MaPhanCa == ca.MaPhanCa);
+
+                if (phanCong?.DuAn != null && phanCong.DuAn.TinhTheoGio)
+                {
+                    var duAn = phanCong.DuAn;
+                    if (duAn.TrangThai != "HOAN_THANH")
+                    {
+                        if (phanCong.CongThucTes.Count > 0)
+                        {
+                            var window = HourlyEventRules.AttendanceWindow(duAn, phanCong, DateTimeOffset.UtcNow);
+                            if (window.HasValue)
+                            {
+                                var cong = phanCong.CongThucTes.First();
+                                cong.BatDau = window.Value.Start;
+                                cong.KetThuc = window.Value.End;
+                                phanCong.DanhGia = HourlyEventRules.AutomaticRating(phanCong)!;
+                                eventMsg = $" Đồng thời cập nhật giờ công sự kiện '{duAn.TenDuAn}'.";
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var quyetToan = await _context.QuyetToanSuKiens
+                            .Include(q => q.KyChiTra)
+                            .FirstOrDefaultAsync(q => q.MaDuAn == duAn.MaDuAn && q.MaNhanVien == ca.MaNhanVien);
+
+                        if (quyetToan != null)
+                        {
+                            oldEventAmount = quyetToan.SoTien;
+                            var actualWindow = HourlyEventRules.ResolveActualWindow(
+                                phanCong.BatDau, phanCong.KetThuc,
+                                ca.BatDauDuKien, ca.KetThucDuKien,
+                                chamCong.GioCheckIn, chamCong.GioCheckOut);
+
+                            if (actualWindow.HasValue)
+                            {
+                                var (start, end, _) = actualWindow.Value;
+                                var hourlyRate = await EventRateConfig.ReadAsync(_context);
+                                var nhanVien = await _context.NhanViens
+                                    .Include(e => e.HopDongs)
+                                    .FirstOrDefaultAsync(e => e.MaNhanVien == ca.MaNhanVien);
+
+                                var slices = HourlyEventRules.Price(start, end, nhanVien?.HopDongs ?? [], hourlyRate);
+                                newEventAmount = HourlyEventRules.Amount(slices);
+                                var newMinutes = slices.Sum(s => s.Minutes);
+
+                                if (quyetToan.KyChiTra != null &&
+                                    quyetToan.KyChiTra.TrangThai != SalaryConstants.PERIOD_LOCKED &&
+                                    quyetToan.KyChiTra.TrangThai != "DA_THANH_TOAN" &&
+                                    !quyetToan.KyChiTra.NgayDuyet.HasValue)
+                                {
+                                    quyetToan.SoPhut = newMinutes;
+                                    quyetToan.SoTien = newEventAmount;
+                                    quyetToan.CanCuTinh = JsonSerializer.Serialize(slices);
+
+                                    if (quyetToan.MaChiTiet.HasValue)
+                                    {
+                                        var detail = await _context.ChiTietPhieuLuongs
+                                            .FirstOrDefaultAsync(d => d.MaChiTiet == quyetToan.MaChiTiet.Value);
+                                        if (detail != null)
+                                        {
+                                            detail.SoTien = newEventAmount;
+                                        }
+                                    }
+                                    eventMsg = $" Đã đồng bộ quyết toán sự kiện '{duAn.TenDuAn}' ({newMinutes:N0} phút, {newEventAmount:N0}đ).";
+                                }
+                            }
+                        }
+                    }
+                }
+
                 _context.NhatKyQuanTris.Add(new NhatKyQuanTri
                 {
                     MaTaiKhoanThucHien = nguoiXacNhanId,
                     TenNguoiThucHien = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "Không xác định",
                     TenTaiKhoanBiTacDong = "NV-" + giaiTrinh.MaNhanVien,
                     HanhDong = "SUA_CONG_GIAI_TRINH",
-                    NoiDung = $"Xác nhận giải trình #{giaiTrinh.MaGiaiTrinh} và điều chỉnh giờ công ca #{ca.MaPhanCa}.",
+                    NoiDung = $"Xác nhận giải trình #{giaiTrinh.MaGiaiTrinh} và điều chỉnh giờ công ca #{ca.MaPhanCa}.{(kyLuongDaKhoa ? " [Kỳ đã khóa sổ]" : "")}",
                     GiaTriCu = truoc,
                     GiaTriMoi = DescribeAttendance(chamCong),
                     LyDo = giaiTrinh.LyDo,
@@ -694,8 +800,131 @@ public class GiaiTrinhChamCongController : Controller
                 "HR xác nhận giải trình #{RequestId}; đã ghi lại chấm công ca #{ShiftId}.",
                 id, ca.MaPhanCa);
 
+            var payrollMsg = "";
+            var callerName = User.FindFirstValue(ClaimTypes.Name) ?? User.Identity?.Name ?? "HR";
+
+            if (!kyLuongDaKhoa)
+            {
+                // =====================================================================
+                //  LOGIC TỰ ĐỘNG TÍNH LẠI PHIẾU LƯƠNG NHÁP (NẾU ĐÃ CÓ PHIẾU LƯƠNG TRONG KỲ)
+                // =====================================================================
+                var draftPayslip = await _context.PhieuLuongs
+                    .Include(p => p.KyLuong)
+                    .FirstOrDefaultAsync(p => p.MaNhanVien == ca.MaNhanVien
+                        && p.KyLuong != null
+                        && ((p.KyLuong.Thang == thangCa && p.KyLuong.Nam == namCa) ||
+                            (p.KyLuong.TuNgay <= ca.NgayLamViec && p.KyLuong.DenNgay >= ca.NgayLamViec))
+                        && p.KyLuong.TrangThai != SalaryConstants.PERIOD_LOCKED
+                        && p.KyLuong.TrangThai != "DA_THANH_TOAN"
+                        && !p.KyLuong.NgayDuyet.HasValue);
+
+                if (draftPayslip != null)
+                {
+                    try
+                    {
+                        await _payrollService.RecalculateEmployeeAsync(
+                            draftPayslip.MaPhieuLuong,
+                            callerName,
+                            nguoiXacNhanId);
+                        payrollMsg = $" Đã tự động tính toán lại phiếu lương tháng {thangCa:D2}/{namCa} cho nhân viên.";
+                    }
+                    catch (Exception exRecalc)
+                    {
+                        _logger.LogWarning(exRecalc, "Không thể tự động tính lại phiếu lương #{PayslipId} sau khi duyệt giải trình.", draftPayslip.MaPhieuLuong);
+                        payrollMsg = " Dữ liệu công đã cập nhật; vui lòng kiểm tra và tính lại phiếu lương trên màn hình Bảng lương.";
+                    }
+                }
+                else
+                {
+                    payrollMsg = $" Dữ liệu công chuẩn sẽ được áp dụng khi chạy tính lương tháng {thangCa:D2}/{namCa}.";
+                }
+            }
+            else
+            {
+                // =====================================================================
+                //  LOGIC TRUY LĨNH KHI KỲ LƯƠNG ĐÃ KHÓA SỔ TÀI CHÍNH
+                // =====================================================================
+                var fineConfig = await _context.CauHinhKhauTrus.AsNoTracking()
+                    .Where(x => x.MaKhoanTru == 5)
+                    .Select(x => x.TyLeHoacDinhMuc)
+                    .FirstOrDefaultAsync();
+                var finePerMinute = fineConfig > 0 ? fineConfig : 5000m;
+
+                var contract = await _context.HopDongs.AsNoTracking()
+                    .Where(h => h.MaNhanVien == ca.MaNhanVien && (h.TrangThai == "HIEU_LUC" || (h.NgayKetThuc.HasValue && h.NgayKetThuc.Value >= ca.NgayLamViec)))
+                    .OrderByDescending(h => h.NgayBatDau)
+                    .FirstOrDefaultAsync();
+
+                var luongCoBan = contract?.LuongCoBan ?? 0m;
+                var donGiaNgay = luongCoBan > 0 ? luongCoBan / (decimal)SalaryConstants.STANDARD_WORKING_DAYS : 0m;
+                var donGiaGio = donGiaNgay > 0 ? donGiaNgay / (decimal)SalaryConstants.STANDARD_WORKING_HOURS_PER_DAY : 0m;
+
+                var fineLateRefund = Math.Max(0, oldPhutDiTre - newPhutDiTre) * finePerMinute;
+                var oldEarlyFine = oldPhutVeSom > 15 ? oldPhutVeSom * finePerMinute : 0m;
+                var newEarlyFine = newPhutVeSom > 15 ? newPhutVeSom * finePerMinute : 0m;
+                var fineEarlyRefund = Math.Max(0m, oldEarlyFine - newEarlyFine);
+
+                var otAdded = Math.Max(0m, newOtHours - oldOtHours);
+                var otRate = ca.NgayLamViec.DayOfWeek == DayOfWeek.Sunday ? 2.0m : 1.5m;
+                var otAddedMoney = Math.Round(otAdded * donGiaGio * otRate, MidpointRounding.AwayFromZero);
+
+                var workDayMoney = (!oldHadPunch && newHadPunch) ? Math.Round(donGiaNgay, MidpointRounding.AwayFromZero) : 0m;
+                var eventDiff = Math.Max(0m, newEventAmount - oldEventAmount);
+
+                var deltaMoney = fineLateRefund + fineEarlyRefund + otAddedMoney + workDayMoney + eventDiff;
+
+                if (deltaMoney > 0)
+                {
+                    var openPeriod = await _context.KyLuongs
+                        .Where(k => k.TrangThai != SalaryConstants.PERIOD_LOCKED
+                                 && k.TrangThai != "DA_THANH_TOAN"
+                                 && !k.NgayDuyet.HasValue)
+                        .OrderBy(k => k.Nam).ThenBy(k => k.Thang)
+                        .FirstOrDefaultAsync();
+
+                    if (openPeriod != null)
+                    {
+                        var openPayslip = await _context.PhieuLuongs
+                            .FirstOrDefaultAsync(p => p.MaKyLuong == openPeriod.MaKyLuong && p.MaNhanVien == ca.MaNhanVien);
+
+                        if (openPayslip != null)
+                        {
+                            try
+                            {
+                                await _payrollService.AdjustSalaryItemAsync(
+                                    openPayslip.MaPhieuLuong,
+                                    "PHU_CAP",
+                                    $"Truy lĩnh giải trình ca {ca.NgayLamViec:dd/MM/yyyy}",
+                                    deltaMoney,
+                                    $"Truy lĩnh do duyệt giải trình #{giaiTrinh.MaGiaiTrinh} sau khi kỳ {thangCa:D2}/{namCa} đã khóa sổ.",
+                                    callerName,
+                                    nguoiXacNhanId);
+                                payrollMsg = $" Do kỳ {thangCa:D2}/{namCa} đã khóa sổ, hệ thống đã tự động kết chuyển khoản truy lĩnh {deltaMoney:N0}đ vào phiếu lương tháng {openPeriod.Thang:D2}/{openPeriod.Nam}.";
+                            }
+                            catch (Exception exAdj)
+                            {
+                                _logger.LogWarning(exAdj, "Không thể kết chuyển truy lĩnh #{DisputeId}", id);
+                                payrollMsg = $" Khoản chênh lệch truy lĩnh ({deltaMoney:N0}đ) cần HR ghi nhận tay vào kỳ mở tiếp theo.";
+                            }
+                        }
+                        else
+                        {
+                            payrollMsg = $" Khoản chênh lệch truy lĩnh ({deltaMoney:N0}đ) sẽ được tính khi lập phiếu lương kỳ mở {openPeriod.Thang:D2}/{openPeriod.Nam}.";
+                        }
+                    }
+                    else
+                    {
+                        payrollMsg = $" Khoản chênh lệch truy lĩnh ({deltaMoney:N0}đ) đã được ghi nhận nhật ký (hiện chưa có kỳ lương mới mở).";
+                    }
+                }
+                else
+                {
+                    payrollMsg = " Đã duyệt cập nhật bảng công lịch sử (không phát sinh chênh lệch tiền công).";
+                }
+            }
+
             return Finish(true,
-                $"Đã xác nhận giải trình #{id} và cập nhật bảng chấm công. Thay đổi được ghi vào nhật ký quản trị.",
+                $"Đã xác nhận giải trình #{id} và cập nhật bảng chấm công.{eventMsg}{payrollMsg}",
                 new { maGiaiTrinh = id, trangThai = STATUS_DA_DUYET });
         }
         catch (Exception ex)

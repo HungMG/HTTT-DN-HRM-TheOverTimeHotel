@@ -632,33 +632,22 @@
 <div class="catalog-page phanca-page py-3">
     <partial name="_CatalogAlerts" />
 
-    @if (Model.IsManagerSchedulingWindowClosed)
+    @if (Model.BiGioiHanTheoBoPhan && Model.IsManagerSchedulingWindowClosed)
     {
-        <div class="alert border-0 rounded-4 shadow-sm p-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3"
+        <div class="alert border-0 rounded-4 shadow-sm py-2 px-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2"
              style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a !important;">
-            <div class="d-flex align-items-center gap-3">
-                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs"
-                     style="width: 44px; height: 44px; background: linear-gradient(135deg, #d97706, #b45309); color: #ffffff;">
-                    <i class="bi bi-calendar-x-fill fs-5"></i>
-                </div>
-                <div>
-                    <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.95rem;">
-                        <span>Cổng Phân Ca Định Kỳ Đang Đóng (Mở @ShiftSchedulingPolicy.ManagerWindowLabel)</span>
-                        <span class="badge bg-warning text-dark border border-warning-subtle rounded-pill px-2.5 py-0.5" style="font-size: 0.7rem;">
-                            <i class="bi bi-lock-fill me-1"></i>Chỉ xem đối với Quản lý
-                        </span>
-                    </div>
-                    <div class="text-secondary small mt-0.5" style="font-size: 0.8rem; max-width: 850px;">
-                        Theo quy định quản lý khách sạn The OverTime Hotel, Quản lý bộ phận chỉ được xếp ca mới và điều chỉnh lịch trực vào <strong>@ShiftSchedulingPolicy.ManagerWindowLabel</strong> hàng tuần để chuẩn bị cho tuần kế tiếp.
-                        Hiện tại (@ShiftSchedulingPolicy.ManagerWindowClosedPeriod) cổng đang tạm khóa để bảo đảm ổn định vận hành ca trực. Khung giờ công bố lịch tuần định kỳ vào Chủ Nhật lúc 17:00 (sau 1 giờ đệm hoàn tất phân ca). Nếu có phát sinh đột xuất, vui lòng liên hệ Admin hoặc HR.
-                    </div>
-                </div>
-            </div>
             <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-white text-secondary border rounded-pill px-3 py-1.5 shadow-xs" style="font-size: 0.74rem;">
-                    <i class="bi bi-clock-history text-primary me-1"></i>Mở lại: 00:00 Thứ Sáu
+                <i class="bi bi-lock-fill text-warning fs-5"></i>
+                <span class="small fw-bold text-dark">
+                    Cổng phân ca định kỳ dành cho Quản lý đang đóng (@ShiftSchedulingPolicy.ManagerWindowClosedPeriod). Mở lại: @ShiftSchedulingPolicy.ManagerWindowLabel.
                 </span>
             </div>
+            @if (Model.PublishedWeek != null)
+            {
+                <span class="badge bg-white text-success border border-success-subtle rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">
+                    <i class="bi bi-patch-check-fill text-success me-1"></i>Đã công bố (v@(Model.PublishedWeek.Version))
+                </span>
+            }
         </div>
     }
 
@@ -724,13 +713,16 @@
                         <button type="button" id="tabViewList" onclick="switchCalendarViewTab('list')" class="phanca-view-tab-btn">
                             <i class="bi bi-list-check text-secondary"></i> 3. Danh Sách
                         </button>
-                        <button type="button" id="tabViewEventDemand" onclick="switchCalendarViewTab('eventDemand')" class="phanca-view-tab-btn">
-                            <i class="bi bi-calendar-event text-secondary"></i> 4. Nhu Cầu Sự Kiện
-                            @if (Model.EventDemand.Count > 0)
-                            {
-                                <span class="badge bg-primary-subtle text-primary rounded-pill ms-1" style="font-size: 0.68rem;">@Model.EventDemand.Count</span>
-                            }
-                        </button>
+                        @if (Model.CanViewEventDemand)
+                        {
+                            <button type="button" id="tabViewEventDemand" onclick="switchCalendarViewTab('eventDemand')" class="phanca-view-tab-btn">
+                                <i class="bi bi-calendar-event text-secondary"></i> 4. Nhu Cầu Sự Kiện
+                                @if (Model.EventDemand.Count > 0)
+                                {
+                                    <span class="badge bg-primary-subtle text-primary rounded-pill ms-1" style="font-size: 0.68rem;">@Model.EventDemand.Count</span>
+                                }
+                            </button>
+                        }
                     </div>
 
                     @if (Model.IsManagerSchedulingWindowClosed)
@@ -761,6 +753,44 @@
                             @Model.TongCaThieuDinhBien
                         </span>
                     </button>
+
+                    @if (Model.CanPublishWeek)
+                    {
+                        @if (Model.PublishedWeek != null)
+                        {
+                            <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 fw-bold shadow-xs hover-lift"
+                                    data-bs-toggle="modal" data-bs-target="#modalPublishWeek"
+                                    title="Lịch tuần này đã được công bố chính thức (Phiên bản @Model.PublishedWeek.Version lúc @Model.PublishedWeek.NgayCongBo.ToOffset(TimeSpan.FromHours(7)).ToString("HH:mm dd/MM/yyyy")). Bấm để xem hoặc tái công bố nếu có điều chỉnh.">
+                                <i class="bi bi-patch-check-fill text-success me-1"></i> Đã Công Bố (v@(Model.PublishedWeek.Version))
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-success btn-sm rounded-pill px-3 py-1 fw-bold shadow-xs hover-lift text-white"
+                                    data-bs-toggle="modal" data-bs-target="#modalPublishWeek"
+                                    style="background: linear-gradient(135deg, #16a34a, #15803d); border-color: #15803d;"
+                                    title="Chính thức công bố lịch phân ca tuần @Model.WeekStart.ToString("dd/MM") - @Model.WeekEnd.ToString("dd/MM") cho toàn khách sạn (Dành cho HR sau 16:00 Chủ Nhật)">
+                                <i class="bi bi-send-check-fill me-1"></i> Công Bố Lịch Tuần
+                            </button>
+                        }
+                    }
+                    else
+                    {
+                        @if (Model.PublishedWeek != null)
+                        {
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 shadow-xs d-inline-flex align-items-center"
+                                  title="Lịch tuần này đã được HR công bố chính thức lúc @(Model.PublishedWeek.NgayCongBo.ToOffset(TimeSpan.FromHours(7)).ToString("HH:mm dd/MM/yyyy"))">
+                                <i class="bi bi-patch-check-fill text-success me-1"></i> Lịch Đã Công Bố (v@(Model.PublishedWeek.Version))
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1.5 shadow-xs d-inline-flex align-items-center"
+                                  title="Lịch tuần này đang trong giai đoạn soạn thảo, HR sẽ tổng hợp và công bố vào Chủ Nhật lúc 17:00">
+                                <i class="bi bi-hourglass-split text-warning me-1"></i> Lịch Đang Soạn Thảo
+                            </span>
+                        }
+                    }
                 </div>
             </div>
 
@@ -1638,10 +1668,13 @@
                     </div>
                 </div>
 
-                <!-- CHẾ ĐỘ 4: NHU CẦU NHÂN SỰ SỰ KIỆN THEO KHUNG GIỜ -->
-                <div id="viewEventDemandContainer" class="d-none mb-4">
-                    <partial name="_EventWeekDemand" model="Model" />
-                </div>
+                @if (Model.CanViewEventDemand)
+                {
+                    <!-- CHẾ ĐỘ 4: NHU CẦU NHÂN SỰ SỰ KIỆN THEO KHUNG GIỜ -->
+                    <div id="viewEventDemandContainer" class="d-none mb-4">
+                        <partial name="_EventWeekDemand" model="Model" />
+                    </div>
+                }
             </div>
             <!-- Kết thúc scheduleContentWrapper -->
         </div>
@@ -2143,6 +2176,115 @@
 
 <!-- EMBED CẤU HÌNH ĐỊNH BIÊN CA POPUP (PRD 3.5) -->
 <partial name="_DinhBienModal" model="Model.DinhBien" />
+
+<!-- MODAL: CÔNG BỐ LỊCH TUẦN CHÍNH THỨC (HR & ADMIN ONLY) -->
+<div class="modal fade" id="modalPublishWeek" tabindex="-1" aria-labelledby="modalPublishWeekLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden modal-luxury-card">
+            <form asp-controller="PhanCa" asp-action="PublishWeek" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="weekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="version" value="@((Model.PublishedWeek?.Version ?? 0) + 1)" />
+
+                <div class="modal-header bg-white border-bottom py-3 px-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm"
+                             style="width: 44px; height: 44px; font-size: 1.1rem; background: linear-gradient(135deg, #16a34a, #15803d);">
+                            <i class="bi bi-send-check-fill text-white"></i>
+                        </div>
+                        <div>
+                            <div class="text-uppercase small fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px; color: #16a34a;">
+                                <i class="bi bi-shield-check me-1"></i>Quyền Hạn Phòng Nhân Sự & Quản Trị Viên
+                            </div>
+                            <h3 class="modal-title h5 mb-0 font-serif fw-bold text-dark" id="modalPublishWeekLabel">
+                                @(Model.PublishedWeek != null ? "Cập Nhật Công Bố Lịch Tuần" : "Công Bố Lịch Tuần Chính Thức")
+                            </h3>
+                            <div class="small text-muted">
+                                Tuần: @Model.WeekStart.ToString("dd/MM/yyyy") &mdash; @Model.WeekEnd.ToString("dd/MM/yyyy")
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+
+                <div class="modal-body p-4 bg-light bg-opacity-50">
+                    @if (Model.PublishedWeek != null)
+                    {
+                        <div class="alert alert-info border-0 rounded-3 p-3 mb-3 d-flex align-items-start gap-2 shadow-xs" style="font-size: 0.82rem;">
+                            <i class="bi bi-info-circle-fill text-primary fs-6 mt-0.5"></i>
+                            <div>
+                                <div>Tuần này đã được công bố <strong>Phiên bản @Model.PublishedWeek.Version</strong> vào lúc <strong>@Model.PublishedWeek.NgayCongBo.ToOffset(TimeSpan.FromHours(7)).ToString("HH:mm dd/MM/yyyy")</strong>.</div>
+                                <div class="mt-1 text-muted">Công bố lại sẽ nâng lên <strong>Phiên bản @((Model.PublishedWeek.Version) + 1)</strong> và ghi nhận vào nhật ký điều hành ca trực.</div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-success border-0 rounded-3 p-3 mb-3 d-flex align-items-start gap-2 shadow-xs" style="font-size: 0.82rem;">
+                            <i class="bi bi-check-circle-fill text-success fs-6 mt-0.5"></i>
+                            <div>
+                                <div>Lịch phân ca tuần sẽ được chốt và công bố chính thức tới toàn thể nhân viên và các bộ phận trên ứng dụng Mobile & Web Portal.</div>
+                                <div class="mt-1 text-muted">Theo quy định, HR đối chiếu định biên và công bố lịch tuần vào <strong>Chủ Nhật lúc 17:00</strong>.</div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- THỐNG KÊ NHANH LỊCH TUẦN -->
+                    <div class="row g-2 mb-3 text-center">
+                        <div class="col-4">
+                            <div class="p-2.5 rounded-3 bg-white border shadow-xs">
+                                <div class="small text-muted" style="font-size: 0.72rem;">Tổng ca trực</div>
+                                <div class="fw-bold text-dark fs-5 font-serif">@Model.TongSoCa</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2.5 rounded-3 bg-white border shadow-xs">
+                                <div class="small text-muted" style="font-size: 0.72rem;">Nhân sự phân bổ</div>
+                                <div class="fw-bold text-primary fs-5 font-serif">@Model.SoNhanVienDuocPhan / @Model.TongNhanVien</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2.5 rounded-3 bg-white border shadow-xs">
+                                <div class="small text-muted" style="font-size: 0.72rem;">Thiếu định biên</div>
+                                <div class="fw-bold @(Model.TongCaThieuDinhBien > 0 ? "text-danger" : "text-success") fs-5 font-serif">
+                                    @Model.TongCaThieuDinhBien
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Model.TongCaThieuDinhBien > 0)
+                    {
+                        <div class="alert alert-warning border-0 rounded-3 p-2.5 mb-3 d-flex align-items-center gap-2" style="font-size: 0.8rem;">
+                            <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0"></i>
+                            <span>Cảnh báo: Còn <strong>@Model.TongCaThieuDinhBien ca</strong> chưa đạt mức định biên nhân sự tối thiểu. Bạn vẫn có thể công bố nếu đây là dự kiến của ban quản lý.</span>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small">
+                            Ghi chú / Lý do công bố:
+                            @(Model.PublishedWeek != null ? Html.Raw("<span class=\"text-danger\">*</span>") : Html.Raw("<span class=\"text-muted fw-normal\">(không bắt buộc)</span>"))
+                        </label>
+                        <textarea name="reason" class="form-control" rows="3"
+                                  placeholder="@(Model.PublishedWeek != null ? "Nhập lý do điều chỉnh hoặc tái công bố lịch tuần..." : "Ví dụ: Công bố lịch trực tuần định kỳ...")"
+                                  style="font-size: 0.85rem;" @(Model.PublishedWeek != null ? "required" : "")></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light border-top py-2 px-4 d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i> Hủy
+                    </button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm"
+                            style="background: linear-gradient(135deg, #16a34a, #15803d); border-color: #15803d;">
+                        <i class="bi bi-send-check-fill me-1"></i> @(Model.PublishedWeek != null ? "Xác Nhận Tái Công Bố" : "Xác Nhận Công Bố Lịch Tuần")
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <style>
 /* CẤU TRÚC MODAL SCROLLABLE: ĐẢM BẢO FOOTER VÀ NÚT XÁC NHẬN LUÔN NẰM TRONG KHUNG NHÌN */

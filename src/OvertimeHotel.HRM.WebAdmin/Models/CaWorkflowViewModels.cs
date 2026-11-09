@@ -126,6 +126,12 @@ public class GiaiTrinhIndexViewModel
 
     public IReadOnlyList<SelectListItem> TrangThaiOptions { get; set; } = [];
     public IReadOnlyList<SelectListItem> LoaiCongViecOptions { get; set; } = [];
+    public IReadOnlyList<SelectListItem> PhongBanOptions { get; set; } = [];
+
+    public int? SelectedPhongBanId { get; set; }
+    public int? PhamViPhongBanId { get; set; }
+    public string? TenPhamViPhongBan { get; set; }
+    public bool BiGioiHanTheoBoPhan { get; set; }
 
     public IReadOnlyList<GiaiTrinhItemViewModel> Items { get; set; } = [];
 

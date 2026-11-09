@@ -274,15 +274,23 @@ else
                             {
                                 @if (item.KyLuongDaKhoa)
                                 {
-                                    <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1 small d-block mb-1" title="Kỳ lương đã khóa sổ, không thể sửa công">
-                                        <i class="bi bi-lock-fill me-1"></i>Kỳ lương đã khóa
-                                    </span>
-                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold w-100"
-                                            data-giai-trinh-reject="@item.MaGiaiTrinh"
-                                            data-giai-trinh-label="#@item.MaGiaiTrinh"
-                                            data-giai-trinh-level="HrConfirm">
-                                        <i class="bi bi-x-lg me-1"></i>Từ chối
-                                    </button>
+                                    <div class="d-flex flex-column gap-1.5">
+                                        <button type="button" class="btn btn-sm btn-warning text-dark rounded-pill px-3 fw-semibold shadow-xs"
+                                                data-giai-trinh-confirm="@item.MaGiaiTrinh"
+                                                data-giai-trinh-label="#@item.MaGiaiTrinh"
+                                                data-giai-trinh-staff="@item.TenNhanVien"
+                                                data-giai-trinh-context="@(item.LaSuKien ? $"Sự kiện: {item.TenSuKien}" : $"Ca: {item.TenCa}")"
+                                                data-giai-trinh-locked="true"
+                                                title="Kỳ lương đã khóa sổ, số tiền chênh lệch sẽ được tự động kết chuyển truy lĩnh">
+                                            <i class="bi bi-arrow-repeat me-1"></i>Duyệt &amp; Truy lĩnh
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold"
+                                                data-giai-trinh-reject="@item.MaGiaiTrinh"
+                                                data-giai-trinh-label="#@item.MaGiaiTrinh"
+                                                data-giai-trinh-level="HrConfirm">
+                                            <i class="bi bi-x-lg me-1"></i>Từ chối
+                                        </button>
+                                    </div>
                                 }
                                 else
                                 {

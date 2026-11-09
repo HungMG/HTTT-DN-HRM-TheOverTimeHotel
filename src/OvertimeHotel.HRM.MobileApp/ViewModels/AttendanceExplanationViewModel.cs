@@ -50,10 +50,11 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
     public ObservableCollection<string> ReasonSuggestions { get; } =
     [
         "Quên quẹt thẻ ra",
-        "Máy vân tay lỗi",
-        "Tăng ca theo lệnh",
-        "Đi công tác ngoài",
-        "Vào ca khẩn cấp"
+        "Quên quẹt thẻ vào",
+        "Máy vân tay lỗi / không nhận",
+        "Tăng ca theo điều phối",
+        "Hỗ trợ sự kiện đột xuất",
+        "Công tác / Đón đoàn VIP"
     ];
 
     public AttendanceExplanationViewModel(IAttendanceExplanationService service)
@@ -149,6 +150,10 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
     public string CreateTabColor => IsCreateMode ? "#FFFFFF" : "#64748B";
     public string HistoryTabBackground => !IsCreateMode ? "#1E3A8A" : "#FFFFFF";
     public string HistoryTabColor => !IsCreateMode ? "#FFFFFF" : "#64748B";
+
+    public int PendingCount => MyExplanations.Count(x => x.IsChoQuanLy || x.IsChoHr);
+    public int ApprovedCount => MyExplanations.Count(x => x.IsDaDuyet);
+    public string HistoryTabTitle => MyExplanations.Count > 0 ? $"Lịch sử ({MyExplanations.Count})" : "Lịch sử giải trình";
 
     public bool IsShiftDropdownOpen
     {
@@ -357,6 +362,9 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
             {
                 MyExplanations.Add(e);
             }
+            OnPropertyChanged(nameof(PendingCount));
+            OnPropertyChanged(nameof(ApprovedCount));
+            OnPropertyChanged(nameof(HistoryTabTitle));
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -373,6 +381,9 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
             {
                 IsLoading = false;
                 OnPropertyChanged(nameof(IsEmpty));
+                OnPropertyChanged(nameof(PendingCount));
+                OnPropertyChanged(nameof(ApprovedCount));
+                OnPropertyChanged(nameof(HistoryTabTitle));
             }
         }
     }
@@ -426,7 +437,10 @@ public class AttendanceExplanationViewModel : INotifyPropertyChanged
             var result = await _service.SubmitExplanationAsync(request);
             if (result.Success)
             {
-                PopupRequested?.Invoke("Gửi giải trình thành công", "Đã gửi giải trình chấm công. Đang chờ Quản lý bộ phận xác minh.", false);
+                PopupRequested?.Invoke(
+                    "Gửi giải trình thành công",
+                    "Đã gửi giải trình chấm công vào hệ thống. Hồ sơ chuyển đến Quản lý bộ phận xác minh hiện trường (Cấp 1) trước khi chuyển lên HR thẩm định & chốt công.",
+                    false);
                 LyDo = string.Empty;
                 MinhChung = string.Empty;
                 IsCreateMode = false;

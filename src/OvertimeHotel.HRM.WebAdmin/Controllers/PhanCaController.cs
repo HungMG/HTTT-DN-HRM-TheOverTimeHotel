@@ -655,12 +655,15 @@ public class PhanCaController : Controller
                 var actor = await EventActorAsync();
                 if (actor != null)
                 {
-                    model.CanViewEventDemand = true;
+                    model.CanViewEventDemand = actor.IsOffice;
                     model.CanPublishWeek = actor.IsOffice;
-                    model.EventDemand = (await _events.ListAsync(actor,
-                        HotelEventRules.ToUtc(weekStart.ToDateTime(TimeOnly.MinValue)),
-                        HotelEventRules.ToUtc(weekStart.AddDays(7).ToDateTime(TimeOnly.MinValue))))
-                        .Where(e => e.TinhTheoGio && e.TrangThai != "HUY").ToList();
+                    if (model.CanViewEventDemand)
+                    {
+                        model.EventDemand = (await _events.ListAsync(actor,
+                            HotelEventRules.ToUtc(weekStart.ToDateTime(TimeOnly.MinValue)),
+                            HotelEventRules.ToUtc(weekStart.AddDays(7).ToDateTime(TimeOnly.MinValue))))
+                            .Where(e => e.TinhTheoGio && e.TrangThai != "HUY").ToList();
+                    }
                     model.PublishedWeek = await _events.PublishedWeekAsync(weekStart);
                 }
             }

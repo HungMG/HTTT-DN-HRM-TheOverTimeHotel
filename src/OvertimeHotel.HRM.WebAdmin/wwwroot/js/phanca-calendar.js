@@ -418,6 +418,9 @@
     };
 
     var savedTab = localStorage.getItem('overtime_phanca_active_tab') || 'calendar';
+    if (savedTab === 'eventDemand' && !document.getElementById('tabViewEventDemand')) {
+      savedTab = 'calendar';
+    }
     if (savedTab !== 'calendar') {
       window.switchCalendarViewTab(savedTab);
     }
