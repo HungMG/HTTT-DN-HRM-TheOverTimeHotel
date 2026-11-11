@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Text.Json;
 using System.Windows.Input;
 using OvertimeHotel.HRM.MobileApp.Models;
@@ -37,12 +38,9 @@ public class AdminHomeViewModel : HomeViewModelBase
     private string _payrollStatusText = "Đang kiểm tra";
     private string _payrollStatusBgColor = "#F1F5F9";
     private string _payrollStatusTextColor = "#64748B";
-    private string _estimatedPayrollCostText = "0 đ";
-    private string _payrollBudgetLimitText = "0 đ";
-    private string _budgetUsagePercentText = "0%";
-    private double _budgetUsageProgress;
     private string _budgetStatusNote = "Đang kết nối hệ thống tính lương CSDL...";
-    private string _payrollActionText = "Xem chi tiết kỳ lương";
+    private string _payrollActionText = "Chi tiết kỳ lương & Khóa sổ";
+    public ObservableCollection<AdminRecentMonthPayrollItem> RecentMonthsPayroll { get; } = new();
 
     // ═══ 3. SỰ KIỆN TRỌNG ĐIỂM & ĐIỀU ĐỘNG TASK FORCE (PRD 02 Mục 9.0) ═══
     private string _activeEventsCountText = "0 sự kiện";
@@ -167,30 +165,6 @@ public class AdminHomeViewModel : HomeViewModelBase
         set => SetProperty(ref _payrollStatusTextColor, value);
     }
 
-    public string EstimatedPayrollCostText
-    {
-        get => _estimatedPayrollCostText;
-        set => SetProperty(ref _estimatedPayrollCostText, value);
-    }
-
-    public string PayrollBudgetLimitText
-    {
-        get => _payrollBudgetLimitText;
-        set => SetProperty(ref _payrollBudgetLimitText, value);
-    }
-
-    public string BudgetUsagePercentText
-    {
-        get => _budgetUsagePercentText;
-        set => SetProperty(ref _budgetUsagePercentText, value);
-    }
-
-    public double BudgetUsageProgress
-    {
-        get => _budgetUsageProgress;
-        set => SetProperty(ref _budgetUsageProgress, value);
-    }
-
     public string BudgetStatusNote
     {
         get => _budgetStatusNote;
@@ -254,11 +228,9 @@ public class AdminHomeViewModel : HomeViewModelBase
         {
             ShowNotificationDialog?.Invoke(this,
                 $"Quy trình Khóa sổ Lương (PRD 05 Bước 5):\n" +
-                $"• Kỳ lương: {PayrollPeriodName}\n" +
-                $"• Dự toán quỹ lương: {EstimatedPayrollCostText}\n" +
-                $"• Hạn mức ngân sách: {PayrollBudgetLimitText} ({BudgetUsagePercentText})\n" +
-                $"• Trạng thái hiện tại: {PayrollStatusText}\n\n" +
-                $"Ban Giám Đốc có thể kiểm tra đối soát từng phòng ban và ký duyệt khóa sổ trên cổng Web Admin máy tính.");
+                $"• Kỳ lương hiện tại: {PayrollPeriodName}\n" +
+                $"• Trạng thái: {PayrollStatusText}\n\n" +
+                $"Ban Giám Đốc có thể kiểm tra chi tiết bảng lương từng phòng ban và ký duyệt khóa sổ trên cổng Web Admin máy tính: https://hrm.overtime.local");
         });
 
         OpenEventDetailCommand = new Command<AdminHotelEventItem>(item =>
@@ -372,20 +344,9 @@ public class AdminHomeViewModel : HomeViewModelBase
             catch { }
 
             // Xác định số lượng nhân sự có mặt / trực ca thực tế:
-            // Ưu tiên số đã check-in. Nếu trong ca nhưng chưa quẹt hoặc test ca mẫu, lấy số người được phân ca trừ người nghỉ
-            if (clockedInStaffToday.Count > 0)
-            {
-                PresentStaffCount = clockedInStaffToday.Count;
-            }
-            else if (scheduledStaffToday.Count > 0)
-            {
-                PresentStaffCount = Math.Max(0, scheduledStaffToday.Count - OnLeaveStaffCount);
-            }
-            else
-            {
-                // Nếu chưa có phân ca cụ thể ngày hôm nay trong CSDL: tính theo số nhân sự sẵn sàng làm việc trừ số nghỉ phép
-                PresentStaffCount = Math.Max(0, TotalStaffCount - OnLeaveStaffCount);
-            }
+            // Theo yêu cầu: Chỉ lấy đúng số người đã có mặt thực tế (đã quẹt thẻ check-in hôm nay).
+            // Nếu không ai check-in thì không tính (bằng 0) vì đây là đang trực ca mà không có mặt thì không tính.
+            PresentStaffCount = clockedInStaffToday.Count;
 
             AttendanceProgress = TotalStaffCount > 0 ? (double)PresentStaffCount / TotalStaffCount : 0.0;
             AttendanceRateText = $"{AttendanceProgress * 100:0.#}%";
@@ -402,11 +363,17 @@ public class AdminHomeViewModel : HomeViewModelBase
                 WorkforceHealthColor = "#B45309";
                 WorkforceHealthBgColor = "#FEF3C7";
             }
-            else
+            else if (PresentStaffCount > 0)
             {
                 WorkforceHealthStatus = "TỶ LỆ TRỰC CA THẤP";
                 WorkforceHealthColor = "#B91C1C";
                 WorkforceHealthBgColor = "#FEE2E2";
+            }
+            else
+            {
+                WorkforceHealthStatus = "CHƯA CÓ LƯỢT CHECK-IN";
+                WorkforceHealthColor = "#64748B";
+                WorkforceHealthBgColor = "#F1F5F9";
             }
 
             // 4. Phân bổ thực tế vào 3 khối vận hành khách sạn dựa trên danh mục phòng ban thật
@@ -420,19 +387,8 @@ public class AdminHomeViewModel : HomeViewModelBase
                 var pbName = PostgrstJson.ReadEmbeddedString(staff, "phong_ban", "ten_phong_ban").ToLowerInvariant();
                 var maPb = PostgrstJson.ReadNullableInt(staff, "ma_phong_ban") ?? 0;
 
-                bool isPresent;
-                if (clockedInStaffToday.Count > 0)
-                {
-                    isPresent = clockedInStaffToday.Contains(id);
-                }
-                else if (scheduledStaffToday.Count > 0)
-                {
-                    isPresent = scheduledStaffToday.Contains(id) && !staffOnLeave.Contains(id);
-                }
-                else
-                {
-                    isPresent = !staffOnLeave.Contains(id);
-                }
+                // Chỉ tính có mặt nếu nhân sự này đã quẹt thẻ check-in hôm nay
+                bool isPresent = clockedInStaffToday.Contains(id);
 
                 // Khối 1: Tuyến đầu & Vận hành (Tiền sảnh, Buồng phòng, F&B, Bếp)
                 if (maPb is 2 or 3 or 4 or 5 ||
@@ -510,147 +466,144 @@ public class AdminHomeViewModel : HomeViewModelBase
     {
         try
         {
-            // 1. Đọc kỳ tính lương mới nhất trong CSDL
+            var viVn = new CultureInfo("vi-VN");
+            var now = DateTime.Today;
+
+            // 1. Đọc danh sách các kỳ tính lương gần đây từ CSDL
             var payrollJson = await _restClient.GetAsync(
-                "ky_luong?select=ma_ky_luong,thang,nam,trang_thai,ngay_phat_hanh_nhap&order=nam.desc,thang.desc&limit=1");
-            var list = PostgrstJson.ParseArray(payrollJson);
+                "ky_luong?select=ma_ky_luong,thang,nam,trang_thai,ngay_khoa_so,ngay_phat_hanh_nhap&order=nam.desc,thang.desc&limit=10");
+            var kyLuongList = PostgrstJson.ParseArray(payrollJson);
 
-            int maKyLuong = 0;
-            int thang = DateTime.Now.Month;
-            int nam = DateTime.Now.Year;
-            string status = "MO";
+            // 2. Đọc phiếu lương thực tế để tính tổng thực nhận theo kỳ
+            var phieuLuongJson = await _restClient.GetAsync(
+                "phieu_luong?select=ma_phieu_luong,ma_ky_luong,thuc_nhan,luong_co_ban");
+            var phieuLuongArray = PostgrstJson.ParseArray(phieuLuongJson);
 
-            if (list.Length > 0)
+            // Nhóm phiếu lương theo ma_ky_luong
+            Dictionary<int, (int Count, decimal TotalThucNhan)> payrollByKy = new();
+            foreach (var pl in phieuLuongArray)
             {
-                var row = list[0];
-                maKyLuong = PostgrstJson.ReadNullableInt(row, "ma_ky_luong") ?? 0;
-                thang = PostgrstJson.ReadNullableInt(row, "thang") ?? thang;
-                nam = PostgrstJson.ReadNullableInt(row, "nam") ?? nam;
-                status = PostgrstJson.ReadString(row, "trang_thai") ?? "MO";
+                var klId = PostgrstJson.ReadNullableInt(pl, "ma_ky_luong") ?? 0;
+                var thucNhan = PostgrstJson.ReadDecimal(pl, "thuc_nhan");
+
+                if (!payrollByKy.ContainsKey(klId))
+                {
+                    payrollByKy[klId] = (0, 0m);
+                }
+                var current = payrollByKy[klId];
+                payrollByKy[klId] = (current.Count + 1, current.TotalThucNhan + thucNhan);
             }
 
-            PayrollPeriodName = $"Kỳ Lương Tháng {thang}/{nam}";
-            ApplyPayrollStatus(status);
+            // 3. Tạo danh sách 5 tháng gần đây tính từ tháng hiện tại lùi về
+            List<AdminRecentMonthPayrollItem> months = new();
+            decimal maxAmount = 0m;
 
-            // 2. Tính toán số tiền thật từ bảng PHIEU_LUONG hoặc HOP_DONG
-            decimal totalNet = 0;
-            decimal totalBase = 0;
-            int countSlips = 0;
-
-            if (maKyLuong > 0)
+            for (int i = 0; i < 5; i++)
             {
-                try
-                {
-                    var slipJson = await _restClient.GetAsync(
-                        $"phieu_luong?select=ma_phieu_luong,thuc_nhan,luong_co_ban&ma_ky_luong=eq.{maKyLuong}");
-                    var slips = PostgrstJson.ParseArray(slipJson);
+                var targetDate = now.AddMonths(-i);
+                int m = targetDate.Month;
+                int y = targetDate.Year;
 
-                    foreach (var slip in slips)
+                // Tìm kỳ lương khớp với tháng/năm
+                JsonElement? matchedKl = null;
+                foreach (var kl in kyLuongList)
+                {
+                    int klThang = PostgrstJson.ReadNullableInt(kl, "thang") ?? 0;
+                    int klNam = PostgrstJson.ReadNullableInt(kl, "nam") ?? 0;
+                    if (klThang == m && klNam == y)
                     {
-                        totalNet += PostgrstJson.ReadDecimal(slip, "thuc_nhan");
-                        totalBase += PostgrstJson.ReadDecimal(slip, "luong_co_ban");
-                        countSlips++;
+                        matchedKl = kl;
+                        break;
                     }
                 }
-                catch { }
-            }
 
-            // Nếu kỳ này đã tính phiếu lương (có bản ghi trong phieu_luong)
-            if (countSlips > 0 && totalNet > 0)
-            {
-                EstimatedPayrollCostText = $"{totalNet:N0} đ";
-                decimal budgetLimit = Math.Round(totalBase * 1.15m);
-                if (budgetLimit <= 0) budgetLimit = totalNet;
-
-                PayrollBudgetLimitText = $"{budgetLimit:N0} đ";
-                double usage = budgetLimit > 0 ? (double)(totalNet / budgetLimit) : 1.0;
-                BudgetUsageProgress = Math.Clamp(usage, 0.0, 1.0);
-                BudgetUsagePercentText = $"{usage * 100:0.#}%";
-                BudgetStatusNote = $"Đã tính toán {countSlips} phiếu lương thực tế trong CSDL kỳ {thang}/{nam}.";
-            }
-            else
-            {
-                // Nếu kỳ mới chưa chạy chốt lương: Tính tổng quỹ lương cơ bản từ bảng hợp đồng lao động đang hiệu lực
-                decimal totalContractSalary = 0;
-                int activeContracts = 0;
-                try
+                var item = new AdminRecentMonthPayrollItem
                 {
-                    var contractJson = await _restClient.GetAsync(
-                        "hop_dong?select=ma_hop_dong,luong_co_ban&trang_thai=eq.HIEU_LUC");
-                    var contracts = PostgrstJson.ParseArray(contractJson);
+                    MonthName = $"Tháng {m:D2}/{y}",
+                    IsCurrentPeriod = (i == 0)
+                };
 
-                    foreach (var c in contracts)
+                if (matchedKl.HasValue)
+                {
+                    var klId = PostgrstJson.ReadNullableInt(matchedKl.Value, "ma_ky_luong") ?? 0;
+                    var status = PostgrstJson.ReadString(matchedKl.Value, "trang_thai");
+
+                    if (payrollByKy.TryGetValue(klId, out var stat) && stat.Count > 0)
                     {
-                        totalContractSalary += PostgrstJson.ReadDecimal(c, "luong_co_ban");
-                        activeContracts++;
-                    }
-                }
-                catch { }
+                        item.TotalPayoutText = stat.TotalThucNhan.ToString("N0", viVn) + " đ";
+                        item.SubtitleText = $"{stat.Count} phiếu lương thực tế";
+                        if (stat.TotalThucNhan > maxAmount) maxAmount = stat.TotalThucNhan;
 
-                if (totalContractSalary > 0)
-                {
-                    EstimatedPayrollCostText = $"{totalContractSalary:N0} đ (Dự toán)";
-                    decimal planBudget = Math.Round(totalContractSalary * 1.15m);
-                    PayrollBudgetLimitText = $"{planBudget:N0} đ";
-                    double usage = planBudget > 0 ? (double)(totalContractSalary / planBudget) : 0.87;
-                    BudgetUsageProgress = Math.Clamp(usage, 0.0, 1.0);
-                    BudgetUsagePercentText = $"{usage * 100:0.#}%";
-                    BudgetStatusNote = $"Kỳ lương đang mở. Dự toán quỹ lương tính từ {activeContracts} hợp đồng lao động đang hiệu lực trong CSDL.";
+                        if (status == "DA_KHOA_SO" || status == "DA_DUYET")
+                        {
+                            item.StatusText = "Đã Khóa Sổ";
+                            item.StatusBgColor = "#DCFCE7";
+                            item.StatusTextColor = "#15803D";
+                            item.BarColor = "#15803D";
+                        }
+                        else
+                        {
+                            item.StatusText = "Đang Mở";
+                            item.StatusBgColor = "#EFF6FF";
+                            item.StatusTextColor = "#1D4ED8";
+                            item.BarColor = "#1E3A8A";
+                        }
+                    }
+                    else
+                    {
+                        // Kỳ lương đã tạo nhưng chưa chốt phiếu
+                        item.TotalPayoutText = i == 0 ? "Đang tính (Dự thảo)" : "0 đ";
+                        item.SubtitleText = i == 0 ? "Kỳ đang mở · 0 phiếu" : "0 phiếu lương";
+                        item.StatusText = "Dự Thảo";
+                        item.StatusBgColor = "#FEF3C7";
+                        item.StatusTextColor = "#B45309";
+                        item.BarColor = "#D4AF37";
+                    }
                 }
                 else
                 {
-                    EstimatedPayrollCostText = "Chưa có dự toán";
-                    PayrollBudgetLimitText = "Chưa cấu hình";
-                    BudgetUsageProgress = 0;
-                    BudgetUsagePercentText = "0%";
-                    BudgetStatusNote = "Chưa tìm thấy hợp đồng lao động hiệu lực trong CSDL.";
+                    // Tháng chưa khởi tạo kỳ trong DB
+                    item.TotalPayoutText = "—";
+                    item.SubtitleText = "Chưa phát sinh dữ liệu";
+                    item.StatusText = "Chưa Tạo Kỳ";
+                    item.StatusBgColor = "#F1F5F9";
+                    item.StatusTextColor = "#94A3B8";
+                    item.BarColor = "#CBD5E1";
+                }
+
+                months.Add(item);
+            }
+
+            // Chuẩn hóa tỷ lệ thanh BarProgress
+            foreach (var m in months)
+            {
+                var digits = new string(m.TotalPayoutText.Where(char.IsDigit).ToArray());
+                if (maxAmount > 0 && decimal.TryParse(digits, out var val) && val > 0)
+                {
+                    m.BarProgress = Math.Min(1.0, Math.Max(0.08, (double)val / (double)maxAmount));
+                }
+                else
+                {
+                    m.BarProgress = 0.04;
                 }
             }
+
+            RecentMonthsPayroll.Clear();
+            foreach (var m in months)
+            {
+                RecentMonthsPayroll.Add(m);
+            }
+
+            PayrollPeriodName = $"Kỳ Lương Tháng {now.Month:D2}/{now.Year}";
+            PayrollStatusText = "Thẩm quyền Ban Giám Đốc";
+            PayrollStatusBgColor = "#EFF6FF";
+            PayrollStatusTextColor = "#1D4ED8";
+            BudgetStatusNote = "Dữ liệu được truy vấn 100% từ các bảng ky_luong và phieu_luong thực tế trong CSDL Supabase.";
+            PayrollActionText = "Chi tiết kỳ lương & Khóa sổ";
         }
         catch (Exception ex)
         {
-            PayrollPeriodName = "Kỳ Lương Hiện Tại";
-            PayrollStatusText = "Không thể tải";
-            EstimatedPayrollCostText = "0 đ";
-            PayrollBudgetLimitText = "0 đ";
-            BudgetStatusNote = $"Không thể tải kỳ lương: {ex.Message}";
-        }
-    }
-
-    private void ApplyPayrollStatus(string? status)
-    {
-        switch (status)
-        {
-            case "CHO_DUYET":
-                PayrollStatusText = "Chờ Giám Đốc Phê Duyệt";
-                PayrollStatusBgColor = "#FEF3C7";
-                PayrollStatusTextColor = "#B45309";
-                PayrollActionText = "Ký duyệt & Khóa sổ kỳ lương";
-                break;
-            case "DA_DUYET":
-                PayrollStatusText = "Giám Đốc Đã Phê Duyệt";
-                PayrollStatusBgColor = "#DCFCE7";
-                PayrollStatusTextColor = "#15803D";
-                PayrollActionText = "Xác nhận khóa sổ kỳ lương";
-                break;
-            case "KHOA_SO":
-                PayrollStatusText = "Đã Khóa Sổ Kỳ Lương";
-                PayrollStatusBgColor = "#EFF6FF";
-                PayrollStatusTextColor = "#1D4ED8";
-                PayrollActionText = "Xem đối soát kỳ lương";
-                break;
-            case "CHO_PHAN_HOI":
-                PayrollStatusText = "Đang Đối Soát Phiếu Nháp";
-                PayrollStatusBgColor = "#E0F2FE";
-                PayrollStatusTextColor = "#0369A1";
-                PayrollActionText = "Xem tiến độ đối soát nháp";
-                break;
-            default:
-                PayrollStatusText = "Đang Tính Lương (Dự thảo)";
-                PayrollStatusBgColor = "#F1F5F9";
-                PayrollStatusTextColor = "#475569";
-                PayrollActionText = "Xem dự toán quỹ lương";
-                break;
+            BudgetStatusNote = $"Lỗi kết nối CSDL kỳ lương: {ex.Message}";
         }
     }
 

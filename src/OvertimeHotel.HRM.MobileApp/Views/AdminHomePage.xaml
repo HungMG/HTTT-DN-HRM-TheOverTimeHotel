@@ -253,7 +253,7 @@
                     <!-- ═══ KHỐI 4 · TIẾN ĐỘ QUỸ LƯƠNG & KHÓA SỔ KỲ LƯƠNG (PRD 02 & 05) ═══ -->
                     <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                         <Label Grid.Column="0"
-                               Text="QUỸ LƯƠNG &amp; KHÓA SỔ (PRD 05)"
+                               Text="QUỸ LƯƠNG 5 THÁNG GẦN ĐÂY"
                                TextColor="#1E3A8A"
                                FontSize="12"
                                FontFamily="SegoeUIBold"
@@ -295,37 +295,61 @@
                                 </Border>
                             </Grid>
 
-                            <!-- Dự toán và Ngân sách kế hoạch -->
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                <VerticalStackLayout Grid.Column="0" Spacing="2">
-                                    <Label Text="DỰ TOÁN THỰC NHẬN"
-                                           TextColor="#64748B"
-                                           FontSize="10"
-                                           FontFamily="SegoeUIBold" />
-                                    <Label Text="{Binding EstimatedPayrollCostText}"
-                                           TextColor="#1E3A8A"
-                                           FontSize="16"
-                                           FontFamily="SegoeUIBold" />
-                                </VerticalStackLayout>
-                                <VerticalStackLayout Grid.Column="1" Spacing="2">
-                                    <Label Text="HẠN MỨC NGÂN SÁCH"
-                                           TextColor="#64748B"
-                                           FontSize="10"
-                                           FontFamily="SegoeUIBold" />
-                                    <Label Text="{Binding PayrollBudgetLimitText}"
-                                           TextColor="#475569"
-                                           FontSize="14"
-                                           FontFamily="SegoeUIBold" />
-                                </VerticalStackLayout>
-                            </Grid>
+                            <!-- Danh sách quỹ lương 5 tháng gần đây -->
+                            <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding RecentMonthsPayroll}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="models:AdminRecentMonthPayrollItem">
+                                        <Border Stroke="#F1F5F9"
+                                                StrokeShape="RoundRectangle 10"
+                                                BackgroundColor="#F8FAFC"
+                                                Padding="12,10">
+                                            <VerticalStackLayout Spacing="6">
+                                                <!-- Hàng 1: Tháng + Badge trạng thái -->
+                                                <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center">
+                                                    <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                                                        <Label Text="📅" FontSize="12" VerticalOptions="Center" />
+                                                        <Label Text="{Binding MonthName}"
+                                                               TextColor="#0F172A"
+                                                               FontSize="13"
+                                                               FontFamily="SegoeUIBold"
+                                                               VerticalOptions="Center" />
+                                                    </HorizontalStackLayout>
+                                                    <Border Grid.Column="1"
+                                                            StrokeShape="RoundRectangle 6"
+                                                            BackgroundColor="{Binding StatusBgColor}"
+                                                            Stroke="Transparent"
+                                                            Padding="8,2"
+                                                            VerticalOptions="Center">
+                                                        <Label Text="{Binding StatusText}"
+                                                               TextColor="{Binding StatusTextColor}"
+                                                               FontSize="10"
+                                                               FontFamily="SegoeUIBold" />
+                                                    </Border>
+                                                </Grid>
 
-                            <!-- Thanh tỷ lệ giải ngân ngân sách -->
-                            <VerticalStackLayout Spacing="4">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <Label Grid.Column="0" Text="Tỷ lệ thực hiện quỹ lương:" TextColor="#64748B" FontSize="11" />
-                                    <Label Grid.Column="1" Text="{Binding BudgetUsagePercentText}" TextColor="#1E3A8A" FontSize="11" FontFamily="SegoeUIBold" />
-                                </Grid>
-                                <ProgressBar Progress="{Binding BudgetUsageProgress}" ProgressColor="#1E3A8A" HeightRequest="6" />
+                                                <!-- Hàng 2: Tổng chi trả & Số phiếu -->
+                                                <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center">
+                                                    <Label Grid.Column="0"
+                                                           Text="{Binding TotalPayoutText}"
+                                                           TextColor="#1E3A8A"
+                                                           FontSize="15"
+                                                           FontFamily="SegoeUIBold" />
+                                                    <Label Grid.Column="1"
+                                                           Text="{Binding SubtitleText}"
+                                                           TextColor="#64748B"
+                                                           FontSize="11"
+                                                           FontFamily="SegoeUI"
+                                                           VerticalOptions="Center" />
+                                                </Grid>
+
+                                                <!-- Hàng 3: Thanh so sánh trực quan -->
+                                                <ProgressBar Progress="{Binding BarProgress}"
+                                                             ProgressColor="{Binding BarColor}"
+                                                             HeightRequest="4" />
+                                            </VerticalStackLayout>
+                                        </Border>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
                             </VerticalStackLayout>
 
                             <!-- Ghi chú tiến độ 6 bước PRD 05 -->
