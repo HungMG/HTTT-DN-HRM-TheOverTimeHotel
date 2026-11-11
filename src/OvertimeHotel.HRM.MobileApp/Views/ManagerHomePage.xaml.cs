@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.MobileApp.Animations;
 using OvertimeHotel.HRM.MobileApp.ViewModels;
@@ -7,16 +6,14 @@ using OvertimeHotel.HRM.MobileApp.Views.Controls;
 namespace OvertimeHotel.HRM.MobileApp.Views;
 
 /// <summary>
-/// Trang chủ nhánh QUẢN LÝ &amp; QUẢN TRỊ.
-/// Bố cục kết hợp theo dõi hiện diện thực tế (đồng hồ &amp; GPS khách sạn) cùng trung
-/// tâm điều hành: thẻ thẩm quyền quản lý, thông báo duyệt đơn khẩn, dải ca trực điều
-/// hành hôm nay, các chỉ số KPI bộ phận và lưới thao tác quản trị nhanh.
+/// Trang chủ nhánh QUẢN LÝ BỘ PHẬN (Executive Manager Dashboard).
+/// Bố cục chuẩn Hospitality 5 sao: Bảng điều hành bộ phận Navy &amp; Gold,
+/// cảnh báo duyệt đơn khẩn cấp, giám sát quân số ca trực hôm nay (ai đang làm việc,
+/// ai đi trễ, ai nghỉ phép), và phím tắt nghiệp vụ điều hành nhanh.
 /// </summary>
 public partial class ManagerHomePage : ContentPage
 {
     private readonly VisualElement[] _entranceBlocks;
-    private readonly StatTile _pendingLeaveTile;
-    private readonly StatTile _reviewedLeaveTile;
     private readonly ManagerHomeViewModel _viewModel;
     private readonly EmployeeDashboardViewModel _employeeDashboard;
 
@@ -30,18 +27,16 @@ public partial class ManagerHomePage : ContentPage
         BindingContext = _viewModel;
         locationClockPanel.Bind(_employeeDashboard);
 
-        _pendingLeaveTile = pendingLeaveTile;
-        _reviewedLeaveTile = reviewedLeaveTile;
-
         _entranceBlocks = new VisualElement[]
         {
             profileHeaderBar,
-            locationClockPanel,
             managerScopeCard,
+            locationClockPanel,
             shiftTimelineCard,
+            urgentApprovalCard,
+            allReviewedCard,
             statsGrid,
-            featuresHeader,
-            featuresGrid,
+            staffRosterCard,
             footerLabel
         };
     }
@@ -50,13 +45,17 @@ public partial class ManagerHomePage : ContentPage
     {
         base.OnAppearing();
 
+        _viewModel.FeatureRequested -= OnFeatureRequested;
         _viewModel.FeatureRequested += OnFeatureRequested;
+
+        _viewModel.AttendanceSummaryForbidden -= OnAttendanceSummaryForbidden;
         _viewModel.AttendanceSummaryForbidden += OnAttendanceSummaryForbidden;
-        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+        _viewModel.ShowNotificationDialog -= OnShowNotificationDialog;
+        _viewModel.ShowNotificationDialog += OnShowNotificationDialog;
 
         await _viewModel.LoadAsync();
-        ApplyViewModel(_viewModel);
-        BindShiftTimeline(_viewModel);
+        profileHeaderBar.Bind(_viewModel);
 
         await RunEntranceAnimationAsync();
         await StartManagerPresenceAsync();
@@ -68,7 +67,7 @@ public partial class ManagerHomePage : ContentPage
 
         _viewModel.FeatureRequested -= OnFeatureRequested;
         _viewModel.AttendanceSummaryForbidden -= OnAttendanceSummaryForbidden;
-        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel.ShowNotificationDialog -= OnShowNotificationDialog;
 
         // Dừng timer đồng hồ và GPS khi rời tab quản lý để không hao pin
         _employeeDashboard.Stop();
@@ -78,7 +77,7 @@ public partial class ManagerHomePage : ContentPage
     /// Hiệu ứng các khối lướt vào theo nhịp so le mượt mà 60 FPS (SlideFadeIn).
     /// </summary>
     private async Task RunEntranceAnimationAsync() =>
-        await _entranceBlocks.StaggerCascadeAsync(SlideDirection.Up, delayBetweenMs: 70, duration: 400);
+        await _entranceBlocks.StaggerCascadeAsync(SlideDirection.Up, delayBetweenMs: 60, duration: 380);
 
     /// <summary>
     /// Bật đồng hồ số thật và nạp vị trí GPS giám sát tại khách sạn.
@@ -105,66 +104,22 @@ public partial class ManagerHomePage : ContentPage
         }
     }
 
-    /// <summary>Đẩy dữ liệu của ViewModel vào các thẻ điều hành trên màn hình.</summary>
-    private void ApplyViewModel(ManagerHomeViewModel viewModel)
-    {
-        profileHeaderBar.Bind(viewModel);
-        lblCommandRole.Text = viewModel.CommandRole;
-        lblCommandScope.Text = viewModel.CommandScope;
-        lblPermissionBadge.Text = viewModel.PermissionLabel;
-
-        _pendingLeaveTile.Value = viewModel.PendingLeaveCount.ToString();
-        _pendingLeaveTile.SubCaption = viewModel.PendingLeaveSub;
-
-        _reviewedLeaveTile.Value = viewModel.ReviewedLeaveCount.ToString();
-    }
-
-    /// <summary>
-    /// Gắn thông tin ca trực điều hành hôm nay của quản lý vào dải thời gian.
-    /// </summary>
-    private void BindShiftTimeline(ManagerHomeViewModel viewModel)
-    {
-        var parts = viewModel.ShiftTimeText.Split('–', StringSplitOptions.TrimEntries);
-
-        lblTimelineStart.Text = parts.Length > 0 ? parts[0] : "--:--";
-        lblTimelineEnd.Text = parts.Length > 1 ? parts[1] : "--:--";
-        lblTimelineShiftName.Text = viewModel.ShiftTaskText;
-
-        lblNightBadge.Text = string.IsNullOrEmpty(viewModel.NightBadgeText)
-            ? "Trưởng Bộ Phận"
-            : viewModel.NightBadgeText;
-        nightBadgeBorder.IsVisible = viewModel.HasShiftToday;
-    }
-
-    /// <summary>
-    /// Lắng nghe thay đổi dữ liệu bất đồng bộ từ CSDL để cập nhật giao diện trên UI thread.
-    /// </summary>
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        switch (e.PropertyName)
-        {
-            case nameof(ManagerHomeViewModel.CommandRole):
-            case nameof(ManagerHomeViewModel.CommandScope):
-            case nameof(ManagerHomeViewModel.PermissionLabel):
-            case nameof(ManagerHomeViewModel.PendingLeaveCount):
-            case nameof(ManagerHomeViewModel.PendingLeaveSub):
-            case nameof(ManagerHomeViewModel.ReviewedLeaveCount):
-                MainThread.BeginInvokeOnMainThread(() => ApplyViewModel(_viewModel));
-                break;
-
-            case nameof(ManagerHomeViewModel.ShiftTimeText):
-            case nameof(ManagerHomeViewModel.ShiftTaskText):
-            case nameof(ManagerHomeViewModel.NightBadgeText):
-            case nameof(ManagerHomeViewModel.HasShiftToday):
-                MainThread.BeginInvokeOnMainThread(() => BindShiftTimeline(_viewModel));
-                break;
-        }
-    }
+    private void OnShowNotificationDialog(object? sender, string message) =>
+        popup?.Show(
+            title: "Thông Báo Quản Lý",
+            message: message,
+            iconText: "i",
+            iconTextColor: "#1E3A8A",
+            iconBgColor: "#EFF6FF",
+            borderColor: "#D4AF37",
+            confirmText: "ĐÃ HIỂU",
+            showCancel: false,
+            onConfirm: null);
 
     private void OnFeatureRequested(object? sender, string featureName) =>
-        popup.Show(
-            title: "Chức Năng Đang Nâng Cấp",
-            message: $"Tính năng [{featureName}] đang được kết nối với API Supabase ở các task tiếp theo.",
+        popup?.Show(
+            title: "Chức Năng Điều Hành",
+            message: $"Tính năng [{featureName}] đang được đồng bộ và cập nhật với API hệ thống.",
             iconText: "★",
             iconTextColor: "#B45309",
             iconBgColor: "#FFFBEB",
@@ -174,7 +129,7 @@ public partial class ManagerHomePage : ContentPage
             onConfirm: null);
 
     private void OnAttendanceSummaryForbidden(object? sender, EventArgs e) =>
-        popup.Show(
+        popup?.Show(
             title: "Thông Báo",
             message: new AttendanceSummaryUnavailableException().Message,
             iconText: "!",

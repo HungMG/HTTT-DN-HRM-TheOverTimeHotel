@@ -46,8 +46,8 @@ public class LoginViewModel : INotifyPropertyChanged
         TogglePasswordCommand = new Command(ExecuteTogglePassword);
         BiometricLoginCommand = new Command(async () => await ExecuteBiometricLoginAsync(), () => !IsLoading);
 
-        // Mặc định nạp sẵn tài khoản nhân viên thật trên Supabase Cloud để thử nhanh.
-        ExecuteQuickFill("employee");
+        // Mặc định nạp sẵn tài khoản quản lý (Trưởng bộ phận) để thử nghiệm.
+        ExecuteQuickFill("manager");
     }
 
     public string Username
@@ -306,8 +306,8 @@ public class LoginViewModel : INotifyPropertyChanged
                 Password = "123456789";
                 break;
             case "manager":
-                Username = "bao.chau@overtimehotel.com";
-                Password = "123456789";
+                Username = "long.nguyen@overtimehotel.com";
+                Password = "Overtime@2026";
                 break;
             case "hr":
                 Username = "sang.vo@overtimehotel.com";
