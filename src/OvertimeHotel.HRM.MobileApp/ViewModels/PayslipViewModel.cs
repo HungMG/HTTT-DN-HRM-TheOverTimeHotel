@@ -111,6 +111,7 @@ public class PayslipViewModel : INotifyPropertyChanged
     public Command LoginCommand { get; }
     public Command ExportPdfCommand { get; }
     public Command ExportYearlyPdfCommand { get; }
+    public Command NavigateToAttendanceExplanationCommand { get; }
 
     public PayslipViewModel(IPayslipService service, IAuthService authService, IPayslipPdfExportService pdfExportService)
     {
@@ -127,6 +128,7 @@ public class PayslipViewModel : INotifyPropertyChanged
         CloseDetailCommand = new Command(ClearDetail);
         ExportPdfCommand = new Command(async () => await ExportPdfAsync(), () => _summary != null && !IsDetailLoading && !IsExportingPdf);
         ExportYearlyPdfCommand = new Command(async () => await ExportYearlyPdfAsync(), () => CanExportYearlyPdf);
+        NavigateToAttendanceExplanationCommand = new Command(async () => await NavigateToAttendanceExplanationAsync());
         LoginCommand = new Command(async () =>
         {
             await _authService.LogoutAsync();
@@ -229,6 +231,16 @@ public class PayslipViewModel : INotifyPropertyChanged
     public string DetailStatusColor => _summary == null ? "#047857" : new PayslipRowItem(_summary).StatusColor;
     public string DetailStatusBackground => _summary == null ? "#ECFDF5" : new PayslipRowItem(_summary).StatusBackground;
 
+    public bool IsDetailDraft => _summary?.IsDraft ?? false;
+
+    public string DetailDraftDeadlineText => _summary?.HanPhanHoi.HasValue == true
+        ? $"Hạn đối soát: {_summary.HanPhanHoi.Value.ToOffset(TimeSpan.FromHours(7)):HH:mm 'ngày' dd/MM/yyyy}"
+        : "Đang mở tiếp nhận ý kiến đối soát";
+
+    public string DetailDraftReviewNote => _summary?.HanPhanHoi.HasValue == true
+        ? $"Phiếu lương nháp kỳ này đang được mở để nhân viên kiểm tra đối chiếu trước khi trình Ban Giám Đốc phê duyệt. Hạn chót phản hồi: {_summary.HanPhanHoi.Value.ToOffset(TimeSpan.FromHours(7)):HH:mm 'ngày' dd/MM/yyyy}. Nếu phát hiện sai sót giờ công hoặc phụ cấp, vui lòng bấm nút bên dưới để gửi đơn giải trình chấm công."
+        : "Phiếu lương nháp kỳ này đang được mở để nhân viên kiểm tra đối chiếu trước khi trình Ban Giám Đốc phê duyệt. Nếu phát hiện sai sót giờ công hoặc phụ cấp, vui lòng bấm nút bên dưới để gửi đơn giải trình chấm công.";
+
     public string DetailDepartmentRole
     {
         get
@@ -285,6 +297,10 @@ public class PayslipViewModel : INotifyPropertyChanged
     public string DetailFormulaGross => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(TotalGross)} ₫";
     public string DetailFormulaDeduction => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.TongKhauTru)} ₫";
     public string DetailFormulaNet => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.ThucNhan)} ₫";
+
+    public string DetailBalanceText => IsDetailDraft ? "Bản nháp đang mở đối soát · Chưa khóa sổ chính thức" : "Bất biến cân bằng 100% · Đã khóa sổ & phát hành chính thức";
+    public string DetailBalanceColor => IsDetailDraft ? "#B45309" : "#047857";
+    public string DetailBalanceIcon => IsDetailDraft ? "⏱" : "✔";
 
     public bool IsExportingPdf
     {
@@ -564,6 +580,14 @@ public class PayslipViewModel : INotifyPropertyChanged
         }
     }
 
+    private async Task NavigateToAttendanceExplanationAsync()
+    {
+        if (Shell.Current != null)
+        {
+            await Shell.Current.GoToAsync("AttendanceExplanationPage");
+        }
+    }
+
     public void ClearDetail()
     {
         _summary = null;
@@ -727,6 +751,12 @@ public class PayslipViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(DetailItems));
         OnPropertyChanged(nameof(IncomeItems));
         OnPropertyChanged(nameof(DeductionItems));
+        OnPropertyChanged(nameof(IsDetailDraft));
+        OnPropertyChanged(nameof(DetailDraftDeadlineText));
+        OnPropertyChanged(nameof(DetailDraftReviewNote));
+        OnPropertyChanged(nameof(DetailBalanceText));
+        OnPropertyChanged(nameof(DetailBalanceColor));
+        OnPropertyChanged(nameof(DetailBalanceIcon));
     }
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null)

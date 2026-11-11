@@ -206,6 +206,12 @@ public static class AttendanceCalculator
         DateTimeOffset ketThucDuKien,
         DateTimeOffset now)
     {
+        if (batDauDuKien == default || batDauDuKien <= DateTimeOffset.MinValue.AddMinutes(EARLY_CHECKIN_MINUTES_ALLOWED) ||
+            ketThucDuKien == default || ketThucDuKien <= batDauDuKien)
+        {
+            return (false, "INVALID_SHIFT", "Chưa xác định được giờ ca làm việc hợp lệ.");
+        }
+
         var earliestAllowed = batDauDuKien.AddMinutes(-EARLY_CHECKIN_MINUTES_ALLOWED);
         if (now < earliestAllowed)
         {
@@ -232,6 +238,13 @@ public static class AttendanceCalculator
         DateTimeOffset gioCheckIn,
         DateTimeOffset now)
     {
+        if (ketThucDuKien == default || gioCheckIn == default ||
+            ketThucDuKien <= DateTimeOffset.MinValue.AddHours(MAX_CHECKOUT_HOURS_AFTER_SHIFT) ||
+            ketThucDuKien >= DateTimeOffset.MaxValue.AddHours(-MAX_CHECKOUT_HOURS_AFTER_SHIFT))
+        {
+            return (false, "INVALID_SHIFT", "Chưa xác định được giờ ca làm việc hợp lệ.");
+        }
+
         if (now < gioCheckIn)
         {
             return (false, "INVALID_TIME", "Thời gian quẹt thẻ ra không thể sớm hơn thời gian quẹt thẻ vào.");

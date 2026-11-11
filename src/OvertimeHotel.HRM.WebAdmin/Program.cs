@@ -418,6 +418,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
         await DatabaseSchemaInitializer.EnsureShiftAutoPublishSchemaAsync(schemaContext);
         await DatabaseSchemaInitializer.EnsureContractTerminationSchemaAsync(schemaContext);
         await DatabaseSchemaInitializer.EnsureRemoveShiftSupervisorPositionAsync(schemaContext);
+        await DatabaseSchemaInitializer.EnsureAttendancePerformanceIndexesAsync(schemaContext);
     }
     catch (Exception ex)
     {

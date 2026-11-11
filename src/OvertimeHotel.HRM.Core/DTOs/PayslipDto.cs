@@ -16,7 +16,9 @@ public record PayslipSummaryDto(
     decimal TongThuong,
     decimal TongKhauTru,
     decimal ThucNhan,
-    string TrangThai
+    string TrangThai,
+    bool IsDraft = false,
+    DateTimeOffset? HanPhanHoi = null
 );
 
 public record PayslipItemDto(

@@ -200,8 +200,11 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `nam` (INT, NOT NULL, CHECK (nam >= 2000)): Năm lương.
 - `tu_ngay` (DATE, NOT NULL): Ngày đầu chu kỳ tính công.
 - `den_ngay` (DATE, NOT NULL): Ngày cuối chu kỳ tính công.
-- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'MO', CHECK in ('MO', 'DANG_TINH', 'KHOA_SO')): Trạng thái chu kỳ lương.
-- `ngay_gui_duyet` (TIMESTAMPTZ, NULL): Thời điểm HR gửi bảng lương lên Ban Giám đốc.
+- `trang_thai` (VARCHAR(30), NOT NULL, DEFAULT 'MO', CHECK in ('MO', 'NHAP', 'CHO_PHAN_HOI', 'CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'KHOA_SO')): Trạng thái chu kỳ lương (`CHO_PHAN_HOI`: Đang phát hành nháp cho nhân viên kiểm tra đối soát).
+- `ngay_phat_hanh_nhap` (TIMESTAMPTZ, NULL): Thời điểm HR phát hành phiếu lương nháp cho nhân viên kiểm tra, đối soát trước khi trình sếp.
+- `nguoi_phat_hanh_nhap` (VARCHAR(100), NULL): Tên cán bộ HR thực hiện phát hành phiếu lương nháp.
+- `han_phan_hoi_nhap` (TIMESTAMPTZ, NULL): Hạn chót nhân viên kiểm tra và gửi giải trình chấm công nếu có sai sót (mặc định 3 ngày làm việc).
+- `ngay_gui_duyet` (TIMESTAMPTZ, NULL): Thời điểm HR gửi bảng lương lên Ban Giám đốc phê duyệt.
 - `nguoi_gui_duyet` (VARCHAR(100), NULL): Tên cán bộ HR gửi duyệt bảng lương.
 - `ngay_duyet` (TIMESTAMPTZ, NULL): Thời điểm Ban Giám đốc phê duyệt bảng lương.
 - `nguoi_duyet` (VARCHAR(100), NULL): Tên người phê duyệt bảng lương.

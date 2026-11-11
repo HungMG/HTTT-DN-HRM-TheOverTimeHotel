@@ -15,6 +15,7 @@ public interface IPayrollCalculationService
     Task<bool> AdjustSalaryItemAsync(int maPhieuLuong, string loaiKhoan, string tenKhoan, decimal soTien, string? ghiChu, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default);
     Task<bool> DeleteSalaryItemAsync(int maChiTiet, string? nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default);
 
+    Task<bool> PublishDraftPayslipsAsync(int maKyLuong, DateTimeOffset hanPhanHoi, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default);
     Task<bool> SubmitForApprovalAsync(int maKyLuong, string nguoiGui, int? maTaiKhoan, CancellationToken cancellationToken = default);
     Task<bool> ApprovePayrollAsync(int maKyLuong, string nguoiDuyet, int? maTaiKhoan, CancellationToken cancellationToken = default);
     Task<bool> RejectPayrollAsync(int maKyLuong, string nguoiTuChoi, string lyDo, int? maTaiKhoan, CancellationToken cancellationToken = default);

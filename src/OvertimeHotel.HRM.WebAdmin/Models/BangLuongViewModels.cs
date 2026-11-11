@@ -25,6 +25,11 @@ public class BangLuongIndexViewModel
 
     // Quyền hạn thao tác
     public bool CanCalculate { get; set; }
+    public bool CanPublishDraft { get; set; }
+    public bool IsReviewingDraft { get; set; }
+    public DateTimeOffset? HanPhanHoi { get; set; }
+    public DateTimeOffset? NgayPhatHanhNhap { get; set; }
+    public string? NguoiPhatHanhNhap { get; set; }
     public bool CanSubmitApproval { get; set; }
     public bool CanApprove { get; set; }
     public bool CanLock { get; set; }
@@ -213,3 +218,16 @@ public class RejectPayrollInput
     [StringLength(500, MinimumLength = 5, ErrorMessage = "Lý do từ chối từ 5 đến 500 ký tự")]
     public string LyDo { get; set; } = string.Empty;
 }
+
+public class PublishDraftPayrollInput
+{
+    public int MaKyLuong { get; set; }
+    public int Thang { get; set; }
+    public int Nam { get; set; }
+
+    [Range(1, 14, ErrorMessage = "Số ngày phản hồi từ 1 đến 14 ngày")]
+    public int SoNgayPhanHoi { get; set; } = 3;
+
+    public DateTime? HanPhanHoiTuyChinh { get; set; }
+}
+

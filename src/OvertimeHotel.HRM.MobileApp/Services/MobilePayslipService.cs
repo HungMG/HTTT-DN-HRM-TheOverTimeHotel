@@ -36,7 +36,7 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
         var rows = await LoadRowsAsync(
             "phieu_luong?select=ma_phieu_luong,ma_nhan_vien,luong_co_ban,ngay_cong_thuc_te," +
             "tien_luong_cong,tien_tang_ca,tong_phu_cap,tong_thuong,tong_khau_tru,thuc_nhan," +
-            $"trang_thai,ky_luong(thang,nam,trang_thai)&ma_nhan_vien=eq.{user.MaNhanVien}" +
+            $"trang_thai,ky_luong(thang,nam,trang_thai,han_phan_hoi_nhap)&ma_nhan_vien=eq.{user.MaNhanVien}" +
             "&order=ma_phieu_luong.desc",
             cancellationToken);
 
@@ -80,11 +80,11 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
     }
 
     /// <summary>
-    /// Kiểm tra phiếu lương đã được duyệt và khóa sổ trên web để gửi sang app nhân viên hay chưa.
-    /// Nhân viên chỉ thấy phiếu lương khi:
-    /// - Phiếu đã được phát hành / gửi tới app (trang_thai == "DA_THANH_TOAN")
-    /// - Hoặc kỳ lương đã được Ban Giám Đốc phê duyệt và khóa sổ (ky_luong.trang_thai == "KHOA_SO") và phiếu không phải bản nháp/chờ duyệt.
-    /// Bản nháp (NHAP), chờ duyệt (CHO_DUYET) hoặc kỳ chưa khóa sổ bị ẩn hoàn toàn khỏi app nhân viên.
+    /// Kiểm tra phiếu lương đã được duyệt/khóa sổ hoặc phát hành bản nháp để hiển thị cho nhân viên.
+    /// Nhân viên thấy phiếu lương khi:
+    /// - Phiếu đã được phát hành chính thức (trang_thai == "DA_THANH_TOAN")
+    /// - Hoặc kỳ lương đã được Ban Giám Đốc phê duyệt và khóa sổ (ky_luong.trang_thai == "KHOA_SO")
+    /// - Hoặc kỳ lương đang ở giai đoạn phát hành bản nháp cho nhân viên kiểm tra (ky_luong.trang_thai == "CHO_PHAN_HOI")
     /// </summary>
     private static bool IsPayslipPublishedToEmployee(JsonElement row)
     {
@@ -96,6 +96,9 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
         if (period is { } p && p.TryGetProperty("trang_thai", out var pStatus))
         {
             var periodStatus = pStatus.GetString();
+            if (string.Equals(periodStatus, "CHO_PHAN_HOI", StringComparison.OrdinalIgnoreCase))
+                return true;
+
             if (string.Equals(periodStatus, "KHOA_SO", StringComparison.OrdinalIgnoreCase) &&
                 (string.Equals(slipStatus, "DA_DUYET", StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(slipStatus, "DA_THANH_TOAN", StringComparison.OrdinalIgnoreCase)))
@@ -110,6 +113,18 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
     private static PayslipSummaryDto ToSummary(JsonElement row, string employeeName, string dept, string role)
     {
         var period = PostgrstJson.ReadEmbedded(row, "ky_luong");
+        var periodStatus = period is { } p && p.TryGetProperty("trang_thai", out var pStatus) ? pStatus.GetString() : null;
+        var isDraft = string.Equals(periodStatus, "CHO_PHAN_HOI", StringComparison.OrdinalIgnoreCase);
+
+        DateTimeOffset? hanPhanHoi = null;
+        if (period is { } pObj && pObj.TryGetProperty("han_phan_hoi_nhap", out var hVal) && hVal.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            if (DateTimeOffset.TryParse(hVal.GetString(), out var dt))
+            {
+                hanPhanHoi = dt;
+            }
+        }
+
         return new PayslipSummaryDto(
             PostgrstJson.ReadNullableInt(row, "ma_phieu_luong") ?? 0,
             PostgrstJson.ReadNullableInt(row, "ma_nhan_vien") ?? 0,
@@ -128,7 +143,9 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
             PostgrstJson.ReadDecimal(row, "tong_thuong"),
             PostgrstJson.ReadDecimal(row, "tong_khau_tru"),
             PostgrstJson.ReadDecimal(row, "thuc_nhan"),
-            PostgrstJson.ReadString(row, "trang_thai"));
+            PostgrstJson.ReadString(row, "trang_thai"),
+            isDraft,
+            hanPhanHoi);
     }
 
     private async Task<string> ReadEmployeeNameAsync(int employeeId, CancellationToken cancellationToken)

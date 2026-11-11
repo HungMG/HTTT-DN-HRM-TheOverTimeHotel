@@ -242,6 +242,8 @@
                                             <Label Text="•" FontSize="11" TextColor="#CBD5E1" />
                                             <Label Text="{Binding SlipIdText}" FontSize="11" TextColor="#64748B" />
                                         </HorizontalStackLayout>
+                                        <Label Text="{Binding DraftDeadlineText}" FontSize="10" TextColor="#B45309"
+                                               FontFamily="SegoeUIBold" IsVisible="{Binding IsDraft}" />
                                     </VerticalStackLayout>
 
                                     <!-- Huy hiệu trạng thái duyệt / khóa sổ -->
@@ -287,6 +289,35 @@
                         <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
                             <Label Text="Đang cập nhật các dòng thu chi..." TextColor="#1E3A8A" FontFamily="SegoeUIBold" FontSize="12" />
                         </HorizontalStackLayout>
+                    </Border>
+
+                    <!-- BANNER ĐỐI SOÁT PHIẾU LƯƠNG NHÁP & GỬI GIẢI TRÌNH (CHO_PHAN_HOI) -->
+                    <Border BackgroundColor="#FFFBEB" Stroke="#FCD34D" StrokeThickness="1"
+                            StrokeShape="RoundRectangle 18" Padding="16,14"
+                            IsVisible="{Binding IsDetailDraft}">
+                        <VerticalStackLayout Spacing="10">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalOptions="Center">
+                                <Border WidthRequest="36" HeightRequest="36" StrokeShape="RoundRectangle 18"
+                                        BackgroundColor="#FEF3C7" StrokeThickness="0"
+                                        VerticalOptions="Center" HorizontalOptions="Center">
+                                    <Label Text="⏱" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                    <Label Text="BẢN NHÁP ĐANG ĐỐI SOÁT" FontFamily="SegoeUIBold"
+                                           FontSize="13" TextColor="#B45309" CharacterSpacing="0.5" />
+                                    <Label Text="{Binding DetailDraftDeadlineText}" FontSize="11" TextColor="#D97706"
+                                           FontFamily="SegoeUIBold" />
+                                </VerticalStackLayout>
+                            </Grid>
+
+                            <Label Text="{Binding DetailDraftReviewNote}" FontSize="12" TextColor="#78350F"
+                                   LineBreakMode="WordWrap" LineHeight="1.3" />
+
+                            <Button Text="📝 Gửi giải trình chấm công nếu có sai sót"
+                                    Command="{Binding NavigateToAttendanceExplanationCommand}"
+                                    BackgroundColor="#1E3A8A" TextColor="#FFFFFF" FontFamily="SegoeUIBold"
+                                    FontSize="12" CornerRadius="12" HeightRequest="40" Padding="12,0" />
+                        </VerticalStackLayout>
                     </Border>
 
                     <!-- 1. HERO CARD: LƯƠNG THỰC NHẬN (NET) SANG TRỌNG 5★ (TÔNG MÀU NHẸ NHÀNG, DỊU MẮT) -->
@@ -547,10 +578,10 @@
                             </Border>
 
                             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-                                <Label Text="✔" TextColor="#047857" FontFamily="SegoeUIBold" FontSize="12" VerticalOptions="Center" />
+                                <Label Text="{Binding DetailBalanceIcon}" TextColor="{Binding DetailBalanceColor}" FontFamily="SegoeUIBold" FontSize="12" VerticalOptions="Center" />
                                 <Label Grid.Column="1"
-                                       Text="Bất biến cân bằng 100% · Đã khóa sổ &amp; phát hành chính thức"
-                                       FontSize="11" TextColor="#047857" FontFamily="SegoeUIBold"
+                                       Text="{Binding DetailBalanceText}"
+                                       FontSize="11" TextColor="{Binding DetailBalanceColor}" FontFamily="SegoeUIBold"
                                        LineBreakMode="WordWrap" VerticalOptions="Center" />
                             </Grid>
 

@@ -93,6 +93,8 @@ public class BangLuongController(
         var isLocked = periodStatus == SalaryConstants.PERIOD_LOCKED;
         var isApproved = !isLocked && (currentPeriod?.NgayDuyet != null || periodStatus == "DA_DUYET");
         var isPendingApproval = !isLocked && !isApproved && currentPeriod?.NgayGuiDuyet != null && currentPeriod?.NgayDuyet == null && string.IsNullOrEmpty(currentPeriod?.LyDoTuChoi);
+        var isDraftReview = !isLocked && !isPendingApproval && !isApproved &&
+            (periodStatus == SalaryConstants.PERIOD_DRAFT_REVIEW || currentPeriod?.NgayPhatHanhNhap != null);
         var isOpenOrDraft = !isLocked && !isPendingApproval && !isApproved;
 
         var showPayrollData = IsHR || isPendingApproval || isApproved || isLocked;
@@ -139,6 +141,11 @@ public class BangLuongController(
             DepartmentFilter = department,
             Departments = departments,
             CanCalculate = IsHR && !isLocked && !isPendingApproval && !isApproved,
+            CanPublishDraft = IsHR && !isLocked && !isPendingApproval && !isApproved && query.Any(),
+            IsReviewingDraft = isDraftReview,
+            HanPhanHoi = currentPeriod?.HanPhanHoiNhap,
+            NgayPhatHanhNhap = currentPeriod?.NgayPhatHanhNhap,
+            NguoiPhatHanhNhap = currentPeriod?.NguoiPhatHanhNhap,
             CanSubmitApproval = IsHR && isOpenOrDraft && query.Any(),
             CanApprove = IsBoss && isPendingApproval,
             CanLock = IsBoss && isApproved,
@@ -624,6 +631,33 @@ public class BangLuongController(
             return Redirect(returnUrl);
         }
         return RedirectToAction(nameof(Detail), new { id = phieuLuongId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> PublishDraft(PublishDraftPayrollInput input)
+    {
+        if (!IsHR)
+        {
+            TempData["Error"] = "Chỉ tài khoản Chuyên viên Nhân sự (HR) mới có quyền phát hành phiếu lương nháp cho nhân viên kiểm tra, đối soát.";
+            return RedirectToAction(nameof(Index), new { thang = input.Thang, nam = input.Nam });
+        }
+
+        try
+        {
+            var hanPhanHoi = input.HanPhanHoiTuyChinh.HasValue
+                ? new DateTimeOffset(input.HanPhanHoiTuyChinh.Value, TimeSpan.FromHours(7))
+                : DateTimeOffset.UtcNow.AddDays(input.SoNgayPhanHoi > 0 ? input.SoNgayPhanHoi : 3);
+
+            await _payrollService.PublishDraftPayslipsAsync(input.MaKyLuong, hanPhanHoi, CurrentUserName, CurrentUserId);
+            TempData["Success"] = $"Đã phát hành phiếu lương nháp tháng {input.Thang:D2}/{input.Nam} cho toàn bộ nhân viên đối soát. Hạn chót phản hồi: {hanPhanHoi.ToOffset(TimeSpan.FromHours(7)):dd/MM/yyyy HH:mm}!";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi phát hành phiếu lương nháp kỳ #{Id}", input.MaKyLuong);
+            TempData["Error"] = $"Không thể phát hành bản nháp: {ex.Message}";
+        }
+
+        return RedirectToAction(nameof(Index), new { thang = input.Thang, nam = input.Nam });
     }
 
     [HttpPost, ValidateAntiForgeryToken]

@@ -110,6 +110,7 @@ public static class PostgrstJson
     public static DateTimeOffset? ReadNullableTimestamp(JsonElement element, string column)
     {
         var raw = ReadNullableString(element, column);
+        if (string.IsNullOrWhiteSpace(raw) || raw is "-infinity" or "infinity") return null;
         return DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var value)
             ? value
             : null;

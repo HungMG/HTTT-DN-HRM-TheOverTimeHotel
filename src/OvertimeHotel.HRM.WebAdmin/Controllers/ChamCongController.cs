@@ -108,8 +108,9 @@ public class ChamCongController : Controller
             model.PhongBanOptions = phongBans.Select(p => new SelectListItem(p.TenPhongBan, p.MaPhongBan.ToString(), p.MaPhongBan == phongBanId)).ToList();
             model.CaOptions = caLamViecs.Select(c => new SelectListItem($"{c.TenCa} ({c.GioBatDau:HH:mm} - {c.GioKetThuc:HH:mm})", c.MaCa.ToString(), c.MaCa == caId)).ToList();
 
-            // 2. Truy vấn danh sách phân ca và chấm công trong khoảng ngày
+            // 2. Truy vấn danh sách phân ca và chấm công trong khoảng ngày (dùng AsSplitQuery triệt tiêu Cartesian)
             var query = _context.PhanCas.AsNoTracking()
+                .AsSplitQuery()
                 .Include(p => p.NhanVien)
                     .ThenInclude(n => n!.PhongBan)
                 .Include(p => p.NhanVien)
@@ -143,12 +144,26 @@ public class ChamCongController : Controller
             {
                 var shifts = await query.OrderByDescending(p => p.NgayLamViec)
                     .ThenBy(p => p.BatDauDuKien).ToListAsync();
-                var shiftIds = shifts.Select(p => p.MaPhanCa).ToList();
+                var shiftIds = shifts.Select(p => p.MaPhanCa).ToHashSet();
+
+                if (shiftIds.Count == 0)
+                {
+                    return (Shifts: shifts, Events: new List<PhanCongDuAn>());
+                }
+
+                // Truy vấn sự kiện qua chỉ mục ngày của phân ca thay vì nhồi mảng IN khổng lồ
                 var events = await _context.PhanCongDuAns.AsNoTracking()
+                    .AsSplitQuery()
                     .Include(p => p.DuAn).Include(p => p.CongThucTes)
-                    .Where(p => p.MaPhanCa.HasValue && shiftIds.Contains(p.MaPhanCa.Value) && p.TrangThaiThamGia != "HUY_PHAN_CONG")
+                    .Where(p => p.MaPhanCa.HasValue &&
+                                p.PhanCa != null &&
+                                p.PhanCa.NgayLamViec >= startDate &&
+                                p.PhanCa.NgayLamViec <= endDate &&
+                                p.TrangThaiThamGia != "HUY_PHAN_CONG")
                     .ToListAsync();
-                return (Shifts: shifts, Events: events);
+
+                var relevantEvents = events.Where(p => shiftIds.Contains(p.MaPhanCa!.Value)).ToList();
+                return (Shifts: shifts, Events: relevantEvents);
             });
             var allShifts = snapshot.Shifts;
             var eventAssignments = snapshot.Events;

@@ -202,18 +202,62 @@ $$\text{Tiền thuế TNCN} = \sum_{\text{bậc } i} \left(\text{Phần thu nh�
 
 ---
 
-## 2. Quy Trình Khóa Sổ & Phát Hành Phiếu Lương PDF
+## 2. Quy Trình 6 Bước Quản Lý Kỳ Lương & Phát Hành Phiếu Lương
+
+Nhằm đảm bảo tính minh bạch, hạn chế tối đa khiếu nại và sai sót tiền lương trong khách sạn 5 sao, quy trình tính lương được tổ chức chặt chẽ qua **6 bước khép kín** với cơ chế **đối soát phiếu lương nháp** trước khi trình Ban Giám Đốc:
 
 ```
-┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-│ 1. ĐỐI SOÁT CÔNG│──────►│2. CHẠY TÍNH TOÁN│──────►│ 3. DUYỆT BẢNG   │──────►│ 4. SINH FILE PDF│
-│ Chốt quẹt thẻ   │       │ Áp dụng công thức│      │ Khóa sổ kỳ lương│       │ QuestPDF        │
-│ & Đơn nghỉ phép │       │ 2 tầng Gross->Net│       │(da_khoa_so=true)│       │ Gửi tới App NV │
-
-└─────────────────┘       └─────────────────┘       └─────────────────┘       └─────────────────┘
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│ 1. ĐỐI SOÁT CÔNG│──────►│ 2. PHÁT HÀNH    │──────►│ 3. TIẾP NHẬN    │
+│ Chốt quẹt thẻ,  │       │    PHIẾU NHÁP   │       │    GIẢI TRÌNH   │
+│ đơn từ & sự kiện│       │ NV kiểm tra công│       │ Điều chỉnh sai  │
+│ Tính toán Gross │       │ (Hạn 3 ngày)    │       │ lệch & tính lại │
+└─────────────────┘       └─────────────────┘       └─────────────────┘
+                                                             │
+┌─────────────────┐       ┌─────────────────┐                │
+│ 6. PHÁT HÀNH    │◄──────│ 5. GĐ DUYỆT &   │◄───────────────┘
+│    CHÍNH THỨC   │       │    KHÓA SỔ      │   4. TRÌNH DUYỆT SẾP
+│ Phiếu lương thật│       │ Khóa sổ bất biến│   Chốt số liệu gửi
+│ Xuất file PDF   │       │ (KHOA_SO)       │   Ban Giám Đốc duyệt
+└─────────────────┘       └─────────────────┘
 ```
 
-1. **Mẫu Phiếu Lương Chuẩn (QuestPDF Template):**
+### Chi tiết 6 bước thực thi:
+
+1. **Bước 1 — Đối soát công & Chạy tính toán sơ bộ (HR Portal):**
+   - Chuyên viên HR rà soát dữ liệu chấm công tháng (giờ check-in/out, đi trễ, về sớm, ca đêm, tăng ca OT), các đơn nghỉ phép đã duyệt và quyết toán phụ cấp sự kiện.
+   - Bấm nút **"Tính lương tự động"** trên Web Admin để hệ thống chạy công thức 2 tầng Gross -> Net và tạo bản ghi phiếu lương với trạng thái ban đầu `MO` / `NHAP`.
+
+2. **Bước 2 — Phát hành Phiếu lương Nháp cho Nhân viên (HR -> App Mobile):**
+   - Trước khi gửi lên Ban Giám Đốc, HR bấm **"Phát hành Phiếu lương Nháp"** trên Web Admin.
+   - Thiết lập **Thời hạn phản hồi / đối soát** (mặc định 3 ngày làm việc, lưu tại `ky_luong.han_phan_hoi_nhap`).
+   - Kỳ lương chuyển sang trạng thái **`CHO_PHAN_HOI`**.
+   - Ngay lập tức, ứng dụng **The OverTime Hotel Mobile App** của nhân viên hiển thị phiếu lương với huy hiệu màu cam **"BẢN NHÁP · ĐANG ĐỐI SOÁT"** cùng đồng hồ đếm ngược hạn chót. Nhân viên có thể xem chi tiết từng ngày công, giờ làm ca đêm, tăng ca, phụ cấp ăn ca và các khoản khấu trừ.
+
+3. **Bước 3 — Tiếp nhận phản hồi & Giải trình chấm công:**
+   - Nếu phát hiện sai sót (quên quẹt thẻ, sai giờ OT, ca đêm chưa ghi nhận), nhân viên bấm trực tiếp vào nút **"Gửi giải trình công nếu có sai sót"** ngay trên giao diện xem phiếu lương nháp của Mobile App.
+   - Đơn giải trình đi qua quy trình 2 cấp: Quản lý bộ phận xác nhận -> HR chốt duyệt.
+   - Khi đơn giải trình được HR duyệt thành công, hệ thống tự động cập nhật lại bảng chấm công và tính toán lại phiếu lương của nhân viên đó một cách chuẩn xác.
+
+4. **Bước 4 — Trình duyệt Bảng lương lên Ban Giám Đốc:**
+   - Hết thời hạn phản hồi hoặc khi toàn bộ giải trình đã được xử lý xong, HR kiểm tra lại lần cuối và bấm **"Chốt & Gửi duyệt Giám Đốc"**.
+   - Kỳ lương chuyển trạng thái sang **`CHO_DUYET`**. Lưu lại thời điểm và người gửi duyệt (`ngay_gui_duyet`, `nguoi_gui_duyet`).
+
+5. **Bước 5 — Ban Giám Đốc phê duyệt & Khóa sổ (Director Approval & Lock):**
+   - Ban Giám Đốc (hoặc Quản trị viên cấp cao) đăng nhập Web Admin xem bảng tổng hợp quỹ lương toàn khách sạn, cơ cấu thu nhập từng phòng ban.
+   - Nếu đồng ý: Bấm **"Phê duyệt bảng lương"** (`DA_DUYET`). Sau đó tiến hành **"Khóa sổ kỳ lương"** (`KHOA_SO`).
+   - Nếu chưa đạt: Bấm **"Từ chối"** kèm lý do chỉ đạo, bảng lương quay về HR để rà soát lại.
+   - Khi đã `KHOA_SO`, toàn bộ dữ liệu tài chính của kỳ lương trở thành **bất biến (Immutable)**. Mọi giải trình sau mốc này sẽ được kết chuyển truy lĩnh/truy thu vào kỳ lương kế tiếp.
+
+6. **Bước 6 — Phát hành Phiếu lương Chính thức & Xuất PDF QuestPDF:**
+   - HR bấm **"Phát hành chính thức"** cho toàn bộ nhân viên.
+   - Trạng thái phiếu lương chuyển sang `DA_THANH_TOAN` / Chính thức.
+   - Trên Mobile App, nhãn chuyển sang màu xanh ngọc **"CHÍNH THỨC"**.
+   - Kích hoạt tiến trình tạo file PDF qua QuestPDF Engine để nhân viên có thể tải về máy hoặc in lưu trữ.
+
+---
+
+### Mẫu Phiếu Lương Chuẩn (QuestPDF Template):
    - **Header:** Logo The OverTime Hotel, Tên kỳ lương, Mã NV, Họ tên, Phòng ban, Chức vụ.
    - **Bảng Thu Nhập (Gross)** — phải khớp đủ các khoản với công thức Tầng 1:
 

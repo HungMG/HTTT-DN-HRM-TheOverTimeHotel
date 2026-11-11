@@ -1177,6 +1177,46 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         payslip.ThucNhan = tongGross - payslip.TongKhauTru;
     }
 
+    public Task<bool> PublishDraftPayslipsAsync(int maKyLuong, DateTimeOffset hanPhanHoi, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(() => PublishDraftPayslipsCoreAsync(maKyLuong, hanPhanHoi, nguoiThucHien, maTaiKhoan, cancellationToken), cancellationToken);
+
+    private async Task<bool> PublishDraftPayslipsCoreAsync(int maKyLuong, DateTimeOffset hanPhanHoi, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken)
+    {
+        var period = await _context.KyLuongs
+            .Include(k => k.PhieuLuongs)
+            .FirstOrDefaultAsync(k => k.MaKyLuong == maKyLuong, cancellationToken);
+
+        if (period == null) return false;
+        EnsureWritablePeriod(period);
+
+        if (period.PhieuLuongs.Count == 0)
+        {
+            throw new InvalidOperationException("Chưa có phiếu lương nào trong kỳ để phát hành bản nháp. Vui lòng tính lương trước.");
+        }
+
+        period.TrangThai = SalaryConstants.PERIOD_DRAFT_REVIEW;
+        period.NgayPhatHanhNhap = DateTimeOffset.UtcNow;
+        period.NguoiPhatHanhNhap = nguoiThucHien;
+        period.HanPhanHoiNhap = hanPhanHoi;
+
+        foreach (var p in period.PhieuLuongs)
+        {
+            p.TrangThai = SalaryConstants.PAYSLIP_DRAFT;
+        }
+
+        _context.NhatKyQuanTris.Add(new NhatKyQuanTri
+        {
+            MaTaiKhoanThucHien = maTaiKhoan,
+            TenNguoiThucHien = nguoiThucHien,
+            TenTaiKhoanBiTacDong = $"KY_LUONG_{period.Thang}_{period.Nam}",
+            HanhDong = "PHAT_HANH_PHIEU_LUONG_NHAP",
+            NoiDung = $"HR phát hành phiếu lương nháp kỳ {period.Thang:D2}/{period.Nam} cho {period.PhieuLuongs.Count} nhân viên kiểm tra đối soát. Hạn phản hồi: {hanPhanHoi:dd/MM/yyyy HH:mm}"
+        });
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public Task<bool> SubmitForApprovalAsync(int maKyLuong, string nguoiGui, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
         ExecutePayrollWriteAsync(() => SubmitForApprovalCoreAsync(maKyLuong, nguoiGui, maTaiKhoan, cancellationToken), cancellationToken);
 

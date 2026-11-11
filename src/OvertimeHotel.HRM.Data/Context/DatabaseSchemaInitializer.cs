@@ -35,7 +35,10 @@ public static class DatabaseSchemaInitializer
     public static Task EnsurePayrollWorkflowSchemaAsync(AppDbContext context, CancellationToken cancellationToken = default)
     {
         const string sql = """
-            ALTER TABLE ky_luong 
+            ALTER TABLE ky_luong
+                ADD COLUMN IF NOT EXISTS ngay_phat_hanh_nhap TIMESTAMPTZ NULL,
+                ADD COLUMN IF NOT EXISTS nguoi_phat_hanh_nhap VARCHAR(100) NULL,
+                ADD COLUMN IF NOT EXISTS han_phan_hoi_nhap TIMESTAMPTZ NULL,
                 ADD COLUMN IF NOT EXISTS ngay_gui_duyet TIMESTAMPTZ NULL,
                 ADD COLUMN IF NOT EXISTS nguoi_gui_duyet VARCHAR(100) NULL,
                 ADD COLUMN IF NOT EXISTS ngay_duyet TIMESTAMPTZ NULL,
@@ -46,8 +49,8 @@ public static class DatabaseSchemaInitializer
 
             ALTER TABLE ky_luong DROP CONSTRAINT IF EXISTS ky_luong_trang_thai_check;
             ALTER TABLE ky_luong DROP CONSTRAINT IF EXISTS uq_ky_luong_trang_thai;
-            ALTER TABLE ky_luong ADD CONSTRAINT ky_luong_trang_thai_check 
-                CHECK (trang_thai IN ('MO', 'NHAP', 'CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'KHOA_SO'));
+            ALTER TABLE ky_luong ADD CONSTRAINT ky_luong_trang_thai_check
+                CHECK (trang_thai IN ('MO', 'NHAP', 'CHO_PHAN_HOI', 'CHO_DUYET', 'DA_DUYET', 'TU_CHOI', 'KHOA_SO'));
 
             ALTER TABLE phieu_luong DROP CONSTRAINT IF EXISTS phieu_luong_trang_thai_check;
             ALTER TABLE phieu_luong ADD CONSTRAINT phieu_luong_trang_thai_check 
@@ -136,6 +139,28 @@ public static class DatabaseSchemaInitializer
 
             -- 5. Xóa bỏ hoàn toàn chức vụ Giám Sát Ca (ID = 3)
             DELETE FROM public.chuc_vu WHERE ma_chuc_vu = 3;
+            """;
+
+        return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+    }
+
+    public static Task EnsureAttendancePerformanceIndexesAsync(AppDbContext context, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            CREATE INDEX IF NOT EXISTS idx_phan_ca_ngay_lam_viec
+                ON public.phan_ca(ngay_lam_viec);
+
+            CREATE INDEX IF NOT EXISTS idx_phan_ca_nhanvien_ngay
+                ON public.phan_ca(ma_nhan_vien, ngay_lam_viec);
+
+            CREATE INDEX IF NOT EXISTS idx_phan_ca_ca_ngay
+                ON public.phan_ca(ma_ca, ngay_lam_viec);
+
+            CREATE INDEX IF NOT EXISTS idx_phan_ca_trang_thai_ngay
+                ON public.phan_ca(trang_thai, ngay_lam_viec);
+
+            CREATE INDEX IF NOT EXISTS idx_phan_cong_du_an_phan_ca
+                ON public.phan_cong_du_an(ma_phan_ca) WHERE ma_phan_ca IS NOT NULL;
             """;
 
         return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);

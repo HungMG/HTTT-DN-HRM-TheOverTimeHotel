@@ -33,26 +33,38 @@ public class PayslipRowItem(PayslipSummaryDto slip)
 
     public string BaseSalaryText => $"{Format(slip.LuongCoBan)} ₫";
 
-    public string StatusText => slip.TrangThai switch
-    {
-        "DA_DUYET" => "Đã khóa sổ",
-        "DA_THANH_TOAN" => "Đã gửi · Đã chốt",
-        _ => "Đang xử lý"
-    };
+    public bool IsDraft => slip.IsDraft;
 
-    public string StatusColor => slip.TrangThai switch
-    {
-        "DA_DUYET" => "#047857",
-        "DA_THANH_TOAN" => "#047857",
-        _ => "#64748B"
-    };
+    public string DraftDeadlineText => slip.HanPhanHoi.HasValue
+        ? $"Hạn đối soát: {slip.HanPhanHoi.Value.ToOffset(TimeSpan.FromHours(7)):dd/MM HH:mm}"
+        : "Đang mở đối soát ý kiến";
 
-    public string StatusBackground => slip.TrangThai switch
-    {
-        "DA_DUYET" => "#ECFDF5",
-        "DA_THANH_TOAN" => "#ECFDF5",
-        _ => "#F1F5F9"
-    };
+    public string StatusText => slip.IsDraft
+        ? "Bản nháp · Đối soát"
+        : slip.TrangThai switch
+        {
+            "DA_DUYET" => "Đã khóa sổ",
+            "DA_THANH_TOAN" => "Đã gửi · Đã chốt",
+            _ => "Đang xử lý"
+        };
+
+    public string StatusColor => slip.IsDraft
+        ? "#B45309"
+        : slip.TrangThai switch
+        {
+            "DA_DUYET" => "#047857",
+            "DA_THANH_TOAN" => "#047857",
+            _ => "#64748B"
+        };
+
+    public string StatusBackground => slip.IsDraft
+        ? "#FEF3C7"
+        : slip.TrangThai switch
+        {
+            "DA_DUYET" => "#ECFDF5",
+            "DA_THANH_TOAN" => "#ECFDF5",
+            _ => "#F1F5F9"
+        };
 
     public static string Format(decimal amount) =>
         amount.ToString("N0", CultureInfo.GetCultureInfo("vi-VN"));

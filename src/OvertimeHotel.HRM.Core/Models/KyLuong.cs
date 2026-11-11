@@ -7,7 +7,11 @@ public class KyLuong
     public int Nam { get; set; }
     public DateOnly TuNgay { get; set; }
     public DateOnly DenNgay { get; set; }
-    public string TrangThai { get; set; } = "MO"; // MO, NHAP, CHO_DUYET, DA_DUYET, TU_CHOI, KHOA_SO
+    public string TrangThai { get; set; } = "MO"; // MO, NHAP, CHO_PHAN_HOI, CHO_DUYET, DA_DUYET, TU_CHOI, KHOA_SO
+
+    public DateTimeOffset? NgayPhatHanhNhap { get; set; }
+    public string? NguoiPhatHanhNhap { get; set; }
+    public DateTimeOffset? HanPhanHoiNhap { get; set; }
 
     public DateTimeOffset? NgayGuiDuyet { get; set; }
     public string? NguoiGuiDuyet { get; set; }

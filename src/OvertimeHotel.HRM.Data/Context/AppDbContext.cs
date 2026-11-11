@@ -252,6 +252,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.GhiChuOt).HasColumnName("ghi_chu_ot").HasMaxLength(255);
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("DA_PHAN").IsRequired();
 
+            entity.HasIndex(e => e.NgayLamViec).HasDatabaseName("idx_phan_ca_ngay_lam_viec");
+            entity.HasIndex(e => new { e.MaNhanVien, e.NgayLamViec }).HasDatabaseName("idx_phan_ca_nhanvien_ngay");
+            entity.HasIndex(e => new { e.MaCa, e.NgayLamViec }).HasDatabaseName("idx_phan_ca_ca_ngay");
+            entity.HasIndex(e => new { e.TrangThai, e.NgayLamViec }).HasDatabaseName("idx_phan_ca_trang_thai_ngay");
+
             entity.HasOne(e => e.NhanVien)
                 .WithMany(n => n.PhanCas)
                 .HasForeignKey(e => e.MaNhanVien)
@@ -344,6 +349,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.TuNgay).HasColumnName("tu_ngay").IsRequired();
             entity.Property(e => e.DenNgay).HasColumnName("den_ngay").IsRequired();
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("MO").IsRequired();
+            entity.Property(e => e.NgayPhatHanhNhap).HasColumnName("ngay_phat_hanh_nhap");
+            entity.Property(e => e.NguoiPhatHanhNhap).HasColumnName("nguoi_phat_hanh_nhap").HasMaxLength(100);
+            entity.Property(e => e.HanPhanHoiNhap).HasColumnName("han_phan_hoi_nhap");
             entity.Property(e => e.NgayGuiDuyet).HasColumnName("ngay_gui_duyet");
             entity.Property(e => e.NguoiGuiDuyet).HasColumnName("nguoi_gui_duyet").HasMaxLength(100);
             entity.Property(e => e.NgayDuyet).HasColumnName("ngay_duyet");

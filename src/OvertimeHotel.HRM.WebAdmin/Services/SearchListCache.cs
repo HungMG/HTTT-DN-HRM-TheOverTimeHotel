@@ -16,8 +16,9 @@ public sealed class SearchListCache(IMemoryCache memory, TimeProvider? clock = n
         IncludeFields = true
     };
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
-    // ponytail: one miss loads at a time; use per-key locks if cold-load contention becomes significant.
-    private readonly SemaphoreSlim _loadLock = new(1, 1);
+    // Striped locks: 64 semaphores eliminate cold-load contention across different keys while protecting against thundering herd.
+    private const int StripeCount = 64;
+    private readonly SemaphoreSlim[] _loadLocks = Enumerable.Range(0, StripeCount).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
     private readonly object _generationLock = new();
     private CancellationTokenSource _generation = new();
     private sealed record Snapshot(byte[] Data, DateTimeOffset ExpiresAt);
@@ -27,7 +28,9 @@ public sealed class SearchListCache(IMemoryCache memory, TimeProvider? clock = n
         var cacheKey = (typeof(SearchListCache), typeof(T), key);
         if (!TryRead(cacheKey, out var snapshot))
         {
-            await _loadLock.WaitAsync();
+            var stripeIndex = Math.Abs(cacheKey.GetHashCode()) % StripeCount;
+            var loadLock = _loadLocks[stripeIndex];
+            await loadLock.WaitAsync();
             try
             {
                 if (!TryRead(cacheKey, out snapshot))
@@ -46,7 +49,7 @@ public sealed class SearchListCache(IMemoryCache memory, TimeProvider? clock = n
                     }
                 }
             }
-            finally { _loadLock.Release(); }
+            finally { loadLock.Release(); }
         }
         // Copies are detached from EF and cannot be modified by a different request.
         return JsonSerializer.Deserialize<T>(snapshot!.Data, JsonOptions)!;
@@ -71,7 +74,10 @@ public sealed class SearchListCache(IMemoryCache memory, TimeProvider? clock = n
     {
         _generation.Cancel();
         _generation.Dispose();
-        _loadLock.Dispose();
+        foreach (var l in _loadLocks)
+        {
+            l.Dispose();
+        }
     }
 }
 

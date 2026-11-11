@@ -69,17 +69,25 @@
         var isApproved = !isLocked && Model.CurrentPeriod?.NgayDuyet.HasValue == true;
         var isRejected = !isLocked && !string.IsNullOrEmpty(Model.CurrentPeriod?.LyDoTuChoi);
         var isPendingApproval = !isLocked && Model.CurrentPeriod?.NgayGuiDuyet.HasValue == true && !isApproved && !isRejected;
+        var isDraftReview = Model.IsReviewingDraft;
 
-        // Vị trí hiện tại trên tiến trình 5 bước.
-        var currentStep = isLocked ? 5 : (isApproved ? 4 : (isPendingApproval ? 3 : (Model.Items.Count > 0 ? 2 : 1)));
+        // Vị trí hiện tại trên tiến trình 6 bước:
+        // 1: Chưa tính toán
+        // 2: Đã tính toán Gross -> Net nháp
+        // 3: Đã phát hành phiếu nháp cho nhân viên đối soát (Hạn phản hồi)
+        // 4: Đã chốt & gửi duyệt cho Ban Giám Đốc
+        // 5: Ban Giám Đốc đã duyệt, chờ khóa sổ
+        // 6: Đã khóa sổ & phát hành chính thức
+        var currentStep = isLocked ? 6 : (isApproved ? 5 : (isPendingApproval ? 4 : (isDraftReview ? 3 : (Model.Items.Count > 0 ? 2 : 1))));
 
         var steps = new (string Title, string Desc)[]
         {
             ("Chạy tính", "Tổng hợp công, OT, phụ cấp"),
-            ("HR kiểm tra", "Đối chiếu & gửi duyệt"),
-            ("GĐ phê duyệt", "Ban Giám Đốc xem xét"),
-            ("Khóa sổ", "Đóng băng dữ liệu tài chính"),
-            ("Gửi phiếu", "Phát phiếu tới App nhân viên")
+            ("Bản nháp", "HR đối soát nội bộ"),
+            ("Phát hành nháp", "Nhân viên kiểm tra & đối soát"),
+            ("Trình duyệt", "Gửi Ban Giám Đốc xem xét"),
+            ("GĐ phê duyệt", "Ban Giám Đốc ký duyệt"),
+            ("Khóa sổ & Gửi", "Đóng băng & Phát hành chính thức")
         };
     }
 
@@ -87,10 +95,10 @@
         @for (int i = 0; i < steps.Length; i++)
         {
             var stepNumber = i + 1;
-            var isStep5Done = stepNumber == 5 && isLocked && Model.ArePayslipsPublished;
-            var isActive = stepNumber == currentStep && !isStep5Done;
+            var isStep6Done = stepNumber == 6 && isLocked && Model.ArePayslipsPublished;
+            var isActive = stepNumber == currentStep && !isStep6Done;
             var isRejectedStep = isRejected && stepNumber == currentStep;
-            var isCompleted = (stepNumber < currentStep || isStep5Done) && !(isRejected && stepNumber >= currentStep);
+            var isCompleted = (stepNumber < currentStep || isStep6Done) && !(isRejected && stepNumber >= currentStep);
             var stateClass = isRejectedStep ? "rejected" : (isActive ? "active" : (isCompleted ? "completed" : ""));
             var iconClass = isRejectedStep ? "bi-x-lg" : (isCompleted ? "bi-check-lg" : stepNumber.ToString());
 
@@ -115,7 +123,7 @@
 
             @if (i < steps.Length - 1)
             {
-                <span class="payroll-step-line @(stepNumber < currentStep || isStep5Done ? "completed" : "")" aria-hidden="true"></span>
+                <span class="payroll-step-line @(stepNumber < currentStep || isStep6Done ? "completed" : "")" aria-hidden="true"></span>
             }
         }
     </div>
@@ -123,12 +131,13 @@
     <div class="payroll-status-bar">
         <div class="payroll-status-meta">
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="badge @(isRejected ? "bg-danger" : (isPendingApproval ? "bg-warning text-dark" : (isApproved ? "bg-primary" : (isLocked ? "bg-success" : (Model.Items.Count > 0 ? "bg-info text-dark" : "bg-secondary"))))) rounded-pill px-3 py-1">
+                <span class="badge @(isRejected ? "bg-danger" : (isPendingApproval ? "bg-warning text-dark" : (isApproved ? "bg-primary" : (isLocked ? "bg-success" : (isDraftReview ? "bg-warning text-dark" : (Model.Items.Count > 0 ? "bg-info text-dark" : "bg-secondary")))))) rounded-pill px-3 py-1">
                     @(isLocked ? "Đã khóa sổ (KHOA_SO)" :
                       (isApproved ? "Ban Giám Đốc đã duyệt (MO)" :
                       (isPendingApproval ? "Đang chờ Ban Giám Đốc duyệt (MO)" :
                       (isRejected ? "Bị từ chối duyệt (MO)" :
-                      (Model.Items.Count > 0 ? "Kỳ lương mở - Đang kiểm tra (MO)" : "Kỳ lương mở - Chưa tính (MO)")))))
+                      (isDraftReview ? "Đang đối soát bản nháp (CHO_PHAN_HOI)" :
+                      (Model.Items.Count > 0 ? "Kỳ lương mở - Đang kiểm tra (MO)" : "Kỳ lương mở - Chưa tính (MO)"))))))
                 </span>
 
                 @if (Model.IsHR)
@@ -199,18 +208,39 @@
                     </div>
                 }
             }
+            else if (isDraftReview)
+            {
+                <div class="mt-2 p-2 bg-warning bg-opacity-10 border border-warning border-opacity-50 rounded-3">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <i class="bi bi-clock-history text-warning fs-5"></i>
+                        <div>
+                            <strong class="text-dark">Đang đối soát phiếu lương nháp (Bước 3/6):</strong>
+                            <span class="text-muted ms-1">Nhân viên đang xem bản nháp trên Mobile App.</span>
+                            @if (Model.HanPhanHoi.HasValue)
+                            {
+                                <span class="badge bg-danger ms-1">
+                                    <i class="bi bi-alarm me-1"></i>Hạn chót: @Model.HanPhanHoi.Value.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM/yyyy HH:mm")
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-1">
+                        <i class="bi bi-info-circle me-1 text-primary"></i>Nếu có thắc mắc giờ công, nhân viên sẽ gửi <em>Giải trình chấm công</em>. Sau khi duyệt giải trình, HR có thể bấm <strong>"Tính lại"</strong> cho nhân viên trước khi bấm <strong>"Chốt &amp; Gửi duyệt cho Sếp"</strong>.
+                    </div>
+                </div>
+            }
             else
             {
                 @if (Model.IsAdminOrBoss)
                 {
                     <div class="small text-muted mt-1">
-                        <i class="bi bi-info-circle me-1"></i>Tài khoản Quản trị viên: Bảng lương đang ở <strong>Bước 2: HR kiểm tra &amp; Gửi duyệt</strong>. Chờ tài khoản HR rà soát đối chiếu và bấm "Gửi duyệt".
+                        <i class="bi bi-info-circle me-1"></i>Tài khoản Quản trị viên: Bảng lương đang ở giai đoạn HR rà soát đối chiếu. Chờ tài khoản HR kiểm tra và gửi duyệt.
                     </div>
                 }
                 else
                 {
                     <div class="small text-muted mt-1">
-                        Tài khoản HR: Vui lòng kiểm tra kỹ số liệu công, tăng ca, phụ cấp, thưởng và khấu trừ của nhân viên, đối chiếu sai sót rồi bấm <strong>"Gửi duyệt cho Sếp"</strong>.
+                        Tài khoản HR: Vui lòng kiểm tra kỹ số liệu công, tăng ca, phụ cấp, thưởng và khấu trừ của nhân viên, phát hành nháp cho nhân viên kiểm tra hoặc bấm <strong>"Gửi duyệt cho Sếp"</strong>.
                     </div>
                 }
             }
@@ -233,6 +263,15 @@
                         </form>
                     }
 
+                    <!-- HÀNH ĐỘNG PHÁT HÀNH PHIẾU LƯƠNG NHÁP CHO NHÂN VIÊN ĐỐI SOÁT -->
+                    @if (Model.CanPublishDraft)
+                    {
+                        <button type="button" class="btn @(isDraftReview ? "btn-outline-warning text-dark border-warning" : "btn-warning text-dark") rounded-pill px-3 shadow-xs" data-bs-toggle="modal" data-bs-target="#publishDraftModal">
+                            <i class="bi bi-send-exclamation me-1"></i>
+                            @(isDraftReview ? "Gia hạn / Gửi lại bản nháp" : "Gửi phiếu nháp cho NV")
+                        </button>
+                    }
+
                     <!-- HÀNH ĐỘNG GỬI DUYỆT (CHỈ DÀNH RIÊNG CHO TÀI KHOẢN HR) -->
                     @if (Model.CanSubmitApproval)
                     {
@@ -242,7 +281,7 @@
                             <input type="hidden" name="thang" value="@Model.SelectedThang" />
                             <input type="hidden" name="nam" value="@Model.SelectedNam" />
                             <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="return confirm('Xác nhận HR đã kiểm tra, đối chiếu kỹ bảng lương và gửi Ban Giám Đốc phê duyệt?');">
-                                <i class="bi bi-send-check-fill me-1"></i> @(status == "TU_CHOI" ? "Gửi duyệt lại cho Sếp" : "Gửi duyệt cho Sếp")
+                                <i class="bi bi-send-check-fill me-1"></i> @(status == "TU_CHOI" ? "Gửi duyệt lại cho Sếp" : (isDraftReview ? "Chốt & Gửi duyệt cho Sếp" : "Gửi duyệt cho Sếp"))
                             </button>
                         </form>
                     }
@@ -616,6 +655,61 @@
                         <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Hủy</button>
                         <button type="submit" class="btn btn-danger rounded-pill px-4">
                             <i class="bi bi-x-circle me-1"></i> Xác nhận từ chối
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- MODAL HR PHÁT HÀNH BẢN NHÁP CHO NHÂN VIÊN KIỂM TRA -->
+@if (Model.CanPublishDraft && Model.CurrentPeriod != null)
+{
+    <div class="modal fade" id="publishDraftModal" tabindex="-1" aria-labelledby="publishDraftModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <form method="post" asp-action="PublishDraft">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="MaKyLuong" value="@Model.CurrentPeriod.MaKyLuong" />
+                    <input type="hidden" name="Thang" value="@Model.SelectedThang" />
+                    <input type="hidden" name="Nam" value="@Model.SelectedNam" />
+
+                    <div class="modal-header border-bottom-0 pb-0">
+                        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="publishDraftModalLabel">
+                            <i class="bi bi-send-exclamation-fill text-warning"></i> Phát hành phiếu lương nháp cho NV
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                    </div>
+                    <div class="modal-body py-3">
+                        <div class="alert alert-warning border-0 bg-warning bg-opacity-10 rounded-3 mb-3">
+                            <div class="d-flex gap-2">
+                                <i class="bi bi-info-circle-fill text-warning fs-5"></i>
+                                <div class="small text-dark">
+                                    Phiếu lương sẽ được hiển thị với trạng thái <strong>BẢN NHÁP (ĐANG ĐỐI SOÁT)</strong> trên Mobile App của nhân viên. Nhân viên có thể xem chi tiết số giờ công, phụ cấp, tăng ca và gửi đơn giải trình nếu phát hiện sai lệch.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-dark">
+                                Thời hạn tiếp nhận phản hồi / giải trình <span class="text-danger">*</span>
+                            </label>
+                            <select name="SoNgayPhanHoi" class="form-select rounded-3">
+                                <option value="2">2 ngày làm việc (Gấp)</option>
+                                <option value="3" selected>3 ngày làm việc (Tiêu chuẩn khách sạn)</option>
+                                <option value="5">5 ngày làm việc</option>
+                                <option value="7">7 ngày làm việc (Kỳ lễ/Tết)</option>
+                            </select>
+                            <div class="form-text">
+                                Sau khi hết hạn, nhân viên không thể gửi thêm giải trình chấm công cho kỳ lương này và HR sẽ chốt số liệu trình Ban Giám Đốc.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 pt-0">
+                        <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-warning rounded-pill px-4 text-dark fw-semibold">
+                            <i class="bi bi-send-fill me-1"></i> Xác nhận phát hành nháp
                         </button>
                     </div>
                 </form>

@@ -158,6 +158,7 @@ public class PhanCaController : Controller
             model.DanhSachNhanVien = await this.SearchDataAsync(empCacheKey, () =>
             {
                 var empQuery = _context.NhanViens.AsNoTracking()
+                    .AsSplitQuery()
                     .Include(n => n.PhongBan)
                     .Include(n => n.ChucVu)
                     .Include(n => n.HopDongs)
@@ -177,11 +178,12 @@ public class PhanCaController : Controller
                 return empQuery.OrderBy(n => n.Ten).ThenBy(n => n.Ho).ToListAsync();
             });
 
-            // 4. Tải danh sách phân ca trong phạm vi lưới 42 ngày (tái sử dụng bộ đệm)
+            // 4. Tải danh sách phân ca trong phạm vi lưới 42 ngày (tái sử dụng bộ đệm, AsSplitQuery triệt tiêu Cartesian)
             var gridCacheKey = $"phanca:grid:{gridStart:yyyyMMdd}:{gridEnd:yyyyMMdd}:scope:{phamViPhongBanId}:ca:{caId}";
             var allGridPhanCas = await this.SearchDataAsync(gridCacheKey, () =>
             {
                 var phanCaQuery = _context.PhanCas.AsNoTracking()
+                    .AsSplitQuery()
                     .Include(p => p.NhanVien)
                         .ThenInclude(n => n!.PhongBan)
                     .Include(p => p.NhanVien)
@@ -218,6 +220,7 @@ public class PhanCaController : Controller
                 {
                     var approvedSwaps = await _context.YeuCauDoiCas
                         .AsNoTracking()
+                        .AsSplitQuery()
                         .Include(y => y.NhanVienGui)
                         .Include(y => y.NhanVienNhan)
                         .Include(y => y.PhanCaGui)
@@ -275,6 +278,7 @@ public class PhanCaController : Controller
                 model.CaTrucHomNay = await this.SearchDataAsync($"phanca:today:{today:yyyyMMdd}:scope:{phamViPhongBanId}", () =>
                 {
                     var homNayQuery = _context.PhanCas.AsNoTracking()
+                        .AsSplitQuery()
                         .Include(p => p.NhanVien).ThenInclude(n => n!.PhongBan)
                         .Include(p => p.NhanVien).ThenInclude(n => n!.ChucVu)
                         .Include(p => p.CaLamViec)

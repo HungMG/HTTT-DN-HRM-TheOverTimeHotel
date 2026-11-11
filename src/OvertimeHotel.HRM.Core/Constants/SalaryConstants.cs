@@ -43,6 +43,7 @@ public static class SalaryConstants
     // Trạng thái kỳ lương (Chỉ gồm 2 trạng thái duy nhất: MO và KHOA_SO)
     public const string PERIOD_OPEN = "MO";
     public const string PERIOD_LOCKED = "KHOA_SO";
+    public const string PERIOD_DRAFT_REVIEW = "CHO_PHAN_HOI";
 
     // Tương thích ngược: toàn bộ giai đoạn chưa khóa sổ đều thuộc trạng thái MO
     public const string PERIOD_DRAFT = "MO";

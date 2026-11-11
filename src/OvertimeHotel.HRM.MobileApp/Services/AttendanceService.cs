@@ -71,7 +71,7 @@ public class AttendanceService : IAttendanceService
     /// </summary>
     private const string SelectPhanCa =
         "ma_phan_ca,ma_nhan_vien,ma_ca,ngay_lam_viec,bat_dau_du_kien,ket_thuc_du_kien," +
-        "trang_thai,ca_lam_viec(ten_ca)," +
+        "trang_thai,ca_lam_viec(ten_ca,gio_bat_dau,gio_ket_thuc,qua_dem)," +
         "cham_cong(ma_cham_cong,gio_check_in,gio_check_out,phut_di_tre,phut_ve_som," +
         "gio_tang_ca_ot,trang_thai)";
 
@@ -453,23 +453,51 @@ public class AttendanceService : IAttendanceService
             await _rest.GetAsync(
                 $"phan_ca?select={SelectPhanCa}&ma_phan_ca=eq.{maPhanCa}&ma_nhan_vien=eq.{maNhanVien}"));
 
-        return rows.Length == 0 ? null : new ShiftSnapshot(
+        if (rows.Length == 0) return null;
+        var (start, end) = ResolvePlannedHours(rows[0]);
+
+        return new ShiftSnapshot(
             MaPhanCa: maPhanCa,
             TenCa: PostgrstJson.ReadEmbeddedString(rows[0], "ca_lam_viec", "ten_ca"),
-            BatDauDuKien: PostgrstJson.ReadTimestamp(rows[0], "bat_dau_du_kien"),
-            KetThucDuKien: PostgrstJson.ReadTimestamp(rows[0], "ket_thuc_du_kien"),
+            BatDauDuKien: start,
+            KetThucDuKien: end,
             Row: rows[0]);
+    }
+
+    private static (DateTimeOffset Start, DateTimeOffset End) ResolvePlannedHours(JsonElement row)
+    {
+        var start = PostgrstJson.ReadNullableTimestamp(row, "bat_dau_du_kien");
+        var end = PostgrstJson.ReadNullableTimestamp(row, "ket_thuc_du_kien");
+        if (start.HasValue && end.HasValue && start.Value > DateTimeOffset.MinValue.AddDays(1) && end.Value > start.Value)
+        {
+            return (start.Value, end.Value);
+        }
+
+        var date = PostgrstJson.ReadDate(row, "ngay_lam_viec");
+        var template = PostgrstJson.ReadEmbedded(row, "ca_lam_viec");
+        if (template is { } tmpl && date != default
+            && TimeOnly.TryParse(PostgrstJson.ReadString(tmpl, "gio_bat_dau"), CultureInfo.InvariantCulture, out var templateStart)
+            && TimeOnly.TryParse(PostgrstJson.ReadString(tmpl, "gio_ket_thuc"), CultureInfo.InvariantCulture, out var templateEnd))
+        {
+            var overnight = PostgrstJson.ReadBool(tmpl, "qua_dem") || templateEnd <= templateStart;
+            var plannedStart = new DateTimeOffset(date.ToDateTime(templateStart), TimeSpan.FromHours(7)).ToUniversalTime();
+            var plannedEnd = new DateTimeOffset((overnight ? date.AddDays(1) : date).ToDateTime(templateEnd), TimeSpan.FromHours(7)).ToUniversalTime();
+            return (plannedStart, plannedEnd);
+        }
+
+        return (start ?? default, end ?? default);
     }
 
     private static TodayShiftDto ToTodayShift(JsonElement row)
     {
         var chamCong = PostgrstJson.ReadEmbedded(row, "cham_cong");
+        var (start, end) = ResolvePlannedHours(row);
 
         return new TodayShiftDto(
             MaPhanCa: ReadInt(row, "ma_phan_ca"),
             TenCa: PostgrstJson.ReadEmbeddedString(row, "ca_lam_viec", "ten_ca"),
-            GioBatDau: PostgrstJson.ReadTimestamp(row, "bat_dau_du_kien"),
-            GioKetThuc: PostgrstJson.ReadTimestamp(row, "ket_thuc_du_kien"),
+            GioBatDau: start,
+            GioKetThuc: end,
             DaCheckIn: chamCong is { } c1 ? PostgrstJson.ReadNullableTimestamp(c1, "gio_check_in") : null,
             DaCheckOut: chamCong is { } c2 ? PostgrstJson.ReadNullableTimestamp(c2, "gio_check_out") : null,
             PhutDiTre: chamCong is { } c3 ? ReadInt(c3, "phut_di_tre") : 0,
