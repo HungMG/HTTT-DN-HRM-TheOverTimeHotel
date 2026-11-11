@@ -469,33 +469,15 @@ public class AdminHomeViewModel : HomeViewModelBase
             var viVn = new CultureInfo("vi-VN");
             var now = DateTime.Today;
 
-            // 1. Đọc danh sách các kỳ tính lương gần đây từ CSDL
-            var payrollJson = await _restClient.GetAsync(
-                "ky_luong?select=ma_ky_luong,thang,nam,trang_thai,ngay_khoa_so,ngay_phat_hanh_nhap&order=nam.desc,thang.desc&limit=10");
-            var kyLuongList = PostgrstJson.ParseArray(payrollJson);
+            // 1. Gọi RPC SECURITY DEFINER để lấy tổng hợp quỹ lương toàn khách sạn cho Ban Giám Đốc
+            //    (chỉ tính các phiếu đã khóa/thanh toán, vượt qua giới hạn đọc phiếu cá nhân của nhân viên thường)
+            var summaryJson = await _restClient.PostAsync(
+                "rpc/hrm_admin_payroll_summary",
+                "{\"p_limit\":12}");
+            var summaryRows = PostgrstJson.ParseArray(summaryJson);
 
-            // 2. Đọc phiếu lương thực tế để tính tổng thực nhận theo kỳ
-            var phieuLuongJson = await _restClient.GetAsync(
-                "phieu_luong?select=ma_phieu_luong,ma_ky_luong,thuc_nhan,luong_co_ban");
-            var phieuLuongArray = PostgrstJson.ParseArray(phieuLuongJson);
-
-            // Nhóm phiếu lương theo ma_ky_luong
-            Dictionary<int, (int Count, decimal TotalThucNhan)> payrollByKy = new();
-            foreach (var pl in phieuLuongArray)
-            {
-                var klId = PostgrstJson.ReadNullableInt(pl, "ma_ky_luong") ?? 0;
-                var thucNhan = PostgrstJson.ReadDecimal(pl, "thuc_nhan");
-
-                if (!payrollByKy.ContainsKey(klId))
-                {
-                    payrollByKy[klId] = (0, 0m);
-                }
-                var current = payrollByKy[klId];
-                payrollByKy[klId] = (current.Count + 1, current.TotalThucNhan + thucNhan);
-            }
-
-            // 3. Tạo danh sách 5 tháng gần đây tính từ tháng hiện tại lùi về
-            List<AdminRecentMonthPayrollItem> months = new();
+            // 2. Tạo danh sách 5 tháng gần đây tính từ tháng hiện tại lùi về
+            var months = new List<(AdminRecentMonthPayrollItem Item, decimal Amount)>(5);
             decimal maxAmount = 0m;
 
             for (int i = 0; i < 5; i++)
@@ -504,15 +486,14 @@ public class AdminHomeViewModel : HomeViewModelBase
                 int m = targetDate.Month;
                 int y = targetDate.Year;
 
-                // Tìm kỳ lương khớp với tháng/năm
-                JsonElement? matchedKl = null;
-                foreach (var kl in kyLuongList)
+                JsonElement? matchedRow = null;
+                foreach (var row in summaryRows)
                 {
-                    int klThang = PostgrstJson.ReadNullableInt(kl, "thang") ?? 0;
-                    int klNam = PostgrstJson.ReadNullableInt(kl, "nam") ?? 0;
-                    if (klThang == m && klNam == y)
+                    int rowThang = PostgrstJson.ReadNullableInt(row, "thang") ?? 0;
+                    int rowNam = PostgrstJson.ReadNullableInt(row, "nam") ?? 0;
+                    if (rowThang == m && rowNam == y)
                     {
-                        matchedKl = kl;
+                        matchedRow = row;
                         break;
                     }
                 }
@@ -523,38 +504,35 @@ public class AdminHomeViewModel : HomeViewModelBase
                     IsCurrentPeriod = (i == 0)
                 };
 
-                if (matchedKl.HasValue)
+                decimal amountForBar = 0m;
+
+                if (matchedRow.HasValue)
                 {
-                    var klId = PostgrstJson.ReadNullableInt(matchedKl.Value, "ma_ky_luong") ?? 0;
-                    var status = PostgrstJson.ReadString(matchedKl.Value, "trang_thai");
+                    var status = PostgrstJson.ReadString(matchedRow.Value, "trang_thai");
+                    var soPhieu = PostgrstJson.ReadNullableInt(matchedRow.Value, "so_phieu") ?? 0;
+                    var tongThucNhan = PostgrstJson.ReadDecimal(matchedRow.Value, "tong_thuc_nhan");
 
-                    if (payrollByKy.TryGetValue(klId, out var stat) && stat.Count > 0)
+                    if (soPhieu > 0)
                     {
-                        item.TotalPayoutText = stat.TotalThucNhan.ToString("N0", viVn) + " đ";
-                        item.SubtitleText = $"{stat.Count} phiếu lương thực tế";
-                        if (stat.TotalThucNhan > maxAmount) maxAmount = stat.TotalThucNhan;
+                        amountForBar = tongThucNhan;
+                        if (tongThucNhan > maxAmount) maxAmount = tongThucNhan;
 
-                        if (status == "DA_KHOA_SO" || status == "DA_DUYET")
+                        item.TotalPayoutText = tongThucNhan.ToString("N0", viVn) + " đ";
+                        item.SubtitleText = $"{soPhieu} phiếu lương đã khóa";
+
+                        (item.StatusText, item.StatusBgColor, item.StatusTextColor, item.BarColor) = status switch
                         {
-                            item.StatusText = "Đã Khóa Sổ";
-                            item.StatusBgColor = "#DCFCE7";
-                            item.StatusTextColor = "#15803D";
-                            item.BarColor = "#15803D";
-                        }
-                        else
-                        {
-                            item.StatusText = "Đang Mở";
-                            item.StatusBgColor = "#EFF6FF";
-                            item.StatusTextColor = "#1D4ED8";
-                            item.BarColor = "#1E3A8A";
-                        }
+                            "KHOA_SO" or "DA_KHOA_SO" or "DA_THANH_TOAN" => ("Đã Khóa Sổ", "#DCFCE7", "#15803D", "#15803D"),
+                            "DA_DUYET" => ("Đã Duyệt", "#DCFCE7", "#15803D", "#15803D"),
+                            _ => ("Đang Mở", "#EFF6FF", "#1D4ED8", "#1E3A8A")
+                        };
                     }
                     else
                     {
-                        // Kỳ lương đã tạo nhưng chưa chốt phiếu
+                        // Kỳ đã tạo nhưng chưa khóa sổ hoặc chưa có phiếu đã thanh toán
                         item.TotalPayoutText = i == 0 ? "Đang tính (Dự thảo)" : "0 đ";
-                        item.SubtitleText = i == 0 ? "Kỳ đang mở · 0 phiếu" : "0 phiếu lương";
-                        item.StatusText = "Dự Thảo";
+                        item.SubtitleText = i == 0 ? "Kỳ đang mở · Chưa khóa sổ" : "Chưa khóa sổ · 0 phiếu";
+                        item.StatusText = i == 0 ? "Dự Thảo" : "Chưa Khóa Sổ";
                         item.StatusBgColor = "#FEF3C7";
                         item.StatusTextColor = "#B45309";
                         item.BarColor = "#D4AF37";
@@ -562,7 +540,6 @@ public class AdminHomeViewModel : HomeViewModelBase
                 }
                 else
                 {
-                    // Tháng chưa khởi tạo kỳ trong DB
                     item.TotalPayoutText = "—";
                     item.SubtitleText = "Chưa phát sinh dữ liệu";
                     item.StatusText = "Chưa Tạo Kỳ";
@@ -571,34 +548,23 @@ public class AdminHomeViewModel : HomeViewModelBase
                     item.BarColor = "#CBD5E1";
                 }
 
-                months.Add(item);
-            }
-
-            // Chuẩn hóa tỷ lệ thanh BarProgress
-            foreach (var m in months)
-            {
-                var digits = new string(m.TotalPayoutText.Where(char.IsDigit).ToArray());
-                if (maxAmount > 0 && decimal.TryParse(digits, out var val) && val > 0)
-                {
-                    m.BarProgress = Math.Min(1.0, Math.Max(0.08, (double)val / (double)maxAmount));
-                }
-                else
-                {
-                    m.BarProgress = 0.04;
-                }
+                months.Add((item, amountForBar));
             }
 
             RecentMonthsPayroll.Clear();
-            foreach (var m in months)
+            foreach (var (item, amount) in months)
             {
-                RecentMonthsPayroll.Add(m);
+                item.BarProgress = maxAmount > 0 && amount > 0
+                    ? Math.Min(1.0, Math.Max(0.08, (double)amount / (double)maxAmount))
+                    : 0.04;
+                RecentMonthsPayroll.Add(item);
             }
 
             PayrollPeriodName = $"Kỳ Lương Tháng {now.Month:D2}/{now.Year}";
             PayrollStatusText = "Thẩm quyền Ban Giám Đốc";
             PayrollStatusBgColor = "#EFF6FF";
             PayrollStatusTextColor = "#1D4ED8";
-            BudgetStatusNote = "Dữ liệu được truy vấn 100% từ các bảng ky_luong và phieu_luong thực tế trong CSDL Supabase.";
+            BudgetStatusNote = "Tổng hợp quỹ lương toàn khách sạn qua RPC bảo mật (chỉ tính phiếu đã khóa sổ).";
             PayrollActionText = "Chi tiết kỳ lương & Khóa sổ";
         }
         catch (Exception ex)
@@ -609,14 +575,12 @@ public class AdminHomeViewModel : HomeViewModelBase
 
     private async Task LoadHotelEventsAsync()
     {
-        // Theo Phương án A:
-        // Cố gắng truy vấn dữ liệu sự kiện thật từ bảng du_an.
-        // Nếu không có sự kiện thật hoặc bảng du_an chưa mở quyền truy cập di động,
-        // hiển thị trạng thái trung thực "Hôm nay không có sự kiện", KHÔNG tự bịa ra sự kiện mẫu hardcode.
+        // Gọi RPC SECURITY DEFINER lấy sự kiện trọng điểm đang diễn ra/sắp tới kèm số nhân sự Task Force thật từ phan_cong_du_an
         try
         {
-            var eventJson = await _restClient.GetAsync(
-                "du_an?select=ma_du_an,ten_du_an,loai_du_an,dia_diem,ngay_bat_dau,ngay_ket_thuc,so_khach_du_kien,trang_thai&order=ngay_bat_dau.asc&limit=4");
+            var eventJson = await _restClient.PostAsync(
+                "rpc/hrm_admin_hotel_events",
+                "{\"p_limit\":4}");
             var list = PostgrstJson.ParseArray(eventJson);
 
             if (list.Length > 0)
@@ -632,25 +596,33 @@ public class AdminHomeViewModel : HomeViewModelBase
                     var loc = PostgrstJson.ReadString(row, "dia_diem");
                     var guests = PostgrstJson.ReadNullableInt(row, "so_khach_du_kien") ?? 0;
                     var status = PostgrstJson.ReadString(row, "trang_thai");
+                    var tfStaff = PostgrstJson.ReadNullableInt(row, "task_force_count") ?? 0;
+                    var tfDetail = PostgrstJson.ReadString(row, "task_force_detail");
 
-                    var tfStaff = Math.Max(5, guests / 20);
+                    var startUtc = PostgrstJson.ReadNullableTimestamp(row, "ngay_bat_dau");
+                    var endUtc = PostgrstJson.ReadNullableTimestamp(row, "ngay_ket_thuc");
+                    var timeRange = FormatEventTimeRange(startUtc, endUtc);
+
+                    var (typeLabel, typeBg, typeText) = FormatEventTypeStyle(type);
                     totalTaskForce += tfStaff;
 
                     HotelEvents.Add(new AdminHotelEventItem
                     {
                         EventId = id,
                         EventName = !string.IsNullOrWhiteSpace(name) ? name : $"Sự kiện #{id}",
-                        EventType = FormatEventType(type),
+                        EventType = typeLabel,
                         Location = !string.IsNullOrWhiteSpace(loc) ? loc : "Sảnh Khách Sạn",
-                        TimeRangeText = "Ca sự kiện",
+                        TimeRangeText = timeRange,
                         ExpectedGuests = guests,
                         TaskForceStaffCount = tfStaff,
-                        TaskForceDetail = $"Điều động {tfStaff} nhân sự Task Force theo phân công CSDL",
+                        TaskForceDetail = !string.IsNullOrWhiteSpace(tfDetail)
+                            ? tfDetail
+                            : "Chưa phân công nhân sự Task Force",
                         StatusText = status == "DANG_DIEN_RA" ? "Đang diễn ra" : "Đã lên kế hoạch",
                         StatusBgColor = status == "DANG_DIEN_RA" ? "#DCFCE7" : "#FEF3C7",
                         StatusTextColor = status == "DANG_DIEN_RA" ? "#15803D" : "#B45309",
-                        TypeBgColor = "#EFF6FF",
-                        TypeTextColor = "#1D4ED8"
+                        TypeBgColor = typeBg,
+                        TypeTextColor = typeText
                     });
                 }
 
@@ -662,7 +634,7 @@ public class AdminHomeViewModel : HomeViewModelBase
         }
         catch
         {
-            // Bảng du_an bị khóa hoặc chưa có sự kiện
+            // Giữ trạng thái an toàn theo Phương án A nếu kết nối lỗi
         }
 
         // Trung thực theo Phương án A: Không có sự kiện thật trong DB
@@ -674,88 +646,75 @@ public class AdminHomeViewModel : HomeViewModelBase
 
     private async Task LoadRecentActivitiesAsync()
     {
-        // Đọc các đơn từ và hoạt động thực tế gần nhất trong CSDL thay vì hardcode
+        // Đọc lịch sử thao tác và kiểm toán hệ thống thực tế trong 7 ngày gần đây từ bảng nhat_ky_quan_tri
         RecentActivities.Clear();
+        bool loadedSuccessfully = false;
 
         try
         {
-            var donTuJson = await _restClient.GetAsync(
-                "don_tu?select=ma_don,ma_nhan_vien,ma_loai_don,trang_thai,ngay_gui,ngay_duyet,ly_do,nhan_vien(ho,ten)" +
-                "&order=ngay_gui.desc&limit=3");
+            var logs = await AdminAuditLogPostgrstMapper.FetchRecentAsync(_restClient, withinDays: 7, limit: 5);
+            loadedSuccessfully = true;
 
-            var donTuList = PostgrstJson.ParseArray(donTuJson);
-
-            int logId = 1;
-            foreach (var dt in donTuList)
+            foreach (var log in logs)
             {
-                var maDon = PostgrstJson.ReadNullableInt(dt, "ma_don") ?? 0;
-                var trangThai = PostgrstJson.ReadString(dt, "trang_thai");
-                var ho = PostgrstJson.ReadEmbeddedString(dt, "nhan_vien", "ho");
-                var ten = PostgrstJson.ReadEmbeddedString(dt, "nhan_vien", "ten");
-                var hoTen = string.Join(" ", new[] { ho, ten }.Where(s => !string.IsNullOrWhiteSpace(s)));
-                if (string.IsNullOrWhiteSpace(hoTen)) hoTen = $"Nhân viên #{PostgrstJson.ReadNullableInt(dt, "ma_nhan_vien")}";
-
-                var ngayGuiStr = PostgrstJson.ReadString(dt, "ngay_gui");
-                DateTimeOffset time = DateTimeOffset.Now;
-                if (DateTimeOffset.TryParse(ngayGuiStr, out var parsed)) time = parsed;
-
-                string actionName;
-                string actionCode;
-                string desc;
-
-                if (trangThai == "DA_DUYET")
-                {
-                    actionName = "Duyệt đơn";
-                    actionCode = "APPROVE";
-                    desc = $"Đã phê duyệt đơn #{maDon} của {hoTen}";
-                }
-                else
-                {
-                    actionName = "Đơn mới";
-                    actionCode = "LEAVE_SUBMIT";
-                    desc = $"{hoTen} gửi đơn từ #{maDon} chờ xử lý";
-                }
-
-                RecentActivities.Add(new AdminAuditLogItem
-                {
-                    AuditLogId = logId++,
-                    ActionCode = actionCode,
-                    ActionName = actionName,
-                    Description = desc,
-                    ActorName = hoTen,
-                    TargetUsername = $"NV-{PostgrstJson.ReadNullableInt(dt, "ma_nhan_vien"):D3}",
-                    OccurredAt = time
-                });
+                RecentActivities.Add(log);
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            RecentActivities.Add(new AdminAuditLogItem
+            {
+                AuditLogId = 0,
+                ActionCode = "REJECT",
+                ActionName = "Lỗi tải",
+                Description = $"Không thể tải nhật ký kiểm toán: {ex.Message}",
+                ActorName = "System",
+                TargetUsername = "BOD",
+                OccurredAt = DateTimeOffset.Now
+            });
+        }
 
-        // Nếu chưa có đơn từ nào gần đây trong DB, hiển thị hoạt động hệ thống an toàn
-        if (RecentActivities.Count == 0)
+        // Nếu truy vấn thành công nhưng không có thao tác kiểm toán nào phát sinh trong 7 ngày qua
+        if (loadedSuccessfully && RecentActivities.Count == 0)
         {
             RecentActivities.Add(new AdminAuditLogItem
             {
                 AuditLogId = 1,
                 ActionCode = "SYS_AUDIT",
                 ActionName = "Hệ thống",
-                Description = "Đồng bộ phiên đăng nhập Ban Giám Đốc thành công",
-                ActorName = "Security",
+                Description = "Không có thao tác kiểm toán nào phát sinh trong 7 ngày gần đây",
+                ActorName = "System",
                 TargetUsername = "BOD",
                 OccurredAt = DateTimeOffset.Now
             });
         }
     }
 
-    private static string FormatEventType(string? rawType)
+    private static string FormatEventTimeRange(DateTimeOffset? startUtc, DateTimeOffset? endUtc)
+    {
+        if (!startUtc.HasValue) return "Chưa rõ lịch";
+
+        var vnOffset = TimeSpan.FromHours(7);
+        var startLocal = startUtc.Value.ToOffset(vnOffset);
+        if (!endUtc.HasValue) return startLocal.ToString("dd/MM · HH:mm");
+
+        var endLocal = endUtc.Value.ToOffset(vnOffset);
+        return startLocal.Date == endLocal.Date
+            ? $"{startLocal:dd/MM} ({startLocal:HH:mm}–{endLocal:HH:mm})"
+            : $"{startLocal:dd/MM HH:mm} – {endLocal:dd/MM HH:mm}";
+    }
+
+    private static (string Label, string BgColor, string TextColor) FormatEventTypeStyle(string? rawType)
     {
         return rawType switch
         {
-            "TIEC_CUOI" => "TIỆC CƯỚI",
-            "HOI_NGHI_MICE" => "HỘI NGHỊ MICE",
-            "GALA_DINNER" => "GALA DINNER",
-            "FESTIVAL_AM_THUC" => "FESTIVAL ẨM THỰC",
-            "DOAN_VIP" => "ĐOÀN VIP",
-            _ => "SỰ KIỆN KHÁCH SẠN"
+            "TIEC_CUOI" => ("TIỆC CƯỚI", "#FCE7F3", "#BE185D"),
+            "HOI_NGHI_MICE" => ("HỘI NGHỊ MICE", "#EFF6FF", "#1D4ED8"),
+            "GALA_DINNER" => ("GALA DINNER", "#FEF3C7", "#B45309"),
+            "FESTIVAL_AM_THUC" => ("FESTIVAL ẨM THỰC", "#ECFDF5", "#047857"),
+            "HOP_BAO" => ("HỌP BÁO", "#F3E8FF", "#7E22CE"),
+            "DOAN_VIP" => ("ĐOÀN VIP", "#FEF3C7", "#B45309"),
+            _ => ("SỰ KIỆN KHÁCH SẠN", "#EFF6FF", "#1D4ED8")
         };
     }
 

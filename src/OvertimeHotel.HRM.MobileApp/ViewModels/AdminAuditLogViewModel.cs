@@ -13,6 +13,7 @@ namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 public class AdminAuditLogViewModel : INotifyPropertyChanged
 {
     private readonly IAuthService _authService;
+    private readonly SupabaseRestClient _restClient;
     private bool _isRefreshing;
     private string _activeFilter = "ALL";
     private int _totalLogs;
@@ -44,9 +45,10 @@ public class AdminAuditLogViewModel : INotifyPropertyChanged
         set => SetProperty(ref _totalLogs, value);
     }
 
-    public AdminAuditLogViewModel(IAuthService authService)
+    public AdminAuditLogViewModel(IAuthService authService, SupabaseRestClient restClient)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _restClient = restClient ?? throw new ArgumentNullException(nameof(restClient));
 
         RefreshCommand = new Command(async () => await LoadLogsAsync());
         FilterCommand = new Command<string>(filter => ApplyFilter(filter));
@@ -59,68 +61,29 @@ public class AdminAuditLogViewModel : INotifyPropertyChanged
 
         try
         {
-            await Task.Delay(250); // Phản hồi mượt mà cho UI
-
-            // Dữ liệu nhật ký mẫu chuẩn hóa khớp với CSDL NHAT_KY_QUAN_TRI
-            var sampleLogs = new List<AdminAuditLogItem>
-            {
-                new()
-                {
-                    AuditLogId = 101,
-                    ActionCode = "APPROVE",
-                    ActionName = "Duyệt đơn nghỉ phép",
-                    Description = "Phê duyệt đơn nghỉ phép năm số #102 cho nhân viên NV-042 (Lễ tân)",
-                    ActorName = "Thao.Nguyen (HR)",
-                    TargetUsername = "NV-042",
-                    OccurredAt = DateTimeOffset.UtcNow.AddMinutes(-25)
-                },
-                new()
-                {
-                    AuditLogId = 102,
-                    ActionCode = "SHIFT_CHANGE",
-                    ActionName = "Điều phối đổi ca trực",
-                    Description = "Đổi ca trực Lễ tân FO từ Ca 1 (Sáng) sang Ca 2 (Chiều) ngày hôm nay",
-                    ActorName = "Dang.Le (Manager FO)",
-                    TargetUsername = "NV-019",
-                    OccurredAt = DateTimeOffset.UtcNow.AddHours(-1)
-                },
-                new()
-                {
-                    AuditLogId = 103,
-                    ActionCode = "USER_LOCK",
-                    ActionName = "Khóa tài khoản tạm thời",
-                    Description = "Tạm khóa tài khoản do phát hiện 5 lần nhập sai mã PIN liên tiếp",
-                    ActorName = "IT-Admin (Hệ thống)",
-                    TargetUsername = "NV-088",
-                    OccurredAt = DateTimeOffset.UtcNow.AddHours(-5)
-                },
-                new()
-                {
-                    AuditLogId = 104,
-                    ActionCode = "USER_CREATE",
-                    ActionName = "Cấp tài khoản mới",
-                    Description = "Kích hoạt tài khoản nhân viên mới bộ phận Buồng phòng Housekeeping",
-                    ActorName = "IT-Admin",
-                    TargetUsername = "NV-156",
-                    OccurredAt = DateTimeOffset.UtcNow.AddDays(-1)
-                },
-                new()
-                {
-                    AuditLogId = 105,
-                    ActionCode = "APPROVE",
-                    ActionName = "Duyệt đơn nghỉ ốm BHXH",
-                    Description = "Xác nhận giấy nghỉ ốm hưởng bảo hiểm xã hội 2 ngày",
-                    ActorName = "Thao.Nguyen (HR)",
-                    TargetUsername = "NV-031",
-                    OccurredAt = DateTimeOffset.UtcNow.AddDays(-1).AddHours(-3)
-                }
-            };
+            var logs = await AdminAuditLogPostgrstMapper.FetchRecentAsync(_restClient, withinDays: 30, limit: 50);
 
             _allLogs.Clear();
-            _allLogs.AddRange(sampleLogs);
+            _allLogs.AddRange(logs);
             TotalLogs = _allLogs.Count;
 
             ApplyFilter(ActiveFilter);
+        }
+        catch (Exception ex)
+        {
+            _allLogs.Clear();
+            _allLogs.Add(new AdminAuditLogItem
+            {
+                AuditLogId = 0,
+                ActionCode = "REJECT",
+                ActionName = "Lỗi tải",
+                Description = $"Không thể tải nhật ký kiểm toán: {ex.Message}",
+                ActorName = "System",
+                TargetUsername = "BOD",
+                OccurredAt = DateTimeOffset.Now
+            });
+            TotalLogs = 0;
+            ApplyFilter("ALL");
         }
         finally
         {
@@ -135,9 +98,23 @@ public class AdminAuditLogViewModel : INotifyPropertyChanged
 
         var query = ActiveFilter switch
         {
-            "ACCOUNT" => _allLogs.Where(x => x.ActionCode.Contains("USER") || x.ActionCode.Contains("ACCOUNT")),
-            "LEAVE" => _allLogs.Where(x => x.ActionCode == "APPROVE" || x.ActionCode == "REJECT"),
-            "SHIFT" => _allLogs.Where(x => x.ActionCode == "SHIFT_CHANGE"),
+            "ACCOUNT" => _allLogs.Where(x =>
+                x.ActionCode.Contains("ACCOUNT", StringComparison.OrdinalIgnoreCase) ||
+                x.ActionCode.Contains("USER", StringComparison.OrdinalIgnoreCase) ||
+                x.ActionCode.Contains("PERMISSION", StringComparison.OrdinalIgnoreCase) ||
+                x.ActionCode.Contains("PROMOT", StringComparison.OrdinalIgnoreCase) ||
+                x.ActionCode.Contains("UPGRADE", StringComparison.OrdinalIgnoreCase)),
+            "PAYROLL" => _allLogs.Where(x =>
+                x.ActionCode.Contains("LUONG", StringComparison.OrdinalIgnoreCase)),
+            "LEAVE" => _allLogs.Where(x =>
+                x.ActionCode.Contains("DON_TU", StringComparison.OrdinalIgnoreCase) ||
+                x.ActionCode.Contains("GIAI_TRINH", StringComparison.OrdinalIgnoreCase) ||
+                x.ActionCode is "APPROVE" or "REJECT"),
+            "SHIFT" => _allLogs.Where(x =>
+                x.ActionCode.Contains("DOI_CA", StringComparison.OrdinalIgnoreCase) ||
+                x.ActionCode.Contains("SHIFT", StringComparison.OrdinalIgnoreCase) ||
+                x.ActionCode.Contains("CA_MAU", StringComparison.OrdinalIgnoreCase) ||
+                x.ActionCode.Contains("SU_KIEN", StringComparison.OrdinalIgnoreCase)),
             _ => _allLogs
         };
 

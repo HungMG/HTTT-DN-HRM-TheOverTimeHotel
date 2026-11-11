@@ -274,26 +274,7 @@
                             <Shadow Brush="#0B1B4D" Offset="0,4" Radius="10" Opacity="0.04" />
                         </Border.Shadow>
                         <VerticalStackLayout Spacing="12">
-                            <!-- Tiêu đề kỳ lương & Trạng thái duyệt -->
-                            <Grid ColumnDefinitions="*,Auto" VerticalOptions="Center">
-                                <Label Grid.Column="0"
-                                       Text="{Binding PayrollPeriodName}"
-                                       TextColor="#0F172A"
-                                       FontSize="14"
-                                       FontFamily="SegoeUIBold"
-                                       VerticalOptions="Center" />
-                                <Border Grid.Column="1"
-                                        StrokeShape="RoundRectangle 8"
-                                        BackgroundColor="{Binding PayrollStatusBgColor}"
-                                        Stroke="Transparent"
-                                        Padding="8,3"
-                                        VerticalOptions="Center">
-                                    <Label Text="{Binding PayrollStatusText}"
-                                           TextColor="{Binding PayrollStatusTextColor}"
-                                           FontSize="10"
-                                           FontFamily="SegoeUIBold" />
-                                </Border>
-                            </Grid>
+                           
 
                             <!-- Danh sách quỹ lương 5 tháng gần đây -->
                             <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding RecentMonthsPayroll}">
@@ -351,23 +332,6 @@
                                     </DataTemplate>
                                 </BindableLayout.ItemTemplate>
                             </VerticalStackLayout>
-
-                            <!-- Ghi chú tiến độ 6 bước PRD 05 -->
-                            <Label Text="{Binding BudgetStatusNote}"
-                                   TextColor="#64748B"
-                                   FontSize="11"
-                                   FontFamily="SegoeUI"
-                                   LineBreakMode="WordWrap" />
-
-                            <!-- Nút hành động phê duyệt / khóa sổ -->
-                            <Button Text="{Binding PayrollActionText}"
-                                    Command="{Binding PayrollActionCommand}"
-                                    BackgroundColor="#1E3A8A"
-                                    TextColor="#FFFFFF"
-                                    FontFamily="SegoeUIBold"
-                                    FontSize="12"
-                                    HeightRequest="40"
-                                    CornerRadius="10" />
                         </VerticalStackLayout>
                     </Border>
 
@@ -518,86 +482,7 @@
                                        LineBreakMode="WordWrap" />
                             </VerticalStackLayout>
                         </Grid>
-                    </Border>
-
-                    <!-- ═══ KHỐI 6 · VIỆC CẦN XỬ LÝ HỆ THỐNG (URGENT ACTIONS) ═══ -->
-                    <Label Text="VIỆC CẦN XỬ LÝ HỆ THỐNG"
-                           TextColor="#1E3A8A"
-                           FontSize="12"
-                           FontFamily="SegoeUIBold"
-                           CharacterSpacing="0.5" />
-
-                    <!-- Đơn từ thuộc thẩm quyền Admin (Chỉ hiện khi có đơn) -->
-                    <Border IsVisible="{Binding HasPendingLeaves}"
-                            Stroke="#E2E8F0"
-                            StrokeThickness="1"
-                            StrokeShape="RoundRectangle 16"
-                            BackgroundColor="#FFFFFF"
-                            Padding="16">
-                        <Border.Shadow>
-                            <Shadow Brush="#0B1B4D" Offset="0,4" Radius="10" Opacity="0.04" />
-                        </Border.Shadow>
-                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="8">
-                            <VerticalStackLayout Grid.Row="0" Grid.Column="0" Spacing="4">
-                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" VerticalOptions="Center">
-                                    <Label Grid.Column="0" Text="📝" FontSize="14" VerticalOptions="Center" />
-                                    <Label Grid.Column="1" Text="Đơn từ thẩm quyền Ban Giám Đốc"
-                                           TextColor="#0F172A"
-                                           FontSize="13"
-                                           FontFamily="SegoeUIBold"
-                                           LineBreakMode="WordWrap"
-                                           VerticalOptions="Center" />
-                                </Grid>
-                                <Label Text="Đơn thôi việc cấp quản lý / đơn nghỉ dài hạn đặc biệt"
-                                       TextColor="#475569"
-                                       FontSize="12"
-                                       FontFamily="SegoeUI"
-                                       LineBreakMode="WordWrap" />
-                            </VerticalStackLayout>
-
-                            <Border Grid.Row="0" Grid.Column="1"
-                                    StrokeShape="RoundRectangle 12"
-                                    BackgroundColor="#FEF3C7"
-                                    Stroke="#D4AF37"
-                                    Padding="10,4"
-                                    VerticalOptions="Center">
-                                <Label Text="{Binding PendingLeaveCount}"
-                                       TextColor="#B45309"
-                                       FontSize="13"
-                                       FontFamily="SegoeUIBold" />
-                            </Border>
-
-                            <Button Grid.Row="1" Grid.ColumnSpan="2"
-                                    Text="{Binding UrgentApproveButtonText}"
-                                    Command="{Binding OpenLeaveApprovalCommand}"
-                                    BackgroundColor="#F1F5F9"
-                                    TextColor="#1E3A8A"
-                                    BorderColor="#CBD5E1"
-                                    BorderWidth="1"
-                                    FontFamily="SegoeUIBold"
-                                    FontSize="12"
-                                    HeightRequest="40"
-                                    CornerRadius="10" />
-                        </Grid>
-                    </Border>
-
-                    <!-- Thẻ trạng thái khi Admin không có đơn tồn đọng -->
-                    <Border IsVisible="{Binding HasNoPendingLeaves}"
-                            Stroke="#E2E8F0"
-                            StrokeShape="RoundRectangle 14"
-                            BackgroundColor="#F8FAFC"
-                            Padding="14,10">
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalOptions="Center">
-                            <Label Grid.Column="0" Text="✅" FontSize="16" VerticalOptions="Center" />
-                            <Label Grid.Column="1"
-                                   Text="Không có đơn chờ duyệt cấp Ban Giám Đốc"
-                                   TextColor="#15803D"
-                                   FontSize="12"
-                                   FontFamily="SegoeUIBold"
-                                   LineBreakMode="WordWrap"
-                                   VerticalOptions="Center" />
-                        </Grid>
-                    </Border>
+                    </Border>                   
 
                     <!-- ═══ KHỐI 7 · HOẠT ĐỘNG GẦN ĐÂY (AUDIT LOG SNIPPET) ═══ -->
                     <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
@@ -641,7 +526,7 @@
                                                    TextColor="#0F172A"
                                                    FontSize="12"
                                                    FontFamily="SegoeUI"
-                                                   LineBreakMode="TailTruncation" />
+                                                   LineBreakMode="WordWrap" />
                                             <Label Text="{Binding FormattedTime}"
                                                    TextColor="#94A3B8"
                                                    FontSize="10"
