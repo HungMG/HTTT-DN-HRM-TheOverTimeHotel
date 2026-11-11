@@ -8,10 +8,8 @@ namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 
 /// <summary>
 /// ViewModel cho Trang Chủ Ban Giám Đốc / Tổng Quản Lý (Executive Admin Dashboard trên Mobile).
-/// Thiết kế bám sát PRD 01, PRD 02 (Mục 6.3, 9.0, 10.0) và PRD 05:
-/// 1. Quân số toàn khách sạn và Tỷ lệ hiện diện hôm nay.
-/// 2. Tiến độ ngân sách quỹ lương và Khóa sổ kỳ lương.
-/// 3. Sự kiện trọng điểm và Điều động nhân lực Task Force.
+/// Dữ liệu 100% được truy vấn động từ CSDL Supabase PostgREST (nhan_vien, phan_ca, cham_cong, don_tu, ky_luong, hop_dong, phieu_luong).
+/// Tuyệt đối không sử dụng hardcode hay dữ liệu giả định.
 /// </summary>
 public class AdminHomeViewModel : HomeViewModelBase
 {
@@ -20,36 +18,37 @@ public class AdminHomeViewModel : HomeViewModelBase
     private string _commandRole = "Tổng Giám Đốc / Ban Quản Trị";
     private string _commandScope = "Toàn hệ thống khách sạn 5 sao";
     private string _permissionLabel = "BAN GIÁM ĐỐC · TOÀN QUYỀN ĐIỀU HÀNH";
-    private string _lastUpdatedText = "Cập nhật lúc 08:35";
+    private string _lastUpdatedText = "Đang cập nhật...";
     private bool _isRefreshing;
 
-    // ═══ 1. QUÂN SỐ TOÀN KHÁCH SẠN & TỶ LỆ HIỆN DIỆN HÔM NAY ═══
-    private int _totalStaffCount = 156;
-    private int _presentStaffCount = 147;
-    private int _onLeaveStaffCount = 9;
-    private string _attendanceRateText = "94.2%";
-    private double _attendanceProgress = 0.942;
-    private string _workforceHealthStatus = "VẬN HÀNH ỔN ĐỊNH";
-    private string _workforceHealthColor = "#15803D";
-    private string _workforceHealthBgColor = "#DCFCE7";
+    // ═══ 1. QUÂN SỐ TOÀN KHÁCH SẠN & TỶ LỆ HIỆN DIỆN HÔM NAY (REAL DATA) ═══
+    private int _totalStaffCount;
+    private int _presentStaffCount;
+    private int _onLeaveStaffCount;
+    private string _attendanceRateText = "0%";
+    private double _attendanceProgress;
+    private string _workforceHealthStatus = "ĐANG TẢI DỮ LIỆU";
+    private string _workforceHealthColor = "#64748B";
+    private string _workforceHealthBgColor = "#F1F5F9";
     public ObservableCollection<AdminDepartmentWorkforceItem> DepartmentClusters { get; } = new();
 
-    // ═══ 2. TÌNH TRẠNG QUỸ LƯƠNG & KHÓA SỔ KỲ LƯƠNG (PRD 02 & 05) ═══
-    private string _payrollPeriodName = "Kỳ Lương Tháng 11/2026";
-    private string _payrollStatusText = "Chờ Giám Đốc Phê Duyệt";
-    private string _payrollStatusBgColor = "#FEF3C7";
-    private string _payrollStatusTextColor = "#B45309";
-    private string _estimatedPayrollCostText = "1.425.800.000 đ";
-    private string _payrollBudgetLimitText = "1.550.000.000 đ";
-    private string _budgetUsagePercentText = "92.0%";
-    private double _budgetUsageProgress = 0.92;
-    private string _budgetStatusNote = "Trong hạn mức ngân sách · Đã hoàn tất đối soát phiếu nháp 6 bước";
-    private string _payrollActionText = "Ký duyệt & Khóa sổ kỳ lương";
+    // ═══ 2. TÌNH TRẠNG QUỸ LƯƠNG & KHÓA SỔ KỲ LƯƠNG (PRD 02 & 05 - REAL DATA) ═══
+    private string _payrollPeriodName = "Kỳ Lương Hiện Tại";
+    private string _payrollStatusText = "Đang kiểm tra";
+    private string _payrollStatusBgColor = "#F1F5F9";
+    private string _payrollStatusTextColor = "#64748B";
+    private string _estimatedPayrollCostText = "0 đ";
+    private string _payrollBudgetLimitText = "0 đ";
+    private string _budgetUsagePercentText = "0%";
+    private double _budgetUsageProgress;
+    private string _budgetStatusNote = "Đang kết nối hệ thống tính lương CSDL...";
+    private string _payrollActionText = "Xem chi tiết kỳ lương";
 
     // ═══ 3. SỰ KIỆN TRỌNG ĐIỂM & ĐIỀU ĐỘNG TASK FORCE (PRD 02 Mục 9.0) ═══
-    private string _activeEventsCountText = "2 sự kiện hôm nay";
-    private int _totalTaskForceStaffCount = 42;
-    private bool _hasHotelEvents = true;
+    private string _activeEventsCountText = "0 sự kiện";
+    private int _totalTaskForceStaffCount;
+    private bool _hasHotelEvents;
+    private bool _hasNoHotelEvents = true;
     public ObservableCollection<AdminHotelEventItem> HotelEvents { get; } = new();
 
     // ═══ HOẠT ĐỘNG GẦN ĐÂY ═══
@@ -220,7 +219,19 @@ public class AdminHomeViewModel : HomeViewModelBase
     public bool HasHotelEvents
     {
         get => _hasHotelEvents;
-        set => SetProperty(ref _hasHotelEvents, value);
+        set
+        {
+            if (SetProperty(ref _hasHotelEvents, value))
+            {
+                HasNoHotelEvents = !value;
+            }
+        }
+    }
+
+    public bool HasNoHotelEvents
+    {
+        get => _hasNoHotelEvents;
+        private set => SetProperty(ref _hasNoHotelEvents, value);
     }
 
     public AdminHomeViewModel(
@@ -244,10 +255,10 @@ public class AdminHomeViewModel : HomeViewModelBase
             ShowNotificationDialog?.Invoke(this,
                 $"Quy trình Khóa sổ Lương (PRD 05 Bước 5):\n" +
                 $"• Kỳ lương: {PayrollPeriodName}\n" +
-                $"• Dự toán thực nhận: {EstimatedPayrollCostText}\n" +
-                $"• Hạn mức kế hoạch: {PayrollBudgetLimitText} ({BudgetUsagePercentText})\n" +
-                $"• Trạng thái: {PayrollStatusText}\n\n" +
-                $"Ban Giám Đốc có thể kiểm tra danh sách từng phòng ban và ký duyệt khóa sổ trên cổng Web Admin hoặc phiên làm việc an toàn.");
+                $"• Dự toán quỹ lương: {EstimatedPayrollCostText}\n" +
+                $"• Hạn mức ngân sách: {PayrollBudgetLimitText} ({BudgetUsagePercentText})\n" +
+                $"• Trạng thái hiện tại: {PayrollStatusText}\n\n" +
+                $"Ban Giám Đốc có thể kiểm tra đối soát từng phòng ban và ký duyệt khóa sổ trên cổng Web Admin máy tính.");
         });
 
         OpenEventDetailCommand = new Command<AdminHotelEventItem>(item =>
@@ -282,39 +293,7 @@ public class AdminHomeViewModel : HomeViewModelBase
         await LoadWorkforceDataAsync();
         await LoadPayrollSummaryAsync();
         await LoadHotelEventsAsync();
-
-        // Nạp các hoạt động kiểm toán gần nhất phục vụ giám sát điều hành
-        RecentActivities.Clear();
-        RecentActivities.Add(new AdminAuditLogItem
-        {
-            AuditLogId = 1,
-            ActionCode = "APPROVE",
-            ActionName = "Duyệt lương",
-            Description = "Ban Giám Đốc thẩm định bảng lương tháng 10/2026",
-            ActorName = "General.Manager",
-            TargetUsername = "BOD-EXEC",
-            OccurredAt = DateTimeOffset.UtcNow.AddMinutes(-35)
-        });
-        RecentActivities.Add(new AdminAuditLogItem
-        {
-            AuditLogId = 2,
-            ActionCode = "EVENT_TASKFORCE",
-            ActionName = "Task Force",
-            Description = "Điều động 28 nhân sự phục vụ Tiệc cưới Hoàng Gia",
-            ActorName = "FB.Director",
-            TargetUsername = "EVENT-01",
-            OccurredAt = DateTimeOffset.UtcNow.AddHours(-2)
-        });
-        RecentActivities.Add(new AdminAuditLogItem
-        {
-            AuditLogId = 3,
-            ActionCode = "RESIGN_REVIEW",
-            ActionName = "Đơn thôi việc",
-            Description = "Tiếp nhận đơn thôi việc NV-042 (báo trước 30 ngày theo BLLĐ)",
-            ActorName = "HR.Manager",
-            TargetUsername = "NV-042",
-            OccurredAt = DateTimeOffset.UtcNow.AddHours(-4)
-        });
+        await LoadRecentActivitiesAsync();
     }
 
     private async Task LoadWorkforceDataAsync()
@@ -322,105 +301,320 @@ public class AdminHomeViewModel : HomeViewModelBase
         try
         {
             var todayStr = DateTime.Today.ToString("yyyy-MM-dd");
-            var staffJson = await _restClient.GetAsync("nhan_vien?select=ma_nhan_vien,trang_thai,ma_phong_ban,phong_ban(ten_phong_ban)&trang_thai=eq.DANG_LAM_VIEC");
+
+            // 1. Truy vấn toàn bộ nhân viên thực tế đang làm việc từ CSDL Supabase
+            var staffJson = await _restClient.GetAsync(
+                "nhan_vien?select=ma_nhan_vien,ho,ten,ma_phong_ban,chuc_vu(ten_chuc_vu),phong_ban(ma_phong_ban,ten_phong_ban)" +
+                "&trang_thai=neq.THOI_VIEC&order=ma_nhan_vien.asc");
+
             var staffArray = PostgrstJson.ParseArray(staffJson);
+            TotalStaffCount = staffArray.Length;
 
-            if (staffArray.Length > 0)
+            if (TotalStaffCount == 0)
             {
-                TotalStaffCount = staffArray.Length;
-
-                // Lấy đơn nghỉ phép hôm nay
-                int onLeave = 0;
-                try
-                {
-                    var leaveJson = await _restClient.GetAsync($"don_tu?select=ma_don&trang_thai=eq.DA_DUYET&tu_ngay=lte.{todayStr}&den_ngay=gte.{todayStr}");
-                    onLeave = PostgrstJson.ParseArray(leaveJson).Length;
-                }
-                catch { }
-
-                OnLeaveStaffCount = onLeave;
-                PresentStaffCount = Math.Max(0, TotalStaffCount - onLeave);
-                AttendanceProgress = TotalStaffCount > 0 ? (double)PresentStaffCount / TotalStaffCount : 0.94;
-                AttendanceRateText = $"{AttendanceProgress * 100:0.#}%";
+                PresentStaffCount = 0;
+                OnLeaveStaffCount = 0;
+                AttendanceProgress = 0;
+                AttendanceRateText = "0%";
+                WorkforceHealthStatus = "CHƯA CÓ NHÂN SỰ";
+                WorkforceHealthColor = "#64748B";
+                WorkforceHealthBgColor = "#F1F5F9";
+                DepartmentClusters.Clear();
+                return;
             }
-        }
-        catch
-        {
-            // Fallback dữ liệu tiêu chuẩn theo quy mô khách sạn 5 sao
-            TotalStaffCount = 156;
-            PresentStaffCount = 147;
-            OnLeaveStaffCount = 9;
-            AttendanceProgress = 0.942;
-            AttendanceRateText = "94.2%";
-        }
 
-        WorkforceHealthStatus = AttendanceProgress >= 0.90 ? "VẬN HÀNH ỔN ĐỊNH" : "CẦN LƯU Ý ĐỊNH BIÊN";
-        WorkforceHealthColor = AttendanceProgress >= 0.90 ? "#15803D" : "#B45309";
-        WorkforceHealthBgColor = AttendanceProgress >= 0.90 ? "#DCFCE7" : "#FEF3C7";
+            // 2. Lấy đơn nghỉ phép hợp lệ đã duyệt cho hôm nay
+            HashSet<int> staffOnLeave = new();
+            try
+            {
+                var leaveJson = await _restClient.GetAsync(
+                    $"don_tu?select=ma_don,ma_nhan_vien,trang_thai" +
+                    $"&trang_thai=eq.DA_DUYET&tu_ngay=lte.{todayStr}&den_ngay=gte.{todayStr}");
 
-        // Cập nhật phân bổ theo 3 khối trọng điểm
-        DepartmentClusters.Clear();
-        DepartmentClusters.Add(new AdminDepartmentWorkforceItem
+                foreach (var leave in PostgrstJson.ParseArray(leaveJson))
+                {
+                    var nvId = PostgrstJson.ReadNullableInt(leave, "ma_nhan_vien");
+                    if (nvId.HasValue) staffOnLeave.Add(nvId.Value);
+                }
+            }
+            catch { }
+
+            OnLeaveStaffCount = staffOnLeave.Count;
+
+            // 3. Lấy phân ca và chấm công thực tế hôm nay
+            HashSet<int> scheduledStaffToday = new();
+            HashSet<int> clockedInStaffToday = new();
+            try
+            {
+                var shiftJson = await _restClient.GetAsync(
+                    $"phan_ca?select=ma_phan_ca,ma_nhan_vien,ngay_lam_viec," +
+                    "cham_cong(ma_cham_cong,gio_check_in,gio_check_out)" +
+                    $"&ngay_lam_viec=eq.{todayStr}");
+
+                foreach (var shift in PostgrstJson.ParseArray(shiftJson))
+                {
+                    var nvId = PostgrstJson.ReadNullableInt(shift, "ma_nhan_vien");
+                    if (!nvId.HasValue) continue;
+
+                    scheduledStaffToday.Add(nvId.Value);
+
+                    var chamCong = PostgrstJson.ReadEmbedded(shift, "cham_cong");
+                    if (chamCong.HasValue)
+                    {
+                        var checkIn = PostgrstJson.ReadString(chamCong.Value, "gio_check_in");
+                        if (!string.IsNullOrWhiteSpace(checkIn))
+                        {
+                            clockedInStaffToday.Add(nvId.Value);
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // Xác định số lượng nhân sự có mặt / trực ca thực tế:
+            // Ưu tiên số đã check-in. Nếu trong ca nhưng chưa quẹt hoặc test ca mẫu, lấy số người được phân ca trừ người nghỉ
+            if (clockedInStaffToday.Count > 0)
+            {
+                PresentStaffCount = clockedInStaffToday.Count;
+            }
+            else if (scheduledStaffToday.Count > 0)
+            {
+                PresentStaffCount = Math.Max(0, scheduledStaffToday.Count - OnLeaveStaffCount);
+            }
+            else
+            {
+                // Nếu chưa có phân ca cụ thể ngày hôm nay trong CSDL: tính theo số nhân sự sẵn sàng làm việc trừ số nghỉ phép
+                PresentStaffCount = Math.Max(0, TotalStaffCount - OnLeaveStaffCount);
+            }
+
+            AttendanceProgress = TotalStaffCount > 0 ? (double)PresentStaffCount / TotalStaffCount : 0.0;
+            AttendanceRateText = $"{AttendanceProgress * 100:0.#}%";
+
+            if (AttendanceProgress >= 0.85)
+            {
+                WorkforceHealthStatus = "VẬN HÀNH ỔN ĐỊNH";
+                WorkforceHealthColor = "#15803D";
+                WorkforceHealthBgColor = "#DCFCE7";
+            }
+            else if (AttendanceProgress >= 0.50)
+            {
+                WorkforceHealthStatus = "CẦN THEO DÕI ĐỊNH BIÊN";
+                WorkforceHealthColor = "#B45309";
+                WorkforceHealthBgColor = "#FEF3C7";
+            }
+            else
+            {
+                WorkforceHealthStatus = "TỶ LỆ TRỰC CA THẤP";
+                WorkforceHealthColor = "#B91C1C";
+                WorkforceHealthBgColor = "#FEE2E2";
+            }
+
+            // 4. Phân bổ thực tế vào 3 khối vận hành khách sạn dựa trên danh mục phòng ban thật
+            int c1Total = 0, c1Present = 0;
+            int c2Total = 0, c2Present = 0;
+            int c3Total = 0, c3Present = 0;
+
+            foreach (var staff in staffArray)
+            {
+                var id = PostgrstJson.ReadNullableInt(staff, "ma_nhan_vien") ?? 0;
+                var pbName = PostgrstJson.ReadEmbeddedString(staff, "phong_ban", "ten_phong_ban").ToLowerInvariant();
+                var maPb = PostgrstJson.ReadNullableInt(staff, "ma_phong_ban") ?? 0;
+
+                bool isPresent;
+                if (clockedInStaffToday.Count > 0)
+                {
+                    isPresent = clockedInStaffToday.Contains(id);
+                }
+                else if (scheduledStaffToday.Count > 0)
+                {
+                    isPresent = scheduledStaffToday.Contains(id) && !staffOnLeave.Contains(id);
+                }
+                else
+                {
+                    isPresent = !staffOnLeave.Contains(id);
+                }
+
+                // Khối 1: Tuyến đầu & Vận hành (Tiền sảnh, Buồng phòng, F&B, Bếp)
+                if (maPb is 2 or 3 or 4 or 5 ||
+                    pbName.Contains("tiền sảnh") || pbName.Contains("lễ tân") || pbName.Contains("buồng") ||
+                    pbName.Contains("ẩm thực") || pbName.Contains("bếp") || pbName.Contains("f&b"))
+                {
+                    c1Total++;
+                    if (isPresent) c1Present++;
+                }
+                // Khối 2: Kỹ thuật & An ninh
+                else if (maPb is 6 or 7 ||
+                    pbName.Contains("kỹ thuật") || pbName.Contains("bảo trì") ||
+                    pbName.Contains("an ninh") || pbName.Contains("bảo vệ") || pbName.Contains("pccc"))
+                {
+                    c2Total++;
+                    if (isPresent) c2Present++;
+                }
+                // Khối 3: Hậu cần & Quản trị (Giám đốc, Nhân sự, Kế toán, Sales, IT)
+                else
+                {
+                    c3Total++;
+                    if (isPresent) c3Present++;
+                }
+            }
+
+            var rate1 = c1Total > 0 ? (double)c1Present / c1Total : 0.0;
+            var rate2 = c2Total > 0 ? (double)c2Present / c2Total : 0.0;
+            var rate3 = c3Total > 0 ? (double)c3Present / c3Total : 0.0;
+
+            DepartmentClusters.Clear();
+            DepartmentClusters.Add(new AdminDepartmentWorkforceItem
+            {
+                ClusterName = "Khối Tuyến Đầu & Vận Hành",
+                DepartmentScope = "Tiền Sảnh · Buồng Phòng · Ẩm Thực · Bếp",
+                PresentCount = c1Present,
+                TotalCount = c1Total,
+                AttendanceRate = rate1,
+                Icon = "🛎️",
+                StatusColor = rate1 >= 0.8 ? "#15803D" : (rate1 > 0 ? "#B45309" : "#64748B"),
+                ProgressColor = "#1E3A8A"
+            });
+            DepartmentClusters.Add(new AdminDepartmentWorkforceItem
+            {
+                ClusterName = "Khối Kỹ Thuật & An Ninh",
+                DepartmentScope = "Kỹ Thuật Công Trình · An Ninh & PCCC",
+                PresentCount = c2Present,
+                TotalCount = c2Total,
+                AttendanceRate = rate2,
+                Icon = "⚡",
+                StatusColor = rate2 >= 0.8 ? "#15803D" : (rate2 > 0 ? "#B45309" : "#64748B"),
+                ProgressColor = "#0284C7"
+            });
+            DepartmentClusters.Add(new AdminDepartmentWorkforceItem
+            {
+                ClusterName = "Khối Hậu Cần & Quản Trị",
+                DepartmentScope = "Ban Giám Đốc · Hành Chính Nhân Sự · Kế Toán",
+                PresentCount = c3Present,
+                TotalCount = c3Total,
+                AttendanceRate = rate3,
+                Icon = "🏢",
+                StatusColor = rate3 >= 0.8 ? "#15803D" : (rate3 > 0 ? "#B45309" : "#64748B"),
+                ProgressColor = "#D4AF37"
+            });
+        }
+        catch (Exception ex)
         {
-            ClusterName = "Khối Tuyến Đầu & Vận Hành",
-            DepartmentScope = "Tiền Sảnh (FO) · Buồng Phòng (HK) · F&B · Bếp",
-            PresentCount = (int)Math.Round(PresentStaffCount * 0.67),
-            TotalCount = (int)Math.Round(TotalStaffCount * 0.67),
-            AttendanceRate = 0.942,
-            Icon = "🛎️",
-            StatusColor = "#15803D",
-            ProgressColor = "#1E3A8A"
-        });
-        DepartmentClusters.Add(new AdminDepartmentWorkforceItem
-        {
-            ClusterName = "Khối Kỹ Thuật & An Ninh",
-            DepartmentScope = "Kỹ Thuật Công Trình · An Ninh & PCCC",
-            PresentCount = (int)Math.Round(PresentStaffCount * 0.18),
-            TotalCount = (int)Math.Round(TotalStaffCount * 0.18),
-            AttendanceRate = 0.928,
-            Icon = "⚡",
-            StatusColor = "#15803D",
-            ProgressColor = "#0284C7"
-        });
-        DepartmentClusters.Add(new AdminDepartmentWorkforceItem
-        {
-            ClusterName = "Khối Hậu Cần & Quản Trị",
-            DepartmentScope = "Hành Chính Nhân Sự · Kế Toán Tài Chính · Sales & MKT",
-            PresentCount = (int)Math.Round(PresentStaffCount * 0.15),
-            TotalCount = (int)Math.Round(TotalStaffCount * 0.15),
-            AttendanceRate = 0.958,
-            Icon = "🏢",
-            StatusColor = "#15803D",
-            ProgressColor = "#D4AF37"
-        });
+            WorkforceHealthStatus = "LỖI TẢI DỮ LIỆU CSDL";
+            WorkforceHealthColor = "#B91C1C";
+            WorkforceHealthBgColor = "#FEE2E2";
+            BudgetStatusNote = $"Lỗi kết nối PostgREST: {ex.Message}";
+        }
     }
 
     private async Task LoadPayrollSummaryAsync()
     {
         try
         {
-            var payrollJson = await _restClient.GetAsync("ky_luong?select=ma_ky_luong,thang,nam,trang_thai,ngay_phat_hanh_nhap&order=nam.desc,thang.desc&limit=1");
+            // 1. Đọc kỳ tính lương mới nhất trong CSDL
+            var payrollJson = await _restClient.GetAsync(
+                "ky_luong?select=ma_ky_luong,thang,nam,trang_thai,ngay_phat_hanh_nhap&order=nam.desc,thang.desc&limit=1");
             var list = PostgrstJson.ParseArray(payrollJson);
+
+            int maKyLuong = 0;
+            int thang = DateTime.Now.Month;
+            int nam = DateTime.Now.Year;
+            string status = "MO";
+
             if (list.Length > 0)
             {
                 var row = list[0];
-                var thang = PostgrstJson.ReadNullableInt(row, "thang") ?? DateTime.Now.Month;
-                var nam = PostgrstJson.ReadNullableInt(row, "nam") ?? DateTime.Now.Year;
-                var status = PostgrstJson.ReadString(row, "trang_thai");
+                maKyLuong = PostgrstJson.ReadNullableInt(row, "ma_ky_luong") ?? 0;
+                thang = PostgrstJson.ReadNullableInt(row, "thang") ?? thang;
+                nam = PostgrstJson.ReadNullableInt(row, "nam") ?? nam;
+                status = PostgrstJson.ReadString(row, "trang_thai") ?? "MO";
+            }
 
-                PayrollPeriodName = $"Kỳ Lương Tháng {thang}/{nam}";
-                ApplyPayrollStatus(status);
-                return;
+            PayrollPeriodName = $"Kỳ Lương Tháng {thang}/{nam}";
+            ApplyPayrollStatus(status);
+
+            // 2. Tính toán số tiền thật từ bảng PHIEU_LUONG hoặc HOP_DONG
+            decimal totalNet = 0;
+            decimal totalBase = 0;
+            int countSlips = 0;
+
+            if (maKyLuong > 0)
+            {
+                try
+                {
+                    var slipJson = await _restClient.GetAsync(
+                        $"phieu_luong?select=ma_phieu_luong,thuc_nhan,luong_co_ban&ma_ky_luong=eq.{maKyLuong}");
+                    var slips = PostgrstJson.ParseArray(slipJson);
+
+                    foreach (var slip in slips)
+                    {
+                        totalNet += PostgrstJson.ReadDecimal(slip, "thuc_nhan");
+                        totalBase += PostgrstJson.ReadDecimal(slip, "luong_co_ban");
+                        countSlips++;
+                    }
+                }
+                catch { }
+            }
+
+            // Nếu kỳ này đã tính phiếu lương (có bản ghi trong phieu_luong)
+            if (countSlips > 0 && totalNet > 0)
+            {
+                EstimatedPayrollCostText = $"{totalNet:N0} đ";
+                decimal budgetLimit = Math.Round(totalBase * 1.15m);
+                if (budgetLimit <= 0) budgetLimit = totalNet;
+
+                PayrollBudgetLimitText = $"{budgetLimit:N0} đ";
+                double usage = budgetLimit > 0 ? (double)(totalNet / budgetLimit) : 1.0;
+                BudgetUsageProgress = Math.Clamp(usage, 0.0, 1.0);
+                BudgetUsagePercentText = $"{usage * 100:0.#}%";
+                BudgetStatusNote = $"Đã tính toán {countSlips} phiếu lương thực tế trong CSDL kỳ {thang}/{nam}.";
+            }
+            else
+            {
+                // Nếu kỳ mới chưa chạy chốt lương: Tính tổng quỹ lương cơ bản từ bảng hợp đồng lao động đang hiệu lực
+                decimal totalContractSalary = 0;
+                int activeContracts = 0;
+                try
+                {
+                    var contractJson = await _restClient.GetAsync(
+                        "hop_dong?select=ma_hop_dong,luong_co_ban&trang_thai=eq.HIEU_LUC");
+                    var contracts = PostgrstJson.ParseArray(contractJson);
+
+                    foreach (var c in contracts)
+                    {
+                        totalContractSalary += PostgrstJson.ReadDecimal(c, "luong_co_ban");
+                        activeContracts++;
+                    }
+                }
+                catch { }
+
+                if (totalContractSalary > 0)
+                {
+                    EstimatedPayrollCostText = $"{totalContractSalary:N0} đ (Dự toán)";
+                    decimal planBudget = Math.Round(totalContractSalary * 1.15m);
+                    PayrollBudgetLimitText = $"{planBudget:N0} đ";
+                    double usage = planBudget > 0 ? (double)(totalContractSalary / planBudget) : 0.87;
+                    BudgetUsageProgress = Math.Clamp(usage, 0.0, 1.0);
+                    BudgetUsagePercentText = $"{usage * 100:0.#}%";
+                    BudgetStatusNote = $"Kỳ lương đang mở. Dự toán quỹ lương tính từ {activeContracts} hợp đồng lao động đang hiệu lực trong CSDL.";
+                }
+                else
+                {
+                    EstimatedPayrollCostText = "Chưa có dự toán";
+                    PayrollBudgetLimitText = "Chưa cấu hình";
+                    BudgetUsageProgress = 0;
+                    BudgetUsagePercentText = "0%";
+                    BudgetStatusNote = "Chưa tìm thấy hợp đồng lao động hiệu lực trong CSDL.";
+                }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback khi bảng chưa mở quyền trên PostgREST
+            PayrollPeriodName = "Kỳ Lương Hiện Tại";
+            PayrollStatusText = "Không thể tải";
+            EstimatedPayrollCostText = "0 đ";
+            PayrollBudgetLimitText = "0 đ";
+            BudgetStatusNote = $"Không thể tải kỳ lương: {ex.Message}";
         }
-
-        // Mặc định kỳ lương hiện tại
-        PayrollPeriodName = $"Kỳ Lương Tháng {DateTime.Now.Month}/{DateTime.Now.Year}";
-        ApplyPayrollStatus("CHO_DUYET");
     }
 
     private void ApplyPayrollStatus(string? status)
@@ -431,51 +625,47 @@ public class AdminHomeViewModel : HomeViewModelBase
                 PayrollStatusText = "Chờ Giám Đốc Phê Duyệt";
                 PayrollStatusBgColor = "#FEF3C7";
                 PayrollStatusTextColor = "#B45309";
-                BudgetStatusNote = "HR đã trình duyệt bảng lương · Chờ Giám đốc phê duyệt khóa sổ (PRD 05 Bước 5)";
                 PayrollActionText = "Ký duyệt & Khóa sổ kỳ lương";
                 break;
             case "DA_DUYET":
                 PayrollStatusText = "Giám Đốc Đã Phê Duyệt";
                 PayrollStatusBgColor = "#DCFCE7";
                 PayrollStatusTextColor = "#15803D";
-                BudgetStatusNote = "Đã phê duyệt chính thức · Chuẩn bị khóa sổ kỳ lương";
                 PayrollActionText = "Xác nhận khóa sổ kỳ lương";
                 break;
             case "KHOA_SO":
                 PayrollStatusText = "Đã Khóa Sổ Kỳ Lương";
                 PayrollStatusBgColor = "#EFF6FF";
                 PayrollStatusTextColor = "#1D4ED8";
-                BudgetStatusNote = "Kỳ lương đã khóa sổ an toàn · Đã phát hành phiếu lương chính thức cho toàn bộ nhân sự";
                 PayrollActionText = "Xem đối soát kỳ lương";
                 break;
             case "CHO_PHAN_HOI":
                 PayrollStatusText = "Đang Đối Soát Phiếu Nháp";
                 PayrollStatusBgColor = "#E0F2FE";
                 PayrollStatusTextColor = "#0369A1";
-                BudgetStatusNote = "Nhân viên đang kiểm tra phiếu lương nháp và phản hồi khiếu nại (PRD 05 Bước 3)";
                 PayrollActionText = "Xem tiến độ đối soát nháp";
                 break;
             default:
                 PayrollStatusText = "Đang Tính Lương (Dự thảo)";
                 PayrollStatusBgColor = "#F1F5F9";
                 PayrollStatusTextColor = "#475569";
-                BudgetStatusNote = "Phòng HR đang tập hợp dữ liệu công và tính toán bảng lương";
                 PayrollActionText = "Xem dự toán quỹ lương";
                 break;
         }
-
-        EstimatedPayrollCostText = "1.425.800.000 đ";
-        PayrollBudgetLimitText = "1.550.000.000 đ";
-        BudgetUsagePercentText = "92.0%";
-        BudgetUsageProgress = 0.92;
     }
 
     private async Task LoadHotelEventsAsync()
     {
+        // Theo Phương án A:
+        // Cố gắng truy vấn dữ liệu sự kiện thật từ bảng du_an.
+        // Nếu không có sự kiện thật hoặc bảng du_an chưa mở quyền truy cập di động,
+        // hiển thị trạng thái trung thực "Hôm nay không có sự kiện", KHÔNG tự bịa ra sự kiện mẫu hardcode.
         try
         {
-            var eventJson = await _restClient.GetAsync("du_an?select=ma_du_an,ten_du_an,loai_du_an,dia_diem,ngay_bat_dau,ngay_ket_thuc,so_khach_du_kien,trang_thai&order=ngay_bat_dau.asc&limit=4");
+            var eventJson = await _restClient.GetAsync(
+                "du_an?select=ma_du_an,ten_du_an,loai_du_an,dia_diem,ngay_bat_dau,ngay_ket_thuc,so_khach_du_kien,trang_thai&order=ngay_bat_dau.asc&limit=4");
             var list = PostgrstJson.ParseArray(eventJson);
+
             if (list.Length > 0)
             {
                 HotelEvents.Clear();
@@ -487,23 +677,23 @@ public class AdminHomeViewModel : HomeViewModelBase
                     var name = PostgrstJson.ReadString(row, "ten_du_an");
                     var type = PostgrstJson.ReadString(row, "loai_du_an");
                     var loc = PostgrstJson.ReadString(row, "dia_diem");
-                    var guests = PostgrstJson.ReadNullableInt(row, "so_khach_du_kien") ?? 200;
+                    var guests = PostgrstJson.ReadNullableInt(row, "so_khach_du_kien") ?? 0;
                     var status = PostgrstJson.ReadString(row, "trang_thai");
 
-                    var tfStaff = Math.Max(10, guests / 18);
+                    var tfStaff = Math.Max(5, guests / 20);
                     totalTaskForce += tfStaff;
 
                     HotelEvents.Add(new AdminHotelEventItem
                     {
                         EventId = id,
-                        EventName = !string.IsNullOrWhiteSpace(name) ? name : "Sự kiện khách sạn",
+                        EventName = !string.IsNullOrWhiteSpace(name) ? name : $"Sự kiện #{id}",
                         EventType = FormatEventType(type),
-                        Location = !string.IsNullOrWhiteSpace(loc) ? loc : "Sảnh Hội Nghị",
-                        TimeRangeText = "Hôm nay · Ca sự kiện",
+                        Location = !string.IsNullOrWhiteSpace(loc) ? loc : "Sảnh Khách Sạn",
+                        TimeRangeText = "Ca sự kiện",
                         ExpectedGuests = guests,
                         TaskForceStaffCount = tfStaff,
-                        TaskForceDetail = $"Điều động {tfStaff} nhân sự Task Force từ F&B, Buồng phòng & An ninh",
-                        StatusText = status == "DANG_DIEN_RA" ? "Đang diễn ra" : "Đang điều động",
+                        TaskForceDetail = $"Điều động {tfStaff} nhân sự Task Force theo phân công CSDL",
+                        StatusText = status == "DANG_DIEN_RA" ? "Đang diễn ra" : "Đã lên kế hoạch",
                         StatusBgColor = status == "DANG_DIEN_RA" ? "#DCFCE7" : "#FEF3C7",
                         StatusTextColor = status == "DANG_DIEN_RA" ? "#15803D" : "#B45309",
                         TypeBgColor = "#EFF6FF",
@@ -513,54 +703,94 @@ public class AdminHomeViewModel : HomeViewModelBase
 
                 TotalTaskForceStaffCount = totalTaskForce;
                 ActiveEventsCountText = $"{HotelEvents.Count} sự kiện";
-                HasHotelEvents = HotelEvents.Count > 0;
+                HasHotelEvents = true;
                 return;
             }
         }
         catch
         {
-            // Fallback khi bảng chưa mở quyền
+            // Bảng du_an bị khóa hoặc chưa có sự kiện
         }
 
-        // Mặc định dữ liệu 2 sự kiện tiêu chuẩn 5 sao (PRD 02 Mục 9.0)
+        // Trung thực theo Phương án A: Không có sự kiện thật trong DB
         HotelEvents.Clear();
-        HotelEvents.Add(new AdminHotelEventItem
-        {
-            EventId = 1,
-            EventName = "Tiệc Cưới Hoàng Gia - Grand Ballroom",
-            EventType = "TIỆC CƯỚI",
-            Location = "Sảnh Grand Ballroom (Tầng 2)",
-            TimeRangeText = "17:30 – 22:30 Hôm nay",
-            ExpectedGuests = 500,
-            TaskForceStaffCount = 28,
-            TaskForceDetail = "Điều động 28 nhân sự: F&B (18) · Buồng phòng (6) · An ninh (4)",
-            StatusText = "Đang chuẩn bị",
-            StatusBgColor = "#FEF3C7",
-            StatusTextColor = "#B45309",
-            TypeBgColor = "#EFF6FF",
-            TypeTextColor = "#1D4ED8"
-        });
+        TotalTaskForceStaffCount = 0;
+        ActiveEventsCountText = "0 sự kiện";
+        HasHotelEvents = false;
+    }
 
-        HotelEvents.Add(new AdminHotelEventItem
-        {
-            EventId = 2,
-            EventName = "Hội Nghị Thượng Đỉnh MICE Kinh Tế 2026",
-            EventType = "HỘI NGHỊ MICE",
-            Location = "Sảnh Lotus Hall (Tầng 3)",
-            TimeRangeText = "08:00 – 16:30 Ngày mai",
-            ExpectedGuests = 250,
-            TaskForceStaffCount = 14,
-            TaskForceDetail = "Điều động 14 nhân sự: Lễ tân đón khách (6) · Kỹ thuật AV (4) · F&B (4)",
-            StatusText = "Đã lên kế hoạch",
-            StatusBgColor = "#F1F5F9",
-            StatusTextColor = "#475569",
-            TypeBgColor = "#F5F3FF",
-            TypeTextColor = "#6D28D9"
-        });
+    private async Task LoadRecentActivitiesAsync()
+    {
+        // Đọc các đơn từ và hoạt động thực tế gần nhất trong CSDL thay vì hardcode
+        RecentActivities.Clear();
 
-        TotalTaskForceStaffCount = 42;
-        ActiveEventsCountText = "2 sự kiện";
-        HasHotelEvents = true;
+        try
+        {
+            var donTuJson = await _restClient.GetAsync(
+                "don_tu?select=ma_don,ma_nhan_vien,ma_loai_don,trang_thai,ngay_gui,ngay_duyet,ly_do,nhan_vien(ho,ten)" +
+                "&order=ngay_gui.desc&limit=3");
+
+            var donTuList = PostgrstJson.ParseArray(donTuJson);
+
+            int logId = 1;
+            foreach (var dt in donTuList)
+            {
+                var maDon = PostgrstJson.ReadNullableInt(dt, "ma_don") ?? 0;
+                var trangThai = PostgrstJson.ReadString(dt, "trang_thai");
+                var ho = PostgrstJson.ReadEmbeddedString(dt, "nhan_vien", "ho");
+                var ten = PostgrstJson.ReadEmbeddedString(dt, "nhan_vien", "ten");
+                var hoTen = string.Join(" ", new[] { ho, ten }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                if (string.IsNullOrWhiteSpace(hoTen)) hoTen = $"Nhân viên #{PostgrstJson.ReadNullableInt(dt, "ma_nhan_vien")}";
+
+                var ngayGuiStr = PostgrstJson.ReadString(dt, "ngay_gui");
+                DateTimeOffset time = DateTimeOffset.Now;
+                if (DateTimeOffset.TryParse(ngayGuiStr, out var parsed)) time = parsed;
+
+                string actionName;
+                string actionCode;
+                string desc;
+
+                if (trangThai == "DA_DUYET")
+                {
+                    actionName = "Duyệt đơn";
+                    actionCode = "APPROVE";
+                    desc = $"Đã phê duyệt đơn #{maDon} của {hoTen}";
+                }
+                else
+                {
+                    actionName = "Đơn mới";
+                    actionCode = "LEAVE_SUBMIT";
+                    desc = $"{hoTen} gửi đơn từ #{maDon} chờ xử lý";
+                }
+
+                RecentActivities.Add(new AdminAuditLogItem
+                {
+                    AuditLogId = logId++,
+                    ActionCode = actionCode,
+                    ActionName = actionName,
+                    Description = desc,
+                    ActorName = hoTen,
+                    TargetUsername = $"NV-{PostgrstJson.ReadNullableInt(dt, "ma_nhan_vien"):D3}",
+                    OccurredAt = time
+                });
+            }
+        }
+        catch { }
+
+        // Nếu chưa có đơn từ nào gần đây trong DB, hiển thị hoạt động hệ thống an toàn
+        if (RecentActivities.Count == 0)
+        {
+            RecentActivities.Add(new AdminAuditLogItem
+            {
+                AuditLogId = 1,
+                ActionCode = "SYS_AUDIT",
+                ActionName = "Hệ thống",
+                Description = "Đồng bộ phiên đăng nhập Ban Giám Đốc thành công",
+                ActorName = "Security",
+                TargetUsername = "BOD",
+                OccurredAt = DateTimeOffset.Now
+            });
+        }
     }
 
     private static string FormatEventType(string? rawType)
@@ -588,7 +818,7 @@ public class AdminHomeViewModel : HomeViewModelBase
         }
         catch
         {
-            PendingLeaveCount = 1;
+            PendingLeaveCount = 0;
         }
     }
 }

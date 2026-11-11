@@ -368,7 +368,7 @@
                         </Border>
                     </Grid>
 
-                    <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding HotelEvents}">
+                    <VerticalStackLayout IsVisible="{Binding HasHotelEvents}" Spacing="10" BindableLayout.ItemsSource="{Binding HotelEvents}">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="models:AdminHotelEventItem">
                                 <Border Stroke="#E2E8F0"
@@ -461,6 +461,40 @@
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
+
+                    <!-- Thẻ trạng thái trung thực khi không có sự kiện tiệc/hội nghị lớn trong DB (Phương án A) -->
+                    <Border IsVisible="{Binding HasNoHotelEvents}"
+                            Stroke="#E2E8F0"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="#FFFFFF"
+                            Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#0B1B4D" Offset="0,4" Radius="10" Opacity="0.04" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" VerticalOptions="Center">
+                            <Border Grid.Column="0"
+                                    StrokeShape="RoundRectangle 20"
+                                    BackgroundColor="#F0FDF4"
+                                    Stroke="#DCFCE7"
+                                    WidthRequest="40"
+                                    HeightRequest="40"
+                                    VerticalOptions="Center">
+                                <Label Text="📋" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                <Label Text="Hôm nay không có sự kiện tiệc / hội nghị lớn"
+                                       TextColor="#0F172A"
+                                       FontSize="13"
+                                       FontFamily="SegoeUIBold"
+                                       LineBreakMode="WordWrap" />
+                                <Label Text="Toàn bộ nhân sự các khối đang tập trung phục vụ vận hành thường nhật."
+                                       TextColor="#64748B"
+                                       FontSize="11"
+                                       FontFamily="SegoeUI"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
 
                     <!-- ═══ KHỐI 6 · VIỆC CẦN XỬ LÝ HỆ THỐNG (URGENT ACTIONS) ═══ -->
                     <Label Text="VIỆC CẦN XỬ LÝ HỆ THỐNG"
