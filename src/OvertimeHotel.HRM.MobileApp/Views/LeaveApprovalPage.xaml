@@ -206,6 +206,7 @@
 
         <!-- FLOATING OVERLAY DROPDOWN CARD: NEO TRỰC TIẾP THEO ROW 4 (48dp + 6dp gap = Margin 54dp), 100% THỐNG NHẤT MỌI MÁY -->
         <Border x:Name="dropdownCard"
+                IsVisible="False"
                 Grid.Row="4" Grid.RowSpan="4"
                 VerticalOptions="Start"
                 Margin="0,54,0,0"

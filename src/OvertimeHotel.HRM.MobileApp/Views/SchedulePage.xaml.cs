@@ -113,15 +113,19 @@ public partial class SchedulePage : ContentPage
             var date = start.AddDays(i);
             var selected = date == _viewModel.SelectedDate;
             var hasShift = _viewModel.HasShift(date);
+            var hasEvent = _viewModel.HasEvent(date);
             var button = new Button
             {
                 Text = date.Day.ToString(),
                 FontSize = 14, Padding = 0, HeightRequest = 42, MinimumHeightRequest = 42,
                 CornerRadius = 21,
-                BackgroundColor = selected ? Color.FromArgb(_viewModel.HasEvent(date) ? "#DC2626" : "#1E3A8A") : Colors.Transparent,
-                TextColor = selected ? Colors.White : date.Month == _viewModel.Month.Month ? Color.FromArgb("#334155") : Color.FromArgb("#CBD5E1")
+                BackgroundColor = selected ? Color.FromArgb(hasEvent ? "#EFF6FF" : "#1E3A8A") : Colors.Transparent,
+                BorderColor = selected && hasEvent ? Color.FromArgb("#1E3A8A") : Colors.Transparent,
+                BorderWidth = selected && hasEvent ? 1 : 0,
+                TextColor = hasEvent ? Color.FromArgb("#DC2626") : selected ? Colors.White
+                    : date.Month == _viewModel.Month.Month ? Color.FromArgb("#334155") : Color.FromArgb("#CBD5E1")
             };
-            SemanticProperties.SetDescription(button, $"Ngày {date:dd/MM/yyyy}" + (hasShift ? ", có ca làm" : "") + (_viewModel.HasEvent(date) ? ", có sự kiện" : ""));
+            SemanticProperties.SetDescription(button, $"Ngày {date:dd/MM/yyyy}" + (hasShift ? ", có ca làm" : "") + (hasEvent ? ", có sự kiện" : ""));
             button.Clicked += async (_, _) => await _viewModel.SelectDateAsync(date);
             var cell = new Grid { WidthRequest = 42, HeightRequest = 42, HorizontalOptions = LayoutOptions.Center };
             cell.Add(button);
@@ -129,7 +133,7 @@ public partial class SchedulePage : ContentPage
                 cell.Add(new Ellipse
                 {
                     WidthRequest = 3, HeightRequest = 3, StrokeThickness = 0,
-                    Fill = selected ? Colors.White : Color.FromArgb("#1E3A8A"),
+                    Fill = selected && !hasEvent ? Colors.White : Color.FromArgb("#1E3A8A"),
                     HorizontalOptions = LayoutOptions.End, VerticalOptions = LayoutOptions.Center,
                     Margin = new Thickness(0, 0, date.Day < 10 ? 11 : 7, 0), InputTransparent = true
                 });

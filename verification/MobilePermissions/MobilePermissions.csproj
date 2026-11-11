@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/OvertimeHotel.HRM.Core/OvertimeHotel.HRM.Core.csproj" />
+    <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Models/UserSession.cs" Link="UserSession.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.WebAdmin/Security/PermissionCodes.cs" Link="PermissionCodes.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.WebAdmin/Security/WebAdminPermissions.cs" Link="WebAdminPermissions.cs" />
+  </ItemGroup>
+</Project>

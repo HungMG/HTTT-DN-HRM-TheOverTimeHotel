@@ -85,7 +85,10 @@
                                 <Label Grid.Column="6" Text="CN" HorizontalOptions="Center" />
                             </Grid>
                             <Grid x:Name="calendarGrid" ColumnDefinitions="*,*,*,*,*,*,*" RowSpacing="2" />
-                            <Label Text="●  Có ca làm" TextColor="#1E3A8A" FontSize="11" />
+                            <HorizontalStackLayout Spacing="16">
+                                <Label Text="●  Có ca làm" TextColor="#1E3A8A" FontSize="11" />
+                                <Label Text="Số đỏ: Có sự kiện" TextColor="#DC2626" FontSize="11" />
+                            </HorizontalStackLayout>
                         </VerticalStackLayout>
                     </Border>
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,12">

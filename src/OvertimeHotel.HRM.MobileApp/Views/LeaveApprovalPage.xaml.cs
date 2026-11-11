@@ -7,6 +7,7 @@ namespace OvertimeHotel.HRM.MobileApp.Views;
 public partial class LeaveApprovalPage : ContentPage
 {
     private readonly LeaveApprovalViewModel _viewModel;
+    private int _dropdownAnimationVersion;
     private CancellationTokenSource _skeletonCts = new();
     private CancellationTokenSource _loadMoreCts = new();
 
@@ -97,14 +98,13 @@ public partial class LeaveApprovalPage : ContentPage
     }
 
     /// <summary>
-    /// Hiệu ứng chuyển động chuẩn GSAP Power2 Smooth Glide:
-    /// - Pre-warmed Layout: Card luôn nằm trong bộ nhớ cây giao diện (không bật/tắt IsVisible), loại bỏ hoàn toàn độ trễ Cold Layout (0 dropped frames).
-    /// - Compositor-only transforms: Chỉ animate TranslationY (-6dp -> 0) và Opacity (0 -> 1) trực tiếp trên RenderNode GPU.
-    /// - Highlight viền Navy (#1E3A8A) trên Trigger Box khi mở.
+    /// Fade the department menu, then remove it from layout when closed.
+    /// Android may still draw a view's elevation shadow when its opacity is zero.
     /// </summary>
     private async Task AnimateDropdownAsync(bool isOpen)
     {
-        // Hủy hoạt ảnh đang dở nếu người dùng chạm liên tục để phản hồi tức thì
+        var version = ++_dropdownAnimationVersion;
+        // A canceled close animation must not hide a menu that has just reopened.
         dropdownCard.CancelAnimations();
         chevronBorder.CancelAnimations();
 
@@ -116,11 +116,12 @@ public partial class LeaveApprovalPage : ContentPage
                 triggerBorder.Stroke = HighlightNavyStroke;
 
                 // 2. Kích hoạt nhận tương tác trên Card và mở Backdrop
+                dropdownCard.IsVisible = true;
                 dropdownCard.InputTransparent = false;
                 dropdownBackdrop.Opacity = 0.01;
                 dropdownBackdrop.IsVisible = true;
 
-                // 3. GSAP Power2 Smooth Glide: 200ms (Không đo đạc lại layout, trượt êm mượt 120 FPS)
+                // 3. Hiện bảng bằng hiệu ứng mờ dần và trượt nhẹ trong 200ms.
                 await Task.WhenAll(
                     dropdownCard.FadeToAsync(1.0, 200, GsapPower2Out),
                     dropdownCard.TranslateToAsync(0, 0, 200, GsapPower2Out),
@@ -142,11 +143,14 @@ public partial class LeaveApprovalPage : ContentPage
                     dropdownCard.TranslateToAsync(0, -6, 150, GsapPower2In),
                     chevronBorder.RotateToAsync(0, 150, GsapPower2In)
                 );
+                if (version == _dropdownAnimationVersion) dropdownCard.IsVisible = false;
             }
         }
         catch
         {
+            if (version != _dropdownAnimationVersion) return;
             // Dự phòng an toàn nếu hoạt ảnh bị gián đoạn
+            dropdownCard.IsVisible = isOpen;
             dropdownCard.Opacity = isOpen ? 1 : 0;
             dropdownCard.TranslationY = isOpen ? 0 : -6;
             dropdownCard.InputTransparent = !isOpen;
@@ -180,6 +184,17 @@ public partial class LeaveApprovalPage : ContentPage
     /// </summary>
     protected override void OnDisappearing()
     {
+        _viewModel.IsDepartmentDropdownOpen = false;
+        ++_dropdownAnimationVersion;
+        dropdownCard.CancelAnimations();
+        chevronBorder.CancelAnimations();
+        dropdownCard.IsVisible = false;
+        dropdownCard.Opacity = 0;
+        dropdownCard.TranslationY = -6;
+        dropdownCard.InputTransparent = true;
+        dropdownBackdrop.IsVisible = false;
+        chevronBorder.Rotation = 0;
+        triggerBorder.Stroke = DefaultBorderStroke;
         DisposeSkeleton();
         DisposeLoadMoreLoop();
         base.OnDisappearing();
