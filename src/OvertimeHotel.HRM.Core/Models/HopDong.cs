@@ -11,6 +11,11 @@ public class HopDong
     public decimal LuongCoBan { get; set; }
     public string TrangThai { get; set; } = "HIEU_LUC";
     public string HinhThucHopDong { get; set; } = "CHINH_THUC";
+    // Null on legacy contracts: no inferred backfill of historical position/education.
+    public int? MaChucVuKyKet { get; set; }
+    public int? MaPhongBanKyKet { get; set; }
+    public string? TrinhDoKyKet { get; set; }
+    public virtual ICollection<PhuLucLuong> PhuLucLuongs { get; set; } = new List<PhuLucLuong>();
 
     /// <summary>Loại chấm dứt (xem <c>ContractTerminationTypes</c>); chỉ có khi hợp đồng đã chấm dứt.</summary>
     public string? LoaiChamDut { get; set; }

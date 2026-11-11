@@ -12,7 +12,7 @@ public sealed partial class HotelEventService(AppDbContext db) : IHotelEventServ
         .Include(e => e.NhuCaus).Include(e => e.QuyetToans).AsSplitQuery();
     private IQueryable<DuAn> Events => EventInformation
         .Include(e => e.PhanCongs).ThenInclude(p => p.NhanVien).ThenInclude(n => n!.PhongBan)
-        .Include(e => e.PhanCongs).ThenInclude(p => p.NhanVien).ThenInclude(n => n!.HopDongs)
+        .Include(e => e.PhanCongs).ThenInclude(p => p.NhanVien).ThenInclude(n => n!.HopDongs).ThenInclude(h => h.PhuLucLuongs)
         .Include(e => e.PhanCongs).ThenInclude(p => p.PhanCa).ThenInclude(p => p!.ChamCong)
         .Include(e => e.PhanCongs).ThenInclude(p => p.CongThucTes);
 

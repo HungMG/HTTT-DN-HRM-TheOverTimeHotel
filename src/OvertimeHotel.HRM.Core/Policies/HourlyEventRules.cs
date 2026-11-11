@@ -127,16 +127,19 @@ public static class HourlyEventRules
         for (var from = start; from < end;)
         {
             var date = DateOnly.FromDateTime(HotelEventRules.Local(from));
-            var candidates = list.Where(h => h.TrangThai is "HIEU_LUC" or "HET_HAN" or "DA_KET_THUC" or "DA_CHAM_DUT" or "CHAM_DUT"
-                && h.NgayBatDau <= date && (!h.NgayKetThuc.HasValue || h.NgayKetThuc >= date))
-                .OrderByDescending(h => h.NgayBatDau).ToList();
-            if (candidates.Count == 0 || candidates[0].LuongCoBan <= 0
-                || (candidates[0].TrangThai is "DA_CHAM_DUT" or "CHAM_DUT" && !candidates[0].NgayKetThuc.HasValue)
-                || candidates.Count(h => h.NgayBatDau == candidates[0].NgayBatDau) != 1)
-                throw new ArgumentException($"Thiếu hoặc trùng căn cứ lương ngày {date:dd/MM/yyyy}.");
+            EffectiveSalary salary;
+            try
+            {
+                salary = EffectiveSalaryResolver.Resolve(list, date)
+                    ?? throw new InvalidOperationException($"Thiếu căn cứ lương ngày {date:dd/MM/yyyy}.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new ArgumentException(ex.Message, ex);
+            }
             var nextDay = HotelEventRules.ToUtc(date.AddDays(1).ToDateTime(TimeOnly.MinValue));
             var to = nextDay < end ? nextDay : end;
-            result.Add(new(from, to, candidates[0].LuongCoBan, candidates[0].MaHopDong, hourlyRate));
+            result.Add(new(from, to, salary.MonthlySalary, salary.Contract.MaHopDong, hourlyRate));
             from = to;
         }
         return result;

@@ -1217,3 +1217,32 @@
     padding: 6pt !important;
   }
 }
+
+/* Salary review: a read-only list within the contract workspace. */
+.salary-review-trigger { color: #166347; background: #eef7f2; border: 1px solid #b8d8c8; min-height: 36px; }
+.salary-review-trigger:hover, .salary-review-trigger:active { color: #fff; background: #176347; border-color: #176347; }
+.salary-review-trigger:focus-visible { outline: 3px solid #176347; outline-offset: 3px; }
+.salary-review-dialog { border: 0; border-radius: 20px; overflow: hidden; box-shadow: 0 18px 54px rgba(15,23,42,.18); }
+.salary-review-dialog .modal-title { color: var(--hotel-navy); font-weight: 700; }
+.salary-review-dialog .modal-header { display: flex; justify-content: space-between; gap: 16px; background: #fff; }
+.salary-review-dialog .modal-header > div { flex: 1; min-width: 0; }
+.salary-review-dialog .modal-header .btn-close { flex-shrink: 0; margin: 0 !important; }
+.salary-review-dialog .modal-footer { background: #f8faf9; }
+.salary-review-summary { padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between; background: #f8faf9; border-bottom: 1px solid #e2e8e5; }
+.salary-review-row { padding: 20px 24px; border-bottom: 1px solid #e2e8e5; }
+.salary-review-row:last-child { border-bottom: 0; }
+.salary-review-fields { display: grid; grid-template-columns: 1.3fr .8fr 1fr 1.3fr; gap: 16px; }
+.salary-review-fields > div { min-width: 0; }
+.salary-review-fields dt { color: #566473; font-size: .75rem; font-weight: 500; margin-bottom: 6px; }
+.salary-review-fields dd { color: #172b25; margin: 0; font-size: .875rem; overflow-wrap: anywhere; }
+.salary-review-money { font-variant-numeric: tabular-nums; }
+.salary-review-reason { margin-top: 14px; color: #566473; font-size: .8125rem; line-height: 1.6; }
+.salary-review-state { padding: 44px 24px; color: #566473; }
+@media (max-width: 767.98px) {
+    #salaryReviewsModal .modal-dialog { margin: 12px; min-height: calc(100% - 24px); }
+    #salaryReviewsModal .modal-header, #salaryReviewsModal .modal-footer { padding: 20px !important; }
+    .salary-review-summary, .salary-review-row { padding: 16px 20px; }
+    .salary-review-fields { grid-template-columns: 1fr 1fr; gap: 16px 12px; }
+    .salary-review-fields dd { font-size: .875rem; }
+    .salary-review-dialog .modal-footer > span { width: 100%; }
+}

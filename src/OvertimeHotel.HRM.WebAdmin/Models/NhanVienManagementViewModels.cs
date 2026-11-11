@@ -81,6 +81,9 @@ public class HopDongFormViewModel
     public int? PositionId { get; set; }
     public string PositionName { get; set; } = string.Empty;
 
+    [Display(Name = "Trình độ chuyên môn")]
+    public string TrinhDo { get; set; } = string.Empty;
+
     [Display(Name = "Email cá nhân")]
     public string? PersonalEmail { get; set; }
 
@@ -106,4 +109,5 @@ public class HopDongEmployeeOptionItem
     public int? PositionId { get; set; }
     public string PositionName { get; set; } = string.Empty;
     public string PersonalEmail { get; set; } = string.Empty;
+    public string TrinhDo { get; set; } = string.Empty;
 }

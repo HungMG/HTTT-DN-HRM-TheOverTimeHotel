@@ -36,13 +36,13 @@
             <div id="@(formIdPrefix + "createEmployeeWrapper")">
                 <div class="input-group">
                     <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-person-fill text-primary"></i></span>
-                    <input asp-for="EmployeeName" id="@(formIdPrefix + "contractEmployeeInput")" list="employeeDatalist" class="form-control border-start-0" placeholder="Nhập họ và tên..." autocomplete="off" />
+                    <input asp-for="EmployeeName" id="@(formIdPrefix + "contractEmployeeInput")" list="@(formIdPrefix + "employeeDatalist")" class="form-control border-start-0" placeholder="Nhập họ và tên..." autocomplete="off" />
                     <input type="hidden" asp-for="EmployeeId" id="@(formIdPrefix + "contractEmployeeIdHidden")" value="@Model.EmployeeId" />
                 </div>
                 <datalist id="@(formIdPrefix + "employeeDatalist")">
                     @foreach (var emp in employeeList)
                     {
-                        <option value="@emp.Code — @emp.FullName" data-name="@emp.FullName" data-id="@emp.Id" data-dept-id="@emp.DepartmentId" data-dept-name="@emp.DepartmentName" data-pos-id="@emp.PositionId" data-pos-name="@emp.PositionName" data-email="@emp.PersonalEmail">
+                        <option value="@emp.Code — @emp.FullName" data-name="@emp.FullName" data-id="@emp.Id" data-dept-id="@emp.DepartmentId" data-dept-name="@emp.DepartmentName" data-pos-id="@emp.PositionId" data-pos-name="@emp.PositionName" data-email="@emp.PersonalEmail" data-education="@emp.TrinhDo">
                             @emp.FullName (@emp.Code - @emp.DepartmentName - @emp.PositionName)
                         </option>
                     }
@@ -130,9 +130,9 @@
             <option value="XAC_DINH_THOI_HAN_1_NAM">HĐ lao động 01 năm</option>
             <option value="XAC_DINH_THOI_HAN_3_NAM">HĐ lao động 03 năm</option>
             <option value="KHONG_XAC_DINH_THOI_HAN">HĐ lao động không xác định thời hạn</option>
-            <option value="THU_VIEC" hidden>Thử việc theo ngày bắt đầu / kết thúc</option>
+            <option value="THU_VIEC" hidden>Thử việc 02 tháng</option>
         </select>
-        <input type="text" readonly class="form-control bg-light" id="@(formIdPrefix + "contractProbationDuration")" data-contract-probation-duration hidden="@(!isProbation)" value="Theo ngày bắt đầu và ngày kết thúc" />
+        <input type="text" readonly class="form-control bg-light" id="@(formIdPrefix + "contractProbationDuration")" data-contract-probation-duration hidden="@(!isProbation)" value="02 tháng kể từ ngày bắt đầu" />
         <span asp-validation-for="Contract.LoaiHopDong" class="text-danger small"></span>
     </div>
 
@@ -159,9 +159,10 @@
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-calendar-event"></i></span>
-            <input asp-for="Contract.NgayBatDau" id="@(formIdPrefix + "contractNgayBatDau")" type="date" class="form-control border-start-0" required />
+            <input asp-for="Contract.NgayBatDau" id="@(formIdPrefix + "contractNgayBatDau")" type="date" class="form-control border-start-0" data-contract-new="@((!isEditMode).ToString().ToLowerInvariant())" required />
         </div>
         <span asp-validation-for="Contract.NgayBatDau" class="text-danger small"></span>
+        <div class="form-text" data-contract-start-hint hidden="@(!isProbation)">Thử việc mới bắt đầu từ hôm nay.</div>
     </div>
 
     <div class="col-md-6">
@@ -172,7 +173,7 @@
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-calendar-check"></i></span>
             <input asp-for="Contract.NgayKetThuc" id="@(formIdPrefix + "contractNgayKetThuc")" type="date" class="form-control border-start-0" required="@isProbation" />
         </div>
-        <div class="form-text small text-muted" data-contract-end-hint>@(isProbation ? "Nhập ngày kết thúc thử việc; hệ thống giữ khoảng thời gian bạn chọn." : "Tự động tính theo thời hạn 1 năm, 3 năm; để trống nếu không xác định thời hạn.")</div>
+        <div class="form-text small text-muted" data-contract-end-hint>@(isProbation ? "Tự động tính 02 tháng, kết thúc trước ngày tương ứng một ngày." : "Tự động tính theo thời hạn 1 năm, 3 năm; để trống nếu không xác định thời hạn.")</div>
         <span asp-validation-for="Contract.NgayKetThuc" class="text-danger small"></span>
     </div>
 
@@ -180,9 +181,9 @@
         <div class="form-check p-2 bg-light rounded-3 border border-dashed">
             <input class="form-check-input ms-1" type="checkbox" asp-for="ClosePreviousContract" id="@(formIdPrefix + "closePreviousContractCheck")" />
             <label class="form-check-label ms-2 small fw-semibold text-primary" for="@(formIdPrefix + "closePreviousContractCheck")">
-                <i class="bi bi-arrow-repeat me-1"></i> Chuyển tiếp / Thăng chức: Tự động khép lại hợp đồng cũ trước ngày bắt đầu hợp đồng mới
+                <i class="bi bi-arrow-repeat me-1"></i> Chuyển tiếp: khép hợp đồng cũ trước ngày bắt đầu hợp đồng mới
             </label>
-            <div class="text-muted small ms-4" style="font-size: 0.76rem;">Tích chọn nếu nhân sự đang có hợp đồng cũ còn hiệu lực nhưng được thăng chức hoặc chuyển ngạch (HĐ cũ sẽ đóng lại mà không làm gián đoạn trạng thái làm việc).</div>
+            <div class="text-muted small ms-4" style="font-size: 0.76rem;">Gia hạn/chuyển từ thử việc sang chính thức; đổi chức vụ thực hiện ở phụ lục.</div>
         </div>
     </div>
 </div>
@@ -190,6 +191,23 @@
 <!-- ========================================================================= -->
 <!-- HÀNG 4: MÃ HỢP ĐỒNG * (TRÁI) | LƯƠNG CƠ BẢN * (PHẢI)                     -->
 <!-- ========================================================================= -->
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <label asp-for="TrinhDo" for="@(formIdPrefix + "contractEducation")" class="form-label fw-semibold text-dark">Trình độ chuyên môn</label>
+        <select asp-for="TrinhDo" id="@(formIdPrefix + "contractEducation")" class="form-select" aria-describedby="@(formIdPrefix + "contractEducationHelp")">
+            <option value="">-- Chọn trình độ --</option>
+            <option value="Trung cấp">Trung cấp</option>
+            <option value="Cao đẳng">Cao đẳng</option>
+            <option value="Đại học">Đại học</option>
+            @if (!string.IsNullOrWhiteSpace(Model.TrinhDo) && Model.TrinhDo != "Trung cấp" && Model.TrinhDo != "Cao đẳng" && Model.TrinhDo != "Đại học")
+            {
+                <option value="@Model.TrinhDo">@Model.TrinhDo (cần xác minh nếu thuộc nhóm nhân viên)</option>
+            }
+        </select>
+        <div class="form-text" id="@(formIdPrefix + "contractEducationHelp")">Nhóm nhân viên cần một trong ba trình độ trên. Nhóm quản lý giữ trình độ hồ sơ, không dùng để tra khung.</div>
+        <span asp-validation-for="TrinhDo" class="text-danger small"></span>
+    </div>
+</div>
 <div class="row g-3 mb-3">
     <div class="col-md-6">
         <div class="d-flex justify-content-between align-items-center mb-1">
@@ -217,10 +235,20 @@
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-cash-stack text-success"></i></span>
-            <input asp-for="Contract.LuongCoBan" id="@(formIdPrefix + "contractLuongCoBan")" type="number" min="0" step="any" class="form-control border-start-0 font-monospace fw-bold text-success" placeholder="Nhập mức lương (VD: 10000000)" required />
+            <input asp-for="Contract.LuongCoBan"
+                   id="@(formIdPrefix + "contractLuongCoBan")"
+                   type="text"
+                   inputmode="numeric"
+                   autocomplete="off"
+                   value="@(Model.Contract.LuongCoBan > 0 ? Model.Contract.LuongCoBan.ToString("#,##0", System.Globalization.CultureInfo.InvariantCulture) : "")"
+                   class="form-control border-start-0 font-monospace fw-bold text-success"
+                   placeholder="Nhập mức lương (VD: 10,000,000)"
+                   required
+                   aria-describedby="@(formIdPrefix + "contractSalaryBand")" />
             <span class="input-group-text bg-light text-muted">₫</span>
         </div>
-        <div class="form-text small text-muted">Căn cứ pháp lý tính đơn giá ngày công và bảo hiểm bắt buộc.</div>
+        <div id="@(formIdPrefix + "contractSalaryBand")" class="form-text" data-salary-band role="status" aria-live="polite">Chọn chức vụ, trình độ và ngày bắt đầu để xem khung lương.</div>
+        <div class="form-text">Chính thức: nhập mức đã thỏa thuận trong khung. Thử việc: tự tính 85% mức tối thiểu.</div>
         <span asp-validation-for="Contract.LuongCoBan" class="text-danger small"></span>
     </div>
 </div>
@@ -230,12 +258,12 @@
 <!-- ========================================================================= -->
 <div class="row g-3 mb-2">
     <div class="col-md-6">
-        <label asp-for="Contract.TrangThai" for="newContractStateDescription" class="form-label fw-semibold text-dark">
+        <label asp-for="Contract.TrangThai" for="@(formIdPrefix + "newContractStateDescription")" class="form-label fw-semibold text-dark">
             Trạng thái hợp đồng
         </label>
         <input type="hidden" name="Contract.TrangThai" id="@(formIdPrefix + "contractTrangThai")" value="HIEU_LUC" />
-        <input type="text" readonly class="form-control bg-light text-secondary" id="newContractStateDescription" value="Tự động theo thời hạn hợp đồng" aria-describedby="newContractStateHint" />
-        <div class="form-text small text-muted" id="newContractStateHint">Chưa tới ngày bắt đầu: Chưa hiệu lực. Hết thời hạn: Hết hạn. Chấm dứt hợp đồng được xử lý sau khi lập hợp đồng.</div>
+        <input type="text" readonly class="form-control bg-light text-secondary" id="@(formIdPrefix + "newContractStateDescription")" value="Tự động theo thời hạn hợp đồng" aria-describedby="@(formIdPrefix + "newContractStateHint")" />
+        <div class="form-text small text-muted" id="@(formIdPrefix + "newContractStateHint")">Chưa tới ngày bắt đầu: Chưa hiệu lực. Hết thời hạn: Hết hạn. Chấm dứt hợp đồng được xử lý sau khi lập hợp đồng.</div>
         <span asp-validation-for="Contract.TrangThai" class="text-danger small"></span>
     </div>
 
@@ -303,13 +331,17 @@
 
             deptSelect.addEventListener("change", async function () {
                 var deptId = this.value;
+                var requestId = String((Number(this.dataset.requestId) || 0) + 1);
+                this.dataset.requestId = requestId;
                 var currentPosId = posSelect.value;
                 posSelect.innerHTML = '<option value="">Đang tải danh sách chức vụ...</option>';
+                posSelect.dispatchEvent(new Event('change', { bubbles: true }));
 
                 try {
                     var res = await fetch('/ChucVu/GetByDepartment?departmentId=' + encodeURIComponent(deptId));
                     if (!res.ok) throw new Error("Fetch failed");
                     var data = await res.json();
+                    if (deptSelect.dataset.requestId !== requestId) return;
 
                     posSelect.innerHTML = '<option value="">-- Chọn chức vụ --</option>';
                     var matched = false;
@@ -327,8 +359,11 @@
                     if (!matched && currentPosId && deptId) {
                         posSelect.value = "";
                     }
+                    posSelect.dispatchEvent(new Event('change', { bubbles: true }));
                 } catch (e) {
+                    if (deptSelect.dataset.requestId !== requestId) return;
                     posSelect.innerHTML = '<option value="">Không thể tải danh sách chức vụ</option>';
+                    posSelect.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             });
         }

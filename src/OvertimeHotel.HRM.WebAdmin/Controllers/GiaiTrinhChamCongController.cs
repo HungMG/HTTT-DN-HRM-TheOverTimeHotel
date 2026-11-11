@@ -630,6 +630,7 @@ public class GiaiTrinhChamCongController : Controller
         var newPhutVeSom = 0;
         var newOtHours = 0m;
         var newHadPunch = false;
+        decimal? historicalSalary = null;
 
         try
         {
@@ -637,6 +638,19 @@ public class GiaiTrinhChamCongController : Controller
             {
                 _context.ChangeTracker.Clear();
                 await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                // Resolve before committing attendance: an ambiguous salary must not leave a half-applied approval.
+                if (kyLuongDaKhoa)
+                {
+                    var contracts = await _context.HopDongs.AsNoTracking()
+                        .Include(h => h.PhuLucLuongs)
+                        .Where(h => h.MaNhanVien == ca.MaNhanVien && h.NgayBatDau <= ca.NgayLamViec &&
+                            (!h.NgayKetThuc.HasValue || h.NgayKetThuc >= ca.NgayLamViec))
+                        .ToListAsync();
+                    var salary = EffectiveSalaryResolver.Resolve(contracts, ca.NgayLamViec)
+                        ?? throw new InvalidOperationException($"Thiếu hợp đồng làm căn cứ truy lĩnh ngày {ca.NgayLamViec:dd/MM/yyyy}.");
+                    historicalSalary = salary.MonthlySalary;
+                }
 
                 var chamCong = await _context.ChamCongs
                     .FirstOrDefaultAsync(c => c.MaPhanCa == ca.MaPhanCa);
@@ -746,7 +760,7 @@ public class GiaiTrinhChamCongController : Controller
                                 var (start, end, _) = actualWindow.Value;
                                 var hourlyRate = await EventRateConfig.ReadAsync(_context);
                                 var nhanVien = await _context.NhanViens
-                                    .Include(e => e.HopDongs)
+                                    .Include(e => e.HopDongs).ThenInclude(h => h.PhuLucLuongs)
                                     .FirstOrDefaultAsync(e => e.MaNhanVien == ca.MaNhanVien);
 
                                 var slices = HourlyEventRules.Price(start, end, nhanVien?.HopDongs ?? [], hourlyRate);
@@ -850,12 +864,7 @@ public class GiaiTrinhChamCongController : Controller
                     .FirstOrDefaultAsync();
                 var finePerMinute = fineConfig > 0 ? fineConfig : 5000m;
 
-                var contract = await _context.HopDongs.AsNoTracking()
-                    .Where(h => h.MaNhanVien == ca.MaNhanVien && (h.TrangThai == "HIEU_LUC" || (h.NgayKetThuc.HasValue && h.NgayKetThuc.Value >= ca.NgayLamViec)))
-                    .OrderByDescending(h => h.NgayBatDau)
-                    .FirstOrDefaultAsync();
-
-                var luongCoBan = contract?.LuongCoBan ?? 0m;
+                var luongCoBan = historicalSalary!.Value;
                 var donGiaNgay = luongCoBan > 0 ? luongCoBan / (decimal)SalaryConstants.STANDARD_WORKING_DAYS : 0m;
                 var donGiaGio = donGiaNgay > 0 ? donGiaNgay / (decimal)SalaryConstants.STANDARD_WORKING_HOURS_PER_DAY : 0m;
 

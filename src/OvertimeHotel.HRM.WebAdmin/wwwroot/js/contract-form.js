@@ -9,6 +9,16 @@
         const end = form?.elements['Contract.NgayKetThuc'];
         if (!stage || !duration || !end) return;
         const isProbation = stage.value === probation;
+        const startHint = form.querySelector('[data-contract-start-hint]');
+        if (startHint) startHint.hidden = !isProbation;
+        const start = form.elements['Contract.NgayBatDau'];
+        if (start?.dataset.contractNew === 'true') {
+            start.readOnly = isProbation;
+            if (isProbation && switching) {
+                const today = new Date();
+                start.value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            }
+        }
         const previous = form.dataset.contractStage;
         const description = form.querySelector('[data-contract-probation-duration]');
         if (isProbation) {
@@ -24,26 +34,37 @@
         const label = form.querySelector('[data-contract-duration-label]');
         if (label) label.htmlFor = isProbation ? description.id : duration.id;
         end.required = isProbation;
+        end.readOnly = isProbation;
         if (isProbation) end.min = form.elements['Contract.NgayBatDau'].value;
         else end.removeAttribute('min');
         const required = form.querySelector('[data-contract-end-required]');
         if (required) required.hidden = !isProbation;
         const hint = form.querySelector('[data-contract-end-hint]');
         if (hint) hint.textContent = isProbation
-            ? 'Nhập ngày kết thúc thử việc; hệ thống giữ khoảng thời gian bạn chọn.'
+            ? 'Tự động tính 02 tháng, kết thúc trước ngày tương ứng một ngày.'
             : 'Tự động tính theo thời hạn 1 năm, 3 năm; để trống nếu không xác định thời hạn.';
         form.dataset.contractStage = stage.value;
     }
 
     function calculate(form) {
         sync(form);
-        if (!form || form.elements['Contract.HinhThucHopDong']?.value === probation) return;
+        if (!form) return;
         const start = form.elements['Contract.NgayBatDau'];
         const end = form.elements['Contract.NgayKetThuc'];
         const duration = form.elements['Contract.LoaiHopDong'];
         if (!start?.value || !end || !duration) return;
         const date = new Date(start.value + 'T00:00:00Z');
         if (Number.isNaN(date.getTime())) return;
+        if (form.elements['Contract.HinhThucHopDong']?.value === probation) {
+            const day = date.getUTCDate();
+            date.setUTCDate(1);
+            date.setUTCMonth(date.getUTCMonth() + 2);
+            const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+            date.setUTCDate(Math.min(day, lastDay));
+            date.setUTCDate(date.getUTCDate() - 1);
+            end.value = date.toISOString().slice(0, 10);
+            return;
+        }
         const years = { XAC_DINH_THOI_HAN_1_NAM: 1, XAC_DINH_THOI_HAN_3_NAM: 3 }[duration.value];
         if (years) date.setUTCFullYear(date.getUTCFullYear() + years);
         end.value = years ? date.toISOString().slice(0, 10) : '';

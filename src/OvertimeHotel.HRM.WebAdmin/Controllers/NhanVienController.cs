@@ -212,8 +212,10 @@ public class NhanVienController : Controller
         model.Employee.MaPhongBan = employee?.MaPhongBan;
         model.Employee.MaChucVu = employee?.MaChucVu;
         model.Employee.EmailCaNhan = employee?.EmailCaNhan;
-        model.Employee.NgayVaoLam = contract?.NgayBatDau ?? default;
-        foreach (var field in new[] { "Ho", "Ten", "MaPhongBan", "MaChucVu", "EmailCaNhan", "NgayVaoLam" })
+        model.Employee.NgayVaoLam = employee?.NgayVaoLam ?? default;
+        if (!string.IsNullOrWhiteSpace(employee?.TrinhDo) && employee.TrinhDo != "Chưa cập nhật")
+            model.Employee.TrinhDo = employee.TrinhDo;
+        foreach (var field in new[] { "Ho", "Ten", "MaPhongBan", "MaChucVu", "EmailCaNhan", "NgayVaoLam", "TrinhDo" })
             ModelState.Remove($"Employee.{field}");
 
         model.Employee.TrangThai = "DANG_LAM";
@@ -242,7 +244,7 @@ public class NhanVienController : Controller
             employee.DienThoai = model.Employee.DienThoai;
             employee.DiaChi = model.Employee.DiaChi;
             employee.TrinhDo = model.Employee.TrinhDo;
-            employee.NgayVaoLam = contract!.NgayBatDau;
+            // Preserve original joining date across subsequent contracts.
             employee.SoNguoiPhuThuoc = Math.Max(0, model.Employee.SoNguoiPhuThuoc);
             employee.IsProfileComplete = true;
             await _context.SaveChangesAsync();
@@ -305,6 +307,11 @@ public class NhanVienController : Controller
         if (employee == null)
             return NotFound();
 
+        if (employee.MaPhongBan != model.Employee.MaPhongBan || employee.MaChucVu != model.Employee.MaChucVu || employee.NgayVaoLam != model.Employee.NgayVaoLam)
+        {
+            ModelState.AddModelError(string.Empty, "Đổi chức vụ/phòng ban qua phụ lục hợp đồng; ngày vào làm gốc được giữ để tính thâm niên.");
+            return View(await BuildEmployeeFormAsync(model));
+        }
         employee.MaPhongBan = model.Employee.MaPhongBan;
         employee.MaChucVu = model.Employee.MaChucVu;
         employee.Ho = model.Employee.Ho;

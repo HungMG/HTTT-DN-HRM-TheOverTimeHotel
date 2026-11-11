@@ -211,7 +211,7 @@
                 </div>
 
                 <div class="contract-prop-row">
-                    <span class="text-muted small">Mức lương cơ bản:</span>
+                    <span class="text-muted small">Lương gốc hợp đồng:</span>
                     <strong class="text-primary fs-5 font-monospace">@contract.LuongCoBan.ToString("N0") VNĐ</strong>
                 </div>
                 <div class="contract-prop-row">
@@ -292,7 +292,11 @@
         </div>
     </div>
 
-    <!-- THANH THAO TÁC (CHỈ CÓ NÚT IN MẪU HỢP ĐỒNG A4 VÀ ĐÓNG) -->
+    <section class="mt-4" aria-label="Phụ lục điều chỉnh lương" data-salary-amendments-url="@Url.Action("SalaryAmendments", "HopDong", new { id = contract.MaHopDong })">
+        <p class="text-muted" role="status">Đang tải phụ lục điều chỉnh lương…</p>
+    </section>
+
+    <!-- THANH THAO TÁC -->
     <div class="d-flex align-items-center justify-content-between pt-4 mt-4 border-top">
         <button type="button" class="btn btn-outline-secondary px-4 py-2 rounded-pill fw-semibold" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i> Đóng

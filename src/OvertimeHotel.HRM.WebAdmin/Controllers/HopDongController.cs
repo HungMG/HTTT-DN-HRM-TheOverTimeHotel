@@ -16,7 +16,7 @@ using OvertimeHotel.HRM.WebAdmin.Security;
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
 [Authorize(Policy = PermissionCodes.ManageContracts)]
-public class HopDongController : Controller
+public partial class HopDongController : Controller
 {
     private readonly AppDbContext _context;
     private readonly ILogger<HopDongController> _logger;
@@ -28,7 +28,7 @@ public class HopDongController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? keyword, string? contractFilter, int page = 1, int pageSize = 10, bool isPartial = false)
+    public async Task<IActionResult> Index(string? keyword, string? contractFilter, int? departmentId = null, int page = 1, int pageSize = 10, bool isPartial = false)
     {
         keyword = keyword?.Trim();
         contractFilter = string.IsNullOrWhiteSpace(contractFilter) ? null : contractFilter;
@@ -69,6 +69,11 @@ public class HopDongController : Controller
                     (contract.NhanVien != null && (contract.NhanVien.Ho.ToLower().Contains(value) || contract.NhanVien.Ten.ToLower().Contains(value))));
             }
 
+            if (departmentId is > 0)
+            {
+                filtered = filtered.Where(contract => contract.NhanVien != null && contract.NhanVien.MaPhongBan == departmentId.Value);
+            }
+
             bool IsRenewed(HopDong contract) => allContracts.Any(other => other.MaNhanVien == contract.MaNhanVien &&
                                                           other.MaHopDong != contract.MaHopDong &&
                                                           other.NgayBatDau >= (contract.NgayKetThuc ?? contract.NgayBatDau) &&
@@ -105,7 +110,7 @@ public class HopDongController : Controller
             };
 
             var employeeOptions = allEmployees.Select(item => new SelectListItem($"{item.Ho} {item.Ten} - NV-{item.MaNhanVien:D3}", item.MaNhanVien.ToString())).ToList();
-            var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString())).ToList();
+            var departmentOptions = allDepartments.Select(d => new SelectListItem(d.TenPhongBan, d.MaPhongBan.ToString(), d.MaPhongBan == departmentId)).ToList();
             var positionOptions = new List<SelectListItem>();
 
             ViewBag.EmployeeOptions = employeeOptions;
@@ -120,7 +125,8 @@ public class HopDongController : Controller
                 DepartmentName = e.PhongBan?.TenPhongBan ?? "Chưa phân bổ",
                 PositionId = e.MaChucVu,
                 PositionName = e.ChucVu?.TenChucVu ?? "Chưa phân bổ",
-                PersonalEmail = e.EmailCaNhan ?? "Chưa cập nhật email cá nhân"
+                PersonalEmail = e.EmailCaNhan ?? "Chưa cập nhật email cá nhân",
+                TrinhDo = e.TrinhDo
             }).ToList();
             ViewBag.EmployeeList = employeeItems;
 
@@ -151,6 +157,8 @@ public class HopDongController : Controller
                 },
                 Keyword = keyword,
                 ContractFilter = contractFilter,
+                DepartmentId = departmentId,
+                DepartmentOptions = departmentOptions,
                 Contracts = pagedContracts,
                 EmployeeOptions = employeeOptions,
                 TotalContracts = allContracts.Count,
@@ -194,6 +202,8 @@ public class HopDongController : Controller
                 },
                 Keyword = keyword,
                 ContractFilter = contractFilter,
+                DepartmentId = departmentId,
+                DepartmentOptions = new List<SelectListItem>(),
                 Contracts = new List<HopDongListItemViewModel>(),
                 EmployeeOptions = new List<SelectListItem>()
             };
@@ -215,6 +225,16 @@ public class HopDongController : Controller
         if (model.EmployeeId == 0) model.EmployeeId = null;
         ModelState.Remove("Contract.MaNhanVien");
         model.Contract.MaHopDong = 0;
+
+        if (Request.HasFormContentType && Request.Form.TryGetValue("Contract.LuongCoBan", out var rawSalary))
+        {
+            var cleanSalary = rawSalary.ToString().Replace(",", "").Trim();
+            if (decimal.TryParse(cleanSalary, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedSalary))
+            {
+                model.Contract.LuongCoBan = parsedSalary;
+                ModelState.Remove("Contract.LuongCoBan");
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(model.Contract.HinhThucHopDong))
         {
@@ -277,6 +297,7 @@ public class HopDongController : Controller
                 }
             }
         }
+        await ValidateSalaryAsync(model, employee);
         await ValidateContractAsync(model.Contract, model.ClosePreviousContract, sameDayPromotionContract?.MaHopDong);
         if (model.Contract.NgayKetThuc < today)
             ModelState.AddModelError("Contract.NgayKetThuc", "Hợp đồng mới không được có ngày kết thúc trong quá khứ.");
@@ -297,6 +318,7 @@ public class HopDongController : Controller
             });
             if (employee != null)
             {
+                employee.TrinhDo = model.TrinhDo;
                 employee.MaPhongBan = model.DepartmentId;
                 employee.MaChucVu = model.PositionId;
                 if (!string.IsNullOrWhiteSpace(model.PersonalEmail)) employee.EmailCaNhan = model.PersonalEmail.Trim();
@@ -305,7 +327,7 @@ public class HopDongController : Controller
                 if (model.ClosePreviousContract)
                 {
                     var olderContracts = await _context.HopDongs
-                        .Where(item => item.MaNhanVien == employee.MaNhanVien && item.TrangThai != "DA_CHAM_DUT" && item.NgayBatDau < model.Contract.NgayBatDau)
+                        .Where(item => item.MaNhanVien == employee.MaNhanVien && item.TrangThai != "DA_CHAM_DUT" && item.NgayBatDau < model.Contract.NgayBatDau && (item.NgayKetThuc == null || item.NgayKetThuc >= model.Contract.NgayBatDau))
                         .ToListAsync();
 
                     foreach (var old in olderContracts)
@@ -383,10 +405,23 @@ public class HopDongController : Controller
                 : $"Đã cập nhật hợp đồng “{model.Contract.SoHopDong}” của {employee!.HoTen} theo thông tin thăng chức.{emailNotice}";
             return RedirectToAction(nameof(Index));
         }
-        catch (DbUpdateException ex)
+        catch (Exception ex) when (ex is DbUpdateException or Npgsql.PostgresException)
         {
-            _logger.LogError(ex, "Không thể tạo hợp đồng {ContractNumber}.", model.Contract.SoHopDong);
-            TempData["Error"] = "Không thể lập hợp đồng. Mã / Số hợp đồng có thể đã tồn tại.";
+            var postgres = ex as Npgsql.PostgresException ?? ex.InnerException as Npgsql.PostgresException;
+            if (postgres is { SqlState: "P0001" } && postgres.MessageText.Contains("General director appointments overlap", StringComparison.Ordinal))
+            {
+                _logger.LogWarning("Từ chối hợp đồng {ContractNumber}: trùng thời gian giữ chức Tổng Giám Đốc.", model.Contract.SoHopDong);
+                TempData["Error"] = "Hệ thống đã có Tổng Giám Đốc trong thời gian này. Không thể tạo thêm Tổng Giám Đốc; hãy chọn chức vụ khác hoặc kiểm tra lịch điều chuyển.";
+            }
+            else
+            {
+                _logger.LogError(ex, "Không thể tạo hợp đồng {ContractNumber}.", model.Contract.SoHopDong);
+                TempData["Error"] = postgres?.SqlState == "23505"
+                    ? "Không thể lập hợp đồng vì số hợp đồng hoặc định danh nhân viên đã tồn tại. Vui lòng kiểm tra lại."
+                    : "Không thể lưu hợp đồng vào cơ sở dữ liệu. Vui lòng kiểm tra kết nối hoặc liên hệ quản trị viên.";
+            }
+            // The implicit transaction has rolled back; discard generated IDs and rejected entities.
+            _context.ChangeTracker.Clear();
             return RedirectToAction(nameof(Index));
         }
     }

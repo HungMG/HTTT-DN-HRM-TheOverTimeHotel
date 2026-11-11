@@ -5,6 +5,7 @@
     {
         keyword = Model.Keyword,
         contractFilter = Model.ContractFilter,
+        departmentId = Model.DepartmentId,
         page,
         pageSize = Model.PageSize
     }) ?? "#";
@@ -13,6 +14,10 @@
 }
 
 <div class="catalog-page">
+    @if (TempData.Peek("Error") is string contractError)
+    {
+        <div class="alert alert-danger" role="alert" data-contract-create-error>@contractError</div>
+    }
     <partial name="_CatalogAlerts" />
     <div class="alert d-none" role="status" data-contract-notice tabindex="-1"></div>
 
@@ -70,13 +75,26 @@
                     </select>
                 </div>
 
-                @if (!string.IsNullOrWhiteSpace(Model.Keyword) || !string.IsNullOrWhiteSpace(Model.ContractFilter))
-                {
-                    <a asp-action="Index" class="btn btn-outline-secondary" title="Đặt lại bộ lọc"><i class="bi bi-arrow-counterclockwise"></i></a>
+                <div style="min-width: 190px; flex: 1;">
+                    <select name="departmentId" asp-items="Model.DepartmentOptions" class="form-select" aria-label="Lọc theo phòng ban">
+                        <option value="">-- Tất cả phòng ban --</option>
+                    </select>
+                </div>
+
+                @{
+                    var hasActiveFilter = !string.IsNullOrWhiteSpace(Model.Keyword) 
+                        || !string.IsNullOrWhiteSpace(Model.ContractFilter) 
+                        || (Model.DepartmentId.HasValue && Model.DepartmentId.Value > 0);
                 }
+                <button type="button" id="resetContractFilterBtn" class="btn btn-outline-secondary @(hasActiveFilter ? "" : "d-none")" title="Đặt lại bộ lọc" onclick="resetContractFilters(event)">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
             </form>
 
             <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm rounded-3 px-3 fw-semibold catalog-action-btn salary-review-trigger" data-bs-toggle="modal" data-bs-target="#salaryReviewsModal" aria-haspopup="dialog" title="Xem nhân viên đến mốc xét lương hoặc cần xác minh thông tin">
+                    <i class="bi bi-person-check me-1" aria-hidden="true"></i> Xem xét lương
+                </button>
                 <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn" data-bs-toggle="modal" data-bs-target="#createContractModal">
                     <i class="bi bi-plus-lg me-1"></i> Lập hợp đồng mới
                 </button>
@@ -97,6 +115,26 @@
     </section>
 </div>
 
+<!-- Salary review stays on the contract workspace. -->
+<div class="modal fade" id="salaryReviewsModal" tabindex="-1" aria-labelledby="salaryReviewsTitle" aria-describedby="salaryReviewsDescription" aria-hidden="true" data-reviews-url="@Url.Content("~/HopDong/SalaryReviews")">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content salary-review-dialog">
+            <div class="modal-header align-items-start px-4 py-3">
+                <div>
+                    <h2 class="modal-title h5 mb-2" id="salaryReviewsTitle">Nhân viên cần xem xét lương</h2>
+                    <p class="text-muted small mb-0" id="salaryReviewsDescription">Đến mốc thâm niên hoặc có thông tin cần xác minh. HR trao đổi và thỏa thuận trước khi lập phụ lục.</p>
+                </div>
+                <button type="button" class="btn-close ms-3" data-bs-dismiss="modal" aria-label="Đóng danh sách"></button>
+            </div>
+            <div class="modal-body p-0" data-reviews-content aria-live="polite"></div>
+            <div class="modal-footer px-4 py-3">
+                <span class="text-muted small me-auto">Danh sách chỉ để xem xét, không tự thay đổi lương.</span>
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL LẬP HỢP ĐỒNG MỚI -->
 <div class="modal fade" id="createContractModal" tabindex="-1" aria-labelledby="createContractModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -109,7 +147,6 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <form asp-action="Create" method="post" class="d-flex flex-column overflow-hidden">
-                @Html.AntiForgeryToken()
                 <div class="modal-body overflow-auto p-4">
                     <partial name="_Form" model="Model.CreateContractForm" />
                 </div>
@@ -142,7 +179,9 @@
 <partial name="_ContractActionModals" />
 
 @section Scripts {
+    <script src="~/js/salary-reviews.js" asp-append-version="true"></script>
     <script src="~/js/contract-form.js" asp-append-version="true"></script>
+<script src="~/js/salary-contract.js" asp-append-version="true"></script>
 <script src="~/js/contracts.js" asp-append-version="true"></script>
 <script>
     // =========================================================================
@@ -187,6 +226,7 @@
             })
             .then(html => {
                 modalBody.innerHTML = html;
+                window.SalaryContract?.init(modalBody);
             })
             .catch(err => {
                 modalBody.innerHTML = `
@@ -307,13 +347,35 @@
         loadContractTable({ page: 1, pageSize: pageSize });
     }
 
-    function resetContractFilters() {
+    function updateResetFilterButtonVisibility() {
+        const form = document.querySelector('.catalog-toolbar form[method="get"]');
+        const resetBtn = document.getElementById('resetContractFilterBtn');
+        if (!form || !resetBtn) return;
+
+        const keyword = (form.querySelector('[name="keyword"]')?.value || '').trim();
+        const contractFilter = (form.querySelector('[name="contractFilter"]')?.value || '').trim();
+        const departmentId = (form.querySelector('[name="departmentId"]')?.value || '').trim();
+
+        const hasFilter = Boolean(keyword || contractFilter || departmentId);
+        if (hasFilter) {
+            resetBtn.classList.remove('d-none');
+        } else {
+            resetBtn.classList.add('d-none');
+        }
+    }
+
+    function resetContractFilters(event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
         const form = document.querySelector('.catalog-toolbar form[method="get"]');
         if (form) {
             form.reset();
             form.querySelectorAll('input, select').forEach(c => c.value = '');
         }
-        loadContractTable({ keyword: '', contractFilter: '', page: 1 });
+        updateResetFilterButtonVisibility();
+        loadContractTable({ keyword: '', contractFilter: '', departmentId: '', page: 1 });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -321,16 +383,40 @@
         if (form) {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
+                updateResetFilterButtonVisibility();
                 loadContractTable({ page: 1 });
             });
             form.querySelectorAll('select').forEach(sel => {
                 sel.addEventListener('change', () => {
+                    updateResetFilterButtonVisibility();
                     loadContractTable({ page: 1 });
                 });
             });
+
+            const keywordInput = form.querySelector('[name="keyword"]');
+            if (keywordInput) {
+                let searchTimer;
+                keywordInput.addEventListener('input', () => {
+                    updateResetFilterButtonVisibility();
+                    window.clearTimeout(searchTimer);
+                    searchTimer = setTimeout(() => {
+                        loadContractTable({ page: 1 });
+                    }, 350);
+                });
+            }
         }
 
         window.addEventListener('popstate', () => {
+            const url = new URL(window.location.href);
+            if (form) {
+                const kw = form.querySelector('[name="keyword"]');
+                const cf = form.querySelector('[name="contractFilter"]');
+                const dp = form.querySelector('[name="departmentId"]');
+                if (kw) kw.value = url.searchParams.get('keyword') || '';
+                if (cf) cf.value = url.searchParams.get('contractFilter') || '';
+                if (dp) dp.value = url.searchParams.get('departmentId') || '';
+                updateResetFilterButtonVisibility();
+            }
             loadContractTable({}, false);
         });
 
@@ -368,23 +454,16 @@
                     if (deptSelect && deptId) {
                         deptSelect.value = deptId;
                         const posSelect = document.getElementById('contractPositionSelect');
-                        if (posSelect) {
-                            fetch('/ChucVu/GetByDepartment?departmentId=' + encodeURIComponent(deptId))
-                                .then(res => res.json())
-                                .then(data => {
-                                    posSelect.innerHTML = '<option value="">-- Chọn chức vụ --</option>';
-                                    data.forEach(item => {
-                                        const opt = document.createElement('option');
-                                        opt.value = item.maChucVu;
-                                        opt.textContent = item.tenChucVu + (item.tenPhongBan ? ' (' + item.tenPhongBan + ')' : ' (Chung)');
-                                        if (String(item.maChucVu) === String(posId)) opt.selected = true;
-                                        posSelect.appendChild(opt);
-                                    });
-                                    if (posId) posSelect.value = posId;
-                                })
-                                .catch(() => {});
+                        if (posSelect && posId) {
+                            if (!Array.from(posSelect.options).some(option => option.value === posId))
+                                posSelect.add(new Option(matched.dataset.posName || 'Chức vụ theo hồ sơ', posId));
+                            posSelect.value = posId;
                         }
+                        deptSelect.dispatchEvent(new Event('change', { bubbles: true }));
                     }
+
+                    window.SalaryContract?.setEducation(empInput.form, matched.dataset.education || '');
+                    window.SalaryContract?.refresh(empInput.form);
 
                     // Nếu nhân viên đó đã có email cá nhân từ hồ sơ: Tự động điền
                     if (emailInput) {
@@ -395,6 +474,7 @@
                 } else {
                     // Nếu là nhân sự mới gõ tay chưa có trong danh sách
                     if (empHidden) empHidden.value = '0';
+                    window.SalaryContract?.refresh(empInput.form);
                 }
             });
         }
@@ -461,7 +541,7 @@
     // =========================================================================
     // MODAL GIA HẠN HỢP ĐỒNG (TRẠNG THÁI HẾT HẠN, ĐIỀN CỐ ĐỊNH NHÂN SỰ & EMAIL)
     // =========================================================================
-    function openRenewContractModal(maNhanVien, tenNhanVien, tenPhongBan, tenChucVu, loaiHopDongCu, hinhThucHopDongCu, luongCoBanCu, ngayKetThucCu, emailCaNhan, maPhongBan, maChucVu) {
+    function openRenewContractModal(maNhanVien, tenNhanVien, tenPhongBan, tenChucVu, loaiHopDongCu, hinhThucHopDongCu, luongCoBanCu, ngayKetThucCu, emailCaNhan, maPhongBan, maChucVu, trinhDo) {
         const modalEl = document.getElementById('createContractModal');
         if (!modalEl) return;
 
@@ -510,6 +590,8 @@
             renewPosDisplay.value = tenChucVu || 'Chưa phân bổ';
         }
         if (posSelect && maChucVu) {
+            if (!Array.from(posSelect.options).some(option => option.value === String(maChucVu)))
+                posSelect.add(new Option(tenChucVu || 'Chức vụ theo hồ sơ', String(maChucVu)));
             posSelect.value = maChucVu;
         }
 
@@ -560,7 +642,7 @@
         // 9. Điền sẵn mức lương cơ bản cũ để tham khảo/chỉnh sửa
         const salaryInput = modalEl.querySelector('#contractLuongCoBan');
         if (salaryInput && luongCoBanCu) {
-            salaryInput.value = luongCoBanCu;
+            salaryInput.value = window.SalaryContract?.formatCommas ? window.SalaryContract.formatCommas(luongCoBanCu) : String(luongCoBanCu).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
 
         // 10. Đổi text nút Submit thành "Lưu gia hạn hợp đồng"
@@ -568,6 +650,9 @@
         if (submitBtn) {
             submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i>Lưu gia hạn hợp đồng';
         }
+
+        window.SalaryContract?.setEducation(empInput.form, trinhDo || '');
+        window.SalaryContract?.refresh(empInput.form);
 
         // 11. Mở Modal
         const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -587,6 +672,7 @@
             generateRandomContractNumber(false);
             autoCalculateContractEndDate();
         }
+        window.SalaryContract?.refresh(this.querySelector('form'));
     });
 
     // Khôi phục lại trạng thái form Lập hợp đồng mới ban đầu khi đóng modal
@@ -657,7 +743,8 @@
         const ngayKetThuc = ngayKetThucRaw ? new Date(ngayKetThucRaw).toLocaleDateString('vi-VN') : 'Không xác định thời hạn';
 
         const luongRaw = field('contractLuongCoBan')?.value;
-        const luong = luongRaw && Number(luongRaw) > 0 ? Number(luongRaw).toLocaleString('vi-VN') + ' VNĐ/tháng' : '...................... VNĐ/tháng';
+        const luongNum = luongRaw ? Number(String(luongRaw).replace(/\D/g, '')) : 0;
+        const luong = luongNum > 0 ? luongNum.toLocaleString('vi-VN') + ' VNĐ/tháng' : '...................... VNĐ/tháng';
         const email = (field('contractPersonalEmailInput')?.value || '').trim();
 
         const printWin = window.open('', '_blank', 'width=860,height=960');

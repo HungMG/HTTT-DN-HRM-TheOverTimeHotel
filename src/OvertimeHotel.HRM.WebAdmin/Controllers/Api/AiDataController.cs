@@ -639,6 +639,10 @@ public class AiDataController : ControllerBase
                     h.NgayKetThuc,
                     h.LuongCoBan,
                     h.TrangThai,
+                    h.HinhThucHopDong,
+                    h.MaChucVuKyKet,
+                    h.MaPhongBanKyKet,
+                    PhuLucLuongs = h.PhuLucLuongs.ToList(),
                     HoTen = h.NhanVien == null ? null : h.NhanVien.Ho + " " + h.NhanVien.Ten,
                     PhongBan = h.NhanVien == null || h.NhanVien.PhongBan == null
                         ? null
@@ -684,6 +688,14 @@ public class AiDataController : ControllerBase
                         NgayBatDau = r.NgayBatDau,
                         NgayKetThuc = r.NgayKetThuc,
                         LuongCoBan = r.LuongCoBan,
+                        LuongHieuLuc = EffectiveSalaryResolver.Resolve([new OvertimeHotel.HRM.Core.Models.HopDong
+                        {
+                            MaHopDong = r.MaHopDong, NgayBatDau = r.NgayBatDau, NgayKetThuc = r.NgayKetThuc,
+                            TrangThai = r.TrangThai, LoaiHopDong = r.LoaiHopDong, HinhThucHopDong = r.HinhThucHopDong,
+                            LuongCoBan = r.LuongCoBan, MaChucVuKyKet = r.MaChucVuKyKet,
+                            MaPhongBanKyKet = r.MaPhongBanKyKet, PhuLucLuongs = r.PhuLucLuongs
+                        }], todayForState)?.MonthlySalary,
+                        NgayThamChieuLuong = todayForState,
                         TrangThai = ResolveContractState(
                             new OvertimeHotel.HRM.Core.Models.HopDong
                             {
@@ -1666,7 +1678,7 @@ public class AiDataController : ControllerBase
     private static List<string> BuildContractNotes() =>
     [
         "Đây là kết quả tra cứu hợp đồng theo từ khóa, đã lọc theo phạm vi quyền của người hỏi — không phải toàn bộ kho hợp đồng.",
-        "Lương cơ bản ghi trên hợp đồng là mức lương cố định theo hợp đồng; tổng thu nhập thực nhận còn cộng phụ cấp, tiền tăng ca và thường, trừ các khoản khấu trừ — không được suy ra tổng thu nhập từ lương cơ bản."
+        "LuongCoBan là lương gốc ghi trên hợp đồng. LuongHieuLuc là lương hợp đồng/phụ lục tại NgayThamChieuLuong; null khi hợp đồng không hiệu lực tại ngày đó. Hai mức này không phải tổng thu nhập thực nhận; tổng thực nhận còn cộng phụ cấp, tăng ca, thưởng và trừ khấu trừ."
     ];
 
     /// <summary>Ghi chú kèm theo kết quả tra cứu đơn từ.</summary>

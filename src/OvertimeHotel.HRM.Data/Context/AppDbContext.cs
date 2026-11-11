@@ -15,6 +15,8 @@ public class AppDbContext : DbContext
     public DbSet<ChucVu> ChucVus => Set<ChucVu>();
     public DbSet<NhanVien> NhanViens => Set<NhanVien>();
     public DbSet<HopDong> HopDongs => Set<HopDong>();
+    public DbSet<KhungLuongCapBac> KhungLuongCapBacs => Set<KhungLuongCapBac>();
+    public DbSet<PhuLucLuong> PhuLucLuongs => Set<PhuLucLuong>();
     public DbSet<VaiTro> VaiTros => Set<VaiTro>();
     public DbSet<TaiKhoan> TaiKhoans => Set<TaiKhoan>();
     public DbSet<Quyen> Quyens => Set<Quyen>();
@@ -78,6 +80,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.MaChucVu).HasColumnName("ma_chuc_vu");
             entity.Property(e => e.MaPhongBan).HasColumnName("ma_phong_ban");
             entity.Property(e => e.TenChucVu).HasColumnName("ten_chuc_vu").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.NhomLuong).HasColumnName("nhom_luong").HasMaxLength(20);
             entity.Property(e => e.MoTa).HasColumnName("mo_ta").HasMaxLength(255);
             entity.Property(e => e.CheDoLamViec).HasColumnName("che_do_lam_viec")
                 .HasMaxLength(20).HasDefaultValue(ShiftWorkModes.XOAY_CA).IsRequired();
@@ -142,6 +145,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.HinhThucHopDong).HasColumnName("hinh_thuc_hop_dong").HasMaxLength(50).HasDefaultValue("CHINH_THUC").IsRequired();
             entity.Property(e => e.LoaiChamDut).HasColumnName("loai_cham_dut").HasMaxLength(30);
             entity.Property(e => e.LyDoChamDut).HasColumnName("ly_do_cham_dut").HasMaxLength(500);
+            entity.Property(e => e.MaChucVuKyKet).HasColumnName("ma_chuc_vu_ky_ket");
+            entity.Property(e => e.MaPhongBanKyKet).HasColumnName("ma_phong_ban_ky_ket");
+            entity.Property(e => e.TrinhDoKyKet).HasColumnName("trinh_do_ky_ket").HasMaxLength(50);
+            entity.HasOne<ChucVu>().WithMany().HasForeignKey(e => e.MaChucVuKyKet).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<PhongBan>().WithMany().HasForeignKey(e => e.MaPhongBanKyKet).OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(e => e.SoHopDong).IsUnique();
 
@@ -149,6 +157,38 @@ public class AppDbContext : DbContext
                 .WithMany(n => n.HopDongs)
                 .HasForeignKey(e => e.MaNhanVien)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<KhungLuongCapBac>(entity =>
+        {
+            entity.ToTable("khung_luong_cap_bac");
+            entity.HasKey(e => e.MaKhungLuong);
+            entity.Property(e => e.MaKhungLuong).HasColumnName("ma_khung_luong");
+            entity.Property(e => e.NhomChucVu).HasColumnName("nhom_chuc_vu").HasMaxLength(20).IsRequired();
+            entity.Property(e => e.TrinhDo).HasColumnName("trinh_do").HasMaxLength(20);
+            entity.Property(e => e.ThamNienTuThang).HasColumnName("tham_nien_tu_thang");
+            entity.Property(e => e.ThamNienDenThang).HasColumnName("tham_nien_den_thang");
+            entity.Property(e => e.LuongToiThieu).HasColumnName("luong_toi_thieu").HasPrecision(15, 2);
+            entity.Property(e => e.LuongToiDa).HasColumnName("luong_toi_da").HasPrecision(15, 2);
+        });
+
+        modelBuilder.Entity<PhuLucLuong>(entity =>
+        {
+            entity.ToTable("phu_luc_luong");
+            entity.HasKey(e => e.MaPhuLuc);
+            entity.Property(e => e.MaPhuLuc).HasColumnName("ma_phu_luc");
+            entity.Property(e => e.MaHopDong).HasColumnName("ma_hop_dong");
+            entity.Property(e => e.NgayHieuLuc).HasColumnName("ngay_hieu_luc");
+            entity.Property(e => e.LuongCoBanMoi).HasColumnName("luong_co_ban_moi").HasPrecision(15, 2);
+            entity.Property(e => e.LyDo).HasColumnName("ly_do").IsRequired();
+            entity.Property(e => e.NguoiTao).HasColumnName("nguoi_tao").HasMaxLength(100).IsRequired();
+            entity.Property(e => e.TaoLuc).HasColumnName("tao_luc").HasDefaultValueSql("now()");
+            entity.Property(e => e.MaChucVuMoi).HasColumnName("ma_chuc_vu_moi");
+            entity.Property(e => e.MaPhongBanMoi).HasColumnName("ma_phong_ban_moi");
+            entity.HasIndex(e => new { e.MaHopDong, e.NgayHieuLuc }).IsUnique();
+            entity.HasOne(e => e.HopDong).WithMany(h => h.PhuLucLuongs).HasForeignKey(e => e.MaHopDong).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ChucVu>().WithMany().HasForeignKey(e => e.MaChucVuMoi).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<PhongBan>().WithMany().HasForeignKey(e => e.MaPhongBanMoi).OnDelete(DeleteBehavior.Restrict);
         });
 
         // 5. VAI_TRO

@@ -8,6 +8,8 @@ public class ChucVu
     public int? MaPhongBan { get; set; }
     public string TenChucVu { get; set; } = string.Empty;
     public string? MoTa { get; set; }
+    /// <summary>Verified catalog group: NHAN_VIEN, QUAN_LY, TONG_GIAM_DOC; unknown remains null.</summary>
+    public string? NhomLuong { get; set; }
 
     /// <summary>
     /// Chế độ làm việc gắn với chức danh: <c>XOAY_CA</c> (mặc định — trực ca 24/7)

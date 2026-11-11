@@ -461,6 +461,11 @@ public sealed class AiDataHopDongItemDto
     /// <summary>Lương cơ bản ghi trên hợp đồng.</summary>
     public decimal LuongCoBan { get; set; }
 
+    /// <summary>Lương theo hợp đồng/phụ lục có hiệu lực tại NgayThamChieuLuong; null nếu hợp đồng không bao phủ ngày đó.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? LuongHieuLuc { get; set; }
+    public DateOnly NgayThamChieuLuong { get; set; }
+
     /// <summary>Nhãn tiếng Việt của trạng thái hiệu lực tại thời điểm tra cứu, ví dụ "Đang hiệu lực", "Sắp hết hạn".</summary>
     public string TrangThai { get; set; } = string.Empty;
 }

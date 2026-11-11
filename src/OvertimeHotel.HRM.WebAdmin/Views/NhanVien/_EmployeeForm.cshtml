@@ -4,6 +4,12 @@
 <input asp-for="Employee.MaNhanVien" type="hidden" />
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 <div class="row g-3">
+    @if (!completingProfile)
+    {
+        <input type="hidden" name="Employee.MaPhongBan" value="@Model.Employee.MaPhongBan" />
+        <input type="hidden" name="Employee.MaChucVu" value="@Model.Employee.MaChucVu" />
+        <p class="form-text">Đổi chức vụ hoặc phòng ban qua phụ lục trong mục Hợp đồng.</p>
+    }
     @if (Model.Employee.MaNhanVien == 0)
     {
         <div class="col-12">
@@ -13,7 +19,7 @@
                 @foreach (var contract in Model.EligibleContracts)
                 {
                     var person = contract.NhanVien!;
-                    <option value="@contract.MaHopDong" data-ho="@person.Ho" data-ten="@person.Ten" data-department="@person.MaPhongBan" data-position="@person.MaChucVu" data-email="@person.EmailCaNhan" data-start="@contract.NgayBatDau.ToString("yyyy-MM-dd")">@contract.SoHopDong — @person.HoTen</option>
+                    <option value="@contract.MaHopDong" data-ho="@person.Ho" data-ten="@person.Ten" data-department="@person.MaPhongBan" data-position="@person.MaChucVu" data-email="@person.EmailCaNhan" data-start="@person.NgayVaoLam.ToString("yyyy-MM-dd")" data-education="@person.TrinhDo">@contract.SoHopDong — @person.HoTen</option>
                 }
             </select>
             <div id="contractHelp" class="form-text">Thông tin lấy từ hợp đồng được khóa. Nếu cần thay đổi, hãy cập nhật ở hợp đồng trước. Hợp đồng đã có hồ sơ hoàn chỉnh sẽ không xuất hiện.</div>
@@ -26,7 +32,7 @@
     <div class="col-md-4"><label asp-for="Employee.GioiTinh" class="form-label">Giới tính *</label><select asp-for="Employee.GioiTinh" class="form-select" required><option value="">Chọn giới tính</option><option value="NAM">Nam</option><option value="NU">Nữ</option><option value="KHAC">Khác</option></select><span asp-validation-for="Employee.GioiTinh" class="text-danger small"></span></div>
     <div class="col-md-4">
         <label asp-for="Employee.TrinhDo" class="form-label">Trình độ chuyên môn *</label>
-        <select asp-for="Employee.TrinhDo" class="form-select" required>
+        <select asp-for="Employee.TrinhDo" class="form-select" required disabled="@(completingProfile && !string.IsNullOrWhiteSpace(Model.Employee.TrinhDo) && Model.Employee.TrinhDo != "Chưa cập nhật")">
             <option value="">-- Chọn trình độ --</option>
             <option value="Sau Đại học (Thạc sĩ / Tiến sĩ)">Sau Đại học (Thạc sĩ / Tiến sĩ)</option>
             <option value="Đại học">Đại học</option>
@@ -47,8 +53,8 @@
         </select>
         <span asp-validation-for="Employee.TrinhDo" class="text-danger small"></span>
     </div>
-    <div class="col-md-6"><label asp-for="Employee.MaPhongBan" class="form-label">Phòng ban *</label><select asp-for="Employee.MaPhongBan" asp-items="Model.DepartmentOptions" class="form-select" id="Employee_MaPhongBan" disabled="@completingProfile"><option value="">Chọn phòng ban</option></select><span asp-validation-for="Employee.MaPhongBan" class="text-danger small"></span></div>
-    <div class="col-md-6"><label asp-for="Employee.MaChucVu" class="form-label">Chức vụ *</label><select asp-for="Employee.MaChucVu" asp-items="Model.PositionOptions" class="form-select" id="Employee_MaChucVu" disabled="@completingProfile"><option value="">Chọn chức vụ</option></select><span asp-validation-for="Employee.MaChucVu" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.MaPhongBan" class="form-label">Phòng ban *</label><select asp-for="Employee.MaPhongBan" asp-items="Model.DepartmentOptions" class="form-select" id="Employee_MaPhongBan" disabled><option value="">Chọn phòng ban</option></select><span asp-validation-for="Employee.MaPhongBan" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.MaChucVu" class="form-label">Chức vụ *</label><select asp-for="Employee.MaChucVu" asp-items="Model.PositionOptions" class="form-select" id="Employee_MaChucVu" disabled><option value="">Chọn chức vụ</option></select><span asp-validation-for="Employee.MaChucVu" class="text-danger small"></span></div>
     @if (Model.Employee.MaNhanVien > 0)
     {
         <div class="col-md-6">
@@ -59,7 +65,7 @@
     }
     <div class="col-md-6"><label asp-for="Employee.EmailCaNhan" class="form-label">Email cá nhân</label><input asp-for="Employee.EmailCaNhan" type="email" class="form-control" placeholder="Không bắt buộc" readonly="@completingProfile" maxlength="100" /><span class="form-text">Chỉ lưu hồ sơ, không dùng đăng nhập.</span><span asp-validation-for="Employee.EmailCaNhan" class="text-danger small"></span></div>
     <div class="col-md-6"><label asp-for="Employee.DienThoai" class="form-label">Điện thoại *</label><input asp-for="Employee.DienThoai" type="tel" inputmode="tel" autocomplete="tel" class="form-control" required maxlength="12" pattern="@OvertimeHotel.HRM.WebAdmin.Models.NhanVienFormViewModel.MobilePhonePattern" data-val="true" data-val-required="Vui lòng nhập điện thoại." data-val-regex="Số điện thoại phải có dạng 0912345678 hoặc +84912345678." data-val-regex-pattern="@OvertimeHotel.HRM.WebAdmin.Models.NhanVienFormViewModel.MobilePhonePattern" title="Nhập số di động như 0912345678 hoặc +84912345678" aria-describedby="employeePhoneHelp" /><div id="employeePhoneHelp" class="form-text">Ví dụ: 0912345678 hoặc +84912345678. Không nhập khoảng trắng.</div><span asp-validation-for="Employee.DienThoai" class="text-danger small"></span></div>
-    <div class="col-md-6"><label asp-for="Employee.NgayVaoLam" class="form-label">Ngày vào làm *</label><input asp-for="Employee.NgayVaoLam" type="date" class="form-control" readonly="@completingProfile" /><span asp-validation-for="Employee.NgayVaoLam" class="text-danger small"></span></div>
+    <div class="col-md-6"><label asp-for="Employee.NgayVaoLam" class="form-label">Ngày vào làm *</label><input asp-for="Employee.NgayVaoLam" type="date" class="form-control" readonly /><span asp-validation-for="Employee.NgayVaoLam" class="text-danger small"></span></div>
     <div class="col-md-6">
         <label asp-for="Employee.SoNguoiPhuThuoc" class="form-label">Số người phụ thuộc (thuế TNCN)</label>
         <input asp-for="Employee.SoNguoiPhuThuoc" type="number" min="0" max="20" class="form-control" />
@@ -102,14 +108,15 @@
         if (contractSelect) contractSelect.addEventListener('change', function () {
             var option = this.selectedOptions[0];
             var form = this.closest('form');
-            var values = { Ho: 'ho', Ten: 'ten', MaPhongBan: 'department', MaChucVu: 'position', EmailCaNhan: 'email', NgayVaoLam: 'start' };
+            var values = { Ho: 'ho', Ten: 'ten', MaPhongBan: 'department', MaChucVu: 'position', EmailCaNhan: 'email', NgayVaoLam: 'start', TrinhDo: 'education' };
             Object.keys(values).forEach(function (field) {
                 var input = form.querySelector('[name="Employee.' + field + '"]');
                 var value = option.dataset[values[field]] || '';
-                if (input && field === 'MaChucVu' && value && !Array.from(input.options).some(function (item) { return item.value === value; })) {
-                    input.add(new Option('Chức vụ theo hợp đồng', value));
+                if (input && (field === 'MaChucVu' || field === 'TrinhDo') && value && !Array.from(input.options).some(function (item) { return item.value === value; })) {
+                    input.add(new Option(field === 'TrinhDo' ? value : 'Chức vụ theo hợp đồng', value));
                 }
                 if (input) input.value = value;
+                if (input && field === 'TrinhDo') input.disabled = !!value && value !== 'Chưa cập nhật';
             });
         });
         function bindDepartmentChange() {

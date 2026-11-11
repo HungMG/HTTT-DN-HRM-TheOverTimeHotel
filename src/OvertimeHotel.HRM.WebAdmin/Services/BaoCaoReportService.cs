@@ -558,33 +558,42 @@ public sealed class BaoCaoReportService
             })
             .ToArrayAsync();
 
-        var hopDong = await _context.HopDongs
+        var contracts = await _context.HopDongs
             .AsNoTracking()
+            .Include(h => h.PhuLucLuongs)
+            .Include(h => h.NhanVien)
             .Where(ReportPolicy.ReferenceContractFilter)
-            .Where(h => h.NgayBatDau <= to && (h.NgayKetThuc == null || h.NgayKetThuc >= from)
-                        && (departmentId == null || (h.NhanVien != null && h.NhanVien.MaPhongBan == departmentId)))
-            .Select(h => new HopDongRow
-            {
-                NgayBatDau = h.NgayBatDau,
-                NgayKetThuc = h.NgayKetThuc,
-                LuongCoBan = h.LuongCoBan,
-                PhongBan = h.NhanVien != null && h.NhanVien.PhongBan != null
-                    ? h.NhanVien.PhongBan.TenPhongBan
-                    : "(Chưa xếp phòng ban)"
-            })
+            .Where(h => h.NgayBatDau <= to && (h.NgayKetThuc == null || h.NgayKetThuc >= from))
             .ToArrayAsync();
+        var departments = await _context.PhongBans.AsNoTracking()
+            .ToDictionaryAsync(d => d.MaPhongBan, d => d.TenPhongBan);
+        var referenceSegments = contracts.GroupBy(h => h.MaNhanVien)
+            .SelectMany(g => EffectiveSalaryResolver.BuildSegments(g, from, to)
+                .Select(segment => new
+                {
+                    Segment = segment,
+                    DepartmentId = segment.Salary.DepartmentId ?? segment.Salary.Contract.NhanVien?.MaPhongBan
+                }))
+            .Where(x => departmentId == null || x.DepartmentId == departmentId)
+            .Select(x => new
+            {
+                x.Segment,
+                Department = x.DepartmentId is { } id && departments.TryGetValue(id, out var name)
+                    ? name : "(Chưa xếp phòng ban)"
+            }).ToArray();
 
-        // Định mức của một khoảng ngày: tổng lương cơ bản của hợp đồng đang hiệu lực trong khoảng đó.
-        decimal BudgetBetween(DateOnly start, DateOnly end) => hopDong
-            .Where(h => h.NgayBatDau <= end && (h.NgayKetThuc == null || h.NgayKetThuc.Value >= start))
-            .Sum(h => h.LuongCoBan);
-
-        // Định mức của phòng ban trong một khoảng ngày:
-        decimal DeptBudgetBetween(string deptName, DateOnly start, DateOnly end) => hopDong
-            .Where(h => string.Equals(h.PhongBan, deptName, StringComparison.CurrentCulture)
-                        && h.NgayBatDau <= end
-                        && (h.NgayKetThuc == null || h.NgayKetThuc.Value >= start))
-            .Sum(h => h.LuongCoBan);
+        decimal ReferenceBetween(SalarySegment segment, DateOnly start, DateOnly end)
+        {
+            var clippedFrom = segment.From > start ? segment.From : start;
+            var clippedTo = segment.To < end ? segment.To : end;
+            return clippedFrom <= clippedTo
+                ? (segment with { From = clippedFrom, To = clippedTo }).CalendarProratedAmount : 0m;
+        }
+        decimal BudgetBetween(DateOnly start, DateOnly end) => referenceSegments
+            .Sum(x => ReferenceBetween(x.Segment, start, end));
+        decimal DeptBudgetBetween(string deptName, DateOnly start, DateOnly end) => referenceSegments
+            .Where(x => string.Equals(x.Department, deptName, StringComparison.CurrentCulture))
+            .Sum(x => ReferenceBetween(x.Segment, start, end));
 
         decimal DeptBudgetInPeriod(string deptName)
         {
@@ -630,7 +639,7 @@ public sealed class BaoCaoReportService
 
         // Phân rã theo phòng ban: kết hợp cả phòng có phiếu lương và phòng có hợp đồng định mức
         var allDeptNames = trongKy.Select(p => p.PhongBan)
-            .Union(hopDong.Select(h => h.PhongBan))
+            .Union(referenceSegments.Select(x => x.Department))
             .Distinct()
             .ToList();
 
@@ -689,7 +698,7 @@ public sealed class BaoCaoReportService
             PhanTramGiaiNgan = variance.Rate,
             VuotNguong = variance.Exceeded,
             SoThangTrongKy = soThang,
-            SoHopDong = hopDong.Length,
+            SoHopDong = referenceSegments.Select(x => x.Segment.Salary.Contract.MaHopDong).Distinct().Count(),
             SoPhieuLuong = trongKy.Length,
             SoPhieuDaDuyet = soDaDuyet,
             SoPhieuNhap = soNhap,
@@ -708,8 +717,8 @@ public sealed class BaoCaoReportService
             Series = series,
             TheoPhongBan = theoPhongBan,
             GhiChuPhuongPhap =
-                "Định mức tham chiếu được suy ra từ tổng lương cơ bản của hợp đồng đang hiệu lực "
-                + "cộng theo từng tháng giao kỳ; không phải ngân sách đã duyệt. Hợp đồng chấm dứt thiếu ngày kết thúc bị loại vì không đủ căn cứ tái lập; định mức chưa phân bổ theo ngày cho hợp đồng thay đổi giữa tháng."
+                "Định mức tham chiếu dùng lương hợp đồng/phụ lục có hiệu lực từng giai đoạn, phân bổ theo số ngày lịch được bao phủ / số ngày lịch trong tháng, cộng từng tháng. "
+                + "Đây là số tham chiếu, không phải ngân sách đã duyệt hay lương công thực tế (lương công dùng ngày công /26). Hợp đồng chấm dứt thiếu ngày kết thúc bị loại; hợp đồng trùng hiệu lực cần HR đối soát."
         };
     }
 
@@ -965,41 +974,25 @@ public sealed class BaoCaoReportService
     /// </summary>
     private async Task<NhanSuRow[]> LoadEmployeesAsync(int? departmentId, DateOnly asOf)
     {
-        var contractFilter = ReportPolicy.ContractAtDate(asOf);
         var raw = await _context.NhanViens
             .AsNoTracking()
             .Where(n => departmentId == null || n.MaPhongBan == departmentId)
-            .Select(n => new
-            {
-                n.MaNhanVien,
-                HoTen = n.Ho + " " + n.Ten,
-                TenPhongBan = n.PhongBan != null ? n.PhongBan.TenPhongBan : "(Chưa xếp phòng ban)",
-                n.TrinhDo,
-                n.GioiTinh,
-                TenChucVu = n.ChucVu != null ? n.ChucVu.TenChucVu : "Chưa xếp chức vụ",
-                n.NgayVaoLam,
-                n.NgayThoiViec,
-                n.TrangThai,
-                LuongCoBan = n.HopDongs.AsQueryable()
-                    .Where(contractFilter)
-                    .OrderByDescending(h => h.NgayBatDau)
-                    .Select(h => (decimal?)h.LuongCoBan)
-                    .FirstOrDefault() ?? 0m
-            })
+            .Include(n => n.PhongBan).Include(n => n.ChucVu)
+            .Include(n => n.HopDongs).ThenInclude(h => h.PhuLucLuongs)
             .ToArrayAsync();
 
         return [.. raw.Select(n => new NhanSuRow
         {
             MaNhanVien = n.MaNhanVien,
             HoTen = n.HoTen,
-            TenPhongBan = n.TenPhongBan,
+            TenPhongBan = n.PhongBan?.TenPhongBan ?? "(Chưa xếp phòng ban)",
             TrinhDo = n.TrinhDo,
             GioiTinh = n.GioiTinh ?? string.Empty,
-            TenChucVu = n.TenChucVu,
+            TenChucVu = n.ChucVu?.TenChucVu ?? "Chưa xếp chức vụ",
             NgayVaoLam = n.NgayVaoLam,
             NgayThoiViec = n.NgayThoiViec,
             TrangThai = n.TrangThai,
-            LuongCoBan = n.LuongCoBan
+            LuongCoBan = EffectiveSalaryResolver.Resolve(n.HopDongs, asOf)?.MonthlySalary ?? 0m
         })];
     }
 
@@ -1479,15 +1472,6 @@ internal sealed class PhieuLuongRow
     public decimal TongPhuCap { get; set; }
     public decimal TongThuong { get; set; }
     public decimal ThucNhan { get; set; }
-}
-
-/// <summary>Một hợp đồng lao động dùng để suy định mức quỹ lương.</summary>
-internal sealed class HopDongRow
-{
-    public DateOnly NgayBatDau { get; set; }
-    public DateOnly? NgayKetThuc { get; set; }
-    public decimal LuongCoBan { get; set; }
-    public string PhongBan { get; set; } = string.Empty;
 }
 
 /// <summary>Một sự kiện/dự án kèm ngân sách phụ cấp.</summary>
