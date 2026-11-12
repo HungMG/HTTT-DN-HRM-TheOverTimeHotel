@@ -135,6 +135,8 @@ public class CauHinhLuongGuide
 
 public class CauHinhLuongListViewModel
 {
+    public List<OvertimeHotel.HRM.Core.Models.KhungLuongCapBac> SalaryBands { get; set; } = [];
+    public string? SalaryBandsError { get; set; }
     public CauHinhLuongCategory Category { get; set; }
     public string? Keyword { get; set; }
     public string? Type { get; set; }

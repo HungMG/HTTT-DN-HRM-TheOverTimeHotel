@@ -44,6 +44,10 @@
                    class="payroll-category-tab @(isCurrent ? "is-active" : "")"
                    aria-current="@(isCurrent ? "page" : null)">@CauHinhLuongLabels.Title(category)</a>
             }
+            <button type="button" class="btn btn-outline-primary salary-band-trigger"
+                    data-bs-toggle="modal" data-bs-target="#salaryBandsModal" aria-haspopup="dialog">
+                <i class="bi bi-table me-1" aria-hidden="true"></i>Khung lương cấp bậc
+            </button>
         </nav>
         <!-- data-payroll-page-title đi kèm vùng được nạp tại chỗ: thanh tiêu đề nằm
              ngoài panel nên khi chuyển tab phải cập nhật lại tiêu đề cho khớp danh mục. -->
@@ -248,3 +252,4 @@
         </div>
     </section>
 </div>
+@await Html.PartialAsync("/Views/CauHinhLuong/_SalaryBandsModal.cshtml", Model)

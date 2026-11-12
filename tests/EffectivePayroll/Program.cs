@@ -165,7 +165,7 @@ var reports=new BaoCaoReportService(db,cache,NullLogger<BaoCaoReportService>.Ins
 var load=typeof(BaoCaoReportService).GetMethod("LoadEmployeesAsync",BindingFlags.NonPublic|BindingFlags.Instance)!;
 async Task<decimal> ReportSalary(DateOnly date)
 {
-    var task=(Task)load.Invoke(reports,[null,date])!;await task;
+    var task=(Task)load.Invoke(reports,[null,date,true])!;await task;
     var rows=(IEnumerable)task.GetType().GetProperty("Result")!.GetValue(task)!;
     var row=rows.Cast<object>().Single();return (decimal)row.GetType().GetProperty("LuongCoBan")!.GetValue(row)!;
 }

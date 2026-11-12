@@ -398,7 +398,7 @@
                 <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                     <div class="catalog-kpi-icon"><i class="bi bi-bullseye"></i></div>
                     <div>
-                        <span class="catalog-kpi-label">Định mức tham chiếu</span>
+                        <span class="catalog-kpi-label">@Model.QuyLuong.NhanDinhMucThamChieu</span>
                         <h3 class="catalog-kpi-value">@Model.QuyLuong.NganSachThamChieu.ToString(Money) <small>đ</small></h3>
                         <p class="catalog-kpi-desc">@Model.QuyLuong.SoHopDong hợp đồng hiệu lực trong @Model.QuyLuong.SoThangTrongKy tháng</p>
                     </div>
@@ -437,7 +437,7 @@
 
             @if (!string.IsNullOrEmpty(Model.QuyLuong.GhiChuPhuongPhap))
             {
-                <div class="baocao-note">
+                <div class="baocao-note @(Model.QuyLuong.SoNhanSuThieuCanCuLuong > 0 ? "alert alert-warning" : "")">
                     <i class="bi bi-info-circle-fill"></i> @Model.QuyLuong.GhiChuPhuongPhap
                 </div>
             }

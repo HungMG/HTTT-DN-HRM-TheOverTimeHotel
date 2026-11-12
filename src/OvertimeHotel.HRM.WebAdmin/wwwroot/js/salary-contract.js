@@ -72,11 +72,47 @@
             const data = json ? await response.json() : { message: await response.text() };
             if (requests.get(form) !== request || !form.isConnected) return;
             if (!response.ok) throw new Error(data.message || 'Không thể tra khung lương. Kiểm tra lại dữ liệu.');
-            hint.textContent = 'Khung lương: ' + money.format(data.minimum) + ' – ' + money.format(data.maximum) + ' VNĐ/tháng · Thâm niên: ' + data.tenureMonths + ' tháng.';
             salary.min = String(probation ? data.probationSalary : data.minimum);
             salary.max = String(probation ? data.probationSalary : data.maximum);
             if (probation) salary.value = formatCommas(data.probationSalary);
             validateSalaryInput(salary);
+
+            if (amendment) {
+                const tierName = data.tenureTier || (data.tenureMonths < 12 ? 'Dưới 1 năm' : data.tenureMonths < 36 ? 'Từ 1 đến dưới 3 năm' : 'Từ 3 năm trở lên');
+                const tenureText = data.tenureLabel || (data.tenureMonths + ' tháng');
+                let infoHtml = `<div class="p-2 mt-2 bg-light rounded border border-secondary-subtle">
+                    <div class="fw-semibold text-primary"><i class="bi bi-stars me-1"></i>Đề xuất khung lương theo thâm niên:</div>
+                    <div class="text-dark small mt-1">
+                        • <strong>Khung áp dụng:</strong> <span class="text-success fw-bold">${money.format(data.minimum)} – ${money.format(data.maximum)} VNĐ/tháng</span>
+                    </div>
+                    <div class="text-muted small">
+                        • <strong>Thâm niên:</strong> ${tenureText} (Bậc: <strong>${tierName}</strong>)
+                    </div>`;
+                const currentSalaryText = data.currentSalary == null
+                    ? 'Chưa xác định' : money.format(data.currentSalary) + ' VNĐ/tháng';
+                infoHtml += `<div class="text-muted small">
+                    • <strong>Mức lương hiện tại:</strong> ${currentSalaryText}
+                </div>`;
+                infoHtml += `<div class="mt-2 d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm py-0 px-2" style="font-size: 0.8rem;" data-apply-suggested="${data.minimum}">
+                        Điền mức tối thiểu (${money.format(data.minimum)})
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size: 0.8rem;" data-apply-suggested="${data.maximum}">
+                        Điền mức tối đa (${money.format(data.maximum)})
+                    </button>
+                </div></div>`;
+                hint.innerHTML = infoHtml;
+
+                hint.querySelectorAll('[data-apply-suggested]').forEach(btn => {
+                    btn.addEventListener('click', e => {
+                        e.preventDefault();
+                        salary.value = formatCommas(btn.dataset.applySuggested);
+                        salary.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                });
+            } else {
+                hint.textContent = 'Khung lương: ' + money.format(data.minimum) + ' – ' + money.format(data.maximum) + ' VNĐ/tháng · Thâm niên: ' + data.tenureMonths + ' tháng.';
+            }
         } catch (error) {
             if (error.name === 'AbortError' || requests.get(form) !== request) return;
             hint.textContent = error.message || 'Không thể tải khung lương. Vui lòng thử lại.';
@@ -119,9 +155,11 @@
         container.querySelectorAll('[data-salary-amendments-url]').forEach(loadAmendments);
     }
 
+    const salarySelector = '#contractLuongCoBan, [id$="contractLuongCoBan"], [data-salary-amendment-form] input[name="salary"], [id$="_salary"]';
+
     document.addEventListener('input', event => {
         const input = event.target;
-        if (!input || !input.matches('#contractLuongCoBan, [id$="contractLuongCoBan"]')) return;
+        if (!input || !input.matches(salarySelector)) return;
         const cursor = input.selectionStart || 0;
         const oldVal = input.value || '';
         const digitsBefore = oldVal.slice(0, cursor).replace(/\D/g, '').length;
@@ -146,7 +184,7 @@
 
     document.addEventListener('keydown', event => {
         const input = event.target;
-        if (!input || !input.matches('#contractLuongCoBan, [id$="contractLuongCoBan"]')) return;
+        if (!input || !input.matches(salarySelector)) return;
         if (event.key === 'Backspace' && input.selectionStart === input.selectionEnd) {
             const pos = input.selectionStart;
             if (pos > 0 && input.value[pos - 1] === ',') {
@@ -163,6 +201,18 @@
     document.addEventListener('change', async event => {
         const form = event.target.closest('form');
         if (!form?.querySelector('[data-salary-band]')) return;
+        if (event.target.name === 'effectiveDate') {
+            const val = event.target.value;
+            if (val) {
+                const parts = val.split('-');
+                if (parts.length === 3 && parts[2] !== '01') {
+                    event.target.setCustomValidity('Phụ lục chỉ áp dụng ngày 01 của tháng.');
+                    event.target.reportValidity();
+                } else {
+                    event.target.setCustomValidity('');
+                }
+            }
+        }
         if (event.target.matches('[data-amendment-change-position]')) {
             form.elements.positionId.disabled = !event.target.checked;
             form.elements.departmentId.disabled = !event.target.checked;
@@ -195,13 +245,19 @@
         const form = event.target;
         if (!form.matches('[data-salary-amendment-form]')) return;
         event.preventDefault();
+        const salaryInput = field(form, 'Contract.LuongCoBan', 'salary');
+        if (salaryInput) validateSalaryInput(salaryInput);
         if (form.dataset.submitting === 'true' || !form.reportValidity()) return;
         const error = form.querySelector('[data-amendment-error]');
         const submit = form.querySelector('[type="submit"]');
         error.classList.add('d-none');
         form.dataset.submitting = 'true'; submit.disabled = true; form.setAttribute('aria-busy', 'true');
         try {
-            const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const formData = new FormData(form);
+            if (formData.has('salary')) {
+                formData.set('salary', formData.get('salary').toString().replace(/,/g, '').trim());
+            }
+            const response = await fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             const json = response.headers.get('content-type')?.includes('application/json');
             const data = json ? await response.json() : { message: await response.text() };
             if (!response.ok || !data.success) throw new Error(data.message || 'Không thể lưu phụ lục. Vui lòng thử lại.');

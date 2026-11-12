@@ -1,30 +1,45 @@
 @model HopDongSalaryAmendmentsViewModel
 @{ var prefix = $"amendment_{Model.ContractId}_"; }
-<h3 class="h5 fw-semibold">Phụ lục điều chỉnh lương</h3>
+<div class="d-flex align-items-center justify-content-between mb-2">
+    <h3 class="h5 fw-semibold mb-0">Phụ lục điều chỉnh lương</h3>
+    @if (Model.CurrentSalary.HasValue && Model.CurrentSalary.Value > 0)
+    {
+        <span class="badge bg-light text-dark border px-2 py-1">
+            <span class="text-muted fw-normal">Lương hiện tại:</span>
+            <strong class="text-success font-monospace">@Model.CurrentSalary.Value.ToString("N0") VNĐ/tháng</strong>
+        </span>
+    }
+</div>
 <p class="text-muted small">Mỗi phụ lục thay thế mức lương từ ngày hiệu lực. Lương gốc hợp đồng và phiếu lương đã khóa được giữ nguyên.</p>
 @if (Model.Items.Count == 0)
 {
-    <p class="small">Chưa có phụ lục. Lương gốc hợp đồng được dùng khi chưa có điều chỉnh có hiệu lực.</p>
+    <p class="small text-muted mb-3">Chưa có phụ lục. Lương gốc hợp đồng được dùng khi chưa có điều chỉnh có hiệu lực.</p>
 }
 else
 {
-    <div class="table-responsive">
+    <div class="table-responsive mb-3">
         <table class="table table-sm align-middle">
             <caption class="visually-hidden">Lịch sử điều chỉnh lương hợp đồng @Model.ContractNumber</caption>
             <thead><tr><th scope="col">Hiệu lực từ</th><th scope="col" class="text-end">Lương mới (VNĐ/tháng)</th><th scope="col">Chức vụ</th><th scope="col">Lý do</th></tr></thead>
             <tbody>
                 @foreach (var item in Model.Items)
                 {
-                    <tr><td class="text-nowrap">@item.EffectiveDate.ToString("dd/MM/yyyy")</td><td class="text-end text-nowrap">@item.Salary.ToString("N0")</td><td>@item.PositionName</td><td>@item.Reason</td></tr>
+                    <tr><td class="text-nowrap">@item.EffectiveDate.ToString("dd/MM/yyyy")</td><td class="text-end text-nowrap font-monospace fw-semibold">@item.Salary.ToString("N0")</td><td>@item.PositionName</td><td>@item.Reason</td></tr>
                 }
             </tbody>
         </table>
     </div>
 }
+@if (Model.NextMonthOutsideContract)
+{
+    <div class="alert alert-warning mt-3" role="status">
+        Hợp đồng không có hiệu lực vào ngày @Model.DefaultEffectiveDate.ToString("dd/MM/yyyy"). Vui lòng kiểm tra thời hạn hoặc lập hợp đồng mới trước khi điều chỉnh lương.
+    </div>
+}
 @if (Model.CanAdd)
 {
     <details class="mt-3">
-        <summary class="text-primary fw-semibold">Thêm phụ lục điều chỉnh lương</summary>
+        <summary class="text-primary fw-semibold cursor-pointer">Thêm phụ lục điều chỉnh lương</summary>
         <form action="@Url.Content("~/HopDong/AddSalaryAmendment")" method="post" class="mt-3" data-salary-amendment-form>
             @Html.AntiForgeryToken()
             <input type="hidden" name="contractId" value="@Model.ContractId" />
@@ -33,14 +48,25 @@ else
             <div class="alert alert-danger d-none" role="alert" tabindex="-1" data-amendment-error></div>
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label for="@(prefix + "date")" class="form-label">Ngày hiệu lực *</label>
-                    <input id="@(prefix + "date")" name="effectiveDate" type="date" class="form-control" required />
-                    <div class="form-text">Chọn ngày 01 của tháng. Không được ảnh hưởng kỳ lương đã duyệt hoặc khóa.</div>
+                    <label for="@(prefix + "date")" class="form-label fw-semibold">Ngày hiệu lực *</label>
+                    <input id="@(prefix + "date")" name="effectiveDate" type="date" class="form-control" value="@Model.DefaultEffectiveDate.ToString("yyyy-MM-dd")" required />
+                    <div class="form-text">Mặc định ngày 01 của tháng tiếp theo để đồng bộ kỳ tính lương. Không được ảnh hưởng kỳ lương đã duyệt hoặc khóa.</div>
                 </div>
                 <div class="col-md-6">
-                    <label for="@(prefix + "salary")" class="form-label">Lương mới (VNĐ/tháng) *</label>
-                    <input id="@(prefix + "salary")" name="salary" type="number" min="1" step="1" class="form-control" required aria-describedby="@(prefix + "band")" />
-                    <div id="@(prefix + "band")" class="form-text" role="status" aria-live="polite" data-salary-band>Chọn ngày hiệu lực để xem khung lương.</div>
+                    <label for="@(prefix + "salary")" class="form-label fw-semibold">Lương mới (VNĐ/tháng) *</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-cash-stack text-success"></i></span>
+                        <input id="@(prefix + "salary")"
+                               name="salary"
+                               type="text"
+                               inputmode="numeric"
+                               autocomplete="off"
+                               class="form-control border-start-0 font-monospace fw-bold text-success"
+                               placeholder="Ví dụ: 8,000,000"
+                               required
+                               aria-describedby="@(prefix + "band")" />
+                    </div>
+                    <div id="@(prefix + "band")" class="form-text mt-1" role="status" aria-live="polite" data-salary-band>Chọn ngày hiệu lực để xem khung lương.</div>
                 </div>
                 <div class="col-12">
                     <div class="form-check">

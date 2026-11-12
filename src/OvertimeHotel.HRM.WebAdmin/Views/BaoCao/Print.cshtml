@@ -172,7 +172,7 @@
             </div>
             <div class="col-4">
                 <div class="border p-2 rounded text-center">
-                    <small class="text-muted d-block">Định mức tham chiếu</small>
+                    <small class="text-muted d-block">@Model.QuyLuong.NhanDinhMucThamChieu</small>
                     <span class="fs-5 fw-bold">@Model.QuyLuong.NganSachThamChieu.ToString("N0") đ</span>
                 </div>
             </div>
@@ -186,6 +186,10 @@
             </div>
         </div>
 
+        @if (!string.IsNullOrEmpty(Model.QuyLuong.GhiChuPhuongPhap))
+        {
+            <p>@Model.QuyLuong.GhiChuPhuongPhap</p>
+        }
         <h6 class="fw-bold mt-3">Phân bổ chi phí theo phòng ban:</h6>
         <table class="table table-bordered table-sm">
             <thead class="table-light">

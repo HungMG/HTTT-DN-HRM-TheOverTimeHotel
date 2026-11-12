@@ -134,7 +134,7 @@ public sealed class BaoCaoReportService
 
             model.NamOptions = BuildYearOptions(year, today.Year);
 
-            var nhanSu = await LoadEmployeesAsync(departmentId, to);
+            var nhanSu = await LoadEmployeesAsync(departmentId, to, model.CanViewPayrollFund);
 
             model.BienDong = BuildBienDong(nhanSu, from, to, year, quarter, month);
             model.CoCau = BuildCoCau(nhanSu, to);
@@ -567,13 +567,22 @@ public sealed class BaoCaoReportService
             .ToArrayAsync();
         var departments = await _context.PhongBans.AsNoTracking()
             .ToDictionaryAsync(d => d.MaPhongBan, d => d.TenPhongBan);
+        var missingReferenceEmployees = 0;
         var referenceSegments = contracts.GroupBy(h => h.MaNhanVien)
-            .SelectMany(g => EffectiveSalaryResolver.BuildSegments(g, from, to)
-                .Select(segment => new
+            .Where(g => departmentId == null || g.Any(h =>
+                (h.MaPhongBanKyKet ?? h.NhanVien?.MaPhongBan) == departmentId
+                || h.PhuLucLuongs.Any(a => a.NgayHieuLuc <= to && a.MaPhongBanMoi == departmentId)))
+            .SelectMany(g =>
+            {
+                var segments = SalarySegmentsForReport(g, from, to);
+                if (segments == null) missingReferenceEmployees++;
+                return segments ?? [];
+            })
+            .Select(segment => new
                 {
                     Segment = segment,
                     DepartmentId = segment.Salary.DepartmentId ?? segment.Salary.Contract.NhanVien?.MaPhongBan
-                }))
+                })
             .Where(x => departmentId == null || x.DepartmentId == departmentId)
             .Select(x => new
             {
@@ -698,6 +707,7 @@ public sealed class BaoCaoReportService
             PhanTramGiaiNgan = variance.Rate,
             VuotNguong = variance.Exceeded,
             SoThangTrongKy = soThang,
+            SoNhanSuThieuCanCuLuong = missingReferenceEmployees,
             SoHopDong = referenceSegments.Select(x => x.Segment.Salary.Contract.MaHopDong).Distinct().Count(),
             SoPhieuLuong = trongKy.Length,
             SoPhieuDaDuyet = soDaDuyet,
@@ -717,7 +727,9 @@ public sealed class BaoCaoReportService
             Series = series,
             TheoPhongBan = theoPhongBan,
             GhiChuPhuongPhap =
-                "Định mức tham chiếu dùng lương hợp đồng/phụ lục có hiệu lực từng giai đoạn, phân bổ theo số ngày lịch được bao phủ / số ngày lịch trong tháng, cộng từng tháng. "
+                (missingReferenceEmployees > 0
+                    ? $"Có {missingReferenceEmployees} hồ sơ lương chưa hợp lệ được loại khỏi căn cứ tham chiếu. Định mức chưa đầy đủ; chênh lệch và tỷ lệ chỉ để tham khảo, chưa đủ để kết luận cho toàn phạm vi. " : "")
+                + "Định mức tham chiếu dùng lương hợp đồng/phụ lục có hiệu lực từng giai đoạn, phân bổ theo số ngày lịch được bao phủ / số ngày lịch trong tháng, cộng từng tháng. "
                 + "Đây là số tham chiếu, không phải ngân sách đã duyệt hay lương công thực tế (lương công dùng ngày công /26). Hợp đồng chấm dứt thiếu ngày kết thúc bị loại; hợp đồng trùng hiệu lực cần HR đối soát."
         };
     }
@@ -970,9 +982,25 @@ public sealed class BaoCaoReportService
     // ═══════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Nạp hồ sơ nhân sự trong phạm vi cho phép, kèm tên phòng ban và chức vụ đã phân giải.
+    /// Giữ căn cứ lương chưa hợp lệ tách biệt với định mức bằng 0 trong báo cáo.
     /// </summary>
-    private async Task<NhanSuRow[]> LoadEmployeesAsync(int? departmentId, DateOnly asOf)
+    private IReadOnlyList<SalarySegment>? SalarySegmentsForReport(
+        IEnumerable<OvertimeHotel.HRM.Core.Models.HopDong> contracts, DateOnly from, DateOnly to)
+    {
+        try
+        {
+            return EffectiveSalaryResolver.BuildSegments(contracts, from, to);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Unknown reference is kept distinct from a valid zero amount; payroll remains strict.
+            _logger.LogWarning(ex, "Căn cứ lương chưa hợp lệ trong báo cáo {From}–{To}; cần HR đối soát.", from, to);
+            return null;
+        }
+    }
+
+    /// <summary>Nạp hồ sơ trong phạm vi cho phép; chỉ đọc căn cứ lương khi được phân quyền.</summary>
+    private async Task<NhanSuRow[]> LoadEmployeesAsync(int? departmentId, DateOnly asOf, bool includeSalary)
     {
         var raw = await _context.NhanViens
             .AsNoTracking()
@@ -992,7 +1020,9 @@ public sealed class BaoCaoReportService
             NgayVaoLam = n.NgayVaoLam,
             NgayThoiViec = n.NgayThoiViec,
             TrangThai = n.TrangThai,
-            LuongCoBan = EffectiveSalaryResolver.Resolve(n.HopDongs, asOf)?.MonthlySalary ?? 0m
+            LuongCoBan = includeSalary
+                ? SalarySegmentsForReport(n.HopDongs, asOf, asOf)?.LastOrDefault()?.Salary.MonthlySalary ?? 0m
+                : 0m
         })];
     }
 
@@ -1092,7 +1122,7 @@ public sealed class BaoCaoReportService
             case "thong-tin-tat-ca":
                 var includeFormer = type.Equals("thong-tin-tat-ca", StringComparison.OrdinalIgnoreCase);
                 result.TieuDe = includeFormer ? "Thông tin nhân sự (gồm người đã nghỉ việc)" : "Thông tin nhân sự còn làm việc cuối kỳ";
-                var personnel = await LoadEmployeesAsync(departmentId, to);
+                var personnel = await LoadEmployeesAsync(departmentId, to, ReportPolicy.CanViewPayrollFundReport(role));
                 var canSeeSalary = ReportPolicy.CanViewPayrollFundReport(role);
                 result.DanhSach = personnel
                     .Where(n => includeFormer ? n.NgayVaoLam <= to : ReportPolicy.IsEmployedAt(n.NgayVaoLam, n.TrangThai, n.NgayThoiViec, to))
@@ -1236,7 +1266,7 @@ public sealed class BaoCaoReportService
                     break;
                 }
                 result.TieuDe = "Danh sách mức lương cơ bản nhân sự (Hợp đồng lao động)";
-                var mucLuongRaw = (await LoadEmployeesAsync(departmentId, to))
+                var mucLuongRaw = (await LoadEmployeesAsync(departmentId, to, true))
                     .Where(n => ReportPolicy.IsEmployedAt(n.NgayVaoLam, n.TrangThai, n.NgayThoiViec, to) && n.LuongCoBan > 0)
                     .OrderByDescending(n => n.LuongCoBan)
                     .ThenBy(n => n.HoTen)

@@ -268,6 +268,17 @@ public class CauHinhLuongController(AppDbContext context, IMemoryCache cache,
             model.Error = "Không thể tải dữ liệu. Vui lòng kiểm tra kết nối và thử lại.";
         }
         model.Guide = BuildGuide(category, model.Items);
+        try
+        {
+            model.SalaryBands = await _context.KhungLuongCapBacs.AsNoTracking()
+                .OrderBy(x => x.NhomChucVu).ThenBy(x => x.TrinhDo).ThenBy(x => x.ThamNienTuThang)
+                .ToListAsync();
+        }
+        catch (NpgsqlException ex)
+        {
+            logger.LogError(ex, "Không thể đọc khung lương cấp bậc.");
+            model.SalaryBandsError = "Không thể tải khung lương. Vui lòng tải lại trang để thử lại.";
+        }
         return View(model);
     }
 

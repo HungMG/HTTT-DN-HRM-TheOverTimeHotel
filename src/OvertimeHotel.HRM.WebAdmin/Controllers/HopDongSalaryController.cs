@@ -33,7 +33,42 @@ public partial class HopDongController
         var joined = employee?.NgayVaoLam ?? startDate;
         var band = await FindBandAsync(positionId, education, joined, startDate);
         if (band == null) return BadRequest(new { message = "Chọn chức vụ, trình độ hợp lệ và ngày bắt đầu để xác định khung lương." });
-        return Json(new { minimum = band.LuongToiThieu, maximum = band.LuongToiDa, probationSalary = band.LuongToiThieu * .85m, education, tenureMonths = ReportPolicy.TenureMonths(joined, startDate) });
+
+        var tenureMonths = ReportPolicy.TenureMonths(joined, startDate);
+        var years = tenureMonths / 12;
+        var remMonths = tenureMonths % 12;
+        var tenureLabel = years > 0
+            ? (remMonths > 0 ? $"{years} năm {remMonths} tháng ({tenureMonths} tháng)" : $"{years} năm ({tenureMonths} tháng)")
+            : $"{tenureMonths} tháng";
+        var tenureTier = band.ThamNienTuThang == null ? "Không phân theo thâm niên"
+            : band.ThamNienTuThang == 0 ? "Dưới 1 năm"
+            : band.ThamNienTuThang == 12 ? "Từ 1 đến dưới 3 năm" : "Từ 3 năm trở lên";
+
+        decimal? currentSalary = null;
+        if (employee != null)
+        {
+            var employeeContracts = await _context.HopDongs.AsNoTracking().Include(x => x.PhuLucLuongs).Where(x => x.MaNhanVien == employee.MaNhanVien).ToListAsync();
+            try
+            {
+                var currentEffective = EffectiveSalaryResolver.Resolve(employeeContracts, DateOnly.FromDateTime(DateTime.Today));
+                currentSalary = currentEffective?.MonthlySalary;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Không thể xác định lương hiện tại của nhân viên {EmployeeId}.", employee.MaNhanVien);
+            }
+        }
+
+        return Json(new {
+            minimum = band.LuongToiThieu,
+            maximum = band.LuongToiDa,
+            probationSalary = band.LuongToiThieu * .85m,
+            education,
+            tenureMonths,
+            tenureLabel,
+            tenureTier,
+            currentSalary
+        });
     }
 
     private async Task ValidateSalaryAsync(HopDongFormViewModel model, NhanVien? employee)
@@ -68,6 +103,15 @@ public partial class HopDongController
 
     private async Task<IActionResult> AddSalaryAmendmentCore(int contractId, DateOnly effectiveDate, decimal salary, string? reason, int? departmentId, int? positionId, bool confirmBaseline)
     {
+        if (Request.HasFormContentType && Request.Form.TryGetValue("salary", out var rawSalary))
+        {
+            var cleanSalary = rawSalary.ToString().Replace(",", "").Trim();
+            if (decimal.TryParse(cleanSalary, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedSalary))
+            {
+                salary = parsedSalary;
+                ModelState.Remove("salary");
+            }
+        }
         if (!ModelState.IsValid) return BadRequest("Dữ liệu phụ lục không hợp lệ; kiểm tra ngày, mức lương và chức vụ.");
         var tx = _context.Database.IsRelational() ? await _context.Database.BeginTransactionAsync() : null;
         await using var transaction = tx;
@@ -125,13 +169,35 @@ public partial class HopDongController
         if (contract?.NhanVien == null) return NotFound();
         var positions = await _context.ChucVus.AsNoTracking().ToListAsync();
         var departments = await _context.PhongBans.AsNoTracking().ToListAsync();
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var defaultDate = new DateOnly(today.Year, today.Month, 1).AddMonths(1);
+        var outsideContract = defaultDate < contract.NgayBatDau
+            || (contract.NgayKetThuc.HasValue && defaultDate > contract.NgayKetThuc.Value);
+        var eligibleContract = contract.HinhThucHopDong != "THU_VIEC" && contract.TrangThai == "HIEU_LUC"
+            && (contract.NgayKetThuc == null || contract.NgayKetThuc >= today);
+
+        decimal? currentSalary = null;
+        try
+        {
+            var effective = EffectiveSalaryResolver.Resolve(new[] { contract }, today);
+            currentSalary = effective?.MonthlySalary;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Không thể xác định lương hiện tại của hợp đồng {ContractId}.", id);
+        }
+
         return PartialView("_SalaryAmendments", new HopDongSalaryAmendmentsViewModel
         {
             RequiresBaselineConfirmation = contract.MaChucVuKyKet == null,
             ContractId = id, EmployeeId = contract.MaNhanVien, ContractNumber = contract.SoHopDong,
             EmployeeName = contract.NhanVien.HoTen, Education = contract.NhanVien.TrinhDo,
             PositionId = contract.NhanVien.MaChucVu, DepartmentId = contract.NhanVien.MaPhongBan,
-            CanAdd = contract.HinhThucHopDong != "THU_VIEC" && contract.TrangThai == "HIEU_LUC" && (contract.NgayKetThuc == null || contract.NgayKetThuc >= DateOnly.FromDateTime(DateTime.Today)),
+            CurrentSalary = currentSalary,
+            DefaultEffectiveDate = defaultDate,
+            NextMonthOutsideContract = eligibleContract && outsideContract,
+            CanAdd = eligibleContract && !outsideContract,
             Items = contract.PhuLucLuongs.OrderByDescending(x => x.NgayHieuLuc).Select(x => new HopDongSalaryAmendmentItemViewModel { EffectiveDate = x.NgayHieuLuc, Salary = x.LuongCoBanMoi, Reason = x.LyDo, PositionName = positions.FirstOrDefault(p => p.MaChucVu == x.MaChucVuMoi)?.TenChucVu ?? "Giữ nguyên" }).ToList(),
             DepartmentOptions = departments.Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(x.TenPhongBan, x.MaPhongBan.ToString())).ToList(),
             PositionOptions = positions.Where(OrganizationPositionPolicy.ForDepartment(departments.FirstOrDefault(d => d.MaPhongBan == contract.NhanVien.MaPhongBan)).Compile()).Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(x.TenChucVu, x.MaChucVu.ToString())).ToList()

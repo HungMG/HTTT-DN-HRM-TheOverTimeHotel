@@ -26,6 +26,31 @@ void Require(bool value,string message) { if(!value) throw new Exception(message
 Require(await c.SalaryQuote(4,"Cao đẳng",today,1) is JsonResult,"Quote from database");
 Require(await c.SalaryQuote(4,"Unknown",today,1) is BadRequestObjectResult,"Reject unknown education");
 var next = new DateOnly(today.Year,today.Month,1).AddMonths(1);
+var scheduled = new PhuLucLuong { MaPhuLuc = 100, MaHopDong = 1, NgayHieuLuc = next, LuongCoBanMoi = 9_000_000m, LyDo = "Scheduled", NguoiTao = "Test" };
+db.PhuLucLuongs.Add(scheduled); await db.SaveChangesAsync();
+var scheduledQuote = (JsonResult)await c.SalaryQuote(4,"Cao đẳng",next.AddMonths(1),1);
+var scheduledJson = System.Text.Json.JsonSerializer.SerializeToElement(scheduledQuote.Value);
+Require(scheduledJson.GetProperty("currentSalary").GetDecimal() == 8_000_000m, "Current salary must use today, not a future scheduled amendment");
+var currentContract = await db.HopDongs.SingleAsync(x => x.MaHopDong == 1);
+currentContract.LuongCoBan = 0; await db.SaveChangesAsync();
+var invalidQuote = (JsonResult)await c.SalaryQuote(4,"Cao đẳng",next.AddMonths(1),1);
+Require(System.Text.Json.JsonSerializer.SerializeToElement(invalidQuote.Value).GetProperty("currentSalary").ValueKind == System.Text.Json.JsonValueKind.Null,
+    "Invalid current history must not be replaced by a guessed salary");
+var invalidResult = (PartialViewResult)await c.SalaryAmendments(1);
+Require(((OvertimeHotel.HRM.WebAdmin.Models.HopDongSalaryAmendmentsViewModel)invalidResult.Model!).CurrentSalary == null,
+    "Amendment header must not show a future amount as current when history is invalid");
+currentContract.LuongCoBan = 8_000_000m; await db.SaveChangesAsync();
+db.PhuLucLuongs.Remove(scheduled); await db.SaveChangesAsync();
+var expiringContract = await db.HopDongs.SingleAsync(x => x.MaHopDong == 1);
+expiringContract.NgayKetThuc = next.AddDays(-1); await db.SaveChangesAsync();
+var expiringResult = (PartialViewResult)await c.SalaryAmendments(1);
+var expiringModel = (OvertimeHotel.HRM.WebAdmin.Models.HopDongSalaryAmendmentsViewModel)expiringResult.Model!;
+Require(expiringModel.DefaultEffectiveDate == next && !expiringModel.CanAdd && expiringModel.NextMonthOutsideContract, "No retroactive default when the contract ends before next month");
+expiringContract.NgayKetThuc = next; await db.SaveChangesAsync();
+var boundaryResult = (PartialViewResult)await c.SalaryAmendments(1);
+var boundaryModel = (OvertimeHotel.HRM.WebAdmin.Models.HopDongSalaryAmendmentsViewModel)boundaryResult.Model!;
+Require(boundaryModel.DefaultEffectiveDate == next && boundaryModel.CanAdd && !boundaryModel.NextMonthOutsideContract, "The last contract day is inclusive");
+expiringContract.NgayKetThuc = null; await db.SaveChangesAsync();
 Require(await c.AddSalaryAmendment(1,next.AddDays(1),8_500_000m,"Raise",null,null) is BadRequestObjectResult,"Reject middle month");
 Require(await c.AddSalaryAmendment(1,next,10_000_000m,"Raise",null,null) is BadRequestObjectResult,"Reject out of band");
 Require(await c.AddSalaryAmendment(1,next,8_500_000m,"Raise",null,null) is JsonResult,"Save valid amendment");

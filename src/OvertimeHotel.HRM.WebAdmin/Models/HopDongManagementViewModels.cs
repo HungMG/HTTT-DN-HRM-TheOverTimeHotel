@@ -64,6 +64,9 @@ public class HopDongSalaryAmendmentsViewModel
     public string Education { get; init; } = string.Empty;
     public int? PositionId { get; init; }
     public int? DepartmentId { get; init; }
+    public decimal? CurrentSalary { get; init; }
+    public DateOnly DefaultEffectiveDate { get; init; } = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(1);
+    public bool NextMonthOutsideContract { get; init; }
     public bool CanAdd { get; init; } = true;
     public bool RequiresBaselineConfirmation { get; init; }
     public IReadOnlyList<HopDongSalaryAmendmentItemViewModel> Items { get; init; } = [];

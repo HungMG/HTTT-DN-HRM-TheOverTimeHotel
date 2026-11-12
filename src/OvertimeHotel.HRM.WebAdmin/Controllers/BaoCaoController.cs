@@ -357,7 +357,7 @@ public class BaoCaoController : Controller
         sb.AppendLine("ĐỐI SOÁT QUỸ LƯƠNG VS ĐỊNH MỨC THAM CHIẾU");
         sb.AppendLine($"Lương thực nhận đã tính,{Num(report.ThucChi)}");
         sb.AppendLine($"Tổng lương đã tính (Gross),{Num(report.ThucChiGross)}");
-        sb.AppendLine($"Định mức tham chiếu,{Num(report.NganSachThamChieu)}");
+        sb.AppendLine($"{Esc(report.NhanDinhMucThamChieu)},{Num(report.NganSachThamChieu)}");
         sb.AppendLine($"Chênh lệch,{Num(report.ChenhLech)}");
         sb.AppendLine($"Tỷ lệ so với định mức (%),{Num(report.PhanTramGiaiNgan)}");
         sb.AppendLine($"Vượt định mức,{(report.VuotNguong ? "Có" : "Không")}");
@@ -669,12 +669,13 @@ public class BaoCaoController : Controller
         sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">ĐỐI SOÁT QUỸ LƯƠNG VS ĐỊNH MỨC THAM CHIẾU</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Lương thực nhận đã tính</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ThucChi)}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng lương đã tính (Gross)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ThucChiGross)}</Data></Cell></Row>");
-        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Định mức tham chiếu</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.NganSachThamChieu)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(report.NhanDinhMucThamChieu)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.NganSachThamChieu)}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Chênh lệch</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ChenhLech)}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tỷ lệ so với định mức (%)</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{report.PhanTramGiaiNgan.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell></Row>");
         sb.AppendLine("   <Row></Row>");
         sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">Ngân sách được duyệt</Data></Cell><Cell><Data ss:Type=\"String\">{(report.NganSachDuocDuyet.HasValue ? Num(report.NganSachDuocDuyet.Value) : "Chưa đủ dữ liệu")}</Data></Cell></Row>");
         sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">{XmlEsc(report.TrangThaiNganSachDuyet)}</Data></Cell></Row>");
+        sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">{XmlEsc(report.GhiChuPhuongPhap)}</Data></Cell></Row>");
         sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Phòng ban</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Định mức</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Thực chi</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Chênh lệch</Data></Cell></Row>");
         foreach (var item in report.TheoPhongBan)
         {

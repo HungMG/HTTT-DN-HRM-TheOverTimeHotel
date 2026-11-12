@@ -302,6 +302,9 @@ public class HocVanThamNienReport
 /// <summary>Báo cáo đối soát quỹ lương vs ngân sách theo PRD 10.4.</summary>
 public class QuyLuongNganSachReport
 {
+    public int SoNhanSuThieuCanCuLuong { get; set; }
+    public string NhanDinhMucThamChieu => SoNhanSuThieuCanCuLuong > 0
+        ? "Định mức (hồ sơ hợp lệ)" : "Định mức tham chiếu";
     /// <summary>Tổng thực chi theo nghĩa thực nhận (đã trừ khấu trừ) trong kỳ.</summary>
     public decimal ThucChi { get; set; }
 

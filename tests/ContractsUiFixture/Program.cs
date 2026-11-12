@@ -11,6 +11,7 @@ using OvertimeHotel.HRM.Data.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews().AddApplicationPart(typeof(HopDongController).Assembly);
+builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<AiContextTokenService>();
 builder.Services.AddSingleton<AiChatbotUrlBuilder>();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("ContractUiFixture"));
@@ -22,6 +23,20 @@ using (var scope = app.Services.CreateScope())
     db.ChucVus.AddRange(new ChucVu { MaChucVu = 1, MaPhongBan = 1, TenChucVu = "Tổng Giám Đốc" },
         new ChucVu { MaChucVu = 2, TenChucVu = "Trưởng Bộ Phận" },
         new ChucVu { MaChucVu = 4, MaPhongBan = 2, TenChucVu = "Lễ tân" });
+    var salaryBandId = 1;
+    foreach (var degree in new[] { "Trung cấp", "Cao đẳng", "Đại học" })
+    {
+        var minimum = degree == "Trung cấp" ? 6_000_000m : degree == "Cao đẳng" ? 7_000_000m : 8_000_000m;
+        for (var tier = 0; tier < 3; tier++)
+            db.KhungLuongCapBacs.Add(new KhungLuongCapBac { MaKhungLuong = salaryBandId++, NhomChucVu = "NHAN_VIEN", TrinhDo = degree,
+                ThamNienTuThang = tier == 0 ? 0 : tier == 1 ? 12 : 36, ThamNienDenThang = tier == 0 ? 12 : tier == 1 ? 36 : null,
+                LuongToiThieu = minimum + tier * 1_000_000m, LuongToiDa = minimum + tier * 1_000_000m + 2_000_000m });
+    }
+    for (var tier = 0; tier < 3; tier++)
+        db.KhungLuongCapBacs.Add(new KhungLuongCapBac { MaKhungLuong = salaryBandId++, NhomChucVu = "QUAN_LY",
+            ThamNienTuThang = tier == 0 ? 0 : tier == 1 ? 12 : 36, ThamNienDenThang = tier == 0 ? 12 : tier == 1 ? 36 : null,
+            LuongToiThieu = 12_000_000m + tier * 2_000_000m, LuongToiDa = tier == 2 ? 22_000_000m : 16_000_000m + tier * 2_000_000m });
+    db.KhungLuongCapBacs.Add(new KhungLuongCapBac { MaKhungLuong = salaryBandId, NhomChucVu = "TONG_GIAM_DOC", LuongToiThieu = 25_000_000m, LuongToiDa = 40_000_000m });
     db.SaveChanges();
 }
 app.UseStaticFiles(new StaticFileOptions
@@ -122,9 +137,10 @@ public sealed class ContractsFixtureController(AppDbContext db) : Controller
     }
 
     [HttpGet("SalaryAmendments")]
-    public IActionResult Amendments(int id) => PartialView("/Views/HopDong/_SalaryAmendments.cshtml", new HopDongSalaryAmendmentsViewModel
+    public IActionResult Amendments(int id, bool expired = false) => PartialView("/Views/HopDong/_SalaryAmendments.cshtml", new HopDongSalaryAmendmentsViewModel
     {
         ContractId = id, EmployeeId = 10, ContractNumber = "HDLD-2026/07/OTH", Education = "Trung cấp", PositionId = 4, DepartmentId = 2,
+        CanAdd = !expired, NextMonthOutsideContract = expired,
         DepartmentOptions = [new("Tiền sảnh", "2")], PositionOptions = [new("Lễ tân", "4")],
         Items = [new() { EffectiveDate = new(2026, 2, 1), Salary = 8000000, Reason = "Xét thâm niên", PositionName = "Lễ tân" }]
     });
@@ -138,5 +154,21 @@ public sealed class PositionsFixtureController(AppDbContext db) : Controller
     {
         var controller = new ChucVuController(db, NullLogger<ChucVuController>.Instance) { ControllerContext = ControllerContext };
         return controller.GetByDepartment(departmentId);
+    }
+}
+
+[Route("CauHinhLuong")]
+public sealed class PayrollConfigFixtureController(AppDbContext db, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) : Controller
+{
+    [HttpGet("")]
+    [HttpGet("Index")]
+    public async Task<IActionResult> Index(CauHinhLuongCategory category = CauHinhLuongCategory.TangCa, string? bandsMode = null)
+    {
+        var actual = new CauHinhLuongController(db, cache, NullLogger<CauHinhLuongController>.Instance) { ControllerContext = ControllerContext };
+        var result = (ViewResult)await actual.Index(category);
+        var model = (CauHinhLuongListViewModel)result.Model!;
+        if (bandsMode == "empty") model.SalaryBands.Clear();
+        if (bandsMode == "error") model.SalaryBandsError = "Không thể tải khung lương. Vui lòng tải lại trang để thử lại.";
+        return View("/Views/CauHinhLuong/Index.cshtml", model);
     }
 }

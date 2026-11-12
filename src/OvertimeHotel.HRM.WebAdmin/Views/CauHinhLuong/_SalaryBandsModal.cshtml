@@ -1,0 +1,71 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.CauHinhLuongListViewModel
+@{
+    var culture = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+    var groups = new[] { (Code: "NHAN_VIEN", Name: "Nhân viên"), (Code: "QUAN_LY", Name: "Quản lý"), (Code: "TONG_GIAM_DOC", Name: "Tổng Giám Đốc") };
+    int EducationOrder(string? degree) => degree switch { "Trung cấp" => 0, "Cao đẳng" => 1, "Đại học" => 2, _ => 3 };
+}
+<div class="modal fade salary-bands-modal" id="salaryBandsModal" tabindex="-1"
+     aria-labelledby="salaryBandsTitle" aria-describedby="salaryBandsDescription" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header align-items-start">
+                <div>
+                    <h2 class="modal-title h5 mb-2" id="salaryBandsTitle">Khung lương cấp bậc</h2>
+                    <p class="text-muted small mb-0" id="salaryBandsDescription">Khung lương cơ bản theo tháng, dùng chung cho các phòng ban.</p>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Đóng khung lương"></button>
+            </div>
+            <div class="modal-body">
+                @if (Model.SalaryBandsError != null)
+                {
+                    <div class="alert alert-danger mt-3 mb-0" role="alert">@Model.SalaryBandsError</div>
+                }
+                else if (Model.SalaryBands.Count == 0)
+                {
+                    <p class="text-muted mt-3 mb-0" role="status">Chưa có khung lương cấp bậc được cấu hình.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table salary-bands-table align-middle mb-0">
+                            <caption class="visually-hidden">Khung lương theo nhóm chức vụ, trình độ và thâm niên. Đơn vị: đồng mỗi tháng.</caption>
+                            <thead><tr>
+                                <th scope="col">Trình độ</th>
+                                <th scope="col">Thâm niên</th>
+                                <th scope="col" class="text-end">Khoảng lương / tháng</th>
+                            </tr></thead>
+                            @foreach (var group in groups)
+                            {
+                                var bands = Model.SalaryBands.Where(x => x.NhomChucVu == group.Code)
+                                    .OrderBy(x => EducationOrder(x.TrinhDo)).ThenBy(x => x.ThamNienTuThang).ToList();
+                                if (bands.Count == 0) { continue; }
+                                <tbody aria-label="@group.Name">
+                                    <tr class="salary-band-group"><th scope="rowgroup" colspan="3">@group.Name</th></tr>
+                                    @foreach (var band in bands)
+                                    {
+                                        var tenure = band.ThamNienTuThang == null ? "Không phân theo thâm niên"
+                                            : band.ThamNienTuThang == 0 ? "Dưới 1 năm"
+                                            : band.ThamNienTuThang == 12 ? "Từ 1 đến dưới 3 năm" : "Từ 3 năm trở lên";
+                                        <tr data-salary-band-id="@band.MaKhungLuong">
+                                            <td>@(band.TrinhDo ?? "Không phụ thuộc")</td>
+                                            <td>@tenure</td>
+                                            <td class="salary-band-amount text-end">
+                                                <span>@band.LuongToiThieu.ToString("N0", culture)</span>
+                                                <span aria-label="đến">–</span>
+                                                <span>@band.LuongToiDa.ToString("N0", culture) đ</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            }
+                        </table>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer salary-bands-footer">
+                <p class="small text-muted mb-0">HR thỏa thuận lương trong khung áp dụng. Lương thử việc bằng 85% mức tối thiểu của khung.</p>
+                <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
