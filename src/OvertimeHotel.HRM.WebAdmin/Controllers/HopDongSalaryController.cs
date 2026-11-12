@@ -161,6 +161,12 @@ public partial class HopDongController
             var previous = ReportPolicy.TenureMonths(employee.NgayVaoLam, lastReview);
             var tier = tenure < 12 ? 0 : tenure < 36 ? 1 : 2;
             var oldTier = previous < 12 ? 0 : previous < 36 ? 1 : 2;
+            // Only an unreviewed tenure-tier transition belongs in this reminder list.
+            if (tier <= oldTier) continue;
+            var datedPosition = contract.PhuLucLuongs.Where(x => x.NgayHieuLuc <= today && x.MaChucVuMoi.HasValue)
+                .OrderByDescending(x => x.NgayHieuLuc).FirstOrDefault()?.MaChucVuMoi
+                ?? contract.MaChucVuKyKet ?? employee.MaChucVu;
+            if (datedPosition.HasValue && groups.GetValueOrDefault(datedPosition.Value) == "TONG_GIAM_DOC") continue;
             if (activeByEmployee[contract.MaNhanVien].Count() > 1)
             {
                 result.Add(new SalaryReviewItem(contract.MaHopDong, employee.HoTen, tenure, null, null, null,
@@ -186,14 +192,9 @@ public partial class HopDongController
             var group = positionId.HasValue ? groups.GetValueOrDefault(positionId.Value) : null;
             var band = employee.NgayVaoLam > today ? null : SalaryBandLookup.Find(bands, group, employee.TrinhDo, tenure);
             var salary = effective.MonthlySalary;
-            var tenureReviewDue = band != null && band.NhomChucVu != "TONG_GIAM_DOC" && tier > oldTier;
-            if (band == null || tenureReviewDue || salary < band.LuongToiThieu || salary > band.LuongToiDa)
-            {
-                var reason = band == null ? "Cần xác minh trình độ hoặc nhóm chức vụ để xác định khung lương."
-                    : salary < band.LuongToiThieu || salary > band.LuongToiDa ? "Mức lương hiện tại nằm ngoài khung tham chiếu; cần HR xem xét."
-                    : "Đã đến mốc thâm niên xét lương.";
-                result.Add(new SalaryReviewItem(contract.MaHopDong, employee.HoTen, tenure, salary, band?.LuongToiThieu, band?.LuongToiDa, reason));
-            }
+            var reason = band == null ? "Đã đến mốc thâm niên; cần xác minh trình độ hoặc nhóm chức vụ để xác định khung lương mới."
+                : "Đã đến mốc thâm niên xét lương; HR thỏa thuận mức lương trong khung mới trước khi lập phụ lục.";
+            result.Add(new SalaryReviewItem(contract.MaHopDong, employee.HoTen, tenure, salary, band?.LuongToiThieu, band?.LuongToiDa, reason));
         }
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return PartialView("_SalaryReviewList", result);

@@ -82,8 +82,8 @@
                 </div>
 
                 @{
-                    var hasActiveFilter = !string.IsNullOrWhiteSpace(Model.Keyword) 
-                        || !string.IsNullOrWhiteSpace(Model.ContractFilter) 
+                    var hasActiveFilter = !string.IsNullOrWhiteSpace(Model.Keyword)
+                        || !string.IsNullOrWhiteSpace(Model.ContractFilter)
                         || (Model.DepartmentId.HasValue && Model.DepartmentId.Value > 0);
                 }
                 <button type="button" id="resetContractFilterBtn" class="btn btn-outline-secondary @(hasActiveFilter ? "" : "d-none")" title="Đặt lại bộ lọc" onclick="resetContractFilters(event)">
@@ -92,7 +92,7 @@
             </form>
 
             <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-sm rounded-3 px-3 fw-semibold catalog-action-btn salary-review-trigger" data-bs-toggle="modal" data-bs-target="#salaryReviewsModal" aria-haspopup="dialog" title="Xem nhân viên đến mốc xét lương hoặc cần xác minh thông tin">
+                <button type="button" class="btn btn-sm rounded-3 px-3 fw-semibold catalog-action-btn salary-review-trigger" data-bs-toggle="modal" data-bs-target="#salaryReviewsModal" aria-haspopup="dialog" title="Xem nhân viên đến mốc thâm niên cần xét lương">
                     <i class="bi bi-person-check me-1" aria-hidden="true"></i> Xem xét lương
                 </button>
                 <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn" data-bs-toggle="modal" data-bs-target="#createContractModal">
@@ -122,7 +122,7 @@
             <div class="modal-header align-items-start px-4 py-3">
                 <div>
                     <h2 class="modal-title h5 mb-2" id="salaryReviewsTitle">Nhân viên cần xem xét lương</h2>
-                    <p class="text-muted small mb-0" id="salaryReviewsDescription">Đến mốc thâm niên hoặc có thông tin cần xác minh. HR trao đổi và thỏa thuận trước khi lập phụ lục.</p>
+                    <p class="text-muted small mb-0" id="salaryReviewsDescription">Nhân viên đến mốc 1 năm hoặc 3 năm chưa được xét theo khung mới. HR thỏa thuận lương trong khung trước khi lập phụ lục.</p>
                 </div>
                 <button type="button" class="btn-close ms-3" data-bs-dismiss="modal" aria-label="Đóng danh sách"></button>
             </div>

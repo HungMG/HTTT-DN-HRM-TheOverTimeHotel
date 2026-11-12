@@ -38,9 +38,43 @@ try
  if(sang!=null)Console.WriteLine($"Contract #2 reference: {sang.Minimum?.ToString() ?? "unknown"} - {sang.Maximum?.ToString() ?? "unknown"}");
  if(args.Contains("--expect-resolved") && (sang?.Minimum!=9_000_000m || sang.Maximum!=11_000_000m || counter.Readers>4))throw new Exception("Reference or query budget regression");
  Console.WriteLine($"Rows requiring salary verification: {rows.Count(x=>x.Salary==null)}");
+ // Audit the full active workforce, independently of tenure reminder eligibility.
+ IReadOnlyList<HopDongController.SalaryReviewItem> auditRows=rows;
+ if(args.Contains("--outside-band") || args.Contains("--unresolved"))
+ {
+  var today=DateOnly.FromDateTime(DateTime.Today);
+  var contracts=await db.HopDongs.AsNoTracking().Include(x=>x.NhanVien).Include(x=>x.PhuLucLuongs)
+   .Where(x=>x.TrangThai=="HIEU_LUC" && x.NgayBatDau<=today && (x.NgayKetThuc==null || x.NgayKetThuc>=today) && x.HinhThucHopDong!="THU_VIEC").ToListAsync();
+  var groups=await db.ChucVus.AsNoTracking().ToDictionaryAsync(x=>x.MaChucVu,x=>x.NhomLuong);
+  var bands=await db.KhungLuongCapBacs.AsNoTracking().ToListAsync();
+  var audit=new List<HopDongController.SalaryReviewItem>();
+  foreach(var contract in contracts)
+  {
+   var person=contract.NhanVien;
+   if(person==null || person.TrangThai=="DA_THOI_VIEC")continue;
+   var tenure=ReportPolicy.TenureMonths(person.NgayVaoLam,today);
+   var position=person.MaChucVu;
+   decimal? salary=null;
+   var reason="";
+   try
+   {
+    var effective=EffectiveSalaryResolver.Resolve(contracts.Where(x=>x.MaNhanVien==person.MaNhanVien),today);
+    salary=effective?.MonthlySalary;
+    position=effective?.PositionId ?? position;
+   }
+   catch(InvalidOperationException ex){reason=ex.Message;}
+   var band=person.NgayVaoLam>today?null:SalaryBandLookup.Find(bands,position.HasValue?groups.GetValueOrDefault(position.Value):null,person.TrinhDo,tenure);
+   audit.Add(new(contract.MaHopDong,person.HoTen,tenure,salary,band?.LuongToiThieu,band?.LuongToiDa,reason));
+  }
+  auditRows=audit;
+  Console.WriteLine($"Full salary audit: {audit.Count} active official contracts; {contracts.Where(x=>x.NhanVien!=null && x.NhanVien.TrangThai!="DA_THOI_VIEC").Select(x=>x.MaNhanVien).Distinct().Count()} employees");
+  var missing=audit.Where(x=>!x.Salary.HasValue).ToList();
+  Console.WriteLine($"Missing or invalid salary/history: {missing.Count}");
+  foreach(var row in missing)Console.WriteLine(JsonSerializer.Serialize(new{row.ContractId,row.Name,row.Minimum,row.Maximum,row.Reason},new JsonSerializerOptions{Encoder=System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping}));
+ }
  if(args.Contains("--outside-band"))
  {
-  var outside=rows.Where(x=>x.Salary.HasValue && x.Minimum.HasValue && x.Maximum.HasValue && (x.Salary<x.Minimum || x.Salary>x.Maximum)).ToList();
+  var outside=auditRows.Where(x=>x.Salary.HasValue && x.Minimum.HasValue && x.Maximum.HasValue && (x.Salary<x.Minimum || x.Salary>x.Maximum)).ToList();
   Console.WriteLine($"Outside configured band: {outside.Count}");
   foreach(var row in outside)Console.WriteLine(JsonSerializer.Serialize(new{row.ContractId,row.Name,row.Salary,row.Minimum,row.Maximum},new JsonSerializerOptions{Encoder=System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping}));
   if(args.Contains("--write-preview"))
@@ -64,7 +98,7 @@ try
  }
  if(args.Contains("--unresolved"))
  {
-  var unresolved=rows.Where(x=>x.Minimum==null).ToList();
+  var unresolved=auditRows.Where(x=>x.Minimum==null).ToList();
   var ids=unresolved.Select(x=>x.ContractId).ToArray();
   var details=await db.HopDongs.AsNoTracking().Include(x=>x.NhanVien).Include(x=>x.PhuLucLuongs).Where(x=>ids.Contains(x.MaHopDong)).ToDictionaryAsync(x=>x.MaHopDong);
   var positions=await db.ChucVus.AsNoTracking().ToDictionaryAsync(x=>x.MaChucVu);
