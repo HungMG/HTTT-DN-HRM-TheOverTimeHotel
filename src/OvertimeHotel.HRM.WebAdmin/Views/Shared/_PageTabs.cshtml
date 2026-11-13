@@ -27,7 +27,7 @@
             tabs =
             new()
             {
-                ("phanca", "Lịch phân ca 24/7", "bi-calendar2-week-fill", "PhanCa", "Index", PermissionCodes.AssignShifts),
+                ("phanca", "Lịch phân ca 24/7", "bi-calendar2-week-fill", "PhanCa", "Index", PermissionCodes.ViewShifts),
                 ("calamviec", "Khung ca làm việc", "bi-clock-fill", "CaLamViec", "Index", PermissionCodes.ManageCatalog),
                 ("chamcong", "Chấm công", "bi-fingerprint", null, null, PermissionCodes.ViewDepartmentAttendance),
                 ("dontu", "Đơn từ trực tuyến", "bi-file-earmark-text", null, null, PermissionCodes.ApproveLeave)
@@ -39,7 +39,7 @@
             new()
             {
                 ("cauhinh", "Cấu hình khoản lương", "bi-sliders", "CauHinhLuong", "Index", PermissionCodes.CalculatePayroll),
-                ("phieuluong", "Phiếu lương", "bi-file-earmark-spreadsheet", null, null, PermissionCodes.ExportPayslipPdf),
+                ("phieuluong", "Phiếu lương", "bi-file-earmark-spreadsheet", null, null, PermissionCodes.ViewPayroll),
                 ("kyluong", "Kỳ lương", "bi-calendar3", null, null, PermissionCodes.CalculatePayroll)
             };
             break;
@@ -64,7 +64,8 @@
             break;
     }
 
-    var visible = tabs.Where(t => t.Permission is null || User.HasPermission(t.Permission)).ToList();
+    var visible = tabs.Where(t => (t.Permission is null || User.HasPermission(t.Permission))
+        && !(User.IsInRole("Manager") && t.Controller == "CauHinhLuong")).ToList();
 }
 
 @if (visible.Count > 0)

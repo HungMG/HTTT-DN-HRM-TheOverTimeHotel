@@ -151,7 +151,36 @@ public class AiDataController : ControllerBase
             return Unauthorized(new { message = "Vé dữ liệu không hợp lệ hoặc đã hết hiệu lực." });
         }
 
+        var rawId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(rawId, out var accountId)) return Unauthorized();
+        var account = await _context.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).Include(t => t.NhanVien)
+            .FirstOrDefaultAsync(t => t.MaTaiKhoan == accountId && t.TrangThai, HttpContext.RequestAborted);
+        if (account?.VaiTro == null || account.NhanVien == null ||
+            account.VaiTro.TenVaiTro != principal.FindFirst(ClaimTypes.Role)?.Value ||
+            account.MaNhanVien != ReadInt(principal, AiContextTokenService.EmployeeClaim)) return Unauthorized();
+        var identity = principal.Identity as ClaimsIdentity;
+        if (identity == null) return Unauthorized();
+        foreach (var claim in identity.FindAll(PermissionCodes.ClaimType).ToArray()) identity.RemoveClaim(claim);
+        foreach (var claim in identity.FindAll(AiContextTokenService.DepartmentClaim).ToArray()) identity.RemoveClaim(claim);
+        if (account.NhanVien.MaPhongBan is int deptId) identity.AddClaim(new Claim(AiContextTokenService.DepartmentClaim, deptId.ToString()));
+        var grants = await _context.VaiTroQuyens.AsNoTracking().Where(v => v.MaVaiTro == account.MaVaiTro)
+            .Select(v => v.Quyen!.MaQuyenCode).ToListAsync(HttpContext.RequestAborted);
+        foreach (var grant in grants) identity.AddClaim(new Claim(PermissionCodes.ClaimType, grant));
+
         var scope = (request.Scope ?? ScopeReports).Trim().ToLowerInvariant();
+        var permission = scope switch
+        {
+            ScopeReports => PermissionCodes.ReportView,
+            ScopeMyPayslip => PermissionCodes.ViewPayroll,
+            ScopeDirectory => PermissionCodes.ManageEmployees,
+            ScopeContract => PermissionCodes.ManageContracts,
+            ScopeLeave => PermissionCodes.ViewLeave,
+            ScopeShift => PermissionCodes.ViewShifts,
+            ScopeAttendance => PermissionCodes.ViewDepartmentAttendance,
+            ScopeEvent => PermissionCodes.ManageHotelEvents,
+            _ => null
+        };
+        if (permission != null && !principal.HasPermission(permission)) return Forbid();
 
         return scope switch
         {
@@ -240,7 +269,8 @@ public class AiDataController : ControllerBase
             request.Month,
             request.Quarter,
             phongBan: null,
-            tab: null);
+            tab: null,
+            canViewPayroll: principal.HasPermission(PermissionCodes.ViewPayroll));
 
         // Không trả số 0 khi mất kết nối CSDL: mô hình sẽ đọc thành "thực chi 0 đồng".
         // Thà trả 503 để node trả lời "chưa lấy được số liệu" còn hơn một con số sai nghe rất hợp lý.
@@ -308,7 +338,7 @@ public class AiDataController : ControllerBase
 
             var payslips = await _context.PhieuLuongs
                 .AsNoTracking()
-                .Where(p => p.MaNhanVien == employeeId.Value)
+                .Where(p => p.MaNhanVien == employeeId.Value && p.TrangThai == SalaryConstants.PAYSLIP_PAID)
                 .OrderByDescending(p => p.MaKyLuong)
                 .Take(PersonalPayslipCount)
                 .Select(p => new
@@ -772,8 +802,9 @@ public class AiDataController : ControllerBase
                 || normalizedKeyword.Contains("tu choi", StringComparison.Ordinal)
                 || normalizedKeyword.Contains("tu_choi", StringComparison.Ordinal);
 
+            var canViewResignation = principal.HasPermission(PermissionCodes.ApproveResignation);
             IQueryable<OvertimeHotel.HRM.Core.Models.DonTu> query =
-                _context.DonTus.AsNoTracking().AsQueryable();
+                _context.DonTus.AsNoTracking().Where(d => d.MaLoaiDon != 5 || canViewResignation);
 
             // Quản lý bộ phận bị khóa trong phòng ban của mình ngay từ truy vấn, cùng cách lọc
             // mà trang Đơn từ và tra cứu nhân sự áp dụng.

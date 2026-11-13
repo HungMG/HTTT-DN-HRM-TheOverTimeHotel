@@ -79,42 +79,14 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
         }).ToArray();
     }
 
-    /// <summary>
-    /// Kiểm tra phiếu lương đã được duyệt/khóa sổ hoặc phát hành bản nháp để hiển thị cho nhân viên.
-    /// Nhân viên thấy phiếu lương khi:
-    /// - Phiếu đã được phát hành chính thức (trang_thai == "DA_THANH_TOAN")
-    /// - Hoặc kỳ lương đã được Ban Giám Đốc phê duyệt và khóa sổ (ky_luong.trang_thai == "KHOA_SO")
-    /// - Hoặc kỳ lương đang ở giai đoạn phát hành bản nháp cho nhân viên kiểm tra (ky_luong.trang_thai == "CHO_PHAN_HOI")
-    /// </summary>
-    private static bool IsPayslipPublishedToEmployee(JsonElement row)
-    {
-        var slipStatus = PostgrstJson.ReadString(row, "trang_thai");
-        if (string.Equals(slipStatus, "DA_THANH_TOAN", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        var period = PostgrstJson.ReadEmbedded(row, "ky_luong");
-        if (period is { } p && p.TryGetProperty("trang_thai", out var pStatus))
-        {
-            var periodStatus = pStatus.GetString();
-            if (string.Equals(periodStatus, "CHO_PHAN_HOI", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (string.Equals(periodStatus, "KHOA_SO", StringComparison.OrdinalIgnoreCase) &&
-                (string.Equals(slipStatus, "DA_DUYET", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(slipStatus, "DA_THANH_TOAN", StringComparison.OrdinalIgnoreCase)))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    // RLS limits these rows to the owner and requires draft publication or approval.
+    private static bool IsPayslipPublishedToEmployee(JsonElement row) =>
+        PostgrstJson.ReadString(row, "trang_thai") is "NHAP" or "CHO_DUYET" or "DA_DUYET" or "DA_THANH_TOAN";
 
     private static PayslipSummaryDto ToSummary(JsonElement row, string employeeName, string dept, string role)
     {
         var period = PostgrstJson.ReadEmbedded(row, "ky_luong");
-        var periodStatus = period is { } p && p.TryGetProperty("trang_thai", out var pStatus) ? pStatus.GetString() : null;
-        var isDraft = string.Equals(periodStatus, "CHO_PHAN_HOI", StringComparison.OrdinalIgnoreCase);
+        var isDraft = PostgrstJson.ReadString(row, "trang_thai") is "NHAP" or "CHO_DUYET";
 
         DateTimeOffset? hanPhanHoi = null;
         if (period is { } pObj && pObj.TryGetProperty("han_phan_hoi_nhap", out var hVal) && hVal.ValueKind == System.Text.Json.JsonValueKind.String)

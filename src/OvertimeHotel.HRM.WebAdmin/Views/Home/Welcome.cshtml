@@ -1,0 +1,8 @@
+@{
+    ViewData["Title"] = "Tổng quan";
+    var fullName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Quý khách";
+}
+<div class="dash-hero">
+    <h2 class="page-greeting">Xin chào, @fullName</h2>
+    <p class="text-muted">Chọn chức năng được cấp quyền ở menu để bắt đầu làm việc.</p>
+</div>

@@ -14,18 +14,19 @@
     var canViewPeople = User.HasPermission(PermissionCodes.ManageEmployees)
                         || User.HasPermission(PermissionCodes.ManageContracts)
                         || User.HasPermission(PermissionCodes.ManageCatalog);
-    var canViewShift = User.HasPermission(PermissionCodes.AssignShifts)
+    var canViewShift = User.HasPermission(PermissionCodes.ViewShifts)
+                       || User.HasPermission(PermissionCodes.ViewShiftSwaps)
+                       || User.HasPermission(PermissionCodes.ViewAttendanceExplanations)
                        || User.HasPermission(PermissionCodes.ManageCatalog)
                        || User.HasPermission(PermissionCodes.ViewDepartmentAttendance);
-    var canViewPayroll = User.HasPermission(PermissionCodes.CalculatePayroll)
-                         || User.HasPermission(PermissionCodes.ExportPayslipPdf);
+    var canViewPayroll = User.HasPermission(PermissionCodes.ViewPayroll);
     // Báo cáo & Thống kê là quyền riêng (REPORT_VIEW): Quản lý và bộ phận IT nắm quyền
     // này nhưng không có quyền tính lương, nên phải tách khỏi canViewPayroll để nhóm
     // "Lương & Báo cáo" vẫn hiện với họ.
     var canViewReports = User.HasPermission(PermissionCodes.ReportView);
-    var canViewApproval = User.HasPermission(PermissionCodes.ApproveLeave)
-                          || User.HasPermission(PermissionCodes.ApproveResignation)
-                          || User.HasPermission(PermissionCodes.ApproveOvertime);
+    var canViewApproval = User.HasPermission(PermissionCodes.ViewLeave)
+                          || User.HasPermission(PermissionCodes.ApproveLeave)
+                          || User.HasPermission(PermissionCodes.ApproveResignation);
     var canViewAccounts = User.HasPermission(PermissionCodes.ManageAccounts)
                           || User.HasPermission(PermissionCodes.ManagePermissions)
                           || User.HasPermission(PermissionCodes.ProvisionMobileAccount);
@@ -71,28 +72,39 @@
             @if (canViewPeople)
             {
                 <div class="app-sidebar-section-label">Nhân sự &amp; HĐLĐ</div>
+                @if (User.HasPermission(PermissionCodes.ManageEmployees)) {
                 <a class="app-nav-item@(IsCurrent("NhanVien") ? " is-active" : "")"
                    asp-controller="NhanVien" asp-action="Index">
                     <i class="bi bi-people-fill"></i><span>Hồ sơ nhân viên</span>
                 </a>
+                }
+                @if (User.HasPermission(PermissionCodes.ManageContracts)) {
                 <a class="app-nav-item@(IsCurrent("HopDong") ? " is-active" : "")"
                    asp-controller="HopDong" asp-action="Index">
                     <i class="bi bi-file-earmark-text-fill"></i><span>Hợp đồng lao động</span>
                 </a>
+                }
+                @if (User.HasPermission(PermissionCodes.ManageCatalog)) {
                 <a class="app-nav-item@(IsCurrent("PhongBan") || IsCurrent("ChucVu") ? " is-active" : "")"
                    asp-controller="PhongBan" asp-action="Index">
                     <i class="bi bi-building"></i><span>Phòng ban &amp; Chức vụ</span>
                 </a>
+                }
             }
 
             <!-- 3. CA LÀM & CHẤM CÔNG 24/7 -->
             @if (canViewShift)
             {
                 <div class="app-sidebar-section-label">Chấm công 24/7</div>
+                @if (User.HasPermission(PermissionCodes.ViewShifts))
+                {
                 <a class="app-nav-item@(IsCurrent("PhanCa") ? " is-active" : "")"
                    asp-controller="PhanCa" asp-action="Index">
                     <i class="bi bi-calendar-week-fill"></i><span>Ca &amp; Lịch làm việc</span>
                 </a>
+                }
+                @if (User.HasPermission(PermissionCodes.ViewDepartmentAttendance))
+                {
                 <a class="app-nav-item@(IsCurrentAction("ChamCong", "Index") ? " is-active" : "")"
                    asp-controller="ChamCong" asp-action="Index">
                     <i class="bi bi-fingerprint"></i><span>Nhật ký chấm công</span>
@@ -101,6 +113,9 @@
                    asp-controller="ChamCong" asp-action="CongThang">
                     <i class="bi bi-calendar3-range"></i><span>Tổng hợp công tháng</span>
                 </a>
+                }
+                @if (User.HasPermission(PermissionCodes.ViewAttendanceExplanations))
+                {
                 <a class="app-nav-item@(IsCurrent("GiaiTrinhChamCong") ? " is-active" : "") d-flex align-items-center justify-content-between"
                    asp-controller="GiaiTrinhChamCong" asp-action="Index">
                     <span class="d-flex align-items-center gap-2">
@@ -108,6 +123,9 @@
                     </span>
                     <span class="app-nav-badge badge-gold" id="sidebarPendingGiaiTrinhBadge"></span>
                 </a>
+                }
+                @if (User.HasPermission(PermissionCodes.ViewShiftSwaps))
+                {
                 <a class="app-nav-item@(IsCurrent("YeuCauDoiCa") ? " is-active" : "") d-flex align-items-center justify-content-between"
                    asp-controller="YeuCauDoiCa" asp-action="Index">
                     <span class="d-flex align-items-center gap-2">
@@ -115,6 +133,7 @@
                     </span>
                     <span class="app-nav-badge badge-gold" id="sidebarPendingDoiCaBadge"></span>
                 </a>
+                }
             }
 
             @if (canViewApproval)
@@ -138,10 +157,12 @@
                        asp-controller="BangLuong" asp-action="Index">
                         <i class="bi bi-wallet2"></i><span>Bảng tính lương</span>
                     </a>
+                    @if (User.HasPermission(PermissionCodes.CalculatePayroll) && !User.IsInRole("Manager")) {
                     <a class="app-nav-item@(IsCurrent("CauHinhLuong") || IsCurrent("CauHinhKhoanLuong") ? " is-active" : "")"
                        asp-controller="CauHinhLuong" asp-action="Index">
                         <i class="bi bi-sliders"></i><span>Cấu hình lương &amp; Phụ cấp</span>
                     </a>
+                    }
                 }
                 @if (canViewReports)
                 {
@@ -159,7 +180,7 @@
                 @if (canViewAccounts)
                 {
                     <a class="app-nav-item@(IsCurrent("UserAccounts") ? " is-active" : "")"
-                       asp-controller="UserAccounts" asp-action="Index">
+                       asp-action="@(User.HasPermission(PermissionCodes.ManageAccounts) ? "Index" : User.HasPermission(PermissionCodes.ManagePermissions) ? "RolePermissions" : "Index")" asp-controller="@(User.HasPermission(PermissionCodes.ManageAccounts) || User.HasPermission(PermissionCodes.ManagePermissions) ? "UserAccounts" : "YeuCauTaiKhoan")">
                         <i class="bi bi-person-gear"></i><span>Tài khoản &amp; RBAC</span>
                     </a>
                 }

@@ -30,7 +30,8 @@ public class AccountController : Controller
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            return RedirectToAction("Index", "Home");
+            var landing = WebAdminLanding.Resolve(User);
+            return RedirectToAction(landing.Action, landing.Controller);
         }
 
         ViewData["ReturnUrl"] = returnUrl;
@@ -142,19 +143,22 @@ public class AccountController : Controller
             ExpiresUtc = model.RememberMe ? DateTimeOffset.UtcNow.AddDays(7) : DateTimeOffset.UtcNow.AddHours(8)
         };
 
+        var principal = new ClaimsPrincipal(claimsIdentity);
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(claimsIdentity),
+            principal,
             authProperties);
 
         _logger.LogInformation("Người dùng {Username} ({Role}) đăng nhập thành công vào Web Admin.", account.TenDangNhap, roleName);
 
-        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl)
+            && (!WebAdminLanding.IsDashboardUrl(model.ReturnUrl) || WebAdminLanding.CanViewDashboard(principal)))
         {
             return Redirect(model.ReturnUrl);
         }
 
-        return RedirectToAction("Index", roleName == "IT" ? "UserAccounts" : "Home");
+        var landing = WebAdminLanding.Resolve(principal);
+        return RedirectToAction(landing.Action, landing.Controller);
     }
 
     [HttpGet]
@@ -339,12 +343,23 @@ public class AccountController : Controller
             {
                 MaTaiKhoan = 4,
                 MaNhanVien = 4,
-                MaVaiTro = 4,
+                MaVaiTro = 3,
                 TenDangNhap = "emp_bao",
                 MatKhauBam = "ca35068eabfd1dc3ba09cbe6255036fb1e69e3e0b1e95a52f1494638bc759071",
                 TrangThai = true,
+                VaiTro = new VaiTro { MaVaiTro = 3, TenVaiTro = "Manager" },
+                NhanVien = new NhanVien { MaNhanVien = 4, Ho = "Châu Quốc", Ten = "Bảo", EmailCongVu = "bao.chau@overtimehotel.com", MaPhongBan = 2 }
+            },
+            new TaiKhoan
+            {
+                MaTaiKhoan = 12,
+                MaNhanVien = 20,
+                MaVaiTro = 4,
+                TenDangNhap = "emp_linh",
+                MatKhauBam = "e3dac4f7bd37d3a9b5a50bf118f72ddbc34703cc02e18f992d118ea219e0b12d",
+                TrangThai = true,
                 VaiTro = new VaiTro { MaVaiTro = 4, TenVaiTro = "Employee" },
-                NhanVien = new NhanVien { MaNhanVien = 4, Ho = "Châu Quốc", Ten = "Bảo", EmailCongVu = "bao.chau@overtimehotel.com", MaPhongBan = 4 }
+                NhanVien = new NhanVien { MaNhanVien = 20, Ho = "Dương Thùy", Ten = "Linh", EmailCongVu = "linh.duong@overtimehotel.com", MaPhongBan = 2 }
             }
         ];
     }

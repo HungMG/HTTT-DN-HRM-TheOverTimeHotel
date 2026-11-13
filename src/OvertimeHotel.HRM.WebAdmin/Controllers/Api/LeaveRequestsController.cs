@@ -99,7 +99,7 @@ public class LeaveRequestsController : ControllerBase
         {
             authorizedQuery = baseQuery; // Admin xem toàn bộ
         }
-        else if (normalizedRole == RoleType.HR)
+        else if (normalizedRole != RoleType.Manager)
         {
             // HR xử lý toàn bộ 5 loại đơn, kể cả đơn của quản lý — quản lý nộp đơn
             // thì không còn ai ở cấp dưới để duyệt. Loại trừ đơn của chính HR.
@@ -214,13 +214,17 @@ public class LeaveRequestsController : ControllerBase
             return NotFound(new LeaveReviewResult(false, "NOT_FOUND", "Không tìm thấy đơn từ yêu cầu."));
         }
 
+        var normalizedRole = LeaveApprovalPolicy.NormalizeRole(role);
+        if (normalizedRole is null or RoleType.Employee ||
+            (normalizedRole == RoleType.Manager && (deptId is not > 0 || donTu.NhanVien?.MaPhongBan != deptId)))
+            return StatusCode(403, new LeaveReviewResult(false, "FORBIDDEN", "Đơn không thuộc phạm vi được phép."));
         var permission = OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.ReviewPermission(donTu.MaLoaiDon);
         if (!OvertimeHotel.HRM.WebAdmin.Security.WebAdminPermissions.HasPermission(User, permission))
             return StatusCode(403, new LeaveReviewResult(false, "FORBIDDEN", "Bạn không còn quyền xử lý loại đơn này."));
 
         // 3. Thẩm định qua LeaveApprovalPolicy
         var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateReviewAction(
-            role: role,
+            role: normalizedRole is RoleType.IT or RoleType.Manager ? "HR" : role,
             reviewerDeptId: deptId,
             requestDeptId: donTu.NhanVien?.MaPhongBan,
             maLoaiDon: donTu.MaLoaiDon,

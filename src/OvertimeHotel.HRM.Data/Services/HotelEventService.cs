@@ -121,7 +121,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
     public Task<int> SaveAsync(EventActor actor, EventInput input) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR hoặc Admin được lập và sửa sự kiện.", true);
+        Require(actor.CanManageEvents, "", "Bạn không có quyền quản lý sự kiện.", true);
         DuAn item;
         if (input.Id == 0) item = new DuAn();
         else
@@ -381,7 +381,7 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
     public Task AcceptAsync(EventActor actor, int id, long version) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR hoặc Admin được nghiệm thu sự kiện.", true);
+        Require(actor.CanManageEvents, "", "Bạn không có quyền quản lý sự kiện.", true);
         var item = await Editable(actor, id, version);
         ReviewOpen(item);
         Require(!item.TinhTheoGio, "", "Sự kiện theo giờ: xem trước số tiền và chọn kỳ trả trước khi nghiệm thu.");
@@ -416,12 +416,15 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         var account = await db.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).Include(t => t.NhanVien)
             .SingleOrDefaultAsync(t => t.MaTaiKhoan == supplied.AccountId && t.MaNhanVien == supplied.EmployeeId && t.TrangThai);
         Require(account?.NhanVien?.TrangThai == "DANG_LAM" && account.VaiTro != null, "", "Tài khoản không còn quyền truy cập sự kiện.", true);
-        var actor = new EventActor(account!.MaNhanVien, account.MaTaiKhoan, account.VaiTro!.TenVaiTro, account.NhanVien!.HoTen);
-        Require(actor.IsOffice || actor.IsManager, "", "Bạn không có quyền truy cập sự kiện.", true);
+        var hasEventPermission = await db.VaiTroQuyens.AsNoTracking().AnyAsync(p => p.MaVaiTro == account!.MaVaiTro && p.Quyen!.MaQuyenCode == "QL_SU_KIEN");
+        var canPublishSchedules = account!.VaiTro!.TenVaiTro != "Manager" &&
+            await db.VaiTroQuyens.AsNoTracking().AnyAsync(p => p.MaVaiTro == account.MaVaiTro && p.Quyen!.MaQuyenCode == "XEP_CA_LAM");
+        var actor = new EventActor(account.MaNhanVien, account.MaTaiKhoan, account.VaiTro.TenVaiTro, account.NhanVien!.HoTen, hasEventPermission, canPublishSchedules);
+        Require(actor.IsOffice || actor.IsManager || actor.CanManageEvents || actor.CanPublishSchedules, "", "Bạn không có quyền truy cập sự kiện.", true);
         return actor;
     }
 
-    private static IQueryable<DuAn> Scoped(IQueryable<DuAn> events, EventActor actor) => actor.IsOffice ? events : events.Where(e => e.MaNguoiQuanLy == actor.EmployeeId);
+    private static IQueryable<DuAn> Scoped(IQueryable<DuAn> events, EventActor actor) => actor.CanManageEvents ? events : events.Where(e => false);
 
     private async Task<DuAn> Editable(EventActor actor, int id, long version)
     {

@@ -83,6 +83,7 @@ public class BaoCaoController : Controller
     /// (theo mẫu <c>ExportBankTransferFileAsync</c> của phân hệ lương).
     /// </summary>
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ReportExport)]
     public async Task<IActionResult> Export(
         string? ky,
         int? nam,
@@ -98,7 +99,7 @@ public class BaoCaoController : Controller
         }
 
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && !ReportPolicy.CanViewPayrollFundReport(role))
+        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && (!scope.IsWholeHotel || !User.HasPermission(PermissionCodes.ViewPayroll)))
         {
             return Forbid();
         }
@@ -128,6 +129,7 @@ public class BaoCaoController : Controller
     /// Xuất bảng tính .xlsx có kiểu ô số/văn bản, không phụ thuộc thư viện ngoài.
     /// </summary>
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ReportExport)]
     public async Task<IActionResult> ExportExcel(
         string? ky,
         int? nam,
@@ -143,7 +145,7 @@ public class BaoCaoController : Controller
         }
 
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && !ReportPolicy.CanViewPayrollFundReport(role))
+        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && (!scope.IsWholeHotel || !User.HasPermission(PermissionCodes.ViewPayroll)))
         {
             return Forbid();
         }
@@ -186,7 +188,7 @@ public class BaoCaoController : Controller
         }
 
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        var details = await _reportService.BuildChiTietAsync(scope, role, type, ky, nam, thang, quy, phongBan);
+        var details = await _reportService.BuildChiTietAsync(scope, role, type, ky, nam, thang, quy, phongBan, User.HasPermission(PermissionCodes.ViewPayroll));
         return PartialView("_BaoCaoDetails", details);
     }
 
@@ -194,6 +196,7 @@ public class BaoCaoController : Controller
     /// Trang in / lưu PDF khổ A4 tối ưu (Task 12).
     /// </summary>
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ReportExport)]
     public async Task<IActionResult> Print(
         string? ky,
         int? nam,
@@ -209,7 +212,7 @@ public class BaoCaoController : Controller
         }
 
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && !ReportPolicy.CanViewPayrollFundReport(role)) return Forbid();
+        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && (!scope.IsWholeHotel || !User.HasPermission(PermissionCodes.ViewPayroll))) return Forbid();
         var model = await BuildAsync(scope, ky, nam, thang, quy, phongBan, tab);
         if (!model.IsDatabaseOnline) return StatusCode(503, "Dữ liệu báo cáo chưa sẵn sàng.");
         return View("Print", model);
@@ -229,7 +232,7 @@ public class BaoCaoController : Controller
         string? tab)
     {
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        return _reportService.BuildAsync(scope, role, ky, nam, thang, quy, phongBan, tab);
+        return _reportService.BuildAsync(scope, role, ky, nam, thang, quy, phongBan, tab, User.HasPermission(PermissionCodes.ViewPayroll));
     }
 
     // ═══════════════════════════════════════════════════════════════════════

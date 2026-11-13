@@ -58,7 +58,7 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
         int? departmentId = null, int offset = 0, int? pageSize = null)
     {
         var user = _authService.CurrentUser;
-        if (user == null || !user.CanApproveLeave)
+        if (user == null || !user.CanViewLeave)
         {
             return Task.FromResult(new LeaveRequestListResponse(new List<LeaveRequestListItemDto>(), 0, "demo"));
         }
@@ -71,7 +71,8 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
         {
             // 1. Lọc theo thẩm quyền RBAC
             var authorized = _seedRequests.Where(r =>
-                LeaveApprovalPolicy.CanView(user.TenVaiTro, user.MaPhongBan, r.MaPhongBan, r.MaLoaiDon, user.MaNhanVien, r.MaNhanVien)).ToList();
+                user.CanViewRequest(r.MaLoaiDon) && (!user.IsManager || user.MaPhongBan == r.MaPhongBan) &&
+                LeaveApprovalPolicy.CanView(user.IsManager ? "HR" : user.TenVaiTro, user.MaPhongBan, r.MaPhongBan, r.MaLoaiDon, user.MaNhanVien, r.MaNhanVien)).ToList();
 
             if (departmentId.HasValue)
                 authorized = authorized.Where(r => r.MaPhongBan == departmentId).ToList();
@@ -114,7 +115,7 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
 
     public Task<List<DepartmentOption>> GetDepartmentOptionsAsync()
     {
-        if (_authService.CurrentUser?.CanApproveLeave != true)
+        if (_authService.CurrentUser?.CanViewLeave != true)
             throw new UnauthorizedAccessException("Bạn không có thẩm quyền truy cập danh sách phòng ban.");
         lock (_seedRequests)
         {
@@ -141,8 +142,11 @@ public class DemoLeaveApprovalService : ILeaveApprovalService
                 return Task.FromResult(new LeaveReviewResult(false, "NOT_FOUND", "Không tìm thấy đơn từ."));
             }
 
+            if (!user.CanReviewRequest(item.MaLoaiDon) || (user.IsManager && user.MaPhongBan != item.MaPhongBan))
+                return Task.FromResult(new LeaveReviewResult(false, "FORBIDDEN", "Bạn không có quyền xử lý đơn này."));
+
             var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateReviewAction(
-                role: user.TenVaiTro,
+                role: user.IsManager ? "HR" : user.TenVaiTro,
                 reviewerDeptId: user.MaPhongBan,
                 requestDeptId: item.MaPhongBan,
                 maLoaiDon: item.MaLoaiDon,

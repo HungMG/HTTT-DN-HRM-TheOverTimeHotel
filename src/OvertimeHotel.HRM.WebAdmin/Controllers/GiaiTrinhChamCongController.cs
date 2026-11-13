@@ -32,7 +32,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 /// còn là thủ tục hình thức.
 /// </para>
 /// </summary>
-[Authorize(Policy = PermissionCodes.AssignShifts)]
+[Authorize(Policy = PermissionCodes.ViewAttendanceExplanations)]
 public class GiaiTrinhChamCongController : Controller
 {
     private const string STATUS_CHO_QUAN_LY = "CHO_QUAN_LY";
@@ -295,8 +295,8 @@ public class GiaiTrinhChamCongController : Controller
             DaHuy = baseQuery.Count(g => g.TrangThai == STATUS_DA_HUY),
             SoLuongSuKien = baseQuery.Count(g => eventShiftSet.Contains(g.MaPhanCa)),
             SoLuongCaThuong = baseQuery.Count(g => !eventShiftSet.Contains(g.MaPhanCa)),
-            CoQuyenQuanLy = User.IsInRole("Manager") || User.IsInRole("Admin"),
-            CoQuyenHr = User.IsInRole("HR") || User.IsInRole("Admin"),
+            CoQuyenQuanLy = (User.IsInRole("Manager") || User.IsInRole("Admin")) && User.HasPermission(PermissionCodes.VerifyAttendanceExplanations),
+            CoQuyenHr = !User.IsInRole("Manager") && User.HasPermission(PermissionCodes.VerifyAttendanceExplanations),
             PageNumber = pageNumber,
             PageSize = PAGE_SIZE,
             TotalPages = totalPages,
@@ -315,6 +315,7 @@ public class GiaiTrinhChamCongController : Controller
     //  CREATE — LẬP GIẢI TRÌNH
     // =====================================================================
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.VerifyAttendanceExplanations)]
     public async Task<IActionResult> Create(int? maPhanCa)
     {
         var model = new GiaiTrinhCreateViewModel();
@@ -339,6 +340,7 @@ public class GiaiTrinhChamCongController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.VerifyAttendanceExplanations)]
     public async Task<IActionResult> Create(GiaiTrinhCreateViewModel model)
     {
         model.LyDo = model.LyDo?.Trim() ?? string.Empty;
@@ -473,6 +475,7 @@ public class GiaiTrinhChamCongController : Controller
     // =====================================================================
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.VerifyAttendanceExplanations)]
     public async Task<IActionResult> ManagerVerify(int id, bool dongY, string? yKien)
     {
         if (!User.IsInRole("Manager") && !User.IsInRole("Admin"))
@@ -546,11 +549,12 @@ public class GiaiTrinhChamCongController : Controller
     // =====================================================================
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.VerifyAttendanceExplanations)]
     public async Task<IActionResult> HrConfirm(int id, bool dongY, string? yKien)
     {
-        if (!User.IsInRole("HR") && !User.IsInRole("Admin"))
+        if (User.IsInRole("Manager"))
         {
-            return Finish(false, "Chỉ Phòng HR mới xác nhận được giải trình.");
+            return Finish(false, "Quản lý xử lý bước xác minh của bộ phận; bước xác nhận thuộc người được cấp quyền xử lý toàn khách sạn.");
         }
 
         var yKienChuanHoa = NormalizeYKien(yKien);

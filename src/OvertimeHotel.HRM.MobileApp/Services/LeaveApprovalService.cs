@@ -103,7 +103,7 @@ public class LeaveApprovalService : ILeaveApprovalService
         var user = RequireSession();
 
         // Fail-closed: Employee và vai trò lạ không được chạm vào dữ liệu duyệt đơn.
-        if (!user.CanApproveLeave)
+        if (!user.CanViewLeave)
         {
             throw new InvalidOperationException("Bạn không có thẩm quyền truy cập danh sách duyệt đơn.");
         }
@@ -145,7 +145,7 @@ public class LeaveApprovalService : ILeaveApprovalService
 
     public async Task<List<DepartmentOption>> GetDepartmentOptionsAsync()
     {
-        if (!RequireSession().CanApproveLeave)
+        if (!RequireSession().CanViewLeave)
             throw new UnauthorizedAccessException("Bạn không có thẩm quyền truy cập danh sách phòng ban.");
 
         var json = await _rest.GetAsync("phong_ban?select=ma_phong_ban,ten_phong_ban&order=ten_phong_ban.asc");
@@ -171,8 +171,11 @@ public class LeaveApprovalService : ILeaveApprovalService
             if (!user.CanReviewRequest(donTu.Value.MaLoaiDon))
                 return new LeaveReviewResult(false, "FORBIDDEN", "Bạn không còn quyền xử lý loại đơn này.");
 
+            if (user.IsManager && donTu.Value.RequestDeptId != user.MaPhongBan)
+                return new LeaveReviewResult(false, "FORBIDDEN", "Đơn không thuộc bộ phận của bạn.");
+
             var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateReviewAction(
-                role: user.TenVaiTro,
+                role: user.IsManager ? "HR" : user.TenVaiTro,
                 reviewerDeptId: user.MaPhongBan,
                 requestDeptId: donTu.Value.RequestDeptId,
                 maLoaiDon: donTu.Value.MaLoaiDon,
@@ -512,12 +515,10 @@ public class LeaveApprovalService : ILeaveApprovalService
             filters.Add($"ma_nhan_vien=neq.{user.MaNhanVien}");
         }
 
-        var allowedTypes = LeaveApprovalPolicy.GetReviewableRequestTypes(user.TenVaiTro)
-            .Where(user.CanReviewRequest).ToList();
-        if (allowedTypes.Count > 0)
-        {
-            filters.Add($"ma_loai_don=in.({string.Join(',', allowedTypes.OrderBy(t => t))})");
-        }
+        var allowedTypes = Enumerable.Range(1, 5)
+            .Where(user.CanViewRequest).ToList();
+        if (allowedTypes.Count == 0) throw new UnauthorizedAccessException("Bạn không có quyền xem loại đơn nào.");
+        filters.Add($"ma_loai_don=in.({string.Join(',', allowedTypes.OrderBy(t => t))})");
 
         // Manager bị khoá trong phòng ban của mình. CanApproveLeave đã chặn sẵn
         // trường hợp không có phòng ban, nhưng nhánh if vẫn để nguyên vì

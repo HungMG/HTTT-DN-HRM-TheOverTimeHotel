@@ -251,7 +251,7 @@
                     </Border>
 
                     <!-- ═══ KHỐI 4 · TIẾN ĐỘ QUỸ LƯƠNG & KHÓA SỔ KỲ LƯƠNG (PRD 02 & 05) ═══ -->
-                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0" IsVisible="{Binding CanViewPayroll}">
                         <Label Grid.Column="0"
                                Text="QUỸ LƯƠNG 5 THÁNG GẦN ĐÂY"
                                TextColor="#1E3A8A"
@@ -269,7 +269,7 @@
                     <Border Stroke="#E2E8F0"
                             StrokeShape="RoundRectangle 16"
                             BackgroundColor="#FFFFFF"
-                            Padding="16">
+                            Padding="16" IsVisible="{Binding CanViewPayroll}">
                         <Border.Shadow>
                             <Shadow Brush="#0B1B4D" Offset="0,4" Radius="10" Opacity="0.04" />
                         </Border.Shadow>

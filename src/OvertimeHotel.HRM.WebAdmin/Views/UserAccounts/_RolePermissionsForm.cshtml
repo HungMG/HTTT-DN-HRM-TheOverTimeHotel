@@ -1,19 +1,41 @@
 @model RolePermissionsViewModel
 @using OvertimeHotel.HRM.WebAdmin.Security
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Environment
 @{
-    string PermissionSurface(string code) => code switch
+    string PermissionGroup(string code) => code switch
     {
-        PermissionCodes.MobileCheckIn or PermissionCodes.SubmitRequest => "app",
-        PermissionCodes.AssignShifts or PermissionCodes.ViewDepartmentAttendance
-            or PermissionCodes.ApproveLeave or PermissionCodes.ApproveResignation
-            or PermissionCodes.ReportView => "shared",
-        _ => "web"
+        PermissionCodes.MobileCheckIn or PermissionCodes.SubmitRequest => "mobile",
+        PermissionCodes.ManageEmployees => "employees",
+        PermissionCodes.ManageContracts => "contracts",
+        PermissionCodes.ManageCatalog => "catalog",
+        PermissionCodes.ViewShifts or PermissionCodes.AssignShifts => "schedule",
+        PermissionCodes.ViewShiftSwaps or PermissionCodes.ApproveShiftSwaps => "swap",
+        PermissionCodes.ViewDepartmentAttendance or PermissionCodes.ViewAttendanceExplanations or PermissionCodes.VerifyAttendanceExplanations => "attendance",
+        PermissionCodes.ViewLeave or PermissionCodes.ApproveLeave or PermissionCodes.ApproveResignation => "requests",
+        PermissionCodes.ManageHotelEvents => "events",
+        PermissionCodes.ViewPayroll or PermissionCodes.CalculatePayroll or PermissionCodes.ApprovePayroll => "payroll",
+        PermissionCodes.ReportView => "reports",
+        PermissionCodes.ManageAccounts or PermissionCodes.ProvisionMobileAccount => "accounts",
+        PermissionCodes.ManagePermissions => "permissions",
+        PermissionCodes.BackupDatabase => "backup",
+        _ => "other"
     };
     var permissionGroups = new[]
     {
-        (Key: "web", Title: "Web quản trị", Icon: "bi-display", Description: "Quản lý nhân sự, hợp đồng, lương, sự kiện và quản trị hệ thống trên web."),
-        (Key: "app", Title: "App di động", Icon: "bi-phone", Description: "Các thao tác tự phục vụ trên app của nhân viên và quản lý."),
-        (Key: "shared", Title: "Dùng chung Web & App", Icon: "bi-arrow-left-right", Description: "Tích một lần để cấp quyền trên cả web và app; phạm vi dữ liệu vẫn theo vai trò và phòng ban.")
+        (Key: "mobile", Title: "Chức năng cá nhân Mobile", Icon: "bi-phone", Description: "Chấm công và nộp đơn của chính mình trên ứng dụng."),
+        (Key: "employees", Title: "Nhân viên", Icon: "bi-people", Description: "Quản lý hồ sơ nhân viên."),
+        (Key: "contracts", Title: "Hợp đồng", Icon: "bi-file-earmark-text", Description: "Quản lý hợp đồng."),
+        (Key: "catalog", Title: "Danh mục", Icon: "bi-list", Description: "Phòng ban, chức vụ và mẫu ca."),
+        (Key: "schedule", Title: "Lịch làm việc", Icon: "bi-calendar-week", Description: "Xem lịch và xếp ca."),
+        (Key: "swap", Title: "Đổi ca", Icon: "bi-arrow-left-right", Description: "Xem và xử lý yêu cầu đổi ca."),
+        (Key: "attendance", Title: "Chấm công", Icon: "bi-fingerprint", Description: "Xem công và xử lý giải trình."),
+        (Key: "requests", Title: "Đơn từ", Icon: "bi-file-earmark-text", Description: "Xem và duyệt đơn."),
+        (Key: "events", Title: "Sự kiện", Icon: "bi-calendar-event", Description: "Quản lý sự kiện."),
+        (Key: "payroll", Title: "Lương", Icon: "bi-wallet2", Description: "Xem và quản lý lương."),
+        (Key: "reports", Title: "Báo cáo", Icon: "bi-bar-chart", Description: "Xem, xuất và in báo cáo."),
+        (Key: "accounts", Title: "Tài khoản", Icon: "bi-person-gear", Description: "Quản lý và cấp tài khoản."),
+        (Key: "permissions", Title: "Phân quyền", Icon: "bi-shield-lock", Description: "Cấu hình quyền vai trò."),
+        (Key: "backup", Title: "Sao lưu", Icon: "bi-database", Description: "Sao lưu và phục hồi.")
     };
 }
     <!-- THÔNG BÁO FLASH MESSAGE -->
@@ -41,6 +63,7 @@
     <!-- FORM PHÂN QUYỀN VAI TRÒ -->
     <form asp-action="SaveRolePermissions" asp-route-popup="@(ViewData["RolePopup"] is true ? true : null)" method="post" id="rolePermissionsForm">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="ReportPermissionChanged" value="false" data-report-changed />
 
         <!-- CARD CHỌN VAI TRÒ & PHẠM VI ÁP DỤNG -->
         <div class="card border-0 shadow-sm rounded-4 mb-4">
@@ -79,7 +102,7 @@
 
                 <div class="mt-3 pt-3 border-top d-flex align-items-center gap-2 text-muted" style="font-size: 0.78rem;">
                     <i class="bi bi-info-circle-fill text-primary"></i>
-                    <span><b>Lưu ý:</b> Quản trị viên (Admin) có các quyền mặc định và không cấu hình tại đây. Quyền Quản lý sự kiện khách sạn được cấp riêng, mặc định chỉ cho HR.</span>
+                    <span><b>Lưu ý:</b> Quyền được cấu hình theo vai trò. Các quyền quản trị của IT được cố định và không cấu hình tại đây.</span>
                 </div>
             </div>
         </div>
@@ -93,7 +116,7 @@
                     </span>
                     <div>
                         <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.95rem;">Danh Mục Quyền Hạn Cho Phép</h6>
-                        <small class="text-muted" style="font-size: 0.72rem;">Đánh dấu tích để cấp quyền hoặc bỏ tích để thu hồi quyền của vai trò</small>
+                        <small class="text-muted" style="font-size: 0.72rem;">Bấm vào từng nhóm để mở các quyền chi tiết, rồi bật hoặc tắt quyền cần thiết.</small>
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -109,33 +132,36 @@
             <div class="card-body p-4">
                 @foreach (var group in permissionGroups)
                 {
-                    var permissions = Model.PermissionOptions.Where(p => PermissionSurface(p.Code) == group.Key).ToList();
+                    var permissions = Model.PermissionOptions.Where(p => PermissionGroup(p.Code) == group.Key).ToList();
                     if (permissions.Count == 0) continue;
-                    <section class="mb-4" aria-labelledby="permission-group-@group.Key" data-permission-surface="@group.Key">
-                        <div class="d-flex align-items-start gap-3 border-bottom pb-3 mb-3">
+                    <details class="mb-3 border rounded-4 overflow-hidden" data-permission-group="@group.Key">
+                        <summary class="d-flex align-items-center gap-3 bg-light p-3" style="cursor: pointer; list-style: none;">
                             <span class="rounded-3 bg-primary bg-opacity-10 text-primary p-2"><i class="bi @group.Icon fs-5" aria-hidden="true"></i></span>
                             <div class="flex-grow-1">
-                                <h6 id="permission-group-@group.Key" class="fw-bold text-dark mb-1">@group.Title <span class="badge bg-light text-secondary border ms-1">@permissions.Count quyền</span></h6>
+                                <h6 class="fw-bold text-dark mb-1">@group.Title <span class="badge bg-white text-secondary border ms-1">@permissions.Count quyền</span></h6>
                                 <p class="text-muted small mb-0">@group.Description</p>
                             </div>
-                        </div>
-                        <div class="row g-3">
+                            <i class="bi bi-chevron-down text-secondary" aria-hidden="true"></i>
+                        </summary>
+                        <div class="row g-3 p-3">
                             @foreach (var permission in permissions)
                             {
                                 var isChecked = permission.Granted;
+                                var requiredCode = PermissionConfiguration.RequiresView.GetValueOrDefault(permission.Code);
                                 <div class="col-lg-6 col-md-12">
                                     <label class="p-3 rounded-4 border w-100 h-100 d-flex align-items-start gap-3 transition-all cursor-pointer @(isChecked ? "bg-primary-subtle border-primary-subtle" : "bg-light bg-opacity-50 border-light-subtle")"
                                            style="transition: all 0.2s ease; cursor: pointer;"
                                            onmouseover="this.classList.add('shadow-sm')"
                                            onmouseout="this.classList.remove('shadow-sm')">
                                         <div class="form-check form-switch pt-1 flex-shrink-0">
-                                            <input class="form-check-input permission-checkbox" type="checkbox" name="PermissionIds" value="@permission.PermissionId" @(isChecked ? "checked" : "") style="width: 2.2rem; height: 1.2rem; cursor: pointer;">
+                                            <input class="form-check-input permission-checkbox" type="checkbox" name="PermissionIds" value="@permission.PermissionId" data-code="@permission.Code" data-requires="@requiredCode" @(isChecked ? "checked" : "") style="width: 2.2rem; height: 1.2rem; cursor: pointer;">
                                         </div>
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                                                <div class="fw-bold text-dark" style="font-size: 0.88rem;">@permission.Name</div>
+                                                <div class="fw-bold text-dark" style="font-size: 0.88rem;">@(permission.Code == PermissionCodes.ReportView ? "Xem và xuất báo cáo" : permission.Name)</div>
                                                 <code class="text-primary bg-primary bg-opacity-10 px-2 py-0.5 rounded-2 font-monospace" style="font-size: 0.7rem;">@permission.Code</code>
                                             </div>
+                                            @if (permission.PartiallyGranted) { <p class="small text-warning-emphasis mb-1">Hiện chỉ có quyền xem. Bỏ chọn rồi chọn lại để cấp thêm quyền xuất báo cáo.</p> }
                                             <p class="mb-0 text-muted small" style="font-size: 0.78rem; line-height: 1.4;">
                                                 @(string.IsNullOrWhiteSpace(permission.Description) ? "Cho phép thực thi tác vụ tương ứng trong phân hệ này." : permission.Description)
                                             </p>
@@ -144,7 +170,7 @@
                                 </div>
                             }
                         </div>
-                    </section>
+                    </details>
                 }
             </div>
         </div>
@@ -153,6 +179,12 @@
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body p-4">
                 <div class="row g-3">
+                    @if (Environment.EnvironmentName == "Development")
+                    {
+                        <input type="hidden" asp-for="ChangeReason" value="Kiểm thử phân quyền" />
+                    }
+                    else
+                    {
                     <div class="col-lg-8 col-md-12">
                         <label asp-for="ChangeReason" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
                             <i class="bi bi-pencil-square me-1 text-primary"></i> Lý do thay đổi quyền hạn <span class="text-danger">*</span>
@@ -163,7 +195,8 @@
                             <i class="bi bi-shield-check text-success me-1"></i>Hệ thống tự động ghi nhật ký kiểm toán (Audit Trail) cho mọi lần điều chỉnh quyền.
                         </small>
                     </div>
-                    <div class="col-lg-4 col-md-12 d-flex flex-column justify-content-end">
+                    }
+                    <div class="@(Environment.EnvironmentName == "Development" ? "col-12" : "col-lg-4 col-md-12") d-flex flex-column justify-content-end">
                         <div class="p-3 bg-light rounded-3 mb-2 small text-muted" style="font-size: 0.75rem;">
                             <i class="bi bi-info-circle me-1 text-primary"></i>Quyền được kiểm tra lại khi thao tác. App đang mở cập nhật giao diện sau khoảng <b>10 giây</b>; phiên web có thể yêu cầu đăng nhập lại.
                         </div>

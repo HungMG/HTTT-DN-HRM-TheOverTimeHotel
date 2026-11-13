@@ -85,8 +85,9 @@ public class LeaveDetailViewModel : INotifyPropertyChanged
         user.CanReviewRequest(item.MaLoaiDon) &&
         // Truyền cả hai mã nhân viên để policy loại đơn của chính mình. Server vẫn
         // kiểm tra lại, nhưng ẩn nút ngay từ đây cho khỏi bấm phải mới báo lỗi.
+        (!user.IsManager || (user.MaPhongBan.HasValue && user.MaPhongBan == item.MaPhongBan)) &&
         LeaveApprovalPolicy.CanReview(
-            user.TenVaiTro, user.MaPhongBan, item.MaPhongBan, item.MaLoaiDon,
+            user.IsManager ? "HR" : user.TenVaiTro, user.MaPhongBan, item.MaPhongBan, item.MaLoaiDon,
             user.MaNhanVien, item.MaNhanVien) &&
         !IsSubmitting;
 

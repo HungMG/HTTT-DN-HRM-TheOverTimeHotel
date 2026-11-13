@@ -28,8 +28,11 @@ public class UserSession
     public bool IsIT => LeaveApprovalPolicy.IsIT(TenVaiTro);
     public HashSet<string> Permissions { get; set; } = new(StringComparer.Ordinal);
     public bool HasPermission(string code) => IsLoggedIn && Permissions.Contains(code);
+    public bool CanViewRequest(int type) => type is >= 1 and <= 5 && CanViewLeave
+        && HasPermission(type == 5 ? MobilePermissionPolicy.ApproveResignation : MobilePermissionPolicy.ViewLeave);
+    public bool CanViewLeave => IsLoggedIn && (IsManager || IsHR || IsAdmin) && (!IsManager || MaPhongBan.HasValue)
+        && (HasPermission(MobilePermissionPolicy.ViewLeave) || HasPermission(MobilePermissionPolicy.ApproveResignation));
     public bool CanReviewRequest(int type) => type is >= 1 and <= 5 && CanApproveLeave
-        && LeaveApprovalPolicy.GetReviewableRequestTypes(TenVaiTro).Contains(type)
         && HasPermission(MobilePermissionPolicy.ReviewPermission(type));
     public bool CanApproveLeave => IsLoggedIn && (IsManager || IsHR || IsAdmin) && (!IsManager || MaPhongBan.HasValue)
         && (HasPermission(MobilePermissionPolicy.ApproveLeave)

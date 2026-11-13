@@ -60,7 +60,8 @@ public sealed class BaoCaoReportService
         int? thang,
         int? quy,
         int? phongBan,
-        string? tab)
+        string? tab,
+        bool canViewPayroll = false)
     {
         var today = DateOnly.FromDateTime(HotelEventRules.Local(DateTimeOffset.UtcNow));
         var roleLabel = ResolveRoleLabel(role);
@@ -85,7 +86,7 @@ public sealed class BaoCaoReportService
             : scope.DepartmentId;
 
         var cacheKey = string.Join('|',
-            "BaoCaoMetrics_V2", role ?? "-", year, month, quarter, departmentId, today.DayNumber,
+            "BaoCaoMetrics_V2", role ?? "-", canViewPayroll, year, month, quarter, departmentId, today.DayNumber,
             _cache.Get<string>(PayrollBudgetService.RevisionKey) ?? "initial");
 
         if (_cache.TryGetValue(cacheKey, out BaoCaoViewModel? cached) && cached is not null)
@@ -110,7 +111,7 @@ public sealed class BaoCaoReportService
             Tab = NormalizeTab(tab),
             IsWholeHotel = scope.IsWholeHotel,
             RoleLabel = roleLabel,
-            CanViewPayrollFund = ReportPolicy.CanViewPayrollFundReport(role),
+            CanViewPayrollFund = canViewPayroll && scope.IsWholeHotel,
             GeneratedAt = DateTimeOffset.UtcNow
         };
 
@@ -1076,7 +1077,8 @@ public sealed class BaoCaoReportService
         int? nam,
         int? thang,
         int? quy,
-        int? phongBan)
+        int? phongBan,
+        bool canViewPayroll = false)
     {
         var today = DateOnly.FromDateTime(HotelEventRules.Local(DateTimeOffset.UtcNow));
         var year = nam is >= 2000 and <= 2200 ? nam.Value : today.Year;
@@ -1259,7 +1261,7 @@ public sealed class BaoCaoReportService
                 break;
 
             case "muc-luong":
-                if (!ReportPolicy.CanViewPayrollFundReport(role))
+                if (!(canViewPayroll && scope.IsWholeHotel))
                 {
                     result.TieuDe = "Không có quyền truy cập thông tin mức lương";
                     result.DanhSach = [];
@@ -1310,7 +1312,7 @@ public sealed class BaoCaoReportService
                 break;
 
             case "phieu-luong":
-                if (!ReportPolicy.CanViewPayrollFundReport(role))
+                if (!(canViewPayroll && scope.IsWholeHotel))
                 {
                     result.TieuDe = "Không có quyền truy cập chi tiết quỹ lương";
                     result.DanhSach = [];

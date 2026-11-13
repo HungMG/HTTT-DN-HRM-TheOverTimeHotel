@@ -163,7 +163,7 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
     /// <summary>Nạp số đơn chờ duyệt theo phạm vi quyền hạn của người dùng.</summary>
     private async Task LoadPendingLeaveCountAsync(UserSession user)
     {
-        if (!user.CanApproveLeave)
+        if (!user.CanViewLeave)
         {
             PendingLeaveCount = 0;
             PendingLeaveSub = "Đơn của bạn";

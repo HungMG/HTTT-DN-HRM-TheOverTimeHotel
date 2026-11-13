@@ -10,7 +10,6 @@ public static class PermissionCodes
     public const string ClaimType = "Permission";
 
     // ── Nhóm: Quản trị hệ thống ────────────────────────────────────────────
-    public const string SystemAdmin = "SYS_ADMIN";
     public const string ManageAccounts = "QL_TAI_KHOAN";
 
     /// <summary>
@@ -36,24 +35,18 @@ public static class PermissionCodes
     public const string ManageHotelEvents = "QL_SU_KIEN";
 
     public const string AssignShifts = "XEP_CA_LAM";
+    public const string ViewShifts = "XEM_LICH_CA";
+    public const string ViewShiftSwaps = "XEM_YEU_CAU_DOI_CA";
+    public const string ApproveShiftSwaps = "DUYET_DOI_CA";
+    public const string ViewAttendanceExplanations = "XEM_GIAI_TRINH_CHAM_CONG";
+    public const string VerifyAttendanceExplanations = "XAC_MINH_GIAI_TRINH";
     public const string ViewDepartmentAttendance = "XEM_CHAM_CONG_BO_PHAN";
     public const string MobileCheckIn = "CHAM_CONG_DI_DONG";
 
     // ── Nhóm: Lương ────────────────────────────────────────────────────────
+    public const string ViewPayroll = "XEM_BANG_LUONG";
     public const string CalculatePayroll = "TINH_LUONG";
-    public const string ExportPayslipPdf = "XUAT_PHIEU_LUONG_PDF";
-
-    // ── Nhóm: Trợ lý AI ────────────────────────────────────────────────────
-    /// <summary>
-    /// Nạp tài liệu PDF vào kho tri thức của Trợ lý AI.
-    /// </summary>
-    /// <remarks>
-    /// Cấp cho HR và IT. Tách khỏi <see cref="ReportView"/> có chủ đích: xem báo cáo và
-    /// nạp văn bản là hai quyền khác nhau, và Quản lý bộ phận (có <c>REPORT_VIEW</c>)
-    /// không được đưa tài liệu toàn khách sạn vào kho tri thức dùng chung.
-    /// Admin vốn qua mọi policy nhờ <c>IsInRole("Admin")</c>.
-    /// </remarks>
-    public const string ManageAiKnowledge = "QL_TRI_THUC_AI";
+    public const string ApprovePayroll = "DUYET_BANG_LUONG";
 
     // ── Nhóm: Báo cáo & Thống kê ───────────────────────────────────────────
     /// <summary>
@@ -65,10 +58,11 @@ public static class PermissionCodes
     /// (<c>ReportPolicy.ResolveScope</c>) chứ không phải ở mã quyền này.
     /// </remarks>
     public const string ReportView = "REPORT_VIEW";
+    public const string ReportExport = "REPORT_EXPORT";
 
     // ── Nhóm: Phê duyệt ────────────────────────────────────────────────────
     public const string ApproveResignation = "DUYET_THOI_VIEC";
     public const string ApproveLeave = "DUYET_DON_NGHI";
-    public const string ApproveOvertime = "DUYET_TANG_CA_OT";
+    public const string ViewLeave = "XEM_DON_NGHI";
     public const string SubmitRequest = "NOP_DON_TU";
 }

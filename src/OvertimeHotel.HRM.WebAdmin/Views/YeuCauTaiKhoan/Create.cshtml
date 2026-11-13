@@ -1,18 +1,19 @@
-﻿@model CreateYeuCauTaiKhoanViewModel
+@using OvertimeHotel.HRM.WebAdmin.Security
+@model CreateYeuCauTaiKhoanViewModel
 @{
-    ViewData["Title"] = User.IsInRole("IT") ? "Cấp tài khoản" : "Gửi yêu cầu cấp tài khoản";
+    ViewData["Title"] = User.HasPermission(PermissionCodes.ProvisionMobileAccount) ? "Cấp tài khoản" : "Gửi yêu cầu cấp tài khoản";
 }
 
 <div class="account-workspace account-workspace--bleed py-2">
     <!-- THANH ĐIỀU HƯỚNG & TIÊU ĐỀ TRANG -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div class="d-flex align-items-center gap-3">
-            <a asp-controller="@(User.IsInRole("IT") ? "UserAccounts" : "NhanVien")" asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3.5 py-2 fw-semibold hover-lift d-flex align-items-center gap-2" style="font-size: 0.82rem;">
+            <a asp-controller="@(User.HasPermission(PermissionCodes.ProvisionMobileAccount) ? "UserAccounts" : "NhanVien")" asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3.5 py-2 fw-semibold hover-lift d-flex align-items-center gap-2" style="font-size: 0.82rem;">
                 <i class="bi bi-arrow-left fs-6"></i> Quay lại danh sách
             </a>
             <div>
                 <h4 class="mb-0 fw-bold font-serif text-dark" style="font-size: 1.15rem;">@ViewData["Title"]</h4>
-                <small class="text-muted" style="font-size: 0.75rem;">@(User.IsInRole("IT") ? "IT cấp tài khoản trực tiếp theo hồ sơ và hợp đồng" : "Gửi yêu cầu cấp tài khoản nhân viên để IT xử lý")</small>
+                <small class="text-muted" style="font-size: 0.75rem;">@(User.HasPermission(PermissionCodes.ProvisionMobileAccount) ? "IT cấp tài khoản trực tiếp theo hồ sơ và hợp đồng" : "Gửi yêu cầu cấp tài khoản nhân viên để IT xử lý")</small>
             </div>
         </div>
     </div>
@@ -177,11 +178,11 @@
 
                 <!-- CỤM NÚT THAO TÁC CUỐI FORM -->
                 <div class="d-flex align-items-center justify-content-between gap-3 pt-2">
-                    <a asp-controller="@(User.IsInRole("IT") ? "UserAccounts" : "NhanVien")" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 py-2.5 fw-semibold hover-lift d-inline-flex align-items-center gap-2" style="font-size: 0.85rem;">
+                    <a asp-controller="@(User.HasPermission(PermissionCodes.ProvisionMobileAccount) ? "UserAccounts" : "NhanVien")" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 py-2.5 fw-semibold hover-lift d-inline-flex align-items-center gap-2" style="font-size: 0.85rem;">
                         <i class="bi bi-x-circle fs-6"></i> Hủy bỏ
                     </a>
                     <button type="submit" id="btnSubmitRequest" class="btn btn-hotel-primary rounded-pill px-4 py-2.5 fw-bold shadow-sm hover-lift d-flex align-items-center gap-2" disabled="@(Model.EmployeeOptions.Count == 0)" style="font-size: 0.85rem;">
-                        <i class="bi bi-send-fill fs-6"></i> @(User.IsInRole("IT") ? "Cấp tài khoản" : "Gửi yêu cầu cấp tài khoản")
+                        <i class="bi bi-send-fill fs-6"></i> @(User.HasPermission(PermissionCodes.ProvisionMobileAccount) ? "Cấp tài khoản" : "Gửi yêu cầu cấp tài khoản")
                     </button>
                 </div>
             </div>

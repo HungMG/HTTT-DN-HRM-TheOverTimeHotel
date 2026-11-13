@@ -12,7 +12,7 @@ using OvertimeHotel.HRM.WebAdmin.Security;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
-[Authorize(Policy = PermissionCodes.ManageAccounts)]
+[Authorize]
 public class UserAccountsController : Controller
 {
     // Vai trò RBAC mà màn hình này cho phép cấp. "IT" là bộ phận Công nghệ
@@ -36,6 +36,7 @@ public class UserAccountsController : Controller
     }
 
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
     public async Task<IActionResult> Index(string? keyword, int? roleId, bool? isActive, DateOnly? auditFrom, DateOnly? auditTo, int page = 1, int auditPage = 1)
     {
         var normalizedKeyword = keyword?.Trim();
@@ -244,22 +245,17 @@ public class UserAccountsController : Controller
     [Authorize(Policy = PermissionCodes.ManagePermissions)]
     public async Task<IActionResult> RolePermissions(int? roleId, bool popup = false)
     {
-        if (roleId.HasValue && await _context.VaiTros.AnyAsync(role => role.MaVaiTro == roleId.Value && (role.TenVaiTro == "Admin" || role.TenVaiTro == "IT")))
-        {
-            TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không cấu hình quyền tại đây.";
-            return RedirectToAction(nameof(RolePermissions), new { popup });
-        }
-
         var roleOptions = await GetConfigurableRoleOptionsAsync(roleId);
         if (roleOptions.Count == 0) return NotFound();
         var selectedRoleId = roleId ?? int.Parse(roleOptions[0].Value!);
         var role = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(item => item.MaVaiTro == selectedRoleId);
-        if (role == null || role.TenVaiTro == "Admin" || !SupportedRoles.Contains(role.TenVaiTro)) return NotFound();
+        if (role == null || role.TenVaiTro == "IT" || !SupportedRoles.Contains(role.TenVaiTro)) return NotFound();
 
         var model = new RolePermissionsViewModel
         {
             RoleId = role.MaVaiTro,
             RoleName = GetVietnameseRoleName(role.TenVaiTro),
+            IsManagerRole = role.TenVaiTro == "Manager",
             AffectedAccountCount = await _context.TaiKhoans.CountAsync(account => account.MaVaiTro == role.MaVaiTro),
             RoleOptions = roleOptions,
             PermissionOptions = await GetRolePermissionOptionsAsync(role.MaVaiTro)
@@ -274,19 +270,34 @@ public class UserAccountsController : Controller
     public async Task<IActionResult> SaveRolePermissions(RolePermissionsViewModel model, bool popup = false)
     {
         var role = await _context.VaiTros.FirstOrDefaultAsync(item => item.MaVaiTro == model.RoleId);
-        if (role == null) return NotFound();
-        if (role.TenVaiTro is "Admin" or "IT")
-        {
-            TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không thể chỉnh sửa quyền tại đây.";
-            return RedirectToAction(nameof(RolePermissions), new { popup });
-        }
-        var allowed = await _context.Quyens.AsNoTracking().Where(item => item.MaQuyenCode != PermissionCodes.SystemAdmin)
-            .ToDictionaryAsync(item => item.MaQuyen, item => item.TenQuyen);
+        if (role == null || role.TenVaiTro == "IT" || !SupportedRoles.Contains(role.TenVaiTro)) return NotFound();
+        var editableCodes = PermissionConfiguration.VisibleCodes;
+        var permissions = await _context.Quyens.AsNoTracking()
+            .Where(item => editableCodes.Contains(item.MaQuyenCode)).ToListAsync();
+        var allowed = permissions.ToDictionary(item => item.MaQuyen, item => item.TenQuyen);
         var allowedIds = allowed.Keys.ToHashSet();
         var requested = model.PermissionIds.Distinct().ToHashSet();
-        if (!requested.IsSubsetOf(allowedIds) || string.IsNullOrWhiteSpace(model.ChangeReason)) return BadRequest("Dữ liệu quyền không hợp lệ.");
+        if (!requested.IsSubsetOf(allowedIds) || string.IsNullOrWhiteSpace(model.ChangeReason) || model.ChangeReason.Length > 500)
+            return BadRequest("Dữ liệu quyền không hợp lệ.");
         var existing = await _context.VaiTroQuyens.Where(item => item.MaVaiTro == role.MaVaiTro && allowedIds.Contains(item.MaQuyen)).ToListAsync();
         var existingIds = existing.Select(item => item.MaQuyen).ToHashSet();
+        var selectedCodes = permissions.Where(p => requested.Contains(p.MaQuyen)).Select(p => p.MaQuyenCode).ToHashSet();
+        var existingCodes = permissions.Where(p => existingIds.Contains(p.MaQuyen)).Select(p => p.MaQuyenCode).ToHashSet();
+        foreach (var (action, view) in PermissionConfiguration.RequiresView)
+            if (selectedCodes.Contains(action) && !selectedCodes.Contains(view) && existingCodes.Contains(action))
+                return BadRequest("Cấu hình cũ có quyền thao tác nhưng thiếu quyền xem. Hãy chọn quyền xem hoặc bỏ quyền thao tác trước khi lưu.");
+        PermissionConfiguration.AddRequiredPermissions(selectedCodes, role.TenVaiTro);
+        if (selectedCodes.Any(code => !permissions.Any(p => p.MaQuyenCode == code)))
+            return BadRequest("Danh mục quyền chưa đầy đủ. Cần cập nhật cơ sở dữ liệu trước khi lưu.");
+        requested = permissions.Where(p => selectedCodes.Contains(p.MaQuyenCode)).Select(p => p.MaQuyen).ToHashSet();
+        var reportViewId = permissions.FirstOrDefault(p => p.MaQuyenCode == PermissionCodes.ReportView)?.MaQuyen;
+        var reportExportId = permissions.FirstOrDefault(p => p.MaQuyenCode == PermissionCodes.ReportExport)?.MaQuyen;
+        if (reportViewId is int viewId && reportExportId is int exportId)
+        {
+            var reportChanged = model.ReportPermissionChanged || requested.Contains(viewId) != existingIds.Contains(viewId);
+            if (reportChanged && requested.Contains(viewId)) requested.Add(exportId);
+            else if (!reportChanged && existingIds.Contains(exportId)) requested.Add(exportId);
+        }
         var add = requested.Except(existingIds).ToArray();
         var remove = existingIds.Except(requested).ToArray();
         if (add.Length == 0 && remove.Length == 0)
@@ -318,6 +329,7 @@ public class UserAccountsController : Controller
     }
 
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
     public async Task<IActionResult> Edit(int id)
     {
         var account = await _context.TaiKhoans
@@ -350,6 +362,7 @@ public class UserAccountsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
     public async Task<IActionResult> Edit(int id, EditAccountViewModel model)
     {
         if (id != model.AccountId)
@@ -477,79 +490,13 @@ public class UserAccountsController : Controller
     [Authorize(Policy = PermissionCodes.ManagePermissions)]
     public async Task<IActionResult> UpdateRolePermissions(AddRolePermissionsViewModel model)
     {
-        if (!ModelState.IsValid)
-        {
-            TempData["Error"] = "Vui lòng nhập lý do hợp lệ trước khi cập nhật quyền.";
-            return RedirectToAction(nameof(Edit), new { id = model.AccountId });
-        }
-
-        var account = await _context.TaiKhoans
-            .Include(item => item.VaiTro)
-            .FirstOrDefaultAsync(item => item.MaTaiKhoan == model.AccountId);
-        if (account == null)
-        {
-            return NotFound();
-        }
-        if (account.VaiTro?.TenVaiTro is "Admin" or "IT")
-        {
-            TempData["Error"] = "Quản trị viên có toàn quyền hệ thống nên không thể chỉnh sửa quyền tại đây.";
-            return RedirectToAction(nameof(Edit), new { id = account.MaTaiKhoan });
-        }
-
-        var allowedPermissions = await _context.Quyens
-            .AsNoTracking()
-            .Where(permission => permission.MaQuyenCode != PermissionCodes.SystemAdmin)
-            .ToDictionaryAsync(permission => permission.MaQuyen, permission => permission.TenQuyen);
-        var allowedPermissionIds = allowedPermissions.Keys.ToHashSet();
-        var requestedIds = model.PermissionIds.Distinct().ToHashSet();
-        if (!requestedIds.IsSubsetOf(allowedPermissionIds))
-        {
-            return BadRequest("Quyền được chọn không hợp lệ.");
-        }
-
-        var existingRolePermissions = await _context.VaiTroQuyens
-            .Where(item => item.MaVaiTro == account.MaVaiTro)
-            .Where(item => allowedPermissionIds.Contains(item.MaQuyen))
-            .ToListAsync();
-        var existingIds = existingRolePermissions.Select(item => item.MaQuyen).ToHashSet();
-        var permissionIdsToAdd = requestedIds.Except(existingIds).ToArray();
-        var permissionIdsToRemove = existingIds.Except(requestedIds).ToArray();
-        if (permissionIdsToAdd.Length == 0 && permissionIdsToRemove.Length == 0)
-        {
-            TempData["Success"] = $"Quyền của vai trò {account.VaiTro?.TenVaiTro ?? "được chọn"} không thay đổi.";
-            return RedirectToAction(nameof(Edit), new { id = account.MaTaiKhoan });
-        }
-
-        _context.VaiTroQuyens.AddRange(permissionIdsToAdd.Select(permissionId => new VaiTroQuyen
-        {
-            MaVaiTro = account.MaVaiTro,
-            MaQuyen = permissionId
-        }));
-        var roleName = account.VaiTro?.TenVaiTro ?? $"Vai trò #{account.MaVaiTro}";
-        var grantedNames = string.Join(", ", permissionIdsToAdd.Select(id => allowedPermissions[id]));
-        var revokedNames = string.Join(", ", permissionIdsToRemove.Select(id => allowedPermissions[id]));
-        _context.VaiTroQuyens.RemoveRange(existingRolePermissions.Where(item => permissionIdsToRemove.Contains(item.MaQuyen)));
-        _context.NhatKyQuanTris.Add(CreateAuditLog(
-            account.MaTaiKhoan,
-            account.TenDangNhap,
-            "UPDATE_ROLE_PERMISSION",
-            $"Cập nhật quyền cho toàn bộ vai trò {roleName}.",
-            string.IsNullOrEmpty(revokedNames) ? null : $"Thu hồi: {revokedNames}",
-            string.IsNullOrEmpty(grantedNames) ? null : $"Cấp thêm: {grantedNames}",
-            model.ChangeReason));
-
-        await _context.SaveChangesAsync();
-        var changes = new[]
-        {
-            string.IsNullOrEmpty(grantedNames) ? null : $"Đã cấp: {grantedNames}",
-            string.IsNullOrEmpty(revokedNames) ? null : $"Đã thu hồi: {revokedNames}"
-        }.Where(message => message != null);
-        TempData["Success"] = $"{string.Join(". ", changes)} cho tất cả tài khoản vai trò {roleName}. Họ cần đăng xuất và đăng nhập lại.";
-        return RedirectToAction(nameof(Edit), new { id = account.MaTaiKhoan });
+        TempData["Error"] = "Vui lòng sử dụng trang phân quyền vai trò để cập nhật quyền.";
+        return RedirectToAction(nameof(RolePermissions));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
     public async Task<IActionResult> ToggleStatus(int id, string? reason)
     {
         reason = reason?.Trim();
@@ -651,6 +598,7 @@ public class UserAccountsController : Controller
     }
 
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
     public async Task<IActionResult> AuditLogs(DateOnly? auditFrom, DateOnly? auditTo, int auditPage = 1)
     {
         var validationMessage = GetAuditDateValidationMessage(auditFrom, auditTo);
@@ -720,7 +668,7 @@ public class UserAccountsController : Controller
     {
         var roles = await _context.VaiTros
             .AsNoTracking()
-            .Where(role => SupportedRoles.Contains(role.TenVaiTro) && role.TenVaiTro != "Admin" && role.TenVaiTro != "IT")
+            .Where(role => SupportedRoles.Contains(role.TenVaiTro) && role.TenVaiTro != "IT")
             .OrderBy(role => role.MaVaiTro)
             .Select(role => new SelectListItem
             {
@@ -747,17 +695,21 @@ public class UserAccountsController : Controller
             .ToHashSetAsync();
         var permissions = await _context.Quyens
             .AsNoTracking()
-            .Where(permission => permission.MaQuyenCode != PermissionCodes.SystemAdmin)
+            .Where(permission => PermissionConfiguration.VisibleCodes.Contains(permission.MaQuyenCode))
             .OrderBy(permission => permission.TenQuyen)
             .ToListAsync();
 
-        return permissions.Select(permission => new RolePermissionOptionViewModel
+        var isIt = await _context.VaiTros.AsNoTracking().AnyAsync(r => r.MaVaiTro == roleId && r.TenVaiTro == "IT");
+
+        return permissions.Where(permission => permission.MaQuyenCode != PermissionCodes.ReportExport).Select(permission => new RolePermissionOptionViewModel
         {
             PermissionId = permission.MaQuyen,
             Code = permission.MaQuyenCode,
             Name = permission.TenQuyen,
             Description = permission.MoTa,
-            Granted = grantedIds.Contains(permission.MaQuyen)
+            Granted = grantedIds.Contains(permission.MaQuyen) || (isIt && PermissionConfiguration.FixedItCodes.Contains(permission.MaQuyenCode)),
+            PartiallyGranted = permission.MaQuyenCode == PermissionCodes.ReportView && grantedIds.Contains(permission.MaQuyen)
+                && !permissions.Any(p => p.MaQuyenCode == PermissionCodes.ReportExport && grantedIds.Contains(p.MaQuyen))
         }).ToList();
     }
 
@@ -964,7 +916,19 @@ public class UserAccountsController : Controller
                 Username = "emp_bao",
                 EmployeeName = "Châu Quốc Bảo",
                 Email = "bao.chau@overtimehotel.com",
-                Department = "Bộ Phận Lễ Tân",
+                Department = "Bộ Phận Tiền Sảnh",
+                Position = "Trưởng Bộ Phận",
+                RoleName = "Manager",
+                IsActive = true
+            },
+            new AccountListItemViewModel
+            {
+                AccountId = 12,
+                EmployeeId = 20,
+                Username = "emp_linh",
+                EmployeeName = "Dương Thùy Linh",
+                Email = "linh.duong@overtimehotel.com",
+                Department = "Bộ Phận Tiền Sảnh",
                 Position = "Nhân Viên Lễ Tân",
                 RoleName = "Employee",
                 IsActive = true

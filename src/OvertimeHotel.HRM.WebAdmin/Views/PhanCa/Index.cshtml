@@ -1,5 +1,7 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.PhanCaIndexViewModel
+@using OvertimeHotel.HRM.WebAdmin.Security
 @{
+    var canAssignShifts = User.HasPermission(PermissionCodes.AssignShifts);
     ViewData["Title"] = "Lập Lịch Phân Ca 24/7 & Điều Hành Lịch Trực";
     var currentWeek = ViewBag.CurrentWeek as string ?? Model.WeekStart.ToString("yyyy-MM-dd");
     var prevWeek = ViewBag.PrevWeek as string;
@@ -725,14 +727,14 @@
                         }
                     </div>
 
-                    @if (Model.IsManagerSchedulingWindowClosed)
+                    @if (canAssignShifts && Model.IsManagerSchedulingWindowClosed)
                     {
                         <button type="button" class="btn btn-hotel-secondary btn-sm rounded-pill px-3 py-1 fw-bold opacity-75 shadow-xs"
                                 disabled title="Cổng phân ca định kỳ dành cho Quản lý chỉ mở @ShiftSchedulingPolicy.ManagerWindowLabel. Hiện tại cổng đang đóng (@ShiftSchedulingPolicy.ManagerWindowClosedPeriod).">
                             <i class="bi bi-lock-fill text-warning me-1"></i> Phân Ca Đang Đóng (T6 – CN 16h)
                         </button>
                     }
-                    else
+                    else if (canAssignShifts)
                     {
                         <button type="button" class="btn btn-hotel-primary btn-sm rounded-pill px-3 py-1 fw-bold shadow-xs catalog-action-btn"
                                 data-bs-toggle="modal" data-bs-target="#modalCreatePhanCa" title="Mở lưới phân ca chi tiết đa nhân sự kèm bộ lịch">
@@ -1138,10 +1140,13 @@
                                                                 <div class="phanca-agenda-emp-role">@emp.TenChucVu &bull; @emp.TenPhongBan</div>
                                                             </div>
                                                         </div>
+                                                        @if (canAssignShifts)
+                                                        {
                                                         <button type="button" class="phanca-agenda-btn-remove" title="Hủy ca trực của nhân viên này"
                                                                 onclick="removeShiftFromAgenda(@emp.MaPhanCa, @emp.MaNhanVien, '@Model.SelectedDate.ToString("yyyy-MM-dd")')">
                                                             <i class="bi bi-x-lg"></i>
                                                         </button>
+                                                        }
                                                     </div>
                                                 }
                                             }
@@ -1330,7 +1335,7 @@
                                                                             <span class="text-truncate">@shortTenCa</span>
                                                                         </strong>
 
-                                                                        @if (!isPast && !shift.IsCheckedIn)
+                                                                        @if (canAssignShifts && !isPast && !shift.IsCheckedIn)
                                                                         {
                                                                             <button type="button" class="btn btn-link text-muted p-0 border-0 flex-shrink-0 shift-delete-btn"
                                                                                     onclick="event.stopPropagation(); executeQuickAssign(@row.MaNhanVien, '@cell.Date.ToString("yyyy-MM-dd")', 0, '@cellId', '@row.HoTen');"
@@ -1429,10 +1434,13 @@
                                 </h5>
                                 <span class="small text-muted">Theo dõi trực quan @Model.DanhSachCa.Count loại ca trực trong ngày phục vụ khách sạn</span>
                             </div>
+                            @if (canAssignShifts)
+                            {
                             <button type="button" class="btn btn-warning fw-bold btn-sm rounded-pill px-3 text-dark shadow-sm"
                                     data-bs-toggle="modal" data-bs-target="#modalCreatePhanCa">
                                 <i class="bi bi-plus-circle-fill me-1"></i> Thêm Ca Hôm Nay
                             </button>
+                            }
                         </div>
 
                         <div class="row g-3">
@@ -1635,6 +1643,8 @@
                                                     }
                                                 </td>
                                                 <td class="text-center pe-3">
+                                                    @if (canAssignShifts)
+                                                    {
                                                     <form method="post" asp-action="Delete" onsubmit="return confirmShiftCancellation(this);" class="d-inline">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="id" value="@p.MaPhanCa" />
@@ -1643,6 +1653,7 @@
                                                             <i class="bi bi-trash3 me-1"></i> Hủy Ca
                                                         </button>
                                                     </form>
+                                                    }
                                                 </td>
                                             </tr>
                                         }

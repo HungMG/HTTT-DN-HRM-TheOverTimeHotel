@@ -346,7 +346,7 @@ public class HrHomeViewModel : HomeViewModelBase
 	{
 		PendingLeaveSub = user.CanApproveLeave ? "Toàn bộ 5 loại đơn" : "Đơn của bạn";
 
-		if (!user.CanApproveLeave)
+		if (!user.CanViewLeave)
 		{
 			return;
 		}

@@ -13,9 +13,10 @@ using OvertimeHotel.HRM.WebAdmin.Services;
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
 [Authorize(Policy=PermissionCodes.ReportView)]
+[Authorize(Policy=PermissionCodes.CalculatePayroll)]
 public sealed class PayrollBudgetController(AppDbContext db, PayrollBudgetService budgets) : Controller
 {
-    private bool Allowed => ReportPolicy.CanViewPayrollFundReport(User.FindFirstValue(ClaimTypes.Role));
+    private bool Allowed => User.HasPermission(PermissionCodes.ViewPayroll) && !User.IsInRole("Manager");
     private int Actor => int.TryParse(User.FindFirstValue("EmployeeId"),out var id) ? id : 0;
 
     [HttpGet]

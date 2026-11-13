@@ -1194,6 +1194,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         }
 
         period.TrangThai = SalaryConstants.PERIOD_DRAFT_REVIEW;
+        period.LyDoTuChoi = null;
         period.NgayPhatHanhNhap = DateTimeOffset.UtcNow;
         period.NguoiPhatHanhNhap = nguoiThucHien;
         period.HanPhanHoiNhap = hanPhanHoi;
@@ -1227,6 +1228,8 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         if (period == null) return false;
         EnsureWritablePeriod(period);
+        if (!period.NgayPhatHanhNhap.HasValue)
+            throw new InvalidOperationException("Cần phát hành phiếu lương nháp cho nhân viên trước khi gửi duyệt.");
         if (await OutstandingSettlements(period.MaKyLuong).AnyAsync(cancellationToken))
             throw new InvalidOperationException("Còn quyết toán sự kiện chưa được kết chuyển. Vui lòng tính lại lương trước khi gửi duyệt.");
         if (period.PhieuLuongs.Count == 0)
@@ -1377,6 +1380,36 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    public Task<bool> PublishDirectlyAsync(int maKyLuong, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
+        ExecutePayrollWriteAsync(async () =>
+        {
+            var period = await _context.KyLuongs.Include(k => k.PhieuLuongs)
+                .FirstOrDefaultAsync(k => k.MaKyLuong == maKyLuong, cancellationToken);
+            if (period == null) return false;
+            if (period.TrangThai == SalaryConstants.PERIOD_LOCKED)
+                return await PublishPayslipsCoreAsync(maKyLuong, nguoiThucHien, maTaiKhoan, cancellationToken);
+            if (!period.NgayDuyet.HasValue)
+                throw new InvalidOperationException("Bảng lương phải được duyệt trước khi phát hành.");
+            if (period.PhieuLuongs.Count == 0)
+                throw new InvalidOperationException("Chưa có phiếu lương trong kỳ. Vui lòng tính lương trước.");
+            if (await OutstandingSettlements(period.MaKyLuong).AnyAsync(cancellationToken))
+                throw new InvalidOperationException("Còn quyết toán sự kiện chưa kết chuyển. Vui lòng tính lại lương trước khi phát hành.");
+
+            period.TrangThai = SalaryConstants.PERIOD_LOCKED;
+            period.NgayKhoaSo = DateTimeOffset.UtcNow;
+            period.NguoiKhoaSo = nguoiThucHien;
+            foreach (var payslip in period.PhieuLuongs) payslip.TrangThai = SalaryConstants.PAYSLIP_PAID;
+            _context.NhatKyQuanTris.Add(new NhatKyQuanTri
+            {
+                MaTaiKhoanThucHien = maTaiKhoan, TenNguoiThucHien = nguoiThucHien,
+                TenTaiKhoanBiTacDong = $"KY_LUONG_{period.Thang}_{period.Nam}",
+                HanhDong = "HR_PHAT_HANH_PHIEU_LUONG",
+                NoiDung = $"HR khóa sổ và phát hành {period.PhieuLuongs.Count} phiếu lương kỳ {period.Thang:D2}/{period.Nam}"
+            });
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }, cancellationToken);
 
     public Task<bool> PublishPayslipsAsync(int maKyLuong, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default) =>
         ExecutePayrollWriteAsync(() => PublishPayslipsCoreAsync(maKyLuong, nguoiThucHien, maTaiKhoan, cancellationToken), cancellationToken);

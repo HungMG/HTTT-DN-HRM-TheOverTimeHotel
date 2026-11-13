@@ -29,7 +29,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 /// được và tạo ra lịch vi phạm khoảng nghỉ.
 /// </para>
 /// </summary>
-[Authorize(Policy = PermissionCodes.AssignShifts)]
+[Authorize(Policy = PermissionCodes.ViewShiftSwaps)]
 public class YeuCauDoiCaController : Controller
 {
     private const string STATUS_CHO_NGUOI_NHAN = "CHO_NGUOI_NHAN";
@@ -168,7 +168,7 @@ public class YeuCauDoiCaController : Controller
             DaDuyet = baseQuery.Count(y => y.TrangThai == STATUS_DA_DUYET),
             TuChoi = baseQuery.Count(y => y.TrangThai == STATUS_TU_CHOI),
             DaHuy = baseQuery.Count(y => y.TrangThai == STATUS_DA_HUY),
-            CoQuyenDuyet = true,
+            CoQuyenDuyet = User.HasPermission(PermissionCodes.ApproveShiftSwaps),
             PageNumber = pageNumber,
             PageSize = PAGE_SIZE,
             TotalPages = totalPages,
@@ -189,6 +189,7 @@ public class YeuCauDoiCaController : Controller
     //  CREATE — TẠO YÊU CẦU HỘ NHÂN VIÊN
     // =====================================================================
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ApproveShiftSwaps)]
     public async Task<IActionResult> Create()
     {
         var model = new YeuCauDoiCaCreateViewModel();
@@ -198,6 +199,7 @@ public class YeuCauDoiCaController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ApproveShiftSwaps)]
     public async Task<IActionResult> Create(YeuCauDoiCaCreateViewModel model)
     {
         return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
@@ -309,6 +311,7 @@ public class YeuCauDoiCaController : Controller
     // =====================================================================
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ApproveShiftSwaps)]
     public async Task<IActionResult> Approve(int id, string? phanHoi)
     {
         phanHoi = string.IsNullOrWhiteSpace(phanHoi) ? null : phanHoi.Trim();
@@ -447,6 +450,7 @@ public class YeuCauDoiCaController : Controller
     // =====================================================================
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ApproveShiftSwaps)]
     public async Task<IActionResult> Reject(int id, string? lyDo)
     {
         return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>

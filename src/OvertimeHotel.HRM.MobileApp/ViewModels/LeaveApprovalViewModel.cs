@@ -153,11 +153,11 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool CanReviewAnnualLeave => _authService.CurrentUser?.CanReviewRequest(1) == true;
-    public bool CanReviewSickLeave => _authService.CurrentUser?.CanReviewRequest(2) == true;
-    public bool CanReviewMaternityLeave => _authService.CurrentUser?.CanReviewRequest(3) == true;
-    public bool CanReviewUnpaidLeave => _authService.CurrentUser?.CanReviewRequest(4) == true;
-    public bool CanReviewResignation => _authService.CurrentUser?.CanReviewRequest(5) == true;
+    public bool CanReviewAnnualLeave => _authService.CurrentUser?.CanViewRequest(1) == true;
+    public bool CanReviewSickLeave => _authService.CurrentUser?.CanViewRequest(2) == true;
+    public bool CanReviewMaternityLeave => _authService.CurrentUser?.CanViewRequest(3) == true;
+    public bool CanReviewUnpaidLeave => _authService.CurrentUser?.CanViewRequest(4) == true;
+    public bool CanReviewResignation => _authService.CurrentUser?.CanViewRequest(5) == true;
 
     public bool CanFilterDepartments => _authService.CurrentUser is { } user && (user.IsAdmin || user.IsHR);
     public bool IsDepartmentPickerEnabled => !IsLoading && !IsLoadingMore;
@@ -271,10 +271,10 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CanReviewUnpaidLeave));
             OnPropertyChanged(nameof(CanReviewResignation));
             if (SelectedTypeFilter != "ALL" && (!int.TryParse(SelectedTypeFilter, out var selectedType)
-                || user?.CanReviewRequest(selectedType) != true))
+                || user?.CanViewRequest(selectedType) != true))
                 SelectedTypeFilter = "ALL";
             // Fail-closed: Kiểm tra quyền đăng nhập và vai trò
-            if (user == null || !user.CanApproveLeave)
+            if (user == null || !user.CanViewLeave)
             {
                 HasError = true;
                 ErrorMessage = "Tài khoản của bạn không có thẩm quyền truy cập màn hình duyệt đơn.";
@@ -332,7 +332,7 @@ public class LeaveApprovalViewModel : INotifyPropertyChanged
     {
         if (string.IsNullOrWhiteSpace(typeId) || SelectedTypeFilter == typeId) return;
         if (typeId != "ALL" && (!int.TryParse(typeId, out var requestType)
-            || _authService.CurrentUser?.CanReviewRequest(requestType) != true)) return;
+            || _authService.CurrentUser?.CanViewRequest(requestType) != true)) return;
         IsDepartmentDropdownOpen = false;
         SelectedTypeFilter = typeId;
         await LoadDataAsync();

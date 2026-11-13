@@ -1,6 +1,7 @@
 using OvertimeHotel.HRM.WebAdmin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
@@ -18,6 +19,12 @@ public class CauHinhLuongController(AppDbContext context, IMemoryCache cache,
     ILogger<CauHinhLuongController> logger) : Controller
 {
     private readonly AppDbContext _context = context;
+
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (User.IsInRole("Manager")) context.Result = Forbid();
+        base.OnActionExecuting(context);
+    }
 
     private IQueryable<CauHinhLuongRow> Query(CauHinhLuongCategory category) => category switch
     {

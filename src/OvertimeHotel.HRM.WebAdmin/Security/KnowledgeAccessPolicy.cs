@@ -59,19 +59,8 @@ public static class KnowledgeAccessPolicy
     public static bool CanReadWholeKnowledgeBase(string? role) =>
         LeaveApprovalPolicy.NormalizeRole(role) is RoleType.Admin or RoleType.HR or RoleType.IT;
 
-    /// <summary>
-    /// Vai trò được nạp tài liệu vào kho tri thức.
-    ///
-    /// <para>
-    /// <paramref name="hasIngestPermission"/> là claim <c>QL_TRI_THUC_AI</c> do CSDL cấp. Admin
-    /// không có claim này (trigger CSDL chặn gán thêm quyền cho vai trò Admin) nên phải xét riêng
-    /// — cùng cách <see cref="WebAdminPermissions.HasPermission"/> xử lý.
-    /// </para>
-    /// </summary>
-    /// <param name="role">Tên vai trò thô từ claim.</param>
-    /// <param name="hasIngestPermission">Người dùng có claim <see cref="PermissionCodes.ManageAiKnowledge"/>.</param>
-    public static bool CanIngestKnowledge(string? role, bool hasIngestPermission) =>
-        LeaveApprovalPolicy.NormalizeRole(role) == RoleType.Admin || hasIngestPermission;
+    /// <summary>Tài liệu được quản lý trong mã nguồn; người dùng không tải tài liệu lên từ Web.</summary>
+    public static bool CanIngestKnowledge() => false;
 
     /// <summary>
     /// Danh sách phạm vi tài liệu người dùng được đọc, dạng chuỗi đi được qua JSON.

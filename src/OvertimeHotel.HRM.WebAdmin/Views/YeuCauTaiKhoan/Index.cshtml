@@ -1,4 +1,4 @@
-﻿@model YeuCauTaiKhoanIndexViewModel
+@model YeuCauTaiKhoanIndexViewModel
 @using System.Security.Claims
 @using OvertimeHotel.HRM.Core.Policies
 @using OvertimeHotel.HRM.WebAdmin.Security
@@ -14,7 +14,7 @@
         <a asp-controller="UserAccounts" asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold hover-lift" style="font-size: 0.82rem;">
             <i class="bi bi-people me-1"></i> Danh Sách Tài Khoản
         </a>
-        @if (User.IsInRole("IT"))
+        @if (User.HasPermission(PermissionCodes.ProvisionMobileAccount))
         {
             <a asp-action="Create" class="btn btn-sm btn-hotel-primary rounded-pill px-3.5 py-1.5 fw-bold hover-lift shadow-sm text-white" style="font-size: 0.82rem;" data-open-create-request-modal>
                 <i class="bi bi-plus-circle-fill me-1"></i> Cấp tài khoản
@@ -181,7 +181,7 @@
     </div>
 </dialog>
 
-@if (User.IsInRole("IT"))
+@if (User.HasPermission(PermissionCodes.ProvisionMobileAccount))
 {
     <!-- MODAL POPUP GỬI YÊU CẦU CẤP TÀI KHOẢN -->
     <div class="modal fade" id="createRequestModal" tabindex="-1" aria-labelledby="createRequestModalLabel" aria-hidden="true" data-create-request-modal>

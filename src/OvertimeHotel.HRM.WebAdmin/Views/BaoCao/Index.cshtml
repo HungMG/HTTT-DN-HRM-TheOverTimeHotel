@@ -1,4 +1,5 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.BaoCaoViewModel
+@using OvertimeHotel.HRM.WebAdmin.Security
 @{
     ViewData["Title"] = $"Báo cáo & Thống kê · {Model.NhanKy}";
 
@@ -29,6 +30,8 @@
     <!-- ═════════════ THANH NÚT XUẤT ═════════════
          Breadcrumb và khung hero bo tròn đã bỏ theo yêu cầu: trang bắt đầu
          thẳng bằng hàng nút xuất, nội dung dưới được đẩy sát lên trên. -->
+    @if (User.HasPermission(PermissionCodes.ReportExport))
+    {
     <div class="baocao-export-row">
         <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold"
                 data-baocao-export
@@ -46,6 +49,7 @@
             <i class="bi bi-printer me-1"></i> In / PDF
         </button>
     </div>
+    }
 
     <!-- ═════════════ BỘ LỌC KỲ & PHẠM VI ═════════════
          Mọi thao tác trên thanh này cập nhật TẠI CHỖ: JS chặn submit, gọi AJAX rồi chỉ

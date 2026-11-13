@@ -103,9 +103,7 @@ public sealed class AiKnowledgeAccessService
                 return BuildReadOnly(role, departmentId, departmentName: null, canIngest: false, accountId);
             }
 
-            var canIngest = KnowledgeAccessPolicy.CanIngestKnowledge(
-                role,
-                principal.HasPermission(PermissionCodes.ManageAiKnowledge));
+            var canIngest = KnowledgeAccessPolicy.CanIngestKnowledge();
 
             var departmentName = departmentId is > 0
                 ? await _context.PhongBans

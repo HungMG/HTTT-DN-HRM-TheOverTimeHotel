@@ -86,8 +86,8 @@
             ("Bản nháp", "HR đối soát nội bộ"),
             ("Phát hành nháp", "Nhân viên kiểm tra & đối soát"),
             ("Trình duyệt", "Gửi Ban Giám Đốc xem xét"),
-            ("GĐ phê duyệt", "Ban Giám Đốc ký duyệt"),
-            ("Khóa sổ & Gửi", "Đóng băng & Phát hành chính thức")
+            ("GĐ phê duyệt", "Duyệt thành bản chính thức"),
+            ("HR khóa sổ", "Đóng băng dữ liệu kỳ lương")
         };
     }
 
@@ -175,10 +175,10 @@
                     </div>
                 }
             }
-            else if (status == "DA_DUYET")
+            else if (isApproved)
             {
                 <div class="small text-muted mt-1">
-                    Phê duyệt bởi: <strong>@Model.CurrentPeriod?.NguoiDuyet</strong> vào lúc @Model.CurrentPeriod?.NgayDuyet?.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM/yyyy HH:mm"). Sẵn sàng để Sếp khóa bảng lương.
+                    Phê duyệt bởi: <strong>@Model.CurrentPeriod?.NguoiDuyet</strong> vào lúc @Model.CurrentPeriod?.NgayDuyet?.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM/yyyy HH:mm"). Bảng lương đã chính thức; HR có thể khóa sổ.
                 </div>
             }
             else if (status == "KHOA_SO")
@@ -193,7 +193,7 @@
                     }
                 </div>
             }
-            else if (status == "CHO_DUYET")
+            else if (isPendingApproval)
             {
                 @if (Model.IsAdminOrBoss)
                 {
@@ -303,15 +303,8 @@
                             <i class="bi bi-x-circle me-1"></i> Từ chối duyệt...
                         </button>
                     }
-                    else if (status == "CHO_DUYET" && Model.IsHR && !Model.IsAdminOrBoss)
-                    {
-                        <!-- THÔNG BÁO CHO HR KHI Ở BƯỚC 3 -->
-                        <span class="badge bg-warning bg-opacity-25 text-warning-emphasis border border-warning rounded-pill px-3 py-2 small">
-                            <i class="bi bi-hourglass-split me-1"></i> Chờ Ban Giám Đốc phê duyệt
-                        </span>
-                    }
 
-                    <!-- HÀNH ĐỘNG KHÓA BẢNG LƯƠNG (SAU KHI DUYỆT - DÀNH CHO SẾP) -->
+                    <!-- HÀNH ĐỘNG KHÓA BẢNG LƯƠNG (SAU KHI DUYỆT - DÀNH CHO HR) -->
                     @if (Model.CanLock)
                     {
                         <form method="post" asp-action="Lock" class="d-inline">
@@ -333,14 +326,17 @@
                             <input type="hidden" name="maKyLuong" value="@Model.CurrentPeriod!.MaKyLuong" />
                             <input type="hidden" name="thang" value="@Model.SelectedThang" />
                             <input type="hidden" name="nam" value="@Model.SelectedNam" />
-                            <button type="submit" class="btn btn-primary rounded-pill px-3 shadow-sm" onclick="return confirm('Gửi phiếu lương chính thức cho tất cả nhân viên trong kỳ?');">
+                            <button type="submit" class="btn btn-primary rounded-pill px-3 shadow-sm" onclick="return confirm('Gửi lại phiếu lương chính thức cho tất cả nhân viên trong kỳ?');">
                                 <i class="bi bi-send-check-fill me-1"></i> @(Model.ArePayslipsPublished ? "Gửi lại phiếu tới App" : "Gửi phiếu tới App")
                             </button>
                         </form>
 
+                        @if (isLocked)
+                        {
                         <a asp-action="ExportBankTransfer" asp-route-maKyLuong="@Model.CurrentPeriod!.MaKyLuong" class="btn btn-success rounded-pill px-3 shadow-sm">
                             <i class="bi bi-file-earmark-excel-fill me-1"></i> Xuất file chuyển khoản (.CSV)
                         </a>
+                        }
                     }
         </div>
     </div>
@@ -609,7 +605,7 @@
             <p>
                 Theo quy trình nghiệp vụ khách sạn, bộ phận <strong>Nhân sự (HR)</strong> đang tiến hành rà soát dữ liệu chấm công, đối chiếu các khoản phụ cấp, tăng ca và sửa sai sót nội bộ.
                 <br />
-                Toàn bộ dữ liệu bảng lương chi tiết và quỹ chi trả sẽ <strong>tự động hiển thị tại đây</strong> ngay sau khi HR hoàn tất đối chiếu và bấm <strong>"Gửi duyệt cho Sếp"</strong>.
+                Toàn bộ dữ liệu bảng lương chi tiết và quỹ chi trả sẽ <strong>tự động hiển thị tại đây</strong> khi HR hoàn tất kiểm tra và phát hành phiếu lương.
             </p>
             <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap">
                 <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">

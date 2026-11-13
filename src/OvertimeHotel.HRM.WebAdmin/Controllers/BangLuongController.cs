@@ -2,6 +2,7 @@ using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Utilities;
@@ -40,14 +41,24 @@ public class BangLuongController(
         return false;
     }
 
-    private bool IsAdmin => User.IsInRole("Admin");
-
     // Ban Giám Đốc / Sếp có thẩm quyền phê duyệt bảng lương
-    private bool IsBoss => User.IsInRole("Admin") || User.IsInRole("Manager");
+    private bool IsBoss => PayrollAuthorization.CanApprove(User);
 
-    // Chuyên viên Nhân sự (HR): phụ trách kiểm tra, rà soát, đối chiếu, sửa sai sót và gửi duyệt
-    // TÁCH BIỆT VAI TRÒ: Tài khoản chỉ có vai trò Admin KHÔNG phải là HR (không gửi duyệt thay HR)
-    private bool IsHR => User.IsInRole("HR") || (!User.IsInRole("Admin") && User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.CalculatePayroll));
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        var action = context.ActionDescriptor.RouteValues["action"];
+        if (!PayrollAuthorization.CanAccess(User, action))
+            context.Result = Forbid();
+        base.OnActionExecuting(context);
+    }
+
+    private bool IsHR => PayrollAuthorization.CanManage(User);
+
+    private int? CurrentEmployeeId() => _context.TaiKhoans.AsNoTracking().Where(a => a.MaTaiKhoan == CurrentUserId && a.TrangThai).Select(a => (int?)a.MaNhanVien).FirstOrDefault();
+
+    private Task<int?> CurrentDepartmentIdAsync() => _context.TaiKhoans.AsNoTracking()
+        .Where(a => a.MaTaiKhoan == CurrentUserId && a.TrangThai)
+        .Select(a => a.NhanVien != null ? a.NhanVien.MaPhongBan : null).FirstOrDefaultAsync();
 
     [HttpGet]
     public async Task<IActionResult> Index(int? thang, int? nam, string? keyword, string? department)
@@ -59,22 +70,27 @@ public class BangLuongController(
         var currentPeriod = await this.SearchDataAsync($"payroll:period:{targetNam}:{targetThang}",
             () => _payrollService.GetPeriodWithDetailsAsync(targetThang, targetNam));
 
-        if (currentPeriod == null)
+        if (currentPeriod == null && IsHR)
         {
             currentPeriod = await _payrollService.GetOrCreatePeriodAsync(targetThang, targetNam);
             currentPeriod = await this.SearchDataAsync($"payroll:period:{targetNam}:{targetThang}",
                 () => _payrollService.GetPeriodWithDetailsAsync(targetThang, targetNam));
         }
 
-        var departments = currentPeriod?.PhieuLuongs
+        var query = currentPeriod?.PhieuLuongs.AsEnumerable() ?? [];
+        if (User.IsInRole("Manager"))
+        {
+            var managerEmployeeId = CurrentEmployeeId();
+            query = query.Where(p => ManagerPayrollAccess.CanView(User, managerEmployeeId, p.MaNhanVien, p.TrangThai, currentPeriod?.NgayDuyet != null));
+        }
+
+        var departments = query
             .Select(p => p.NhanVien?.PhongBan?.TenPhongBan)
             .Where(d => !string.IsNullOrEmpty(d))
             .Distinct()
             .OrderBy(d => d)
             .Cast<string>()
-            .ToList() ?? [];
-
-        var query = currentPeriod?.PhieuLuongs.AsEnumerable() ?? [];
+            .ToList();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -97,7 +113,7 @@ public class BangLuongController(
             (periodStatus == SalaryConstants.PERIOD_DRAFT_REVIEW || currentPeriod?.NgayPhatHanhNhap != null);
         var isOpenOrDraft = !isLocked && !isPendingApproval && !isApproved;
 
-        var showPayrollData = IsHR || isPendingApproval || isApproved || isLocked;
+        var showPayrollData = User.HasPermission(PermissionCodes.ViewPayroll);
 
         var rows = showPayrollData ? query.Select(p => new PhieuLuongRowViewModel
         {
@@ -146,10 +162,10 @@ public class BangLuongController(
             HanPhanHoi = currentPeriod?.HanPhanHoiNhap,
             NgayPhatHanhNhap = currentPeriod?.NgayPhatHanhNhap,
             NguoiPhatHanhNhap = currentPeriod?.NguoiPhatHanhNhap,
-            CanSubmitApproval = IsHR && isOpenOrDraft && query.Any(),
+            CanSubmitApproval = IsHR && isOpenOrDraft && currentPeriod?.NgayPhatHanhNhap != null && query.Any(),
             CanApprove = IsBoss && isPendingApproval,
-            CanLock = IsBoss && isApproved,
-            CanPublishAndExport = (IsBoss || IsHR) && isLocked,
+            CanLock = IsHR && isApproved,
+            CanPublishAndExport = IsHR && isLocked,
             IsHR = IsHR,
             IsAdminOrBoss = IsBoss,
             ShowPayrollData = showPayrollData,
@@ -214,12 +230,15 @@ public class BangLuongController(
         var payslip = await _payrollService.GetPayslipDetailAsync(id);
         if (payslip == null) return (NotFound(), null);
 
+        if (User.IsInRole("Manager") && !ManagerPayrollAccess.CanView(User, CurrentEmployeeId(), payslip.MaNhanVien, payslip.TrangThai, payslip.KyLuong?.NgayDuyet != null))
+            return (Forbid(), null);
+
         var ky = payslip.KyLuong;
         var periodStatus = ky?.TrangThai ?? SalaryConstants.PERIOD_OPEN;
 
         var isLockedPeriod = periodStatus == SalaryConstants.PERIOD_LOCKED;
         var isPendingOrApproved = isLockedPeriod || (ky?.NgayGuiDuyet != null && string.IsNullOrEmpty(ky?.LyDoTuChoi));
-        if (!IsHR && !isPendingOrApproved)
+        if (!User.HasPermission(PermissionCodes.ViewPayroll) && !isPendingOrApproved)
         {
             TempData["Error"] = $"Bảng lương tháng {ky?.Thang:D2}/{ky?.Nam} đang ở giai đoạn rà soát nội bộ của bộ phận HR. Ban Giám Đốc chỉ xem chi tiết sau khi HR bấm 'Gửi duyệt'.";
             return (RedirectToAction(nameof(Index), new { thang = ky?.Thang, nam = ky?.Nam }), null);
@@ -738,9 +757,9 @@ public class BangLuongController(
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Lock(int maKyLuong, int thang, int nam)
     {
-        if (!IsBoss)
+        if (!IsHR)
         {
-            TempData["Error"] = "Chỉ Ban Giám Đốc / Quản trị viên (Admin/Manager) mới có quyền Khóa sổ bảng lương.";
+            TempData["Error"] = "Bạn không có quyền khóa sổ bảng lương.";
             return RedirectToAction(nameof(Index), new { thang, nam });
         }
 
@@ -761,7 +780,7 @@ public class BangLuongController(
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Publish(int maKyLuong, int thang, int nam)
     {
-        if (!IsHR && !IsBoss) return Forbid();
+        if (!IsHR) return Forbid();
 
         try
         {
@@ -780,7 +799,7 @@ public class BangLuongController(
     [HttpGet]
     public async Task<IActionResult> ExportBankTransfer(int maKyLuong)
     {
-        if (!IsHR && !IsBoss) return Forbid();
+        if (!IsHR) return Forbid();
 
         try
         {

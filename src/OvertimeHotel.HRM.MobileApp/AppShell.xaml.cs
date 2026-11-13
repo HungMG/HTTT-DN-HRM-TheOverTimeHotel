@@ -50,7 +50,7 @@ public partial class AppShell : Shell
             var allowed = route switch
             {
                 "Attendance" => user.HasPermission(MobilePermissionPolicy.CheckIn),
-                "LeaveApproval" or "LeaveApprovalPage" or "LeaveDetailPage" => user.CanApproveLeave,
+                "LeaveApproval" or "LeaveApprovalPage" or "LeaveDetailPage" => user.CanViewLeave,
                 "Requests" or "RequestsPage" or "LeaveSubmitPage" or "AttendanceExplanationPage" or "ShiftSwapPage" => user.HasPermission(MobilePermissionPolicy.SubmitRequest),
                 "HrStatisticsPage" => user.HasPermission(MobilePermissionPolicy.Reports),
                 _ => true
@@ -182,7 +182,7 @@ public partial class AppShell : Shell
 			};
 			var leaveApprovalTab = new ShellContent
 			{
-				Title = "Duyệt Đơn",
+				Title = "Đơn cần xem",
 				Icon = TAB_ICON_DOCS,
 				Route = "LeaveApproval",
 				ContentTemplate = new DataTemplate(typeof(LeaveApprovalPage))
@@ -217,7 +217,7 @@ public partial class AppShell : Shell
 			};
 			var leaveApprovalTab = new ShellContent
 			{
-				Title = "Duyệt Đơn",
+				Title = "Đơn cần xem",
 				Icon = TAB_ICON_DOCS,
 				Route = "LeaveApproval",
 				ContentTemplate = new DataTemplate(typeof(LeaveApprovalPage))
@@ -259,7 +259,7 @@ public partial class AppShell : Shell
 			};
 			var leaveApprovalTab = new ShellContent
 			{
-				Title = "Duyệt Đơn",
+				Title = "Đơn cần xem",
 				Icon = TAB_ICON_DOCS,
 				Route = "LeaveApproval",
 				ContentTemplate = new DataTemplate(typeof(LeaveApprovalPage))
@@ -324,7 +324,7 @@ public partial class AppShell : Shell
             var route = tab.Items.FirstOrDefault()?.Route ?? tab.Route;
             var user = _authService.CurrentUser;
             if ((route == "Attendance" && user?.HasPermission(MobilePermissionPolicy.CheckIn) != true)
-                || (route == "LeaveApproval" && user?.CanApproveLeave != true)
+                || (route == "LeaveApproval" && user?.CanViewLeave != true)
                 || (route == "Requests" && user?.HasPermission(MobilePermissionPolicy.SubmitRequest) != true)
                 || (route == "Statistics" && user?.HasPermission(MobilePermissionPolicy.Reports) != true))
                 mainTabs.Items.Remove(tab);

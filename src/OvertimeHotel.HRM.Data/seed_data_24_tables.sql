@@ -47,9 +47,9 @@ SELECT setval('chuc_vu_ma_chuc_vu_seq', (SELECT MAX(ma_chuc_vu) FROM CHUC_VU));
 --    phát tài khoản đăng nhập và sao lưu CSDL. Tách khỏi "Kỹ thuật"
 --    (ma_phong_ban = 6) là kỹ sư tòa nhà — bảo trì hạ tầng vật lý.
 INSERT INTO VAI_TRO (ma_vai_tro, ten_vai_tro, mo_ta) VALUES
-(1, 'Admin', 'Quản trị viên hệ thống (Web Admin Portal: Tài khoản, Danh mục, Sao lưu)'),
+(1, 'Admin', 'Quản trị viên xem bảng lương và báo cáo'),
 (2, 'HR', 'Quản trị nhân sự (Web & App: Nhân viên, HĐLĐ, Tính lương, Duyệt thôi việc)'),
-(3, 'Manager', 'Quản lý bộ phận (Mobile App: Xếp lịch ca 24/7, Duyệt đơn phép/đổi ca/OT)'),
+(3, 'Manager', 'Quản lý bộ phận: lịch, chấm công, đơn từ và lương trong bộ phận'),
 (4, 'Employee', 'Nhân viên tự phục vụ (Mobile App: Quẹt thẻ chấm công, Nộp đơn, Xem lương)'),
 (5, 'IT', 'Bộ phận Công nghệ Thông tin (Web Admin: Cấp phát tài khoản đăng nhập, Sao lưu CSDL)')
 ON CONFLICT (ma_vai_tro) DO UPDATE
@@ -57,63 +57,59 @@ SET ten_vai_tro = EXCLUDED.ten_vai_tro, mo_ta = EXCLUDED.mo_ta;
 
 SELECT setval('vai_tro_ma_vai_tro_seq', (SELECT MAX(ma_vai_tro) FROM VAI_TRO));
 
--- 4. NẠP BẢNG QUYEN (19 Quyền chức năng)
-INSERT INTO QUYEN (ma_quyen, ma_quyen_code, ten_quyen, mo_ta) VALUES
-(1, 'SYS_ADMIN', 'Toàn quyền quản trị hệ thống', 'Truy cập mọi chức năng quản trị cấp cao'),
-(2, 'QL_TAI_KHOAN', 'Quản lý tài khoản người dùng', 'Thêm, sửa, khóa tài khoản trên Web Admin'),
-(3, 'QL_PHAN_QUYEN', 'Quản lý phân quyền vai trò', 'Gán quyền RBAC cho các nhóm vai trò'),
-(4, 'QL_DANH_MUC', 'Quản trị danh mục hệ thống', 'Quản lý phòng ban, chức vụ, ca làm việc, khoản lương'),
-(5, 'SAO_LUU_CSDL', 'Sao lưu & Phục hồi CSDL', 'Tạo snapshot và khôi phục cơ sở dữ liệu'),
-(6, 'QL_NHAN_SU', 'Quản trị hồ sơ nhân sự', 'Thêm mới, cập nhật lý lịch và hồ sơ nhân viên'),
-(7, 'QL_HOP_DONG', 'Quản lý hợp đồng lao động', 'Ký mới, gia hạn, theo dõi thời hạn HĐLĐ'),
-(8, 'TINH_LUONG', 'Tính lương tháng tự động', 'Tổng hợp công, tính lương 2 tầng Gross -> Net'),
-(9, 'XUAT_PHIEU_LUONG_PDF', 'Xuất phiếu lương QuestPDF', 'Tạo và in phiếu lương tháng định dạng PDF'),
-(10, 'DUYET_THOI_VIEC', 'Phê duyệt đơn xin thôi việc', 'Xét duyệt quy trình chấm dứt HĐLĐ'),
-(11, 'XEP_CA_LAM', 'Lập lịch phân ca làm việc 24/7', 'Xếp ca sáng, chiều, đêm cho nhân sự bộ phận'),
-(12, 'DUYET_DON_NGHI', 'Phê duyệt đơn nghỉ phép', 'Duyệt đơn nghỉ phép năm, ốm đau, thai sản'),
-(13, 'DUYET_TANG_CA_OT', 'Phê duyệt tăng ca làm thêm (OT)', 'Xác nhận số giờ làm thêm ngoài ca'),
-(14, 'XEM_CHAM_CONG_BO_PHAN', 'Xem dữ liệu chấm công bộ phận', 'Theo dõi quẹt thẻ in/out của nhân viên cấp dưới'),
-(15, 'CHAM_CONG_DI_DONG', 'Chấm công quẹt thẻ di động', 'Bấm nút Check-in / Check-out trên Mobile App'),
-(16, 'NOP_DON_TU', 'Nộp đơn từ trực tuyến', 'Gửi đơn nghỉ phép, việc riêng, thôi việc trên App'),
-(17, 'CAP_TAI_KHOAN_MOBILE', 'Cấp phát tài khoản đăng nhập Mobile App', 'Tạo user trong Supabase Auth để nhân viên đăng nhập ứng dụng di động. Chỉ dành cho Quản trị viên và bộ phận Công nghệ Thông tin'),
-(18, 'REPORT_VIEW', 'Xem báo cáo & thống kê quản trị', 'Truy cập phân hệ Báo cáo & Thống kê: biến động nhân sự, cơ cấu nhân lực, học vấn & thâm niên, đối soát quỹ lương, chuyên cần & vi phạm, hiệu quả sự kiện. Quản lý chỉ xem được dữ liệu bộ phận của mình'),
-(19, 'QL_TRI_THUC_AI', 'Nạp tài liệu vào kho tri thức Trợ lý AI', 'Tải tệp PDF (quy chế, hợp đồng, sổ tay nhân viên) vào kho tri thức để Trợ lý AI tra cứu. Tách khỏi REPORT_VIEW: Quản lý bộ phận xem được báo cáo nhưng không được nạp văn bản toàn khách sạn')
-ON CONFLICT (ma_quyen) DO UPDATE
-SET ma_quyen_code = EXCLUDED.ma_quyen_code, ten_quyen = EXCLUDED.ten_quyen, mo_ta = EXCLUDED.mo_ta;
+-- 4. DANH MỤC QUYỀN HIỆN HÀNH
+-- Không gán mã số cố định: dùng mã quyền để không ghi đè quyền đã tồn tại.
+SELECT setval('quyen_ma_quyen_seq', GREATEST(COALESCE(MAX(ma_quyen), 0), 1), MAX(ma_quyen) IS NOT NULL) FROM QUYEN;
+INSERT INTO QUYEN (ma_quyen_code, ten_quyen, mo_ta) VALUES
+ ('QL_TAI_KHOAN', 'Quản lý tài khoản', 'Xem, sửa, khóa tài khoản và xem nhật ký liên quan.'),
+ ('CAP_TAI_KHOAN_MOBILE', 'Cấp tài khoản Mobile', 'Xử lý yêu cầu cấp tài khoản Mobile.'),
+ ('QL_PHAN_QUYEN', 'Quản lý phân quyền', 'Cấp và thu hồi quyền cho các vai trò.'),
+ ('SAO_LUU_CSDL', 'Sao lưu và phục hồi', 'Sao lưu và phục hồi dữ liệu.'),
+ ('QL_NHAN_SU', 'Quản lý nhân viên', 'Xem, thêm, sửa và quản lý hồ sơ nhân viên.'),
+ ('QL_HOP_DONG', 'Quản lý hợp đồng', 'Xem và quản lý hợp đồng lao động.'),
+ ('QL_DANH_MUC', 'Quản lý danh mục', 'Quản lý phòng ban, chức vụ và mẫu ca.'),
+ ('XEM_LICH_CA', 'Xem lịch làm việc', 'Xem lịch làm việc trong phạm vi được phép.'),
+ ('XEP_CA_LAM', 'Xếp và điều chỉnh ca', 'Xếp, sửa, hủy ca và quản lý định biên.'),
+ ('XEM_YEU_CAU_DOI_CA', 'Xem yêu cầu đổi ca', 'Xem yêu cầu đổi ca trong phạm vi được phép.'),
+ ('DUYET_DOI_CA', 'Duyệt yêu cầu đổi ca', 'Duyệt hoặc từ chối yêu cầu đổi ca.'),
+ ('XEM_CHAM_CONG_BO_PHAN', 'Xem chấm công', 'Xem chấm công trong phạm vi được phép.'),
+ ('XEM_GIAI_TRINH_CHAM_CONG', 'Xem giải trình chấm công', 'Xem giải trình trong phạm vi được phép.'),
+ ('XAC_MINH_GIAI_TRINH', 'Xử lý giải trình chấm công', 'Xử lý giải trình theo quy trình.'),
+ ('XEM_DON_NGHI', 'Xem đơn nghỉ', 'Xem đơn nghỉ trong phạm vi được phép.'),
+ ('DUYET_DON_NGHI', 'Duyệt đơn nghỉ', 'Duyệt hoặc từ chối đơn nghỉ.'),
+ ('DUYET_THOI_VIEC', 'Duyệt thôi việc', 'Xem và xử lý đơn thôi việc.'),
+ ('QL_SU_KIEN', 'Quản lý sự kiện', 'Lập, phân công, theo dõi và nghiệm thu sự kiện.'),
+ ('XEM_BANG_LUONG', 'Xem bảng lương', 'Xem bảng lương trong phạm vi được phép.'),
+ ('TINH_LUONG', 'Quản lý và phát hành lương', 'Tính, điều chỉnh và phát hành lương.'),
+ ('DUYET_BANG_LUONG', 'Duyệt bảng lương', 'Duyệt hoặc từ chối bảng lương đã gửi duyệt.'),
+ ('REPORT_VIEW', 'Xem báo cáo', 'Xem báo cáo theo phạm vi được phép.'),
+ ('REPORT_EXPORT', 'Xuất báo cáo', 'Xuất và in báo cáo theo phạm vi được phép.'),
+ ('CHAM_CONG_DI_DONG', 'Chấm công di động', 'Check-in và check-out trên Mobile.'),
+ ('NOP_DON_TU', 'Nộp đơn từ', 'Nộp đơn và yêu cầu cá nhân trên Mobile.')
+ON CONFLICT (ma_quyen_code) DO NOTHING;
 
-SELECT setval('quyen_ma_quyen_seq', (SELECT MAX(ma_quyen) FROM QUYEN));
-
--- 5. NẠP BẢNG VAI_TRO_QUYEN (Ánh xạ RBAC M:N)
-INSERT INTO VAI_TRO_QUYEN (ma_vai_tro, ma_quyen) VALUES
--- Admin có toàn quyền hệ thống + danh mục + backup + cấp tài khoản đăng nhập
-(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 17),
--- IT (bộ phận Công nghệ Thông tin, ma_phong_ban = 9): cấp phát tài khoản
--- đăng nhập cho nhân viên và sao lưu CSDL. Cố ý KHÔNG cấp QL_PHAN_QUYEN — nếu
--- IT tự cấp lại quyền cho mình thì rào chắn trong migration 20261009 mất tác dụng.
--- Cũng không cấp QL_NHAN_SU / TINH_LUONG: IT cấp tài khoản, không cần xem hồ sơ lương.
-(5, 2), (5, 5), (5, 17),
--- HR có quyền quản lý nhân sự, HĐLĐ, tính lương, xuất PDF, và duyệt ĐƯỢC CẢ đơn nghỉ
--- lẫn thôi việc: quản lý nộp đơn thì không còn ai ở cấp dưới để duyệt, nên toàn bộ
--- 5 loại đơn đều phải đi qua nhân sự (khớp LeaveApprovalPolicy.HrAllowedTypes).
-(2, 2), (2, 4), (2, 6), (2, 7), (2, 8), (2, 9), (2, 10), (2, 12), (2, 14), (2, 15), (2, 16),
--- Manager có quyền xếp ca, duyệt đơn nghỉ TRONG BỘ PHẬN, duyệt OT, xem chấm công
--- bộ phận. KHÔNG có DUYET_THOI_VIEC: chấm dứt HĐLĐ thuộc về nhân sự.
-(3, 11), (3, 12), (3, 13), (3, 14), (3, 15), (3, 16),
--- Employee có quyền chấm công, nộp đơn từ
-(4, 15), (4, 16),
--- Xem Báo cáo & Thống kê (Phân hệ 10.0): HR và IT xem toàn khách sạn, Manager xem
--- bộ phận của mình (thu hẹp ở tầng truy vấn — ReportPolicy.ResolveScope).
--- KHÔNG gán cho Admin (#1): rào chắn 2 của trigger trg_chan_cap_quyen_tai_khoan_di_dong
--- từ chối mọi dòng quyền mới gán cho vai trò Admin, và Admin vốn đã qua mọi policy
--- nhờ IsInRole("Admin") trong Program.cs.
-(2, 18), (3, 18), (5, 18),
--- Nạp tài liệu vào kho tri thức Trợ lý AI (QL_TRI_THUC_AI): HR và IT. CỐ Ý KHÔNG
--- gán cho Manager (#3) — Quản lý xem báo cáo được nhưng không được đưa văn bản
--- toàn khách sạn vào kho dùng chung. Admin (#1) cũng không gán vì trigger trong
--- migration 20261009 chặn mọi quyền mới của vai trò Admin, và Admin đã qua mọi
--- policy nhờ IsInRole("Admin").
-(2, 19), (5, 19)
-ON CONFLICT (ma_vai_tro, ma_quyen) DO NOTHING;
+-- 5. CẤU HÌNH MẶC ĐỊNH CHỈ CHO HỆ THỐNG MỚI
+-- Không tự cấp lại quyền nếu đã có tài khoản và IT đã cấu hình lại.
+INSERT INTO VAI_TRO_QUYEN (ma_vai_tro, ma_quyen)
+SELECT v.ma_vai_tro, q.ma_quyen FROM (VALUES
+ ('Admin','XEM_BANG_LUONG'),('Admin','DUYET_BANG_LUONG'),('Admin','REPORT_VIEW'),('Admin','REPORT_EXPORT'),
+ ('HR','QL_NHAN_SU'),('HR','QL_HOP_DONG'),('HR','QL_DANH_MUC'),
+ ('HR','XEM_LICH_CA'),('HR','XEP_CA_LAM'),('HR','XEM_YEU_CAU_DOI_CA'),('HR','DUYET_DOI_CA'),
+ ('HR','XEM_CHAM_CONG_BO_PHAN'),('HR','XEM_GIAI_TRINH_CHAM_CONG'),('HR','XAC_MINH_GIAI_TRINH'),
+ ('HR','XEM_DON_NGHI'),('HR','DUYET_DON_NGHI'),('HR','DUYET_THOI_VIEC'),('HR','QL_SU_KIEN'),
+ ('HR','XEM_BANG_LUONG'),('HR','TINH_LUONG'),
+ ('HR','CHAM_CONG_DI_DONG'),('HR','NOP_DON_TU'),
+ ('Manager','XEM_LICH_CA'),('Manager','XEP_CA_LAM'),('Manager','XEM_YEU_CAU_DOI_CA'),
+ ('Manager','DUYET_DOI_CA'),('Manager','XEM_CHAM_CONG_BO_PHAN'),('Manager','XEM_GIAI_TRINH_CHAM_CONG'),
+ ('Manager','XAC_MINH_GIAI_TRINH'),('Manager','XEM_DON_NGHI'),('Manager','DUYET_DON_NGHI'),
+ ('Manager','XEM_BANG_LUONG'),('Manager','CHAM_CONG_DI_DONG'),('Manager','NOP_DON_TU'),
+ ('Employee','CHAM_CONG_DI_DONG'),('Employee','NOP_DON_TU'),
+ ('IT','QL_TAI_KHOAN'),('IT','CAP_TAI_KHOAN_MOBILE'),('IT','QL_PHAN_QUYEN'),('IT','SAO_LUU_CSDL')
+) defaults(role,code)
+JOIN VAI_TRO v ON v.ten_vai_tro=defaults.role
+JOIN QUYEN q ON q.ma_quyen_code=defaults.code
+WHERE NOT EXISTS (SELECT 1 FROM TAI_KHOAN)
+ON CONFLICT DO NOTHING;
 
 -- 6. NẠP BẢNG CA_LAM_VIEC (3 Ca chuẩn 24/7)
 INSERT INTO CA_LAM_VIEC (ma_ca, ten_ca, gio_bat_dau, gio_ket_thuc, qua_dem) VALUES
@@ -219,12 +215,14 @@ SELECT setval('hop_dong_ma_hop_dong_seq', (SELECT MAX(ma_hop_dong) FROM HOP_DONG
 -- admin / Admin@123 -> e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7
 -- hr_sang / Hr@123 -> d2dcec9f7289f448fcf9f6e8c722961e61b60f8d540bbd633332431b57a7869c
 -- mgr_long / Manager@123 -> e8392925a98c9c22795d1fc5d0dfee5b9a6943f6b768ec5a2a0c077e5ed119cf
--- emp_bao / Emp@123 -> ca35068eabfd1dc3ba09cbe6255036fb1e69e3e0b1e95a52f1494638bc759071
+-- emp_bao (Manager) / Emp@123 -> ca35068eabfd1dc3ba09cbe6255036fb1e69e3e0b1e95a52f1494638bc759071
+-- emp_linh (Employee) / Overtime@2026 -> e3dac4f7bd37d3a9b5a50bf118f72ddbc34703cc02e18f992d118ea219e0b12d
 INSERT INTO TAI_KHOAN (ma_tai_khoan, ma_nhan_vien, ma_vai_tro, ten_dang_nhap, mat_khau_bam, trang_thai) VALUES
 (1, 1, 1, 'admin', 'e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7', TRUE),
 (2, 2, 2, 'hr_sang', 'd2dcec9f7289f448fcf9f6e8c722961e61b60f8d540bbd633332431b57a7869c', TRUE),
 (3, 3, 3, 'mgr_long', 'e8392925a98c9c22795d1fc5d0dfee5b9a6943f6b768ec5a2a0c077e5ed119cf', TRUE),
-(4, 4, 4, 'emp_bao', 'ca35068eabfd1dc3ba09cbe6255036fb1e69e3e0b1e95a52f1494638bc759071', TRUE)
+(4, 4, 3, 'emp_bao', 'ca35068eabfd1dc3ba09cbe6255036fb1e69e3e0b1e95a52f1494638bc759071', TRUE),
+(12, 20, 4, 'emp_linh', 'e3dac4f7bd37d3a9b5a50bf118f72ddbc34703cc02e18f992d118ea219e0b12d', TRUE)
 ON CONFLICT (ten_dang_nhap) DO UPDATE 
 SET mat_khau_bam = EXCLUDED.mat_khau_bam, ma_vai_tro = EXCLUDED.ma_vai_tro;
 

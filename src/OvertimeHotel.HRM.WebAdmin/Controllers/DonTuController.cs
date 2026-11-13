@@ -46,6 +46,7 @@ public class DonTuController : Controller
         int pageSize = 10,
         bool isPartial = false)
     {
+        if (!User.HasPermission(PermissionCodes.ViewLeave) && !User.HasPermission(PermissionCodes.ApproveResignation)) return Forbid();
         var role = GetCurrentRoleName();
         if (!LeaveApprovalPolicy.CanAccessWebPortal(role))
         {
@@ -76,13 +77,8 @@ public class DonTuController : Controller
 
         // 2. Phân quyền xem dữ liệu theo RBAC
         IQueryable<DonTu> authorizedQuery;
-        if (normalizedRole == RoleType.Admin)
+        if (normalizedRole != RoleType.Manager)
         {
-            authorizedQuery = baseQuery;
-        }
-        else if (normalizedRole == RoleType.HR)
-        {
-            // HR xử lý toàn bộ 5 loại đơn trên toàn khách sạn
             authorizedQuery = baseQuery.Where(d => d.MaLoaiDon >= 1 && d.MaLoaiDon <= 5);
         }
         else // Manager
@@ -95,10 +91,13 @@ public class DonTuController : Controller
 
             var managerDept = currentDeptId.Value;
             authorizedQuery = baseQuery.Where(d =>
-                (d.MaLoaiDon == 1 || d.MaLoaiDon == 2 || d.MaLoaiDon == 4) &&
-                d.NhanVien != null &&
-                d.NhanVien.MaPhongBan == managerDept);
+                d.MaLoaiDon >= 1 && d.MaLoaiDon <= 5 &&
+                d.NhanVien != null && d.NhanVien.MaPhongBan == managerDept);
         }
+
+        var canViewLeave = User.HasPermission(PermissionCodes.ViewLeave);
+        var canViewResignation = User.HasPermission(PermissionCodes.ApproveResignation);
+        authorizedQuery = authorizedQuery.Where(d => (d.MaLoaiDon == 5 && canViewResignation) || (d.MaLoaiDon != 5 && canViewLeave));
 
         var currentYear = DateTime.Today.Year;
         // Cache the source and its dependent maps together, under the same generation.
@@ -217,7 +216,7 @@ public class DonTuController : Controller
         foreach (var d in pagedList)
         {
             var (canReview, errCode, errMsg) = LeaveApprovalPolicy.ValidateReviewAction(
-                role: role,
+                role: User.IsInRole("Admin") ? "Admin" : "HR",
                 reviewerDeptId: currentDeptId,
                 requestDeptId: d.NhanVien?.MaPhongBan,
                 maLoaiDon: d.MaLoaiDon,
@@ -227,6 +226,7 @@ public class DonTuController : Controller
                 reviewerEmployeeId: currentEmployeeId,
                 requestEmployeeId: d.MaNhanVien
             );
+            if (!User.HasPermission(d.MaLoaiDon == 5 ? PermissionCodes.ApproveResignation : PermissionCodes.ApproveLeave)) canReview = false;
 
             int? phepDaDung = null;
             int? phepConLai = null;
@@ -368,8 +368,12 @@ public class DonTuController : Controller
             return NotFound(new { success = false, message = "Không tìm thấy đơn từ." });
         }
 
+        if (!User.HasPermission(donTu.MaLoaiDon == 5 ? PermissionCodes.ApproveResignation : PermissionCodes.ViewLeave) ||
+            (User.IsInRole("Manager") && (currentDeptId is not > 0 || donTu.NhanVien?.MaPhongBan != currentDeptId)))
+            return Forbid();
+
         var (canReview, _, errMsg) = LeaveApprovalPolicy.ValidateReviewAction(
-            role: role,
+            role: User.IsInRole("Admin") ? "Admin" : "HR",
             reviewerDeptId: currentDeptId,
             requestDeptId: donTu.NhanVien?.MaPhongBan,
             maLoaiDon: donTu.MaLoaiDon,
@@ -379,6 +383,7 @@ public class DonTuController : Controller
             reviewerEmployeeId: currentEmployeeId,
             requestEmployeeId: donTu.MaNhanVien
         );
+        if (!User.HasPermission(donTu.MaLoaiDon == 5 ? PermissionCodes.ApproveResignation : PermissionCodes.ApproveLeave)) canReview = false;
 
         // Tính ngày phép năm đã dùng nếu là loại 1
         int? phepDaDung = null;
@@ -496,9 +501,13 @@ public class DonTuController : Controller
             return NotFound(new { success = false, message = "Không tìm thấy đơn từ yêu cầu." });
         }
 
+        if (!User.HasPermission(donTu.MaLoaiDon == 5 ? PermissionCodes.ApproveResignation : PermissionCodes.ApproveLeave) ||
+            (User.IsInRole("Manager") && (currentDeptId is not > 0 || donTu.NhanVien?.MaPhongBan != currentDeptId)))
+            return Forbid();
+
         // 2. Thẩm định qua LeaveApprovalPolicy
         var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateReviewAction(
-            role: role,
+            role: User.IsInRole("Admin") ? "Admin" : "HR",
             reviewerDeptId: currentDeptId,
             requestDeptId: donTu.NhanVien?.MaPhongBan,
             maLoaiDon: donTu.MaLoaiDon,
@@ -588,13 +597,12 @@ public class DonTuController : Controller
         var currentEmployeeId = GetCurrentEmployeeId();
         var currentDeptId = GetCurrentDepartmentId();
 
-        var query = _context.DonTus.AsNoTracking().Where(d => d.TrangThai == "CHO_DUYET");
+        var canViewLeave = User.HasPermission(PermissionCodes.ViewLeave);
+        var canViewResignation = User.HasPermission(PermissionCodes.ApproveResignation);
+        var query = _context.DonTus.AsNoTracking().Where(d => d.TrangThai == "CHO_DUYET" &&
+            ((d.MaLoaiDon == 5 && canViewResignation) || (d.MaLoaiDon != 5 && canViewLeave)));
 
-        if (normalizedRole == RoleType.Admin)
-        {
-            // Admin thấy tất cả
-        }
-        else if (normalizedRole == RoleType.HR)
+        if (normalizedRole != RoleType.Manager)
         {
             query = query.Where(d => d.MaLoaiDon >= 1 && d.MaLoaiDon <= 5 && d.MaNhanVien != currentEmployeeId);
         }
@@ -603,7 +611,7 @@ public class DonTuController : Controller
             if (!currentDeptId.HasValue) return Json(new { count = 0 });
             var managerDept = currentDeptId.Value;
             query = query.Where(d =>
-                (d.MaLoaiDon == 1 || d.MaLoaiDon == 2 || d.MaLoaiDon == 4) &&
+                d.MaLoaiDon >= 1 && d.MaLoaiDon <= 5 &&
                 d.NhanVien != null &&
                 d.NhanVien.MaPhongBan == managerDept &&
                 d.MaNhanVien != currentEmployeeId);

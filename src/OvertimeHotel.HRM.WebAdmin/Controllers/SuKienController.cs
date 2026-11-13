@@ -25,10 +25,10 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
             .SingleOrDefaultAsync(x => x.MaTaiKhoan == id && x.TrangThai);
         var role = account?.VaiTro?.TenVaiTro.ToUpperInvariant() switch
         {
-            "ADMIN" => "Admin", "HR" => "HR", "MANAGER" => "Manager", _ => ""
+            "ADMIN" => "Admin", "HR" => "HR", "MANAGER" => "Manager", "IT" => "IT", _ => ""
         };
         return account == null || role == "" || account.NhanVien?.TrangThai != "DANG_LAM"
-            ? null : new EventActor(account.MaNhanVien, account.MaTaiKhoan, role, account.TenDangNhap);
+            ? null : new EventActor(account.MaNhanVien, account.MaTaiKhoan, role, account.TenDangNhap, true);
     }
 
     [HttpGet]
@@ -42,7 +42,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         var first = new DateOnly(y, m, 1);
         var gridStart = first.AddDays(-(((int)first.DayOfWeek + 6) % 7));
         if (selected < gridStart || selected >= gridStart.AddDays(42)) selected = first;
-        var model = new EventCalendarViewModel { Year = y, Month = m, SelectedDate = selected, CanCreate = actor.IsOffice };
+        var model = new EventCalendarViewModel { Year = y, Month = m, SelectedDate = selected, CanCreate = actor.CanManageEvents };
         try
         {
             model.Events = await events.ListAsync(actor, HotelEventRules.ToUtc(gridStart.ToDateTime(TimeOnly.MinValue)),
@@ -62,7 +62,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     public async Task<IActionResult> Create(DateOnly? date, int? returnYear, int? returnMonth, DateOnly? returnDate, DateOnly? endDate, bool popup = false)
     {
         var actor = await ActorAsync();
-        if (actor?.IsOffice != true) return Forbid();
+        if (actor?.CanManageEvents != true) return Forbid();
         var day = date ?? Today;
         if (!HotelEventRules.CanCreateOn(day, DateTimeOffset.UtcNow))
             return UnprocessableEntity("Chỉ được tạo sự kiện từ hôm nay trở đi (giờ Việt Nam).");
@@ -90,7 +90,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     public async Task<IActionResult> Edit(int id, int? returnYear, int? returnMonth, DateOnly? returnDate)
     {
         var actor = await ActorAsync();
-        if (actor?.IsOffice != true) return Forbid();
+        if (actor?.CanManageEvents != true) return Forbid();
         var item = await events.GetAsync(actor, id);
         if (item == null) return NotFound();
         if (item.TrangThai != "LEN_KE_HOACH") return Forbid();
@@ -116,7 +116,7 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     private async Task<IActionResult> SaveAsync(EventFormViewModel model, string view)
     {
         var actor = await ActorAsync();
-        if (actor?.IsOffice != true) return Forbid();
+        if (actor?.CanManageEvents != true) return Forbid();
         SetContext(model, model.ReturnYear, model.ReturnMonth, model.ReturnDate);
         if (ModelState.IsValid)
         {
@@ -339,17 +339,17 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
         }
         var model = new EventDetailsViewModel
         {
-            Event = item, CanManage = mutable, CanEdit = mutable && actor.IsOffice && item.TrangThai == "LEN_KE_HOACH",
+            Event = item, CanManage = mutable, CanEdit = mutable && actor.CanManageEvents && item.TrangThai == "LEN_KE_HOACH",
             HourlyEventRate = await events.HourlyEventRateAsync(),
-            CanAccept = mutable && actor.IsOffice && item.TrangThai == "CHO_NGHIEM_THU",
+            CanAccept = mutable && actor.CanManageEvents && item.TrangThai == "CHO_NGHIEM_THU",
             StaffLoadFailed = staffLoadFailed,
             Employees = employees,
             Shifts = shifts,
-            IsOffice = actor.IsOffice,
+            IsOffice = actor.CanManageEvents,
             Need = previous?.Need ?? new EventNeedInput { Version = item.Version, Count = 1 },
             Work = previous?.Work ?? new EventWorkInput { Version = item.Version },
             PayPreview = item.TinhTheoGio && !staffLoadFailed ? await events.PreviewAsync(actor, id) : null,
-            PaymentPeriods = actor.IsOffice ? await events.PaymentPeriodsAsync(actor) : [],
+            PaymentPeriods = actor.CanManageEvents ? await events.PaymentPeriodsAsync(actor) : [],
             PaymentPeriodId = previous?.PaymentPeriodId,
             Tab = tab is "staff" or "acceptance" ? tab : "overview",
             Assignment = previous?.Assignment ?? new EventAssignmentInput

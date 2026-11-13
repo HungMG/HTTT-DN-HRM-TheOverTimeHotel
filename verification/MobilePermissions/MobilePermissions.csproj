@@ -10,5 +10,10 @@
     <Compile Include="../../src/OvertimeHotel.HRM.MobileApp/Models/UserSession.cs" Link="UserSession.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.WebAdmin/Security/PermissionCodes.cs" Link="PermissionCodes.cs" />
     <Compile Include="../../src/OvertimeHotel.HRM.WebAdmin/Security/WebAdminPermissions.cs" Link="WebAdminPermissions.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.WebAdmin/Security/WebAdminLanding.cs" Link="WebAdminLanding.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.WebAdmin/Security/PermissionConfiguration.cs" Link="PermissionConfiguration.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.WebAdmin/Security/KnowledgeAccessPolicy.cs" Link="KnowledgeAccessPolicy.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.WebAdmin/Security/PayrollAuthorization.cs" Link="PayrollAuthorization.cs" />
+    <Compile Include="../../src/OvertimeHotel.HRM.WebAdmin/Security/ManagerPayrollAccess.cs" Link="ManagerPayrollAccess.cs" />
   </ItemGroup>
 </Project>

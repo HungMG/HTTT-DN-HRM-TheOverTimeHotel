@@ -170,6 +170,8 @@ public class ManagerHomeViewModel : HomeViewModelBase
     /// <summary>Người dùng hiện tại có thẩm quyền phê duyệt đơn hay không.</summary>
     public bool CanAssignShifts => AuthService.CurrentUser?.HasPermission(OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.AssignShifts) == true;
     public bool CanViewDepartmentAttendance => AuthService.CurrentUser?.HasPermission(OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.DepartmentAttendance) == true;
+
+    public bool CanViewLeave => AuthService.CurrentUser?.CanViewLeave == true;
     public bool CanApproveLeave => AuthService.CurrentUser?.CanApproveLeave == true;
 
     /// <summary>
@@ -229,7 +231,7 @@ public class ManagerHomeViewModel : HomeViewModelBase
     {
         await LoadTodayShiftAsync();
 
-        if (!user.CanApproveLeave)
+        if (!user.CanViewLeave)
         {
             ReviewedLeaveCount = 0;
             return;
@@ -309,6 +311,7 @@ public class ManagerHomeViewModel : HomeViewModelBase
         OnPropertyChanged(nameof(DepartmentCode));
         OnPropertyChanged(nameof(PermissionLabel));
         OnPropertyChanged(nameof(CanApproveLeave));
+        OnPropertyChanged(nameof(CanViewLeave));
     }
 
     private static string ResolveDepartmentCode(string deptName)

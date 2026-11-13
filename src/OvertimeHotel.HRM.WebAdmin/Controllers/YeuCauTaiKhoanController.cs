@@ -61,7 +61,7 @@ public class YeuCauTaiKhoanController : Controller
     //  INDEX — HỘP THƯ CỦA HR VÀ IT
     // =====================================================================
     [HttpGet]
-    [Authorize(Policy = PermissionCodes.ManageAccounts)]
+    [Authorize(Policy = "AccountRequestAccess")]
     public async Task<IActionResult> Index(string? keyword, string? trangThai, int page = 1)
     {
         keyword = keyword?.Trim();
@@ -70,7 +70,7 @@ public class YeuCauTaiKhoanController : Controller
 
         var employeeId = GetCurrentEmployeeId();
         var role = GetCurrentRoleName();
-        var canProcess = LeaveApprovalPolicy.CanProcessAccountRequest(role);
+        var canProcess = User.HasPermission(PermissionCodes.ProvisionMobileAccount);
 
         var baseQuery = BuildVisibleQuery(canProcess, employeeId);
         var visibleItems = await this.SearchDataAsync($"account-requests:process:{canProcess}:sender:{employeeId}", () => baseQuery.ToListAsync());
@@ -210,11 +210,11 @@ public class YeuCauTaiKhoanController : Controller
     //  CREATE — GỬI YÊU CẦU
     // =====================================================================
     [HttpGet]
-    [Authorize(Roles = "HR,Admin,IT")]
+    [Authorize(Policy = "AccountRequestCreate")]
     public async Task<IActionResult> Create(bool popup = false, int? employeeId = null)
     {
         var role = GetCurrentRoleName();
-        if (!LeaveApprovalPolicy.IsHR(role) && !LeaveApprovalPolicy.IsAdmin(role) && !LeaveApprovalPolicy.IsIT(role))
+        if (!User.HasPermission(PermissionCodes.ManageEmployees) && !User.HasPermission(PermissionCodes.ProvisionMobileAccount))
         {
             if (popup)
             {
@@ -224,7 +224,7 @@ public class YeuCauTaiKhoanController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        if (popup && employeeId > 0 && !LeaveApprovalPolicy.IsIT(role))
+        if (popup && employeeId > 0 && !User.HasPermission(PermissionCodes.ProvisionMobileAccount))
         {
             var employee = await _context.NhanViens.AsNoTracking()
                 .Where(item => item.MaNhanVien == employeeId)
@@ -243,11 +243,11 @@ public class YeuCauTaiKhoanController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = "HR,Admin,IT")]
+    [Authorize(Policy = "AccountRequestCreate")]
     public async Task<IActionResult> Create(CreateYeuCauTaiKhoanViewModel model, bool popup = false)
     {
         var role = GetCurrentRoleName();
-        if (!LeaveApprovalPolicy.IsHR(role) && !LeaveApprovalPolicy.IsAdmin(role) && !LeaveApprovalPolicy.IsIT(role))
+        if (!User.HasPermission(PermissionCodes.ManageEmployees) && !User.HasPermission(PermissionCodes.ProvisionMobileAccount))
         {
             if (popup)
             {
@@ -319,7 +319,7 @@ public class YeuCauTaiKhoanController : Controller
         // Vai trò phải do máy chủ xác định, không tin giá trị gửi từ trình duyệt.
         var roleName = employee == null ? null :
             ResolveRoleFromPositionAndDepartment(employee.Position, employee.Department).RoleName;
-        if (!LeaveApprovalPolicy.IsIT(role) && roleName != null && roleName != "Employee" &&
+        if (!User.HasPermission(PermissionCodes.ProvisionMobileAccount) && roleName != null && roleName != "Employee" &&
             !(LeaveApprovalPolicy.IsHR(role) && roleName == "Manager"))
             ModelState.AddModelError(nameof(model.EmployeeId), "HR chỉ được yêu cầu cấp tài khoản Nhân viên và Quản lý; các vai trò khác do IT xử lý.");
         model.RoleId = roleName == null ? 0 : await _context.VaiTros.AsNoTracking()
@@ -333,7 +333,7 @@ public class YeuCauTaiKhoanController : Controller
             ModelState.AddModelError(nameof(model.RoleId), "Không xác định được vai trò phù hợp trong hệ thống.");
         }
         else if (string.Equals(roleName, "Admin", StringComparison.Ordinal) &&
-                 !LeaveApprovalPolicy.IsIT(GetCurrentRoleName()))
+                 !User.HasPermission(PermissionCodes.ProvisionMobileAccount))
         {
             ModelState.AddModelError(nameof(model.RoleId), "Chỉ Quản trị viên mới được đề xuất cấp vai trò Quản trị viên.");
         }
@@ -412,7 +412,7 @@ public class YeuCauTaiKhoanController : Controller
             return View(model);
         }
 
-        if (LeaveApprovalPolicy.IsIT(role))
+        if (User.HasPermission(PermissionCodes.ProvisionMobileAccount))
         {
             return await Complete(request.MaYeuCau);
         }
@@ -607,6 +607,7 @@ public class YeuCauTaiKhoanController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ManageEmployees)]
     public async Task<IActionResult> QuickSubmitPromotion(int employeeId, int contractId)
     {
         var role = GetCurrentRoleName();
@@ -792,7 +793,7 @@ public class YeuCauTaiKhoanController : Controller
         }).ToList();
 
         // IT có thể cấp vai trò Admin cho người thuộc Ban Giám đốc.
-        var senderIsAdmin = LeaveApprovalPolicy.IsIT(GetCurrentRoleName());
+        var senderIsAdmin = User.HasPermission(PermissionCodes.ProvisionMobileAccount);
         var roleNames = SupportedRoles
             .Where(roleName => senderIsAdmin || !string.Equals(roleName, "Admin", StringComparison.Ordinal))
             .ToArray();
@@ -908,7 +909,7 @@ public class YeuCauTaiKhoanController : Controller
     private async Task<IActionResult> CompleteLockedAsync(int id)
     {
         var role = GetCurrentRoleName();
-        if (!LeaveApprovalPolicy.CanProcessAccountRequest(role))
+        if (!User.HasPermission(PermissionCodes.ProvisionMobileAccount))
         {
             return ProcessingFailure("Chỉ Quản trị viên và bộ phận Công nghệ Thông tin mới có quyền cấp tài khoản.", StatusCodes.Status403Forbidden);
         }
@@ -934,12 +935,12 @@ public class YeuCauTaiKhoanController : Controller
 
         var isManagerPromotion = request.VaiTro?.TenVaiTro == "Manager" &&
             request.GhiChuTuChoi?.StartsWith("[THANG_CHUC]", StringComparison.Ordinal) == true;
-        if (request.NguoiGui?.TaiKhoan?.VaiTro?.TenVaiTro == "HR" && !LeaveApprovalPolicy.IsIT(role))
+        if (request.NguoiGui?.TaiKhoan?.VaiTro?.TenVaiTro == "HR" && !User.HasPermission(PermissionCodes.ProvisionMobileAccount))
             return ProcessingFailure("Chỉ IT được duyệt yêu cầu do HR gửi.", StatusCodes.Status403Forbidden);
-        if (isManagerPromotion && !LeaveApprovalPolicy.IsIT(role))
+        if (isManagerPromotion && !User.HasPermission(PermissionCodes.ProvisionMobileAccount))
             return ProcessingFailure("Chỉ IT được duyệt yêu cầu thăng chức Quản lý.", StatusCodes.Status403Forbidden);
         if (!isManagerPromotion && request.VaiTro?.TenVaiTro != "Employee" &&
-            !(request.VaiTro?.TenVaiTro == "Manager" && request.NguoiGui?.TaiKhoan?.VaiTro?.TenVaiTro == "HR" && LeaveApprovalPolicy.IsIT(role)) &&
+            !(request.VaiTro?.TenVaiTro == "Manager" && request.NguoiGui?.TaiKhoan?.VaiTro?.TenVaiTro == "HR" && User.HasPermission(PermissionCodes.ProvisionMobileAccount)) &&
             request.NguoiGui?.TaiKhoan?.VaiTro?.TenVaiTro != "IT")
             return ProcessingFailure("Yêu cầu cũ cho vai trò quản lý không còn hợp lệ. IT cần cấp hoặc đổi vai trò trực tiếp.", StatusCodes.Status403Forbidden);
 
@@ -1176,7 +1177,7 @@ public class YeuCauTaiKhoanController : Controller
     private async Task<IActionResult> RejectLockedAsync(int id, string? lyDo)
     {
         var role = GetCurrentRoleName();
-        if (!LeaveApprovalPolicy.CanProcessAccountRequest(role))
+        if (!User.HasPermission(PermissionCodes.ProvisionMobileAccount))
         {
             return ProcessingFailure("Chỉ Quản trị viên và bộ phận Công nghệ Thông tin mới có quyền từ chối yêu cầu.", StatusCodes.Status403Forbidden);
         }
@@ -1308,7 +1309,7 @@ public class YeuCauTaiKhoanController : Controller
     /// </summary>
     private async Task<object> GetStatusOptionsForRefresh(string? role)
     {
-        var canProcess = LeaveApprovalPolicy.CanProcessAccountRequest(role);
+        var canProcess = User.HasPermission(PermissionCodes.ProvisionMobileAccount);
         var query = BuildVisibleQuery(canProcess, GetCurrentEmployeeId());
 
         return new

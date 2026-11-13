@@ -298,7 +298,7 @@ public class PayslipViewModel : INotifyPropertyChanged
     public string DetailFormulaDeduction => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.TongKhauTru)} ₫";
     public string DetailFormulaNet => _summary == null ? "0 ₫" : $"{PayslipRowItem.Format(_summary.ThucNhan)} ₫";
 
-    public string DetailBalanceText => IsDetailDraft ? "Bản nháp đang mở đối soát · Chưa khóa sổ chính thức" : "Bất biến cân bằng 100% · Đã khóa sổ & phát hành chính thức";
+    public string DetailBalanceText => IsDetailDraft ? "Bản nháp đang mở đối soát · Chưa khóa sổ chính thức" : "Phiếu lương chính thức";
     public string DetailBalanceColor => IsDetailDraft ? "#B45309" : "#047857";
     public string DetailBalanceIcon => IsDetailDraft ? "⏱" : "✔";
 

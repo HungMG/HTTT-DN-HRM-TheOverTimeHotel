@@ -39,7 +39,7 @@ public class AdminHomeViewModel : HomeViewModelBase
     private string _payrollStatusBgColor = "#F1F5F9";
     private string _payrollStatusTextColor = "#64748B";
     private string _budgetStatusNote = "Đang kết nối hệ thống tính lương CSDL...";
-    private string _payrollActionText = "Chi tiết kỳ lương & Khóa sổ";
+    private string _payrollActionText = "Chi tiết kỳ lương";
     public ObservableCollection<AdminRecentMonthPayrollItem> RecentMonthsPayroll { get; } = new();
 
     // ═══ 3. SỰ KIỆN TRỌNG ĐIỂM & ĐIỀU ĐỘNG TASK FORCE (PRD 02 Mục 9.0) ═══
@@ -141,6 +141,7 @@ public class AdminHomeViewModel : HomeViewModelBase
     }
 
     // Payroll props
+    public bool CanViewPayroll => AuthService.CurrentUser?.HasPermission("XEM_BANG_LUONG") == true;
     public string PayrollPeriodName
     {
         get => _payrollPeriodName;
@@ -227,10 +228,10 @@ public class AdminHomeViewModel : HomeViewModelBase
         PayrollActionCommand = new Command(() =>
         {
             ShowNotificationDialog?.Invoke(this,
-                $"Quy trình Khóa sổ Lương (PRD 05 Bước 5):\n" +
+                $"Thông tin bảng lương:\n" +
                 $"• Kỳ lương hiện tại: {PayrollPeriodName}\n" +
                 $"• Trạng thái: {PayrollStatusText}\n\n" +
-                $"Ban Giám Đốc có thể kiểm tra chi tiết bảng lương từng phòng ban và ký duyệt khóa sổ trên cổng Web Admin máy tính: https://hrm.overtime.local");
+                $"Ban Giám Đốc có thể xem và duyệt bảng lương; HR thực hiện khóa sổ trên cổng Web Admin máy tính: https://hrm.overtime.local");
         });
 
         OpenEventDetailCommand = new Command<AdminHotelEventItem>(item =>
@@ -464,6 +465,12 @@ public class AdminHomeViewModel : HomeViewModelBase
 
     private async Task LoadPayrollSummaryAsync()
     {
+        OnPropertyChanged(nameof(CanViewPayroll));
+        if (!CanViewPayroll)
+        {
+            RecentMonthsPayroll.Clear();
+            return;
+        }
         try
         {
             var viVn = new CultureInfo("vi-VN");
@@ -565,7 +572,7 @@ public class AdminHomeViewModel : HomeViewModelBase
             PayrollStatusBgColor = "#EFF6FF";
             PayrollStatusTextColor = "#1D4ED8";
             BudgetStatusNote = "Tổng hợp quỹ lương toàn khách sạn qua RPC bảo mật (chỉ tính phiếu đã khóa sổ).";
-            PayrollActionText = "Chi tiết kỳ lương & Khóa sổ";
+            PayrollActionText = "Chi tiết kỳ lương";
         }
         catch (Exception ex)
         {
@@ -722,7 +729,7 @@ public class AdminHomeViewModel : HomeViewModelBase
     {
         PendingLeaveSub = "Thẩm quyền Admin / Ban Giám Đốc";
 
-        if (!user.CanApproveLeave) return;
+        if (!user.CanViewLeave) return;
 
         try
         {

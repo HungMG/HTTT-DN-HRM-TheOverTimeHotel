@@ -1,4 +1,5 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.BaoCaoChiTietViewModel
+@using OvertimeHotel.HRM.WebAdmin.Security
 
 <div class="modal-header border-0 pb-0">
     <div>
@@ -89,7 +90,7 @@
     }
 </div>
 <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
-    @if (Model.DanhSach.Count > 0)
+    @if (Model.DanhSach.Count > 0 && User.HasPermission(PermissionCodes.ReportExport))
     {
         <button type="button" class="btn btn-sm btn-outline-primary rounded-3" data-baocao-export-details>
             <i class="bi bi-file-earmark-arrow-down me-1"></i> Xuất CSV chi tiết

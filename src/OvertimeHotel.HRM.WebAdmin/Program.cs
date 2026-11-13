@@ -164,10 +164,11 @@ builder.Services.AddAuthentication(options =>
                 if (int.TryParse(userIdStr, out var userId))
                 {
                     var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                    var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).FirstOrDefaultAsync(t => t.MaTaiKhoan == userId);
+                    var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).Include(t => t.NhanVien).FirstOrDefaultAsync(t => t.MaTaiKhoan == userId);
                     if (account == null || !account.TrangThai ||
                         context.Properties.IssuedUtc == null || context.Properties.IssuedUtc <= account.PhienHopLeSau ||
-                        account.VaiTro?.TenVaiTro != context.Principal?.FindFirst(ClaimTypes.Role)?.Value)
+                        account.VaiTro?.TenVaiTro != context.Principal?.FindFirst(ClaimTypes.Role)?.Value ||
+                        (account.NhanVien?.MaPhongBan ?? 0).ToString() != context.Principal?.FindFirst("DepartmentId")?.Value)
                     {
                         context.RejectPrincipal();
                         await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -241,7 +242,7 @@ builder.Services.AddAuthentication(options =>
                 if (maNhanVien is > 0)
                 {
                     var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                    var account = await dbContext.TaiKhoans.AsNoTracking().FirstOrDefaultAsync(t => t.MaNhanVien == maNhanVien.Value);
+                    var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).FirstOrDefaultAsync(t => t.MaNhanVien == maNhanVien.Value);
                     var issued = context.Principal?.FindFirst("iat")?.Value;
                     if (!Guid.TryParse(context.Principal?.FindFirst("session_id")?.Value, out var sessionId) ||
                         !Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out var authUserId))
@@ -268,6 +269,12 @@ builder.Services.AddAuthentication(options =>
                         var codes = await dbContext.VaiTroQuyens.AsNoTracking()
                             .Where(vq => vq.MaVaiTro == account.MaVaiTro && vq.Quyen != null)
                             .Select(vq => vq.Quyen!.MaQuyenCode).ToListAsync();
+                        // IT uses the fixed personal Mobile functions while its administration role is not editable.
+                        if (account.VaiTro?.TenVaiTro == "IT")
+                        {
+                            if (!codes.Contains(PermissionCodes.MobileCheckIn)) codes.Add(PermissionCodes.MobileCheckIn);
+                            if (!codes.Contains(PermissionCodes.SubmitRequest)) codes.Add(PermissionCodes.SubmitRequest);
+                        }
                         foreach (var code in codes) identity.AddClaim(new System.Security.Claims.Claim(PermissionCodes.ClaimType, code));
                     }
 
@@ -292,13 +299,17 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization(options =>
 {
     // Đăng ký policy RBAC cho từng mã quyền trong bảng QUYEN.
-    // Các quyền quản trị thuộc riêng IT; Admin được truy cập các quyền nghiệp vụ.
+    // IT có bốn quyền quản trị cố định; các quyền còn lại dựa trên cấu hình vai trò.
     void AddPermissionPolicy(string permissionCode)
     {
         options.AddPolicy(permissionCode, policy => policy.RequireAssertion(context =>
             context.User.HasPermission(permissionCode)));
     }
 
+    options.AddPolicy("AccountRequestAccess", policy => policy.RequireAssertion(context =>
+        context.User.HasPermission(PermissionCodes.ManageAccounts) || context.User.HasPermission(PermissionCodes.ProvisionMobileAccount)));
+    options.AddPolicy("AccountRequestCreate", policy => policy.RequireAssertion(context =>
+        context.User.HasPermission(PermissionCodes.ManageEmployees) || context.User.HasPermission(PermissionCodes.ProvisionMobileAccount)));
     AddPermissionPolicy(PermissionCodes.ManageAccounts);
     // Cấp user Supabase Auth — cửa vào của mọi RLS policy. Tách khỏi
     // QL_TAI_KHOAN vì người quản lý hồ sơ tài khoản (HR) không nên tự mở cửa này.
@@ -309,6 +320,11 @@ builder.Services.AddAuthorization(options =>
     AddPermissionPolicy(PermissionCodes.ManageEmployees);
     AddPermissionPolicy(PermissionCodes.ManageContracts);
     AddPermissionPolicy(PermissionCodes.AssignShifts);
+    AddPermissionPolicy(PermissionCodes.ViewShifts);
+    AddPermissionPolicy(PermissionCodes.ViewShiftSwaps);
+    AddPermissionPolicy(PermissionCodes.ApproveShiftSwaps);
+    AddPermissionPolicy(PermissionCodes.ViewAttendanceExplanations);
+    AddPermissionPolicy(PermissionCodes.VerifyAttendanceExplanations);
     AddPermissionPolicy(PermissionCodes.ManageHotelEvents);
     AddPermissionPolicy(PermissionCodes.ViewDepartmentAttendance);
     // Quẹt thẻ check-in/out trên Mobile là thao tác GHI dữ liệu chấm công, nên
@@ -316,15 +332,17 @@ builder.Services.AddAuthorization(options =>
     // quyen.ma_quyen_code = 'CHAM_CONG_DI_DONG' (ma_quyen = 15 trong CSDL).
     AddPermissionPolicy(PermissionCodes.MobileCheckIn);
     AddPermissionPolicy(PermissionCodes.SubmitRequest);
+    AddPermissionPolicy(PermissionCodes.ViewPayroll);
     AddPermissionPolicy(PermissionCodes.CalculatePayroll);
-    AddPermissionPolicy(PermissionCodes.ExportPayslipPdf);
+    AddPermissionPolicy(PermissionCodes.ApprovePayroll);
     AddPermissionPolicy(PermissionCodes.ApproveResignation);
     AddPermissionPolicy(PermissionCodes.ApproveLeave);
-    AddPermissionPolicy(PermissionCodes.ApproveOvertime);
+    AddPermissionPolicy(PermissionCodes.ViewLeave);
     // Phân hệ Báo cáo & Thống kê (TSK-24). Admin/HR/IT xem toàn khách sạn; Manager
     // vẫn qua được policy này nhưng bị thu hẹp còn bộ phận của mình ở tầng truy vấn
     // (ReportPolicy.ResolveScope) — mã quyền không mang thông tin phạm vi.
     AddPermissionPolicy(PermissionCodes.ReportView);
+    AddPermissionPolicy(PermissionCodes.ReportExport);
 });
 
 // Cấu hình kết nối Entity Framework Core với Supabase PostgreSQL
@@ -407,7 +425,7 @@ if (!string.IsNullOrWhiteSpace(supabaseUrl) && !string.IsNullOrWhiteSpace(supaba
 
 var app = builder.Build();
 
-if (!string.IsNullOrWhiteSpace(connectionString))
+if (!string.IsNullOrWhiteSpace(connectionString) && !builder.Configuration.GetValue<bool>("SkipDatabaseBootstrap"))
 {
     await using var schemaScope = app.Services.CreateAsyncScope();
     var schemaContext = schemaScope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -453,24 +471,6 @@ app.UseRouting();
 
 // Thứ tự Middleware quan trọng: UseAuthentication phải trước UseAuthorization
 app.UseAuthentication();
-app.Use(async (context, next) =>
-{
-    if (context.User.IsInRole("IT"))
-    {
-        var controller = context.GetRouteValue("controller")?.ToString();
-        if (controller == "Home")
-        {
-            context.Response.Redirect("/UserAccounts");
-            return;
-        }
-        if (controller != null && controller is not ("UserAccounts" or "YeuCauTaiKhoan" or "Backup" or "Account"))
-        {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            return;
-        }
-    }
-    await next();
-});
 app.UseAuthorization();
 
 app.MapControllers();

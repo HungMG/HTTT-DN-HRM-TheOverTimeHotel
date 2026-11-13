@@ -14,7 +14,7 @@ using OvertimeHotel.HRM.WebAdmin.Services;
 
 namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 
-[Authorize(Policy = PermissionCodes.AssignShifts)]
+[Authorize(Policy = PermissionCodes.ViewShifts)]
 public class PhanCaController : Controller
 {
     /// <summary>
@@ -612,7 +612,7 @@ public class PhanCaController : Controller
                     var currentDate = weekStart.AddDays(i);
                     var isPast = currentDate < today;
                     var hasContractOnDate = ContractAttendancePolicy.HasValidContractOn(emp, currentDate);
-                    var canAssign = !isPast && hasContractOnDate;
+                    var canAssign = User.HasPermission(PermissionCodes.AssignShifts) && !isPast && hasContractOnDate;
 
                     var cell = new PhanCaDayCell
                     {
@@ -657,10 +657,10 @@ public class PhanCaController : Controller
             try
             {
                 var actor = await EventActorAsync();
-                if (actor != null && User.HasPermission(PermissionCodes.ManageHotelEvents))
+                if (actor != null)
                 {
-                    model.CanViewEventDemand = actor.IsOffice;
-                    model.CanPublishWeek = actor.IsOffice;
+                    model.CanViewEventDemand = User.HasPermission(PermissionCodes.ManageHotelEvents);
+                    model.CanPublishWeek = actor.CanPublishSchedules;
                     if (model.CanViewEventDemand)
                     {
                         model.EventDemand = (await _events.ListAsync(actor,
@@ -690,22 +690,25 @@ public class PhanCaController : Controller
     private async Task<EventActor?> EventActorAsync()
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var accountId)) return null;
-        return await this.SearchDataAsync($"phanca:actor:{accountId}", async () =>
+        return await this.SearchDataAsync($"phanca:actor:{accountId}:events:{User.HasPermission(PermissionCodes.ManageHotelEvents)}:assign:{User.HasPermission(PermissionCodes.AssignShifts)}", async () =>
         {
             var account = await _context.TaiKhoans.AsNoTracking().Include(a => a.VaiTro).Include(a => a.NhanVien)
                 .SingleOrDefaultAsync(a => a.MaTaiKhoan == accountId && a.TrangThai);
             var role = account?.VaiTro?.TenVaiTro.ToUpperInvariant() switch
-            { "ADMIN" => "Admin", "HR" => "HR", "MANAGER" => "Manager", _ => "" };
+            { "ADMIN" => "Admin", "HR" => "HR", "MANAGER" => "Manager", "IT" => "IT", _ => "" };
             return account?.NhanVien?.TrangThai != "DANG_LAM" || role == "" ? null
-                : new EventActor(account.MaNhanVien, account.MaTaiKhoan, role, account.TenDangNhap);
+                : new EventActor(account.MaNhanVien, account.MaTaiKhoan, role, account.TenDangNhap,
+                    User.HasPermission(PermissionCodes.ManageHotelEvents),
+                    role != "Manager" && User.HasPermission(PermissionCodes.AssignShifts));
         });
     }
 
     [HttpPost, ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.AssignShifts)]
     public async Task<IActionResult> PublishWeek(DateOnly weekStart, long version, string? reason)
     {
         var actor = await EventActorAsync();
-        if (actor?.IsOffice != true) return Forbid();
+        if (actor?.CanPublishSchedules != true) return Forbid();
         if (!ModelState.IsValid) return BadRequest();
         try
         {
@@ -730,6 +733,7 @@ public class PhanCaController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.AssignShifts)]
     public async Task<IActionResult> Create(CreatePhanCaInputModel input)
     {
         // KHUNG GIỜ PHÂN CA QUẢN LÝ: cổng mở từ 00:00 Thứ Sáu đến 16:00 Chủ Nhật
@@ -1050,6 +1054,7 @@ public class PhanCaController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.AssignShifts)]
     public async Task<IActionResult> QuickWeekSchedule(int maNhanVien, int maCa, string weekStartStr)
     {
         // KHUNG GIỜ PHÂN CA QUẢN LÝ: cổng mở từ 00:00 Thứ Sáu đến 16:00 Chủ Nhật.
@@ -1258,6 +1263,7 @@ public class PhanCaController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.AssignShifts)]
     public async Task<IActionResult> Delete(int id, string? returnWeek, string? changeReason)
     {
         // KHUNG GIỜ PHÂN CA QUẢN LÝ: cổng mở từ 00:00 Thứ Sáu đến 16:00 Chủ Nhật.
@@ -1337,6 +1343,7 @@ public class PhanCaController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.AssignShifts)]
     public async Task<IActionResult> SaveDinhBien(DinhBienSaveInput input)
     {
         var returnUrl = Url.Action(nameof(Index), new { week = input.ReturnWeek, openDinhBienModal = true });
@@ -1675,6 +1682,7 @@ public class PhanCaController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.AssignShifts)]
     public async Task<IActionResult> QuickAssignAjax([FromBody] QuickAssignAjaxModel? input)
     {
         if (input == null || !ModelState.IsValid || input.MaNhanVien <= 0 || !DateOnly.TryParse(input.NgayLamViec, out var targetDate))

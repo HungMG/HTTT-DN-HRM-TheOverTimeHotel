@@ -51,16 +51,7 @@
             url.searchParams.set("roleId", event.target.value);
             load(url);
         }
-        if (event.target.matches(".permission-checkbox")) updateCard(event.target);
-    });
 
-    content.addEventListener("click", event => {
-        const button = event.target.closest("#selectAllPermissionsBtn, #deselectAllPermissionsBtn");
-        if (!button) return;
-        content.querySelectorAll(".permission-checkbox").forEach(checkbox => {
-            checkbox.checked = button.id === "selectAllPermissionsBtn";
-            updateCard(checkbox);
-        });
     });
 
     content.addEventListener("submit", event => {
@@ -69,13 +60,4 @@
         load(event.target.action, { method: "POST", body: new FormData(event.target) });
     });
 
-    function updateCard(checkbox) {
-        const card = checkbox.closest("label");
-        if (!card) return;
-        card.classList.toggle("bg-primary-subtle", checkbox.checked);
-        card.classList.toggle("border-primary-subtle", checkbox.checked);
-        card.classList.toggle("bg-light", !checkbox.checked);
-        card.classList.toggle("bg-opacity-50", !checkbox.checked);
-        card.classList.toggle("border-light-subtle", !checkbox.checked);
-    }
 })();

@@ -21,6 +21,7 @@ public interface IPayrollCalculationService
     Task<bool> RejectPayrollAsync(int maKyLuong, string nguoiTuChoi, string lyDo, int? maTaiKhoan, CancellationToken cancellationToken = default);
     Task<bool> LockPayrollAsync(int maKyLuong, string nguoiKhoa, int? maTaiKhoan, CancellationToken cancellationToken = default);
     Task<bool> PublishPayslipsAsync(int maKyLuong, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default);
+    Task<bool> PublishDirectlyAsync(int maKyLuong, string nguoiThucHien, int? maTaiKhoan, CancellationToken cancellationToken = default);
 
     Task<(string FileName, byte[] Content)> ExportBankTransferFileAsync(int maKyLuong, CancellationToken cancellationToken = default);
 }

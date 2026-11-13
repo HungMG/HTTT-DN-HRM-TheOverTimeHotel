@@ -2,7 +2,7 @@ using OvertimeHotel.HRM.Core.Models;
 
 namespace OvertimeHotel.HRM.Data.Services;
 
-public record EventActor(int EmployeeId, int AccountId, string Role, string Name)
+public record EventActor(int EmployeeId, int AccountId, string Role, string Name, bool CanManageEvents = false, bool CanPublishSchedules = false)
 {
     public bool IsOffice => Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || Role.Equals("HR", StringComparison.OrdinalIgnoreCase);
     public bool IsManager => Role.Equals("Manager", StringComparison.OrdinalIgnoreCase);

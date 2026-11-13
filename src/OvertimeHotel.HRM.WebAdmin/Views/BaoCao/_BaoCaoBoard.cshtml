@@ -1,3 +1,4 @@
+@using OvertimeHotel.HRM.WebAdmin.Security
 @model OvertimeHotel.HRM.WebAdmin.Models.BaoCaoViewModel
 @{
     // Vùng dữ liệu được nạp lại tại chỗ khi đổi kỳ / phòng ban / tab. Toàn bộ dữ liệu
@@ -372,7 +373,9 @@
                         Chênh lệch lương đã duyệt: @Model.QuyLuong.ChenhLechNganSachDuyet?.ToString("N0") đ.
                         Tỷ lệ: @(Model.QuyLuong.TyLeGiaiNganNganSachDuyet?.ToString("0.#") ?? "Không tính khi ngân sách bằng 0") %.</p>
                 }
+                @if (User.HasPermission(PermissionCodes.CalculatePayroll) && !User.IsInRole("Manager")) {
                 <a asp-controller="PayrollBudget" asp-action="Index" asp-route-nam="@Model.Nam">Lập / duyệt ngân sách lương</a>
+                }
                 <p class="small mb-0">Số lương đã tính có thể gồm phiếu nháp; duyệt/kết chuyển không đồng nghĩa đã thanh toán.</p>
             </div>
             <div class="baocao-kpi-grid">

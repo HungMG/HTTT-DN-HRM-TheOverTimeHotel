@@ -28,6 +28,7 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index()
     {
+        if (!WebAdminLanding.CanViewDashboard(User)) return View("Welcome");
         var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
         var cacheKey = $"HomeDashboardMetrics_V3_{role}";
 

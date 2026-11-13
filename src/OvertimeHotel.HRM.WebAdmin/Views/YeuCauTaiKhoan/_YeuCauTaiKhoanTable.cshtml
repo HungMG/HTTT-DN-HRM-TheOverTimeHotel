@@ -6,8 +6,7 @@
     var currentRole = User.FindFirstValue(ClaimTypes.Role);
     var currentUsername = User.Identity?.Name;
     var isAdmin = LeaveApprovalPolicy.IsAdmin(currentRole);
-    var canProcess = LeaveApprovalPolicy.CanProcessAccountRequest(currentRole)
-                     && User.HasPermission(PermissionCodes.ProvisionMobileAccount);
+    var canProcess = User.HasPermission(PermissionCodes.ProvisionMobileAccount);
     var firstItem = Model.TotalFilteredRequests == 0 ? 0 : ((Model.PageNumber - 1) * Model.PageSize) + 1;
     var lastItem = Math.Min(Model.PageNumber * Model.PageSize, Model.TotalFilteredRequests);
     var firstPage = Math.Max(1, Model.PageNumber - 2);
@@ -177,7 +176,7 @@
                                 <div class="d-inline-flex align-items-center gap-2">
                                     @if (item.Status is "CHO_IT" or "DANG_XU_LY")
                                     {
-                                        @if (User.IsInRole("IT") || (!item.IsPromotion && item.SenderRole != "HR"))
+                                        @if (User.HasPermission(PermissionCodes.ProvisionMobileAccount) || (!item.IsPromotion && item.SenderRole != "HR"))
                                         {
                                             <form asp-action="Complete" asp-route-id="@item.RequestId" method="post" class="d-inline" data-request-action-form>
                                                 @Html.AntiForgeryToken()

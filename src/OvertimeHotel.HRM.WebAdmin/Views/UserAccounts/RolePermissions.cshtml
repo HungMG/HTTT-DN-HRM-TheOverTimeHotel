@@ -22,47 +22,5 @@
 </div>
 
 @section Scripts {
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const selectAllBtn = document.getElementById("selectAllPermissionsBtn");
-            const deselectAllBtn = document.getElementById("deselectAllPermissionsBtn");
-            const checkboxes = document.querySelectorAll(".permission-checkbox");
-
-            selectAllBtn?.addEventListener("click", () => {
-                checkboxes.forEach(cb => {
-                    cb.checked = true;
-                    const card = cb.closest("label");
-                    if (card) {
-                        card.classList.add("bg-primary-subtle", "border-primary-subtle");
-                        card.classList.remove("bg-light", "bg-opacity-50", "border-light-subtle");
-                    }
-                });
-            });
-
-            deselectAllBtn?.addEventListener("click", () => {
-                checkboxes.forEach(cb => {
-                    cb.checked = false;
-                    const card = cb.closest("label");
-                    if (card) {
-                        card.classList.remove("bg-primary-subtle", "border-primary-subtle");
-                        card.classList.add("bg-light", "bg-opacity-50", "border-light-subtle");
-                    }
-                });
-            });
-
-            checkboxes.forEach(cb => {
-                cb.addEventListener("change", () => {
-                    const card = cb.closest("label");
-                    if (!card) return;
-                    if (cb.checked) {
-                        card.classList.add("bg-primary-subtle", "border-primary-subtle");
-                        card.classList.remove("bg-light", "bg-opacity-50", "border-light-subtle");
-                    } else {
-                        card.classList.remove("bg-primary-subtle", "border-primary-subtle");
-                        card.classList.add("bg-light", "bg-opacity-50", "border-light-subtle");
-                    }
-                });
-            });
-        });
-    </script>
+    <script src="~/js/role-permissions.js" asp-append-version="true"></script>
 }

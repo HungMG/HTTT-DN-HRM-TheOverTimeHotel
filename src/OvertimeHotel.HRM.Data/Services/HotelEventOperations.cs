@@ -15,7 +15,7 @@ public sealed partial class HotelEventService
     public Task PublishWeekAsync(EventActor actor, DateOnly weekStart, long version, string? reason) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR/Admin được công bố lịch tuần.", true);
+        Require(actor.CanPublishSchedules, "", "Bạn không có quyền công bố lịch tuần toàn khách sạn.", true);
         Require(weekStart == HourlyEventRules.WeekStart(weekStart), "weekStart", "Tuần phải bắt đầu từ thứ Hai.");
         Require(weekStart.Year is >= 1900 and <= 2100, "weekStart", "Tuần không hợp lệ.");
         var now = DateTimeOffset.UtcNow;
@@ -76,7 +76,7 @@ public sealed partial class HotelEventService
     public async Task<IReadOnlyList<KyLuong>> PaymentPeriodsAsync(EventActor actor)
     {
         actor = await CurrentActor(actor);
-        if (!actor.IsOffice) return [];
+        if (!actor.CanManageEvents) return [];
         return await OpenEventPaymentPeriods.AsNoTracking()
             .OrderBy(k => k.Nam).ThenBy(k => k.Thang).ToListAsync();
     }
@@ -84,7 +84,7 @@ public sealed partial class HotelEventService
     public Task<int> EnsurePaymentPeriodAsync(EventActor actor, int month, int year) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR/Admin tạo kỳ trả.", true);
+        Require(actor.CanManageEvents, "", "Chỉ HR/Admin tạo kỳ trả.", true);
         Require(month is >= 1 and <= 12 && year is >= 1900 and <= 2100, "", "Tháng/năm không hợp lệ.");
         var period = await db.KyLuongs.SingleOrDefaultAsync(k => k.Thang == month && k.Nam == year);
         if (period != null)
@@ -103,7 +103,7 @@ public sealed partial class HotelEventService
     public Task ReconcileLegacyAsync(EventActor actor, int id, long version, int paymentPeriodId, string reason) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR/Admin đối soát tiền cũ.", true);
+        Require(actor.CanManageEvents, "", "Chỉ HR/Admin đối soát tiền cũ.", true);
         var item = await Scoped(Events, actor).SingleOrDefaultAsync(e => e.MaDuAn == id);
         Require(item != null && item.Version == version, "", "Sự kiện không tồn tại hoặc đã thay đổi.");
         Require(!item!.TinhTheoGio && item.TrangThai == "HOAN_THANH", "", "Chỉ đối soát sự kiện chính sách cũ đã hoàn thành.");
@@ -134,7 +134,7 @@ public sealed partial class HotelEventService
     public Task SaveNeedAsync(EventActor actor, int id, EventNeedInput input) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR/Admin điều chỉnh nhu cầu sự kiện.", true);
+        Require(actor.CanManageEvents, "", "Chỉ HR/Admin điều chỉnh nhu cầu sự kiện.", true);
         var item = await Editable(actor, id, input.Version);
         Require(item.TrangThai == "LEN_KE_HOACH", "", "Chỉ sửa nhu cầu trước khi bắt đầu sự kiện.");
         Require(HotelEventRules.GetAllowedDepartments(item.LoaiDuAn).Contains(input.Department), "Need.Department", "Phòng ban không phù hợp loại sự kiện.");
@@ -157,7 +157,7 @@ public sealed partial class HotelEventService
     public Task DeleteNeedAsync(EventActor actor, int id, int needId, long version, string reason) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR/Admin điều chỉnh nhu cầu.", true);
+        Require(actor.CanManageEvents, "", "Chỉ HR/Admin điều chỉnh nhu cầu.", true);
         var item = await Editable(actor, id, version);
         Require(item.TrangThai == "LEN_KE_HOACH", "", "Nhu cầu đã được sử dụng; không xóa sau khi bắt đầu.");
         var need = item.NhuCaus.SingleOrDefault(n => n.MaNhuCau == needId);
@@ -239,7 +239,7 @@ public sealed partial class HotelEventService
         Require(assignment != null, "", "Không tìm thấy phân công đang hiệu lực.");
         Require(input.WorkId >= 0, "Work.WorkId", "Mã công không hợp lệ.");
         var editing = input.WorkId > 0;
-        Require(!editing || actor.IsOffice, "", "Chỉ HR/Admin sửa công đã xác nhận.", true);
+        Require(!editing || actor.CanManageEvents, "", "Chỉ HR/Admin sửa công đã xác nhận.", true);
         Require(editing || assignment!.CongThucTes.Count == 0, "Work.WorkId", "Phân công đã có giờ tham gia. HR/Admin sửa khoảng giờ đã lưu.");
         var reason = editing ? Text(input.Reason, 500, "Work.Reason", "Lý do sửa công") : null;
         var work = editing ? assignment!.CongThucTes.SingleOrDefault(c => c.MaCong == input.WorkId) : new CongSuKien { MaPhanCong = assignment!.MaPhanCong };
@@ -263,7 +263,7 @@ public sealed partial class HotelEventService
     public Task DeleteWorkAsync(EventActor actor, int id, int workId, long version, string reason) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR/Admin sửa công đã xác nhận.", true);
+        Require(actor.CanManageEvents, "", "Chỉ HR/Admin sửa công đã xác nhận.", true);
         var item = await Editable(actor, id, version);
         var assignment = item.PhanCongs.SingleOrDefault(p => p.CongThucTes.Any(c => c.MaCong == workId));
         Require(assignment != null, "", "Không tìm thấy công.");
@@ -412,7 +412,7 @@ public sealed partial class HotelEventService
     public Task AcceptHourlyAsync(EventActor actor, int id, long version, int paymentPeriodId, string previewToken) => Write(async () =>
     {
         actor = await CurrentActor(actor);
-        Require(actor.IsOffice, "", "Chỉ HR/Admin nghiệm thu.", true);
+        Require(actor.CanManageEvents, "", "Chỉ HR/Admin nghiệm thu.", true);
         var item = await Editable(actor, id, version); ReviewOpen(item);
         Require(item.TinhTheoGio, "", "Sự kiện không áp dụng chính sách theo giờ.");
         Require(HotelEventRules.CountEffectiveStaff(item.PhanCongs) > 0, "", "Sự kiện chưa có phân công thực hiện để nghiệm thu.");

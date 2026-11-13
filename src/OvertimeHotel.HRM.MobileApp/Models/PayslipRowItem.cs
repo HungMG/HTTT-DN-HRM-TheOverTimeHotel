@@ -43,7 +43,7 @@ public class PayslipRowItem(PayslipSummaryDto slip)
         ? "Bản nháp · Đối soát"
         : slip.TrangThai switch
         {
-            "DA_DUYET" => "Đã khóa sổ",
+            "DA_DUYET" => "Chính thức · Chưa khóa sổ",
             "DA_THANH_TOAN" => "Đã gửi · Đã chốt",
             _ => "Đang xử lý"
         };

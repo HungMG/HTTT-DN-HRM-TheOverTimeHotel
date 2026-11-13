@@ -120,6 +120,7 @@ public class RolePermissionOptionViewModel
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool Granted { get; set; }
+    public bool PartiallyGranted { get; set; }
 }
 
 public class AddRolePermissionsViewModel
@@ -137,7 +138,9 @@ public class RolePermissionsViewModel
     public int RoleId { get; set; }
     public int AffectedAccountCount { get; set; }
     public string RoleName { get; set; } = string.Empty;
+    public bool IsManagerRole { get; set; }
     public List<int> PermissionIds { get; set; } = [];
+    public bool ReportPermissionChanged { get; set; }
     [Required]
     [StringLength(500)]
     public string ChangeReason { get; set; } = string.Empty;

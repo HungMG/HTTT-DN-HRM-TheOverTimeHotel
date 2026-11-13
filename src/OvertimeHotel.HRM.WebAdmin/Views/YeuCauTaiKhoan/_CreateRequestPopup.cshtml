@@ -1,6 +1,7 @@
-﻿@model CreateYeuCauTaiKhoanViewModel
+@using OvertimeHotel.HRM.WebAdmin.Security
+@model CreateYeuCauTaiKhoanViewModel
 
-<form asp-action="Create" asp-route-popup="true" method="post" id="createRequestPopupForm" data-create-request-form data-employee-only="@((!User.IsInRole("IT")).ToString().ToLowerInvariant())" data-manager-allowed="@(User.IsInRole("HR").ToString().ToLowerInvariant())">
+<form asp-action="Create" asp-route-popup="true" method="post" id="createRequestPopupForm" data-create-request-form data-employee-only="@((!User.HasPermission(PermissionCodes.ProvisionMobileAccount)).ToString().ToLowerInvariant())" data-manager-allowed="@(User.IsInRole("HR").ToString().ToLowerInvariant())">
     @Html.AntiForgeryToken()
 
     @if (!ViewData.ModelState.IsValid)
@@ -29,7 +30,7 @@
         </div>
 
         <div class="row g-3">
-            @if (User.IsInRole("IT"))
+            @if (User.HasPermission(PermissionCodes.ProvisionMobileAccount))
             {
                 <div class="col-12">
                     <label for="popupRoleFilter" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Lọc theo vai trò cần cấp</label>
@@ -168,7 +169,7 @@
             Hủy bỏ
         </button>
         <button type="submit" id="popupBtnSubmit" class="btn btn-hotel-primary rounded-pill px-4 py-2 fw-bold text-white shadow-sm d-flex align-items-center gap-2" disabled="@(Model.EmployeeOptions.Count == 0)" style="font-size: 0.84rem;">
-            <i class="bi bi-send-fill fs-6"></i> @(User.IsInRole("IT") ? "Cấp tài khoản" : "Gửi yêu cầu cấp tài khoản")
+            <i class="bi bi-send-fill fs-6"></i> @(User.HasPermission(PermissionCodes.ProvisionMobileAccount) ? "Cấp tài khoản" : "Gửi yêu cầu cấp tài khoản")
         </button>
     </div>
 </form>

@@ -35,6 +35,7 @@ public class ChamCongController : Controller
     /// Hỗ trợ nạp tại chỗ qua AJAX (In-Place Transition) không reload toàn trang
     /// </summary>
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ViewDepartmentAttendance)]
     public async Task<IActionResult> Index(
         string? rangeType,
         DateOnly? date,
@@ -520,6 +521,7 @@ public class ChamCongController : Controller
     /// API trả về chi tiết 1 bản ghi chấm công dạng JSON phục vụ Modal chi tiết
     /// </summary>
     [HttpGet]
+    [Authorize(Policy = PermissionCodes.ViewDepartmentAttendance)]
     public async Task<IActionResult> ChiTiet(int maPhanCa)
     {
         var phanCa = await _context.PhanCas.AsNoTracking()
@@ -535,6 +537,10 @@ public class ChamCongController : Controller
         {
             return NotFound(new { success = false, message = "Không tìm thấy thông tin ca trực yêu cầu." });
         }
+
+        var scope = GetManagerDepartmentScope();
+        if (scope.HasValue && (scope.Value <= 0 || phanCa.NhanVien?.MaPhongBan != scope.Value))
+            return Forbid();
 
         var c = phanCa.ChamCong;
         var nowUtc = DateTimeOffset.UtcNow;
