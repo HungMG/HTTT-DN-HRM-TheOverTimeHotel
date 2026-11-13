@@ -1,6 +1,10 @@
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using OvertimeHotel.HRM.Core.Models;
+using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.WebAdmin.Security;
 
@@ -10,31 +14,54 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 public class BackupController : Controller
 {
     private readonly IBackupService _backupService;
+    private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _cache;
     private readonly ILogger<BackupController> _logger;
 
-    public BackupController(IBackupService backupService, IConfiguration configuration, ILogger<BackupController> logger)
+    private const string StatsCacheKey = "Backup_Table_Statistics_Cache";
+
+    public BackupController(
+        IBackupService backupService,
+        AppDbContext context,
+        IConfiguration configuration,
+        Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
+        ILogger<BackupController> logger)
     {
         _backupService = backupService;
+        _context = context;
         _configuration = configuration;
+        _cache = cache;
         _logger = logger;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(bool refresh = false)
     {
         ViewBag.SupabaseProjectUrl = _configuration["Supabase:Url"] ?? "https://supabase.com";
         ViewBag.DbHost = "aws-0-ap-southeast-1.pooler.supabase.com (Port 6543)";
 
-        Dictionary<string, int> stats = new();
-        try
+        if (refresh)
         {
-            stats = await _backupService.GetTableStatisticsAsync();
+            _cache.Remove(StatsCacheKey);
         }
-        catch (Exception ex)
+
+        if (!_cache.TryGetValue(StatsCacheKey, out Dictionary<string, int>? stats) || stats == null)
         {
-            _logger.LogWarning("Chưa kết nối trực tiếp được CSDL: {Message}", ex.Message);
-            ViewBag.DbWarning = "Không thể lấy số lượng bản ghi trực tiếp (vui lòng kiểm tra mật khẩu database trong appsettings.json).";
+            try
+            {
+                stats = await _backupService.GetTableStatisticsAsync();
+                _cache.Set(StatsCacheKey, stats, TimeSpan.FromMinutes(3));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Chưa kết nối trực tiếp được CSDL: {Message}", ex.Message);
+                ViewBag.DbWarning = "Không thể lấy số lượng bản ghi trực tiếp (vui lòng kiểm tra mật khẩu database trong appsettings.json).";
+                stats = new Dictionary<string, int>();
+            }
         }
+
+        ViewBag.TotalRecords = stats.Values.Sum();
+        ViewBag.TotalTables = stats.Count;
 
         return View(stats);
     }
@@ -46,7 +73,37 @@ public class BackupController : Controller
         {
             var json = await _backupService.ExportDatabaseToJsonAsync();
             var bytes = Encoding.UTF8.GetBytes(json);
-            var fileName = $"OvertimeHotel_Backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
+            var fileName = $"OvertimeHotel_Backup_30Tables_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
+
+            var username = User.Identity?.Name ?? "IT";
+            int? accountId = null;
+            if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedId))
+            {
+                accountId = parsedId;
+            }
+
+            try
+            {
+                _context.NhatKyQuanTris.Add(new NhatKyQuanTri
+                {
+                    MaTaiKhoanThucHien = accountId,
+                    MaTaiKhoanBiTacDong = accountId,
+                    TenNguoiThucHien = username,
+                    TenTaiKhoanBiTacDong = "DATABASE_SNAPSHOT",
+                    HanhDong = "SAO_LUU_CSDL",
+                    NoiDung = $"Người dùng '{username}' đã tải xuống bản sao lưu JSON toàn diện ({fileName}, {bytes.Length / 1024.0:F1} KB).",
+                    GiaTriCu = null,
+                    GiaTriMoi = fileName,
+                    LyDo = "Sao lưu dữ liệu định kỳ an toàn thông tin doanh nghiệp",
+                    DiaChiIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
+                    ThoiGian = DateTimeOffset.UtcNow
+                });
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Không thể ghi nhật ký xuất sao lưu.");
+            }
 
             return File(bytes, "application/json", fileName);
         }
@@ -76,7 +133,38 @@ public class BackupController : Controller
             var (success, message, restoredRecords) = await _backupService.RestoreDatabaseFromJsonAsync(jsonContent);
             if (success)
             {
-                TempData["Success"] = $"{message} (Đã nạp {restoredRecords} bản ghi).";
+                var username = User.Identity?.Name ?? "IT";
+                int? accountId = null;
+                if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedId))
+                {
+                    accountId = parsedId;
+                }
+
+                try
+                {
+                    _cache.Remove(StatsCacheKey);
+                    _context.NhatKyQuanTris.Add(new NhatKyQuanTri
+                    {
+                        MaTaiKhoanThucHien = accountId,
+                        MaTaiKhoanBiTacDong = accountId,
+                        TenNguoiThucHien = username,
+                        TenTaiKhoanBiTacDong = "DATABASE_RESTORE",
+                        HanhDong = "KHOI_PHUC_CSDL",
+                        NoiDung = $"Người dùng '{username}' đã khôi phục thành công {restoredRecords} bản ghi từ file '{backupFile.FileName}'.",
+                        GiaTriCu = null,
+                        GiaTriMoi = backupFile.FileName,
+                        LyDo = "Phục hồi CSDL từ bản sao lưu dự phòng",
+                        DiaChiIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1",
+                        ThoiGian = DateTimeOffset.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Không thể ghi nhật ký khôi phục sao lưu.");
+                }
+
+                TempData["Success"] = $"{message} (Đã nạp {restoredRecords} bản ghi vào hệ thống).";
             }
             else
             {

@@ -26,11 +26,17 @@ public class AccountController : Controller
 
     [HttpGet]
     [AllowAnonymous]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public IActionResult Login(string? returnUrl = null)
     {
         if (User.Identity?.IsAuthenticated == true)
         {
             var landing = WebAdminLanding.Resolve(User);
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)
+                && (!WebAdminLanding.IsDashboardUrl(returnUrl) || WebAdminLanding.CanViewDashboard(User)))
+            {
+                return Redirect(returnUrl);
+            }
             return RedirectToAction(landing.Action, landing.Controller);
         }
 
@@ -41,12 +47,39 @@ public class AccountController : Controller
     [HttpPost]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
         ViewData["ReturnUrl"] = model.ReturnUrl;
 
+        // Nếu người dùng đã có phiên đăng nhập hợp lệ (ví dụ khi nhấn nút Back/Undo, Forward/Redo
+        // hoặc mở nhiều tab), chuyển hướng thẳng về trang đích tương ứng với vai trò, tuyệt đối không báo lỗi.
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            var existingLanding = WebAdminLanding.Resolve(User);
+            var target = !string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl)
+                && (!WebAdminLanding.IsDashboardUrl(model.ReturnUrl) || WebAdminLanding.CanViewDashboard(User))
+                ? model.ReturnUrl
+                : Url.Action(existingLanding.Action, existingLanding.Controller) ?? "/";
+
+            if (IsAjaxRequest(Request))
+            {
+                return Json(new { success = true, redirectUrl = target });
+            }
+            return Redirect(target);
+        }
+
         if (!ModelState.IsValid)
         {
+            if (IsAjaxRequest(Request))
+            {
+                var firstError = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .FirstOrDefault(msg => !string.IsNullOrWhiteSpace(msg))
+                    ?? "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
+                return Json(new { success = false, message = firstError });
+            }
             return View(model);
         }
 
@@ -68,20 +101,35 @@ public class AccountController : Controller
             account = GetDevSeedAccounts().FirstOrDefault(t => t.TenDangNhap.ToLower() == model.Username.Trim().ToLower() && t.MatKhauBam == inputHash);
             if (account == null)
             {
-                ModelState.AddModelError(string.Empty, "Tên đăng nhập hoặc mật khẩu không chính xác (hoặc CSDL Supabase chưa sẵn sàng).");
+                var connErr = "Tên đăng nhập hoặc mật khẩu không chính xác (hoặc CSDL Supabase chưa sẵn sàng).";
+                if (IsAjaxRequest(Request))
+                {
+                    return Json(new { success = false, message = connErr });
+                }
+                ModelState.AddModelError(string.Empty, connErr);
                 return View(model);
             }
         }
 
         if (account == null)
         {
-            ModelState.AddModelError(string.Empty, "Tên đăng nhập hoặc mật khẩu không chính xác.");
+            var notFoundErr = "Tên đăng nhập hoặc mật khẩu không chính xác.";
+            if (IsAjaxRequest(Request))
+            {
+                return Json(new { success = false, message = notFoundErr });
+            }
+            ModelState.AddModelError(string.Empty, notFoundErr);
             return View(model);
         }
 
         if (!account.TrangThai)
         {
-            ModelState.AddModelError(string.Empty, "Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ bộ phận IT / Admin.");
+            var lockedErr = "Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ bộ phận IT / Admin.";
+            if (IsAjaxRequest(Request))
+            {
+                return Json(new { success = false, message = lockedErr });
+            }
+            ModelState.AddModelError(string.Empty, lockedErr);
             return View(model);
         }
 
@@ -95,7 +143,12 @@ public class AccountController : Controller
         var today = DateOnly.FromDateTime(DateTime.Today);
         if (latestContract != null && latestContract.NgayKetThuc.HasValue && latestContract.NgayKetThuc.Value < today)
         {
-            ModelState.AddModelError(string.Empty, $"Hợp đồng lao động của bạn đã hết hạn vào ngày {latestContract.NgayKetThuc.Value:dd/MM/yyyy}. Tài khoản đã tạm khóa truy cập, vui lòng liên hệ phòng Nhân sự để gia hạn.");
+            var contractErr = $"Hợp đồng lao động của bạn đã hết hạn vào ngày {latestContract.NgayKetThuc.Value:dd/MM/yyyy}. Tài khoản đã tạm khóa truy cập, vui lòng liên hệ phòng Nhân sự để gia hạn.";
+            if (IsAjaxRequest(Request))
+            {
+                return Json(new { success = false, message = contractErr });
+            }
+            ModelState.AddModelError(string.Empty, contractErr);
             return View(model);
         }
 
@@ -105,7 +158,12 @@ public class AccountController : Controller
         // Employee tự phục vụ trên Ứng dụng Di động nên bị chặn ngay tại cổng Web.
         if (!LeaveApprovalPolicy.CanAccessWebPortal(roleName))
         {
-            ViewBag.RoleNotice = $"Tài khoản của bạn được phân quyền là '{roleName}'. Cổng Web Admin này dành cho cấp Quản trị (Admin), Nhân sự (HR), Quản lý (Manager) và Công nghệ Thông tin (IT). Vui lòng đăng nhập trên Ứng dụng Di động (.NET MAUI App) để quẹt thẻ chấm công và nộp đơn từ trực tuyến!";
+            var roleNoticeMsg = $"Tài khoản của bạn được phân quyền là '{roleName}'. Cổng Web Admin này dành cho cấp Quản trị (Admin), Nhân sự (HR), Quản lý (Manager) và Công nghệ Thông tin (IT). Vui lòng đăng nhập trên Ứng dụng Di động (.NET MAUI App) để quẹt thẻ chấm công và nộp đơn từ trực tuyến!";
+            if (IsAjaxRequest(Request))
+            {
+                return Json(new { success = false, roleNotice = roleNoticeMsg });
+            }
+            ViewBag.RoleNotice = roleNoticeMsg;
             return View(model);
         }
 
@@ -151,14 +209,24 @@ public class AccountController : Controller
 
         _logger.LogInformation("Người dùng {Username} ({Role}) đăng nhập thành công vào Web Admin.", account.TenDangNhap, roleName);
 
-        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl)
-            && (!WebAdminLanding.IsDashboardUrl(model.ReturnUrl) || WebAdminLanding.CanViewDashboard(principal)))
+        var landing = WebAdminLanding.Resolve(principal);
+        var targetDestination = !string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl)
+            && (!WebAdminLanding.IsDashboardUrl(model.ReturnUrl) || WebAdminLanding.CanViewDashboard(principal))
+            ? model.ReturnUrl
+            : Url.Action(landing.Action, landing.Controller) ?? "/";
+
+        if (IsAjaxRequest(Request))
         {
-            return Redirect(model.ReturnUrl);
+            return Json(new { success = true, redirectUrl = targetDestination });
         }
 
-        var landing = WebAdminLanding.Resolve(principal);
-        return RedirectToAction(landing.Action, landing.Controller);
+        return Redirect(targetDestination);
+    }
+
+    private static bool IsAjaxRequest(HttpRequest request)
+    {
+        return string.Equals(request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase) ||
+               request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase);
     }
 
     [HttpGet]

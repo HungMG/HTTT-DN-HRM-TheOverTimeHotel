@@ -227,7 +227,7 @@ public class AttendanceService : IAttendanceService
     /// </summary>
     private async Task<GeofenceCheckResult> ValidateLocationAsync(string? toaDo)
     {
-        _geofenceConfig ??= await GeofenceConfig.LoadAsync(_logger);
+        _geofenceConfig ??= await GeofenceConfig.LoadAsync(_logger, _rest);
 
         // Chỉ tra SSID khi GPS không đủ kết luận. Đọc SSID trên Android cần quyền
         // vị trí và mất vài chục mili-giây; khi toạ độ đã nằm trong bán kính thì

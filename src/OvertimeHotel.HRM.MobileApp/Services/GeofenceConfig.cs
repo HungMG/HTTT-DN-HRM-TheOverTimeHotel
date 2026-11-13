@@ -33,13 +33,84 @@ public sealed class GeofenceConfig
     public string WifiSsid { get; init; } = "";
 
     /// <summary>
-    /// Đọc cấu hình từ gói cài. Luôn trả về một đối tượng dùng được — không bao
-    /// giờ null, không bao giờ ném lỗi ra ngoài.
+    /// Đọc cấu hình toạ độ từ CSDL Supabase Cloud (đồng bộ tức thời khi IT đổi cấu hình),
+    /// lưu đệm vào Preferences máy để chạy offline, và dự phòng bằng file appsettings.json.
     /// </summary>
-    public static async Task<GeofenceConfig> LoadAsync(ILogger logger)
+    public static async Task<GeofenceConfig> LoadAsync(ILogger logger, SupabaseRestClient? rest = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
 
+        // 1. ƯU TIÊN 1: Đồng bộ cấu hình mới nhất từ bảng cau_hinh_cham_cong trên Supabase
+        if (rest != null)
+        {
+            var lastSyncedAt = Preferences.Default.Get("Geofence_SyncedAt", 0L);
+            var nowSec = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            // Đồng bộ định kỳ mỗi 5 phút hoặc khi chưa từng đồng bộ
+            if (nowSec - lastSyncedAt > 300 || lastSyncedAt == 0)
+            {
+                try
+                {
+                    var json = await rest.GetAsync("cau_hinh_cham_cong?select=vi_do,kinh_do,ban_kinh_met,wifi_ssid&order=id.asc&limit=1");
+                    var rows = PostgrstJson.ParseArray(json);
+                    if (rows.Length > 0)
+                    {
+                        var row = rows[0];
+                        var lat = (double)PostgrstJson.ReadDecimal(row, "vi_do", 0m);
+                        var lng = (double)PostgrstJson.ReadDecimal(row, "kinh_do", 0m);
+                        var radius = (double)PostgrstJson.ReadDecimal(row, "ban_kinh_met", 0m);
+                        var wifi = PostgrstJson.ReadString(row, "wifi_ssid");
+
+                        if (IsUsableCoordinate(lat, lng))
+                        {
+                            Preferences.Default.Set("Geofence_Latitude", lat);
+                            Preferences.Default.Set("Geofence_Longitude", lng);
+                            Preferences.Default.Set("Geofence_Radius", radius > 0 ? radius : GeofencePolicy.DEFAULT_RADIUS_METERS);
+                            Preferences.Default.Set("Geofence_Wifi", wifi ?? string.Empty);
+                            Preferences.Default.Set("Geofence_SyncedAt", nowSec);
+
+                            logger.LogInformation(
+                                "Đã đồng bộ toạ độ GPS chấm công từ Supabase Cloud: ({Lat}, {Lng}), R={Radius}m, SSID={Wifi}.",
+                                lat, lng, radius, wifi);
+
+                            return new GeofenceConfig
+                            {
+                                HotelLatitude = lat,
+                                HotelLongitude = lng,
+                                RadiusMeters = radius > 0 ? radius : GeofencePolicy.DEFAULT_RADIUS_METERS,
+                                WifiSsid = wifi ?? string.Empty
+                            };
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Chưa đồng bộ được toạ độ từ Supabase Cloud. Lùi về bộ nhớ máy.");
+                }
+            }
+        }
+
+        // 2. ƯU TIÊN 2: Đọc cấu hình đã lưu trong Preferences (bản đồng bộ gần nhất khi offline)
+        if (Preferences.Default.ContainsKey("Geofence_Latitude"))
+        {
+            var cachedLat = Preferences.Default.Get("Geofence_Latitude", 0d);
+            var cachedLng = Preferences.Default.Get("Geofence_Longitude", 0d);
+            var cachedRadius = Preferences.Default.Get("Geofence_Radius", 0d);
+            var cachedWifi = Preferences.Default.Get("Geofence_Wifi", string.Empty);
+
+            if (IsUsableCoordinate(cachedLat, cachedLng))
+            {
+                return new GeofenceConfig
+                {
+                    HotelLatitude = cachedLat,
+                    HotelLongitude = cachedLng,
+                    RadiusMeters = cachedRadius > 0 ? cachedRadius : GeofencePolicy.DEFAULT_RADIUS_METERS,
+                    WifiSsid = cachedWifi
+                };
+            }
+        }
+
+        // 3. ƯU TIÊN 3 (DỰ PHÒNG CƠ SỞ): Đọc từ gói cài đặt đóng gói appsettings.json
         try
         {
             await using var stream = await FileSystem.OpenAppPackageFileAsync(AssetFileName);

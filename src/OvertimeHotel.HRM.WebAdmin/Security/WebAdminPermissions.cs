@@ -22,6 +22,13 @@ public static class WebAdminPermissions
         }
 
         if (user.Identity?.IsAuthenticated != true) return false;
+
+        // Cấu hình toạ độ định vị chấm công là ĐẶC QUYỀN DUY NHẤT CỦA IT (Admin cũng không được phép can thiệp)
+        if (permissionCode == PermissionCodes.ConfigureAttendanceLocation)
+        {
+            return user.IsInRole("IT");
+        }
+
         var fixedItPermission = permissionCode is PermissionCodes.ManageAccounts
             or PermissionCodes.ManagePermissions or PermissionCodes.ProvisionMobileAccount
             or PermissionCodes.BackupDatabase;

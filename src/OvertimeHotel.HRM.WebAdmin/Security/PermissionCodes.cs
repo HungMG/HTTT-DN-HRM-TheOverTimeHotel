@@ -27,6 +27,12 @@ public static class PermissionCodes
     public const string ManageCatalog = "QL_DANH_MUC";
     public const string BackupDatabase = "SAO_LUU_CSDL";
 
+    /// <summary>
+    /// Cấu hình toạ độ GPS, bán kính geofence và Wi-Fi nội bộ phục vụ chấm công khách sạn.
+    /// ĐẶC QUYỀN RIÊNG CỦA IT: Chỉ bộ phận IT mới được chỉnh sửa, Admin không có quyền can thiệp.
+    /// </summary>
+    public const string ConfigureAttendanceLocation = "CAU_HINH_VI_TRI_CHAM_CONG";
+
     // ── Nhóm: Quản trị nhân sự ─────────────────────────────────────────────
     public const string ManageEmployees = "QL_NHAN_SU";
     public const string ManageContracts = "QL_HOP_DONG";

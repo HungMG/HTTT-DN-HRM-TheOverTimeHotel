@@ -86,13 +86,11 @@
         @@keyframes showcaseCinematicEnter {
             0% {
                 opacity: 0;
-                transform: translateX(-60px) scale(0.94);
-                filter: blur(12px);
+                transform: translateX(-24px);
             }
             100% {
                 opacity: 1;
-                transform: translateX(0) scale(1);
-                filter: blur(0);
+                transform: translateX(0);
             }
         }
 
@@ -148,7 +146,6 @@
             color: #FFFFFF;
             margin-top: 1.5rem;
             text-shadow: 0 4px 25px rgba(0, 0, 0, 0.6);
-            animation: elemCinematicIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
         }
 
         .brand-title span {
@@ -210,13 +207,11 @@
         @@keyframes panelCinematicEnter {
             0% {
                 opacity: 0;
-                transform: translateX(60px);
-                filter: blur(12px);
+                transform: translateX(24px);
             }
             100% {
                 opacity: 1;
                 transform: translateX(0);
-                filter: blur(0);
             }
         }
 
@@ -378,25 +373,15 @@
         @@keyframes emblemPopEntrance {
             0% {
                 opacity: 0;
-                transform: scale(0.35) translateY(-35px) rotate(-15deg);
-                filter: blur(8px);
-            }
-            68% {
-                opacity: 1;
-                transform: scale(1.1) translateY(2px) rotate(2deg);
-                filter: blur(0);
+                transform: scale(0.88) translateY(-8px);
             }
             100% {
                 opacity: 1;
-                transform: scale(1) translateY(0) rotate(0);
+                transform: scale(1) translateY(0);
             }
         }
 
         /* STAGGERED POP-UP TỪNG PHẦN TỬ TRONG FORM */
-        .login-box h3 {
-            animation: elemCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both;
-        }
-
         .login-box p.text-muted {
             animation: elemCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
         }
@@ -425,13 +410,11 @@
         @@keyframes elemCinematicIn {
             0% {
                 opacity: 0;
-                transform: translateY(24px) scale(0.96);
-                filter: blur(5px);
+                transform: translateY(14px);
             }
             100% {
                 opacity: 1;
-                transform: translateY(0) scale(1);
-                filter: blur(0);
+                transform: translateY(0);
             }
         }
 
@@ -608,34 +591,35 @@
             100% { transform: scale(3.8); opacity: 0; }
         }
 
-        /* HIỆU ỨNG BLURTEXT: CHỮ TRƯỢT TỪ MỜ MỜ HIỆN RÕ SẮC NÉT */
+        /* HIỆU ỨNG BLURTEXT: CHỮ TRƯỢT TỪ MỜ MỜ HIỆN RÕ SẮC NÉT (TỐI ƯU 60 FPS) */
         @@keyframes blurTextFloatUp {
             0% {
                 opacity: 0;
-                filter: blur(10px);
-                transform: translateY(14px);
-            }
-            60% {
-                opacity: 0.75;
-                filter: blur(2px);
+                transform: translateY(10px);
+                filter: blur(3px);
             }
             100% {
                 opacity: 1;
-                filter: blur(0px);
                 transform: translateY(0);
+                filter: blur(0px);
             }
         }
 
         .blur-word {
             display: inline-block;
-            animation: blurTextFloatUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-            will-change: transform, filter, opacity;
+            animation: blurTextFloatUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+            will-change: transform, opacity;
             white-space: pre;
         }
 
-        .blur-line {
-            animation: blurTextFloatUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-            will-change: transform, filter, opacity;
+        @@keyframes loginShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        .login-box-shake {
+            animation: loginShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
         }
 
         /* =====================================================================
@@ -675,13 +659,11 @@
         @@keyframes welcomeRibbonIn {
             0% {
                 opacity: 0;
-                transform: translateY(-18px) scale(0.94);
-                filter: blur(8px);
+                transform: translateY(-10px);
             }
             100% {
                 opacity: 1;
-                transform: translateY(0) scale(1);
-                filter: blur(0);
+                transform: translateY(0);
             }
         }
 
@@ -846,10 +828,11 @@
             </div>
 
             <h1 class="brand-title" id="showcaseBrandTitle">
-                The OverTime<br /><span>Hotel &amp; Resort</span>
+                <span class="blur-word" style="animation-delay: 0.08s;">The</span> <span class="blur-word" style="animation-delay: 0.14s;">OverTime</span><br />
+                <span><span class="blur-word" style="animation-delay: 0.20s;">Hotel</span> <span class="blur-word" style="animation-delay: 0.26s;">&amp;</span> <span class="blur-word" style="animation-delay: 0.32s;">Resort</span></span>
             </h1>
             <div class="showcase-rule" aria-hidden="true"></div>
-            <p class="showcase-lead mt-2 fs-5 blur-line" style="animation-delay: 0.25s;">
+            <p class="showcase-lead mt-2 fs-5" style="animation: elemCinematicIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.38s both;">
                 Cổng quản trị thông tin nhân sự và điều hành tiền lương tự động 24/7
             </p>
         </div>
@@ -886,9 +869,9 @@
                     <img src="~/images/the-overtime-hotels-logo.png" asp-append-version="true" alt="The OverTime Hotels" />
                 </div>
                 <h3 class="fw-bold text-dark mb-1" id="loginHeaderTitle" style="font-family: var(--font-display, 'Fraunces', serif);">
-                    Đăng Nhập Quản Trị
+                    <span class="blur-word" style="animation-delay: 0.10s;">Đăng</span> <span class="blur-word" style="animation-delay: 0.16s;">Nhập</span> <span class="blur-word" style="animation-delay: 0.22s;">Quản</span> <span class="blur-word" style="animation-delay: 0.28s;">Trị</span>
                 </h3>
-                <p class="text-muted small blur-line" style="animation-delay: 0.15s;">
+                <p class="text-muted small">
                     Nhập thông tin tài khoản được cấp để truy cập hệ thống
                 </p>
             </div>
@@ -903,36 +886,35 @@
             </div>
 
             <!-- THÔNG BÁO LỖI NẾU CÓ -->
-            @if (!ViewData.ModelState.IsValid)
-            {
-                <div class="alert alert-danger alert-dismissible fade show py-2 px-3 mb-3 border-0 shadow-sm" role="alert">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-exclamation-triangle-fill fs-5 me-2 text-danger"></i>
-                        <div class="small" asp-validation-summary="All"></div>
+            <div id="loginAlertBox" class="alert alert-danger alert-dismissible fade show py-2 px-3 mb-3 border-0 shadow-sm @(!ViewData.ModelState.IsValid ? "" : "d-none")" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill fs-5 me-2 text-danger flex-shrink-0"></i>
+                    <div class="small" id="loginAlertMessage">
+                        @if (!ViewData.ModelState.IsValid)
+                        {
+                            <div asp-validation-summary="All"></div>
+                        }
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-            }
+                <button type="button" class="btn-close" id="loginAlertClose" aria-label="Close"></button>
+            </div>
 
             <!-- THÔNG BÁO CHẶN PHÂN QUYỀN -->
-            @if (ViewBag.RoleNotice != null)
-            {
-                <div class="alert alert-warning alert-dismissible fade show p-3 mb-4 border-0 shadow-sm" role="alert">
-                    <div class="d-flex">
-                        <i class="bi bi-phone text-warning fs-3 me-3"></i>
-                        <div>
-                            <h6 class="alert-heading fw-bold mb-1">Hướng Dẫn Phân Quyền Vai Trò</h6>
-                            <p class="small mb-0 text-dark">@ViewBag.RoleNotice</p>
-                        </div>
+            <div id="roleNoticeBox" class="alert alert-warning alert-dismissible fade show p-3 mb-4 border-0 shadow-sm @(ViewBag.RoleNotice != null ? "" : "d-none")" role="alert">
+                <div class="d-flex">
+                    <i class="bi bi-phone text-warning fs-3 me-3 flex-shrink-0"></i>
+                    <div>
+                        <h6 class="alert-heading fw-bold mb-1">Hướng Dẫn Phân Quyền Vai Trò</h6>
+                        <p class="small mb-0 text-dark" id="roleNoticeMessage">@ViewBag.RoleNotice</p>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-            }
+                <button type="button" class="btn-close" id="roleNoticeClose" aria-label="Close"></button>
+            </div>
 
             <!-- FORM ĐĂNG NHẬP -->
-            <form asp-action="Login" method="post">
+            <form asp-action="Login" method="post" id="loginForm">
                 @Html.AntiForgeryToken()
-                <input type="hidden" asp-for="ReturnUrl" />
+                <input type="hidden" asp-for="ReturnUrl" id="returnUrlInput" />
 
                 <div class="position-relative mb-3">
                     <i class="bi bi-person input-icon"></i>
@@ -970,7 +952,13 @@
                 <!-- NÚT NỔI 3D BỒNG BỀNH ĐĂNG NHẬP HỆ THỐNG -->
                 <div class="d-grid mb-4">
                     <button type="submit" class="btn btn-hotel-primary" id="loginSubmitBtn">
-                        <i class="bi bi-box-arrow-in-right me-2"></i>Đăng Nhập Hệ Thống
+                        <span id="btnDefaultState"><i class="bi bi-box-arrow-in-right me-2"></i>Đăng Nhập Hệ Thống</span>
+                        <span id="btnLoadingState" class="d-none">
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Đang xác thực...
+                        </span>
+                        <span id="btnSuccessState" class="d-none">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>Thành công! Đang chuyển hướng...
+                        </span>
                     </button>
                 </div>
             </form>
@@ -1025,47 +1013,132 @@
 
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // 1. Tách từng từ làm hiệu ứng BlurText (từ mờ lướt lên rõ)
-    function triggerBlurText(elId) {
-        const el = document.getElementById(elId);
-        if (!el) return;
+    // 1. Quản lý xử lý Đăng Nhập không tải lại trang (Zero Full-Page Reload) & Bảo vệ Browser History
+    const loginForm = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('loginSubmitBtn');
+    const btnDefault = document.getElementById('btnDefaultState');
+    const btnLoading = document.getElementById('btnLoadingState');
+    const btnSuccess = document.getElementById('btnSuccessState');
+    const alertBox = document.getElementById('loginAlertBox');
+    const alertMsg = document.getElementById('loginAlertMessage');
+    const roleBox = document.getElementById('roleNoticeBox');
+    const roleMsg = document.getElementById('roleNoticeMessage');
+    const loginBox = document.querySelector('.login-box');
 
-        const nodes = Array.from(el.childNodes);
-        el.innerHTML = '';
-        let wordIndex = 0;
+    function setSubmitting(isSubmitting) {
+        if (!submitBtn) return;
+        submitBtn.disabled = isSubmitting;
+        if (isSubmitting) {
+            btnDefault?.classList.add('d-none');
+            btnSuccess?.classList.add('d-none');
+            btnLoading?.classList.remove('d-none');
+        } else {
+            btnLoading?.classList.add('d-none');
+            btnSuccess?.classList.add('d-none');
+            btnDefault?.classList.remove('d-none');
+        }
+    }
 
-        nodes.forEach(function (node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const words = node.textContent.split(/(\s+)/);
-                words.forEach(function (w) {
-                    if (w.trim().length > 0) {
-                        const span = document.createElement('span');
-                        span.className = 'blur-word';
-                        span.style.animationDelay = (0.05 + wordIndex * 0.05).toFixed(2) + 's';
-                        span.textContent = w;
-                        el.appendChild(span);
-                        wordIndex++;
-                    } else if (w.length > 0) {
-                        el.appendChild(document.createTextNode(w));
+    function showSuccessAndRedirect(targetUrl) {
+        if (submitBtn) submitBtn.disabled = true;
+        btnLoading?.classList.add('d-none');
+        btnDefault?.classList.add('d-none');
+        btnSuccess?.classList.remove('d-none');
+
+        // BẮT BUỘC DÙNG location.replace ĐỂ THAY THẾ TRANG LOGIN TRONG LỊCH SỬ DUYỆT TRÌNH.
+        // Khi người dùng bấm Undo (Back) hoặc Redo (Forward), trình duyệt sẽ không bị kẹt
+        // lại ở form login đã submit hoặc báo lỗi trang đăng nhập.
+        setTimeout(function () {
+            window.location.replace(targetUrl || '/');
+        }, 220);
+    }
+
+    function triggerShake() {
+        if (!loginBox) return;
+        loginBox.classList.remove('login-box-shake');
+        void loginBox.offsetWidth; // Buộc trình duyệt reflow để kích hoạt lại animation
+        loginBox.classList.add('login-box-shake');
+    }
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            alertBox?.classList.add('d-none');
+            roleBox?.classList.add('d-none');
+            setSubmitting(true);
+
+            try {
+                const formData = new FormData(loginForm);
+                const response = await fetch(loginForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
                     }
                 });
-            } else if (node.nodeName === 'BR') {
-                el.appendChild(document.createElement('br'));
-            } else {
-                const wrapper = document.createElement('span');
-                wrapper.className = 'blur-word';
-                wrapper.style.animationDelay = (0.05 + wordIndex * 0.05).toFixed(2) + 's';
-                wrapper.appendChild(node.cloneNode(true));
-                el.appendChild(wrapper);
-                wordIndex++;
+
+                if (response.redirected) {
+                    showSuccessAndRedirect(response.url);
+                    return;
+                }
+
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.success && data.redirectUrl) {
+                        showSuccessAndRedirect(data.redirectUrl);
+                    } else if (data.roleNotice) {
+                        setSubmitting(false);
+                        if (roleMsg) roleMsg.textContent = data.roleNotice;
+                        roleBox?.classList.remove('d-none');
+                        triggerShake();
+                    } else {
+                        setSubmitting(false);
+                        if (alertMsg) alertMsg.textContent = data.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+                        alertBox?.classList.remove('d-none');
+                        triggerShake();
+                    }
+                } else {
+                    // Fallback nếu máy chủ trả HTML (ví dụ lỗi xác thực CSRF hoặc redirect dạng HTML)
+                    const html = await response.text();
+                    if (html.includes('app-topbar') || html.includes('app-shell')) {
+                        // Đã chuyển vào trong cổng quản trị thành công
+                        window.location.replace(window.location.origin);
+                    } else {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const errorSummary = doc.querySelector('.text-danger, .validation-summary-errors, .alert-danger');
+                        setSubmitting(false);
+                        if (alertMsg) alertMsg.textContent = errorSummary ? errorSummary.textContent.trim() : 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+                        alertBox?.classList.remove('d-none');
+                        triggerShake();
+                    }
+                }
+            } catch (err) {
+                setSubmitting(false);
+                if (alertMsg) alertMsg.textContent = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.';
+                alertBox?.classList.remove('d-none');
+                triggerShake();
             }
         });
     }
 
-    // Chạy BlurText cho cả tiêu đề Showcase lẫn tiêu đề Đăng Nhập
-    document.addEventListener('DOMContentLoaded', function () {
-        triggerBlurText('showcaseBrandTitle');
-        triggerBlurText('loginHeaderTitle');
+    // Đóng thông báo nhanh
+    document.getElementById('loginAlertClose')?.addEventListener('click', function () {
+        alertBox?.classList.add('d-none');
+    });
+    document.getElementById('roleNoticeClose')?.addEventListener('click', function () {
+        roleBox?.classList.add('d-none');
+    });
+
+    // Bắt sự kiện pageshow khi người dùng nhấn nút Back/Undo hoặc Forward/Redo của trình duyệt
+    window.addEventListener('pageshow', function (event) {
+        // Nếu trang được nạp từ bộ nhớ đệm BFCache (trình duyệt không gửi request mới lên server)
+        // tự động tải lại để máy chủ kiểm tra phiên và điều hướng thẳng vào trang quản trị
+        if (event.persisted) {
+            window.location.reload();
+        }
     });
 
     // 2. Hiệu ứng gợn sóng ánh sáng hoàng gia khi nhấn chuột vào nút nổi
@@ -1107,6 +1180,8 @@
 
     // 5. Hàm tự động điền tài khoản test nhanh
     function fillAccount(username, password) {
+        alertBox?.classList.add('d-none');
+        roleBox?.classList.add('d-none');
         const usernameField = document.getElementById('usernameInput');
         const passwordField = document.getElementById('passwordInput');
 

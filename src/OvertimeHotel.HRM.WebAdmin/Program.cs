@@ -50,6 +50,7 @@ builder.Services.AddSingleton<SearchListCache>();
 builder.Services.AddSingleton<SearchCacheSaveInterceptor>();
 builder.Services.AddSingleton<SearchCacheCommandInterceptor>();
 builder.Services.AddSingleton<SearchCacheTransactionInterceptor>();
+builder.Services.AddScoped<OvertimeHotel.HRM.WebAdmin.Services.IAttendanceLocationService, OvertimeHotel.HRM.WebAdmin.Services.AttendanceLocationService>();
 
 // Nén phản hồi HTTP (Brotli ưu tiên, rơi về Gzip). Không có lớp này, mỗi trang phải
 // truyền nguyên văn ~670 KB CSS/JS và HTML lớn nhất gần 1.8 MB — đo thực tế cho thấy
@@ -343,6 +344,10 @@ builder.Services.AddAuthorization(options =>
     // (ReportPolicy.ResolveScope) — mã quyền không mang thông tin phạm vi.
     AddPermissionPolicy(PermissionCodes.ReportView);
     AddPermissionPolicy(PermissionCodes.ReportExport);
+
+    // Cấu hình toạ độ & bán kính định vị chấm công là ĐẶC QUYỀN DUY NHẤT CỦA IT (Admin không có quyền can thiệp)
+    options.AddPolicy(PermissionCodes.ConfigureAttendanceLocation, policy => policy.RequireAssertion(context =>
+        context.User.IsInRole("IT")));
 });
 
 // Cấu hình kết nối Entity Framework Core với Supabase PostgreSQL

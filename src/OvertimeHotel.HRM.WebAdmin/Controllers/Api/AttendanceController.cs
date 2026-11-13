@@ -31,6 +31,28 @@ public class AttendanceController : ControllerBase
         _summaryService = summaryService;
     }
 
+    /// <summary>
+    /// Cung cấp toạ độ GPS, bán kính quét Geofence và Wi-Fi nội bộ cho Mobile App.
+    /// Giá trị được cấu hình động bởi bộ phận IT trên Web Admin.
+    /// </summary>
+    [HttpGet("geofence-config")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetGeofenceConfig(
+        [FromServices] OvertimeHotel.HRM.WebAdmin.Services.IAttendanceLocationService locationService)
+    {
+        var config = await locationService.GetLocationConfigAsync();
+        return Ok(new
+        {
+            hotelName = config.HotelName,
+            address = config.Address,
+            hotelLatitude = config.HotelLatitude,
+            hotelLongitude = config.HotelLongitude,
+            radiusMeters = config.RadiusMeters,
+            wifiSsid = config.WifiSsid,
+            lastUpdatedAt = config.LastUpdatedAt
+        });
+    }
+
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary([FromQuery] int year, [FromQuery] int month,
         [FromQuery] int? employeeId, CancellationToken cancellationToken)
