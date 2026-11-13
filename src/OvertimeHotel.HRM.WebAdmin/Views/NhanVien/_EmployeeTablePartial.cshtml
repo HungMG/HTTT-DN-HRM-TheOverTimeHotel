@@ -1,3 +1,4 @@
+@inject Microsoft.AspNetCore.DataProtection.IDataProtectionProvider EmployeeDeleteProtection
 @model OvertimeHotel.HRM.WebAdmin.Models.NhanVienIndexViewModel
 @{
     Func<int, string> pageUrl = page => Url.Action("Index", new
@@ -144,11 +145,25 @@
                             <a asp-action="Edit" asp-route-id="@employee.MaNhanVien" onclick="event.stopPropagation();" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hồ sơ">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <form asp-action="Delete" asp-route-id="@employee.MaNhanVien" method="post" class="d-inline" onclick="event.stopPropagation();" onsubmit="return confirm('Bạn có chắc chắn muốn ẩn hồ sơ @employee.HoTen khỏi danh sách?');">
-                                <button type="submit" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Ẩn hồ sơ">
-                                    <i class="bi bi-trash"></i>
+                            @if (employee.TrangThai == "DA_THOI_VIEC")
+                            {
+                                <button type="button" class="btn btn-sm btn-light border rounded-circle text-danger"
+                                        style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"
+                                        data-employee-delete-name="@employee.HoTen"
+                                        data-employee-delete-token="@OvertimeHotel.HRM.WebAdmin.Services.EmployeeDeletionService.CreateConfirmationToken(EmployeeDeleteProtection, employee.MaNhanVien)"
+                                        data-employee-delete-url="@Url.Action("DeletePermanently", "NhanVien", new { id = employee.MaNhanVien })"
+                                        title="Xóa vĩnh viễn" aria-label="Xóa vĩnh viễn nhân viên @employee.HoTen" aria-haspopup="dialog">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
                                 </button>
-                            </form>
+                            }
+                            else
+                            {
+                                <form asp-action="Delete" asp-route-id="@employee.MaNhanVien" method="post" class="d-inline" onclick="event.stopPropagation();" onsubmit="return confirm('Bạn có chắc chắn muốn ẩn hồ sơ @employee.HoTen khỏi danh sách?');">
+                                    <button type="submit" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Ẩn hồ sơ" aria-label="Ẩn hồ sơ nhân viên @employee.HoTen">
+                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                    </button>
+                                </form>
+                            }
                         </td>
                     </tr>
                 }

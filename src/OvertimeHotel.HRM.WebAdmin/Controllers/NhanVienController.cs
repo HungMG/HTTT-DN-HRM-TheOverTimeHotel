@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -356,6 +357,12 @@ public class NhanVienController : Controller
         if (employee == null)
             return NotFound();
 
+        if (employee.TrangThai == "DA_THOI_VIEC")
+        {
+            TempData["Error"] = "Hồ sơ đã nghỉ việc. Dùng nút Xóa vĩnh viễn để kiểm tra dữ liệu liên quan.";
+            return RedirectToAction(nameof(Index), new { status = "DA_THOI_VIEC" });
+        }
+
         try
         {
             employee.TrangThai = "DA_THOI_VIEC";
@@ -370,6 +377,42 @@ public class NhanVienController : Controller
         }
 
         return RedirectToAction(nameof(Index));
+    }
+
+    private EmployeeDeletionService DeletionService => new(_context,
+        HttpContext.RequestServices.GetRequiredService<IDataProtectionProvider>());
+
+    [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> DeletePreview(int id)
+    {
+        try
+        {
+            var preview = await DeletionService.PreviewAsync(id);
+            return preview == null ? NotFound(new { message = "Hồ sơ nhân viên không còn tồn tại." }) : Json(preview);
+        }
+        catch (Exception ex) when (ex is Npgsql.NpgsqlException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Không thể kiểm tra xóa nhân viên {EmployeeId}.", id);
+            return StatusCode(503, new { message = "Không thể kiểm tra dữ liệu liên quan. Vui lòng thử lại." });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeletePermanently(int id, string? confirmationToken, bool confirmed = false)
+    {
+        try
+        {
+            var result = await DeletionService.DeleteAsync(id, confirmationToken, confirmed);
+            return result.Deleted ? Json(new { success = true, message = result.Message })
+                : Conflict(new { success = false, message = result.Message });
+        }
+        catch (Exception ex) when (ex is DbUpdateException or Npgsql.NpgsqlException)
+        {
+            _logger.LogError(ex, "Không thể xóa vĩnh viễn nhân viên {EmployeeId}.", id);
+            return Conflict(new { success = false, message = "Chưa xác nhận được kết quả xóa. Hãy tải lại danh sách và mở lại cảnh báo để kiểm tra dữ liệu liên quan trước khi thử lại." });
+        }
     }
 
     private async Task<NhanVienFormViewModel> BuildEmployeeFormAsync(NhanVienFormViewModel model)

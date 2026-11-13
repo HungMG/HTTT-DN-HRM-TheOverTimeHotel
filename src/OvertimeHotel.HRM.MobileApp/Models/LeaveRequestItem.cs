@@ -43,11 +43,13 @@ public class LeaveRequestItem
     /// <c>TargetNullValue</c> kiểu chuỗi rỗng sẽ bị coi là có nội dung, lúc đó
     /// khối hiện ra với một dòng trống. Bọc thành bool cho chắc.
     /// </remarks>
-    public bool HasPhanHoi => !string.IsNullOrWhiteSpace(PhanHoiDuyet);
+    public bool HasPhanHoi => TrangThai == "HET_HAN" || !string.IsNullOrWhiteSpace(PhanHoiDuyet);
+
+    public string PhanHoiDisplay => TrangThai == "HET_HAN" ? "Đơn đã hết hạn vì chưa được duyệt. Vui lòng liên hệ quản lý." : PhanHoiDuyet ?? string.Empty;
 
     /// <summary>Nhãn khối phản hồi, kèm tên người ký duyệt.</summary>
     public string PhanHoiTitle =>
-        string.IsNullOrWhiteSpace(NguoiDuyetTen)
+        TrangThai == "HET_HAN" ? "Thông báo hết hạn" : string.IsNullOrWhiteSpace(NguoiDuyetTen)
             ? "Phản hồi của người duyệt"
             : $"Phản hồi · {NguoiDuyetTen}";
 
@@ -77,6 +79,7 @@ public class LeaveRequestItem
         "DA_DUYET" => "Đã duyệt",
         "TU_CHOI" => "Từ chối",
         "DA_HUY" => "Đã rút",
+        "HET_HAN" => "Hết hạn",
         _ => TrangThai
     };
 

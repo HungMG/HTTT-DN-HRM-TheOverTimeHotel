@@ -633,6 +633,12 @@ public class LeaveApprovalService : ILeaveApprovalService
         var maNhanVien = PostgrstJson.ReadNullableInt(row, "ma_nhan_vien") ?? 0;
         var loaiDon = PostgrstJson.ReadEmbedded(row, "loai_don");
 
+        var status = PostgrstJson.ReadString(row, "trang_thai");
+        var typeId = PostgrstJson.ReadNullableInt(row, "ma_loai_don") ?? 0;
+        var start = PostgrstJson.ReadDate(row, "tu_ngay");
+        var todayVietnam = DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(7)).DateTime);
+        if (status == "CHO_DUYET" && typeId is >= 1 and <= 4 && start <= todayVietnam)
+            status = "HET_HAN";
         return new LeaveRequestItem
         {
             MaDon = PostgrstJson.ReadNullableInt(row, "ma_don") ?? 0,
@@ -648,7 +654,7 @@ public class LeaveApprovalService : ILeaveApprovalService
             DenNgay = PostgrstJson.ReadDate(row, "den_ngay"),
             LyDo = PostgrstJson.ReadString(row, "ly_do"),
             NgayGui = PostgrstJson.ReadTimestamp(row, "ngay_gui"),
-            TrangThai = PostgrstJson.ReadString(row, "trang_thai"),
+            TrangThai = status,
             MaNguoiDuyet = PostgrstJson.ReadNullableInt(row, "ma_nguoi_duyet"),
             NgayDuyet = PostgrstJson.ReadNullableTimestamp(row, "ngay_duyet"),
             PhanHoiDuyet = PostgrstJson.ReadNullableString(row, "phan_hoi_duyet"),

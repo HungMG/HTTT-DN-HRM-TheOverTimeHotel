@@ -476,6 +476,8 @@
                         statusBadge = `<span class="badge bg-warning text-dark border px-3 py-1">Chờ duyệt</span>`;
                     } else if (d.trangThai === 'DA_DUYET') {
                         statusBadge = `<span class="badge bg-success text-white border px-3 py-1">Đã duyệt</span>`;
+                    } else if (d.trangThai === 'HET_HAN' || d.trangThai === 'DA_HUY') {
+                        statusBadge = `<span class="badge bg-secondary text-white border px-3 py-1">${d.trangThai === 'HET_HAN' ? 'Hết hạn' : 'Đã rút'}</span>`;
                     } else {
                         statusBadge = `<span class="badge bg-danger text-white border px-3 py-1">Đã từ chối</span>`;
                     }

@@ -303,6 +303,12 @@ public static class LeaveApprovalPolicy
             return (false, "PAST_DATE", "Ngày bắt đầu không được nằm trong quá khứ.");
         }
 
+        // Đơn thôi việc có quy định báo trước riêng; không áp dụng giới hạn đơn nghỉ.
+        if (maLoaiDon is >= 1 and <= 4 && tuNgay == today)
+            return (false, "SAME_DAY", "Đơn nghỉ phải được gửi trước ngày bắt đầu nghỉ.");
+        if (maLoaiDon is >= 1 and <= 4 && tuNgay.DayNumber - today.DayNumber > 30)
+            return (false, "TOO_EARLY", "Chỉ được gửi đơn nghỉ trước tối đa 30 ngày.");
+
         if (denNgay < tuNgay)
         {
             return (false, "INVALID_PERIOD", "Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.");

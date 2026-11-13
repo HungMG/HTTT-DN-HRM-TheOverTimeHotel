@@ -264,6 +264,9 @@ public class LeaveSubmitViewModel : INotifyPropertyChanged
     public bool HasFieldError => !string.IsNullOrWhiteSpace(FieldError);
 
     /// <summary>Chỉ hiện danh sách lịch sử khi đã có đơn nào.</summary>
+    public bool HasExpiredRequests => MyRequests.Any(r => r.TrangThai == "HET_HAN");
+    public string ExpiredRequestsMessage => $"Bạn có {MyRequests.Count(r => r.TrangThai == "HET_HAN")} đơn hết hạn vì chưa được duyệt. Vui lòng xem lịch sử và liên hệ quản lý.";
+
     public bool HasHistory => MyRequests.Count > 0;
 
     /// <summary>Nhãn trên nút mở lịch sử: có đơn thì kèm số đếm.</summary>
@@ -371,6 +374,8 @@ public class LeaveSubmitViewModel : INotifyPropertyChanged
                 PendingRequests.Add(r);
             }
 
+            OnPropertyChanged(nameof(HasExpiredRequests));
+            OnPropertyChanged(nameof(ExpiredRequestsMessage));
             OnPropertyChanged(nameof(HasHistory));
             OnPropertyChanged(nameof(HasNoHistory));
             OnPropertyChanged(nameof(HistoryButtonText));

@@ -222,6 +222,10 @@ public class LeaveRequestsController : ControllerBase
         if (!OvertimeHotel.HRM.WebAdmin.Security.WebAdminPermissions.HasPermission(User, permission))
             return StatusCode(403, new LeaveReviewResult(false, "FORBIDDEN", "Bạn không còn quyền xử lý loại đơn này."));
 
+        var todayVietnam = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Ho_Chi_Minh").DateTime);
+        if (donTu.MaLoaiDon is >= 1 and <= 4 && donTu.TuNgay <= todayVietnam)
+            return BadRequest(new LeaveReviewResult(false, "EXPIRED", "Đơn nghỉ đã hết hạn, không thể xử lý."));
+
         // 3. Thẩm định qua LeaveApprovalPolicy
         var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateReviewAction(
             role: normalizedRole is RoleType.IT or RoleType.Manager ? "HR" : role,
@@ -254,7 +258,7 @@ public class LeaveRequestsController : ControllerBase
         var trimmedFeedback = string.IsNullOrWhiteSpace(request.PhanHoi) ? null : request.PhanHoi.Trim();
 
         var affected = await _context.DonTus
-            .Where(d => d.MaDon == maDon && d.TrangThai == "CHO_DUYET")
+            .Where(d => d.MaDon == maDon && d.TrangThai == "CHO_DUYET" && (d.MaLoaiDon == 5 || d.TuNgay > todayVietnam))
             .ExecuteUpdateAsync(s => s
                 .SetProperty(d => d.TrangThai, newStatus)
                 .SetProperty(d => d.NgayDuyet, now)

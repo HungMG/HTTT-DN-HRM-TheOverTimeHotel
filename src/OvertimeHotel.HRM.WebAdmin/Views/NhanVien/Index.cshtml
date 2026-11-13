@@ -17,6 +17,7 @@
 
 <div class="catalog-page employee-workspace">
     <partial name="_CatalogAlerts" />
+    <div class="alert alert-success d-none" role="status" data-employee-delete-notice tabindex="-1"></div>
 
     <!-- 3 MINI KPI SUMMARY STATS -->
     <div class="row g-3 mb-4">
@@ -179,7 +180,35 @@
     </div>
 </div>
 
+<div class="modal fade" id="employeeDeleteModal" tabindex="-1" aria-labelledby="employeeDeleteModalLabel"
+     aria-describedby="employeeDeleteDescription" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="employeeDeleteModalLabel">Xóa vĩnh viễn nhân viên</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <form id="employeeDeleteForm" method="post" class="d-flex flex-column overflow-hidden">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="confirmationToken" />
+                <div class="modal-body">
+                    <p id="employeeDeleteDescription">Bạn có chắc chắn muốn xóa vĩnh viễn nhân viên này và các dữ liệu liên quan?</p>
+                    <p class="fw-semibold text-break" data-delete-employee-name></p>
+                    <p class="text-danger">Thao tác không thể hoàn tác. Dữ liệu lương, hợp đồng và dữ liệu phụ thuộc sẽ bị xóa theo; sự kiện do nhân viên quản lý có thể bị xóa cùng dữ liệu người tham gia.</p>
+                    <input type="hidden" name="confirmed" value="true" />
+                    <div class="alert alert-danger d-none" role="alert" data-delete-error></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal" data-delete-cancel>Hủy</button>
+                    <button type="submit" class="btn btn-danger" data-delete-submit>Xác nhận xóa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+<script src="~/js/employee-delete.js" asp-append-version="true"></script>
 <script src="~/js/account-request-popup.js" asp-append-version="true"></script>
 <script>
     function openEmployeeProfile(id, message) {

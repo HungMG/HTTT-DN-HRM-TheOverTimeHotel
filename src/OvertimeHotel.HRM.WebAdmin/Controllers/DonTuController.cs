@@ -450,6 +450,7 @@ public class DonTuController : Controller
                     "DA_DUYET" => "Đã duyệt",
                     "TU_CHOI" => "Từ chối",
                     "DA_HUY" => "Đã rút",
+                    "HET_HAN" => "Hết hạn",
                     _ => donTu.TrangThai
                 },
                 maNguoiDuyet = donTu.MaNguoiDuyet,
@@ -505,6 +506,10 @@ public class DonTuController : Controller
             (User.IsInRole("Manager") && (currentDeptId is not > 0 || donTu.NhanVien?.MaPhongBan != currentDeptId)))
             return Forbid();
 
+        var todayVietnam = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Asia/Ho_Chi_Minh").DateTime);
+        if (donTu.MaLoaiDon is >= 1 and <= 4 && donTu.TuNgay <= todayVietnam)
+            return BadRequest(new { success = false, code = "EXPIRED", message = "Đơn nghỉ đã hết hạn, không thể xử lý." });
+
         // 2. Thẩm định qua LeaveApprovalPolicy
         var (isValid, errorCode, errorMessage) = LeaveApprovalPolicy.ValidateReviewAction(
             role: User.IsInRole("Admin") ? "Admin" : "HR",
@@ -529,7 +534,7 @@ public class DonTuController : Controller
         var feedback = string.IsNullOrWhiteSpace(input.PhanHoi) ? null : input.PhanHoi.Trim();
 
         var affected = await _context.DonTus
-            .Where(d => d.MaDon == input.MaDon && d.TrangThai == "CHO_DUYET")
+            .Where(d => d.MaDon == input.MaDon && d.TrangThai == "CHO_DUYET" && (d.MaLoaiDon == 5 || d.TuNgay > todayVietnam))
             .ExecuteUpdateAsync(s => s
                 .SetProperty(d => d.TrangThai, newStatus)
                 .SetProperty(d => d.NgayDuyet, now)

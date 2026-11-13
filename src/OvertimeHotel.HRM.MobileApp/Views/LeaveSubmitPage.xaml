@@ -170,6 +170,10 @@
                     </VerticalStackLayout>
                 </Border>
 
+                <Border IsVisible="{Binding HasExpiredRequests}" Stroke="#F59E0B" BackgroundColor="#FFFBEB" StrokeShape="RoundRectangle 10" Padding="12">
+                    <Label Text="{Binding ExpiredRequestsMessage}" TextColor="#92400E" FontSize="13" />
+                </Border>
+
                 <!-- ═══ THẺ 2 · THỜI GIAN & LÝ DO ═══ -->
                 <Border x:Name="formCard"
                         StrokeShape="RoundRectangle 20"
@@ -604,7 +608,7 @@
                                                                FontSize="10"
                                                                FontFamily="SegoeUI" />
                                                     </Grid>
-                                                    <Label Text="{Binding PhanHoiDuyet}"
+                                                    <Label Text="{Binding PhanHoiDisplay}"
                                                            TextColor="#64748B"
                                                            FontSize="11"
                                                            FontFamily="SegoeUI" />

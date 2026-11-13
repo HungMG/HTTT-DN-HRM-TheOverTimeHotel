@@ -21,6 +21,16 @@ async Task Check(string name, Func<Task> check)
 }
 void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
 var today = DateOnly.FromDateTime(DateTime.Today);
+var leaveToday = new DateOnly(2026, 11, 13);
+await Check("Leave submission deadline", () =>
+{
+    bool Valid(int type, int days) => LeaveApprovalPolicy.ValidateCreate(type, leaveToday.AddDays(days), leaveToday.AddDays(days), "Lý do", leaveToday).IsValid;
+    Require(!Valid(1, 0), "Same-day leave must be rejected");
+    Require(Valid(1, 1) && Valid(1, 30), "Leave must be allowed 1 through 30 days ahead");
+    Require(!Valid(1, 31), "Leave beyond 30 days must be rejected");
+    Require(Valid(5, 45), "Resignation is excluded from leave deadline");
+    return Task.CompletedTask;
+});
 
 foreach (var departmentName in new[] { "Ban Giám Đốc", "Ban Giám Đốc (BOD)", "ban giám đốc" })
 await Check("Board catalog " + departmentName, async () =>

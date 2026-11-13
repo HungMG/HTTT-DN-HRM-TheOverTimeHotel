@@ -4,6 +4,26 @@ namespace OvertimeHotel.HRM.Data.Context;
 
 public static class DatabaseSchemaInitializer
 {
+    public static Task EnsureEmployeePurgeSchemaAsync(AppDbContext context, CancellationToken cancellationToken = default)
+    {
+        // Preserve the salary guard for normal edits. Only an explicitly confirmed employee purge
+        // can remove that employee's appendices, using a transaction-local employee identifier.
+        const string sql = """
+            DO $migration$
+            DECLARE definition text; begin_position integer;
+            BEGIN
+                IF to_regprocedure('public.salary_guard_appendix()') IS NULL THEN RETURN; END IF;
+                SELECT pg_get_functiondef('public.salary_guard_appendix()'::regprocedure) INTO definition;
+                IF strpos(definition, 'hrm.purge_employee_id') > 0 THEN RETURN; END IF;
+                begin_position := strpos(definition, 'BEGIN');
+                IF begin_position = 0 THEN RAISE EXCEPTION 'Unexpected salary guard definition'; END IF;
+                definition := overlay(definition placing E'\nIF TG_OP = ''DELETE'' AND EXISTS (SELECT 1 FROM public.hop_dong WHERE ma_hop_dong = OLD.ma_hop_dong AND ma_nhan_vien::text = current_setting(''hrm.purge_employee_id'', true)) THEN RETURN OLD; END IF;\n' from begin_position + 5 for 0);
+                EXECUTE definition;
+            END $migration$;
+            """;
+        return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+    }
+
     public static Task EnsureAdminAuditLogTableAsync(AppDbContext context, CancellationToken cancellationToken = default)
     {
         const string sql = """
