@@ -308,7 +308,7 @@ builder.Services.AddAuthorization(options =>
     }
 
     options.AddPolicy("AccountRequestAccess", policy => policy.RequireAssertion(context =>
-        context.User.HasPermission(PermissionCodes.ManageAccounts) || context.User.HasPermission(PermissionCodes.ProvisionMobileAccount)));
+        !context.User.IsInRole("HR") && (context.User.HasPermission(PermissionCodes.ManageAccounts) || context.User.HasPermission(PermissionCodes.ProvisionMobileAccount))));
     options.AddPolicy("AccountRequestCreate", policy => policy.RequireAssertion(context =>
         context.User.HasPermission(PermissionCodes.ManageEmployees) || context.User.HasPermission(PermissionCodes.ProvisionMobileAccount)));
     AddPermissionPolicy(PermissionCodes.ManageAccounts);

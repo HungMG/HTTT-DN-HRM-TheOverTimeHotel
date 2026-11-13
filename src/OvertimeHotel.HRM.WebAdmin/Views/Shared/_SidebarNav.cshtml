@@ -185,8 +185,8 @@
                     </a>
                 }
 
-                @if (User.HasPermission(PermissionCodes.ManageAccounts) ||
-                     User.HasPermission(PermissionCodes.ProvisionMobileAccount))
+                @if (!User.IsInRole("HR") && (User.HasPermission(PermissionCodes.ManageAccounts) ||
+                     User.HasPermission(PermissionCodes.ProvisionMobileAccount)))
                 {
                     <a class="app-nav-item@(IsCurrent("YeuCauTaiKhoan") ? " is-active" : "")"
                        asp-controller="YeuCauTaiKhoan" asp-action="Index">

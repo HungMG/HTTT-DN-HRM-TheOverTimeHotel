@@ -431,8 +431,8 @@ public class YeuCauTaiKhoanController : Controller
     //  CREATE PROMOTION — GỬI YÊU CẦU THĂNG CHỨC LÊN QUẢN LÝ
     // =====================================================================
     [HttpGet]
-    [Authorize(Policy = PermissionCodes.ManageAccounts)]
-    public async Task<IActionResult> CreatePromotion(int? employeeId = null)
+    [Authorize(Policy = PermissionCodes.ManageEmployees)]
+    public async Task<IActionResult> CreatePromotion(int? employeeId = null, bool popup = false)
     {
         var role = GetCurrentRoleName();
         if (!LeaveApprovalPolicy.CanSubmitPromotionRequest(role))
@@ -448,13 +448,13 @@ public class YeuCauTaiKhoanController : Controller
         }
 
         await LoadPromotionOptionsAsync(model);
-        return View(model);
+        return popup ? PartialView("_CreatePromotionPopup", model) : View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PermissionCodes.ManageAccounts)]
-    public async Task<IActionResult> CreatePromotion(CreatePromotionRequestViewModel model)
+    [Authorize(Policy = PermissionCodes.ManageEmployees)]
+    public async Task<IActionResult> CreatePromotion(CreatePromotionRequestViewModel model, bool popup = false)
     {
         var role = GetCurrentRoleName();
         if (!LeaveApprovalPolicy.CanSubmitPromotionRequest(role))
@@ -468,7 +468,7 @@ public class YeuCauTaiKhoanController : Controller
         {
             ModelState.AddModelError(string.Empty, "Không xác định được nhân viên đang đăng nhập. Vui lòng đăng nhập lại.");
             await LoadPromotionOptionsAsync(model);
-            return View(model);
+            return popup ? PartialView("_CreatePromotionPopup", model) : View(model);
         }
 
         var managerRole = await _context.VaiTros
@@ -478,7 +478,7 @@ public class YeuCauTaiKhoanController : Controller
         {
             ModelState.AddModelError(string.Empty, "Hệ thống chưa thiết lập vai trò Quản lý (Manager).");
             await LoadPromotionOptionsAsync(model);
-            return View(model);
+            return popup ? PartialView("_CreatePromotionPopup", model) : View(model);
         }
 
         model.TargetRoleId = managerRole.MaVaiTro;
@@ -548,7 +548,7 @@ public class YeuCauTaiKhoanController : Controller
         if (!ModelState.IsValid)
         {
             await LoadPromotionOptionsAsync(model);
-            return View(model);
+            return popup ? PartialView("_CreatePromotionPopup", model) : View(model);
         }
 
         var promotionNote = $"[THANG_CHUC] Lý do: {model.Reason.Trim()}";
@@ -595,11 +595,13 @@ public class YeuCauTaiKhoanController : Controller
         {
             ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên này đang có yêu cầu chờ hoặc đang được xử lý.");
             await LoadPromotionOptionsAsync(model);
-            return View(model);
+            return popup ? PartialView("_CreatePromotionPopup", model) : View(model);
         }
 
-        TempData["Success"] = $"Đã gửi yêu cầu thăng chức cho nhân viên '{employee.HoTen}' lên Quản lý. Bộ phận IT hoặc Admin sẽ phê duyệt.";
-        return RedirectToAction(nameof(Index));
+        var successMessage = $"Đã gửi yêu cầu thăng chức cho nhân viên '{employee.HoTen}' lên Quản lý. Bộ phận IT sẽ xử lý.";
+        if (popup) return Json(new { success = true, message = successMessage });
+        TempData["Success"] = successMessage;
+        return RedirectToAction("Index", "NhanVien");
     }
 
     /// <summary>

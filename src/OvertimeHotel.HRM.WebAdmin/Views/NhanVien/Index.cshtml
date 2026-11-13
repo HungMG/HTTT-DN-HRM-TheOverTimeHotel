@@ -250,7 +250,68 @@
             });
     }
 
+    function initPromotionPopup(body, employeeId) {
+        const form = body.querySelector('[data-promotion-form]');
+        if (!form) return;
+        const employee = form.querySelector('[data-promotion-employee]');
+        const contract = form.querySelector('[data-promotion-contract]');
+        const filterContracts = () => {
+            for (const option of contract.options) {
+                if (!option.value) continue;
+                const matches = option.dataset.employeeId === employee.value;
+                option.hidden = !matches;
+                option.disabled = !matches;
+            }
+            if (contract.selectedOptions[0]?.disabled) contract.value = '';
+        };
+        employee.addEventListener('change', filterContracts);
+        filterContracts();
+        form.querySelector('[data-promotion-cancel]').addEventListener('click', () => openEmployeeProfile(employeeId));
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const button = form.querySelector('[type="submit"]');
+            button.disabled = true;
+            try {
+                const response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+                if (!response.ok) throw new Error('Không thể gửi đề xuất. Vui lòng thử lại.');
+                if ((response.headers.get('content-type') || '').includes('application/json')) {
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.message || 'Không thể gửi đề xuất.');
+                    openEmployeeProfile(employeeId, result.message);
+                    loadEmployeeTable({}, false);
+                } else {
+                    body.innerHTML = await response.text();
+                    initPromotionPopup(body, employeeId);
+                }
+            } catch (error) {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger';
+                alert.setAttribute('role', 'alert');
+                alert.textContent = error.message || 'Không thể gửi đề xuất.';
+                form.prepend(alert);
+                button.disabled = false;
+            }
+        });
+    }
+
     document.getElementById('employeeProfileModalBody')?.addEventListener('click', async (event) => {
+        const promotion = event.target.closest('[data-employee-promotion]');
+        if (promotion) {
+            event.preventDefault();
+            const body = document.getElementById('employeeProfileModalBody');
+            const employeeId = promotion.dataset.employeePromotion;
+            document.getElementById('employeeProfileModalLabel').textContent = 'Đề xuất thăng chức';
+            body.textContent = 'Đang tải biểu mẫu...';
+            try {
+                const response = await fetch(promotion.href);
+                if (!response.ok) throw new Error('Không thể tải biểu mẫu đề xuất thăng chức.');
+                body.innerHTML = await response.text();
+                initPromotionPopup(body, employeeId);
+            } catch (error) {
+                body.textContent = error.message || 'Không thể tải biểu mẫu đề xuất thăng chức.';
+            }
+            return;
+        }
         const link = event.target.closest('[data-employee-request]');
         if (!link) return;
         event.preventDefault();

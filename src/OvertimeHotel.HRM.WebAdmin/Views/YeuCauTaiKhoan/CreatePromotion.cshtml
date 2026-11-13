@@ -7,8 +7,8 @@
     <!-- THANH ĐIỀU HƯỚNG & TIÊU ĐỀ TRANG -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div class="d-flex align-items-center gap-3">
-            <a asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3.5 py-2 fw-semibold hover-lift d-flex align-items-center gap-2" style="font-size: 0.82rem;">
-                <i class="bi bi-arrow-left fs-6"></i> Quay lại hàng đợi
+            <a asp-controller="NhanVien" asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-pill px-3.5 py-2 fw-semibold hover-lift d-flex align-items-center gap-2" style="font-size: 0.82rem;">
+                <i class="bi bi-arrow-left fs-6"></i> Quay lại hồ sơ nhân viên
             </a>
             <div>
                 <h4 class="mb-0 fw-bold font-serif text-dark" style="font-size: 1.15rem;">Đề Xuất Thăng Chức Lên Quản Lý</h4>
@@ -153,7 +153,7 @@
 
                 <!-- NÚT THAO TÁC -->
                 <div class="d-flex align-items-center justify-content-between gap-3 pt-2">
-                    <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 py-2.5 fw-semibold hover-lift d-inline-flex align-items-center gap-2" style="font-size: 0.85rem;">
+                    <a asp-controller="NhanVien" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 py-2.5 fw-semibold hover-lift d-inline-flex align-items-center gap-2" style="font-size: 0.85rem;">
                         <i class="bi bi-x-circle fs-6"></i> Hủy bỏ
                     </a>
                     <button type="submit" class="btn btn-warning rounded-pill px-4 py-2.5 fw-bold shadow-sm hover-lift d-flex align-items-center gap-2 text-dark" style="font-size: 0.85rem;">
