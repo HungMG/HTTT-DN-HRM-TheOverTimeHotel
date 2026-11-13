@@ -1,4 +1,32 @@
 (() => {
+    window.showRolePermissionsNotice = (message, isError = false) => {
+        const notice = document.createElement('dialog');
+        notice.className = 'border-0 rounded-4 shadow-lg p-0';
+        notice.style.cssText = 'max-width: 420px; width: calc(100% - 32px);';
+        notice.setAttribute('aria-labelledby', 'rolePermissionsNoticeTitle');
+        notice.innerHTML = `<div class="p-4 text-center">
+            <i class="bi ${isError ? 'bi-exclamation-circle-fill text-danger' : 'bi-check-circle-fill text-success'}" style="font-size: 2.5rem;"></i>
+            <h2 id="rolePermissionsNoticeTitle" class="fs-5 fw-bold mt-3">${isError ? 'Không thể lưu' : 'Thông báo'}</h2>
+            <p class="text-secondary mb-4" data-notice-message></p>
+            <button type="button" class="btn btn-primary px-4">Đóng</button>
+        </div>`;
+        notice.querySelector('[data-notice-message]').textContent = message;
+        notice.querySelector('button').addEventListener('click', () => notice.close());
+        notice.addEventListener('close', () => {
+            notice.remove();
+            if (!isError) {
+                const content = document.querySelector('#rolePermissionsModal.show #rolePermissionsContent');
+                if (content) content.scrollTo({ top: 0, behavior: 'smooth' });
+                else window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+        (document.querySelector('#rolePermissionsModal.show') || document.body).appendChild(notice);
+        notice.showModal();
+    };
+
+    const saveMessage = document.querySelector('[data-role-save-message]');
+    if (saveMessage) window.showRolePermissionsNotice(saveMessage.textContent.trim());
+
     function updateCard(box) {
         const card = box.closest('label');
         if (!card) return;

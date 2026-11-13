@@ -374,7 +374,7 @@ public class AuthService : IAuthService
     {
         // ?select= chỉ lấy đúng 5 cột cần dùng: PostgREST lọc cột ở tầng API nên
         // dù GRANT SELECT cả bảng thì app không nhận được ngày sinh / địa chỉ.
-        const string select = "ho,ten,dien_thoai,ma_phong_ban,phong_ban(ten_phong_ban),chuc_vu(ten_chuc_vu)";
+        const string select = "ho,ten,dien_thoai,ma_phong_ban,phong_ban(ten_phong_ban),chuc_vu:chuc_vu!nhan_vien_ma_chuc_vu_fkey(ten_chuc_vu)";
         var json = await GetRestAsync(token, $"/nhan_vien?select={select}&ma_nhan_vien=eq.{maNhanVien}");
 
         var rows = ParseArray(json);

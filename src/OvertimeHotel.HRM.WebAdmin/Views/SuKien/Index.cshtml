@@ -8,6 +8,7 @@
     var previous = first.AddMonths(-1);
     var next = first.AddMonths(1);
     var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+    var earliestEventDate = HotelEventRules.EarliestEventDate(DateTimeOffset.UtcNow);
     var days = Enumerable.Range(0, 42).Select(i => gridStart.AddDays(i)).ToArray();
     bool Intersects(OvertimeHotel.HRM.Core.Models.DuAn item, DateOnly day) => item.NgayBatDau < HotelEventRules.ToUtc(day.AddDays(1).ToDateTime(TimeOnly.MinValue)) && item.NgayKetThuc > HotelEventRules.ToUtc(day.ToDateTime(TimeOnly.MinValue));
     var cardData = Model.Events.Select(item => new {
@@ -66,7 +67,7 @@
                     <div class="event-toolbar-actions">
                         @if (Model.CanCreate && Model.DatabaseReady)
                         {
-                            <a class="event-primary-button event-toolbar-create" data-create-event aria-disabled="@(Model.SelectedDate < today ? "true" : "false")" tabindex="@(Model.SelectedDate < today ? -1 : 0)" asp-action="Create" asp-route-date="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-returnYear="@Model.Year" asp-route-returnMonth="@Model.Month" asp-route-returnDate="@Model.SelectedDate.ToString("yyyy-MM-dd")">
+                            <a class="event-primary-button event-toolbar-create" data-create-event aria-disabled="@(Model.SelectedDate < earliestEventDate ? "true" : "false")" tabindex="@(Model.SelectedDate < earliestEventDate ? -1 : 0)" asp-action="Create" asp-route-date="@Model.SelectedDate.ToString("yyyy-MM-dd")" asp-route-returnYear="@Model.Year" asp-route-returnMonth="@Model.Month" asp-route-returnDate="@Model.SelectedDate.ToString("yyyy-MM-dd")">
                                 <i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo sự kiện
                             </a>
                         }
@@ -75,7 +76,7 @@
                 <div class="event-calendar-subbar">
                     <span>@Model.Events.Count sự kiện · giờ Việt Nam</span>
                 </div>
-                <div class="event-calendar" role="grid" aria-label="Lịch tháng" aria-multiselectable="true" data-event-calendar data-year="@Model.Year" data-month="@Model.Month" data-selected="@Model.SelectedDate.ToString("yyyy-MM-dd")" data-index-url="@Url.Action("Index")" data-create-url="@Url.Action("Create")" data-today="@today.ToString("yyyy-MM-dd")">
+                <div class="event-calendar" role="grid" aria-label="Lịch tháng" aria-multiselectable="true" data-event-calendar data-year="@Model.Year" data-month="@Model.Month" data-selected="@Model.SelectedDate.ToString("yyyy-MM-dd")" data-index-url="@Url.Action("Index")" data-create-url="@Url.Action("Create")" data-today="@today.ToString("yyyy-MM-dd")" data-earliest-event-date="@earliestEventDate.ToString("yyyy-MM-dd")">
                     <div class="event-weekdays visually-hidden" role="row">@foreach (var label in new[] { "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật" }) { <span role="columnheader">@label</span> }</div>
                     @for (var week = 0; week < 6; week++)
                     {
@@ -103,7 +104,7 @@
                     <span class="event-legend-item"><span class="event-legend-swatch event-chip-CHO_NGHIEM_THU" aria-hidden="true"></span> Chờ nghiệm thu</span>
                     <span class="event-legend-item"><span class="event-legend-swatch event-chip-HOAN_THANH" aria-hidden="true"></span> Hoàn thành</span>
                     <span class="event-legend-item"><span class="event-legend-swatch event-chip-HUY" aria-hidden="true"></span> Đã hủy</span>
-                    <small>Ngày cũ chỉ xem · Nhấp đúp ngày từ hôm nay để tạo sự kiện</small>
+                    <small>Tạo sự kiện trước 17:00 Chủ nhật của tuần liền trước tuần diễn ra</small>
                 </div>
             </div>
         </section>
@@ -111,7 +112,7 @@
             <span class="event-eyebrow">CÁC NGÀY ĐÃ CHỌN</span><h3 data-selected-title>@Model.SelectedDate.ToString("dd/MM/yyyy")</h3><p class="event-muted" data-selected-count></p>
             @if (Model.CanCreate && Model.DatabaseReady)
             {
-                <p class="event-muted" data-create-date-note role="status" hidden="@(Model.SelectedDate >= today)">Ngày trước hôm nay chỉ xem chi tiết sự kiện. Chọn ngày từ hôm nay trở đi để tạo mới.</p>
+                <p class="event-muted" data-create-date-note role="status" hidden="@(Model.SelectedDate >= earliestEventDate)">Chọn ngày từ @earliestEventDate.ToString("dd/MM/yyyy") để tạo sự kiện. Lịch tuần được chốt lúc 17:00 Chủ nhật.</p>
             }
             <div data-selected-events class="event-agenda-list" aria-live="polite"></div>
         </aside>

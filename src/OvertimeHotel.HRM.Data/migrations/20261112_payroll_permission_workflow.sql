@@ -1,24 +1,11 @@
 BEGIN;
-CREATE TABLE IF NOT EXISTS public.hrm_mobile_migration_history (migration_id text PRIMARY KEY);
-REVOKE ALL ON public.hrm_mobile_migration_history FROM PUBLIC, anon, authenticated;
 INSERT INTO public.quyen(ma_quyen_code,ten_quyen,mo_ta) VALUES
  ('DUYET_BANG_LUONG','Duyệt bảng lương','Duyệt hoặc từ chối bảng lương đã gửi duyệt.')
 ON CONFLICT (ma_quyen_code) DO NOTHING;
 UPDATE public.quyen SET ten_quyen='Quản lý và phát hành bảng lương',
  mo_ta='Tính, điều chỉnh, phát hành lương nháp; gửi duyệt, khóa sổ, phát hành và xuất chuyển khoản.'
  WHERE ma_quyen_code='TINH_LUONG';
--- Transfer the prior Admin approval capability once, only if Admin currently has viewing access.
-WITH first_run AS (
- INSERT INTO public.hrm_mobile_migration_history VALUES ('20261112_payroll_permission_workflow')
- ON CONFLICT DO NOTHING RETURNING migration_id
-)
-INSERT INTO public.vai_tro_quyen(ma_vai_tro,ma_quyen)
-SELECT v.ma_vai_tro,approve.ma_quyen FROM public.vai_tro v
-JOIN public.quyen approve ON approve.ma_quyen_code='DUYET_BANG_LUONG'
-WHERE v.ten_vai_tro='Admin' AND EXISTS (SELECT 1 FROM first_run)
- AND EXISTS (SELECT 1 FROM public.vai_tro_quyen vq JOIN public.quyen q USING(ma_quyen)
- WHERE vq.ma_vai_tro=v.ma_vai_tro AND q.ma_quyen_code='XEM_BANG_LUONG')
-ON CONFLICT DO NOTHING;
+-- Role grants are managed in the permission screen.
 
 -- This helper reads the persisted period state as the database owner; the caller
 -- can never choose an employee ID and receives only a yes/no for their own slip.

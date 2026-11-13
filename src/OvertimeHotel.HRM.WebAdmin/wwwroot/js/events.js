@@ -36,7 +36,7 @@
         if (response.status === 403 || path.endsWith('/account/accessdenied')) return 'Bạn không có quyền thực hiện thao tác sự kiện này.';
         if (response.status === 401 || path.endsWith('/account/login')) return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại rồi thử lại.';
         if (response.status === 400) return 'Phiên biểu mẫu đã thay đổi. Hãy đóng rồi mở lại popup để thử lại.';
-        if (response.status === 422) return 'Chỉ được tạo sự kiện từ hôm nay trở đi (giờ Việt Nam). Vui lòng chọn lại ngày.';
+        if (response.status === 422) return 'Sự kiện phải được tạo trước 17:00 Chủ nhật của tuần liền trước tuần diễn ra (giờ Việt Nam). Vui lòng tải lại trang và chọn ngày khác.';
         if (!response.ok) return 'Máy chủ gặp lỗi khi xử lý sự kiện. Vui lòng thử lại hoặc báo quản trị viên.';
         if (response.redirected) return 'Phản hồi từ máy chủ không hợp lệ. Vui lòng tải lại trang rồi thử lại.';
         return null;
@@ -259,7 +259,7 @@
                 selectedList.append(link);
             });
             const range = selectionRange(selectedDates, calendar.dataset.today);
-            const canCreate = canCreateSelection(selectedDates, calendar.dataset.today);
+            const canCreate = canCreateSelection(selectedDates, calendar.dataset.earliestEventDate);
             createButtons.forEach(button => {
                 button.setAttribute('aria-disabled', String(!canCreate));
                 button.tabIndex = canCreate ? 0 : -1;
@@ -269,8 +269,8 @@
             if (createNote) {
                 createNote.hidden = canCreate;
                 createNote.textContent = selectedDates.length
-                    ? 'Ngày trước hôm nay chỉ xem chi tiết sự kiện. Chọn ngày từ hôm nay trở đi để tạo mới.'
-                    : 'Chọn ngày từ hôm nay trở đi để tạo sự kiện.';
+                    ? 'Chọn ngày từ ' + formatDay(calendar.dataset.earliestEventDate) + ' để tạo sự kiện. Lịch tuần được chốt lúc 17:00 Chủ nhật.'
+                    : 'Chọn ngày từ ' + formatDay(calendar.dataset.earliestEventDate) + ' để tạo sự kiện.';
             }
             calendar.querySelectorAll('[data-event-link]').forEach(link => {
                 const url = new URL(link.href, window.location.origin);
@@ -285,7 +285,7 @@
             renderSelection(date, focus);
         }
         async function openPopup() {
-            if (!dialog || dialog.classList.contains('show') || !canCreateSelection(selectedDates, calendar.dataset.today)) return;
+            if (!dialog || dialog.classList.contains('show') || !canCreateSelection(selectedDates, calendar.dataset.earliestEventDate)) return;
             popupRequest?.abort();
             const request = popupRequest = new AbortController();
             const range = selectionRange(selectedDates, calendar.dataset.today);
@@ -310,7 +310,7 @@
             }
         }
         function create(date) {
-            if (!createButtons.length || date < calendar.dataset.today) return;
+            if (!createButtons.length || date < calendar.dataset.earliestEventDate) return;
             if (!selectedDates.includes(date)) selectedDates = [...selectedDates, date].sort();
             renderSelection(date);
             void openPopup();

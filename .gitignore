@@ -67,6 +67,7 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
+.directory
 ._*
 ~$*.docx
 ~$*.xlsx

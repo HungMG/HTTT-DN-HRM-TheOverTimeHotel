@@ -159,7 +159,31 @@
                                        TextColor="#D4AF37"
                                        VerticalOptions="Center" />
                             </Grid>
-                        </Border>                        
+                        </Border>
+
+                        <!-- Yêu cầu đổi ca -->
+                        <Border BackgroundColor="#FFFFFF"
+                                Stroke="#E2E8F0"
+                                StrokeThickness="1"
+                                StrokeShape="RoundRectangle 16"
+                                Padding="14,12">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding CreateShiftSwapCommand}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" WidthRequest="40" HeightRequest="40"
+                                        StrokeShape="RoundRectangle 12" BackgroundColor="#ECFDF5"
+                                        Stroke="#A7F3D0" StrokeThickness="1" VerticalOptions="Center">
+                                    <Label Text="🔄" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                    <Label Text="Yêu Cầu Đổi Ca" FontFamily="SegoeUIBold" FontSize="13" TextColor="#065F46" />
+                                    <Label Text="Đổi ca trực cùng đồng nghiệp bộ phận" FontFamily="SegoeUI" FontSize="11" TextColor="#64748B" />
+                                </VerticalStackLayout>
+                                <Label Grid.Column="2" Text="›" FontFamily="SegoeUIBold" FontSize="20"
+                                       TextColor="#D4AF37" VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
                     </VerticalStackLayout>
 
                     <!-- KHỐI 2: ĐƠN GẦN ĐÂY -->

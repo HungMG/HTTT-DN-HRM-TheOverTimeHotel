@@ -65,7 +65,7 @@ public class LeaveApprovalService : ILeaveApprovalService
         "ma_don,ma_nhan_vien,ma_loai_don,ma_nguoi_duyet,tu_ngay,den_ngay,ly_do," +
         "ngay_gui,trang_thai,phan_hoi_duyet,ngay_duyet," +
         "nv:nhan_vien!don_tu_ma_nhan_vien_fkey!inner(ho,ten,ma_phong_ban," +
-        "chuc_vu(ten_chuc_vu),phong_ban(ten_phong_ban))," +
+        "chuc_vu:chuc_vu!nhan_vien_ma_chuc_vu_fkey(ten_chuc_vu),phong_ban(ten_phong_ban))," +
         "loai_don!don_tu_ma_loai_don_fkey(ten_loai_don,co_huong_luong)," +
         "nd:nhan_vien!don_tu_ma_nguoi_duyet_fkey(ho,ten)";
 

@@ -142,8 +142,6 @@
                 </Border>
 
                 <!-- Dòng 2 · ĐỔI MẬT KHẨU -->
-                <Button Text="Phiếu lương của tôi" Clicked="OnPayslipTapped" />
-
                 <Border x:Name="passwordRow"
                         Opacity="0"
                         StrokeShape="RoundRectangle 18"

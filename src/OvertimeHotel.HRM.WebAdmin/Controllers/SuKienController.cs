@@ -63,9 +63,9 @@ public class SuKienController(AppDbContext db, IHotelEventService events, ILogge
     {
         var actor = await ActorAsync();
         if (actor?.CanManageEvents != true) return Forbid();
-        var day = date ?? Today;
+        var day = date ?? HotelEventRules.EarliestEventDate(DateTimeOffset.UtcNow);
         if (!HotelEventRules.CanCreateOn(day, DateTimeOffset.UtcNow))
-            return UnprocessableEntity("Chỉ được tạo sự kiện từ hôm nay trở đi (giờ Việt Nam).");
+            return UnprocessableEntity(HotelEventRules.EventSchedulingDeadlineMessage);
         var model = new EventFormViewModel
         {
             IsPopup = popup,

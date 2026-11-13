@@ -18,6 +18,10 @@
             const parsed = new DOMParser().parseFromString(html, "text/html");
             if (!parsed.querySelector("#rolePermissionsForm")) throw new Error();
             content.innerHTML = html;
+            const saveMessage = content.querySelector("[data-role-save-message]");
+            if (options?.method === "POST" && saveMessage) {
+                window.showRolePermissionsNotice(saveMessage.textContent.trim());
+            }
         } catch {
             let alert = content.querySelector("[data-role-load-error]");
             if (!alert) {
@@ -28,6 +32,7 @@
                 content.prepend(alert);
             }
             alert.textContent = "Không tải hoặc lưu được phân quyền. Vui lòng thử lại hoặc đăng nhập lại.";
+            if (options?.method === "POST") window.showRolePermissionsNotice(alert.textContent, true);
         } finally {
             busy = false;
             content.removeAttribute("aria-busy");

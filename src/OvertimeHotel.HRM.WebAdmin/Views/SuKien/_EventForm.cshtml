@@ -1,6 +1,6 @@
 @model EventFormViewModel
 @using OvertimeHotel.HRM.Core.Policies
-@{ var minDate = Model.Input.Id == 0 ? HotelEventRules.Local(DateTimeOffset.UtcNow).ToString("yyyy-MM-dd") + "T00:00" : null;
+@{ var minDate = Model.Input.Id == 0 ? HotelEventRules.EarliestEventDate(DateTimeOffset.UtcNow).ToString("yyyy-MM-dd") + "T00:00" : null;
    var eventRate = Model.HourlyEventRate.ToString("0.00"); }
 <input asp-for="IsPopup" type="hidden" />
 <input asp-for="Input.CalculateBudgetAtAcceptance" type="hidden" />
@@ -26,7 +26,7 @@
         </div>
         <div class="row">
             <div class="col-sm-6 mb-3"><label asp-for="Input.Start" class="form-label">Bắt đầu <span aria-hidden="true">*</span></label><input asp-for="Input.Start" data-event-start asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" min="@minDate" class="form-control" required /><span asp-validation-for="Input.Start" class="text-danger"></span></div>
-            <div class="col-sm-6 mb-3"><label asp-for="Input.End" class="form-label">Kết thúc <span aria-hidden="true">*</span></label><input asp-for="Input.End" data-event-end asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" min="@minDate" class="form-control" required /><span asp-validation-for="Input.End" class="text-danger"></span><div class="form-text">Giờ Việt Nam (UTC+7) · có thể tổ chức qua nhiều ngày.</div></div>
+            <div class="col-sm-6 mb-3"><label asp-for="Input.End" class="form-label">Kết thúc <span aria-hidden="true">*</span></label><input asp-for="Input.End" data-event-end asp-format="{0:yyyy-MM-ddTHH:mm}" type="datetime-local" min="@minDate" class="form-control" required /><span asp-validation-for="Input.End" class="text-danger"></span><div class="form-text">Giờ Việt Nam (UTC+7) · có thể tổ chức qua nhiều ngày. Tạo hoặc đổi ngày trước 17:00 Chủ nhật của tuần liền trước tuần diễn ra.</div></div>
         </div>
     </section>
     <section class="event-panel">

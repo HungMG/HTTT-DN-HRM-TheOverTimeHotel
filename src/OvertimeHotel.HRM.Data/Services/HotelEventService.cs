@@ -136,8 +136,11 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
             "Input.Type", "Chọn loại sự kiện đang sử dụng. Loại cũ chỉ được giữ nguyên trong hồ sơ đã có.");
         var start = Utc(input.Start, "Input.Start");
         var end = Utc(input.End, "Input.End");
-        Require(input.Id != 0 || HotelEventRules.CanCreateOn(DateOnly.FromDateTime(input.Start), DateTimeOffset.UtcNow),
-            "Input.Start", "Chỉ được tạo sự kiện từ hôm nay trở đi (giờ Việt Nam).");
+        var datesChanged = input.Id == 0
+            || DateOnly.FromDateTime(input.Start) != DateOnly.FromDateTime(HotelEventRules.Local(item.NgayBatDau))
+            || DateOnly.FromDateTime(input.End) != DateOnly.FromDateTime(HotelEventRules.Local(item.NgayKetThuc));
+        Require(!datesChanged || HotelEventRules.CanCreateOn(DateOnly.FromDateTime(input.Start), DateTimeOffset.UtcNow),
+            "Input.Start", HotelEventRules.EventSchedulingDeadlineMessage);
         Require(end > start, "Input.End", "Kết thúc phải sau thời gian bắt đầu.");
         var calculateAtAcceptance = hourly || (input.Id == 0 ? input.CalculateBudgetAtAcceptance : item.TinhPhuCapKhiNghiemThu);
         var budget = calculateAtAcceptance ? 0m : input.Budget;

@@ -253,23 +253,9 @@ supabase db query --linked -f supabase/migrations/20261020_bo_sung_chuc_nang_pha
 
 Hướng dẫn đầy đủ về kết nối & chạy script Supabase: xem `workflows/db-migration.md` (thư mục nội bộ, không có trên GitHub).
 
-Phân quyền Web sử dụng `src/OvertimeHotel.HRM.Data/migrations/20261111_web_permission_catalog.sql`.
-Script này giữ các quyền đang cấp và chỉ nối quyền xem mới khi có ánh xạ trực tiếp. Không chạy
-`20261111_manager_permissions.sql` trên hệ thống đang sử dụng: script cũ tự cấp một số quyền, thu hồi quyền sự kiện
-của Manager và thay lại hàm kiểm tra quyền, trái với cấu hình hiện tại.
+Phân quyền Web sử dụng `src/OvertimeHotel.HRM.Data/migrations/20261111_web_permission_catalog.sql` để bổ sung danh mục quyền; migration không thay đổi quyền đã cấp cho vai trò. Phân quyền Mobile dùng migration `src/OvertimeHotel.HRM.Data/migrations/20261112_mobile_permission_alignment.sql`. Các quyền của vai trò được quản lý trên trang phân quyền và lưu trong `vai_tro_quyen`. IT có một số quyền cố định trong code.
 
-Sau đó, `src/OvertimeHotel.HRM.Data/migrations/20261111_retire_legacy_permissions.sql`
-loại các mã quyền cũ không còn dùng. Quyền duyệt OT tạm bỏ vì chưa có luồng duyệt;
-tài liệu AI được quản lý trong code, không cấp quyền tải tài liệu cho vai trò nào.
-
-Phân quyền Mobile dùng tiếp migration `src/OvertimeHotel.HRM.Data/migrations/20261112_mobile_permission_alignment.sql` sau các migration trên. Hai quyền chấm công và nộp đơn cá nhân được cấu hình trên cùng trang phân quyền; IT giữ hai chức năng cá nhân cố định và không xuất hiện trong danh sách vai trò cần cấu hình. Mobile chỉ đọc phiếu lương của chính tài khoản, theo trạng thái cho phép của migration lương hiện hành. Khi chạy lần đầu, migration lưu lại hai quyền cá nhân Admin từng có ngầm thành quyền được cấp; chạy lại không tự cấp lại nếu quyền đã bị thu hồi.
-
-Migration `src/OvertimeHotel.HRM.Data/migrations/20261112_report_admin_grants.sql` điều chỉnh một lần cấu hình báo cáo: giữ quyền Admin hiện có, thu hồi quyền báo cáo của các vai trò còn lại. Trang phân quyền vẫn cho phép IT điều chỉnh về sau.
-
-Với hệ thống cài mới, sau khi tạo vai trò và chạy migration trên, có thể chạy
-`src/OvertimeHotel.HRM.Data/seed_web_permissions_new_install.sql` **trước khi tạo tài khoản**
-để khởi tạo quyền Web mặc định. Script từ chối chạy nếu đã có tài khoản; quyền cá nhân
-Mobile cần được nạp bằng dữ liệu khởi tạo Mobile thông thường.
+Với hệ thống mới, `src/OvertimeHotel.HRM.Data/seed_data_24_tables.sql` khởi tạo quyền mặc định trước khi có tài khoản. Để chủ động đặt lại năm vai trò về quyền mặc định đã thống nhất trên hệ thống đang sử dụng, có thể chạy `src/OvertimeHotel.HRM.Data/verification/apply_role_permission_defaults.sql`. **Script này xóa các cấu hình quyền hiện tại của năm vai trò và xóa bảng `hrm_mobile_migration_history`; không chạy lại nếu muốn giữ các điều chỉnh đã thực hiện.**
 
 ---
 
@@ -351,4 +337,4 @@ graft build && graft check                            # phải "graph check: OK"
 
 Đồ án môn học phục vụ mục đích học tập tại Trường Đại học Sài Gòn. Khóa bí mật, chuỗi kết nối và file `.env` **không được commit** — xem `.gitignore` trước khi đẩy code.
 
-Phân quyền và luồng bảng lương hiện hành dùng `src/OvertimeHotel.HRM.Data/migrations/20261112_payroll_permission_workflow.sql` sau các migration Mobile và khung lương. Lần đầu chuyển quyền duyệt cho Admin có quyền xem; chạy lại không cấp lại quyền đã thu hồi. HR khóa sổ sau khi bảng lương được duyệt.
+Phân quyền và luồng bảng lương hiện hành dùng `src/OvertimeHotel.HRM.Data/migrations/20261112_payroll_permission_workflow.sql` sau các migration Mobile và khung lương. Quyền duyệt bảng lương được quản lý trên trang phân quyền; migration không tự cấp quyền. HR khóa sổ sau khi bảng lương được duyệt.

@@ -277,7 +277,7 @@ public class AdminHomeViewModel : HomeViewModelBase
 
             // 1. Truy vấn toàn bộ nhân viên thực tế đang làm việc từ CSDL Supabase
             var staffJson = await _restClient.GetAsync(
-                "nhan_vien?select=ma_nhan_vien,ho,ten,ma_phong_ban,chuc_vu(ten_chuc_vu),phong_ban(ma_phong_ban,ten_phong_ban)" +
+                "nhan_vien?select=ma_nhan_vien,ho,ten,ma_phong_ban,chuc_vu:chuc_vu!nhan_vien_ma_chuc_vu_fkey(ten_chuc_vu),phong_ban(ma_phong_ban,ten_phong_ban)" +
                 "&trang_thai=neq.THOI_VIEC&order=ma_nhan_vien.asc");
 
             var staffArray = PostgrstJson.ParseArray(staffJson);

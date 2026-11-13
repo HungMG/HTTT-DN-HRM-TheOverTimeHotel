@@ -39,3 +39,5 @@ bản ghi nghiệp vụ. Không chạy assertions rồi COMMIT vì script xóa g
 
 Để build APK vẫn cần JDK và Android SDK. Biên dịch C#/XAML với MAUI target net10.0
 trong bản sao tạm chỉ xác nhận mã dùng chung, không thay thế kiểm thử trên điện thoại.
+
+IT dùng quyền chấm công và nộp đơn cá nhân theo cấu hình của vai trò Employee; các quyền quản trị IT cố định không thay đổi. Kiểm tra bật/tắt bằng `it-inheritance-assertions.sql` trong transaction có rollback.

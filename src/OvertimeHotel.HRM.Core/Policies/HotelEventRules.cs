@@ -177,7 +177,17 @@ public static class HotelEventRules
     }
     public static DateTimeOffset ToUtc(DateTime local) => new DateTimeOffset(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), TimeSpan.FromHours(7)).ToUniversalTime();
     public static DateTime Local(DateTimeOffset instant) => instant.ToOffset(TimeSpan.FromHours(7)).DateTime;
-    public static bool CanCreateOn(DateOnly date, DateTimeOffset now) => date >= DateOnly.FromDateTime(Local(now));
+    // Lịch tuần được chốt lúc 17:00 Chủ nhật trước tuần làm việc (giờ Việt Nam).
+    public static DateOnly EarliestEventDate(DateTimeOffset now)
+    {
+        var local = Local(now);
+        var nextWeek = HourlyEventRules.WeekStart(DateOnly.FromDateTime(local)).AddDays(7);
+        return local.DayOfWeek == DayOfWeek.Sunday && local.TimeOfDay >= ShiftSchedulingPolicy.WeeklyPublishTime.ToTimeSpan()
+            ? nextWeek.AddDays(7) : nextWeek;
+    }
+
+    public static bool CanCreateOn(DateOnly date, DateTimeOffset now) => date >= EarliestEventDate(now);
+    public const string EventSchedulingDeadlineMessage = "Sự kiện phải được tạo hoặc đổi ngày trước 17:00 Chủ nhật của tuần liền trước tuần diễn ra (giờ Việt Nam).";
     public static bool Overlaps(DateTimeOffset start, DateTimeOffset end, DateTimeOffset otherStart, DateTimeOffset otherEnd) =>
         start < end && otherStart < otherEnd && start < otherEnd && otherStart < end;
     public static bool ContractCovers(NhanVien employee, DateTimeOffset start, DateTimeOffset end)

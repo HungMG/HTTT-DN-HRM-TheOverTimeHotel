@@ -136,75 +136,6 @@
                     VerticalScrollBarVisibility="Never">
             <VerticalStackLayout Spacing="14" Padding="0,0,0,24">
 
-                <!-- BANNER QUY TRÌNH DUYỆT 2 CẤP TINH GỌN -->
-                <Border Stroke="#FDE68A"
-                        StrokeThickness="1"
-                        StrokeShape="RoundRectangle 14"
-                        BackgroundColor="#FFFBEB"
-                        Padding="12,10">
-                    <VerticalStackLayout Spacing="6">
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                            <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
-                                <Label Text="🛡️" FontSize="13" VerticalOptions="Center" />
-                                <Label Text="QUY TRÌNH PHÊ DUYỆT 2 CẤP"
-                                       FontFamily="SegoeUIBold"
-                                       FontSize="11"
-                                       TextColor="#92400E"
-                                       VerticalOptions="Center" />
-                            </HorizontalStackLayout>
-                            <Border Grid.Column="2"
-                                    BackgroundColor="#FEF3C7"
-                                    Stroke="#F59E0B"
-                                    StrokeShape="RoundRectangle 8"
-                                    Padding="6,2">
-                                <Label Text="Chuẩn 5★"
-                                       FontSize="9"
-                                       FontFamily="SegoeUIBold"
-                                       TextColor="#B45309" />
-                            </Border>
-                        </Grid>
-                        <Grid ColumnDefinitions="*,Auto,*,Auto,*" ColumnSpacing="4" Margin="0,2,0,0">
-                            <!-- Bước 1 -->
-                            <Border Grid.Column="0"
-                                    BackgroundColor="#FFFFFF"
-                                    Stroke="#FDE68A"
-                                    StrokeShape="RoundRectangle 8"
-                                    Padding="6,6">
-                                <VerticalStackLayout Spacing="1" HorizontalOptions="Center">
-                                    <Label Text="1. Nộp đơn" FontSize="10" FontFamily="SegoeUIBold" TextColor="#B45309" HorizontalOptions="Center" />
-                                    <Label Text="Nhân sự" FontSize="9" TextColor="#78350F" HorizontalOptions="Center" />
-                                </VerticalStackLayout>
-                            </Border>
-                            <!-- Mũi tên 1 -->
-                            <Label Grid.Column="1" Text="➔" FontSize="10" TextColor="#D97706" VerticalOptions="Center" />
-                            <!-- Bước 2 -->
-                            <Border Grid.Column="2"
-                                    BackgroundColor="#FFFFFF"
-                                    Stroke="#FDE68A"
-                                    StrokeShape="RoundRectangle 8"
-                                    Padding="6,6">
-                                <VerticalStackLayout Spacing="1" HorizontalOptions="Center">
-                                    <Label Text="2. C1: Quản lý" FontSize="10" FontFamily="SegoeUIBold" TextColor="#B45309" HorizontalOptions="Center" />
-                                    <Label Text="Xác minh" FontSize="9" TextColor="#78350F" HorizontalOptions="Center" />
-                                </VerticalStackLayout>
-                            </Border>
-                            <!-- Mũi tên 2 -->
-                            <Label Grid.Column="3" Text="➔" FontSize="10" TextColor="#D97706" VerticalOptions="Center" />
-                            <!-- Bước 3 -->
-                            <Border Grid.Column="4"
-                                    BackgroundColor="#FFFFFF"
-                                    Stroke="#FDE68A"
-                                    StrokeShape="RoundRectangle 8"
-                                    Padding="6,6">
-                                <VerticalStackLayout Spacing="1" HorizontalOptions="Center">
-                                    <Label Text="3. C2: HR" FontSize="10" FontFamily="SegoeUIBold" TextColor="#B45309" HorizontalOptions="Center" />
-                                    <Label Text="Chốt công" FontSize="9" TextColor="#78350F" HorizontalOptions="Center" />
-                                </VerticalStackLayout>
-                            </Border>
-                        </Grid>
-                    </VerticalStackLayout>
-                </Border>
-
                 <!-- 1. CHỌN CA LÀM VIỆC CẦN GIẢI TRÌNH -->
                 <VerticalStackLayout Spacing="6">
                     <Grid ColumnDefinitions="*,Auto">
@@ -323,24 +254,16 @@
                         <Shadow Brush="#0F172A" Offset="0,2" Radius="8" Opacity="0.06" />
                     </Border.Shadow>
                     <VerticalStackLayout Spacing="8">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
-                                <Border BackgroundColor="#EFF6FF" Stroke="#BFDBFE" StrokeShape="RoundRectangle 6" Padding="6,2">
-                                    <Label Text="Ca trực chọn" FontSize="10" FontFamily="SegoeUIBold" TextColor="#1E3A8A" />
-                                </Border>
-                                <Label Text="{Binding SelectedShift.TenCa}"
-                                       FontFamily="SegoeUIBold"
-                                       FontSize="13"
-                                       TextColor="#0F172A"
-                                       VerticalOptions="Center" />
-                            </HorizontalStackLayout>
-                            <Label Grid.Column="1"
-                                   Text="{Binding SelectedShiftDateText}"
-                                   FontFamily="SegoeUIBold"
-                                   FontSize="11"
-                                   TextColor="#1E3A8A"
-                                   VerticalOptions="Center" />
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                            <Border Grid.Column="0" BackgroundColor="#EFF6FF" Stroke="#BFDBFE"
+                                    StrokeShape="RoundRectangle 6" Padding="6,2" VerticalOptions="Start">
+                                <Label Text="Ca trực chọn" FontSize="10" FontFamily="SegoeUIBold" TextColor="#1E3A8A" />
+                            </Border>
+                            <Label Grid.Column="1" Text="{Binding SelectedShift.TenCa}" FontFamily="SegoeUIBold"
+                                   FontSize="13" TextColor="#0F172A" LineBreakMode="WordWrap" VerticalOptions="Center" />
                         </Grid>
+                        <Label Text="{Binding SelectedShiftDateText}" FontFamily="SegoeUIBold" FontSize="11"
+                               TextColor="#1E3A8A" />
                         <Label Text="{Binding SelectedShiftStartText}"
                                TextColor="#64748B" FontSize="11" FontFamily="SegoeUI" />
 

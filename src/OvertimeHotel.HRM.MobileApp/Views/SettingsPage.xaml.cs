@@ -89,8 +89,6 @@ public partial class SettingsPage : ContentPage
         await Shell.Current.GoToAsync("ProfilePage");
     }
 
-    private async void OnPayslipTapped(object? sender, EventArgs e) => await Shell.Current.GoToAsync("PayslipPage");
-
     private async void OnChangePasswordRowTapped(object? sender, TappedEventArgs e)
     {
         if (sender is VisualElement row) await row.SpringTapAsync();

@@ -352,7 +352,7 @@ public class ManagerHomeViewModel : HomeViewModelBase
                 : string.Empty;
 
             var staffJson = await _restClient.GetAsync(
-                $"nhan_vien?select=ma_nhan_vien,ho,ten,dien_thoai,ma_phong_ban,chuc_vu(ten_chuc_vu),phong_ban(ten_phong_ban)" +
+                $"nhan_vien?select=ma_nhan_vien,ho,ten,dien_thoai,ma_phong_ban,chuc_vu:chuc_vu!nhan_vien_ma_chuc_vu_fkey(ten_chuc_vu),phong_ban(ten_phong_ban)" +
                 staffFilter +
                 "&trang_thai=neq.THOI_VIEC&order=ma_nhan_vien.asc");
 
