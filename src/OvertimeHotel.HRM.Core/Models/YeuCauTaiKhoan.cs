@@ -77,6 +77,9 @@ public class YeuCauTaiKhoan
     /// </summary>
     public int? MaNguoiXuLy { get; set; }
 
+    /// <summary>Tên người xử lý được giữ lại khi tài khoản xử lý bị xóa.</summary>
+    public string? TenNguoiXuLyDaXoa { get; set; }
+
     /// <summary>Thời điểm IT kết thúc xử lý (chấp nhận hoặc từ chối).</summary>
     public DateTimeOffset? NgayXuLy { get; set; }
 

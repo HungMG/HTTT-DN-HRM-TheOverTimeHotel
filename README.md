@@ -100,6 +100,10 @@ Hệ thống phân rã thành **11 phân hệ cấp 1 · 57 chức năng cấp 2
 
 Quyền được gán theo mã chuỗi qua bảng trung gian `vai_tro_quyen` (N–N). HR và Admin gửi yêu cầu cấp tài khoản Nhân viên từ hồ sơ; IT xử lý yêu cầu, trực tiếp cấp tài khoản và đổi vai trò khi thăng chức. IT quản lý tài khoản, RBAC và sao lưu; vai trò Admin dành cho giám đốc không truy cập ba khu vực này. Phiên web phải đăng nhập lại khi vai trò hoặc quyền thay đổi.
 
+Trong trang quản lý tài khoản, IT có thể xóa riêng tài khoản đăng nhập sau khi nhập lý do xác nhận. Hệ thống chặn tự xóa, xóa tài khoản Admin và tài khoản Trưởng bộ phận IT. Hồ sơ nhân viên, hợp đồng và lịch sử làm việc được giữ lại; muốn đăng nhập lại cần cấp tài khoản mới. Khi xóa, hệ thống đối soát tài khoản Supabase Auth theo email công vụ, khóa tài khoản ứng dụng rồi xóa tài khoản xác thực (nếu có) và tài khoản ứng dụng. Nếu xóa chưa hoàn tất, làm theo thông báo và thử lại với tài khoản đang khóa; không tự mở khóa để xử lý lỗi. Nhật ký quản trị có chính sách lưu giữ 30 ngày như mô tả ở mục 7.2.
+
+Trước khi triển khai chức năng xóa tài khoản lên một cơ sở dữ liệu khác, áp dụng migration [`20261114_preserve_account_request_history_on_delete.sql`](src/OvertimeHotel.HRM.Data/migrations/20261114_preserve_account_request_history_on_delete.sql). Migration giữ dấu vết của tài khoản được cấp và người xử lý trong yêu cầu cấp tài khoản khi tài khoản bị xóa. Hệ thống từ chối xóa nếu migration chưa được áp dụng.
+
 ---
 
 ## 🗄️ 5. Cơ Sở Dữ Liệu — 30 Bảng Chuẩn 3NF

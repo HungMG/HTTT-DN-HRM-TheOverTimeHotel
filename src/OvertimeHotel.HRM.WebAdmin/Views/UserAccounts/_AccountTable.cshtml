@@ -1,5 +1,6 @@
 @model AccountIndexViewModel
 @using System.Security.Claims
+@using OvertimeHotel.HRM.WebAdmin.Security
 @{
     var currentAccountId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedId)
         ? parsedId
@@ -124,6 +125,18 @@
                                         <i class="bi @(account.IsActive ? "bi-lock-fill" : "bi-unlock-fill") me-1"></i>@(account.IsActive ? "Khóa" : "Mở")
                                     </button>
                                 </form>
+                                @if (AccountDeletionPolicy.GetDenial(User.FindFirstValue(ClaimTypes.Role), currentAccountId, account.AccountId, account.RoleName, account.Department, account.Position) == null)
+                                {
+                                    <form asp-action="DeleteAccount" asp-route-id="@account.AccountId" method="post"
+                                          class="account-delete-form d-inline" data-account-id="@account.AccountId"
+                                          data-account-name="@account.EmployeeName" data-account-mode="delete">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="reason" value="" data-account-reason-value />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1" title="Xóa tài khoản">
+                                            <i class="bi bi-trash me-1"></i>Xóa
+                                        </button>
+                                    </form>
+                                }
                             </div>
                         </td>
                     </tr>

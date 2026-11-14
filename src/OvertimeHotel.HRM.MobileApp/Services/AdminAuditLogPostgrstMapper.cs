@@ -26,6 +26,7 @@ public static class AdminAuditLogPostgrstMapper
         ["CREATE_ACCOUNT_AUTH"] = "Cấp tài khoản",
         ["UPDATE_ACCOUNT"] = "Sửa tài khoản",
         ["LOCK_ACCOUNT"] = "Khóa tài khoản",
+        ["DELETE_ACCOUNT"] = "Xóa tài khoản",
         ["CREATE_ACCOUNT_REQUEST"] = "Yêu cầu TK",
         ["CLAIM_ACCOUNT_REQUEST"] = "Nhận xử lý TK",
         ["REJECT_ACCOUNT_REQUEST"] = "Từ chối TK",

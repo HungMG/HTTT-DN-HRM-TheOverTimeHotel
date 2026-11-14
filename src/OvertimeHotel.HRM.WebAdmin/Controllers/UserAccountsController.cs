@@ -497,6 +497,82 @@ public class UserAccountsController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PermissionCodes.ManageAccounts)]
+    public async Task<IActionResult> DeleteAccount(int id, string? reason)
+    {
+        reason = reason?.Trim();
+        if (string.IsNullOrWhiteSpace(reason) || reason.Length > 500)
+            return ToggleStatusFailure("Vui lòng nhập lý do xóa tài khoản, tối đa 500 ký tự.");
+
+        var account = await _context.TaiKhoans.Include(a => a.VaiTro)
+            .Include(a => a.NhanVien)!.ThenInclude(n => n!.ChucVu)
+            .Include(a => a.NhanVien)!.ThenInclude(n => n!.PhongBan)
+            .FirstOrDefaultAsync(a => a.MaTaiKhoan == id);
+        if (account == null) return ToggleStatusFailure("Không tìm thấy tài khoản.", StatusCodes.Status404NotFound);
+        var denied = AccountDeletionPolicy.GetDenial(User.FindFirstValue(ClaimTypes.Role), GetCurrentAccountId(), id,
+            account.VaiTro?.TenVaiTro, account.NhanVien?.PhongBan?.TenPhongBan, account.NhanVien?.ChucVu?.TenChucVu);
+        if (denied != null) return ToggleStatusFailure(denied, StatusCodes.Status403Forbidden);
+
+        var email = account.NhanVien?.EmailCongVu?.Trim();
+        if (string.IsNullOrWhiteSpace(email))
+            return ToggleStatusFailure("Nhân viên chưa có email công vụ; cần đối soát tài khoản đăng nhập trước khi xóa.");
+        if (await _context.NhanViens.AnyAsync(n => n.MaNhanVien != account.MaNhanVien && n.EmailCongVu.ToLower() == email.ToLower()))
+            return ToggleStatusFailure("Email công vụ đang được dùng bởi nhân viên khác; cần đối soát trước khi xóa.");
+
+        // The internal account does not store the Auth UUID; resolve the exact email first.
+        var authIds = new List<Guid>();
+        try
+        {
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open) await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.tai_khoan'::regclass AND tgname = 'hrm_archive_deleted_account_requests' AND tgenabled <> 'D')";
+            if (await command.ExecuteScalarAsync() is not true)
+                return ToggleStatusFailure("Cơ sở dữ liệu chưa được cập nhật để lưu lịch sử yêu cầu; chưa xóa tài khoản.");
+            command.CommandText = "SELECT id FROM auth.users WHERE lower(email) = lower(@email) LIMIT 2";
+            var parameter = command.CreateParameter(); parameter.ParameterName = "email"; parameter.Value = email; command.Parameters.Add(parameter);
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) authIds.Add(reader.GetGuid(0));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Không thể đối soát Supabase Auth cho tài khoản {AccountId}", id);
+            return ToggleStatusFailure("Không thể đối soát tài khoản đăng nhập; chưa xóa tài khoản. Vui lòng thử lại.");
+        }
+        if (authIds.Count > 1) return ToggleStatusFailure("Có nhiều tài khoản đăng nhập trùng email; cần đối soát trước khi xóa.");
+        if (authIds.Count == 1 && !_supabaseUserProvisioning.IsConfigured)
+            return ToggleStatusFailure("Chưa cấu hình dịch vụ xác thực để xóa tài khoản; vui lòng liên hệ quản trị hệ thống.");
+
+        // Persist the lock first, so a partial failure leaves the account unable to sign in.
+        if (account.TrangThai)
+        {
+            account.TrangThai = false;
+            _context.NhatKyQuanTris.Add(CreateAuditLog(id, account.TenDangNhap, "LOCK_ACCOUNT", "Khóa tài khoản để xóa.", "Hoạt động", "Đã khóa", reason));
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateException ex) { _logger.LogError(ex, "Không thể khóa tài khoản {AccountId}", id); return ToggleStatusFailure("Không thể khóa tài khoản; chưa thực hiện xóa."); }
+        }
+        if (authIds.Count == 1 && !await _supabaseUserProvisioning.DeleteUserAsync(authIds[0].ToString(), CancellationToken.None))
+            return ToggleStatusFailure("Không thể xóa tài khoản đăng nhập trên Supabase. Tài khoản ứng dụng đã được khóa; vui lòng thử lại.");
+
+        var username = account.TenDangNhap;
+        var audit = CreateAuditLog(id, username, "DELETE_ACCOUNT", "Xóa tài khoản đăng nhập; giữ hồ sơ nhân viên.", $"Vai trò: {account.VaiTro?.TenVaiTro}; nhân viên: #{account.MaNhanVien}", "Đã xóa", reason);
+        audit.MaTaiKhoanBiTacDong = null;
+        _context.NhatKyQuanTris.Add(audit);
+        _context.TaiKhoans.Remove(account);
+        try { await _context.SaveChangesAsync(); }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Không thể hoàn tất xóa tài khoản {AccountId}", id);
+            return ToggleStatusFailure("Chưa hoàn tất xóa tài khoản ứng dụng. Tài khoản đã được khóa; vui lòng thử lại.");
+        }
+        var message = $"Đã xóa tài khoản '{username}'. Hồ sơ nhân viên được giữ lại.";
+        if (IsAjaxRequest()) return Json(new { success = true, message });
+        TempData["Success"] = message;
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
     public async Task<IActionResult> ToggleStatus(int id, string? reason)
     {
         reason = reason?.Trim();
@@ -821,6 +897,7 @@ public class UserAccountsController : Controller
             "CREATE_ACCOUNT_AUTH" => "Cấp tài khoản đăng nhập Mobile",
             "UPDATE_ACCOUNT" => "Cập nhật tài khoản",
             "RESET_PASSWORD" => "Đặt lại mật khẩu",
+            "DELETE_ACCOUNT" => "Xóa tài khoản",
             "LOCK_ACCOUNT" => "Khóa tài khoản",
             "UNLOCK_ACCOUNT" => "Mở khóa tài khoản",
             _ => "Thao tác quản trị"

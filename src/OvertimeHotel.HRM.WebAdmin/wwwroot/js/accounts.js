@@ -566,10 +566,16 @@
             const data = contentType.includes("application/json") ? await response.json() : null;
             if (!response.ok || !data?.success) throw new Error(data?.message || "Không thể cập nhật trạng thái tài khoản.");
 
-            updateAccountRow(form, data);
-            showToast(data.message, "success");
+            if (form.dataset.accountMode === "delete") {
+                showToast(data.message, "success");
+                await loadAccountsTable(null, false);
+            } else {
+                updateAccountRow(form, data);
+                showToast(data.message, "success");
+            }
         } catch (error) {
             showToast(error instanceof Error ? error.message : "Không thể cập nhật trạng thái tài khoản.", "danger");
+            if (form.dataset.accountMode === "delete") await loadAccountsTable(null, false);
         } finally {
             button?.classList.remove("is-loading");
             if (button && document.body.contains(button)) button.disabled = false;
@@ -595,28 +601,30 @@
     };
 
     const bindToggleForms = () => {
-        document.querySelectorAll(".account-toggle-form").forEach((form) => {
+        document.querySelectorAll(".account-toggle-form, .account-delete-form").forEach((form) => {
             if (form.dataset.bound === "true") return;
             form.dataset.bound = "true";
             form.addEventListener("submit", (event) => {
                 event.preventDefault();
                 pendingForm = form;
+                const isDelete = form.dataset.accountMode === "delete";
                 const isLock = form.dataset.accountMode === "lock";
-                if (title) title.textContent = isLock ? "Khóa tài khoản?" : "Mở khóa tài khoản?";
-                if (message) message.textContent = isLock
-                    ? "Người dùng sẽ không thể đăng nhập cho đến khi tài khoản được mở khóa."
+                if (title) title.textContent = isDelete ? "Xóa tài khoản?" : isLock ? "Khóa tài khoản?" : "Mở khóa tài khoản?";
+                if (message) message.textContent = isDelete
+                    ? "Tài khoản đăng nhập sẽ bị xóa. Hồ sơ nhân viên, hợp đồng và lịch sử làm việc được giữ lại. Muốn đăng nhập lại cần cấp tài khoản mới."
+                    : isLock ? "Người dùng sẽ không thể đăng nhập cho đến khi tài khoản được mở khóa."
                     : "Người dùng sẽ có thể đăng nhập và sử dụng quyền được cấp trở lại.";
                 if (accountName) accountName.textContent = form.dataset.accountName || "Tài khoản";
-                if (icon) icon.className = isLock ? "bi bi-person-lock" : "bi bi-person-check";
-                if (submitLabel) submitLabel.textContent = isLock ? "Khóa tài khoản" : "Mở khóa";
-                if (submitButton) submitButton.classList.toggle("is-unlock", !isLock);
+                if (icon) icon.className = isDelete ? "bi bi-person-x" : isLock ? "bi bi-person-lock" : "bi bi-person-check";
+                if (submitLabel) submitLabel.textContent = isDelete ? "Xóa tài khoản" : isLock ? "Khóa tài khoản" : "Mở khóa";
+                if (submitButton) submitButton.classList.toggle("is-unlock", !isLock && !isDelete);
                 if (reasonInput) reasonInput.value = "";
 
                 if (dialog && typeof dialog.showModal === "function") {
                     dialog.showModal();
                     window.setTimeout(() => reasonInput?.focus(), 80);
                 } else {
-                    const reason = window.prompt("Nhập lý do thực hiện:");
+                    const reason = window.prompt(isDelete ? "Xóa tài khoản đăng nhập? Hồ sơ nhân viên vẫn được giữ lại. Nhập lý do để xác nhận:" : "Nhập lý do thực hiện:");
                     if (reason?.trim()) {
                         const reasonVal = form.querySelector("[data-account-reason-value]");
                         if (reasonVal) reasonVal.value = reason.trim();

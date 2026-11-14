@@ -643,6 +643,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.NgayGui).HasColumnName("ngay_gui").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.MaNguoiGui).HasColumnName("ma_nguoi_gui");
             entity.Property(e => e.MaNguoiXuLy).HasColumnName("ma_nguoi_xu_ly");
+            entity.Property(e => e.TenNguoiXuLyDaXoa).HasColumnName("ten_nguoi_xu_ly_da_xoa").HasMaxLength(50);
             entity.Property(e => e.NgayXuLy).HasColumnName("ngay_xu_ly");
             entity.Property(e => e.GhiChuTuChoi).HasColumnName("ghi_chu_tu_choi").HasMaxLength(500);
             entity.Property(e => e.MaTaiKhoan).HasColumnName("ma_tai_khoan");

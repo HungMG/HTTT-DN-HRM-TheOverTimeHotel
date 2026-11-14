@@ -126,11 +126,11 @@ public class YeuCauTaiKhoanController : Controller
                     : (item.NguoiGui.Ho + " " + item.NguoiGui.Ten).Trim(),
                 SenderRole = item.NguoiGui != null && item.NguoiGui.TaiKhoan != null && item.NguoiGui.TaiKhoan.VaiTro != null
                     ? item.NguoiGui.TaiKhoan.VaiTro.TenVaiTro : null,
-                HandlerUsername = item.NguoiXuLy == null ? null : item.NguoiXuLy.TenDangNhap,
+                HandlerUsername = item.NguoiXuLy == null ? item.TenNguoiXuLyDaXoa : item.NguoiXuLy.TenDangNhap,
                 RejectionNote = item.GhiChuTuChoi,
                 SentAt = item.NgayGui,
                 HandledAt = item.NgayXuLy,
-                GrantedUsername = item.TaiKhoanDuocCap == null ? null : item.TaiKhoanDuocCap.TenDangNhap
+                GrantedUsername = item.TaiKhoanDuocCap == null ? item.TenDangNhap : item.TaiKhoanDuocCap.TenDangNhap
             })
             .ToList();
 

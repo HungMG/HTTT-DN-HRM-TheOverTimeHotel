@@ -133,11 +133,13 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 - `ma_nguoi_xu_ly` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): Tài khoản IT tiếp nhận và xử lý yêu cầu.
 - `ngay_xu_ly` (TIMESTAMPTZ, NULL): Thời điểm IT kết luận xử lý.
 - `ghi_chu_tu_choi` (VARCHAR(500), NULL): Lý do từ chối (bắt buộc có khi `trang_thai = 'TU_CHOI'`).
-- `ma_tai_khoan` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): Tài khoản kết quả sau khi cấp thành công (bắt buộc có khi `trang_thai = 'DA_CAP'`).
+- `ma_tai_khoan` (INT, FK -> tai_khoan.ma_tai_khoan, NULL, ON DELETE SET NULL): Tài khoản kết quả sau khi cấp thành công, nếu tài khoản vẫn tồn tại.
+- `ma_tai_khoan_da_xoa` (INT, NULL): Mã tài khoản kết quả đã xóa, giữ lại để nhận diện lịch sử cấp.
+- `ma_nguoi_xu_ly_da_xoa` (INT, NULL) và `ten_nguoi_xu_ly_da_xoa` (VARCHAR(50), NULL): Mã và tên đăng nhập của người xử lý khi tài khoản xử lý đã bị xóa.
 - *Ràng buộc:*
   - CHECK `chk_yeu_cau_tu_choi_can_co_ghi_chu`: `(trang_thai <> 'TU_CHOI' OR ghi_chu_tu_choi IS NOT NULL)`.
-  - CHECK `chk_yeu_cau_da_cap_can_co_tai_khoan`: `((trang_thai = 'DA_CAP') = (ma_tai_khoan IS NOT NULL))`.
-  - CHECK `chk_yeu_cau_da_xu_ly_can_co_nguoi`: `(trang_thai = 'CHO_IT' OR ma_nguoi_xu_ly IS NOT NULL)`.
+  - CHECK `chk_yeu_cau_da_cap_can_co_tai_khoan`: `((trang_thai = 'DA_CAP') = (ma_tai_khoan IS NOT NULL OR ma_tai_khoan_da_xoa IS NOT NULL))`.
+  - CHECK `chk_yeu_cau_da_xu_ly_can_co_nguoi`: `(trang_thai = 'CHO_IT' OR ma_nguoi_xu_ly IS NOT NULL OR ma_nguoi_xu_ly_da_xoa IS NOT NULL)`.
   - UNIQUE INDEX partial: `uq_yeu_cau_ten_dang_nhap_dang_mo` trên `ten_dang_nhap` WHERE `trang_thai IN ('CHO_IT', 'DANG_XU_LY')`.
 
 ### Bảng 10: `ca_lam_viec` (Danh mục ca 24/7)
@@ -749,6 +751,8 @@ Nhằm bảo đảm toàn vẹn dữ liệu ở cấp độ phần cứng CSDL (
   - Bảo vệ tính toàn vẹn khi chốt cấp tài khoản: Khi yêu cầu được gán `ma_tai_khoan` (báo hiệu cấp thành công `DA_CAP`), trigger bắt buộc `ma_nguoi_xu_ly` không được phép NULL.
   - Trigger truy vấn ngược từ `tai_khoan` người xử lý -> `vai_tro_quyen` -> `quyen` để xác minh người xử lý bắt buộc phải sở hữu mã quyền `CAP_TAI_KHOAN_MOBILE` (vai trò Admin hoặc IT).
   - Đây là lớp phòng thủ chuyên sâu (Defense in Depth) ở tầng CSDL: kể cả khi kẻ tấn công vượt qua bộ lọc `[Authorize]` ở tầng ứng dụng hoặc thao tác trực tiếp trên SQL console, CSDL vẫn ném ngoại lệ `insufficient_privilege` từ chối thao tác.
+
+**Lưu lịch sử khi xóa tài khoản:** Migration `20261114_preserve_account_request_history_on_delete.sql` bổ sung trigger `hrm_archive_deleted_account_requests` trước khi xóa `tai_khoan`. Trigger lưu mã tài khoản kết quả, mã và tên người xử lý bị xóa vào các cột lịch sử tương ứng và gỡ liên kết FK. Hai trigger kiểm tra yêu cầu phía trên chỉ bỏ qua cập nhật lưu trữ có phạm vi giới hạn này; kiểm tra đối với thao tác cấp thông thường vẫn được giữ.
 
 ### 4.5. Trigger 5: `trg_chan_phan_ca_khong_hop_dong`
 - **Bảng áp dụng:** `public.phan_ca` (BEFORE INSERT OR UPDATE).
