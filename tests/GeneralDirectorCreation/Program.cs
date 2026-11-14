@@ -30,17 +30,19 @@ var controller = new HopDongController(db,LoggerFactory.Create(b => b.AddConsole
 controller.TempData=new TempDataDictionary(http,new MemoryTemp());
 controller.Url = new TestUrlHelper();
 var start=DateOnly.FromDateTime(DateTime.Today);
-var model=new HopDongFormViewModel {EmployeeName="Another Director",DepartmentId=1,PositionId=1,TrinhDo="Đại học",Contract=new HopDong {SoHopDong="DUPLICATE-GM",NgayBatDau=start,LoaiHopDong="KHONG_XAC_DINH_THOI_HAN",LuongCoBan=30_000_000m}};
+var model=new HopDongFormViewModel {EmployeeName="Another Director",PersonalEmail="director@example.test",DepartmentId=1,PositionId=1,TrinhDo="Đại học",Contract=new HopDong {SoHopDong="DUPLICATE-GM",NgayBatDau=start,LoaiHopDong="KHONG_XAC_DINH_THOI_HAN",LuongCoBan=30_000_000m}};
 try
 {
  var result=await controller.Create(model);
- if(result is not RedirectToActionResult || controller.TempData["Error"] is not string message || !message.Contains("đã có Tổng Giám Đốc")) throw new Exception("Expected a readable occupied-seat message; got: " + controller.TempData["Error"]);
+ if(result is not ViewResult { ViewName: "Index", Model: HopDongIndexViewModel retry } || retry.CreateContractForm.EmployeeName != "Another Director" ||
+    !controller.ModelState.Values.SelectMany(x => x.Errors).Any(x => x.ErrorMessage.Contains("đã có Tổng Giám Đốc")))
+     throw new Exception("Expected occupied-seat error in retained contract form");
  db.ChangeTracker.Clear();
  if(await db.NhanViens.CountAsync()!=1 || await db.HopDongs.CountAsync()!=1) throw new Exception("Rejected appointment left partial records");
  var index=await controller.Index(null,null);
- if(index is not ViewResult { Model: HopDongIndexViewModel page } || page.Contracts.Count!=1 || controller.TempData["Error"] is not string kept || !kept.Contains("đã có Tổng Giám Đốc")) throw new Exception("Index failed after rejected transaction");
+ if(index is not ViewResult { Model: HopDongIndexViewModel page } || page.Contracts.Count!=1) throw new Exception("Index failed after rejected transaction");
  Console.WriteLine("PASS duplicate GM creation returns readable rejection and saves no records");
- Console.WriteLine("PASS contract list loads normally after rejection and preserves the business error");
+ Console.WriteLine("PASS contract list loads normally after rejection and keeps the retained form available");
 }
 catch(Exception e) { Console.WriteLine("FAIL "+e.GetType().Name+": "+e.Message); Environment.ExitCode=1; }
 sealed class MemoryTemp : ITempDataProvider {public IDictionary<string,object> LoadTempData(HttpContext c)=>new Dictionary<string,object>(); public void SaveTempData(HttpContext c,IDictionary<string,object> values){} }

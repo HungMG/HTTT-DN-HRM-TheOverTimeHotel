@@ -35,7 +35,7 @@ public class NhanVien
 
     public string? DiaChi { get; set; }
     public string TrinhDo { get; set; } = string.Empty;
-    public DateOnly NgayVaoLam { get; set; }
+    public DateOnly? NgayVaoLam { get; set; }
     public DateOnly? NgayThoiViec { get; set; }
     public string TrangThai { get; set; } = "DANG_LAM";
 

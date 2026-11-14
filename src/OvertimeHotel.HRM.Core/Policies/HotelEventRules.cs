@@ -192,7 +192,7 @@ public static class HotelEventRules
         start < end && otherStart < otherEnd && start < otherEnd && otherStart < end;
     public static bool ContractCovers(NhanVien employee, DateTimeOffset start, DateTimeOffset end)
     {
-        if (start >= end || employee.TrangThai != "DANG_LAM") return false;
+        if (start >= end || !employee.IsProfileComplete || employee.TrangThai != "DANG_LAM") return false;
         var first = DateOnly.FromDateTime(Local(start));
         var last = DateOnly.FromDateTime(Local(end.AddTicks(-1)));
         return employee.NgayVaoLam <= first && (!employee.NgayThoiViec.HasValue || employee.NgayThoiViec > last)

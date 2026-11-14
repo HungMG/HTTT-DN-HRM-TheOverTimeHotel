@@ -20,7 +20,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 [Authorize(Policy = PermissionCodes.ManageEmployees)]
 public class NhanVienController : Controller
 {
-    private static readonly string[] SupportedEmployeeStatuses = ["DANG_LAM", "DA_THOI_VIEC", "NGHI_PHEP"];
+    private static readonly string[] SupportedEmployeeStatuses = ["DANG_LAM", "DA_THOI_VIEC", "NGHI_PHEP", "CHO_HOP_DONG"];
 
     private readonly AppDbContext _context;
     private readonly ILogger<NhanVienController> _logger;
@@ -155,7 +155,7 @@ public class NhanVienController : Controller
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalPages = totalPages,
-                WorkingEmployees = allEmployees.Count(employee => employee.TrangThai == "DANG_LAM"),
+                WorkingEmployees = allEmployees.Count(employee => ContractAttendancePolicy.HasValidContractOn(employee, today)),
                 ExpiringContracts = allContractItems.Count(item => item.days is >= 0 and <= 30),
                 ExpiredContracts = allContractItems.Count(item => item.days < 0)
             };
@@ -200,10 +200,30 @@ public class NhanVienController : Controller
         }
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Create(string entryMode = "FROM_CONTRACT", int? contractId = null)
+    {
+        if (entryMode != "FROM_CONTRACT") return BadRequest("Vui lòng chọn hợp đồng đã lập để hoàn thiện hồ sơ.");
+        var model = new NhanVienFormViewModel { EntryMode = entryMode, ContractId = contractId };
+        model.EligibleContracts = await GetEligibleContractsAsync();
+        if (contractId.HasValue)
+        {
+            var selected = model.EligibleContracts.FirstOrDefault(x => x.MaHopDong == contractId);
+            if (selected?.NhanVien is { } person)
+                model.Employee = new NhanVien { Ho = person.Ho, Ten = person.Ten, MaPhongBan = person.MaPhongBan,
+                    MaChucVu = person.MaChucVu, EmailCaNhan = person.EmailCaNhan, TrinhDo = person.TrinhDo, NgayVaoLam = person.NgayVaoLam };
+        }
+        model = await BuildEmployeeFormAsync(model);
+        if (Request.Headers["X-Employee-Modal"] == "1") return PartialView("_EmployeeForm", model);
+        return View(model);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(NhanVienFormViewModel model)
     {
+        FormInputMessages.LocalizeBindingErrors(ModelState);
+        if (model.EntryMode != "FROM_CONTRACT") return BadRequest("Vui lòng chọn hợp đồng đã lập để hoàn thiện hồ sơ.");
         var contract = await _context.HopDongs.Include(x => x.NhanVien)
             .FirstOrDefaultAsync(x => x.MaHopDong == model.ContractId);
         var employee = contract?.NhanVien;
@@ -212,8 +232,8 @@ public class NhanVienController : Controller
         model.Employee.Ten = employee?.Ten ?? string.Empty;
         model.Employee.MaPhongBan = employee?.MaPhongBan;
         model.Employee.MaChucVu = employee?.MaChucVu;
-        model.Employee.EmailCaNhan = employee?.EmailCaNhan;
-        model.Employee.NgayVaoLam = employee?.NgayVaoLam ?? default;
+        model.Employee.EmailCaNhan = string.IsNullOrWhiteSpace(model.Employee.EmailCaNhan) ? employee?.EmailCaNhan : model.Employee.EmailCaNhan;
+        model.Employee.NgayVaoLam = employee?.NgayVaoLam;
         if (!string.IsNullOrWhiteSpace(employee?.TrinhDo) && employee.TrinhDo != "Chưa cập nhật")
             model.Employee.TrinhDo = employee.TrinhDo;
         foreach (var field in new[] { "Ho", "Ten", "MaPhongBan", "MaChucVu", "EmailCaNhan", "NgayVaoLam", "TrinhDo" })
@@ -244,12 +264,14 @@ public class NhanVienController : Controller
             employee.GioiTinh = model.Employee.GioiTinh;
             employee.DienThoai = model.Employee.DienThoai;
             employee.DiaChi = model.Employee.DiaChi;
+            employee.EmailCaNhan = model.Employee.EmailCaNhan;
             employee.TrinhDo = model.Employee.TrinhDo;
             // Preserve original joining date across subsequent contracts.
-            employee.SoNguoiPhuThuoc = Math.Max(0, model.Employee.SoNguoiPhuThuoc);
+            employee.SoNguoiPhuThuoc = model.Employee.SoNguoiPhuThuoc;
             employee.IsProfileComplete = true;
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã thêm hồ sơ nhân viên “{model.Employee.HoTen}”.";
+            if (Request.Headers["X-Employee-Modal"] == "1") return Json(new { success = true });
             return RedirectToAction(nameof(Index));
         }
         catch (DbUpdateException ex)
@@ -265,7 +287,13 @@ public class NhanVienController : Controller
         model.Employee.MaNhanVien = 0;
         ModelState.Remove("Employee.MaNhanVien");
         model.EligibleContracts = await GetEligibleContractsAsync();
-        return View("Create", await BuildEmployeeFormAsync(model));
+        model = await BuildEmployeeFormAsync(model);
+        if (Request.Headers["X-Employee-Modal"] == "1")
+        {
+            Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+            return PartialView("_EmployeeForm", model);
+        }
+        return View("Create", model);
     }
 
     [HttpGet]
@@ -279,10 +307,22 @@ public class NhanVienController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, NhanVienFormViewModel model)
     {
+        FormInputMessages.LocalizeBindingErrors(ModelState);
         if (id != model.Employee.MaNhanVien)
             return BadRequest();
         if (!await _context.NhanViens.AnyAsync(x => x.MaNhanVien == id && x.IsProfileComplete)) return NotFound();
 
+        // Keep the original joining date tracked throughout validation; a concurrent first signature must reject this edit.
+        var original = await _context.NhanViens.FirstAsync(x => x.MaNhanVien == id);
+        var awaitingContract = original.TrangThai == "CHO_HOP_DONG" && !await _context.HopDongs.AnyAsync(x => x.MaNhanVien == id);
+        if (awaitingContract)
+        {
+            model.Employee.TrangThai = "CHO_HOP_DONG";
+            model.Employee.NgayVaoLam = null;
+            foreach (var field in new[] { "TrangThai", "NgayVaoLam" }) ModelState.Remove($"Employee.{field}");
+        }
+        else if (model.Employee.TrangThai == "CHO_HOP_DONG")
+            ModelState.AddModelError("Employee.TrangThai", "Nhân viên đã có quá trình làm việc không thể chuyển về hồ sơ chờ ký.");
         Normalize(model.Employee);
         NormalizeEmployeeStatus(model.Employee);
 
@@ -308,7 +348,7 @@ public class NhanVienController : Controller
         if (employee == null)
             return NotFound();
 
-        if (employee.MaPhongBan != model.Employee.MaPhongBan || employee.MaChucVu != model.Employee.MaChucVu || employee.NgayVaoLam != model.Employee.NgayVaoLam)
+        if (!awaitingContract && (employee.MaPhongBan != model.Employee.MaPhongBan || employee.MaChucVu != model.Employee.MaChucVu || employee.NgayVaoLam != model.Employee.NgayVaoLam))
         {
             ModelState.AddModelError(string.Empty, "Đổi chức vụ/phòng ban qua phụ lục hợp đồng; ngày vào làm gốc được giữ để tính thâm niên.");
             return View(await BuildEmployeeFormAsync(model));
@@ -330,13 +370,20 @@ public class NhanVienController : Controller
         employee.NgayVaoLam = model.Employee.NgayVaoLam;
         employee.NgayThoiViec = model.Employee.NgayThoiViec;
         employee.TrangThai = model.Employee.TrangThai;
-        employee.SoNguoiPhuThuoc = Math.Max(0, model.Employee.SoNguoiPhuThuoc);
+        employee.SoNguoiPhuThuoc = model.Employee.SoNguoiPhuThuoc;
 
         try
         {
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã cập nhật hồ sơ “{employee.HoTen}”.";
             return RedirectToAction(nameof(Index));
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Hồ sơ nhân viên {EmployeeId} vừa được cập nhật hoặc ký hợp đồng.", id);
+            _context.ChangeTracker.Clear();
+            ModelState.AddModelError(string.Empty, "Hồ sơ vừa được cập nhật hoặc ký hợp đồng ở phiên khác. Vui lòng tải lại hồ sơ trước khi sửa tiếp.");
+            return View(await BuildEmployeeFormAsync(model));
         }
         catch (DbUpdateException ex)
         {
@@ -350,17 +397,27 @@ public class NhanVienController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
+        var isAjax = Request.Headers.XRequestedWith == "XMLHttpRequest" || Request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase);
+        IActionResult Failure(string message, int status, string? filter = null)
+        {
+            if (isAjax) return new JsonResult(new { success = false, message }) { StatusCode = status };
+            TempData["Error"] = message;
+            return RedirectToAction(nameof(Index), new { status = filter });
+        }
         var employee = await _context.NhanViens
             .Include(item => item.TaiKhoan)
             .Include(item => item.PhieuLuongs)
             .FirstOrDefaultAsync(item => item.MaNhanVien == id);
         if (employee == null)
-            return NotFound();
+            return isAjax ? new JsonResult(new { success = false, message = "Không tìm thấy nhân viên." }) { StatusCode = 404 } : NotFound();
 
+        if (employee.TrangThai == "CHO_HOP_DONG")
+        {
+            return Failure("Hồ sơ chờ ký chưa có quá trình làm việc để thôi việc. Dùng nút Xóa vĩnh viễn để kiểm tra và xác nhận xóa hồ sơ nếu không tiếp nhận nữa.", 409, "CHO_HOP_DONG");
+        }
         if (employee.TrangThai == "DA_THOI_VIEC")
         {
-            TempData["Error"] = "Hồ sơ đã nghỉ việc. Dùng nút Xóa vĩnh viễn để kiểm tra dữ liệu liên quan.";
-            return RedirectToAction(nameof(Index), new { status = "DA_THOI_VIEC" });
+            return Failure("Hồ sơ đã nghỉ việc. Dùng nút Xóa vĩnh viễn để kiểm tra dữ liệu liên quan.", 409, "DA_THOI_VIEC");
         }
 
         try
@@ -368,12 +425,14 @@ public class NhanVienController : Controller
             employee.TrangThai = "DA_THOI_VIEC";
             employee.NgayThoiViec = DateOnly.FromDateTime(DateTime.Today);
             await _context.SaveChangesAsync();
-            TempData["Success"] = $"Đã ẩn hồ sơ nhân viên “{employee.HoTen}”. Có thể xem lại trong bộ lọc “Đã nghỉ việc”.";
+            var message = $"Đã ẩn hồ sơ nhân viên “{employee.HoTen}”. Có thể xem lại trong bộ lọc “Đã nghỉ việc”.";
+            if (isAjax) return Json(new { success = true, message });
+            TempData["Success"] = message;
         }
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Không thể ẩn hồ sơ nhân viên {EmployeeId}.", id);
-            TempData["Error"] = "Không thể ẩn hồ sơ nhân viên. Vui lòng kiểm tra kết nối CSDL.";
+            return Failure("Không thể ẩn hồ sơ nhân viên. Vui lòng kiểm tra kết nối CSDL.", 409);
         }
 
         return RedirectToAction(nameof(Index));
@@ -447,14 +506,21 @@ public class NhanVienController : Controller
         }
         if (string.IsNullOrWhiteSpace(model.Ho)) ModelState.AddModelError("Employee.Ho", "Vui lòng nhập họ.");
         if (string.IsNullOrWhiteSpace(model.Ten)) ModelState.AddModelError("Employee.Ten", "Vui lòng nhập tên.");
+        foreach (var (field, value) in new[] { ("Ho", model.Ho), ("Ten", model.Ten) })
+            if (!string.IsNullOrWhiteSpace(value) && !Regex.IsMatch(value, NhanVienFormViewModel.PersonNamePattern))
+                ModelState.AddModelError($"Employee.{field}", "Họ và tên chỉ gồm chữ, khoảng trắng, dấu nối hoặc dấu nháy. Ví dụ: Nguyễn Văn An.");
         var department = await _context.PhongBans.AsNoTracking().FirstOrDefaultAsync(item => item.MaPhongBan == model.MaPhongBan);
         if (department == null) ModelState.AddModelError("Employee.MaPhongBan", "Vui lòng chọn phòng ban hợp lệ.");
         if (!await _context.ChucVus.Where(OrganizationPositionPolicy.ForDepartment(department)).AnyAsync(item => item.MaChucVu == model.MaChucVu))
             ModelState.AddModelError("Employee.MaChucVu", "Vui lòng chọn chức vụ thuộc phòng ban đã chọn.");
         if (!model.NgaySinh.HasValue || model.NgaySinh == DateOnly.MinValue)
             ModelState.AddModelError("Employee.NgaySinh", "Vui lòng nhập ngày sinh.");
-        else if (model.NgaySinh >= DateOnly.FromDateTime(DateTime.Today))
-            ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày hiện tại.");
+        else if (model.NgaySinh > DateOnly.FromDateTime(DateTime.Today.AddYears(-18)))
+            ModelState.AddModelError("Employee.NgaySinh", "Nhân viên phải đủ 18 tuổi trở lên.");
+        else if (model.NgayVaoLam != default && model.NgaySinh >= model.NgayVaoLam)
+            ModelState.AddModelError("Employee.NgaySinh", "Ngày sinh phải trước ngày vào làm ghi trên hợp đồng.");
+        if (model.SoNguoiPhuThuoc is < 0 or > 20)
+            ModelState.AddModelError("Employee.SoNguoiPhuThuoc", "Số người phụ thuộc phải là số nguyên từ 0 đến 20.");
         if (model.GioiTinh is not ("NAM" or "NU" or "KHAC")) ModelState.AddModelError("Employee.GioiTinh", "Vui lòng chọn giới tính.");
         if (string.IsNullOrWhiteSpace(model.DienThoai)) ModelState.AddModelError("Employee.DienThoai", "Vui lòng nhập điện thoại.");
         else if (model.DienThoai.Length > 12 || !Regex.IsMatch(model.DienThoai, @"\A" + NhanVienFormViewModel.MobilePhonePattern + @"\z", RegexOptions.CultureInvariant))
@@ -462,7 +528,7 @@ public class NhanVienController : Controller
         if (string.IsNullOrWhiteSpace(model.DiaChi)) ModelState.AddModelError("Employee.DiaChi", "Vui lòng nhập địa chỉ.");
         if (string.IsNullOrWhiteSpace(model.TrinhDo) || model.TrinhDo == "Chưa cập nhật")
             ModelState.AddModelError("Employee.TrinhDo", "Vui lòng chọn trình độ chuyên môn.");
-        if (model.NgayVaoLam == DateOnly.MinValue) ModelState.AddModelError("Employee.NgayVaoLam", "Vui lòng nhập ngày vào làm.");
+        if (model.TrangThai != "CHO_HOP_DONG" && (!model.NgayVaoLam.HasValue || model.NgayVaoLam == DateOnly.MinValue)) ModelState.AddModelError("Employee.NgayVaoLam", "Vui lòng nhập ngày vào làm.");
         if (model.NgayThoiViec.HasValue && model.NgayThoiViec < model.NgayVaoLam) ModelState.AddModelError("Employee.NgayThoiViec", "Ngày thôi việc không được trước ngày vào làm.");
         if (!SupportedEmployeeStatuses.Contains(model.TrangThai)) ModelState.AddModelError("Employee.TrangThai", "Trạng thái nhân viên không hợp lệ.");
         if (!string.IsNullOrWhiteSpace(model.EmailCongVu))
@@ -479,7 +545,9 @@ public class NhanVienController : Controller
 
         // Email cá nhân là tuỳ chọn: để trống cũng được, nhưng đã nhập thì phải
         // đúng định dạng. Không kiểm tra trùng vì CSDL không đặt UNIQUE cho cột này.
-        if (!string.IsNullOrWhiteSpace(model.EmailCaNhan) && !emailFormat.IsValid(model.EmailCaNhan))
+        if (string.IsNullOrWhiteSpace(model.EmailCaNhan))
+            ModelState.AddModelError("Employee.EmailCaNhan", "Vui lòng nhập email cá nhân, ví dụ ten@gmail.com.");
+        else if (!emailFormat.IsValid(model.EmailCaNhan))
         {
             ModelState.AddModelError("Employee.EmailCaNhan", "Email cá nhân không đúng định dạng.");
         }
@@ -580,9 +648,9 @@ public class NhanVienController : Controller
         cleanHo = Regex.Replace(cleanHo, @"[^a-z0-9]", "");
         if (string.IsNullOrEmpty(cleanTen)) cleanTen = "nhanvien";
 
-        var baseEmail = string.IsNullOrEmpty(cleanHo)
-            ? $"{cleanTen}@overtimehotel.com"
-            : $"{cleanTen}.{cleanHo}@overtimehotel.com";
+        var localPart = string.IsNullOrEmpty(cleanHo) ? cleanTen : $"{cleanTen}.{cleanHo}";
+        localPart = localPart[..Math.Min(localPart.Length, 60)].TrimEnd('.');
+        var baseEmail = $"{localPart}@overtimehotel.com";
 
         if (!await _context.NhanViens.AnyAsync(e => e.EmailCongVu.ToLower() == baseEmail.ToLower()))
         {
@@ -592,9 +660,7 @@ public class NhanVienController : Controller
         int counter = 1;
         while (true)
         {
-            var candidate = string.IsNullOrEmpty(cleanHo)
-                ? $"{cleanTen}{counter}@overtimehotel.com"
-                : $"{cleanTen}.{cleanHo}{counter}@overtimehotel.com";
+            var candidate = $"{localPart}{counter}@overtimehotel.com";
             if (!await _context.NhanViens.AnyAsync(e => e.EmailCongVu.ToLower() == candidate.ToLower()))
             {
                 return candidate;

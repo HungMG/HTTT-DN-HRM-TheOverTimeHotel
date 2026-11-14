@@ -162,7 +162,7 @@ public class PhanCaController : Controller
                     .Include(n => n.PhongBan)
                     .Include(n => n.ChucVu)
                     .Include(n => n.HopDongs)
-                    .Where(n => n.TrangThai == "DANG_LAM");
+                    .Where(n => n.IsProfileComplete && n.TrangThai == "DANG_LAM");
 
                 if (phamViPhongBanId.HasValue)
                 {

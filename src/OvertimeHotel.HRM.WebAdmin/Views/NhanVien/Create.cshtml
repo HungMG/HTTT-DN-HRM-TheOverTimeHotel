@@ -1,7 +1,7 @@
 @model OvertimeHotel.HRM.WebAdmin.Models.NhanVienFormViewModel
-@{ ViewData["Title"] = "Hoàn thiện hồ sơ nhân viên"; }
+@{ ViewData["Title"] = "Hoàn thiện hồ sơ từ hợp đồng"; }
 <section class="catalog-card p-4">
-    <h1 class="h4 mb-3">Hoàn thiện hồ sơ nhân viên</h1>
+    <h1 class="h4 mb-3">@ViewData["Title"]</h1>
     <form asp-action="Create" method="post">
         <partial name="_EmployeeForm" model="Model" />
         <div class="d-flex gap-2 mt-4">
@@ -10,3 +10,7 @@
         </div>
     </form>
 </section>
+
+@section Scripts {
+    <script src="~/js/entry-validation.js" asp-append-version="true"></script>
+}

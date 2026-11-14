@@ -1,4 +1,5 @@
-using System.Net.Mail;
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 
 namespace OvertimeHotel.HRM.MobileApp.Services;
 
@@ -7,10 +8,11 @@ public static class ProfileContactValidation
     public static string? Validate(string? phone, string? email, string? address)
     {
         phone = phone?.Trim() ?? ""; email = email?.Trim() ?? ""; address = address?.Trim() ?? "";
-        if (phone.Length is < 1 or > 20 || phone.Any(c => !char.IsAsciiDigit(c) && c is not ('+' or ' ' or '-' or '(' or ')')) || !phone.Any(char.IsAsciiDigit))
-            return "Số điện thoại không hợp lệ (tối đa 20 ký tự).";
-        if (email.Length > 100 || (email.Length > 0 && (!MailAddress.TryCreate(email, out var parsed) || parsed.Address != email)))
-            return "Email cá nhân không hợp lệ (tối đa 100 ký tự).";
+        if (!Regex.IsMatch(phone, @"\A(?:0|\+84)[35789][0-9]{8}\z", RegexOptions.CultureInvariant))
+            return "Số điện thoại phải có dạng 0912345678 hoặc +84912345678, không chứa khoảng trắng.";
+        if (email.Length == 0 || email.Length > 100 || !new EmailAddressAttribute().IsValid(email))
+            return "Vui lòng nhập email cá nhân hợp lệ, tối đa 100 ký tự. Ví dụ: ten@gmail.com.";
+        if (address.Length == 0) return "Vui lòng nhập địa chỉ.";
         if (address.Length > 255) return "Địa chỉ không được quá 255 ký tự.";
         return null;
     }

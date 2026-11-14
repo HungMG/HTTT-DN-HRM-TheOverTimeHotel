@@ -825,9 +825,9 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         // 3. Lấy danh sách nhân viên: đang làm việc HOẶC đã thôi việc nhưng thôi việc trong/sau kỳ, HOẶC có ca làm việc trong kỳ
         var employees = await _context.NhanViens
             .AsNoTracking()
-            .Where(e => e.TrangThai == "DANG_LAM" ||
+            .Where(e => e.IsProfileComplete && (e.TrangThai == "DANG_LAM" ||
                         (e.NgayThoiViec.HasValue && e.NgayThoiViec.Value >= period.TuNgay) ||
-                        activeEmployeeIdsWithShifts.Contains(e.MaNhanVien))
+                        activeEmployeeIdsWithShifts.Contains(e.MaNhanVien)))
             .Include(e => e.PhongBan)
             .Include(e => e.ChucVu)
             .Include(e => e.HopDongs).ThenInclude(h => h.PhuLucLuongs)
@@ -961,9 +961,9 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         if (salarySegments.Count == 0 && hasShiftsInPeriod)
             throw new InvalidOperationException($"Nhân viên #{employeeId} có ca trong kỳ nhưng thiếu hợp đồng hiệu lực.");
 
-        var isEligibleEmployee = nv.TrangThai == "DANG_LAM" ||
+        var isEligibleEmployee = nv.IsProfileComplete && (nv.TrangThai == "DANG_LAM" ||
                                 (nv.NgayThoiViec.HasValue && nv.NgayThoiViec.Value >= period.TuNgay) ||
-                                await _context.PhanCas.AnyAsync(s => s.MaNhanVien == employeeId && s.NgayLamViec >= period.TuNgay && s.NgayLamViec <= period.DenNgay && s.TrangThai != "DA_HUY", cancellationToken);
+                                await _context.PhanCas.AnyAsync(s => s.MaNhanVien == employeeId && s.NgayLamViec >= period.TuNgay && s.NgayLamViec <= period.DenNgay && s.TrangThai != "DA_HUY", cancellationToken));
 
         var settlements = await OutstandingSettlements(period.MaKyLuong)
             .Where(q => q.MaNhanVien == employeeId).ToListAsync(cancellationToken);

@@ -51,13 +51,15 @@ public class NhanVienProfileModalViewModel
     public string ContractState { get; init; } = "CHUA_CO";
     public PhongBan? Department => Employee.PhongBan;
     public ChucVu? Position => Employee.ChucVu;
-    public int TenureYears => Math.Max(0, DateTime.Today.Year - Employee.NgayVaoLam.Year);
-    public int TenureMonths => Math.Max(0, ((DateTime.Today.Year - Employee.NgayVaoLam.Year) * 12) + DateTime.Today.Month - Employee.NgayVaoLam.Month);
+    public int TenureYears => TenureMonths / 12;
+    public int TenureMonths => OvertimeHotel.HRM.Core.Policies.ReportPolicy.TenureMonths(Employee.NgayVaoLam, DateOnly.FromDateTime(DateTime.Today), Employee.NgayThoiViec);
 }
 
 public class NhanVienFormViewModel
 {
+    public const string PersonNamePattern = @"\A[\p{L}\p{M}]+(?:[ '’-][\p{L}\p{M}]+)*\z";
     public const string MobilePhonePattern = @"(?:0|\+84)[35789][0-9]{8}";
+    public string EntryMode { get; set; } = "FROM_CONTRACT";
     public int? ContractId { get; set; }
     public IReadOnlyList<HopDong> EligibleContracts { get; set; } = [];
     public NhanVien Employee { get; set; } = new();
@@ -90,7 +92,7 @@ public class HopDongFormViewModel
     [Display(Name = "Gửi thông báo qua email cá nhân")]
     public string EmailNotificationOption { get; set; } = "KHONG_GUI";
 
-    [Display(Name = "Khép hợp đồng cũ để chuyển tiếp/thăng chức")]
+    [Display(Name = "Khép hợp đồng cũ để chuyển tiếp sang hợp đồng mới")]
     public bool ClosePreviousContract { get; set; }
 
     public IReadOnlyList<SelectListItem> DepartmentOptions { get; set; } = [];

@@ -103,7 +103,7 @@
 
             <div class="catalog-toolbar-actions d-flex align-items-center gap-2">
                 <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold catalog-action-btn" data-bs-toggle="modal" data-bs-target="#createEmployeeModal">
-                    <i class="bi bi-plus-lg me-1"></i> Thêm nhân viên
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Thêm nhân viên
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-3 fw-semibold catalog-action-btn" data-catalog-export="NhanVien" title="Xuất danh sách ra file CSV mở bằng Excel">
                     <i class="bi bi-file-earmark-excel text-success me-1"></i> Xuất CSV
@@ -129,24 +129,18 @@
             <div class="modal-header bg-white border-bottom py-3 px-4">
                 <div>
                     <div class="text-uppercase small text-primary fw-bold">Hồ sơ nhân sự khách sạn</div>
-                    <h2 class="modal-title h5 mb-0 font-serif" id="createEmployeeModalLabel">Thêm Nhân Viên Mới</h2>
+                    <h2 class="modal-title h5 mb-0 font-serif" id="createEmployeeModalLabel">Thêm nhân viên</h2>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
-            <form asp-action="Create" method="post" class="d-flex flex-column overflow-hidden">
-                @Html.AntiForgeryToken()
-                <div class="modal-body overflow-auto p-4">
-                    <partial name="_EmployeeForm" model="Model.CreateEmployeeForm" />
-                </div>
-                <div class="modal-footer flex-shrink-0 bg-light border-top py-3 px-4">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
-                        <i class="bi bi-x-lg me-1"></i>Hủy
-                    </button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
-                        <i class="bi bi-check2 me-1"></i>Lưu hồ sơ nhân viên
-                    </button>
-                </div>
-            </form>
+            <div class="modal-body overflow-auto p-4">
+                <div id="employeeFormPanel" aria-live="polite" data-create-url="@Url.Action("Create", "NhanVien")"></div>
+            </div>
+            <div class="modal-footer flex-shrink-0 bg-light border-top py-3 px-4">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" form="employeeActiveForm" class="btn btn-primary rounded-pill px-4 fw-bold" data-employee-create-submit disabled>Lưu hồ sơ nhân viên</button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -207,7 +201,42 @@
     </div>
 </div>
 
+<!-- MODAL XÁC NHẬN ẨN HỒ SƠ NHÂN VIÊN -->
+<div class="modal fade" id="employeeHideModal" tabindex="-1" aria-labelledby="employeeHideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                        <i class="bi bi-eye-slash-fill text-danger fs-5"></i>
+                    </div>
+                    <h2 class="modal-title fs-5 mb-0 fw-bold" id="employeeHideModalLabel">Ẩn hồ sơ nhân viên</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+                <p class="mb-1">Bạn có chắc chắn muốn ẩn hồ sơ của</p>
+                <p class="fw-semibold text-break mb-3" id="employeeHideModalName"></p>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Hồ sơ sẽ được đánh dấu <strong>Đã nghỉ việc</strong> và không xuất hiện trong danh sách mặc định. Bạn vẫn có thể xem lại qua bộ lọc trạng thái.
+                </p>
+                <div class="alert alert-danger d-none mt-3 mb-0" role="alert" id="employeeHideError"></div>
+            </div>
+            <div class="modal-footer border-top bg-light">
+                <button type="button" class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal" id="employeeHideCancelBtn">Hủy</button>
+                <button type="button" class="btn btn-danger rounded-pill px-4 fw-semibold" id="employeeHideConfirmBtn">
+                    <i class="bi bi-eye-slash me-1"></i>Xác nhận ẩn
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script src="~/js/employee-create-modal.js" asp-append-version="true"></script>
+    <script src="~/js/entry-validation.js" asp-append-version="true"></script>
+<script src="~/js/employee-hide.js" asp-append-version="true"></script>
 <script src="~/js/employee-delete.js" asp-append-version="true"></script>
 <script src="~/js/account-request-popup.js" asp-append-version="true"></script>
 <script>

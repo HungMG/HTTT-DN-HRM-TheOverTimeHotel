@@ -109,7 +109,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.EmailCaNhan).HasColumnName("email_ca_nhan").HasMaxLength(100);
             entity.Property(e => e.DiaChi).HasColumnName("dia_chi").HasMaxLength(255);
             entity.Property(e => e.TrinhDo).HasColumnName("trinh_do").HasMaxLength(50).IsRequired();
-            entity.Property(e => e.NgayVaoLam).HasColumnName("ngay_vao_lam").IsRequired();
+            entity.Property(e => e.NgayVaoLam).HasColumnName("ngay_vao_lam").IsRequired(false).IsConcurrencyToken();
             entity.Property(e => e.NgayThoiViec).HasColumnName("ngay_thoi_viec");
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("DANG_LAM").IsRequired();
             entity.Property(e => e.SoNguoiPhuThuoc).HasColumnName("so_nguoi_phu_thuoc").HasDefaultValue(0).IsRequired();

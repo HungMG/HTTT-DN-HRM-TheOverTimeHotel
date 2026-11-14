@@ -53,8 +53,8 @@
                                 <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="resetEmployeeFilters()">
                                     <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại bộ lọc
                                 </button>
-                                <button type="button" class="btn btn-hotel-primary btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#createEmployeeModal">
-                                    <i class="bi bi-plus-lg me-1"></i> Thêm nhân viên mới
+                                <button type="button" class="btn btn-outline-primary btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#createEmployeeModal" data-employee-entry-mode="FROM_CONTRACT">
+                                    Hoàn thiện từ hợp đồng
                                 </button>
                             </div>
                         </div>
@@ -115,12 +115,19 @@
                         <td>
                             @switch (employee.TrangThai)
                             {
+                                case "CHO_HOP_DONG":
+                                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-3 py-1">Chờ ký hợp đồng</span>
+                                    break;
                                 case "DANG_LAM":
                                     @if (item.ContractState == "DA_HET_HAN")
                                     {
                                         <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1" title="Hợp đồng lao động đã hết hạn - Cần gia hạn HĐ hoặc làm thủ tục thôi việc">
                                             <i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>Chờ gia hạn
                                         </span>
+                                    }
+                                    else if (item.ContractState == "CHUA_HIEU_LUC")
+                                    {
+                                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-3 py-1">Chờ ngày vào làm</span>
                                     }
                                     else
                                     {
@@ -142,10 +149,14 @@
                             }
                         </td>
                         <td class="text-end text-nowrap">
+                            @if (employee.TrangThai == "CHO_HOP_DONG")
+                            {
+                                <a asp-controller="HopDong" asp-action="Index" asp-route-employeeId="@employee.MaNhanVien" onclick="event.stopPropagation();" class="btn btn-sm btn-outline-primary me-1" title="Lập hợp đồng cho @employee.HoTen">Lập hợp đồng</a>
+                            }
                             <a asp-action="Edit" asp-route-id="@employee.MaNhanVien" onclick="event.stopPropagation();" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hồ sơ">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            @if (employee.TrangThai == "DA_THOI_VIEC")
+                            @if (employee.TrangThai is "DA_THOI_VIEC" or "CHO_HOP_DONG")
                             {
                                 <button type="button" class="btn btn-sm btn-light border rounded-circle text-danger"
                                         style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"
@@ -158,11 +169,13 @@
                             }
                             else
                             {
-                                <form asp-action="Delete" asp-route-id="@employee.MaNhanVien" method="post" class="d-inline" onclick="event.stopPropagation();" onsubmit="return confirm('Bạn có chắc chắn muốn ẩn hồ sơ @employee.HoTen khỏi danh sách?');">
-                                    <button type="submit" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Ẩn hồ sơ" aria-label="Ẩn hồ sơ nhân viên @employee.HoTen">
-                                        <i class="bi bi-trash" aria-hidden="true"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-light border rounded-circle text-danger"
+                                        style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"
+                                        title="Ẩn hồ sơ" aria-label="Ẩn hồ sơ nhân viên @employee.HoTen" aria-haspopup="dialog"
+                                        onclick="event.stopPropagation();" data-employee-hide-name="@employee.HoTen"
+                                        data-employee-hide-url="@Url.Action("Delete", "NhanVien", new { id = employee.MaNhanVien })">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                </button>
                             }
                         </td>
                     </tr>

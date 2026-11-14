@@ -178,12 +178,19 @@
                     </span>
                     @switch (emp.TrangThai)
                     {
+                        case "CHO_HOP_DONG":
+                            <span class="badge bg-info text-dark rounded-pill px-3 py-2">Chờ ký hợp đồng</span>
+                            break;
                         case "DANG_LAM":
                             @if (Model.ContractState == "DA_HET_HAN")
                             {
                                 <span class="badge bg-warning text-dark rounded-pill px-3 py-1 shadow-sm flex-shrink-0" title="Hợp đồng lao động đã hết hạn - Cần gia hạn hoặc làm thủ tục thôi việc">
                                     <i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>Chờ gia hạn HĐ
                                 </span>
+                            }
+                            else if (Model.ContractState == "CHUA_HIEU_LUC")
+                            {
+                                <span class="badge bg-info text-dark rounded-pill px-3 py-1">Chờ ngày vào làm</span>
                             }
                             else
                             {
@@ -221,12 +228,12 @@
                 <div class="d-flex flex-wrap align-items-center gap-3 text-white-50 small">
                     <span class="d-inline-flex align-items-center">
                         <i class="bi bi-calendar-check me-1 text-warning opacity-75"></i>
-                        Vào làm:&nbsp;<span class="text-white fw-semibold">@emp.NgayVaoLam.ToString("dd/MM/yyyy")</span>
+                        Vào làm:&nbsp;<span class="text-white fw-semibold">@(emp.NgayVaoLam?.ToString("dd/MM/yyyy") ?? "Chưa vào làm")</span>
                     </span>
                     <span class="text-white-50 d-none d-sm-inline">&bull;</span>
                     <span class="d-inline-flex align-items-center">
                         <i class="bi bi-hourglass-split me-1 text-info opacity-75"></i>
-                        Thâm niên:&nbsp;<span class="text-white fw-semibold">@(Model.TenureYears > 0 ? $"{Model.TenureYears} năm {(Model.TenureMonths % 12)} tháng" : $"{Model.TenureMonths} tháng")</span>
+                        Thâm niên:&nbsp;<span class="text-white fw-semibold">@(!emp.NgayVaoLam.HasValue ? "Chưa vào làm" : Model.TenureYears > 0 ? $"{Model.TenureYears} năm {(Model.TenureMonths % 12)} tháng" : $"{Model.TenureMonths} tháng")</span>
                     </span>
                     @if (emp.TrangThai == "DA_THOI_VIEC" && emp.NgayThoiViec.HasValue)
                     {
@@ -381,12 +388,16 @@
                     <div class="d-flex flex-column small">
                         <div class="profile-prop-row">
                             <span class="text-muted">Ngày vào làm:</span>
-                            <span class="fw-semibold text-dark">@emp.NgayVaoLam.ToString("dd/MM/yyyy")</span>
+                            <span class="fw-semibold text-dark">@(emp.NgayVaoLam?.ToString("dd/MM/yyyy") ?? "Chưa vào làm")</span>
                         </div>
                         <div class="profile-prop-row">
                             <span class="text-muted">Thâm niên công tác:</span>
                             <span class="fw-bold text-success">
-                                @if (Model.TenureYears > 0)
+                                @if (!emp.NgayVaoLam.HasValue)
+                                {
+                                    <span>Chưa vào làm</span>
+                                }
+                                else if (Model.TenureYears > 0)
                                 {
                                     <span>@Model.TenureYears năm @(Model.TenureMonths % 12) tháng</span>
                                 }
@@ -536,7 +547,7 @@
                 <i class="bi bi-file-earmark-x text-muted opacity-50" style="font-size: 3rem;"></i>
                 <h6 class="mt-3 text-dark fw-bold">Nhân viên chưa ký kết hợp đồng lao động</h6>
                 <p class="text-muted small mb-3">Chưa có bản ghi hợp đồng lao động nào liên kết với nhân sự này.</p>
-                <a asp-controller="HopDong" asp-action="Index" class="btn btn-sm btn-hotel-primary rounded-pill px-4">
+                <a asp-controller="HopDong" asp-action="Index" asp-route-employeeId="@emp.MaNhanVien" class="btn btn-sm btn-hotel-primary rounded-pill px-4">
                     <i class="bi bi-plus-circle me-1"></i> Lập hợp đồng mới
                 </a>
             </div>

@@ -40,9 +40,7 @@
         const required = form.querySelector('[data-contract-end-required]');
         if (required) required.hidden = !isProbation;
         const hint = form.querySelector('[data-contract-end-hint]');
-        if (hint) hint.textContent = isProbation
-            ? 'Tự động tính 02 tháng, kết thúc trước ngày tương ứng một ngày.'
-            : 'Tự động tính theo thời hạn 1 năm, 3 năm; để trống nếu không xác định thời hạn.';
+        if (hint) hint.hidden = !isProbation;
         form.dataset.contractStage = stage.value;
     }
 
@@ -63,11 +61,18 @@
             date.setUTCDate(Math.min(day, lastDay));
             date.setUTCDate(date.getUTCDate() - 1);
             end.value = date.toISOString().slice(0, 10);
+            end.dispatchEvent(new Event('input', { bubbles: true }));
             return;
         }
         const years = { XAC_DINH_THOI_HAN_1_NAM: 1, XAC_DINH_THOI_HAN_3_NAM: 3 }[duration.value];
-        if (years) date.setUTCFullYear(date.getUTCFullYear() + years);
+        if (years) {
+            const month = date.getUTCMonth();
+            date.setUTCFullYear(date.getUTCFullYear() + years);
+            // Match DateOnly.AddYears: Feb 29 becomes Feb 28 in a non-leap year.
+            if (date.getUTCMonth() !== month) date.setUTCDate(0);
+        }
         end.value = years ? date.toISOString().slice(0, 10) : '';
+        end.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function init(container = document) {

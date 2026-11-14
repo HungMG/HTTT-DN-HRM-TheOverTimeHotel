@@ -63,7 +63,7 @@ if (args.Contains("--postgres"))
 {
     await db.Database.ExecuteSqlRawAsync("SELECT setval(pg_get_serial_sequence('nhan_vien','ma_nhan_vien'), (SELECT max(ma_nhan_vien) FROM nhan_vien)); SELECT setval(pg_get_serial_sequence('hop_dong','ma_hop_dong'), (SELECT max(ma_hop_dong) FROM hop_dong));");
 }
-var create = new OvertimeHotel.HRM.WebAdmin.Models.HopDongFormViewModel { EmployeeName="New Test", DepartmentId=2, PositionId=4, TrinhDo="Cao đẳng", Contract=new HopDong { SoHopDong="NEW-TEST", NgayBatDau=today, HinhThucHopDong="THU_VIEC", LoaiHopDong="THU_VIEC", LuongCoBan=1m } };
+var create = new OvertimeHotel.HRM.WebAdmin.Models.HopDongFormViewModel { EmployeeName="New Test", PersonalEmail="new@example.test", DepartmentId=2, PositionId=4, TrinhDo="Cao đẳng", Contract=new HopDong { SoHopDong="NEW-TEST", NgayBatDau=today, HinhThucHopDong="THU_VIEC", LoaiHopDong="THU_VIEC", LuongCoBan=1m } };
 await c.Create(create);
 Require(c.ModelState.IsValid,"Create new trial: "+ string.Join(";",c.ModelState.Values.SelectMany(x=>x.Errors).Select(x=>x.ErrorMessage)));
 var trial = await db.HopDongs.Include(x=>x.NhanVien).SingleAsync(x=>x.SoHopDong=="NEW-TEST");

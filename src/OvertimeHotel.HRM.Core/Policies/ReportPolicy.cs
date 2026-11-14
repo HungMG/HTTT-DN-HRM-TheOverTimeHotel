@@ -28,9 +28,9 @@ public static class ReportPolicy
         leave.TrangThai == "DA_DUYET" && leave.LoaiDon != null && leave.LoaiDon.LaNghiPhep
         && leave.TuNgay <= to && leave.DenNgay >= from;
     public static bool IsEmployedAt(NhanVien employee, DateOnly asOf) =>
-        IsEmployedAt(employee.NgayVaoLam, employee.TrangThai, employee.NgayThoiViec, asOf);
-    public static bool IsEmployedAt(DateOnly hired, string status, DateOnly? left, DateOnly asOf) =>
-        hired <= asOf && (!IsResigned(status) || (left.HasValue && left.Value > asOf));
+        employee.IsProfileComplete && IsEmployedAt(employee.NgayVaoLam, employee.TrangThai, employee.NgayThoiViec, asOf);
+    public static bool IsEmployedAt(DateOnly? hired, string status, DateOnly? left, DateOnly asOf) =>
+        hired.HasValue && status != "CHO_HOP_DONG" && hired <= asOf && (!IsResigned(status) || (left.HasValue && left.Value > asOf));
     public static Expression<Func<HopDong, bool>> ContractAtDate(DateOnly asOf) => h =>
         (h.TrangThai == "HIEU_LUC" || h.TrangThai == "HET_HAN" || h.TrangThai == "DA_KET_THUC"
          || h.TrangThai == "DA_CHAM_DUT" || h.TrangThai == "CHAM_DUT" || h.TrangThai == "DA_KY")
@@ -320,24 +320,26 @@ public static class ReportPolicy
     /// Thâm niên công tác tính theo số tháng tròn giữa ngày vào làm và ngày mốc.
     /// Nhân viên chưa vào làm (mốc nằm trước ngày vào làm) trả về 0 thay vì số âm.
     /// </summary>
-    public static int TenureMonths(DateOnly ngayVaoLam, DateOnly asOf) =>
+    public static int TenureMonths(DateOnly? ngayVaoLam, DateOnly asOf) =>
         TenureMonths(ngayVaoLam, asOf, null);
 
     /// <summary>
     /// Thâm niên công tác có xét ngày thôi việc: nếu đã nghỉ trước ngày mốc, thâm niên dừng tại ngày thôi việc.
     /// </summary>
-    public static int TenureMonths(DateOnly ngayVaoLam, DateOnly asOf, DateOnly? ngayThoiViec)
+    public static int TenureMonths(DateOnly? ngayVaoLam, DateOnly asOf, DateOnly? ngayThoiViec)
     {
+        if (!ngayVaoLam.HasValue) return 0;
+        var joined = ngayVaoLam.Value;
         var cutoff = ngayThoiViec.HasValue && ngayThoiViec.Value < asOf ? ngayThoiViec.Value : asOf;
         if (ngayVaoLam > cutoff)
         {
             return 0;
         }
 
-        var months = (cutoff.Year - ngayVaoLam.Year) * MonthsPerYear + (cutoff.Month - ngayVaoLam.Month);
+        var months = (cutoff.Year - joined.Year) * MonthsPerYear + (cutoff.Month - joined.Month);
 
         // Chưa tới ngày kỷ niệm trong tháng thì chưa tính là tròn tháng.
-        if (cutoff.Day < ngayVaoLam.Day)
+        if (cutoff.Day < joined.Day)
         {
             months--;
         }

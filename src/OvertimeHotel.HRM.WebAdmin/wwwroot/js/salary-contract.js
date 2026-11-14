@@ -57,8 +57,8 @@
         const education = field(form, 'TrinhDo', 'education')?.value || '';
         const start = field(form, 'Contract.NgayBatDau', 'effectiveDate')?.value;
         hint.classList.remove('text-danger');
-        if ((!position && (!amendment || changingPosition)) || !start) {
-            hint.textContent = 'Chọn chức vụ, trình độ và ngày hiệu lực để xem khung lương.';
+        if ((!position && (!amendment || changingPosition)) || !start || (!amendment && !education)) {
+            hint.textContent = amendment ? 'Chọn chức vụ, trình độ và ngày hiệu lực để xem khung lương.' : '';
             return;
         }
         hint.textContent = 'Đang tra khung lương…';

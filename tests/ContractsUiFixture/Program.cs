@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OvertimeHotel.HRM.Data.Context;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddControllersWithViews().AddApplicationPart(typeof(HopDongController).Assembly);
+builder.Services.AddControllersWithViews(options => options.Conventions.Add(new FixtureControllerNames())).AddApplicationPart(typeof(HopDongController).Assembly);
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<AiContextTokenService>();
 builder.Services.AddSingleton<AiChatbotUrlBuilder>();
@@ -20,9 +20,9 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.PhongBans.AddRange(new PhongBan { MaPhongBan = 1, TenPhongBan = "Ban Giám Đốc" }, new PhongBan { MaPhongBan = 2, TenPhongBan = "Tiền sảnh" });
-    db.ChucVus.AddRange(new ChucVu { MaChucVu = 1, MaPhongBan = 1, TenChucVu = "Tổng Giám Đốc" },
-        new ChucVu { MaChucVu = 2, TenChucVu = "Trưởng Bộ Phận" },
-        new ChucVu { MaChucVu = 4, MaPhongBan = 2, TenChucVu = "Lễ tân" });
+    db.ChucVus.AddRange(new ChucVu { MaChucVu = 1, MaPhongBan = 1, NhomLuong = "TONG_GIAM_DOC", TenChucVu = "Tổng Giám Đốc" },
+        new ChucVu { MaChucVu = 2, NhomLuong = "QUAN_LY", TenChucVu = "Trưởng Bộ Phận" },
+        new ChucVu { MaChucVu = 4, MaPhongBan = 2, NhomLuong = "NHAN_VIEN", TenChucVu = "Lễ tân" });
     var salaryBandId = 1;
     foreach (var degree in new[] { "Trung cấp", "Cao đẳng", "Đại học" })
     {
@@ -37,6 +37,10 @@ using (var scope = app.Services.CreateScope())
             ThamNienTuThang = tier == 0 ? 0 : tier == 1 ? 12 : 36, ThamNienDenThang = tier == 0 ? 12 : tier == 1 ? 36 : null,
             LuongToiThieu = 12_000_000m + tier * 2_000_000m, LuongToiDa = tier == 2 ? 22_000_000m : 16_000_000m + tier * 2_000_000m });
     db.KhungLuongCapBacs.Add(new KhungLuongCapBac { MaKhungLuong = salaryBandId, NhomChucVu = "TONG_GIAM_DOC", LuongToiThieu = 25_000_000m, LuongToiDa = 40_000_000m });
+    db.NhanViens.Add(new NhanVien { MaNhanVien = 10, Ho = "Nguyễn", Ten = "An", MaPhongBan = 1, MaChucVu = 1,
+        IsProfileComplete = false, TrinhDo = "Đại học", EmailCongVu = "an@example.test", NgayVaoLam = new(2020, 1, 1) });
+    db.HopDongs.Add(new HopDong { MaHopDong = 7, MaNhanVien = 10, SoHopDong = "HDLD-2026/07/OTH",
+        NgayBatDau = new(2020, 1, 1), NgayKetThuc = new(2030, 1, 1), LoaiHopDong = "KHONG_XAC_DINH_THOI_HAN", LuongCoBan = 35000000 });
     db.SaveChanges();
 }
 app.UseStaticFiles(new StaticFileOptions
@@ -70,8 +74,14 @@ public sealed class ContractsFixtureController(AppDbContext db) : Controller
 
     [HttpGet("")]
     [HttpGet("Index")]
-    public IActionResult Index(bool isPartial = false, bool occupiedGm = false)
+    public async Task<IActionResult> Index(bool isPartial = false, bool occupiedGm = false, int? employeeId = null)
     {
+        if (employeeId.HasValue)
+        {
+            var controller = new HopDongController(db, NullLogger<HopDongController>.Instance)
+                { ControllerContext = ControllerContext, TempData = TempData, Url = Url };
+            return await controller.Index(null, null, employeeId: employeeId);
+        }
         if (occupiedGm) TempData["Error"] = "Hệ thống đã có Tổng Giám Đốc trong thời gian này. Không thể tạo thêm Tổng Giám Đốc.";
         var form = Form(); Prepare(form);
         var model = new HopDongIndexViewModel
@@ -83,6 +93,16 @@ public sealed class ContractsFixtureController(AppDbContext db) : Controller
         };
         return isPartial ? PartialView("/Views/HopDong/_ContractTablePartial.cshtml", model)
             : View("/Views/HopDong/Index.cshtml", model);
+    }
+
+    [HttpPost("Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(HopDongFormViewModel model)
+    {
+        RouteData.Values["controller"] = "HopDong";
+        var controller = new HopDongController(db, NullLogger<HopDongController>.Instance)
+            { ControllerContext = ControllerContext, TempData = TempData, Url = Url };
+        return await controller.Create(model);
     }
 
     [HttpGet("Edit/{id}")]
@@ -122,6 +142,10 @@ public sealed class ContractsFixtureController(AppDbContext db) : Controller
     [HttpGet("GenerateContractNumber")]
     public Task<IActionResult> Number(string? hinhThuc)
         => new HopDongController(db, NullLogger<HopDongController>.Instance).GenerateContractNumber(hinhThuc);
+
+    [HttpGet("SalaryQuote")]
+    public Task<IActionResult> Quote(int? positionId, string? education, DateOnly startDate, int? employeeId)
+        => new HopDongController(db, NullLogger<HopDongController>.Instance).SalaryQuote(positionId, education, startDate, employeeId);
 
     [HttpGet("SalaryReviews")]
     public IActionResult Reviews(bool empty = false)
@@ -170,5 +194,53 @@ public sealed class PayrollConfigFixtureController(AppDbContext db, Microsoft.Ex
         if (bandsMode == "empty") model.SalaryBands.Clear();
         if (bandsMode == "error") model.SalaryBandsError = "Không thể tải khung lương. Vui lòng tải lại trang để thử lại.";
         return View("/Views/CauHinhLuong/Index.cshtml", model);
+    }
+}
+
+// Real employee completion actions, isolated from application startup and production data.
+[Route("NhanVien")]
+public sealed class EmployeesFixtureController(AppDbContext db) : Controller
+{
+    private NhanVienController Real() => new(db, NullLogger<NhanVienController>.Instance)
+        { ControllerContext = ControllerContext, TempData = TempData, Url = Url };
+
+    [HttpGet("Create")]
+    public Task<IActionResult> Create(string entryMode = "FROM_CONTRACT", int? contractId = null)
+        => Real().Create(entryMode, contractId);
+
+    [HttpGet("")]
+    [HttpGet("Index")]
+    public Task<IActionResult> Index(string? status = null) => Real().Index(null, null, null, status, null);
+
+    [HttpGet("Edit/{id}")]
+    public Task<IActionResult> Edit(int id) => Real().Edit(id);
+
+    [HttpPost("Edit/{id}"), ValidateAntiForgeryToken]
+    public Task<IActionResult> SaveEdit(int id, NhanVienFormViewModel model) => Real().Edit(id, model);
+
+    [HttpGet("/fixture/employees")]
+    public async Task<IActionResult> State() => Json(await db.NhanViens.AsNoTracking().OrderBy(x => x.MaNhanVien)
+        .Select(x => new { id=x.MaNhanVien, name=x.Ho+" "+x.Ten, x.TrangThai, x.NgayVaoLam, x.IsProfileComplete, contracts=x.HopDongs.Count }).ToListAsync());
+
+    [HttpPost("Delete/{id}"), ActionName("Delete"), ValidateAntiForgeryToken]
+    public Task<IActionResult> Hide(int id) => Real().Delete(id);
+
+    [HttpPost("Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(NhanVienFormViewModel model)
+    {
+        RouteData.Values["controller"] = "NhanVien";
+        var controller = new NhanVienController(db, NullLogger<NhanVienController>.Instance)
+            { ControllerContext = ControllerContext, TempData = TempData, Url = Url };
+        return await controller.Create(model);
+    }
+}
+
+public sealed class FixtureControllerNames : Microsoft.AspNetCore.Mvc.ApplicationModels.IControllerModelConvention
+{
+    public void Apply(Microsoft.AspNetCore.Mvc.ApplicationModels.ControllerModel controller)
+    {
+        if (controller.ControllerType == typeof(ContractsFixtureController)) controller.ControllerName = "HopDong";
+        if (controller.ControllerType == typeof(EmployeesFixtureController)) controller.ControllerName = "NhanVien";
     }
 }

@@ -39,7 +39,7 @@ public static class ContractAttendancePolicy
     /// </summary>
     public static bool HasValidContractOn(NhanVien? employee, DateOnly date)
     {
-        if (employee == null || employee.TrangThai != "DANG_LAM") return false;
+        if (employee == null || !employee.IsProfileComplete || employee.TrangThai != "DANG_LAM") return false;
         if (employee.HopDongs == null || employee.HopDongs.Count == 0) return false;
         return employee.HopDongs.Any(h => IsValidOn(h, date));
     }
@@ -50,7 +50,7 @@ public static class ContractAttendancePolicy
     /// </summary>
     public static bool HasValidContractDuring(NhanVien? employee, DateOnly start, DateOnly end)
     {
-        if (employee == null || employee.TrangThai != "DANG_LAM") return false;
+        if (employee == null || !employee.IsProfileComplete || employee.TrangThai != "DANG_LAM") return false;
         if (employee.HopDongs == null || employee.HopDongs.Count == 0) return false;
         return employee.HopDongs.Any(h =>
             h.TrangThai == STATUS_HIEU_LUC &&
@@ -118,6 +118,8 @@ public static class ContractAttendancePolicy
             return (false, "EMPLOYEE_NOT_FOUND", "Không tìm thấy thông tin nhân viên.");
         }
 
+        if (!employee.IsProfileComplete)
+            return (false, "PROFILE_INCOMPLETE", "Vui lòng hoàn thiện hồ sơ nhân viên trước khi phân ca.");
         if (employee.TrangThai != "DANG_LAM")
         {
             return (false, "EMPLOYEE_INACTIVE", $"Nhân viên {employee.HoTen} hiện không ở trạng thái đang làm việc ({employee.TrangThai}).");

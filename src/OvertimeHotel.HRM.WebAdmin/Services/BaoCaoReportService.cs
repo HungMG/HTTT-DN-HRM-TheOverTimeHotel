@@ -1005,7 +1005,7 @@ public sealed class BaoCaoReportService
     {
         var raw = await _context.NhanViens
             .AsNoTracking()
-            .Where(n => departmentId == null || n.MaPhongBan == departmentId)
+            .Where(n => n.IsProfileComplete && n.NgayVaoLam != null && n.TrangThai != "CHO_HOP_DONG" && (departmentId == null || n.MaPhongBan == departmentId))
             .Include(n => n.PhongBan).Include(n => n.ChucVu)
             .Include(n => n.HopDongs).ThenInclude(h => h.PhuLucLuongs)
             .ToArrayAsync();
@@ -1018,7 +1018,7 @@ public sealed class BaoCaoReportService
             TrinhDo = n.TrinhDo,
             GioiTinh = n.GioiTinh ?? string.Empty,
             TenChucVu = n.ChucVu?.TenChucVu ?? "Chưa xếp chức vụ",
-            NgayVaoLam = n.NgayVaoLam,
+            NgayVaoLam = n.NgayVaoLam!.Value,
             NgayThoiViec = n.NgayThoiViec,
             TrangThai = n.TrangThai,
             LuongCoBan = includeSalary
@@ -1107,7 +1107,7 @@ public sealed class BaoCaoReportService
             case "cuoi-ky":
                 result.TieuDe = "Danh sách nhân sự cuối kỳ";
                 var finalEmployees = await _context.NhanViens.AsNoTracking()
-                    .Where(n => n.NgayVaoLam <= to && (departmentId == null || n.MaPhongBan == departmentId)
+                    .Where(n => n.IsProfileComplete && n.NgayVaoLam <= to && (departmentId == null || n.MaPhongBan == departmentId)
                         && !((n.TrangThai == "THOI_VIEC" || n.TrangThai == "DA_THOI_VIEC") && n.NgayThoiViec.HasValue && n.NgayThoiViec <= to))
                     .OrderBy(n => n.Ten)
                     .Select(n => new ChiTietDongItem
@@ -1171,7 +1171,7 @@ public sealed class BaoCaoReportService
                 result.TieuDe = "Danh sách nhân sự tuyển mới trong kỳ";
                 var tuyen = await _context.NhanViens
                     .AsNoTracking()
-                    .Where(n => n.NgayVaoLam >= from && n.NgayVaoLam <= to
+                    .Where(n => n.IsProfileComplete && n.NgayVaoLam >= from && n.NgayVaoLam <= to
                                 && (departmentId == null || n.MaPhongBan == departmentId))
                     .OrderBy(n => n.NgayVaoLam)
                     .Select(n => new ChiTietDongItem
@@ -1191,7 +1191,7 @@ public sealed class BaoCaoReportService
                 result.TieuDe = "Danh sách nhân sự đang làm việc (Tính đến " + to.ToString("dd/MM/yyyy") + ")";
                 var dangLam = await _context.NhanViens
                     .AsNoTracking()
-                    .Where(n => n.NgayVaoLam <= to
+                    .Where(n => n.IsProfileComplete && n.NgayVaoLam <= to
                                 && (n.TrangThai == "DANG_LAM" || ((n.TrangThai == "THOI_VIEC" || n.TrangThai == "DA_THOI_VIEC") && n.NgayThoiViec.HasValue && n.NgayThoiViec.Value > to))
                                 && (departmentId == null || n.MaPhongBan == departmentId))
                     .OrderBy(n => n.PhongBan != null ? n.PhongBan.TenPhongBan : "")
@@ -1214,7 +1214,7 @@ public sealed class BaoCaoReportService
                 result.TieuDe = "Danh sách nhân sự đang nghỉ phép (Tính đến " + to.ToString("dd/MM/yyyy") + ")";
                 var nghiPhep = await _context.NhanViens
                     .AsNoTracking()
-                    .Where(n => n.NgayVaoLam <= to
+                    .Where(n => n.IsProfileComplete && n.NgayVaoLam <= to
                                 && n.TrangThai == "NGHI_PHEP"
                                 && (departmentId == null || n.MaPhongBan == departmentId))
                     .OrderBy(n => n.PhongBan != null ? n.PhongBan.TenPhongBan : "")
@@ -1240,7 +1240,7 @@ public sealed class BaoCaoReportService
                     : "Danh sách nhân sự thôi việc trong kỳ";
                 var thoi = await _context.NhanViens
                     .AsNoTracking()
-                    .Where(n => (n.TrangThai == "THOI_VIEC" || n.TrangThai == "DA_THOI_VIEC")
+                    .Where(n => n.IsProfileComplete && (n.TrangThai == "THOI_VIEC" || n.TrangThai == "DA_THOI_VIEC")
                                 && (type.ToLowerInvariant() == "da-thoi-viec"
                                     ? n.NgayVaoLam <= to && (!n.NgayThoiViec.HasValue || n.NgayThoiViec <= to)
                                     : n.NgayThoiViec >= from && n.NgayThoiViec <= to)

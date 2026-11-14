@@ -71,11 +71,22 @@ public partial class HopDongController
         });
     }
 
-    private async Task ValidateSalaryAsync(HopDongFormViewModel model, NhanVien? employee)
+    private async Task ValidateSalaryAsync(HopDongFormViewModel model, NhanVien? employee, bool firstContractForProfile = false)
     {
         model.Contract.PhuLucLuongs = new List<PhuLucLuong>();
         model.TrinhDo = model.TrinhDo?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(model.TrinhDo) && employee != null) model.TrinhDo = employee.TrinhDo;
+        if (string.IsNullOrWhiteSpace(model.TrinhDo))
+        {
+            ModelState.Remove(nameof(model.TrinhDo));
+            ModelState.AddModelError(nameof(model.TrinhDo), "Vui lòng chọn trình độ chuyên môn.");
+        }
+        else
+        {
+            ModelState.Remove(nameof(model.TrinhDo));
+            if (model.TrinhDo.Length > 50)
+                ModelState.AddModelError(nameof(model.TrinhDo), "Trình độ chuyên môn không được vượt quá 50 ký tự.");
+        }
         var band = await FindBandAsync(model.PositionId, model.TrinhDo, employee?.NgayVaoLam ?? model.Contract.NgayBatDau, model.Contract.NgayBatDau);
         if (band == null) ModelState.AddModelError(nameof(model.TrinhDo), "Chưa xác định được khung lương; kiểm tra chức vụ, trình độ và ngày vào làm.");
         else if (model.Contract.HinhThucHopDong == "THU_VIEC")
@@ -89,7 +100,7 @@ public partial class HopDongController
         }
         else if (model.Contract.LuongCoBan < band.LuongToiThieu || model.Contract.LuongCoBan > band.LuongToiDa)
             ModelState.AddModelError("Contract.LuongCoBan", $"Lương phải nằm trong khoảng {band.LuongToiThieu:N0}–{band.LuongToiDa:N0} đ/tháng.");
-        if (employee?.MaNhanVien > 0 && (employee.MaChucVu != model.PositionId || employee.MaPhongBan != model.DepartmentId))
+        if (!firstContractForProfile && employee?.MaNhanVien > 0 && (employee.MaChucVu != model.PositionId || employee.MaPhongBan != model.DepartmentId))
             ModelState.AddModelError("PositionId", "Điều chuyển nhân viên hiện có qua phụ lục để lưu ngày hiệu lực và lịch sử.");
         model.Contract.TrinhDoKyKet = model.TrinhDo;
         model.Contract.MaPhongBanKyKet = model.DepartmentId;
@@ -119,6 +130,7 @@ public partial class HopDongController
         var contract = await _context.HopDongs.Include(x => x.NhanVien).Include(x => x.PhuLucLuongs).FirstOrDefaultAsync(x => x.MaHopDong == contractId);
         if (contract?.NhanVien == null) return NotFound();
         var employee = contract.NhanVien;
+        if (!employee.NgayVaoLam.HasValue) return BadRequest("Hồ sơ chưa có ngày vào làm; cần kiểm tra hợp đồng tiếp nhận.");
         var today = DateOnly.FromDateTime(DateTime.Today);
         if (effectiveDate.Day != 1 || effectiveDate < contract.NgayBatDau || contract.NgayKetThuc < effectiveDate || contract.TrangThai is "DA_CHAM_DUT" or "CHAM_DUT" || contract.HinhThucHopDong == "THU_VIEC")
             return BadRequest("Phụ lục chỉ áp dụng ngày 1 trong thời gian hợp đồng chính thức hợp lệ.");
@@ -131,7 +143,7 @@ public partial class HopDongController
         departmentId ??= previous?.MaPhongBanMoi ?? contract.MaPhongBanKyKet ?? employee.MaPhongBan;
         var department = await _context.PhongBans.FindAsync(departmentId);
         if (!await _context.ChucVus.Where(OrganizationPositionPolicy.ForDepartment(department)).AnyAsync(x => x.MaChucVu == positionId)) return BadRequest("Chức vụ không thuộc phòng ban đã chọn.");
-        var band = await FindBandAsync(positionId, employee.TrinhDo, employee.NgayVaoLam, effectiveDate);
+        var band = await FindBandAsync(positionId, employee.TrinhDo, employee.NgayVaoLam.Value, effectiveDate);
         if (band == null || salary < band.LuongToiThieu || salary > band.LuongToiDa) return BadRequest("Mức lương mới phải nằm trong khung của nhân viên tại ngày hiệu lực.");
         var oldPosition = previous?.MaChucVuMoi ?? contract.MaChucVuKyKet ?? employee.MaChucVu;
         var oldDepartment = previous?.MaPhongBanMoi ?? contract.MaPhongBanKyKet ?? employee.MaPhongBan;
@@ -229,7 +241,7 @@ public partial class HopDongController
         foreach (var contract in contracts)
         {
             var employee = contract.NhanVien;
-            if (employee == null || employee.TrangThai == "DA_THOI_VIEC") continue;
+            if (employee == null || !employee.NgayVaoLam.HasValue || employee.TrangThai is "DA_THOI_VIEC" or "CHO_HOP_DONG") continue;
             var latest = contract.PhuLucLuongs.Where(x => x.NgayHieuLuc <= today).OrderByDescending(x => x.NgayHieuLuc).FirstOrDefault();
             var lastReview = latest?.NgayHieuLuc ?? contract.NgayBatDau;
             var tenure = ReportPolicy.TenureMonths(employee.NgayVaoLam, today);

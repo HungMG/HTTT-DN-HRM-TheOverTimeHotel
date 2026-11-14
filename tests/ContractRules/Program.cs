@@ -21,6 +21,31 @@ async Task Check(string name, Func<Task> check)
 }
 void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
 var today = DateOnly.FromDateTime(DateTime.Today);
+await Check("Contract suggestions include only probation awaiting official contract", async () =>
+{
+    await using var db = await Database();
+    for (var id = 11; id <= 15; id++)
+        db.NhanViens.Add(new NhanVien { MaNhanVien = id, Ho = "Kiểm", Ten = $"Thử{id}", TrangThai = id == 15 ? "DA_THOI_VIEC" : "DANG_LAM" });
+    HopDong Contract(int id, int employee, string kind, DateOnly start, DateOnly end) => new()
+    {
+        MaHopDong = id, MaNhanVien = employee, SoHopDong = $"TEST-{id}", HinhThucHopDong = kind,
+        LoaiHopDong = kind == "THU_VIEC" ? "THU_VIEC" : "XAC_DINH_THOI_HAN_1_NAM",
+        NgayBatDau = start, NgayKetThuc = end, TrangThai = "HIEU_LUC"
+    };
+    db.HopDongs.AddRange(
+        Contract(1, 11, "THU_VIEC", today.AddDays(-10), today.AddDays(20)),
+        Contract(2, 12, "THU_VIEC", today.AddMonths(-3), today.AddDays(-1)),
+        Contract(3, 13, "THU_VIEC", today.AddMonths(-2), today.AddDays(-1)),
+        Contract(4, 13, "CHINH_THUC", today.AddDays(1), today.AddYears(1)),
+        Contract(5, 14, "CHINH_THUC", today.AddMonths(-2), today.AddYears(1)),
+        Contract(6, 15, "THU_VIEC", today.AddDays(-10), today.AddDays(20)));
+    await db.SaveChangesAsync();
+    var controller = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance));
+    var result = await controller.Index(null, null) as ViewResult;
+    var model = result?.Model as HopDongIndexViewModel;
+    Require(model != null && model.CreateContractForm.EmployeeList.Select(x => x.Id).Order().SequenceEqual([11, 12]),
+        "Suggestions must include active and expired probation without a following official contract only");
+});
 var leaveToday = new DateOnly(2026, 11, 13);
 await Check("Leave submission deadline", () =>
 {
@@ -219,13 +244,248 @@ await Check("Transition preserves previously expired contract history", async ()
     var stored=await db.HopDongs.AsNoTracking().SingleAsync(x=>x.MaHopDong==1);
     Require(stored.NgayKetThuc==oldEnd && stored.TrangThai=="HIEU_LUC","Expired historical row must not be extended or terminated retroactively");
 });
+// These regressions exercise the real create actions against isolated in-memory data.
+foreach (var (type, end) in new[] {
+    (ContractTypes.XAC_DINH_THOI_HAN_1_NAM, today.AddYears(5)),
+    (ContractTypes.XAC_DINH_THOI_HAN_3_NAM, today.AddYears(1)),
+    (ContractTypes.KHONG_XAC_DINH_THOI_HAN, today.AddYears(1)) })
+await Check("Reject submitted end inconsistent with " + type, async () =>
+{
+    await using var db = await Database(); var model = Form(today);
+    model.Contract.LoaiHopDong = type; model.Contract.NgayKetThuc = end;
+    var controller = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance));
+    await controller.Create(model);
+    Require(controller.ModelState.ContainsKey("Contract.NgayKetThuc") && !await db.HopDongs.AnyAsync(), "Mismatched end must not save");
+});
+foreach (var name in new[] { "An", "Nguyễn 123", "123 An", new string('A', 101) + " An", "Nguyễn " + new string('A', 51) })
+await Check("Reject invalid new employee name " + name.Length, async () =>
+{
+    await using var db = await Database(); var model = Form(today);
+    model.EmployeeId = null; model.EmployeeName = name; model.TrinhDo = "Đại học";
+    var controller = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance));
+    await controller.Create(model);
+    Require(controller.ModelState.ContainsKey("EmployeeName") && !await db.HopDongs.AnyAsync(), "Invalid name must not create pending employee");
+    Require(await db.NhanViens.CountAsync() == 1, "Rejected employee must not be persisted");
+});
+foreach (var field in new[] { "number", "email" })
+await Check("Reject overlong contract " + field, async () =>
+{
+    await using var db = await Database(); var model = Form(today);
+    if (field == "number") model.Contract.SoHopDong = new string('X', 51);
+    else model.PersonalEmail = new string('a', 90) + "@example.test";
+    var controller = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance));
+    await controller.Create(model);
+    Require(controller.ModelState.ContainsKey(field == "number" ? "Contract.SoHopDong" : "PersonalEmail") && !await db.HopDongs.AnyAsync(), "Length must be rejected before save");
+});
+await Check("Invalid contract returns populated form and all field errors", async () =>
+{
+    await using var db = await Database(); var model = Form(today);
+    model.Contract.LuongCoBan = 1; model.PersonalEmail = "bad-email";
+    var controller = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance));
+    var result = await controller.Create(model) as ViewResult;
+    Require(result?.ViewName == "Index", "Invalid save must render form instead of redirecting");
+    var page = result!.Model as HopDongIndexViewModel;
+    Require(page?.CreateContractForm.Contract.SoHopDong == "HDLD-TEST" && page.CreateContractForm.PersonalEmail == "bad-email", "Keep submitted values");
+    Require(page!.CreateContractForm.PositionOptions.Any(x => x.Value == "21"), "Repopulate matching positions");
+    Require(controller.ModelState.ContainsKey("PersonalEmail") && controller.ModelState.ContainsKey("Contract.LuongCoBan"), "Keep every error");
+    Require(controller.ViewData["OpenCreateContractModal"] is true, "Reopen create dialog");
+});
+foreach (var (birth, dependents, error) in new[] {
+    (new DateOnly(2021,1,1), 0, "Employee.NgaySinh"),
+    (new DateOnly(2020,1,1), 0, "Employee.NgaySinh"),
+    (new DateOnly(1990,1,1), -1, "Employee.SoNguoiPhuThuoc"),
+    (new DateOnly(1990,1,1), 21, "Employee.SoNguoiPhuThuoc") })
+await Check("Reject inconsistent completion " + error + birth + dependents, async () =>
+{
+    await using var db = await Database();
+    var person = await db.NhanViens.SingleAsync(); person.IsProfileComplete = false;
+    db.HopDongs.Add(Form(today).Contract); await db.SaveChangesAsync();
+    var contractId = await db.HopDongs.Select(x => x.MaHopDong).SingleAsync();
+    var controller = Attach(new NhanVienController(db, NullLogger<NhanVienController>.Instance));
+    await controller.Create(new() { ContractId = contractId, Employee = new() { NgaySinh = birth, GioiTinh = "NAM", DienThoai = "0912345678", DiaChi = "Hà Nội", SoNguoiPhuThuoc = dependents } });
+    Require(controller.ModelState.ContainsKey(error), "Invalid completion must report field error");
+    Require(!(await db.NhanViens.AsNoTracking().SingleAsync()).IsProfileComplete, "Invalid profile must stay incomplete");
+});
+foreach (var dependents in new[] { 0, 20 })
+await Check("Valid completion at dependent boundary " + dependents, async () =>
+{
+    await using var db = await Database(); var person = await db.NhanViens.SingleAsync(); person.IsProfileComplete = false;
+    db.HopDongs.Add(Form(today).Contract); await db.SaveChangesAsync();
+    var contractId = await db.HopDongs.Select(x => x.MaHopDong).SingleAsync();
+    var controller = Attach(new NhanVienController(db, NullLogger<NhanVienController>.Instance));
+    await controller.Create(new() { ContractId = contractId, Employee = new() { NgaySinh = new(1990,1,1), GioiTinh = "NU", DienThoai = "+84912345678", DiaChi = "Hà Nội", SoNguoiPhuThuoc = dependents } });
+    var saved = await db.NhanViens.AsNoTracking().SingleAsync();
+    Require(saved.IsProfileComplete && saved.SoNguoiPhuThuoc == dependents, "Valid completion must persist unchanged");
+});
+foreach (var name in new[] { "Nguyễn Văn An", "Jean-Pierre D’Arcy", new string('A', 100) + " " + new string('B', 50) })
+await Check("Valid pending employee including long email source " + name.Length, async () =>
+{
+    await using var db = await Database(); var model = Form(today);
+    model.EmployeeId = null; model.EmployeeName = name; model.TrinhDo = "Đại học";
+    var controller = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance));
+    await controller.Create(model);
+    Require(controller.ModelState.IsValid && await db.HopDongs.CountAsync() == 1, "Valid name must create contract");
+    var saved = await db.NhanViens.SingleAsync(x => x.MaNhanVien != 10);
+    Require(saved.EmailCongVu.Length <= 100 && !saved.IsProfileComplete, "Generated email must fit DB column; profile stays pending");
+});
+await Check("Blank contract number is generated despite implicit required binding error", async () =>
+{
+    await using var db = await Database(); var model = Form(today); model.Contract.SoHopDong = "";
+    var controller = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance));
+    controller.ModelState.AddModelError("Contract.SoHopDong", "The SoHopDong field is required.");
+    await controller.Create(model);
+    Require(controller.ModelState.IsValid && (await db.HopDongs.SingleAsync()).SoHopDong.Length > 0, "Blank auto-number field must save with generated value");
+});
+await Check("Leap-day official duration agrees with browser calculation", async () =>
+{
+    await using var db = await Database(); var model = Form(new DateOnly(2028,2,29)); model.Contract.NgayKetThuc = new DateOnly(2029,2,28);
+    var controller = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance));
+    await controller.Create(model);
+    Require(controller.ModelState.IsValid && (await db.HopDongs.SingleAsync()).NgayKetThuc == new DateOnly(2029,2,28), "Leap day must end on Feb 28 next year");
+});
+await Check("First signature reuses direct profile and finalizes proposed organization", async () =>
+{
+    await using var db = await Database(); await SeedPending(db);
+    var person = await db.NhanViens.SingleAsync(x => x.DienThoai == "0987654321");
+    var model = Form(today.AddDays(1)); model.EmployeeId = person.MaNhanVien; model.TrinhDo = "Đại học";
+    var contracts = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance)); await contracts.Create(model);
+    Require(contracts.ModelState.IsValid, "First signature must accept confirmed department/position");
+    var saved = await db.NhanViens.AsNoTracking().Include(x=>x.HopDongs).SingleAsync(x=>x.MaNhanVien==person.MaNhanVien);
+    Require(await db.NhanViens.CountAsync()==2 && saved.HopDongs.Count==1, "Reuse exactly one profile");
+    Require(saved.NgayVaoLam==today.AddDays(1) && saved.MaChucVu==21 && saved.MaPhongBan==41, "First contract initializes joining date and confirmed organization");
+    Require(saved.IsProfileComplete && !ContractAttendancePolicy.HasValidContractOn(saved,today) && ContractAttendancePolicy.HasValidContractOn(saved,today.AddDays(1)), "Future signed contract must wait until its start");
+});
+await Check("Pending profile edit cannot activate employee or set joining date", async () =>
+{
+    await using var db = await Database(); await SeedPending(db);
+    var person = await db.NhanViens.AsNoTracking().SingleAsync(x => x.DienThoai == "0987654321");
+    person.TrangThai="DANG_LAM"; person.NgayVaoLam=today; person.MaPhongBan=41; person.MaChucVu=21;
+    var editor=Attach(new NhanVienController(db, NullLogger<NhanVienController>.Instance));
+    await editor.Edit(person.MaNhanVien, new() { Employee=person });
+    var saved=await db.NhanViens.AsNoTracking().SingleAsync(x=>x.MaNhanVien==person.MaNhanVien);
+    Require(editor.ModelState.IsValid && saved.NgayVaoLam==null && saved.TrangThai=="CHO_HOP_DONG" && saved.MaChucVu==21, "Pending edits may update proposed organization but cannot activate");
+});
+
+await Check("Stale pending edit cannot undo concurrent first-contract activation", async () =>
+{
+    await using var db = await Database();
+    await SeedPending(db);
+    var id = await db.NhanViens.Where(x=>x.DienThoai=="0987654321").Select(x=>x.MaNhanVien).SingleAsync();
+    var options = (DbContextOptions<AppDbContext>)Microsoft.EntityFrameworkCore.Infrastructure.AccessorExtensions.GetService<Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptions>(db);
+    await using var stale = new AppDbContext(options);
+    var old = await stale.NhanViens.SingleAsync(x=>x.MaNhanVien==id);
+    var signature = Form(today); signature.EmployeeId=id; signature.TrinhDo="Đại học";
+    var contracts=Attach(new HopDongController(db, NullLogger<HopDongController>.Instance)); await contracts.Create(signature);
+    Require(contracts.ModelState.IsValid,"Concurrent signature setup must succeed");
+    old.DiaChi="Stale pending form address"; old.TrangThai="CHO_HOP_DONG"; old.NgayVaoLam=null;
+    var rejected=false;
+    try { await stale.SaveChangesAsync(); } catch (DbUpdateConcurrencyException) { rejected=true; }
+    Require(rejected,"A stale pending update must not write after joining date changes");
+    await using var verify=new AppDbContext(options);
+    var current=await verify.NhanViens.SingleAsync(x=>x.MaNhanVien==id);
+    Require(current.NgayVaoLam==today && current.TrangThai=="DANG_LAM" && current.MaChucVu==21,"Preserve first-contract state and organization");
+});
+await Check("Personnel drilldowns exclude pending and incomplete intake consistently", async () =>
+{
+    await using var db = await Database();
+    var complete = await db.NhanViens.SingleAsync(); complete.NgayVaoLam = new DateOnly(2026,10,1);
+    db.NhanViens.Add(new NhanVien { MaNhanVien=20,Ho="Contract",Ten="Incomplete",EmailCongVu="incomplete@example.test",IsProfileComplete=false,NgayVaoLam=new(2026,10,1),TrangThai="DANG_LAM" });
+    db.NhanViens.Add(new NhanVien { MaNhanVien=21,Ho="Waiting",Ten="Signature",EmailCongVu="waiting@example.test",NgayVaoLam=null,TrangThai="CHO_HOP_DONG" });
+    await db.SaveChangesAsync();
+    using var cache=new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+    var reports=new OvertimeHotel.HRM.WebAdmin.Services.BaoCaoReportService(db,cache,NullLogger<OvertimeHotel.HRM.WebAdmin.Services.BaoCaoReportService>.Instance);
+    foreach(var type in new[] { "cuoi-ky", "tuyen-moi", "dang-lam", "thong-tin-nhan-su" })
+    {
+        var result=await reports.BuildChiTietAsync(new ReportPolicy.BaoCaoScope(true,true,null),"HR",type,"THANG",2026,10,null,null);
+        Require(result.DanhSach.Count==1 && result.DanhSach.Single().MaDinhDanh=="NV-10", "Drilldown must include only the completed employed profile: "+type);
+    }
+    complete.TrangThai="DA_THOI_VIEC"; complete.NgayThoiViec=new(2026,10,20);
+    var incomplete=await db.NhanViens.SingleAsync(x=>x.MaNhanVien==20);
+    incomplete.TrangThai="DA_THOI_VIEC"; incomplete.NgayThoiViec=new(2026,10,15);
+    await db.SaveChangesAsync();
+    foreach(var type in new[] { "thoi-viec", "da-thoi-viec" })
+    {
+        var result=await reports.BuildChiTietAsync(new ReportPolicy.BaoCaoScope(true,true,null),"HR",type,"THANG",2026,10,null,null);
+        Require(result.DanhSach.Count==1 && result.DanhSach.Single().MaDinhDanh=="NV-10", "Former-employee drilldown must exclude incomplete profiles: "+type);
+    }
+});
+await Check("Unsigned intake is never converted to a fake resigned employee by hide action", async () =>
+{
+    await using var db=await Database(); await SeedPending(db); var hr=Attach(new NhanVienController(db,NullLogger<NhanVienController>.Instance));
+    var id=await db.NhanViens.Where(x=>x.DienThoai=="0987654321").Select(x=>x.MaNhanVien).SingleAsync();
+    await hr.Delete(id);
+    var saved=await db.NhanViens.AsNoTracking().SingleAsync(x=>x.MaNhanVien==id);
+    Require(saved.TrangThai=="CHO_HOP_DONG" && saved.NgayVaoLam==null && saved.NgayThoiViec==null,"Unsigned intake has no employment history to terminate");
+});
+foreach (var (birth, allowed) in new[] { (today.AddYears(-18), true), (today.AddYears(-18).AddDays(1), false), (today.AddYears(-18).AddDays(-1), true) })
+await Check("Contract completion requires age 18 " + birth, async () =>
+{
+    await using var db=await Database(); var person=await db.NhanViens.SingleAsync();person.IsProfileComplete=false;
+    db.HopDongs.Add(Form(today).Contract); await db.SaveChangesAsync();
+    var contractId=await db.HopDongs.Select(x=>x.MaHopDong).SingleAsync();
+    var model=new NhanVienFormViewModel { ContractId=contractId, Employee=new() { NgaySinh=birth,GioiTinh="NAM",DienThoai="0912345678",DiaChi="Hà Nội",EmailCaNhan="an@example.test" } };
+    var c=Attach(new NhanVienController(db,NullLogger<NhanVienController>.Instance)); await c.Create(model);
+    Require(c.ModelState.IsValid==allowed && (await db.NhanViens.AsNoTracking().SingleAsync()).IsProfileComplete==allowed, "Age boundary must be enforced");
+});
+await Check("AJAX hide rejects unsigned employee as JSON", async () =>
+{
+    await using var db=await Database(); await SeedPending(db); var c=Attach(new NhanVienController(db,NullLogger<NhanVienController>.Instance));
+    var id=await db.NhanViens.Where(x=>x.DienThoai=="0987654321").Select(x=>x.MaNhanVien).SingleAsync();
+    c.Request.Headers.XRequestedWith="XMLHttpRequest";
+    var result=await c.Delete(id) as JsonResult;
+    Require(result!=null && !JsonSerializer.SerializeToElement(result.Value).GetProperty("success").GetBoolean(), "Pending rejection must be JSON");
+    var employee=await db.NhanViens.AsNoTracking().SingleAsync(x=>x.MaNhanVien==id);
+    Require(employee.TrangThai=="CHO_HOP_DONG" && employee.NgayVaoLam==null, "Pending profile must not be marked resigned");
+});
+await Check("AJAX hide succeeds for active employee", async () =>
+{
+    await using var db=await Database(); var c=Attach(new NhanVienController(db,NullLogger<NhanVienController>.Instance));
+    c.Request.Headers.XRequestedWith="XMLHttpRequest";
+    var result=await c.Delete(10) as JsonResult;
+    Require(result!=null && JsonSerializer.SerializeToElement(result.Value).GetProperty("success").GetBoolean(), "Confirmed AJAX hide must return success");
+    Require((await db.NhanViens.AsNoTracking().SingleAsync()).TrangThai=="DA_THOI_VIEC", "Hide must update existing status");
+});
+await Check("Direct profile creation is no longer accepted", async () =>
+{
+    await using var db=await Database(); var c=Attach(new NhanVienController(db,NullLogger<NhanVienController>.Instance));
+    var result=await c.Create(Intake());
+    Require(result is BadRequestObjectResult && await db.NhanViens.CountAsync()==1,"Direct mode must not create a profile");
+});
+await Check("Contract completion requires and stores personal email", async () =>
+{
+    await using var db=await Database(); var person=await db.NhanViens.SingleAsync(); person.IsProfileComplete=false; person.EmailCaNhan=null;
+    db.HopDongs.Add(Form(today).Contract);await db.SaveChangesAsync(); var id=await db.HopDongs.Select(x=>x.MaHopDong).SingleAsync();
+    var model=new NhanVienFormViewModel { ContractId=id, Employee=new() { NgaySinh=new(1990,1,1),GioiTinh="NAM",DienThoai="0912345678",DiaChi="Hà Nội" } };
+    var c=Attach(new NhanVienController(db,NullLogger<NhanVienController>.Instance)); await c.Create(model);
+    Require(c.ModelState.ContainsKey("Employee.EmailCaNhan") && !(await db.NhanViens.AsNoTracking().SingleAsync()).IsProfileComplete,"Missing personal email must be rejected");
+    model.Employee.EmailCaNhan="nhanvien@example.test"; var retry=Attach(new NhanVienController(db,NullLogger<NhanVienController>.Instance)); await retry.Create(model);
+    var saved=await db.NhanViens.AsNoTracking().SingleAsync(); Require(saved.IsProfileComplete && saved.EmailCaNhan=="nhanvien@example.test","Entered personal email must persist");
+});
+await Check("New contract requires personal email", async () =>
+{
+    await using var db=await Database();var model=Form(today);model.EmployeeId=null;model.EmployeeName="Lê Bình";model.TrinhDo="Đại học";model.PersonalEmail=null;
+    var c=Attach(new HopDongController(db,NullLogger<HopDongController>.Instance));await c.Create(model);
+    Require(c.ModelState.ContainsKey("PersonalEmail") && !await db.HopDongs.AnyAsync(),"Missing personal email must prevent contract creation");
+});
 Console.WriteLine($"Contract rules: {passed} passed, {failures.Count} failed.");
 foreach (var failure in failures) Console.WriteLine("FAIL " + failure);
 Environment.ExitCode = failures.Count == 0 ? 0 : 1;
 
+static NhanVienFormViewModel Intake()
+{
+    var model = new NhanVienFormViewModel { Employee = new() { Ho="Lê",Ten="Bình",NgaySinh=new(1992,1,1),GioiTinh="NAM",DienThoai="0987654321",DiaChi="Hà Nội",TrinhDo="Đại học",MaPhongBan=2,MaChucVu=25 } };
+    model.EntryMode = "DIRECT";
+    return model;
+}
+static async Task SeedPending(AppDbContext db)
+{
+    var person=Intake().Employee; person.MaNhanVien=0; person.TrangThai="CHO_HOP_DONG"; person.NgayVaoLam=null;
+    person.EmailCongVu="pending@example.test"; person.EmailCaNhan="pending-personal@example.test"; person.IsProfileComplete=true;
+    db.NhanViens.Add(person); await db.SaveChangesAsync();
+}
 static HopDongFormViewModel Form(DateOnly start) => new()
 {
-    EmployeeId = 10, EmployeeName = "Nguyễn An", DepartmentId = 41, PositionId = 21,
+    EmployeeId = 10, EmployeeName = "Nguyễn An", DepartmentId = 41, PositionId = 21, PersonalEmail = "an@example.test",
     Contract = new() { MaNhanVien = 10, SoHopDong = "HDLD-TEST", NgayBatDau = start, NgayKetThuc = start.AddYears(1),
         LoaiHopDong = "XAC_DINH_THOI_HAN_1_NAM", LuongCoBan = 35000000, TrangThai = "HIEU_LUC" }
 };
@@ -247,7 +507,7 @@ static async Task<AppDbContext> Database(string boardName = "Ban Giám Đốc")
         new ChucVu { MaChucVu = 24, MaPhongBan = 41, TenChucVu = "Trợ lý" },
         new ChucVu { MaChucVu = 25, MaPhongBan = 2, TenChucVu = "Lễ tân" });
     db.KhungLuongCapBacs.Add(new KhungLuongCapBac { MaKhungLuong=1, NhomChucVu="TONG_GIAM_DOC", LuongToiThieu=25_000_000m, LuongToiDa=40_000_000m });
-    db.NhanViens.Add(new() { MaNhanVien = 10, MaPhongBan = 41, MaChucVu = 21, Ho = "Nguyễn", Ten = "An", EmailCongVu = "an@example.test",
+    db.NhanViens.Add(new() { MaNhanVien = 10, MaPhongBan = 41, MaChucVu = 21, Ho = "Nguyễn", Ten = "An", EmailCongVu = "an@example.test", EmailCaNhan = "an@example.test",
         NgaySinh = new(1990, 1, 1), GioiTinh = "NAM", DienThoai = "0912345678", DiaChi = "Hà Nội", TrinhDo = "Đại học", NgayVaoLam = new(2020, 1, 1) });
     await db.SaveChangesAsync(); db.ChangeTracker.Clear(); return db;
 }
