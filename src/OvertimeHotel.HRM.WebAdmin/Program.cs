@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
 using OvertimeHotel.HRM.Data.Services;
 using OvertimeHotel.HRM.Data.Supabase;
@@ -243,7 +244,7 @@ builder.Services.AddAuthentication(options =>
                 if (maNhanVien is > 0)
                 {
                     var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                    var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).FirstOrDefaultAsync(t => t.MaNhanVien == maNhanVien.Value);
+                    var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).Include(t => t.NhanVien).FirstOrDefaultAsync(t => t.MaNhanVien == maNhanVien.Value);
                     var issued = context.Principal?.FindFirst("iat")?.Value;
                     if (!Guid.TryParse(context.Principal?.FindFirst("session_id")?.Value, out var sessionId) ||
                         !Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out var authUserId))
@@ -270,11 +271,19 @@ builder.Services.AddAuthentication(options =>
                         var codes = await dbContext.VaiTroQuyens.AsNoTracking()
                             .Where(vq => vq.MaVaiTro == account.MaVaiTro && vq.Quyen != null)
                             .Select(vq => vq.Quyen!.MaQuyenCode).ToListAsync();
-                        // IT uses the fixed personal Mobile functions while its administration role is not editable.
+                        // Mobile rights follow the appropriate live role grants; Web IT rights stay unchanged.
                         if (account.VaiTro?.TenVaiTro == "IT")
                         {
-                            if (!codes.Contains(PermissionCodes.MobileCheckIn)) codes.Add(PermissionCodes.MobileCheckIn);
-                            if (!codes.Contains(PermissionCodes.SubmitRequest)) codes.Add(PermissionCodes.SubmitRequest);
+                            var isHead = ItMobileAccessPolicy.IsItHead(account.VaiTro.TenVaiTro, account.NhanVien?.MaChucVu);
+                            var inheritedCodes = isHead ? ItMobileAccessPolicy.ManagerMobilePermissions :
+                                [PermissionCodes.MobileCheckIn, PermissionCodes.SubmitRequest];
+                            var inheritedRole = isHead ? "Manager" : "Employee";
+                            codes.RemoveAll(inheritedCodes.Contains);
+                            var grants = await dbContext.VaiTroQuyens.AsNoTracking()
+                                .Where(vq => vq.VaiTro != null && vq.VaiTro.TenVaiTro == inheritedRole && vq.Quyen != null
+                                    && inheritedCodes.Contains(vq.Quyen.MaQuyenCode))
+                                .Select(vq => vq.Quyen!.MaQuyenCode).ToListAsync();
+                            codes.AddRange(grants);
                         }
                         foreach (var code in codes) identity.AddClaim(new System.Security.Claims.Claim(PermissionCodes.ClaimType, code));
                     }

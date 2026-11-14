@@ -784,8 +784,7 @@ public class UserAccountsController : Controller
             Name = permission.TenQuyen,
             Description = permission.MoTa,
             Granted = grantedIds.Contains(permission.MaQuyen) || (isIt && PermissionConfiguration.FixedItCodes.Contains(permission.MaQuyenCode)),
-            PartiallyGranted = permission.MaQuyenCode == PermissionCodes.ReportView && grantedIds.Contains(permission.MaQuyen)
-                && !permissions.Any(p => p.MaQuyenCode == PermissionCodes.ReportExport && grantedIds.Contains(p.MaQuyen))
+            PartiallyGranted = false
         }).ToList();
     }
 

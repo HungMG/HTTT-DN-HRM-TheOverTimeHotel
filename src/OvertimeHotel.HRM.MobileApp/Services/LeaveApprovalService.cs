@@ -524,7 +524,7 @@ public class LeaveApprovalService : ILeaveApprovalService
         // trường hợp không có phòng ban, nhưng nhánh if vẫn để nguyên vì
         // BuildScopeFilters là hợp đồng với LeaveApprovalPolicy chứ không phải
         // với UserSession — đổi một trong hai không được làm lệch cái còn lại.
-        if (LeaveApprovalPolicy.IsManager(user.TenVaiTro)
+        if (user.IsManager
             && user.MaPhongBan is int dept
             && user.MaPhongBan > 0)
         {

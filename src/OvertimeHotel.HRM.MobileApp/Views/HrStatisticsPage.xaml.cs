@@ -9,4 +9,10 @@ public partial class HrStatisticsPage : ContentPage
         InitializeComponent();
         BindingContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
     }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await ((HrStatisticsViewModel)BindingContext).LoadAsync();
+    }
 }

@@ -4,6 +4,8 @@
     <section class="catalog-card p-3 my-3">
         <h2 class="h5">So sánh với năm trước</h2>
         <p class="small text-muted">So sánh @Model.NhanKy với @Model.CungKyLabel. Số liệu của thời gian đang diễn ra có thể chưa đầy đủ; phòng ban được tính theo hồ sơ hiện tại.</p>
+        <p class="small text-muted" data-comparison-payroll-note hidden="@(Model.Tab != "quy-luong")">Tổng lương đã tính có thể gồm phiếu nháp; lương đã duyệt gồm phiếu đã duyệt, khóa và đánh dấu thanh toán. Các số này chưa xác nhận tiền đã chuyển thực tế.</p>
+        <p class="small text-muted" data-comparison-personnel-note hidden="@(Model.Tab != "hoc-van")">Chỉ xét nhân sự còn làm việc cuối kỳ. Lương cơ bản lấy theo hợp đồng/phụ lục có hiệu lực tại từng thời điểm; hồ sơ thiếu lương hợp lệ không được tính vào mức bình quân. Trình độ dựa trên hồ sơ hiện tại nên số liệu quá khứ có thể chưa đầy đủ.</p>
         <div class="table-responsive">
             <table class="table table-sm">
                 <thead><tr><th>Nội dung</th><th>@Model.NhanKy</th><th>@Model.CungKyLabel</th><th>Tăng / giảm</th><th>Thay đổi (%)</th></tr></thead>
@@ -11,10 +13,15 @@
                     @foreach (var row in Model.SoSanhCungKy)
                     {
                         var label = row.Label == "Quân số cuối kỳ" ? "Nhân sự còn làm việc cuối kỳ" : row.Label;
-                        var numberFormat = row.Unit == "người" ? "N0" : "N1";
-                        <tr><td>@label (@row.Unit)</td><td>@row.Current.ToString(numberFormat)</td><td>@row.Previous.ToString(numberFormat)</td>
-                            <td>@row.Difference.ToString(numberFormat)@(row.Unit == "%" ? " điểm %" : "")</td>
-                            <td>@(row.Percent.HasValue ? row.Percent.Value.ToString("0.#") + "%" : "Không tính được vì năm trước bằng 0")</td></tr>
+                        var numberFormat = row.Unit is "người" or "đ" or "lượt" or "ca" or "sự kiện" ? "N0" : "N1";
+                        var show = Model.Tab switch {
+                            "quy-luong" => row.IsPayroll,
+                            "chuyen-can" or "su-kien" or "hoc-van" => row.ComparisonTab == Model.Tab,
+                            _ => !row.OnlyPayrollTab && !row.OnlySpecificTab
+                        };
+                        <tr data-comparison-payroll="@row.IsPayroll.ToString().ToLowerInvariant()" data-comparison-payroll-only="@row.OnlyPayrollTab.ToString().ToLowerInvariant()" data-comparison-tab="@row.ComparisonTab" data-comparison-specific-only="@row.OnlySpecificTab.ToString().ToLowerInvariant()" hidden="@(!show)"><td>@label (@row.Unit)</td><td>@(row.CurrentAvailable ? row.Current.ToString(numberFormat) : "Chưa có dữ liệu")</td><td>@(row.PreviousAvailable ? row.Previous.ToString(numberFormat) : "Chưa có dữ liệu")</td>
+                            <td>@(row.CurrentAvailable && row.PreviousAvailable ? row.Difference.ToString(numberFormat) + (row.Unit == "%" ? " điểm %" : "") : "Không đủ dữ liệu")</td>
+                            <td>@(!row.CurrentAvailable || !row.PreviousAvailable ? "Không đủ dữ liệu" : row.Percent.HasValue ? row.Percent.Value.ToString("0.#") + "%" : "Không tính được vì năm trước bằng 0")</td></tr>
                     }
                 </tbody>
             </table>

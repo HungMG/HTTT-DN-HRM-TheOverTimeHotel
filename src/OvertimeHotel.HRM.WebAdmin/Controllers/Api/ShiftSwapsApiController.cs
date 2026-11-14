@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.DTOs;
+using OvertimeHotel.HRM.Core.Enums;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.Data.Context;
@@ -325,6 +326,12 @@ public class ShiftSwapsApiController : ControllerBase
         {
             var (account, errorResult) = await GetCurrentAccountAsync();
             if (errorResult != null) return errorResult;
+
+            var role = await _context.VaiTros.AsNoTracking()
+                .Where(v => v.MaVaiTro == account!.MaVaiTro)
+                .Select(v => v.TenVaiTro).FirstOrDefaultAsync();
+            if (LeaveApprovalPolicy.NormalizeRole(role) != RoleType.Employee)
+                return StatusCode(403, new { message = "Chỉ nhân viên được gửi yêu cầu đổi ca." });
 
             var myId = account!.MaNhanVien;
 

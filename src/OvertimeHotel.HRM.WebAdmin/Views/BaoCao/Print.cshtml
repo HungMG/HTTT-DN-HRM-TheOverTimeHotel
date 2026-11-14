@@ -190,13 +190,14 @@
         {
             <p>@Model.QuyLuong.GhiChuPhuongPhap</p>
         }
+        <p>Số lương đã tính gồm cả phiếu nháp. Phiếu đánh dấu đã thanh toán: @Model.QuyLuong.SoPhieuDanhDauDaThanhToan phiếu, thực nhận @Model.QuyLuong.LuongDanhDauDaThanhToan.ToString("N0") đ; cần đối chiếu chuyển tiền thực tế.</p>
         <h6 class="fw-bold mt-3">Phân bổ chi phí theo phòng ban:</h6>
         <table class="table table-bordered table-sm">
             <thead class="table-light">
                 <tr>
                     <th>Phòng ban</th>
                     <th class="text-end">Định mức</th>
-                    <th class="text-end">Thực chi</th>
+                    <th class="text-end">Lương đã tính (gộp)</th>
                     <th class="text-end">Chênh lệch</th>
                 </tr>
             </thead>

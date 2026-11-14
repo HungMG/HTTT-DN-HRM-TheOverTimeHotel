@@ -416,7 +416,7 @@
             data: rows.map(function (row) { return millions(row.NganSach); })
           },
           {
-            name: "Thực chi",
+            name: "Lương đã tính (gộp)",
             type: "bar",
             barMaxWidth: 20,
             itemStyle: { color: COLORS.royal, borderRadius: [4, 4, 0, 0] },
@@ -613,6 +613,13 @@
     }
 
     activeTab = tab;
+    boardHost.querySelectorAll("[data-comparison-payroll]").forEach(function (row) {
+      if (tab === "quy-luong") row.hidden = row.dataset.comparisonPayroll !== "true";
+      else if (tab === "chuyen-can" || tab === "su-kien" || tab === "hoc-van") row.hidden = row.dataset.comparisonTab !== tab;
+      else row.hidden = row.dataset.comparisonPayrollOnly === "true" || row.dataset.comparisonSpecificOnly === "true";
+    });
+    boardHost.querySelectorAll("[data-comparison-payroll-note]").forEach(function (note) { note.hidden = tab !== "quy-luong"; });
+    boardHost.querySelectorAll("[data-comparison-personnel-note]").forEach(function (note) { note.hidden = tab !== "hoc-van"; });
     var appliedBoard = currentBoard();
     if (appliedBoard) appliedBoard.dataset.tab = tab;
 
@@ -865,38 +872,6 @@
   // ═══════════════════════════════════════════════════════════════════════
   //  DRILL-DOWN MODAL CHI TIẾT ĐỐI CHỨNG (Task 9)
   // ═══════════════════════════════════════════════════════════════════════
-  function exportModalTableToCsv(container, drillType) {
-    var table = container.querySelector("table");
-    if (!table) return;
-    var rows = table.querySelectorAll("tr");
-    var csvContent = "\uFEFF"; // UTF-8 BOM
-    Array.prototype.forEach.call(rows, function (row) {
-      if (row.hidden) return;
-      var cells = row.querySelectorAll("th, td");
-      var line = [];
-      Array.prototype.forEach.call(cells, function (cell) {
-        var text = (cell.innerText || cell.textContent || "").trim();
-        // Chống chèn công thức CSV Injection
-        if (/^[=+@\-\t\r]/.test(text)) {
-          text = "'" + text;
-        }
-        line.push('"' + text.replace(/"/g, '""') + '"');
-      });
-      if (line.length > 0) {
-        csvContent += line.join(",") + "\r\n";
-      }
-    });
-
-    var blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    var link = document.createElement("a");
-    var filename = "BaoCaoChiTiet_" + drillType + "_" + new Date().toISOString().slice(0, 10) + ".csv";
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
   async function openDrillDown(drillType) {
     var modalEl = document.getElementById("baocaoDetailsModal");
     var contentEl = document.getElementById("baocaoDetailsContent");
@@ -938,9 +913,15 @@
       if (detailSearch) {
         detailSearch.addEventListener("input", function () {
           var query = detailSearch.value.trim().toLocaleLowerCase("vi");
+          var visible = 0;
           contentEl.querySelectorAll("tbody tr").forEach(function (row) {
             row.hidden = !row.textContent.toLocaleLowerCase("vi").includes(query);
+            if (!row.hidden) visible++;
           });
+          var count = contentEl.querySelector("[data-baocao-detail-visible]");
+          var empty = contentEl.querySelector("[data-baocao-detail-no-match]");
+          if (count) count.textContent = visible;
+          if (empty) empty.hidden = visible !== 0;
         });
       }
       var detailSwitch = contentEl.querySelector("[data-baocao-details-switch]");
@@ -948,12 +929,6 @@
         openDrillDown(detailSwitch.getAttribute("data-baocao-details-switch"));
       });
 
-      var modalExportBtn = contentEl.querySelector("[data-baocao-export-details]");
-      if (modalExportBtn) {
-        modalExportBtn.addEventListener("click", function () {
-          exportModalTableToCsv(contentEl, drillType);
-        });
-      }
     } catch (err) {
       contentEl.innerHTML = '<div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Không thể tải chi tiết</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-danger py-4">' + (err.message || "Đã xảy ra lỗi khi tải dữ liệu.") + '</div><div class="modal-footer border-0"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Đóng</button></div>';
     }

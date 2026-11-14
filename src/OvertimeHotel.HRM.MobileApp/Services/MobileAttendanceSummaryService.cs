@@ -35,7 +35,7 @@ public sealed class MobileAttendanceSummaryService(SupabaseRestClient rest, IAut
         var employees = AttendanceSummaryPostgrstMapper.ReadRows(await rest.GetAsync(
             $"nhan_vien?select=ma_nhan_vien,ho,ten,ma_phong_ban&ma_nhan_vien=eq.{targetId}&limit=1",
             cancellationToken));
-        if (employees.Length != 1 || !AttendanceAccessPolicy.CanView(user.TenVaiTro,
+        if (employees.Length != 1 || !AttendanceAccessPolicy.CanView(user.MobileRole,
                 user.MaNhanVien, user.MaPhongBan, targetId,
                 PostgrstJson.ReadNullableInt(employees[0], "ma_phong_ban")))
             throw new InvalidOperationException("Bạn không có quyền xem bảng công này.");

@@ -101,6 +101,7 @@
 
                 <Button Grid.Column="1"
                         Text="Tạo yêu cầu mới"
+                        IsVisible="{Binding CanCreateShiftSwap}"
                         Command="{Binding SwitchModeCommand}"
                         CommandParameter="create"
                         CornerRadius="8"
@@ -170,12 +171,14 @@
                        TextColor="#334155"
                        HorizontalOptions="Center" />
                 <Label Text="Bấm 'Tạo yêu cầu mới' để gửi yêu cầu đổi ca với đồng nghiệp cùng bộ phận."
+                       IsVisible="{Binding CanCreateShiftSwap}"
                        FontFamily="SegoeUI"
                        FontSize="12"
                        TextColor="#94A3B8"
                        HorizontalTextAlignment="Center"
                        Padding="32,0" />
                 <Button Text="+ Tạo yêu cầu ngay"
+                        IsVisible="{Binding CanCreateShiftSwap}"
                         Command="{Binding SwitchModeCommand}"
                         CommandParameter="create"
                         BackgroundColor="#1E3A8A"

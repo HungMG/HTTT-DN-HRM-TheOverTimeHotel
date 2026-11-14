@@ -147,7 +147,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-people-fill"></i></div>
                 <div>
                     <span class="catalog-kpi-label">@(isMonthly ? "Nhân sự cuối tháng" : "Nhân sự cuối kỳ")</span>
-                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.BienDong.CuoiKy">@Model.BienDong.CuoiKy</span> <small>người</small></h3>
+                    <h3 class="catalog-kpi-value"><button type="button" class="baocao-kpi-drill" data-baocao-drill="cuoi-ky" aria-label="Danh sách nhân sự cuối kỳ"><span data-count-to="@Model.BienDong.CuoiKy">@Model.BienDong.CuoiKy</span> <small>người</small> <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></button></h3>
                     <p class="catalog-kpi-desc">Gồm người đang nghỉ phép</p>
                 </div>
             </div>
@@ -155,7 +155,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-person-check-fill"></i></div>
                 <div>
                     <span class="catalog-kpi-label">Đang làm việc</span>
-                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.CoCau.DangLam">@Model.CoCau.DangLam</span> <small>người</small></h3>
+                    <h3 class="catalog-kpi-value"><button type="button" class="baocao-kpi-drill" data-baocao-drill="dang-lam" aria-label="Danh sách nhân sự đang làm việc"><span data-count-to="@Model.CoCau.DangLam">@Model.CoCau.DangLam</span> <small>người</small> <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></button></h3>
                     <p class="catalog-kpi-desc">
                         <span>Trạng thái hồ sơ cuối kỳ</span>
                     </p>
@@ -165,7 +165,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-airplane"></i></div>
                 <div>
                     <span class="catalog-kpi-label">@(isMonthly ? "Có nghỉ phép trong tháng" : "Có nghỉ phép trong kỳ")</span>
-                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.CoCau.CoNghiPhepTrongKy">@Model.CoCau.CoNghiPhepTrongKy</span> <small>người</small></h3>
+                    <h3 class="catalog-kpi-value"><button type="button" class="baocao-kpi-drill" data-baocao-drill="nghi-phep-trong-ky" aria-label="Danh sách nhân viên nghỉ phép trong kỳ"><span data-count-to="@Model.CoCau.CoNghiPhepTrongKy">@Model.CoCau.CoNghiPhepTrongKy</span> <small>người</small> <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></button></h3>
                     <p class="catalog-kpi-desc">
                         <span>Đơn đã duyệt</span>
                     </p>
@@ -175,7 +175,7 @@
                 <div class="catalog-kpi-icon"><i class="bi bi-person-dash"></i></div>
                 <div>
                     <span class="catalog-kpi-label">@(isMonthly ? "Nghỉ việc trong tháng" : "Nghỉ việc trong kỳ")</span>
-                    <h3 class="catalog-kpi-value"><span data-count-to="@Model.BienDong.NghiViec">@Model.BienDong.NghiViec</span> <small>người</small></h3>
+                    <h3 class="catalog-kpi-value"><button type="button" class="baocao-kpi-drill" data-baocao-drill="thoi-viec" aria-label="Danh sách nhân viên nghỉ việc trong kỳ"><span data-count-to="@Model.BienDong.NghiViec">@Model.BienDong.NghiViec</span> <small>người</small> <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></button></h3>
                     <p class="catalog-kpi-desc">
                         <span>Theo ngày nghỉ việc</span>
                     </p>
@@ -360,8 +360,7 @@
     </section>
 
     @* ══════════════════════ 10.4 — ĐỐI SOÁT QUỸ LƯƠNG ══════════════════════
-       Khối này chỉ hiện với Admin/HR/Kế toán. Manager không có quyền xem quỹ lương
-       nên toàn bộ <section> bị bỏ khỏi DOM — không chỉ ẩn bằng CSS. *@
+       Báo cáo chỉ xem thông tin đối soát quỹ lương và ngân sách. *@
     @if (Model.CanViewPayrollFund)
     {
         <section class="baocao-panel" data-baocao-panel="quy-luong" hidden="@(tab != "quy-luong")">
@@ -373,8 +372,11 @@
                         Chênh lệch lương đã duyệt: @Model.QuyLuong.ChenhLechNganSachDuyet?.ToString("N0") đ.
                         Tỷ lệ: @(Model.QuyLuong.TyLeGiaiNganNganSachDuyet?.ToString("0.#") ?? "Không tính khi ngân sách bằng 0") %.</p>
                 }
-                @if (User.HasPermission(PermissionCodes.CalculatePayroll) && !User.IsInRole("Manager")) {
-                <a asp-controller="PayrollBudget" asp-action="Index" asp-route-nam="@Model.Nam">Lập / duyệt ngân sách lương</a>
+                @if (Model.QuyLuong.NganSachConThieu.Count > 0)
+                {
+                    <details><summary>Các tháng/phòng ban chưa có ngân sách được duyệt (@Model.QuyLuong.NganSachConThieu.Count)</summary>
+                        <ul>@foreach (var item in Model.QuyLuong.NganSachConThieu) { <li>@item</li> }</ul>
+                    </details>
                 }
                 <p class="small mb-0">Số lương đã tính có thể gồm phiếu nháp; duyệt/kết chuyển không đồng nghĩa đã thanh toán.</p>
             </div>
@@ -390,10 +392,10 @@
                 <div class="catalog-kpi-card catalog-kpi-card--bonus shadow-sm">
                     <div class="catalog-kpi-icon"><i class="bi bi-cash-stack"></i></div>
                     <div>
-                        <span class="catalog-kpi-label">Thực nhận</span>
+                        <span class="catalog-kpi-label">Thực nhận đã tính</span>
                         <h3 class="catalog-kpi-value">@Model.QuyLuong.ThucChi.ToString(Money) <small>đ</small></h3>
                         <p class="catalog-kpi-desc">
-                            Sau khấu trừ · @Model.QuyLuong.SoPhieuLuong phiếu &bull;
+                            Sau khấu trừ, gồm cả phiếu nháp · @Model.QuyLuong.SoPhieuLuong phiếu &bull;
                             <a href="javascript:void(0)" class="text-decoration-none fw-semibold" data-baocao-drill="phieu-luong"><i class="bi bi-zoom-in"></i> Chi tiết</a>
                         </p>
                     </div>
@@ -438,6 +440,7 @@
                 }
             </div>
 
+            <p class="small text-muted">Phiếu đánh dấu đã thanh toán: @Model.QuyLuong.SoPhieuDanhDauDaThanhToan phiếu, thực nhận @Model.QuyLuong.LuongDanhDauDaThanhToan.ToString(Money) đ. Trạng thái này cần đối chiếu chứng từ chuyển tiền thực tế.</p>
             @if (!string.IsNullOrEmpty(Model.QuyLuong.GhiChuPhuongPhap))
             {
                 <div class="baocao-note @(Model.QuyLuong.SoNhanSuThieuCanCuLuong > 0 ? "alert alert-warning" : "")">
@@ -447,7 +450,7 @@
 
             <div class="baocao-grid-2">
                 <section class="catalog-card shadow-sm">
-                    <div class="catalog-toolbar"><h2 class="baocao-card-title">Định mức và thực chi theo tháng</h2></div>
+                    <div class="catalog-toolbar"><h2 class="baocao-card-title">Định mức và lương đã tính theo tháng</h2></div>
                     <div class="baocao-chart" data-chart="quy-luong-series" style="height:340px"></div>
                 </section>
                 <section class="catalog-card shadow-sm">
@@ -470,7 +473,7 @@
                                 <tr>
                                     <th>Phòng ban</th>
                                     <th class="text-end">Định mức</th>
-                                    <th class="text-end">Thực chi</th>
+                                    <th class="text-end">Lương đã tính (gộp)</th>
                                     <th class="text-end">Chênh lệch</th>
                                 </tr>
                             </thead>

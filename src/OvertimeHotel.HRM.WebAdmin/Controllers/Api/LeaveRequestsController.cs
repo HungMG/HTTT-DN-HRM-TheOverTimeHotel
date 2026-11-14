@@ -60,12 +60,13 @@ public class LeaveRequestsController : ControllerBase
         var (account, errorResult) = await GetCurrentAccountAsync();
         if (errorResult != null) return errorResult;
 
-        var role = account!.VaiTro?.TenVaiTro;
+        var role = ItMobileAccessPolicy.IsItHead(account!.VaiTro?.TenVaiTro, account.NhanVien?.MaChucVu)
+            ? "Manager" : account.VaiTro?.TenVaiTro;
         var normalizedRole = LeaveApprovalPolicy.NormalizeRole(role);
         var deptId = account.NhanVien?.MaPhongBan;
 
         // Nguyên tắc Fail-Closed: Employee không có quyền truy cập
-        if (normalizedRole == null || normalizedRole == RoleType.Employee)
+        if (normalizedRole is null or RoleType.Employee or RoleType.IT)
         {
             return StatusCode(403, new LeaveReviewResult(false, "FORBIDDEN", "Tài khoản nhân viên không có quyền truy cập duyệt đơn."));
         }
@@ -200,7 +201,8 @@ public class LeaveRequestsController : ControllerBase
         var (account, errorResult) = await GetCurrentAccountAsync();
         if (errorResult != null) return errorResult;
 
-        var role = account!.VaiTro?.TenVaiTro;
+        var role = ItMobileAccessPolicy.IsItHead(account!.VaiTro?.TenVaiTro, account.NhanVien?.MaChucVu)
+            ? "Manager" : account.VaiTro?.TenVaiTro;
         var deptId = account.NhanVien?.MaPhongBan;
         var reviewerEmployeeId = account.MaNhanVien;
 
@@ -215,7 +217,7 @@ public class LeaveRequestsController : ControllerBase
         }
 
         var normalizedRole = LeaveApprovalPolicy.NormalizeRole(role);
-        if (normalizedRole is null or RoleType.Employee ||
+        if (normalizedRole is null or RoleType.Employee or RoleType.IT ||
             (normalizedRole == RoleType.Manager && (deptId is not > 0 || donTu.NhanVien?.MaPhongBan != deptId)))
             return StatusCode(403, new LeaveReviewResult(false, "FORBIDDEN", "Đơn không thuộc phạm vi được phép."));
         var permission = OvertimeHotel.HRM.Core.Policies.MobilePermissionPolicy.ReviewPermission(donTu.MaLoaiDon);

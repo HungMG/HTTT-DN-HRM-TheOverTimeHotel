@@ -174,7 +174,7 @@ public abstract class HomeViewModelBase : INotifyPropertyChanged
 
         try
         {
-            PendingLeaveCount = await LeaveApprovalService.GetPendingCountAsync(user.TenVaiTro, user.MaPhongBan);
+            PendingLeaveCount = await LeaveApprovalService.GetPendingCountAsync(user.MobileRole, user.MaPhongBan);
         }
         catch
         {

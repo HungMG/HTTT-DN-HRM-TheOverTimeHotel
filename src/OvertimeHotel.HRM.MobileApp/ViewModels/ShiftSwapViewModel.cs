@@ -10,6 +10,7 @@ namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 public class ShiftSwapViewModel : INotifyPropertyChanged
 {
     private readonly IShiftSwapService _service;
+    private readonly IAuthService _auth;
     private CancellationTokenSource? _loadCancellation;
     private int _loadVersion;
 
@@ -54,9 +55,10 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
     public ICommand CancelRejectModalCommand { get; }
     public ICommand BackCommand { get; }
 
-    public ShiftSwapViewModel(IShiftSwapService service)
+    public ShiftSwapViewModel(IShiftSwapService service, IAuthService auth)
     {
         _service = service ?? throw new ArgumentNullException(nameof(service));
+        _auth = auth ?? throw new ArgumentNullException(nameof(auth));
         MyShiftSwaps.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(IsEmpty));
@@ -67,7 +69,7 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
         RefreshCommand = new Command(async () => await LoadAsync(isRefresh: true), () => !IsLoading && !IsSubmitting);
         SwitchModeCommand = new Command<string>((mode) =>
         {
-            IsCreateMode = mode == "create";
+            IsCreateMode = mode == "create" && CanCreateShiftSwap;
         });
         SubmitCommand = new Command(async () => await SubmitAsync(), () => !IsSubmitting && CanSubmit);
         AcceptCommand = new Command<ShiftSwapItemDto>((item) => Accept(item), (item) => !IsSubmitting);
@@ -241,8 +243,10 @@ public class ShiftSwapViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool CanCreateShiftSwap => _auth.CurrentUser?.IsEmployee == true;
+
     public bool CanSubmit =>
-        SelectedMyShift != null &&
+        CanCreateShiftSwap && SelectedMyShift != null &&
         SelectedPartnerShift != null &&
         !string.IsNullOrWhiteSpace(LyDo) &&
         LyDo.Trim().Length <= 500;

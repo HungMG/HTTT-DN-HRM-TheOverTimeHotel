@@ -344,6 +344,11 @@ public class QuyLuongNganSachReport
     /// <summary>Tổng thực chi gộp từ các phiếu nháp (dự tính).</summary>
     public decimal ThucChiGrossNhap { get; set; }
 
+    /// <summary>Giá trị phiếu mang trạng thái đã thanh toán; cần đối chiếu chuyển khoản thực tế.</summary>
+    public decimal LuongDanhDauDaThanhToan { get; set; }
+    public int SoPhieuDanhDauDaThanhToan { get; set; }
+    public IReadOnlyList<string> NganSachConThieu { get; set; } = [];
+
     /// <summary>Ngân sách lương được phê duyệt chính thức (nếu đã thiết lập).</summary>
     public decimal? NganSachDuocDuyet { get; set; }
 
@@ -384,6 +389,12 @@ public class QuyLuongNganSachReport
 public sealed class ReportComparisonItem
 {
     public string Label { get; set; } = "";
+    public bool IsPayroll { get; set; }
+    public bool OnlyPayrollTab { get; set; }
+    public string ComparisonTab { get; set; } = "";
+    public bool OnlySpecificTab { get; set; }
+    public bool CurrentAvailable { get; set; } = true;
+    public bool PreviousAvailable { get; set; } = true;
     public string Unit { get; set; } = "";
     public decimal Current { get; set; }
     public decimal Previous { get; set; }

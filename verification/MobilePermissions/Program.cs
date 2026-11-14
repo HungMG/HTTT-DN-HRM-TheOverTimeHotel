@@ -93,4 +93,15 @@ Check(WebAdminLanding.Resolve(LandingUser("IT")) == ("UserAccounts", "Index"), "
 Check(WebAdminLanding.Resolve(LandingUser("HR", PermissionCodes.ManageHotelEvents, PermissionCodes.ManageEmployees)) == ("SuKien", "Index"), "Landing follows sidebar order");
 Check(WebAdminLanding.Resolve(LandingUser("HR")) == ("Home", "Index"), "Users without a menu have a safe fallback");
 Check(WebAdminLanding.IsDashboardUrl("/?x=1") && WebAdminLanding.IsDashboardUrl("/Home/Index") && !WebAdminLanding.IsDashboardUrl("/BangLuong"), "Only dashboard return URLs are replaced");
+var itHead = new UserSession { TenVaiTro = "IT", MaChucVu = 12, MaPhongBan = 9, IsLoggedIn = true,
+    Permissions = new HashSet<string> { MobilePermissionPolicy.ViewLeave, MobilePermissionPolicy.ApproveLeave } };
+Check(itHead.IsManager && itHead.IsIT && !itHead.IsEmployee && itHead.CanViewLeave && itHead.CanApproveLeave,
+    "IT head gets Manager mobile behavior without becoming Employee");
+Check(AttendanceAccessPolicy.CanView(itHead.MobileRole, 1, 9, 2, 9) &&
+    !AttendanceAccessPolicy.CanView(itHead.MobileRole, 1, 9, 3, 8), "IT head stays in department");
+itHead.MaChucVu = 11;
+Check(!itHead.IsManager && !itHead.CanViewLeave, "Ordinary IT does not get Manager behavior");
+itHead.MaChucVu = 12;
+itHead.MaPhongBan = null;
+Check(!itHead.CanViewLeave && !itHead.CanApproveLeave, "IT head without department cannot approve");
 Console.WriteLine($"PASS: {checks} permission checks");

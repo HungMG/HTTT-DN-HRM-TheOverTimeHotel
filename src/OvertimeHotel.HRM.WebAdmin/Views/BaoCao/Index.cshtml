@@ -30,7 +30,7 @@
     <!-- ═════════════ THANH NÚT XUẤT ═════════════
          Breadcrumb và khung hero bo tròn đã bỏ theo yêu cầu: trang bắt đầu
          thẳng bằng hàng nút xuất, nội dung dưới được đẩy sát lên trên. -->
-    @if (User.HasPermission(PermissionCodes.ReportExport))
+    @if (User.HasPermission(PermissionCodes.ReportView))
     {
     <div class="baocao-export-row">
         <button type="button" class="btn btn-sm btn-hotel-primary rounded-3 px-3 fw-semibold"
@@ -102,8 +102,7 @@
                 </select>
             </div>
 
-            @* Quản lý đã bị khóa trong bộ phận của mình ngay ở tầng truy vấn, nên ô chọn
-               phòng ban không có ý nghĩa với họ — ẩn hẳn thay vì hiện ra rồi bỏ qua lựa chọn. *@
+            @* Quyền xem báo cáo cho phép chọn phạm vi toàn khách sạn hoặc phòng ban. *@
             @if (Model.IsWholeHotel)
             {
                 <div class="baocao-field baocao-field--wide">
@@ -131,8 +130,7 @@
         <nav class="baocao-tabs" data-baocao-tabs aria-label="Chọn báo cáo">
             @foreach (var item in tabs)
             {
-                @* Khối 10.4 là dữ liệu quỹ lương. Người không có quyền vừa không thấy nút này,
-                   vừa không nhận được <section> tương ứng từ partial. *@
+                @* Quỹ lương được hiển thị khi người dùng có quyền báo cáo. *@
                 if (item.Key == "quy-luong" && !Model.CanViewPayrollFund)
                 {
                     continue;
@@ -161,8 +159,8 @@
 </div>
 
 <!-- Modal chi tiết đối chứng (Drill-down) — Đặt ngoài .in-place-container để tránh stacking context trap -->
-<div class="modal fade" id="baocaoDetailsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+<div class="modal fade" id="baocaoDetailsModal" tabindex="-1" aria-labelledby="baocaoDetailsTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable baocao-detail-dialog">
         <div class="modal-content" id="baocaoDetailsContent">
             <div class="p-4 text-center text-muted">
                 <span class="spinner-border spinner-border-sm me-2"></span> Đang nạp dữ liệu chi tiết...

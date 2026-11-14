@@ -41,3 +41,5 @@ bản ghi nghiệp vụ. Không chạy assertions rồi COMMIT vì script xóa g
 trong bản sao tạm chỉ xác nhận mã dùng chung, không thay thế kiểm thử trên điện thoại.
 
 IT dùng quyền chấm công và nộp đơn cá nhân theo cấu hình của vai trò Employee; các quyền quản trị IT cố định không thay đổi. Kiểm tra bật/tắt bằng `it-inheritance-assertions.sql` trong transaction có rollback.
+
+Từ `20261114_it_head_mobile_manager.sql`, tài khoản IT có chức vụ Trưởng bộ phận CNTT (mã chức vụ 12) dùng các quyền mobile được cấp cho Manager, không dùng hai quyền cá nhân kế thừa Employee. Quyền quản lý dữ liệu bị giới hạn trong phòng ban của người đó; thiếu phòng ban thì không có phạm vi quản lý. IT thông thường vẫn giữ quy tắc Employee ở trên. Chạy `it-head-fixture.sql` trên một database PostgreSQL mới và rỗng để kiểm tra kế thừa, thu hồi và phạm vi phòng ban.

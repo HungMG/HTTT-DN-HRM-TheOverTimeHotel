@@ -239,7 +239,7 @@ public class ManagerHomeViewModel : HomeViewModelBase
 
         try
         {
-            var reviewed = await LeaveApprovalService.GetReviewedRequestsAsync(user.TenVaiTro, user.MaPhongBan);
+            var reviewed = await LeaveApprovalService.GetReviewedRequestsAsync(user.MobileRole, user.MaPhongBan);
             ReviewedLeaveCount = reviewed.Count;
         }
         catch

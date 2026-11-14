@@ -154,19 +154,6 @@ public class AccountController : Controller
 
         var roleName = account.VaiTro?.TenVaiTro ?? "Employee";
 
-        // Kiểm tra phân quyền cổng Web: Admin, HR, Manager và IT đều được truy cập.
-        // Employee tự phục vụ trên Ứng dụng Di động nên bị chặn ngay tại cổng Web.
-        if (!LeaveApprovalPolicy.CanAccessWebPortal(roleName))
-        {
-            var roleNoticeMsg = $"Tài khoản của bạn được phân quyền là '{roleName}'. Cổng Web Admin này dành cho cấp Quản trị (Admin), Nhân sự (HR), Quản lý (Manager) và Công nghệ Thông tin (IT). Vui lòng đăng nhập trên Ứng dụng Di động (.NET MAUI App) để quẹt thẻ chấm công và nộp đơn từ trực tuyến!";
-            if (IsAjaxRequest(Request))
-            {
-                return Json(new { success = false, roleNotice = roleNoticeMsg });
-            }
-            ViewBag.RoleNotice = roleNoticeMsg;
-            return View(model);
-        }
-
         var permissionCodes = Array.Empty<string>();
         try
         {
@@ -179,6 +166,18 @@ public class AccountController : Controller
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Không thể nạp quyền của vai trò {RoleId} khi đăng nhập.", account.MaVaiTro);
+        }
+
+        // Tài khoản có quyền báo cáo được vào web để sử dụng phân hệ được cấp.
+        if (!LeaveApprovalPolicy.CanAccessWebPortal(roleName) && !permissionCodes.Contains(PermissionCodes.ReportView))
+        {
+            var roleNoticeMsg = $"Tài khoản của bạn được phân quyền là '{roleName}'. Cổng Web Admin này dành cho cấp Quản trị (Admin), Nhân sự (HR), Quản lý (Manager) và Công nghệ Thông tin (IT). Vui lòng đăng nhập trên Ứng dụng Di động (.NET MAUI App) để quẹt thẻ chấm công và nộp đơn từ trực tuyến!";
+            if (IsAjaxRequest(Request))
+            {
+                return Json(new { success = false, roleNotice = roleNoticeMsg });
+            }
+            ViewBag.RoleNotice = roleNoticeMsg;
+            return View(model);
         }
 
         // Thiết lập Claims nhận diện người dùng

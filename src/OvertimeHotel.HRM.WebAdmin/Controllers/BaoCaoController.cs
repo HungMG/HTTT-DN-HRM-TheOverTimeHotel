@@ -22,12 +22,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Controllers;
 /// Trợ lý AI dùng chung đúng service đó nên hai nơi không thể lệch số liệu.
 /// </para>
 ///
-/// <para>
-/// <b>Phạm vi dữ liệu do máy chủ quyết định, không do URL:</b> Quản lý bị
-/// <see cref="ReportPolicy.ResolveScope"/> ghép cứng vào bộ phận của mình, nên tham số
-/// <c>phongBan</c> trên địa chỉ không thể mở rộng tầm nhìn. Thiếu claim phòng ban thì bị từ chối
-/// thẳng (fail-closed).
-/// </para>
+/// <para>Quyền xem báo cáo cho phép xem toàn khách sạn và sử dụng các chức năng trong phân hệ.</para>
 /// </summary>
 [Authorize(Policy = PermissionCodes.ReportView)]
 public class BaoCaoController : Controller
@@ -83,7 +78,6 @@ public class BaoCaoController : Controller
     /// (theo mẫu <c>ExportBankTransferFileAsync</c> của phân hệ lương).
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = PermissionCodes.ReportExport)]
     public async Task<IActionResult> Export(
         string? ky,
         int? nam,
@@ -99,10 +93,6 @@ public class BaoCaoController : Controller
         }
 
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && (!scope.IsWholeHotel || !User.HasPermission(PermissionCodes.ViewPayroll)))
-        {
-            return Forbid();
-        }
 
         try
         {
@@ -129,7 +119,6 @@ public class BaoCaoController : Controller
     /// Xuất bảng tính .xlsx có kiểu ô số/văn bản, không phụ thuộc thư viện ngoài.
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = PermissionCodes.ReportExport)]
     public async Task<IActionResult> ExportExcel(
         string? ky,
         int? nam,
@@ -145,10 +134,6 @@ public class BaoCaoController : Controller
         }
 
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && (!scope.IsWholeHotel || !User.HasPermission(PermissionCodes.ViewPayroll)))
-        {
-            return Forbid();
-        }
 
         try
         {
@@ -188,7 +173,7 @@ public class BaoCaoController : Controller
         }
 
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        var details = await _reportService.BuildChiTietAsync(scope, role, type, ky, nam, thang, quy, phongBan, User.HasPermission(PermissionCodes.ViewPayroll));
+        var details = await _reportService.BuildChiTietAsync(scope, role, type, ky, nam, thang, quy, phongBan, User.HasPermission(PermissionCodes.ReportView));
         return PartialView("_BaoCaoDetails", details);
     }
 
@@ -196,7 +181,6 @@ public class BaoCaoController : Controller
     /// Trang in / lưu PDF khổ A4 tối ưu (Task 12).
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = PermissionCodes.ReportExport)]
     public async Task<IActionResult> Print(
         string? ky,
         int? nam,
@@ -212,7 +196,6 @@ public class BaoCaoController : Controller
         }
 
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        if (BaoCaoReportService.NormalizeTab(tab) == "quy-luong" && (!scope.IsWholeHotel || !User.HasPermission(PermissionCodes.ViewPayroll))) return Forbid();
         var model = await BuildAsync(scope, ky, nam, thang, quy, phongBan, tab);
         if (!model.IsDatabaseOnline) return StatusCode(503, "Dữ liệu báo cáo chưa sẵn sàng.");
         return View("Print", model);
@@ -232,7 +215,7 @@ public class BaoCaoController : Controller
         string? tab)
     {
         var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        return _reportService.BuildAsync(scope, role, ky, nam, thang, quy, phongBan, tab, User.HasPermission(PermissionCodes.ViewPayroll));
+        return _reportService.BuildAsync(scope, role, ky, nam, thang, quy, phongBan, tab, User.HasPermission(PermissionCodes.ReportView));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -358,8 +341,11 @@ public class BaoCaoController : Controller
     private static void AppendQuyLuong(StringBuilder sb, QuyLuongNganSachReport report)
     {
         sb.AppendLine("ĐỐI SOÁT QUỸ LƯƠNG VS ĐỊNH MỨC THAM CHIẾU");
-        sb.AppendLine($"Lương thực nhận đã tính,{Num(report.ThucChi)}");
+        sb.AppendLine($"Lương thực nhận đã tính (gồm phiếu nháp),{Num(report.ThucChi)}");
+        sb.AppendLine($"Thực nhận phiếu đánh dấu đã thanh toán (cần đối chiếu),{Num(report.LuongDanhDauDaThanhToan)}");
         sb.AppendLine($"Tổng lương đã tính (Gross),{Num(report.ThucChiGross)}");
+        sb.AppendLine($"Lương đã duyệt (gộp),{Num(report.ThucChiGrossDaDuyet)}");
+        sb.AppendLine($"Lương nháp/chờ duyệt (gộp),{Num(report.ThucChiGrossNhap)}");
         sb.AppendLine($"{Esc(report.NhanDinhMucThamChieu)},{Num(report.NganSachThamChieu)}");
         sb.AppendLine($"Chênh lệch,{Num(report.ChenhLech)}");
         sb.AppendLine($"Tỷ lệ so với định mức (%),{Num(report.PhanTramGiaiNgan)}");
@@ -370,7 +356,7 @@ public class BaoCaoController : Controller
         sb.AppendLine();
 
         sb.AppendLine("DIỄN BIẾN THEO THÁNG");
-        sb.AppendLine("Tháng,Định mức tham chiếu,Thực chi,Chênh lệch");
+        sb.AppendLine("Tháng,Định mức tham chiếu,Lương đã tính (gộp),Chênh lệch");
         foreach (var item in report.Series)
         {
             sb.AppendLine($"{item.Nhan},{Num(item.NganSach)},{Num(item.ThucChi)},{Num(item.ThucChi - item.NganSach)}");
@@ -378,7 +364,7 @@ public class BaoCaoController : Controller
 
         sb.AppendLine();
         sb.AppendLine("THEO PHÒNG BAN");
-        sb.AppendLine("Phòng ban,Định mức tham chiếu,Thực chi,Chênh lệch");
+        sb.AppendLine("Phòng ban,Định mức tham chiếu,Lương đã tính (gộp),Chênh lệch");
         foreach (var item in report.TheoPhongBan)
         {
             sb.AppendLine($"{Esc(item.PhongBan)},{Num(item.NganSach)},{Num(item.ThucChi)},{Num(item.ChenhLech)}");
@@ -469,14 +455,9 @@ public class BaoCaoController : Controller
     /// Giải quyết phạm vi báo cáo từ phiên đăng nhập. Trả phạm vi bị từ chối khi vai trò
     /// không được phép hoặc Quản lý thiếu claim phòng ban.
     /// </summary>
-    private ReportPolicy.BaoCaoScope ResolveScope()
-    {
-        var role = User.FindFirst(ClaimTypes.Role)?.Value;
-        var raw = User.FindFirst("DepartmentId")?.Value;
-        int? departmentId = int.TryParse(raw, out var id) && id > 0 ? id : null;
-
-        return ReportPolicy.ResolveScope(role, departmentId);
-    }
+    private ReportPolicy.BaoCaoScope ResolveScope() => User.HasPermission(PermissionCodes.ReportView)
+        ? new ReportPolicy.BaoCaoScope(true, true, null)
+        : ReportPolicy.BaoCaoScope.Denied;
 
     /// <summary>Số thập phân gọn cho CSV, dùng dấu chấm để Excel không hiểu nhầm dấu phân cách.</summary>
     private static string Num(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
@@ -670,7 +651,10 @@ public class BaoCaoController : Controller
     private static void AppendExcelQuyLuong(StringBuilder sb, QuyLuongNganSachReport report)
     {
         sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">ĐỐI SOÁT QUỸ LƯƠNG VS ĐỊNH MỨC THAM CHIẾU</Data></Cell></Row>");
-        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Lương thực nhận đã tính</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ThucChi)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Lương thực nhận đã tính (gồm phiếu nháp)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ThucChi)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Thực nhận phiếu đánh dấu đã thanh toán (cần đối chiếu)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.LuongDanhDauDaThanhToan)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Lương đã duyệt (gộp)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ThucChiGrossDaDuyet)}</Data></Cell></Row>");
+        sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Lương nháp/chờ duyệt (gộp)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ThucChiGrossNhap)}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Tổng lương đã tính (Gross)</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ThucChiGross)}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(report.NhanDinhMucThamChieu)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.NganSachThamChieu)}</Data></Cell></Row>");
         sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">Chênh lệch</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(report.ChenhLech)}</Data></Cell></Row>");
@@ -679,7 +663,7 @@ public class BaoCaoController : Controller
         sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">Ngân sách được duyệt</Data></Cell><Cell><Data ss:Type=\"String\">{(report.NganSachDuocDuyet.HasValue ? Num(report.NganSachDuocDuyet.Value) : "Chưa đủ dữ liệu")}</Data></Cell></Row>");
         sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">{XmlEsc(report.TrangThaiNganSachDuyet)}</Data></Cell></Row>");
         sb.AppendLine($"<Row><Cell><Data ss:Type=\"String\">{XmlEsc(report.GhiChuPhuongPhap)}</Data></Cell></Row>");
-        sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Phòng ban</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Định mức</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Thực chi</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Chênh lệch</Data></Cell></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Phòng ban</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Định mức</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Lương đã tính (gộp)</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Chênh lệch</Data></Cell></Row>");
         foreach (var item in report.TheoPhongBan)
         {
             sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.PhongBan)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.NganSach)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.ThucChi)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.ChenhLech)}</Data></Cell></Row>");

@@ -163,16 +163,50 @@ public sealed class BaoCaoReportService
                 new() {Label="Nhân sự còn làm việc cuối kỳ", Unit="người", Current=model.BienDong.CuoiKy, Previous=yoyStaff.CuoiKy},
                 new() {Label="Tuyển mới", Unit="người", Current=model.BienDong.TuyenMoi, Previous=yoyStaff.TuyenMoi},
                 new() {Label="Thôi việc", Unit="người", Current=model.BienDong.NghiViec, Previous=yoyStaff.NghiViec},
-                new() {Label="Chuyên cần", Unit="%", Current=model.ChuyenCan.TyLeChuyenCan,
+                new() {Label="Tỷ lệ chuyên cần", Unit="%", ComparisonTab="chuyen-can", Current=model.ChuyenCan.TyLeChuyenCan,
                     Previous=ReportPolicy.AttendanceRate(yoyAssessed.Count(r=>ReportPolicy.IsOnTime(r.TrangThai)),yoyAssessed.Length)}
             };
+            // Recompute salaries at the prior period's end; current salaries cannot represent last year.
+            var priorPersonnel = await LoadEmployeesAsync(departmentId, yoyTo, model.CanViewPayrollFund);
+            var priorEducation = BuildHocVanThamNien(priorPersonnel, yoyTo, model.CanViewPayrollFund);
+            comparisons.Add(new() { Label = "Nhân sự từ đại học trở lên", Unit = "người", ComparisonTab = "hoc-van", OnlySpecificTab = true,
+                Current = model.HocVanThamNien.SoDaiHocTroLen, Previous = priorEducation.SoDaiHocTroLen });
+            comparisons.Add(new() { Label = "Tỷ lệ đại học trở lên", Unit = "%", ComparisonTab = "hoc-van", OnlySpecificTab = true,
+                Current = model.HocVanThamNien.TyLeDaiHocTroLen, Previous = priorEducation.TyLeDaiHocTroLen });
+            comparisons.Add(new() { Label = "Thâm niên trung bình", Unit = "năm", ComparisonTab = "hoc-van", OnlySpecificTab = true,
+                Current = model.HocVanThamNien.ThamNienTrungBinh, Previous = priorEducation.ThamNienTrungBinh });
+            if (model.CanViewPayrollFund)
+                comparisons.Add(new() { Label = "Lương cơ bản trung bình", Unit = "đ", ComparisonTab = "hoc-van", OnlySpecificTab = true,
+                    Current = model.HocVanThamNien.LuongCoBanTrungBinh, Previous = priorEducation.LuongCoBanTrungBinh,
+                    CurrentAvailable = model.HocVanThamNien.SoNhanSuCoLuong > 0, PreviousAvailable = priorEducation.SoNhanSuCoLuong > 0 });
+            comparisons.Add(new() { Label = "Số lượt vi phạm trễ / sớm", Unit = "lượt", ComparisonTab = "chuyen-can", OnlySpecificTab = true,
+                Current = model.ChuyenCan.DiTre + model.ChuyenCan.VeSom + model.ChuyenCan.TreVaSom,
+                Previous = yoyAttendance.Count(r => ReportPolicy.IsViolation(r.TrangThai)) });
+            comparisons.Add(new() { Label = "Số ca vắng", Unit = "ca", ComparisonTab = "chuyen-can", OnlySpecificTab = true,
+                Current = model.ChuyenCan.Vang, Previous = yoyAttendance.Count(r => ReportPolicy.IsAbsent(r.TrangThai)) });
+            comparisons.Add(new() { Label = "Tổng giờ tăng ca", Unit = "giờ", ComparisonTab = "chuyen-can", OnlySpecificTab = true,
+                Current = model.ChuyenCan.TongGioOt, Previous = yoyAttendance.Sum(r => r.GioTangCaOt) });
+
+            var yoyEvents = await BuildSuKienAsync(yoyFrom, yoyTo, scope, departmentId);
+            comparisons.Add(new() { Label = "Số sự kiện", Unit = "sự kiện", ComparisonTab = "su-kien", OnlySpecificTab = true,
+                Current = model.SuKien.TongSuKien, Previous = yoyEvents.TongSuKien });
+            comparisons.Add(new() { Label = "Lượt phân công", Unit = "lượt", ComparisonTab = "su-kien", OnlySpecificTab = true,
+                Current = model.SuKien.TongLuotPhanCong, Previous = yoyEvents.TongLuotPhanCong });
+            comparisons.Add(new() { Label = "Phụ cấp sự kiện phát sinh", Unit = "đ", ComparisonTab = "su-kien", OnlySpecificTab = true,
+                Current = model.SuKien.TongPhuCapDaPhanBo, Previous = yoyEvents.TongPhuCapDaPhanBo });
+            comparisons.Add(new() { Label = "Tỷ lệ đánh giá xuất sắc", Unit = "%", ComparisonTab = "su-kien", OnlySpecificTab = true,
+                Current = model.SuKien.TyLeXuatSac, Previous = yoyEvents.TyLeXuatSac });
             if (model.CanViewPayrollFund)
             {
-                var yoyGross = await _context.PhieuLuongs.AsNoTracking().Where(p=>p.KyLuong != null
-                    && p.KyLuong.Nam==yoyFrom.Year && p.KyLuong.Thang>=yoyFrom.Month && p.KyLuong.Thang<=yoyTo.Month
-                    && (departmentId==null || (p.NhanVien!=null && p.NhanVien.MaPhongBan==departmentId)))
-                    .SumAsync(p=>(decimal?)(p.TienLuongCong+p.TienTangCa+p.TongPhuCap+p.TongThuong)) ?? 0m;
-                comparisons.Add(new() {Label="Tổng lương đã tính (Gross)",Unit="đ",Current=model.QuyLuong.ThucChiGross,Previous=yoyGross});
+                var yoyPayroll = await _context.PhieuLuongs.AsNoTracking().Where(p => p.KyLuong != null
+                    && p.KyLuong.Nam == yoyFrom.Year && p.KyLuong.Thang >= yoyFrom.Month && p.KyLuong.Thang <= yoyTo.Month
+                    && (departmentId == null || (p.NhanVien != null && p.NhanVien.MaPhongBan == departmentId)))
+                    .Select(p => new { Gross = p.TienLuongCong + p.TienTangCa + p.TongPhuCap + p.TongThuong, p.TrangThai })
+                    .ToArrayAsync();
+                var yoyGross = yoyPayroll.Sum(p => p.Gross);
+                var yoyApproved = yoyPayroll.Where(p => p.TrangThai is "DA_DUYET" or "KHOA" or "DA_THANH_TOAN").Sum(p => p.Gross);
+                comparisons.Add(new() { Label = "Tổng lương đã tính (gộp)", Unit = "đ", IsPayroll = true, Current = model.QuyLuong.ThucChiGross, Previous = yoyGross });
+                comparisons.Add(new() { Label = "Lương đã duyệt (gộp)", Unit = "đ", IsPayroll = true, OnlyPayrollTab = true, Current = model.QuyLuong.ThucChiGrossDaDuyet, Previous = yoyApproved });
             }
             model.SoSanhCungKy = comparisons;
 
@@ -715,6 +749,11 @@ public sealed class BaoCaoReportService
             SoPhieuNhap = soNhap,
             ThucChiGrossDaDuyet = tienDaDuyet,
             ThucChiGrossNhap = tienNhap,
+            LuongDanhDauDaThanhToan = trongKy.Where(p => p.TrangThai == "DA_THANH_TOAN").Sum(p => p.ThucNhan),
+            SoPhieuDanhDauDaThanhToan = trongKy.Count(p => p.TrangThai == "DA_THANH_TOAN"),
+            NganSachConThieu = approvedRows == null ? [] : Enumerable.Range(from.Month, to.Month - from.Month + 1)
+                .SelectMany(m => departmentIds.Where(d => !approvedRows.Any(b => b.Thang == m && b.MaPhongBan == d && (b.TrangThai == "DA_DUYET" || b.TrangThai == "KHOA")))
+                    .Select(d => $"Tháng {m:00}: {departments.GetValueOrDefault(d, $"Phòng ban #{d}")}")).ToList(),
             NganSachDuocDuyet = approvedBudget,
             TyLeGiaiNganNganSachDuyet = approvedBudget > 0m ? Math.Round(tienDaDuyet / approvedBudget.Value * 100m, 1) : null,
             ChenhLechNganSachDuyet = approvedBudget.HasValue ? tienDaDuyet-approvedBudget.Value : null,
@@ -1124,8 +1163,8 @@ public sealed class BaoCaoReportService
             case "thong-tin-tat-ca":
                 var includeFormer = type.Equals("thong-tin-tat-ca", StringComparison.OrdinalIgnoreCase);
                 result.TieuDe = includeFormer ? "Thông tin nhân sự (gồm người đã nghỉ việc)" : "Thông tin nhân sự còn làm việc cuối kỳ";
-                var personnel = await LoadEmployeesAsync(departmentId, to, ReportPolicy.CanViewPayrollFundReport(role));
-                var canSeeSalary = ReportPolicy.CanViewPayrollFundReport(role);
+                var canSeeSalary = canViewPayroll && scope.IsWholeHotel;
+                var personnel = await LoadEmployeesAsync(departmentId, to, canSeeSalary);
                 result.DanhSach = personnel
                     .Where(n => includeFormer ? n.NgayVaoLam <= to : ReportPolicy.IsEmployedAt(n.NgayVaoLam, n.TrangThai, n.NgayThoiViec, to))
                     .OrderBy(n => n.TenPhongBan).ThenBy(n => n.HoTen)

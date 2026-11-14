@@ -335,6 +335,7 @@ public class AuthService : IAuthService
             MaTaiKhoan = 0,
             MaNhanVien = maNhanVien.Value,
             MaPhongBan = profile?.MaPhongBan,
+            MaChucVu = profile?.MaChucVu,
             TenDangNhap = email,
 
             // email truyền vào là email CÔNG VỤ (nhan_vien.email) — cùng giá trị
@@ -374,7 +375,7 @@ public class AuthService : IAuthService
     {
         // ?select= chỉ lấy đúng 5 cột cần dùng: PostgREST lọc cột ở tầng API nên
         // dù GRANT SELECT cả bảng thì app không nhận được ngày sinh / địa chỉ.
-        const string select = "ho,ten,dien_thoai,ma_phong_ban,phong_ban(ten_phong_ban),chuc_vu:chuc_vu!nhan_vien_ma_chuc_vu_fkey(ten_chuc_vu)";
+        const string select = "ho,ten,dien_thoai,ma_phong_ban,ma_chuc_vu,phong_ban(ten_phong_ban),chuc_vu:chuc_vu!nhan_vien_ma_chuc_vu_fkey(ten_chuc_vu)";
         var json = await GetRestAsync(token, $"/nhan_vien?select={select}&ma_nhan_vien=eq.{maNhanVien}");
 
         var rows = ParseArray(json);
@@ -389,6 +390,7 @@ public class AuthService : IAuthService
             HoTen: string.Join(' ', new[] { ReadString(root, "ho"), ReadString(root, "ten") }.Where(s => s.Length > 0)).Trim(),
             DienThoai: ReadString(root, "dien_thoai"),
             MaPhongBan: ReadNullableInt(root, "ma_phong_ban"),
+            MaChucVu: ReadNullableInt(root, "ma_chuc_vu"),
             TenPhongBan: ReadEmbeddedString(root, "phong_ban", "ten_phong_ban"),
             TenChucVu: ReadEmbeddedString(root, "chuc_vu", "ten_chuc_vu"));
     }
@@ -697,6 +699,7 @@ public class AuthService : IAuthService
         string HoTen,
         string DienThoai,
         int? MaPhongBan,
+        int? MaChucVu,
         string TenPhongBan,
         string TenChucVu);
 }

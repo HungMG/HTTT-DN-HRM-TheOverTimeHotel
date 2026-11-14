@@ -25,7 +25,7 @@ public class DemoAttendanceSummaryService(IAuthService authService, DemoLeaveApp
         var target = requests.FirstOrDefault(r => r.MaNhanVien == targetId)?.NhanVien;
         var departmentId = targetId == user.MaNhanVien ? user.MaPhongBan : target?.MaPhongBan;
         if ((targetId != user.MaNhanVien && target == null) ||
-            !AttendanceAccessPolicy.CanView(user.TenVaiTro, user.MaNhanVien, user.MaPhongBan, targetId, departmentId))
+            !AttendanceAccessPolicy.CanView(user.MobileRole, user.MaNhanVien, user.MaPhongBan, targetId, departmentId))
             throw new InvalidOperationException("Bạn không có quyền xem bảng công này.");
 
         var from = new DateOnly(year, month, 1);

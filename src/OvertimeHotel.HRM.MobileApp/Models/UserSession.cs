@@ -18,11 +18,14 @@ public class UserSession
     public string Email { get; set; } = string.Empty;
     public string DienThoai { get; set; } = string.Empty;
     public int? MaPhongBan { get; set; }
+    public int? MaChucVu { get; set; }
     public string? Token { get; set; }
     public bool IsLoggedIn { get; set; }
     public DateTime ThoiGianDangNhap { get; set; } = DateTime.UtcNow;
 
-    public bool IsManager => LeaveApprovalPolicy.IsManager(TenVaiTro);
+    public bool IsItHead => ItMobileAccessPolicy.IsItHead(TenVaiTro, MaChucVu);
+    public string MobileRole => IsItHead ? "Manager" : TenVaiTro;
+    public bool IsManager => LeaveApprovalPolicy.IsManager(MobileRole);
     public bool IsHR => LeaveApprovalPolicy.IsHR(TenVaiTro);
     public bool IsAdmin => LeaveApprovalPolicy.IsAdmin(TenVaiTro);
     public bool IsIT => LeaveApprovalPolicy.IsIT(TenVaiTro);
@@ -43,5 +46,5 @@ public class UserSession
     /// Bám <see cref="AttendanceAccessPolicy.CanViewOwnAttendanceSummary"/> thay vì
     /// tự viết điều kiện — cùng một nguồn luật với tầng service.
     /// </summary>
-    public bool CanViewAttendanceSummary => AttendanceAccessPolicy.CanViewOwnAttendanceSummary(TenVaiTro);
+    public bool CanViewAttendanceSummary => AttendanceAccessPolicy.CanViewOwnAttendanceSummary(MobileRole);
 }
