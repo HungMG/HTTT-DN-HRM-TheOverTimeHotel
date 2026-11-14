@@ -166,7 +166,8 @@
                                 Stroke="#E2E8F0"
                                 StrokeThickness="1"
                                 StrokeShape="RoundRectangle 16"
-                                Padding="14,12">
+                                Padding="14,12"
+                                IsVisible="{Binding CanRequestShiftSwap}">
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding CreateShiftSwapCommand}" />
                             </Border.GestureRecognizers>

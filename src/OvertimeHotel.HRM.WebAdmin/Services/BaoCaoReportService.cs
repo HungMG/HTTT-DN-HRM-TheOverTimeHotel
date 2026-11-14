@@ -588,6 +588,7 @@ public sealed class BaoCaoReportService
                 TienTangCa = p.TienTangCa,
                 TongPhuCap = p.TongPhuCap,
                 TongThuong = p.TongThuong,
+                TongKhauTru = p.TongKhauTru,
                 ThucNhan = p.ThucNhan,
                 TrangThai = p.TrangThai
             })
@@ -733,6 +734,9 @@ public sealed class BaoCaoReportService
         var prevGross = prevSlips.Sum();
         var change = ReportPolicy.CalculateChange(gross, prevGross);
 
+        var coCau = BuildCoCauThanhPhan(trongKy, gross, net);
+        var phanTich = BuildPhanTichChenhLech(gross, budget, coCau, theoPhongBan, trongKy, prevLabel, prevGross, change.Absolute, change.Percent);
+
         return new QuyLuongNganSachReport
         {
             ThucChi = net,
@@ -766,11 +770,273 @@ public sealed class BaoCaoReportService
             ThucChiGrossThayDoiPct = change.Percent,
             Series = series,
             TheoPhongBan = theoPhongBan,
+            CoCauThanhPhan = coCau,
+            PhanTichChenhLech = phanTich,
             GhiChuPhuongPhap =
                 (missingReferenceEmployees > 0
                     ? $"Có {missingReferenceEmployees} hồ sơ lương chưa hợp lệ được loại khỏi căn cứ tham chiếu. Định mức chưa đầy đủ; chênh lệch và tỷ lệ chỉ để tham khảo, chưa đủ để kết luận cho toàn phạm vi. " : "")
-                + "Định mức tham chiếu dùng lương hợp đồng/phụ lục có hiệu lực từng giai đoạn, phân bổ theo số ngày lịch được bao phủ / số ngày lịch trong tháng, cộng từng tháng. "
+                + "Định mức tham chiếu dùng lương hợp đồng/phụ lục có hiệu lực từng giai đoạn, phân bổ theo tỷ lệ ngày công tiêu chuẩn (loại trừ CN) / 26 ngày công chuẩn, cộng từng tháng. "
                 + "Đây là số tham chiếu, không phải ngân sách đã duyệt hay lương công thực tế (lương công dùng ngày công /26). Hợp đồng chấm dứt thiếu ngày kết thúc bị loại; hợp đồng trùng hiệu lực cần HR đối soát."
+        };
+    }
+
+    private static QuyLuongCoCauThanhPhan BuildCoCauThanhPhan(PhieuLuongRow[] trongKy, decimal gross, decimal net)
+    {
+        var tongLuongCong = trongKy.Sum(p => p.TienLuongCong);
+        var tongTangCa = trongKy.Sum(p => p.TienTangCa);
+        var tongPhuCap = trongKy.Sum(p => p.TongPhuCap);
+        var tongThuong = trongKy.Sum(p => p.TongThuong);
+        var tongKhauTru = trongKy.Sum(p => p.TongKhauTru);
+
+        decimal CalcRatio(decimal amount) => gross > 0m ? Math.Round(amount / gross * 100m, 1) : 0m;
+
+        var items = new List<QuyLuongThanhPhanItem>
+        {
+            new()
+            {
+                TenThanhPhan = "Lương công chính",
+                MaThanhPhan = "LUONG_CONG",
+                SoTien = tongLuongCong,
+                TyTrong = CalcRatio(tongLuongCong),
+                MoTa = "Lương ngày công làm việc tiêu chuẩn theo hợp đồng & chấm công thực tế",
+                MauSac = "#1e3a8a"
+            },
+            new()
+            {
+                TenThanhPhan = "Làm thêm giờ (OT)",
+                MaThanhPhan = "TANG_CA",
+                SoTien = tongTangCa,
+                TyTrong = CalcRatio(tongTangCa),
+                MoTa = "Lương ngoài giờ, trực đêm, phụ trội ngày nghỉ và ngày lễ tết",
+                MauSac = "#f97316"
+            },
+            new()
+            {
+                TenThanhPhan = "Phụ cấp",
+                MaThanhPhan = "PHU_CAP",
+                SoTien = tongPhuCap,
+                TyTrong = CalcRatio(tongPhuCap),
+                MoTa = "Các khoản phụ cấp chức vụ, trách nhiệm, ăn trưa, điện thoại, độc hại",
+                MauSac = "#d4af37"
+            },
+            new()
+            {
+                TenThanhPhan = "Khen thưởng",
+                MaThanhPhan = "THUONG",
+                SoTien = tongThuong,
+                TyTrong = CalcRatio(tongThuong),
+                MoTa = "Thưởng hiệu quả công việc, thưởng doanh thu, thưởng lễ tết và chuyên cần",
+                MauSac = "#15803d"
+            }
+        };
+
+        return new QuyLuongCoCauThanhPhan
+        {
+            TongLuongCong = tongLuongCong,
+            TongTangCa = tongTangCa,
+            TongPhuCap = tongPhuCap,
+            TongThuong = tongThuong,
+            TongKhauTru = tongKhauTru,
+            TongThucNhan = net,
+            TongGross = gross,
+            DanhSach = items
+        };
+    }
+
+    private static QuyLuongPhanTichChenhLech BuildPhanTichChenhLech(
+        decimal gross,
+        decimal budget,
+        QuyLuongCoCauThanhPhan coCau,
+        IReadOnlyList<QuyLuongPhongBanItem> theoPhongBan,
+        PhieuLuongRow[] trongKy,
+        string? prevLabel,
+        decimal prevGross,
+        decimal prevChange,
+        decimal? prevChangePct)
+    {
+        var totalVariance = gross - budget;
+        var pctVariance = budget > 0m ? Math.Round(totalVariance / budget * 100m, 1) : 0m;
+
+        // Phân rã 4 yếu tố tác động:
+        var deltaCong = coCau.TongLuongCong - budget;
+        var deltaOT = coCau.TongTangCa;
+        var deltaPhuCap = coCau.TongPhuCap;
+        var deltaThuong = coCau.TongThuong;
+
+        var absSum = Math.Abs(deltaCong) + deltaOT + deltaPhuCap + deltaThuong;
+        decimal ContribPct(decimal val) => absSum > 0m ? Math.Round(Math.Abs(val) / absSum * 100m, 1) : 0m;
+
+        string ImpactLevel(decimal amount)
+        {
+            var r = gross > 0m ? Math.Abs(amount) / gross : 0m;
+            if (r >= 0.25m) return "CAO";
+            if (r >= 0.08m) return "TRUNG_BINH";
+            return "THAP";
+        }
+
+        var yeuToItems = new List<QuyLuongYeuToBienDong>
+        {
+            new()
+            {
+                TenYeuTo = "Lương công vs Định mức",
+                MaYeuTo = "NGAY_CONG",
+                SoTien = coCau.TongLuongCong,
+                ChenhLech = deltaCong,
+                TyLeDongGop = ContribPct(deltaCong),
+                ChieuHuong = deltaCong > 0m ? "TANG" : deltaCong < 0m ? "GIAM" : "CAN_BANG",
+                MucDoTacDong = ImpactLevel(deltaCong),
+                GiaiThich = deltaCong < 0m
+                    ? $"Lương công thực tế thấp hơn định mức {-deltaCong:N0} đ do nhân viên nghỉ phép/vắng mặt hoặc chưa tích lũy đủ 26 ngày công chuẩn."
+                    : deltaCong > 0m
+                    ? $"Lương công thực tế cao hơn định mức {deltaCong:N0} đ do số ngày công tích lũy vượt chuẩn hoặc điều chỉnh nâng lương."
+                    : "Lương công thực tế bám sát hoàn toàn định mức chuẩn hợp đồng."
+            },
+            new()
+            {
+                TenYeuTo = "Làm thêm giờ (OT)",
+                MaYeuTo = "TANG_CA",
+                SoTien = deltaOT,
+                ChenhLech = deltaOT,
+                TyLeDongGop = ContribPct(deltaOT),
+                ChieuHuong = deltaOT > 0m ? "TANG" : "CAN_BANG",
+                MucDoTacDong = ImpactLevel(deltaOT),
+                GiaiThich = deltaOT > 0m
+                    ? $"Phát sinh thêm {deltaOT:N0} đ từ tăng ca, phụ trội ngày nghỉ, lễ tết và ca đêm ({coCau.DanhSach.FirstOrDefault(d => d.MaThanhPhan == "TANG_CA")?.TyTrong ?? 0:0.#}% tổng gross)."
+                    : "Không phát sinh chi phí làm thêm giờ trong kỳ."
+            },
+            new()
+            {
+                TenYeuTo = "Phụ cấp",
+                MaYeuTo = "PHU_CAP",
+                SoTien = deltaPhuCap,
+                ChenhLech = deltaPhuCap,
+                TyLeDongGop = ContribPct(deltaPhuCap),
+                ChieuHuong = deltaPhuCap > 0m ? "TANG" : "CAN_BANG",
+                MucDoTacDong = ImpactLevel(deltaPhuCap),
+                GiaiThich = deltaPhuCap > 0m
+                    ? $"Các khoản phụ cấp chức vụ, trách nhiệm, ăn trưa, điện thoại phát sinh {deltaPhuCap:N0} đ."
+                    : "Không có phụ cấp phát sinh trong kỳ."
+            },
+            new()
+            {
+                TenYeuTo = "Khen thưởng",
+                MaYeuTo = "THUONG",
+                SoTien = deltaThuong,
+                ChenhLech = deltaThuong,
+                TyLeDongGop = ContribPct(deltaThuong),
+                ChieuHuong = deltaThuong > 0m ? "TANG" : "CAN_BANG",
+                MucDoTacDong = ImpactLevel(deltaThuong),
+                GiaiThich = deltaThuong > 0m
+                    ? $"Phát sinh {deltaThuong:N0} đ tiền thưởng hiệu quả công việc, chuyên cần và sự kiện."
+                    : "Không phát sinh tiền thưởng trong kỳ."
+            }
+        };
+
+        // Phân tích theo từng phòng ban
+        var pbList = new List<QuyLuongPhongBanBienDong>();
+        foreach (var pb in theoPhongBan)
+        {
+            var slips = trongKy.Where(p => string.Equals(p.PhongBan, pb.PhongBan, StringComparison.CurrentCulture)).ToArray();
+            var pbOt = slips.Sum(p => p.TienTangCa);
+            var pbThuong = slips.Sum(p => p.TongThuong);
+            var pbGross = pb.ThucChi;
+            var pctVuot = pb.NganSach > 0m ? Math.Round((pb.ThucChi - pb.NganSach) / pb.NganSach * 100m, 1) : 0m;
+
+            string reason;
+            if (pb.ChenhLech > 0m)
+            {
+                if (pbOt >= pb.ChenhLech * 0.4m && pbOt > 0m)
+                    reason = $"Chủ yếu do tăng ca (OT chiếm {(pbGross > 0m ? pbOt / pbGross * 100m : 0m):0.#}% chi phí)";
+                else if (pbThuong >= pb.ChenhLech * 0.4m && pbThuong > 0m)
+                    reason = $"Chủ yếu do khen thưởng phát sinh ({pbThuong:N0} đ)";
+                else
+                    reason = "Phát sinh phụ cấp và bổ sung nhân sự mới";
+            }
+            else if (pb.ChenhLech < 0m)
+            {
+                reason = "Tiết kiệm ngân sách do nhân sự nghỉ/thiếu công hoặc biến động tuyển dụng";
+            }
+            else
+            {
+                reason = "Thực chi cân bằng tuyệt đối với định mức";
+            }
+
+            pbList.Add(new QuyLuongPhongBanBienDong
+            {
+                TenPhongBan = pb.PhongBan,
+                NganSach = pb.NganSach,
+                ThucChi = pb.ThucChi,
+                ChenhLech = pb.ChenhLech,
+                PhanTramVuot = pctVuot,
+                NguyenNhanChinh = reason
+            });
+        }
+
+        var sortedPb = pbList.OrderByDescending(p => Math.Abs(p.ChenhLech)).ToList();
+        var ketLuan = new List<string>();
+
+        if (totalVariance > 0m)
+        {
+            ketLuan.Add($"🔴 Quỹ lương thực chi vượt định mức tham chiếu {totalVariance:N0} đ (+{pctVariance:0.#}%).");
+        }
+        else if (totalVariance < 0m)
+        {
+            ketLuan.Add($"🟢 Quỹ lương thực tế tiết kiệm {-totalVariance:N0} đ so với định mức tham chiếu ({pctVariance:0.#}%).");
+        }
+        else
+        {
+            ketLuan.Add("⚪ Quỹ lương thực tế cân bằng chính xác 100% với định mức tham chiếu.");
+        }
+
+        var maxDriver = yeuToItems.OrderByDescending(y => y.TyLeDongGop).FirstOrDefault();
+        if (maxDriver != null && maxDriver.TyLeDongGop > 0m)
+        {
+            ketLuan.Add($"💡 Tác nhân biến động lớn nhất: '{maxDriver.TenYeuTo}' đóng góp {maxDriver.TyLeDongGop:0.#}% tổng biên độ biến động ({maxDriver.GiaiThich}).");
+        }
+
+        if (sortedPb.Count > 0 && Math.Abs(sortedPb[0].ChenhLech) > 0m)
+        {
+            var top = sortedPb[0];
+            var dir = top.ChenhLech > 0m ? "vượt định mức" : "tiết kiệm";
+            ketLuan.Add($"🏢 Bộ phận biến động mạnh nhất là '{top.TenPhongBan}': {dir} {Math.Abs(top.ChenhLech):N0} đ. Nguyên nhân: {top.NguyenNhanChinh}.");
+        }
+
+        if (prevGross > 0m && !string.IsNullOrEmpty(prevLabel))
+        {
+            if (prevChange > 0m)
+            {
+                ketLuan.Add($"📈 So với kỳ trước ({prevLabel}), quỹ lương tăng {prevChange:N0} đ (+{prevChangePct:0.#}%).");
+            }
+            else if (prevChange < 0m)
+            {
+                ketLuan.Add($"📉 So với kỳ trước ({prevLabel}), quỹ lương giảm {-prevChange:N0} đ ({prevChangePct:0.#}%).");
+            }
+            else
+            {
+                ketLuan.Add($"➖ Quỹ lương không biến động so với kỳ trước ({prevLabel}).");
+            }
+        }
+
+        if (deltaOT > 0m && gross > 0m && deltaOT / gross >= 0.12m)
+        {
+            ketLuan.Add($"⚠️ Khuyến nghị quản trị: Tăng ca chiếm {(deltaOT / gross * 100m):0.#}% tổng quỹ lương (trên ngưỡng khuyến nghị 12%). Cần rà soát lịch bố trí ca hoặc xem xét tuyển thêm nhân sự ca phụ / thời vụ.");
+        }
+        else if (totalVariance > 0m && pctVariance > 10m)
+        {
+            ketLuan.Add("⚠️ Khuyến nghị quản trị: Tỷ lệ giải ngân vượt quá 110% định mức. Cần làm rõ nguyên nhân vượt ngân sách để trình Ban Giám Đốc xem xét điều chỉnh hạn mức.");
+        }
+        else
+        {
+            ketLuan.Add("✅ Cơ cấu quỹ lương và tiến độ giải ngân đang được kiểm soát ổn định trong giới hạn cho phép.");
+        }
+
+        return new QuyLuongPhanTichChenhLech
+        {
+            TongChenhLech = totalVariance,
+            PhanTramChenhLech = pctVariance,
+            YeuToBienDong = yeuToItems,
+            PhongBanBienDong = sortedPb,
+            KetLuanTuDong = ketLuan
         };
     }
 
@@ -1542,6 +1808,7 @@ internal sealed class PhieuLuongRow
     public decimal TienTangCa { get; set; }
     public decimal TongPhuCap { get; set; }
     public decimal TongThuong { get; set; }
+    public decimal TongKhauTru { get; set; }
     public decimal ThucNhan { get; set; }
 }
 

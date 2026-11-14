@@ -231,6 +231,19 @@ public sealed class AiDataQuyLuongDto
 
     /// <summary>Chi phí lương của từng phòng ban.</summary>
     public IReadOnlyList<AiDataQuyLuongPhongBanDto> TheoPhongBan { get; set; } = [];
+
+    /// <summary>Cơ cấu các thành phần chi phí lương (Lương công, Tăng ca, Phụ cấp, Thưởng).</summary>
+    public IReadOnlyList<AiDataQuyLuongThanhPhanDto> CoCauThanhPhan { get; set; } = [];
+
+    /// <summary>Các nhận định và kết luận nguyên nhân chênh lệch tự động.</summary>
+    public IReadOnlyList<string> KetLuanTuDong { get; set; } = [];
+}
+
+public sealed class AiDataQuyLuongThanhPhanDto
+{
+    public string TenThanhPhan { get; set; } = string.Empty;
+    public decimal SoTien { get; set; }
+    public decimal TyTrong { get; set; }
 }
 
 /// <summary>Chi phí lương của một phòng ban.</summary>

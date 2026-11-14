@@ -459,6 +459,197 @@
                 </section>
             </div>
 
+            @* ══════════ TÍNH NĂNG 1: PHÂN RÃ CƠ CẤU QUỸ LƯƠNG THEO TỪNG THÀNH PHẦN ══════════ *@
+            <div class="baocao-grid-2">
+                <section class="catalog-card shadow-sm">
+                    <div class="catalog-toolbar">
+                        <h2 class="baocao-card-title"><i class="bi bi-pie-chart me-1"></i> Cơ cấu thành phần quỹ lương</h2>
+                    </div>
+                    <div class="baocao-chart" data-chart="quy-luong-cocau" style="height:340px"></div>
+                </section>
+                <section class="catalog-card shadow-sm">
+                    <div class="catalog-toolbar">
+                        <h2 class="baocao-card-title"><i class="bi bi-list-columns-reverse me-1"></i> Bóc tách chi phí lương (Gross)</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table baocao-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Khoản mục chi</th>
+                                    <th class="text-end">Số tiền</th>
+                                    <th class="text-end">Tỷ trọng</th>
+                                    <th>Ý nghĩa & Ghi chú</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.QuyLuong.CoCauThanhPhan.DanhSach)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">
+                                            <span class="d-inline-block rounded-circle me-1" style="width:10px;height:10px;background-color:@item.MauSac"></span>
+                                            @item.TenThanhPhan
+                                        </td>
+                                        <td class="text-end fw-bold">@item.SoTien.ToString(Money) đ</td>
+                                        <td class="text-end">
+                                            <span class="badge bg-light text-dark border">@item.TyTrong.ToString("0.0") %</span>
+                                        </td>
+                                        <td class="small text-muted">@item.MoTa</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light fw-bold">
+                                    <td>Tổng chi phí gộp (Gross)</td>
+                                    <td class="text-end text-primary">@Model.QuyLuong.CoCauThanhPhan.TongGross.ToString(Money) đ</td>
+                                    <td class="text-end"><span class="badge bg-primary text-white">100.0 %</span></td>
+                                    <td class="small text-muted">Lương công + tăng ca + phụ cấp + thưởng</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            @* ══════════ TÍNH NĂNG 2: TỰ ĐỘNG PHÂN TÍCH NGUYÊN NHÂN CHÊNH LỆCH ══════════ *@
+            <section class="catalog-card shadow-sm">
+                <div class="catalog-toolbar d-flex justify-content-between align-items-center">
+                    <h2 class="baocao-card-title mb-0">
+                        <i class="bi bi-cpu me-1 text-primary"></i> Tự động phân tích nguyên nhân chênh lệch (Root Cause Analysis)
+                    </h2>
+                    <span class="badge @(Model.QuyLuong.PhanTichChenhLech.CoVuotDinhMuc ? "bg-danger-subtle text-danger border border-danger-subtle" : "bg-success-subtle text-success border border-success-subtle") px-3 py-1">
+                        <i class="bi @(Model.QuyLuong.PhanTichChenhLech.CoVuotDinhMuc ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-1"></i>
+                        @(Model.QuyLuong.PhanTichChenhLech.CoVuotDinhMuc ? "Vượt định mức" : "Trong tầm kiểm soát")
+                    </span>
+                </div>
+
+                <div class="p-3">
+                    @* Khối nhận định tự động & Biểu đồ đóng góp yếu tố *@
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-6">
+                            <div class="card border-0 bg-light-subtle shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-lightbulb-fill text-warning me-1"></i> Nhận định & Nguyên nhân cốt lõi</h6>
+                                    <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
+                                        @foreach (var kl in Model.QuyLuong.PhanTichChenhLech.KetLuanTuDong)
+                                        {
+                                            <li class="small d-flex align-items-start gap-2">
+                                                <span>@Html.Raw(kl)</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card border-0 bg-light-subtle shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-bar-chart-steps text-info me-1"></i> Đóng góp vào chênh lệch ngân sách (+/-)</h6>
+                                    <div class="baocao-chart" data-chart="quy-luong-biendong" style="height:210px"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Bảng chi tiết 4 yếu tố tác động *@
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-layers me-1"></i> Bóc tách 4 yếu tố tác động chênh lệch:</h6>
+                    <div class="table-responsive mb-4">
+                        <table class="table baocao-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Yếu tố tác động</th>
+                                    <th class="text-end">Số tiền thực tế</th>
+                                    <th class="text-end">Mức chênh lệch</th>
+                                    <th class="text-end">Tỷ lệ đóng góp</th>
+                                    <th class="text-center">Chiều hướng</th>
+                                    <th class="text-center">Mức tác động</th>
+                                    <th>Phân tích chi tiết</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.QuyLuong.PhanTichChenhLech.YeuToBienDong)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@item.TenYeuTo</td>
+                                        <td class="text-end">@item.SoTien.ToString(Money) đ</td>
+                                        <td class="text-end fw-bold @(item.ChenhLech > 0 ? "baocao-danger" : item.ChenhLech < 0 ? "baocao-up" : "")">
+                                            @(item.ChenhLech > 0 ? "+" : "")@item.ChenhLech.ToString(Money) đ
+                                        </td>
+                                        <td class="text-end">@item.TyLeDongGop.ToString("0.0") %</td>
+                                        <td class="text-center">
+                                            @if (item.ChieuHuong == "TANG")
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-arrow-up-right me-1"></i>Tăng chi phí</span>
+                                            }
+                                            else if (item.ChieuHuong == "GIAM")
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-arrow-down-right me-1"></i>Tiết kiệm</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Cân bằng</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (item.MucDoTacDong == "CAO")
+                                            {
+                                                <span class="badge bg-danger text-white">Cao</span>
+                                            }
+                                            else if (item.MucDoTacDong == "TRUNG_BINH")
+                                            {
+                                                <span class="badge bg-warning text-dark">Trung bình</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-light text-muted border">Thấp</span>
+                                            }
+                                        </td>
+                                        <td class="small text-muted">@item.GiaiThich</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @* Bảng phân tích biến động theo phòng ban *@
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-building me-1"></i> Xếp hạng tác nhân biến động theo từng bộ phận:</h6>
+                    <div class="table-responsive">
+                        <table class="table baocao-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Phòng ban</th>
+                                    <th class="text-end">Định mức</th>
+                                    <th class="text-end">Thực chi</th>
+                                    <th class="text-end">Chênh lệch</th>
+                                    <th class="text-end">% Vượt/Hụt</th>
+                                    <th>Nguyên nhân cốt lõi tại bộ phận</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var pb in Model.QuyLuong.PhanTichChenhLech.PhongBanBienDong)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@pb.TenPhongBan</td>
+                                        <td class="text-end">@pb.NganSach.ToString(Money) đ</td>
+                                        <td class="text-end">@pb.ThucChi.ToString(Money) đ</td>
+                                        <td class="text-end fw-bold @(pb.ChenhLech > 0 ? "baocao-danger" : pb.ChenhLech < 0 ? "baocao-up" : "")">
+                                            @(pb.ChenhLech > 0 ? "+" : "")@pb.ChenhLech.ToString(Money) đ
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="badge @(pb.PhanTramVuot > 0 ? "bg-danger-subtle text-danger border border-danger-subtle" : pb.PhanTramVuot < 0 ? "bg-success-subtle text-success border border-success-subtle" : "bg-light text-muted border")">
+                                                @(pb.PhanTramVuot > 0 ? "+" : "")@pb.PhanTramVuot.ToString("0.0") %
+                                            </span>
+                                        </td>
+                                        <td class="small">
+                                            <i class="bi bi-info-circle text-primary me-1"></i>@pb.NguyenNhanChinh
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <section class="catalog-card shadow-sm">
                 <div class="catalog-toolbar"><h2 class="baocao-card-title">Đối soát theo phòng ban</h2></div>
                 @if (Model.QuyLuong.TheoPhongBan.Count == 0)

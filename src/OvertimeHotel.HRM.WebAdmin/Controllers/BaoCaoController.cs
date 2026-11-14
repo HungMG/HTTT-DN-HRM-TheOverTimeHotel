@@ -369,6 +369,22 @@ public class BaoCaoController : Controller
         {
             sb.AppendLine($"{Esc(item.PhongBan)},{Num(item.NganSach)},{Num(item.ThucChi)},{Num(item.ChenhLech)}");
         }
+
+        sb.AppendLine();
+        sb.AppendLine("CƠ CẤU THÀNH PHẦN QUỸ LƯƠNG");
+        sb.AppendLine("Khoản mục chi,Số tiền,Tỷ trọng (%),Ghi chú");
+        foreach (var item in report.CoCauThanhPhan.DanhSach)
+        {
+            sb.AppendLine($"{Esc(item.TenThanhPhan)},{Num(item.SoTien)},{Num(item.TyTrong)},{Esc(item.MoTa)}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("PHÂN TÍCH NGUYÊN NHÂN CHÊNH LỆCH");
+        sb.AppendLine("Yếu tố tác động,Số tiền thực tế,Mức chênh lệch,Tỷ lệ đóng góp (%),Chiều hướng,Mức tác động,Phân tích chi tiết");
+        foreach (var item in report.PhanTichChenhLech.YeuToBienDong)
+        {
+            sb.AppendLine($"{Esc(item.TenYeuTo)},{Num(item.SoTien)},{Num(item.ChenhLech)},{Num(item.TyLeDongGop)},{Esc(item.ChieuHuong)},{Esc(item.MucDoTacDong)},{Esc(item.GiaiThich)}");
+        }
     }
 
     private static void AppendChuyenCan(StringBuilder sb, ChuyenCanViPhamReport report)
@@ -667,6 +683,20 @@ public class BaoCaoController : Controller
         foreach (var item in report.TheoPhongBan)
         {
             sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.PhongBan)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.NganSach)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.ThucChi)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.ChenhLech)}</Data></Cell></Row>");
+        }
+        sb.AppendLine("   <Row></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">CƠ CẤU THÀNH PHẦN QUỸ LƯƠNG</Data></Cell></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Khoản mục chi</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Số tiền</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Tỷ trọng (%)</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Ghi chú</Data></Cell></Row>");
+        foreach (var item in report.CoCauThanhPhan.DanhSach)
+        {
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.TenThanhPhan)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.SoTien)}</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{item.TyTrong.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell><Cell><Data ss:Type=\"String\">{XmlEsc(item.MoTa)}</Data></Cell></Row>");
+        }
+        sb.AppendLine("   <Row></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"BoldTitle\"><Data ss:Type=\"String\">PHÂN TÍCH NGUYÊN NHÂN CHÊNH LỆCH</Data></Cell></Row>");
+        sb.AppendLine("   <Row><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Yếu tố tác động</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Số tiền thực tế</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Chênh lệch</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Đóng góp (%)</Data></Cell><Cell ss:StyleID=\"ColHeader\"><Data ss:Type=\"String\">Phân tích chi tiết</Data></Cell></Row>");
+        foreach (var item in report.PhanTichChenhLech.YeuToBienDong)
+        {
+            sb.AppendLine($"   <Row><Cell><Data ss:Type=\"String\">{XmlEsc(item.TenYeuTo)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.SoTien)}</Data></Cell><Cell ss:StyleID=\"Number\"><Data ss:Type=\"Number\">{Num(item.ChenhLech)}</Data></Cell><Cell ss:StyleID=\"Decimal\"><Data ss:Type=\"Number\">{item.TyLeDongGop.ToString("0.0", CultureInfo.InvariantCulture)}</Data></Cell><Cell><Data ss:Type=\"String\">{XmlEsc(item.GiaiThich)}</Data></Cell></Row>");
         }
     }
 

@@ -1623,7 +1623,14 @@ public class AiDataController : ControllerBase
             PhongBan = p.PhongBan,
             ThucChi = p.ThucChi,
             DinhMuc = p.NganSach
-        })]
+        })],
+        CoCauThanhPhan = [.. source.CoCauThanhPhan.DanhSach.Select(c => new AiDataQuyLuongThanhPhanDto
+        {
+            TenThanhPhan = c.TenThanhPhan,
+            SoTien = c.SoTien,
+            TyTrong = c.TyTrong
+        })],
+        KetLuanTuDong = source.PhanTichChenhLech.KetLuanTuDong
     };
 
     private static AiDataChuyenCanDto MapChuyenCan(ChuyenCanViPhamReport source) => new()

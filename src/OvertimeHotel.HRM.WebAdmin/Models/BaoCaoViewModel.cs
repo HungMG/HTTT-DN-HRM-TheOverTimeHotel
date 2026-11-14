@@ -382,6 +382,12 @@ public class QuyLuongNganSachReport
     /// <summary>Phân rã chi phí theo phòng ban.</summary>
     public IReadOnlyList<QuyLuongPhongBanItem> TheoPhongBan { get; set; } = [];
 
+    /// <summary>Phân rã cơ cấu quỹ lương theo từng thành phần (Cost Component Breakdown).</summary>
+    public QuyLuongCoCauThanhPhan CoCauThanhPhan { get; set; } = new();
+
+    /// <summary>Tự động phân tích nguyên nhân chênh lệch (Variance Root Cause Analysis).</summary>
+    public QuyLuongPhanTichChenhLech PhanTichChenhLech { get; set; } = new();
+
     /// <summary>Ghi chú phương pháp — nói rõ định mức là số suy ra, không phải ngân sách duyệt thật.</summary>
     public string GhiChuPhuongPhap { get; set; } = string.Empty;
 }
@@ -429,6 +435,72 @@ public class QuyLuongPhongBanItem
 
     /// <summary>Chênh lệch thực chi - định mức.</summary>
     public decimal ChenhLech { get; set; }
+}
+
+/// <summary>Thành phần chi phí trong cơ cấu quỹ lương.</summary>
+public class QuyLuongThanhPhanItem
+{
+    public string TenThanhPhan { get; set; } = string.Empty;
+    public string MaThanhPhan { get; set; } = string.Empty;
+    public decimal SoTien { get; set; }
+    public decimal TyTrong { get; set; }
+    public string MoTa { get; set; } = string.Empty;
+    public string MauSac { get; set; } = string.Empty;
+}
+
+/// <summary>Báo cáo phân rã cơ cấu quỹ lương theo từng thành phần (Cost Component Breakdown).</summary>
+public class QuyLuongCoCauThanhPhan
+{
+    public decimal TongLuongCong { get; set; }
+    public decimal TongTangCa { get; set; }
+    public decimal TongPhuCap { get; set; }
+    public decimal TongThuong { get; set; }
+    public decimal TongKhauTru { get; set; }
+    public decimal TongThucNhan { get; set; }
+    public decimal TongGross { get; set; }
+
+    public IReadOnlyList<QuyLuongThanhPhanItem> DanhSach { get; set; } = [];
+}
+
+/// <summary>Yếu tố tác động vào chênh lệch ngân sách / định mức.</summary>
+public class QuyLuongYeuToBienDong
+{
+    public string TenYeuTo { get; set; } = string.Empty;
+    public string MaYeuTo { get; set; } = string.Empty;
+    public decimal SoTien { get; set; }
+    public decimal ChenhLech { get; set; }
+    public decimal TyLeDongGop { get; set; }
+    public string ChieuHuong { get; set; } = "TANG"; // "TANG", "GIAM", "CAN_BANG"
+    public string GiaiThich { get; set; } = string.Empty;
+    public string MucDoTacDong { get; set; } = "THAP"; // "CAO", "TRUNG_BINH", "THAP"
+}
+
+/// <summary>Biến động ngân sách theo từng phòng ban kèm nhận định nguyên nhân.</summary>
+public class QuyLuongPhongBanBienDong
+{
+    public string TenPhongBan { get; set; } = string.Empty;
+    public decimal NganSach { get; set; }
+    public decimal ThucChi { get; set; }
+    public decimal ChenhLech { get; set; }
+    public decimal PhanTramVuot { get; set; }
+    public string NguyenNhanChinh { get; set; } = string.Empty;
+}
+
+/// <summary>Tự động phân tích nguyên nhân chênh lệch quỹ lương (Variance Root Cause Analysis).</summary>
+public class QuyLuongPhanTichChenhLech
+{
+    public decimal TongChenhLech { get; set; }
+    public decimal PhanTramChenhLech { get; set; }
+    public bool CoVuotDinhMuc => TongChenhLech > 0m;
+
+    /// <summary>Các yếu tố cấu thành chênh lệch (Lương công vs Định mức, Tăng ca, Phụ cấp, Thưởng).</summary>
+    public IReadOnlyList<QuyLuongYeuToBienDong> YeuToBienDong { get; set; } = [];
+
+    /// <summary>Các phòng ban có biến động đáng chú ý.</summary>
+    public IReadOnlyList<QuyLuongPhongBanBienDong> PhongBanBienDong { get; set; } = [];
+
+    /// <summary>Các nhận định, nguyên nhân cốt lõi và khuyến nghị tự động.</summary>
+    public IReadOnlyList<string> KetLuanTuDong { get; set; } = [];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

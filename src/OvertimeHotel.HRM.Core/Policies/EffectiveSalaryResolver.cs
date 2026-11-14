@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.Core.Constants;
 using OvertimeHotel.HRM.Core.Models;
 
 namespace OvertimeHotel.HRM.Core.Policies;
@@ -13,7 +14,10 @@ public sealed record EffectiveSalary(HopDong Contract, PhuLucLuong? Amendment, d
 
 public sealed record SalarySegment(DateOnly From, DateOnly To, EffectiveSalary Salary)
 {
-    /// <summary>Reference fund only, calendar-prorated. Payroll wages use credited work /26.</summary>
+    /// <summary>
+    /// Định mức quỹ lương tham chiếu quy đổi theo ngày công chuẩn (26 ngày/tháng).
+    /// Công thức: Định mức tháng = Lương chuẩn theo hợp đồng × (Ngày công tính định mức / 26).
+    /// </summary>
     public decimal CalendarProratedAmount
     {
         get
@@ -22,9 +26,30 @@ public sealed record SalarySegment(DateOnly From, DateOnly To, EffectiveSalary S
             for (var number = From.DayNumber; number <= To.DayNumber;)
             {
                 var date = DateOnly.FromDayNumber(number);
+                var monthStart = new DateOnly(date.Year, date.Month, 1);
                 var monthEnd = new DateOnly(date.Year, date.Month, DateTime.DaysInMonth(date.Year, date.Month));
                 var end = Math.Min(monthEnd.DayNumber, To.DayNumber);
-                total += Salary.MonthlySalary * (end - number + 1) / DateTime.DaysInMonth(date.Year, date.Month);
+
+                // Trọn cả tháng: hưởng trọn 100% định mức tháng (26/26 công)
+                if (number == monthStart.DayNumber && end == monthEnd.DayNumber)
+                {
+                    total += Salary.MonthlySalary;
+                }
+                else
+                {
+                    // Phân đoạn lẻ trong tháng: tính theo số ngày công tiêu chuẩn (trừ Chủ nhật) / 26 ngày công chuẩn
+                    var workDays = 0;
+                    for (var d = number; d <= end; d++)
+                    {
+                        if (DateOnly.FromDayNumber(d).DayOfWeek != DayOfWeek.Sunday)
+                        {
+                            workDays++;
+                        }
+                    }
+
+                    total += Salary.MonthlySalary * workDays / SalaryConstants.STANDARD_WORKING_DAYS;
+                }
+
                 number = end + 1;
             }
             return Math.Round(total, 2, MidpointRounding.AwayFromZero);

@@ -141,7 +141,7 @@ Check("Non-first-day amendment fails clearly",()=>
 {var c=Contract(1,8_000_000m,new(2026,1,1));c.PhuLucLuongs=[new(){NgayHieuLuc=new(2026,2,15),LuongCoBanMoi=10_000_000m}];Reject(()=>EffectiveSalaryResolver.Resolve([c],new(2026,2,16)));});
 Check("Hourly event spans midnight and appendix effective date",()=>
 {var start=new DateTimeOffset(2026,1,31,23,30,0,TimeSpan.FromHours(7));var slices=HourlyEventRules.Price(start,start.AddHours(1),[amended]);Equal(2,slices.Count);Equal(8_000_000m,slices[0].MonthlySalary);Equal(10_000_000m,slices[1].MonthlySalary);Equal(86_538m,HourlyEventRules.Amount(slices));});
-Check("Calendar reference prorates both transition segments",()=>Equal(7_883_870.97m,EffectiveSalaryResolver.BuildSegments(TwoContracts(),new(2026,1,1),new(2026,1,31)).Sum(s=>s.CalendarProratedAmount)));
+Check("Standard 26-day reference prorates both transition segments",()=>Equal(8_200_000m,EffectiveSalaryResolver.BuildSegments(TwoContracts(),new(2026,1,1),new(2026,1,31)).Sum(s=>s.CalendarProratedAmount)));
 Check("Full-month salary reference is preserved",()=>Equal(8_000_000m,EffectiveSalaryResolver.BuildSegments([amended],new(2026,1,1),new(2026,1,31)).Sum(s=>s.CalendarProratedAmount)));
 Check("Multi-month reference respects amendment boundary",()=>Equal(18_000_000m,EffectiveSalaryResolver.BuildSegments([amended],new(2026,1,1),new(2026,2,28)).Sum(s=>s.CalendarProratedAmount)));
 Check("Locked approved pending and paid periods cannot recalculate",()=>
@@ -175,11 +175,11 @@ var februarySalary=await ReportSalary(new(2026,2,10));
 Check("Personnel report includes and resolves salary appendix",()=>Equal(15_600_000m,februarySalary));
 var fundBuilder=typeof(BaoCaoReportService).GetMethod("BuildQuyLuongAsync",BindingFlags.NonPublic|BindingFlags.Instance)!;
 var januaryFund=await (Task<QuyLuongNganSachReport>)fundBuilder.Invoke(reports,[new DateOnly(2026,1,1),new DateOnly(2026,1,31),2026,null,1,null])!;
-Check("Fund report uses effective calendar-prorated reference",()=>Equal(7_883_870.97m,januaryFund.NganSachThamChieu));
+Check("Fund report uses effective calendar-prorated reference",()=>Equal(8_200_000m,januaryFund.NganSachThamChieu));
 Check("Fund report allocates historical department reference",()=>
-{Equal(2_516_129.03m,januaryFund.TheoPhongBan.Single(d=>d.PhongBan=="Bộ phận cũ").NganSach);Equal(5_367_741.94m,januaryFund.TheoPhongBan.Single(d=>d.PhongBan=="Bộ phận mới").NganSach);});
+{Equal(2_600_000m,januaryFund.TheoPhongBan.Single(d=>d.PhongBan=="Bộ phận cũ").NganSach);Equal(5_600_000m,januaryFund.TheoPhongBan.Single(d=>d.PhongBan=="Bộ phận mới").NganSach);});
 var oldDepartmentFund=await (Task<QuyLuongNganSachReport>)fundBuilder.Invoke(reports,[new DateOnly(2026,1,1),new DateOnly(2026,1,31),2026,null,1,1])!;
-Check("Department fund scope uses historical contract snapshot",()=>Equal(2_516_129.03m,oldDepartmentFund.NganSachThamChieu));
+Check("Department fund scope uses historical contract snapshot",()=>Equal(2_600_000m,oldDepartmentFund.NganSachThamChieu));
 var ai=new AiDataController(null!,null!,reports,null!,db,NullLogger<AiDataController>.Instance)
 {ControllerContext=new ControllerContext{HttpContext=new DefaultHttpContext()}};
 var principal=new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier,"1"),new Claim(ClaimTypes.Role,"HR")],"fixture"));

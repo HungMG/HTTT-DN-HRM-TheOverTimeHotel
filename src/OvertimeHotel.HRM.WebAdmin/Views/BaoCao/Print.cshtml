@@ -213,6 +213,62 @@
                 }
             </tbody>
         </table>
+
+        <h6 class="fw-bold mt-3">Cơ cấu thành phần chi phí lương (Gross):</h6>
+        <table class="table table-bordered table-sm mb-3">
+            <thead class="table-light">
+                <tr>
+                    <th>Khoản mục chi</th>
+                    <th class="text-end">Số tiền</th>
+                    <th class="text-end">Tỷ trọng</th>
+                    <th>Ghi chú</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.QuyLuong.CoCauThanhPhan.DanhSach)
+                {
+                    <tr>
+                        <td>@row.TenThanhPhan</td>
+                        <td class="text-end fw-semibold">@row.SoTien.ToString("N0") đ</td>
+                        <td class="text-end">@row.TyTrong.ToString("0.0") %</td>
+                        <td class="small">@row.MoTa</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <h6 class="fw-bold mt-3">Phân tích nguyên nhân chênh lệch (Root Cause Analysis):</h6>
+        <ul class="mb-3">
+            @foreach (var kl in Model.QuyLuong.PhanTichChenhLech.KetLuanTuDong)
+            {
+                <li>@Html.Raw(kl)</li>
+            }
+        </ul>
+        <table class="table table-bordered table-sm mb-3">
+            <thead class="table-light">
+                <tr>
+                    <th>Yếu tố tác động</th>
+                    <th class="text-end">Số tiền thực tế</th>
+                    <th class="text-end">Chênh lệch</th>
+                    <th class="text-end">Đóng góp</th>
+                    <th>Phân tích</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var yt in Model.QuyLuong.PhanTichChenhLech.YeuToBienDong)
+                {
+                    <tr>
+                        <td>@yt.TenYeuTo</td>
+                        <td class="text-end">@yt.SoTien.ToString("N0") đ</td>
+                        <td class="text-end fw-semibold @(yt.ChenhLech > 0 ? "text-danger" : "text-success")">
+                            @(yt.ChenhLech > 0 ? "+" : "")@yt.ChenhLech.ToString("N0") đ
+                        </td>
+                        <td class="text-end">@yt.TyLeDongGop.ToString("0.0") %</td>
+                        <td class="small">@yt.GiaiThich</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     }
     else if (Model.Tab == "chuyen-can")
     {

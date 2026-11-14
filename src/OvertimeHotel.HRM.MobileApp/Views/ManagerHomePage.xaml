@@ -502,7 +502,7 @@
                     <controls:FeatureTile Grid.Row="0" Grid.Column="0"
                                           Icon="✅"
                                           Title="Đơn từ" IsVisible="{Binding CanViewLeave}"
-                                          Description="Nghỉ phép, đổi ca"
+                                          Description="Duyệt đơn nghỉ phép"
                                           ActionText="Duyệt Ngay"
                                           ActionColor="#16A34A"
                                           TappedCommand="{Binding ApproveCommand}" />

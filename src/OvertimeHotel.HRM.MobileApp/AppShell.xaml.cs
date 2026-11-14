@@ -51,7 +51,8 @@ public partial class AppShell : Shell
             {
                 "Attendance" => user.HasPermission(MobilePermissionPolicy.CheckIn),
                 "LeaveApproval" or "LeaveApprovalPage" or "LeaveDetailPage" => user.CanViewLeave,
-                "Requests" or "RequestsPage" or "LeaveSubmitPage" or "AttendanceExplanationPage" or "ShiftSwapPage" => user.HasPermission(MobilePermissionPolicy.SubmitRequest),
+                "ShiftSwapPage" => !user.IsManager && user.HasPermission(MobilePermissionPolicy.SubmitRequest),
+                "Requests" or "RequestsPage" or "LeaveSubmitPage" or "AttendanceExplanationPage" => user.HasPermission(MobilePermissionPolicy.SubmitRequest),
                 "HrStatisticsPage" => user.HasPermission(MobilePermissionPolicy.Reports),
                 _ => true
             };

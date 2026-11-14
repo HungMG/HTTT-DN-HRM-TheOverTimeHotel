@@ -13,6 +13,7 @@ namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 public class RequestsViewModel : INotifyPropertyChanged
 {
     private readonly ILeaveApprovalService _leaveService;
+    private readonly IAuthService? _authService;
     private CancellationTokenSource? _loadCancellation;
     private int _loadVersion;
     private bool _isLoading;
@@ -32,15 +33,22 @@ public class RequestsViewModel : INotifyPropertyChanged
     public Command<LeaveRequestItem> SelectRequestCommand { get; }
     public Command<LeaveRequestItem> WithdrawCommand { get; }
 
-    public RequestsViewModel(ILeaveApprovalService leaveService)
+    public RequestsViewModel(ILeaveApprovalService leaveService, IAuthService? authService = null)
     {
         _leaveService = leaveService ?? throw new ArgumentNullException(nameof(leaveService));
+        _authService = authService;
 
         LoadCommand = new Command(async () => await LoadAsync(), () => !IsLoading);
         RefreshCommand = new Command(async () => await LoadAsync(isRefresh: true), () => !IsLoading && !IsRefreshing);
         CreateLeaveCommand = new Command(async () => await Shell.Current.GoToAsync("LeaveSubmitPage"));
         CreateExplanationCommand = new Command(async () => await Shell.Current.GoToAsync("AttendanceExplanationPage"));
-        CreateShiftSwapCommand = new Command(async () => await Shell.Current.GoToAsync("ShiftSwapPage"));
+        CreateShiftSwapCommand = new Command(
+            async () =>
+            {
+                if (!CanRequestShiftSwap) return;
+                await Shell.Current.GoToAsync("ShiftSwapPage");
+            },
+            () => CanRequestShiftSwap);
         SelectRequestCommand = new Command<LeaveRequestItem>(async (item) => await OnSelectRequestAsync(item));
         WithdrawCommand = new Command<LeaveRequestItem>(async (item) => await OnWithdrawRequestAsync(item));
     }
@@ -97,6 +105,11 @@ public class RequestsViewModel : INotifyPropertyChanged
     public bool HasPendingRequests => !IsLoading && PendingCount > 0;
     public bool IsEmpty => !IsLoading && !HasError && RecentRequests.Count == 0;
     public int PendingCount => RecentRequests.Count(r => r.TrangThai == "CHO_DUYET");
+
+    /// <summary>
+    /// Trưởng phòng (Manager) không thực hiện đổi ca nhân viên, chỉ hiển thị cho nhân viên và các vai trò khác.
+    /// </summary>
+    public bool CanRequestShiftSwap => _authService?.CurrentUser?.IsManager != true;
 
     public async Task LoadAsync(bool isRefresh = false)
     {
@@ -155,6 +168,8 @@ public class RequestsViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(HasPendingRequests));
                 OnPropertyChanged(nameof(IsEmpty));
                 OnPropertyChanged(nameof(PendingCount));
+                OnPropertyChanged(nameof(CanRequestShiftSwap));
+                CreateShiftSwapCommand.ChangeCanExecute();
             }
         }
     }
@@ -173,6 +188,8 @@ public class RequestsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasRequests));
         OnPropertyChanged(nameof(HasPendingRequests));
         OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(CanRequestShiftSwap));
+        CreateShiftSwapCommand.ChangeCanExecute();
     }
 
     private static async Task OnSelectRequestAsync(LeaveRequestItem? item)

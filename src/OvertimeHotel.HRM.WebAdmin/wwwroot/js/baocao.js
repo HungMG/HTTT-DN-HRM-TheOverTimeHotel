@@ -440,6 +440,65 @@
       );
     },
 
+    "quy-luong-cocau": function () {
+      var coCau = chartData.QuyLuong && chartData.QuyLuong.CoCauThanhPhan;
+      var rows = (coCau && coCau.DanhSach) || [];
+      return pieOption(
+        rows.map(function (item) {
+          return { Nhan: item.TenThanhPhan, GiaTri: millions(item.SoTien) };
+        }),
+        { unit: "triệu đồng", donut: true }
+      );
+    },
+
+    "quy-luong-biendong": function () {
+      var pt = chartData.QuyLuong && chartData.QuyLuong.PhanTichChenhLech;
+      var rows = (pt && pt.YeuToBienDong) || [];
+      var reversed = rows.slice().reverse();
+      return {
+        grid: { top: 20, right: 30, bottom: 20, left: 160, containLabel: false },
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "shadow" },
+          confine: true,
+          valueFormatter: function (value) {
+            var n = Number(value) || 0;
+            return (n > 0 ? "+" : "") + vnNumber(n) + " triệu đồng";
+          }
+        },
+        xAxis: {
+          type: "value",
+          name: "Triệu đồng",
+          nameTextStyle: { color: "#94a3b8" },
+          axisLabel: { color: "#64748b", formatter: moneyAxisLabel },
+          splitLine: { lineStyle: { color: "#e2e8f0" } }
+        },
+        yAxis: {
+          type: "category",
+          data: reversed.map(function (r) { return r.TenYeuTo; }),
+          axisLabel: { color: "#334155", fontSize: 11, width: 150, overflow: "truncate" },
+          axisTick: { show: false },
+          axisLine: { lineStyle: { color: "#e2e8f0" } }
+        },
+        series: [
+          {
+            type: "bar",
+            barMaxWidth: 20,
+            itemStyle: {
+              color: function (params) {
+                var val = params.value || 0;
+                return val > 0 ? COLORS.down : (val < 0 ? COLORS.up : COLORS.muted);
+              },
+              borderRadius: [0, 4, 4, 0]
+            },
+            data: reversed.map(function (r) {
+              return millions(r.ChenhLech);
+            })
+          }
+        ]
+      };
+    },
+
     "chuyen-can-series": function () {
       var rows = (chartData.ChuyenCan && chartData.ChuyenCan.Series) || [];
       return {
