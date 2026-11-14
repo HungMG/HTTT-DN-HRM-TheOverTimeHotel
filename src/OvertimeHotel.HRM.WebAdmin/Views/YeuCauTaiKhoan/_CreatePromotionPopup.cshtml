@@ -1,11 +1,22 @@
 @model CreatePromotionRequestViewModel
 
+@if (ViewData["PromotionAmendmentWarning"] is string amendmentWarning)
+{
+    <div class="text-center py-3" role="alertdialog" aria-labelledby="promotionDeniedTitle" aria-describedby="promotionDeniedMessage" data-promotion-denied>
+        <i class="bi bi-exclamation-circle text-warning" style="font-size: 3rem;" aria-hidden="true"></i>
+        <h3 class="h5 fw-bold mt-3" id="promotionDeniedTitle">Chưa thể đề xuất thăng chức</h3>
+        <p class="text-muted mb-4" id="promotionDeniedMessage">@amendmentWarning</p>
+        <button type="button" class="btn btn-hotel-primary rounded-pill px-4" data-promotion-denied-back>Đã hiểu</button>
+    </div>
+}
+else
+{
 <form asp-action="CreatePromotion" asp-route-popup="true" method="post" data-promotion-form>
     @Html.AntiForgeryToken()
     <div class="alert alert-info rounded-3">
-        Gửi đề xuất chuyển vai trò tài khoản từ Nhân viên lên Quản lý để IT xử lý.
+        Cần lập phụ lục đổi chức vụ sang Quản lý và chờ phụ lục có hiệu lực trước khi gửi đề xuất sang IT.
     </div>
-    <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+    <div asp-validation-summary="All" class="text-danger mb-3" role="alert"></div>
     <div class="mb-3">
         <label asp-for="EmployeeId" class="form-label fw-semibold">Nhân viên đề xuất <span class="text-danger">*</span></label>
         <select asp-for="EmployeeId" asp-items="Model.EligibleEmployees" class="form-select" data-promotion-employee>
@@ -34,3 +45,5 @@
         <button type="submit" class="btn btn-warning rounded-pill px-4 fw-semibold">Gửi yêu cầu thăng chức</button>
     </div>
 </form>
+
+}

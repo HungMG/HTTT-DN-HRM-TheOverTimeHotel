@@ -264,7 +264,13 @@
             const region = form.closest('[data-salary-amendments-url]');
             await loadAmendments(region);
             const notice = document.createElement('p'); notice.className = 'alert alert-success'; notice.setAttribute('role', 'status');
-            notice.textContent = data.message || 'Đã lưu phụ lục.'; region.prepend(notice);
+            notice.textContent = data.message || 'Đã lưu phụ lục.';
+            if (data.promotionUrl) {
+                const link = document.createElement('a');
+                link.href = data.promotionUrl; link.className = 'd-block mt-2 fw-semibold';
+                link.textContent = 'Đề xuất thăng chức sang IT'; notice.append(link);
+            }
+            region.prepend(notice);
         } catch (failure) {
             error.textContent = failure.message || 'Mất kết nối. Vui lòng thử lại.';
             error.classList.remove('d-none'); error.focus();

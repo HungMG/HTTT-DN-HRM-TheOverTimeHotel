@@ -448,6 +448,54 @@ public class YeuCauTaiKhoanController : Controller
         }
 
         await LoadPromotionOptionsAsync(model);
+        if (employeeId is > 0)
+        {
+            var employee = await _context.NhanViens.AsNoTracking()
+                .Include(e => e.ChucVu)
+                .FirstOrDefaultAsync(e => e.MaNhanVien == employeeId.Value);
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var contractIds = await _context.HopDongs.AsNoTracking()
+                .Where(c => c.MaNhanVien == employeeId.Value && c.TrangThai == "HIEU_LUC" &&
+                    c.NgayBatDau <= today && (c.NgayKetThuc == null || c.NgayKetThuc >= today))
+                .Select(c => c.MaHopDong).ToListAsync();
+            var hasAmendment = false;
+            if (employee != null && HopDongController.IsManagerPosition(employee.ChucVu?.TenChucVu))
+                foreach (var contractId in contractIds)
+                    if (await HasEffectivePromotionAmendmentAsync(employeeId.Value, contractId, employee.MaChucVu))
+                    { hasAmendment = true; break; }
+            if (!hasAmendment)
+            {
+                var contracts = await _context.HopDongs.AsNoTracking()
+                    .Where(c => contractIds.Contains(c.MaHopDong))
+                    .Select(c => new { c.MaHopDong, c.MaChucVuKyKet, c.NgayKetThuc })
+                    .ToListAsync();
+                var amendments = await _context.PhuLucLuongs.AsNoTracking()
+                    .Where(a => contractIds.Contains(a.MaHopDong) && a.MaChucVuMoi != null)
+                    .OrderBy(a => a.NgayHieuLuc)
+                    .Select(a => new { a.MaHopDong, a.NgayHieuLuc, PositionId = a.MaChucVuMoi!.Value })
+                    .ToListAsync();
+                var positions = await _context.ChucVus.AsNoTracking()
+                    .ToDictionaryAsync(c => c.MaChucVu, c => c.TenChucVu);
+                DateOnly? upcomingDate = null;
+                foreach (var contract in contracts)
+                {
+                    var previousPosition = contract.MaChucVuKyKet;
+                    foreach (var amendment in amendments.Where(a => a.MaHopDong == contract.MaHopDong))
+                    {
+                        if (previousPosition.HasValue && previousPosition != amendment.PositionId &&
+                            amendment.NgayHieuLuc > today &&
+                            (!contract.NgayKetThuc.HasValue || amendment.NgayHieuLuc <= contract.NgayKetThuc) &&
+                            positions.TryGetValue(amendment.PositionId, out var title) && HopDongController.IsManagerPosition(title) &&
+                            (!upcomingDate.HasValue || amendment.NgayHieuLuc < upcomingDate))
+                            upcomingDate = amendment.NgayHieuLuc;
+                        previousPosition = amendment.PositionId;
+                    }
+                }
+                ViewData["PromotionAmendmentWarning"] = upcomingDate.HasValue
+                    ? $"Đã có phụ lục đổi chức vụ sang Quản lý, nhưng phụ lục chưa có hiệu lực. Có thể gửi đề xuất sang IT từ ngày {upcomingDate:dd/MM/yyyy}, sau khi chức vụ được cập nhật."
+                    : "Chưa tìm thấy phụ lục đổi chức vụ sang Quản lý có hiệu lực trên hợp đồng. Vui lòng lập phụ lục trước khi gửi đề xuất sang IT.";
+            }
+        }
         return popup ? PartialView("_CreatePromotionPopup", model) : View(model);
     }
 
@@ -529,11 +577,15 @@ public class YeuCauTaiKhoanController : Controller
                 .Select(c => new { c.TrangThai, c.NgayBatDau, c.NgayKetThuc })
                 .SingleOrDefaultAsync();
 
-            if (contract == null || contract.TrangThai != "HIEU_LUC" || (contract.NgayKetThuc.HasValue && contract.NgayKetThuc.Value < today))
+            if (contract == null || contract.TrangThai != "HIEU_LUC" || contract.NgayBatDau > today || (contract.NgayKetThuc.HasValue && contract.NgayKetThuc.Value < today))
             {
                 ModelState.AddModelError(nameof(model.ContractId), "Hợp đồng không hợp lệ hoặc đã hết hạn (chỉ chấp nhận HĐ đang hiệu lực, đã bắt đầu và chưa hết hạn).");
             }
         }
+
+        if (employee != null && model.ContractId.HasValue &&
+            !await HasEffectivePromotionAmendmentAsync(employee.MaNhanVien, model.ContractId.Value, employee.MaChucVu))
+            ModelState.AddModelError(nameof(model.ContractId), "Cần có phụ lục đã có hiệu lực đổi chức vụ sang Quản lý trên hợp đồng này trước khi gửi đề xuất.");
 
         if (model.ContractId.HasValue && await _context.HopDongs.AnyAsync(c => c.MaNhanVien == model.EmployeeId &&
             c.TrangThai == "HIEU_LUC" && _context.HopDongs.Any(selected => selected.MaHopDong == model.ContractId &&
@@ -648,13 +700,16 @@ public class YeuCauTaiKhoanController : Controller
         }
 
         var contract = await _context.HopDongs.FindAsync(contractId);
-        if (contract == null || contract.MaNhanVien != employeeId || contract.TrangThai != "HIEU_LUC" ||
+        if (contract == null || contract.MaNhanVien != employeeId || contract.TrangThai != "HIEU_LUC" || contract.NgayBatDau > DateOnly.FromDateTime(DateTime.Today) ||
             (contract.NgayKetThuc.HasValue && contract.NgayKetThuc.Value < DateOnly.FromDateTime(DateTime.Today)) ||
             await _context.HopDongs.AnyAsync(c => c.MaNhanVien == employeeId && c.MaHopDong != contractId &&
                 c.TrangThai == "HIEU_LUC" && c.NgayBatDau > contract.NgayBatDau))
         {
             return Json(new { success = false, message = "Hợp đồng không hợp lệ." });
         }
+
+        if (!await HasEffectivePromotionAmendmentAsync(employeeId, contractId, employee.MaChucVu))
+            return Json(new { success = false, message = "Cần có phụ lục đã có hiệu lực đổi chức vụ sang Quản lý trên hợp đồng này trước khi gửi đề xuất." });
 
         // Kiểm tra xem đã có yêu cầu thăng chức đang chờ xử lý chưa
         var hasPending = await _context.YeuCauTaiKhoans.AnyAsync(r => r.MaNhanVien == employeeId &&
@@ -695,6 +750,29 @@ public class YeuCauTaiKhoanController : Controller
             return Json(new { success = false, message = "Nhân viên đã có yêu cầu đang chờ IT xử lý." });
 
         return Json(new { success = true, message = $"Đã gửi yêu cầu thăng chức cho {employee.HoTen} sang bộ phận IT thành công!" });
+    }
+
+    // The latest effective position change must lead to the employee's current manager position.
+    private async Task<bool> HasEffectivePromotionAmendmentAsync(int employeeId, int contractId, int? currentPositionId)
+    {
+        if (!currentPositionId.HasValue) return false;
+        var contract = await _context.HopDongs.AsNoTracking()
+            .Where(c => c.MaHopDong == contractId && c.MaNhanVien == employeeId)
+            .Select(c => new { c.MaChucVuKyKet })
+            .SingleOrDefaultAsync();
+        if (contract?.MaChucVuKyKet == null) return false;
+        var changes = await _context.PhuLucLuongs.AsNoTracking()
+            .Where(a => a.MaHopDong == contractId && a.NgayHieuLuc <= DateOnly.FromDateTime(DateTime.Today) && a.MaChucVuMoi != null)
+            .OrderBy(a => a.NgayHieuLuc)
+            .Select(a => a.MaChucVuMoi!.Value)
+            .ToListAsync();
+        var position = contract.MaChucVuKyKet.Value;
+        var changed = false;
+        foreach (var next in changes)
+        {
+            if (next != position) { position = next; changed = true; }
+        }
+        return changed && position == currentPositionId.Value;
     }
 
     /// <summary>
@@ -971,6 +1049,9 @@ public class YeuCauTaiKhoanController : Controller
         {
             return ProcessingFailure("Hợp đồng của nhân viên không còn hiệu lực. Không thể cấp tài khoản.", StatusCodes.Status400BadRequest);
         }
+
+        if (isManagerPromotion && !await HasEffectivePromotionAmendmentAsync(request.MaNhanVien, contract.MaHopDong, request.NhanVien?.MaChucVu))
+            return ProcessingFailure("Không tìm thấy phụ lục đã có hiệu lực đổi sang chức vụ Quản lý hiện tại trên hợp đồng. Không thể duyệt thăng chức.", StatusCodes.Status409Conflict);
 
         // Kiểm tra xem đây có phải là yêu cầu thăng chức (nhân viên đã có tài khoản) hay không
         var existingAccount = await _context.TaiKhoans

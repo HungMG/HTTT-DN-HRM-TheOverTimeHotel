@@ -339,13 +339,9 @@ public partial class HopDongController : Controller
                     }
                 }
             }
-            var targetPosition = await _context.ChucVus.FindAsync(model.PositionId);
             var employeeAccount = employee != null && employee.MaNhanVien > 0
-                ? await _context.TaiKhoans.Include(t => t.VaiTro).FirstOrDefaultAsync(t => t.MaNhanVien == employee.MaNhanVien)
+                ? await _context.TaiKhoans.FirstOrDefaultAsync(t => t.MaNhanVien == employee.MaNhanVien)
                 : null;
-            var isManagerPromotion = employeeAccount?.VaiTro?.TenVaiTro == "Employee" &&
-                IsManagerPosition(targetPosition?.TenChucVu);
-
             if (sameDayPromotionContract == null)
                 _context.HopDongs.Add(model.Contract);
             else
@@ -375,15 +371,6 @@ public partial class HopDongController : Controller
                 });
             }
             await _context.SaveChangesAsync();
-
-            if (isManagerPromotion)
-            {
-                TempData["PromotionPrompt_EmployeeId"] = employee!.MaNhanVien;
-                TempData["PromotionPrompt_EmployeeName"] = employee.HoTen;
-                TempData["PromotionPrompt_ContractId"] = model.Contract.MaHopDong;
-                TempData["PromotionPrompt_ContractNo"] = model.Contract.SoHopDong;
-                TempData["PromotionPrompt_PositionName"] = targetPosition!.TenChucVu;
-            }
 
             string emailNotice = "";
             var finalEmail = !string.IsNullOrWhiteSpace(model.PersonalEmail) ? model.PersonalEmail.Trim() : employee?.EmailCaNhan;

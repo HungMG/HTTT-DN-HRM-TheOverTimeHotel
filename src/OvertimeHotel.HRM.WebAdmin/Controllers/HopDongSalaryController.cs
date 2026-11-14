@@ -159,8 +159,17 @@ public partial class HopDongController
         if (tx != null) await tx.CommitAsync();
         }
         catch (Exception ex) when (ex is DbUpdateException or Npgsql.PostgresException or InvalidOperationException) { return BadRequest("Không thể lưu phụ lục: kiểm tra ghế Tổng Giám Đốc, kỳ lương hoặc dữ liệu vừa thay đổi."); }
-        TempData["Success"] = "Đã lập phụ lục điều chỉnh lương.";
-        return Json(new { success = true, message = "Đã lập phụ lục điều chỉnh lương." });
+        var promotionChange = oldPosition != positionId &&
+            IsManagerPosition((await _context.ChucVus.FindAsync(positionId))?.TenChucVu) &&
+            await _context.TaiKhoans.AnyAsync(t => t.MaNhanVien == employee.MaNhanVien && t.VaiTro != null && t.VaiTro.TenVaiTro == "Employee");
+        var promotionUrl = promotionChange && effectiveDate <= today &&
+            (User.IsInRole("HR") || User.IsInRole("Admin"))
+            ? Url.Action("CreatePromotion", "YeuCauTaiKhoan", new { employeeId = employee.MaNhanVien }) : null;
+        var message = promotionChange && effectiveDate > today
+            ? $"Đã lập phụ lục. Có thể gửi đề xuất thăng chức sang IT từ ngày {effectiveDate:dd/MM/yyyy}, khi phụ lục có hiệu lực."
+            : "Đã lập phụ lục điều chỉnh lương.";
+        TempData["Success"] = message;
+        return Json(new { success = true, message, promotionUrl });
     }
     [HttpGet]
     public async Task<IActionResult> SalaryAmendments(int id)

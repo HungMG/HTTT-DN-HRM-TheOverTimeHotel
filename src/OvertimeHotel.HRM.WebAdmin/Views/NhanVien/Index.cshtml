@@ -280,6 +280,14 @@
     }
 
     function initPromotionPopup(body, employeeId) {
+        const denied = body.querySelector('[data-promotion-denied]');
+        if (denied) {
+            document.getElementById('employeeProfileModalLabel').textContent = 'Không thể gửi đề xuất';
+            const back = denied.querySelector('[data-promotion-denied-back]');
+            back.addEventListener('click', () => openEmployeeProfile(employeeId));
+            back.focus();
+            return;
+        }
         const form = body.querySelector('[data-promotion-form]');
         if (!form) return;
         const employee = form.querySelector('[data-promotion-employee]');

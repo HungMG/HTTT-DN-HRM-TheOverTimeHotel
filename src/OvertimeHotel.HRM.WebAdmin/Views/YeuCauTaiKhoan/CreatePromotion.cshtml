@@ -12,10 +12,15 @@
             </a>
             <div>
                 <h4 class="mb-0 fw-bold font-serif text-dark" style="font-size: 1.15rem;">Đề Xuất Thăng Chức Lên Quản Lý</h4>
-                <small class="text-muted" style="font-size: 0.75rem;">Yêu cầu thăng chức từ Nhân viên lên Quản lý chờ IT phê duyệt; nhân viên tiếp tục dùng tài khoản trong khi chờ.</small>
+                <small class="text-muted" style="font-size: 0.75rem;">Cần có phụ lục đổi chức vụ sang Quản lý đã có hiệu lực trước khi gửi yêu cầu sang IT.</small>
             </div>
         </div>
     </div>
+
+@if (ViewData["PromotionAmendmentWarning"] is string amendmentWarning)
+{
+    <div class="alert alert-warning" role="alert">@amendmentWarning</div>
+}
 
     @if (!ViewData.ModelState.IsValid)
     {
@@ -23,7 +28,7 @@
             <i class="bi bi-exclamation-triangle-fill fs-5 text-danger flex-shrink-0 mt-0.5"></i>
             <div class="flex-grow-1">
                 <div class="fw-bold text-dark small mb-1">Chưa thể gửi yêu cầu thăng chức</div>
-                <div asp-validation-summary="ModelOnly" class="small text-danger"></div>
+                <div asp-validation-summary="All" class="small text-danger"></div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
