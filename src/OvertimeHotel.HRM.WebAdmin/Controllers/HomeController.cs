@@ -35,7 +35,7 @@ public class HomeController : Controller
         if (!_cache.TryGetValue(cacheKey, out HomeDashboardViewModel? model) || model is null)
         {
             model = await BuildDashboardAsync(role);
-            _cache.Set(cacheKey, model, TimeSpan.FromSeconds(60));
+            _cache.Set(cacheKey, model, TimeSpan.FromMinutes(5));
         }
 
         return View(model);

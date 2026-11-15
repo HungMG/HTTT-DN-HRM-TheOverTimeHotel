@@ -820,18 +820,17 @@ public class UserAccountsController : Controller
             query = query.Where(log => log.ThoiGian < startOfNextDay);
         }
 
-        var auditRows = await this.SearchDataAsync($"accounts:audit:{auditFrom:yyyyMMdd}:{auditTo:yyyyMMdd}", () => query.ToListAsync());
-        query = auditRows.AsQueryable();
-
-        var totalLogs = query.Count();
-        var totalPages = Math.Max(1, (int)Math.Ceiling(totalLogs / (double)AuditPageSize));
-        var pageNumber = Math.Clamp(page, 1, totalPages);
-        var logs = query
-            .OrderByDescending(log => log.ThoiGian)
-            .Skip((pageNumber - 1) * AuditPageSize)
-            .Take(AuditPageSize)
-            .ToList();
-
+        // 1. Đếm tổng số dòng trực tiếp trên database                                                                       
+    var totalLogs = await query.CountAsync();                                                                            
+    var totalPages = Math.Max(1, (int)Math.Ceiling(totalLogs / (double)AuditPageSize));                                  
+    var pageNumber = Math.Clamp(page, 1, totalPages);                                                                    
+                                                                                                                         
+    // 2. Chỉ kéo đúng số dòng của trang hiện tại (AuditPageSize) về máy                                                 
+    var logs = await query                                                                                               
+        .OrderByDescending(log => log.ThoiGian)                                                                          
+        .Skip((pageNumber - 1) * AuditPageSize)                                                                          
+        .Take(AuditPageSize)                                                                                             
+        .ToListAsync();                                                                                                          
         var items = logs.Select(log => new AdminAuditLogViewModel
         {
             AuditLogId = log.MaNhatKy,

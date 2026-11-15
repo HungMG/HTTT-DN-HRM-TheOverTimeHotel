@@ -2,7 +2,7 @@
 
 **Dự án:** Hệ thống Quản lý Nhân sự & Tiền lương Khách sạn The OverTime Hotel  
 **Chuyên ngành:** Hệ thống Thông tin Doanh nghiệp (HTTTDN) / Công nghệ Phần mềm  
-**Nền tảng công nghệ:** C# .NET 10 (ASP.NET Core MVC & .NET MAUI) · Supabase Cloud Database (PostgreSQL 30 bảng chuẩn 3NF)  
+**Nền tảng công nghệ:** C# .NET 10 (ASP.NET Core MVC & .NET MAUI) · Supabase Cloud Database (PostgreSQL 38 bảng chuẩn 3NF)  
 **Tài liệu trực quan kèm theo:** Xem sơ đồ đồ họa tương tác tại `docs project/diagrams/`
 
 ---
@@ -74,28 +74,28 @@ Sơ đồ ngữ cảnh định nghĩa ranh giới tương tác và các luồng 
 
 ## 2. Sơ Đồ Luồng Dữ Liệu Mức 1 (DFD Level 1)
 
-Phân rã tiến trình `0.0` thành **11 tiến trình nghiệp vụ cốt lõi (1.0 đến 11.0)** và **4 tiến trình kỹ thuật & vận hành (12.0 đến 15.0)**, tương tác chặt chẽ với **9 kho dữ liệu Supabase (D1 đến D9)** bao phủ toàn bộ 30 bảng CSDL chuẩn 3NF.
+Phân rã tiến trình `0.0` thành **11 tiến trình nghiệp vụ cốt lõi (1.0 đến 11.0)** và **4 tiến trình kỹ thuật & vận hành (12.0 đến 15.0)**, tương tác chặt chẽ với **9 kho dữ liệu Supabase (D1 đến D9)** bao phủ toàn bộ 38 bảng CSDL chuẩn 3NF.
 
 ### Quy ước đánh số tiến trình Mức 1
 
 Cấu trúc phân rã DFD Mức 1 được chuẩn hóa theo đúng kiến trúc 11 phân hệ nghiệp vụ mở rộng và 4 tiến trình kỹ thuật hỗ trợ:
 
 1. **Nhóm 11 Tiến trình Nghiệp vụ Cốt lõi (1.0 – 11.0):**
-   - **1.0 — Nhân sự & Hợp đồng lao động:** Quản lý lý lịch nhân viên, chức danh, phòng ban và vòng đời hợp đồng lao động.
+   - **1.0 — Nhân sự & Hợp đồng lao động:** Quản lý lý lịch nhân viên, chức danh, phòng ban, thang bảng lương cấp bậc (`khung_luong_cap_bac`), phụ lục hợp đồng (`phu_luc_luong`) và quy trình tiếp nhận Contract-First.
    - **2.0 — Tài khoản & Phân quyền (RBAC):** Quản lý định danh tài khoản, 5 vai trò (Admin, HR, Manager, Employee, IT), ma trận 17 mã quyền và quy trình cấp phát tài khoản.
-   - **3.0 — Ca làm & Phân ca 24/7:** Quản lý mẫu ca trực xoay vòng (Sáng, Chiều, Đêm) và lập lịch xếp ca làm việc theo tuần/tháng.
-   - **4.0 — Bảng Chấm công 24/7:** Ghi nhận quẹt thẻ Check-in/out di động, tính toán phút đi trễ, về sớm, giờ tăng ca (OT) và ngày công thực tế.
+   - **3.0 — Ca làm & Phân ca 24/7:** Quản lý mẫu ca trực xoay vòng (Sáng, Chiều, Đêm), định biên ca (`dinh_bien_ca`), định biên ngày (`dinh_bien_ngay`), đổi ca (`yeu_cau_doi_ca`) và chốt công bố lịch tuần (`cong_bo_lich_tuan`).
+   - **4.0 — Bảng Chấm công 24/7:** Ghi nhận quẹt thẻ Check-in/out di động, tính toán phút đi trễ, về sớm, giờ tăng ca (OT), ngày công thực tế và tiếp nhận giải trình chấm công 2 cấp (`giai_trinh_cham_cong`).
    - **5.0 — Quản lý Đơn từ:** Tiếp nhận và xử lý quy trình phê duyệt trực tuyến cho 4 loại đơn: Nghỉ phép năm, Nghỉ ốm (BHXH), Thai sản, Thôi việc.
-   - **6.0 — Tính Lương & Phiếu Lương PDF:** Tự động hóa công thức tính lương 2 tầng (Gross ➔ Net), tổng hợp ngày công, OT, ca đêm, các khoản trừ và sinh phiếu lương điện tử QuestPDF.
+   - **6.0 — Tính Lương & Phiếu Lương PDF:** Tự động hóa công thức tính lương 2 tầng (Gross ➔ Net), tổng hợp ngày công, OT, ca đêm, các khoản trừ, kết chuyển thù lao sự kiện (`quyet_toan_su_kien`) và sinh phiếu lương điện tử QuestPDF.
    - **7.0 — Quản lý Phụ cấp:** Thiết lập và quản lý danh mục định mức phụ cấp: phụ cấp ca đêm 30%, ăn ca 30.000 VNĐ/ngày, phụ cấp trách nhiệm, độc hại, đi lại.
    - **8.0 — Quản lý Tiền thưởng:** Quản trị các khoản tiền thưởng: thưởng doanh thu buồng phòng/F&B, thưởng hiệu quả công việc (KPI), thưởng lễ tết và thưởng đột xuất.
-   - **9.0 — Quản lý Dự án & Sự kiện Khách sạn:** Quản lý kế hoạch sự kiện (hội nghị gala, tiệc cưới, hội thảo quốc tế), phân công nhân sự các bộ phận tham gia, nghiệm thu và kết chuyển thù lao/phụ cấp sự kiện sang bảng lương.
-   - **10.0 — Báo cáo & Thống kê:** Tổng hợp dữ liệu đa nguồn phục vụ Dashboard quản trị: biến động nhân sự, tỷ lệ chuyên cần, đối soát ngân sách quỹ lương và chi phí dự án/sự kiện.
+   - **9.0 — Quản lý Dự án & Sự kiện Khách sạn:** Quản lý kế hoạch sự kiện (`du_an`), định mức nhân lực (`nhu_cau_su_kien`), điều phối nhân sự (`phan_cong_du_an`), xác nhận công thực tế (`cong_su_kien`), nghiệm thu và quyết toán thù lao sự kiện (`quyet_toan_su_kien`).
+   - **10.0 — Báo cáo & Thống kê:** Tổng hợp dữ liệu đa nguồn phục vụ Dashboard quản trị: biến động nhân sự, tỷ lệ chuyên cần, kế hoạch ngân sách quỹ lương (`ngan_sach_luong`) và hiệu quả chi phí sự kiện.
    - **11.0 — Quản trị Hệ thống:** Quản lý danh mục tổ chức dùng chung (phòng ban, chức vụ, loại đơn, khung giờ ca) và tham số cấu hình toàn hệ thống.
 
 2. **Nhóm 4 Tiến trình Kỹ thuật & Vận hành (12.0 – 15.0):**
-   - **12.0 — Xác thực & Quản lý Phiên:** Cổng xác thực danh tính tập trung, kiểm tra băm mật khẩu, cấp phát token JWT/Claims và duy trì phiên an toàn cho cả Web Admin và Mobile App.
-   - **13.0 — Sao lưu & Phục hồi CSDL:** Tác vụ kỹ thuật độc lập cho Quản trị viên (Admin) thực hiện sao lưu toàn vẹn 30 bảng CSDL Supabase ra tệp nén `.sql.gz` và phục hồi khẩn cấp.
+   - **12.0 — Xác thực & Quản lý Phiên:** Cổng xác thực danh tính tập trung, kiểm tra băm mật khẩu SHA256, cấp phát token JWT/Claims, bộ nhớ đệm xác thực 2 phút và duy trì phiên an toàn cho cả Web Admin và Mobile App.
+   - **13.0 — Sao lưu & Phục hồi CSDL:** Tác vụ kỹ thuật độc lập cho Quản trị viên (Admin) thực hiện sao lưu toàn vẹn 38 bảng CSDL Supabase ra tệp nén `.sql.gz` và phục hồi khẩn cấp.
    - **14.0 — Duyệt & Chốt khóa sổ lương:** Quy trình thẩm định bảng lương giữa HR và Ban Giám Đốc, chuyển trạng thái từ dự thảo `NHAP` sang `DA_DUYET`, thực hiện khóa sổ kỳ lương (`KHOA_SO`) trước khi phát hành.
    - **15.0 — Cảnh báo tự động & Thông báo:** Tiến trình nền quét và đẩy cảnh báo tự động: cảnh báo HĐLĐ sắp hết hạn trước 30 ngày, thông báo đơn từ mới, thông báo lịch ca trực và thông báo phân công dự án/sự kiện tới người dùng.
 
@@ -114,19 +114,19 @@ Cấu trúc phân rã DFD Mức 1 được chuẩn hóa theo đúng kiến trúc
 
 ### 2.1. Danh Sách 9 Kho Dữ Liệu (Data Stores)
 
-Kho dữ liệu trong DFD là tập hợp logic các bảng CSDL lưu trữ cùng chủ đề nghiệp vụ. Toàn bộ **30 bảng CSDL Supabase PostgreSQL** được chuẩn hóa và khớp nối hoàn chỉnh vào **9 kho dữ liệu (D1 đến D9)**:
+Kho dữ liệu trong DFD là tập hợp logic các bảng CSDL lưu trữ cùng chủ đề nghiệp vụ. Toàn bộ **38 bảng CSDL Supabase PostgreSQL** được chuẩn hóa và khớp nối hoàn chỉnh vào **9 kho dữ liệu (D1 đến D9)**:
 
 | Mã Kho | Tên Kho Dữ Liệu | Số Bảng | Các Bảng CSDL Supabase Thành Phần | Chức Năng Nghiệp Vụ Cốt Lõi |
 |:---:|:---|:---:|:---|:---|
-| **D1** | Kho Nhân sự & HĐLĐ | 4 | `phong_ban`, `chuc_vu`, `nhan_vien`, `hop_dong` | Lưu trữ cơ cấu tổ chức, chức danh nghề nghiệp, hồ sơ lý lịch nhân sự và hợp đồng lao động pháp lý. |
-| **D2** | Kho Tài khoản & Phân quyền | 5 | `tai_khoan`, `vai_tro`, `quyen`, `vai_tro_quyen`, `yeu_cau_tai_khoan` | Lưu trữ tài khoản đăng nhập, 5 nhóm vai trò RBAC, danh mục 17 mã quyền và yêu cầu cấp tài khoản từ HR chuyển sang IT. |
-| **D3** | Kho Ca làm & Chấm công | 6 | `ca_lam_viec`, `phan_ca`, `cham_cong`, `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca` | Lưu trữ 3 mẫu ca chuẩn 24/7, lịch phân ca tuần/tháng, dữ liệu quẹt thẻ Check-in/out thực tế di động, định biên số người tối thiểu mỗi ca, hồ sơ giải trình sai lệch giờ công và yêu cầu đổi ca giữa nhân viên. |
-| **D4** | Kho Đơn từ điện tử | 2 | `loai_don`, `don_tu` | Lưu trữ danh mục 4 loại đơn trực tuyến và lịch sử nộp/xét duyệt đơn từ của nhân sự. |
-| **D5** | Kho Tiền lương & Thu chi | 10 | `ky_luong`, `phieu_luong`, `chi_tiet_phieu_luong`, `chi_tiet_tru_bao_hiem`, `chi_tiet_tru_thue_tncn`, `chi_tiet_tru_vi_pham_tam_ung`, `cau_hinh_khoan_luong`, `cau_hinh_tang_ca`, `cau_hinh_phu_cap`, `cau_hinh_khau_tru` | Lưu trữ chu kỳ tính lương, bảng tổng hợp lương tháng, chi tiết phân rã thu nhập/khấu trừ 2 tầng, và bảng cấu hình tham số lương/thuế/bảo hiểm. |
-| **D6** | Kho Nhật ký & Kiểm toán | 1 | `nhat_ky_quan_tri` | Lưu trữ lịch sử kiểm toán thao tác quản trị: đổi mật khẩu, phân quyền, khóa tài khoản, can thiệp dữ liệu hệ thống. |
+| **D1** | Kho Nhân sự & HĐLĐ | 6 | `phong_ban`, `chuc_vu`, `nhan_vien`, `hop_dong`, `khung_luong_cap_bac`, `phu_luc_luong` | Cơ cấu tổ chức, chức danh, hồ sơ nhân sự, HĐLĐ, thang bảng lương cấp bậc và lịch sử phụ lục điều chỉnh lương/vị trí. |
+| **D2** | Kho Tài khoản & Phân quyền | 5 | `tai_khoan`, `vai_tro`, `quyen`, `vai_tro_quyen`, `yeu_cau_tai_khoan` | Tài khoản đăng nhập, 5 nhóm vai trò RBAC, danh mục 17 mã quyền và yêu cầu cấp tài khoản từ HR chuyển sang IT. |
+| **D3** | Kho Ca làm & Chấm công | 8 | `ca_lam_viec`, `phan_ca`, `cham_cong`, `dinh_bien_ca`, `dinh_bien_ngay`, `cong_bo_lich_tuan`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca` | Ca chuẩn 24/7, lịch phân ca, quẹt thẻ GPS/WiFi, định biên ca tối thiểu, định biên ngày tăng cường, công bố lịch tuần, giải trình 2 cấp và đổi ca. |
+| **D4** | Kho Đơn từ điện tử | 2 | `loai_don`, `don_tu` | Danh mục 4 loại đơn trực tuyến và lịch sử nộp/xét duyệt đơn từ của nhân sự. |
+| **D5** | Kho Tiền lương & Thu chi | 11 | `ky_luong`, `ngan_sach_luong`, `phieu_luong`, `chi_tiet_phieu_luong`, `chi_tiet_tru_bao_hiem`, `chi_tiet_tru_thue_tncn`, `chi_tiet_tru_vi_pham_tam_ung`, `cau_hinh_khoan_luong`, `cau_hinh_tang_ca`, `cau_hinh_phu_cap`, `cau_hinh_khau_tru` | Chu kỳ tính lương, hạn mức ngân sách lương phòng ban, bảng lương tháng, phân rã thu nhập/khấu trừ 2 tầng, và cấu hình tham số lương/thuế/bảo hiểm. |
+| **D6** | Kho Nhật ký & Kiểm toán | 1 | `nhat_ky_quan_tri` | Lịch sử kiểm toán thao tác quản trị: đổi mật khẩu, phân quyền, khóa tài khoản, can thiệp dữ liệu hệ thống (Audit Log). |
 | **D7** | Kho Tham số Quỹ & Ngày nghỉ lễ | *(Tham số mở rộng)* | Lưu trữ hạn mức ngân sách quỹ lương tháng từ BoD, định mức quỹ phép năm các phòng ban, và danh mục ngày nghỉ Lễ/Tết phục vụ hệ số OT 3.0. |
 | **D8** | Kho Tệp & Tài liệu đính kèm | *(Tệp mở rộng)* | Lưu trữ tệp minh chứng y tế/đơn từ (ảnh giấy khám, giấy nghỉ ốm), tệp phiếu lương PDF QuestPDF kết xuất tự động, và file sao lưu nén `.sql.gz`. |
-| **D9** | Kho Dự án & Sự kiện Khách sạn | 2 | `du_an`, `phan_cong_du_an` | Lưu trữ thông tin các dự án/sự kiện đặc thù khách sạn (tiệc cưới, hội nghị gala, ẩm thực), phân công nhân sự tham gia, và mức thù lao/phụ cấp sự kiện được hưởng. |
+| **D9** | Kho Dự án & Sự kiện Khách sạn | 5 | `du_an`, `nhu_cau_su_kien`, `phan_cong_du_an`, `cong_su_kien`, `quyet_toan_su_kien` | Kế hoạch sự kiện, định mức nhân sự theo bộ phận, phân công điều động, chấm công thực tế sự kiện và quyết toán thù lao kết chuyển sang lương. |
 
 #### Chi tiết 2 bảng CSDL mới trong Kho D9:
 
@@ -262,48 +262,56 @@ Khi triển khai bản vẽ kỹ thuật trên các công cụ chuyên dụng (d
 
 ---
 
-### 2.7. Đối Chiếu Số Lượng Bảng CSDL (Khớp Nối 30 Bảng Supabase)
+### 2.7. Đối Chiếu Số Lượng Bảng CSDL (Khớp Nối 38 Bảng Supabase)
 
 Bảng đối chiếu khẳng định tính đồng bộ tuyệt đối giữa hồ sơ thiết kế DFD, tài liệu kiến trúc CSDL và mã nguồn hệ thống:
 
 | Nguồn Tài Liệu Đối Chiếu | Số Lượng Khai Báo | Trạng Thái Đồng Bộ |
 |:---|:---:|:---|
-| **PRD 03 (Tài liệu này, Mục 2.1 & 2.2)** | **9 kho dữ liệu gom từ 30 bảng CSDL** | Hoàn thành khớp nối 100% (25 bảng nền tảng + 2 bảng dự án/sự kiện `du_an`, `phan_cong_du_an` + 3 bảng ca & chấm công `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`). |
-| **Mã nguồn thực tế `AppDbContext.cs` & Schema DB** | **30 bảng chuẩn hóa 3NF** | Đã định nghĩa đầy đủ các thực thể và cấu hình quan hệ khóa ngoại trên Supabase Cloud. |
-| **PRD 04 (`04_Thiet_Ke_CSDL_30_Bang.md`)** | **30 bảng CSDL Supabase PostgreSQL** | Đã cập nhật từ điển dữ liệu chi tiết cho toàn bộ 30 bảng (bao gồm 2 bảng sự kiện/dự án và 3 bảng ca & chấm công). |
+| **PRD 03 (Tài liệu này, Mục 2.1 & 2.2)** | **9 kho dữ liệu gom từ 38 bảng CSDL** | Hoàn thành khớp nối 100% (D1: 6 bảng, D2: 5 bảng, D3: 8 bảng, D4: 2 bảng, D5: 11 bảng, D6: 1 bảng, D9: 5 bảng). |
+| **Mã nguồn thực tế `AppDbContext.cs` & Schema DB** | **38 bảng chuẩn hóa 3NF** | Đã định nghĩa đầy đủ các thực thể và cấu hình quan hệ khóa ngoại trên Supabase Cloud. |
+| **PRD 04 (`04_Thiet_Ke_CSDL_30_Bang.md`)** | **38 bảng CSDL Supabase PostgreSQL** | Đã cập nhật từ điển dữ liệu chi tiết cho toàn bộ 38 bảng. |
 | **PRD 02 (`02_Phan_Tich_Chuc_Nang_BFD.md`)** | **11 phân hệ nghiệp vụ Cấp 1** | Khớp nối đồng bộ với 11 tiến trình nghiệp vụ cốt lõi 1.0 đến 11.0 của DFD Mức 1. |
 
-#### Danh mục chi tiết 30 bảng CSDL Supabase phân bổ theo 9 Kho Dữ Liệu DFD:
+#### Danh mục chi tiết 38 bảng CSDL Supabase phân bổ theo 9 Kho Dữ Liệu DFD:
 
 | STT | Tên Bảng CSDL (Supabase) | Thuộc Kho DFD | Nhóm Phân Hệ Nghiệp Vụ | Ý Nghĩa Thực Tế Trong Vận Hành Khách Sạn |
 |:---:|:---|:---:|:---|:---|
 | 1 | `phong_ban` | **D1** | Nhân sự & HĐLĐ | Danh mục cơ cấu phòng ban: Tiền sảnh (FO), Buồng phòng (HK), F&B, Kỹ thuật, An ninh, HR, IT. |
-| 2 | `chuc_vu` | **D1** | Nhân sự & HĐLĐ | Danh mục chức danh chuyên môn: Lễ tân, Trưởng ca, Bếp trưởng, Giám sát tầng, Kỹ sư, Nhân viên. |
+| 2 | `chuc_vu` | **D1** | Nhân sự & HĐLĐ | Danh mục chức danh chuyên môn: Lễ tân, Trưởng Bộ Phận, Bếp trưởng, Kỹ sư, Nhân viên (Giám Sát Ca đã giải thể). |
 | 3 | `nhan_vien` | **D1** | Nhân sự & HĐLĐ | Hồ sơ lý lịch nhân sự, thông tin cá nhân, liên hệ, học vấn và trạng thái công tác (`DANG_LAM`, `DA_THOI_VIEC`). |
 | 4 | `hop_dong` | **D1** | Nhân sự & HĐLĐ | Hợp đồng lao động pháp lý, lưu thời hạn hiệu lực và mức lương cơ bản thỏa thuận. |
-| 5 | `tai_khoan` | **D2** | Tài khoản & Phân quyền | Tài khoản đăng nhập hệ thống, mật khẩu mã hóa BCrypt, khóa đối chiếu 1-1 với nhân viên. |
-| 6 | `vai_tro` | **D2** | Tài khoản & Phân quyền | 5 nhóm vai trò chuẩn hóa hệ thống: Admin, HR, Manager, Employee, IT. |
-| 7 | `quyen` | **D2** | Tài khoản & Phân quyền | Danh mục 17 mã quyền thao tác màn hình chức năng trên hệ thống Web và Mobile. |
-| 8 | `vai_tro_quyen` | **D2** | Tài khoản & Phân quyền | Bảng trung gian giải quyết quan hệ N - N giữa Vai trò và Quyền hạn truy cập. |
-| 9 | `yeu_cau_tai_khoan` | **D2** | Tài khoản & Phân quyền | Quy trình phê duyệt tài khoản: HR gửi yêu cầu sau khi ký HĐLĐ ➔ Bộ phận CNTT (IT) tiếp nhận và cấp phát. |
-| 10 | `ca_lam_viec` | **D3** | Ca làm & Chấm công | Danh mục 3 ca trực xoay vòng 24/7: Ca Sáng (06:00 - 14:00), Ca Chiều (14:00 - 22:00), Ca Đêm (22:00 - 06:00). |
-| 11 | `phan_ca` | **D3** | Ca làm & Chấm công | Bảng lập lịch xếp ca làm việc tuần/tháng cho từng nhân viên theo từng vị trí ca kíp. |
-| 12 | `cham_cong` | **D3** | Ca làm & Chấm công | Bản ghi quẹt thẻ Check-in/out di động thực tế, tự động tính số phút trễ, về sớm, giờ OT và ca đêm. |
-| 13 | `loai_don` | **D4** | Quản lý Đơn từ | Danh mục 4 loại đơn: Nghỉ phép năm, Nghỉ ốm (hưởng BHXH), Nghỉ thai sản, Đơn xin thôi việc. |
-| 14 | `don_tu` | **D4** | Quản lý Đơn từ | Bản ghi đơn từ điện tử, trạng thái xét duyệt (`CHO_DUYET`, `DA_DUYET`, `TU_CHOI`) và lý do. |
-| 15 | `ky_luong` | **D5** | Tiền lương & Thu chi | Chu kỳ tính lương theo tháng (Tháng/Năm) và trạng thái khóa sổ (`MO_SO`, `KHOA_SO`). |
-| 16 | `cau_hinh_khoan_luong` | **D5** | Tiền lương & Thu chi | Tham số định mức tiền thưởng KPI, thưởng doanh thu, thưởng sự kiện và các khoản phụ cấp cố định. |
-| 17 | `cau_hinh_phu_cap` | **D5** | Tiền lương & Thu chi | Tham số phụ cấp ca đêm (+30%), ăn ca (30.000 VNĐ/công), độc hại, đi lại kèm cờ chịu thuế TNCN. |
-| 18 | `cau_hinh_khau_tru` | **D5** | Tiền lương & Thu chi | Tham số khấu trừ bảo hiểm bắt buộc (10.5%), giảm trừ gia cảnh thuế TNCN và biểu phí phạt trễ/sớm. |
-| 19 | `cau_hinh_tang_ca` | **D5** | Tiền lương & Thu chi | Danh mục hệ số lương tăng ca (OT): ngày thường 1.5, ngày nghỉ tuần 2.0, ngày Lễ/Tết 3.0. |
-| 20 | `phieu_luong` | **D5** | Tiền lương & Thu chi | Bảng tổng hợp thu nhập tháng của từng nhân viên: Lương công, OT, Phụ cấp đêm, Thù lao sự kiện, Thưởng, Khấu trừ, Net. |
-| 21 | `chi_tiet_phieu_luong` | **D5** | Tiền lương & Thu chi | Chi tiết phân rã từng khoản mục thu nhập và khấu trừ cấu thành phiếu lương. |
-| 22 | `chi_tiet_tru_bao_hiem` | **D5** | Tiền lương & Thu chi | Phân rã 3 khoản bảo hiểm trích từ lương người lao động: BHXH (8%), BHYT (1.5%), BHTN (1%). |
-| 23 | `chi_tiet_tru_thue_tncn` | **D5** | Tiền lương & Thu chi | Bản ghi tính thuế TNCN theo biểu thuế lũy tiến từng phần sau khi trừ các khoản giảm trừ gia cảnh. |
-| 24 | `chi_tiet_tru_vi_pham_tam_ung` | **D5** | Tiền lương & Thu chi | Khấu trừ tiền phạt kỷ luật (đi trễ, về sớm, bỏ ca trực) và các khoản khấu trừ khác (bỏ tạm ứng). |
-| 25 | `nhat_ky_quan_tri` | **D6** | Nhật ký & Kiểm toán | Ghi vết kiểm toán quản trị hệ thống: thời điểm, tài khoản thao tác, loại hành động và dữ liệu thay đổi. |
-| **26** | **`du_an`** | **D9** | **Quản lý Dự án & Sự kiện** | **Lưu trữ thông tin dự án/sự kiện đặc thù (tiệc cưới gala, hội nghị, lễ hội ẩm thực), ngân sách thù lao, thời gian và quản lý phụ trách.** |
-| **27** | **`phan_cong_du_an`** | **D9** | **Quản lý Dự án & Sự kiện** | **Quản lý phân công nhân sự tham gia dự án, vai trò nhiệm vụ, số giờ làm việc, mức thù lao/phụ cấp sự kiện nghiệm thu để đổ vào lương.** |
-| **28** | **`dinh_bien_ca`** | **D3** | **Ca làm & Chấm công** | **Định biên số nhân sự tối thiểu cho từng cặp Ca × Chức vụ, làm căn cứ cảnh báo thiếu người trên lịch phân ca.** |
-| **29** | **`giai_trinh_cham_cong`** | **D3** | **Ca làm & Chấm công** | **Hồ sơ giải trình sai lệch giờ vào/ra, đi qua hai cấp xác minh: Quản lý bộ phận → HR xác nhận trước khi ghi lại giờ công.** |
-| **30** | **`yeu_cau_doi_ca`** | **D3** | **Ca làm & Chấm công** | **Yêu cầu đổi ca trực giữa hai nhân viên, kèm trạng thái duyệt và phản hồi của Quản lý/HR.** |
+| 5 | `khung_luong_cap_bac` | **D1** | Nhân sự & HĐLĐ | Thang bảng lương cấp bậc chuẩn hóa min-max theo nhóm chức vụ và thâm niên. |
+| 6 | `phu_luc_luong` | **D1** | Nhân sự & HĐLĐ | Lịch sử phụ lục hợp đồng điều chỉnh lương cơ bản, thăng chức hoặc điều chuyển phòng ban. |
+| 7 | `tai_khoan` | **D2** | Tài khoản & Phân quyền | Tài khoản đăng nhập hệ thống, mật khẩu mã hóa SHA256, khóa đối chiếu 1-1 với nhân viên. |
+| 8 | `vai_tro` | **D2** | Tài khoản & Phân quyền | 5 nhóm vai trò chuẩn hóa hệ thống: Admin, HR, Manager, Employee, IT. |
+| 9 | `quyen` | **D2** | Tài khoản & Phân quyền | Danh mục 17 mã quyền thao tác màn hình chức năng trên hệ thống Web và Mobile. |
+| 10 | `vai_tro_quyen` | **D2** | Tài khoản & Phân quyền | Bảng trung gian giải quyết quan hệ N - N giữa Vai trò và Quyền hạn truy cập. |
+| 11 | `yeu_cau_tai_khoan` | **D2** | Tài khoản & Phân quyền | Quy trình phê duyệt tài khoản: HR gửi yêu cầu sau khi ký HĐLĐ ➔ Bộ phận CNTT (IT) tiếp nhận và cấp phát. |
+| 12 | `ca_lam_viec` | **D3** | Ca làm & Chấm công | Danh mục 3 ca trực xoay vòng 24/7: Ca Sáng (06:00 - 14:00), Ca Chiều (14:00 - 22:00), Ca Đêm (22:00 - 06:00). |
+| 13 | `phan_ca` | **D3** | Ca làm & Chấm công | Bảng lập lịch xếp ca làm việc tuần/tháng cho từng nhân viên theo từng vị trí ca kíp. |
+| 14 | `cham_cong` | **D3** | Ca làm & Chấm công | Bản ghi quẹt thẻ Check-in/out di động thực tế, tự động tính số phút trễ, về sớm, giờ OT và ca đêm. |
+| 15 | `dinh_bien_ca` | **D3** | Ca làm & Chấm công | Định biên số nhân sự tối thiểu cho từng bộ ba Ca × Chức vụ × Bộ phận, cảnh báo thiếu người trên lịch phân ca. |
+| 16 | `dinh_bien_ngay` | **D3** | Ca làm & Chấm công | Định biên nhân sự tăng cường linh hoạt theo ngày cụ thể (ngày lễ, cao điểm). |
+| 17 | `cong_bo_lich_tuan` | **D3** | Ca làm & Chấm công | Lịch sử khóa sổ và công bố lịch làm việc tuần tự động cho Mobile App. |
+| 18 | `giai_trinh_cham_cong` | **D3** | Ca làm & Chấm công | Hồ sơ giải trình sai lệch giờ vào/ra, duyệt 2 cấp: Quản lý bộ phận → HR xác nhận. |
+| 19 | `yeu_cau_doi_ca` | **D3** | Ca làm & Chấm công | Yêu cầu đổi ca trực giữa hai nhân viên, kèm trạng thái duyệt và phản hồi của Quản lý/HR. |
+| 20 | `loai_don` | **D4** | Quản lý Đơn từ | Danh mục 4 loại đơn: Nghỉ phép năm, Nghỉ ốm (hưởng BHXH), Nghỉ thai sản, Đơn xin thôi việc. |
+| 21 | `don_tu` | **D4** | Quản lý Đơn từ | Bản ghi đơn từ điện tử, trạng thái xét duyệt (`CHO_DUYET`, `DA_DUYET`, `TU_CHOI`) và lý do. |
+| 22 | `ky_luong` | **D5** | Tiền lương & Thu chi | Chu kỳ tính lương theo tháng (Tháng/Năm) và trạng thái khóa sổ (`MO`, `NHAP`, `CHO_DUYET`, `KHOA_SO`). |
+| 23 | `ngan_sach_luong` | **D5** | Tiền lương & Thu chi | Lập kế hoạch hạn mức và kiểm soát ngân sách quỹ lương theo bộ phận và tháng/năm. |
+| 24 | `cau_hinh_khoan_luong` | **D5** | Tiền lương & Thu chi | Tham số định mức tiền thưởng KPI, thưởng doanh thu, thưởng sự kiện (Legacy Bonus). |
+| 25 | `cau_hinh_phu_cap` | **D5** | Tiền lương & Thu chi | Tham số phụ cấp ca đêm (+30%), ăn ca (30.000 VNĐ/công), độc hại, đi lại kèm cờ chịu thuế TNCN. |
+| 26 | `cau_hinh_khau_tru` | **D5** | Tiền lương & Thu chi | Tham số khấu trừ bảo hiểm bắt buộc (10.5%), giảm trừ gia cảnh thuế TNCN và biểu phí phạt trễ/sớm. |
+| 27 | `cau_hinh_tang_ca` | **D5** | Tiền lương & Thu chi | Danh mục hệ số lương tăng ca (OT): ngày thường 1.5, ngày nghỉ tuần 2.0, ngày Lễ/Tết 3.0. |
+| 28 | `phieu_luong` | **D5** | Tiền lương & Thu chi | Bảng tổng hợp thu nhập tháng của từng nhân viên: Lương công, OT, Phụ cấp đêm, Thù lao sự kiện, Thưởng, Khấu trừ, Net. |
+| 29 | `chi_tiet_phieu_luong` | **D5** | Tiền lương & Thu chi | Chi tiết phân rã từng khoản mục thu nhập và khấu trừ cấu thành phiếu lương. |
+| 30 | `chi_tiet_tru_bao_hiem` | **D5** | Tiền lương & Thu chi | Phân rã 3 khoản bảo hiểm trích từ lương người lao động: BHXH (8%), BHYT (1.5%), BHTN (1%). |
+| 31 | `chi_tiet_tru_thue_tncn` | **D5** | Tiền lương & Thu chi | Bản ghi tính thuế TNCN theo biểu thuế lũy tiến từng phần sau khi trừ các khoản giảm trừ gia cảnh. |
+| 32 | `chi_tiet_tru_vi_pham_tam_ung` | **D5** | Tiền lương & Thu chi | Khấu trừ tiền phạt kỷ luật (đi trễ, về sớm, bỏ ca trực) và các khoản khấu trừ khác (bỏ tạm ứng). |
+| 33 | `nhat_ky_quan_tri` | **D6** | Nhật ký & Kiểm toán | Ghi vết kiểm toán quản trị hệ thống: thời điểm, tài khoản thao tác, loại hành động và dữ liệu thay đổi. |
+| 34 | `du_an` | **D9** | Quản lý Dự án & Sự kiện | Lưu trữ thông tin dự án/sự kiện đặc thù (tiệc cưới gala, hội nghị MICE, lễ hội ẩm thực), ngân sách thù lao. |
+| 35 | `nhu_cau_su_kien` | **D9** | Quản lý Dự án & Sự kiện | Định mức nhân sự cần thiết theo từng phòng ban và vai trò trong sự kiện. |
+| 36 | `phan_cong_du_an` | **D9** | Quản lý Dự án & Sự kiện | Phân công nhân sự tham gia sự kiện, vai trò nhiệm vụ, mức thù lao/phụ cấp sự kiện dự kiến. |
+| 37 | `cong_su_kien` | **D9** | Quản lý Dự án & Sự kiện | Ghi nhận thời gian làm việc thực tế và xác nhận công phục vụ sự kiện. |
+| 38 | `quyet_toan_su_kien` | **D9** | Quản lý Dự án & Sự kiện | Quyết toán tổng thù lao sự kiện chuyển sang kỳ lương tháng chi trả. |

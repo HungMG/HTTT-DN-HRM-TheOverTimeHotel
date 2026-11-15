@@ -12,8 +12,35 @@ public sealed class SearchCacheSaveInterceptor(SearchListCache cache, SearchCach
     {
         if (result <= 0) return;
         transactions.MarkDirty(eventData.Context?.Database.CurrentTransaction?.GetDbTransaction());
-        cache.Invalidate();
+
+        if (eventData.Context == null)
+        {
+            cache.Invalidate();
+            return;
+        }
+
+        var entities = eventData.Context.ChangeTracker.Entries()
+            .Select(e => e.Metadata.ClrType.Name)
+            .ToHashSet();
+
+        bool matched = false;
+        if (entities.Contains("NhanVien")) { cache.Invalidate("employees"); matched = true; }
+        if (entities.Contains("HopDong") || entities.Contains("PhuLucLuong")) { cache.Invalidate("contracts"); matched = true; }
+        if (entities.Contains("PhanCa") || entities.Contains("YeuCauDoiCa") || entities.Contains("DinhBienCa") || entities.Contains("DinhBienNgay")) { cache.Invalidate("phanca"); matched = true; }
+        if (entities.Contains("ChamCong") || entities.Contains("GiaiTrinhChamCong")) { cache.Invalidate("attendance"); cache.Invalidate("giai-trinh"); cache.Invalidate("attendance-explanations"); matched = true; }
+        if (entities.Contains("DonTu") || entities.Contains("LoaiDon")) { cache.Invalidate("leave-requests"); matched = true; }
+        if (entities.Contains("TaiKhoan") || entities.Contains("VaiTro") || entities.Contains("YeuCauTaiKhoan")) { cache.Invalidate("accounts"); cache.Invalidate("account-requests"); matched = true; }
+        if (entities.Contains("BangLuong") || entities.Contains("PhieuLuong") || entities.Contains("ChiTietBangLuong")) { cache.Invalidate("payroll"); cache.Invalidate("payroll-config"); matched = true; }
+        if (entities.Contains("PhongBan")) { cache.Invalidate("departments"); cache.Invalidate("employees"); cache.Invalidate("contracts"); matched = true; }
+        if (entities.Contains("ChucVu")) { cache.Invalidate("positions"); cache.Invalidate("employees"); cache.Invalidate("contracts"); matched = true; }
+        if (entities.Contains("CaLamViec")) { cache.Invalidate("shifts"); cache.Invalidate("phanca"); cache.Invalidate("attendance"); matched = true; }
+
+        if (!matched)
+        {
+            cache.Invalidate();
+        }
     }
+
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
         Invalidate(eventData, result);
@@ -36,7 +63,20 @@ public sealed class SearchCacheCommandInterceptor(SearchListCache cache, SearchC
         if (WriteSql.IsMatch(command.CommandText))
         {
             transactions.MarkDirty(command.Transaction);
-            cache.Invalidate();
+            var text = command.CommandText;
+            bool matched = false;
+            if (text.Contains("nhan_vien", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("employees"); matched = true; }
+            if (text.Contains("hop_dong", StringComparison.OrdinalIgnoreCase) || text.Contains("phu_luc_luong", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("contracts"); matched = true; }
+            if (text.Contains("phan_ca", StringComparison.OrdinalIgnoreCase) || text.Contains("yeu_cau_doi_ca", StringComparison.OrdinalIgnoreCase) || text.Contains("dinh_bien", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("phanca"); matched = true; }
+            if (text.Contains("cham_cong", StringComparison.OrdinalIgnoreCase) || text.Contains("giai_trinh", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("attendance"); cache.Invalidate("giai-trinh"); cache.Invalidate("attendance-explanations"); matched = true; }
+            if (text.Contains("don_tu", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("leave-requests"); matched = true; }
+            if (text.Contains("tai_khoan", StringComparison.OrdinalIgnoreCase) || text.Contains("vai_tro", StringComparison.OrdinalIgnoreCase) || text.Contains("yeu_cau_tai_khoan", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("accounts"); cache.Invalidate("account-requests"); matched = true; }
+            if (text.Contains("bang_luong", StringComparison.OrdinalIgnoreCase) || text.Contains("phieu_luong", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("payroll"); cache.Invalidate("payroll-config"); matched = true; }
+
+            if (!matched)
+            {
+                cache.Invalidate();
+            }
         }
     }
     public override int NonQueryExecuted(DbCommand command, CommandExecutedEventData eventData, int result)

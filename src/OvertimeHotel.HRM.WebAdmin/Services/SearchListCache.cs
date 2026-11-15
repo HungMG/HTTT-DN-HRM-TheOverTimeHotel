@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,8 +21,15 @@ public sealed class SearchListCache(IMemoryCache memory, TimeProvider? clock = n
     private const int StripeCount = 64;
     private readonly SemaphoreSlim[] _loadLocks = Enumerable.Range(0, StripeCount).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
     private readonly object _generationLock = new();
-    private CancellationTokenSource _generation = new();
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _prefixGenerations = new(StringComparer.OrdinalIgnoreCase);
+    private CancellationTokenSource _globalGeneration = new();
     private sealed record Snapshot(byte[] Data, DateTimeOffset ExpiresAt);
+
+    private static string ExtractPrefix(string key)
+    {
+        var idx = key.IndexOf(':');
+        return idx > 0 ? key[..idx] : key;
+    }
 
     public async Task<T> GetAsync<T>(string key, Func<Task<T>> load)
     {
@@ -35,17 +43,27 @@ public sealed class SearchListCache(IMemoryCache memory, TimeProvider? clock = n
             {
                 if (!TryRead(cacheKey, out snapshot))
                 {
-                    CancellationToken generation;
-                    lock (_generationLock) generation = _generation.Token;
+                    var prefix = ExtractPrefix(key);
+                    CancellationToken prefixToken;
+                    CancellationToken globalToken;
+                    lock (_generationLock)
+                    {
+                        prefixToken = _prefixGenerations.GetOrAdd(prefix, _ => new CancellationTokenSource()).Token;
+                        globalToken = _globalGeneration.Token;
+                    }
+
                     var data = await load();
                     snapshot = new Snapshot(JsonSerializer.SerializeToUtf8Bytes(data, JsonOptions), _clock.GetUtcNow() + Lifetime);
                     lock (_generationLock)
                     {
                         // A write that finished during this load must not be overwritten by stale data.
-                        if (!generation.IsCancellationRequested)
+                        if (!prefixToken.IsCancellationRequested && !globalToken.IsCancellationRequested)
+                        {
                             memory.Set(cacheKey, snapshot, new MemoryCacheEntryOptions()
                                 .SetAbsoluteExpiration(Lifetime)
-                                .AddExpirationToken(new CancellationChangeToken(generation)));
+                                .AddExpirationToken(new CancellationChangeToken(prefixToken))
+                                .AddExpirationToken(new CancellationChangeToken(globalToken)));
+                        }
                     }
                 }
             }
@@ -58,22 +76,48 @@ public sealed class SearchListCache(IMemoryCache memory, TimeProvider? clock = n
     private bool TryRead(object key, out Snapshot? snapshot) =>
         memory.TryGetValue(key, out snapshot) && snapshot != null && snapshot.ExpiresAt > _clock.GetUtcNow();
 
-    public void Invalidate()
+    public void Invalidate(string? prefix = null)
     {
-        CancellationTokenSource previous;
         lock (_generationLock)
         {
-            previous = _generation;
-            _generation = new CancellationTokenSource();
+            if (!string.IsNullOrWhiteSpace(prefix))
+            {
+                if (_prefixGenerations.TryRemove(prefix, out var cts))
+                {
+                    cts.Cancel();
+                    cts.Dispose();
+                }
+            }
+            else
+            {
+                var prevGlobal = _globalGeneration;
+                _globalGeneration = new CancellationTokenSource();
+                prevGlobal.Cancel();
+                prevGlobal.Dispose();
+
+                foreach (var (_, cts) in _prefixGenerations)
+                {
+                    cts.Cancel();
+                    cts.Dispose();
+                }
+                _prefixGenerations.Clear();
+            }
         }
-        previous.Cancel();
-        previous.Dispose();
     }
 
     public void Dispose()
     {
-        _generation.Cancel();
-        _generation.Dispose();
+        lock (_generationLock)
+        {
+            _globalGeneration.Cancel();
+            _globalGeneration.Dispose();
+            foreach (var (_, cts) in _prefixGenerations)
+            {
+                cts.Cancel();
+                cts.Dispose();
+            }
+            _prefixGenerations.Clear();
+        }
         foreach (var l in _loadLocks)
         {
             l.Dispose();

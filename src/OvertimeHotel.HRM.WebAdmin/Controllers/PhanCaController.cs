@@ -188,8 +188,6 @@ public class PhanCaController : Controller
                         .ThenInclude(n => n!.PhongBan)
                     .Include(p => p.NhanVien)
                         .ThenInclude(n => n!.ChucVu)
-                    .Include(p => p.NhanVien)
-                        .ThenInclude(n => n!.HopDongs)
                     .Include(p => p.CaLamViec)
                     .Include(p => p.ChamCong)
                     .Where(p => p.TrangThai != "DA_HUY" && p.NgayLamViec >= gridStart && p.NgayLamViec <= gridEnd);
@@ -211,6 +209,16 @@ public class PhanCaController : Controller
             });
 
             model.AllGridPhanCa = allGridPhanCas;
+
+            // Tái sử dụng hợp đồng từ DanhSachNhanVien đã nạp sẵn, triệt tiêu subquery HopDongs thừa
+            var empDict = model.DanhSachNhanVien.ToDictionary(n => n.MaNhanVien);
+            foreach (var p in allGridPhanCas)
+            {
+                if (p.NhanVien != null && empDict.TryGetValue(p.MaNhanVien, out var fullEmp))
+                {
+                    p.NhanVien = fullEmp;
+                }
+            }
 
             // 4b. Tải danh mục các ca đã hoán đổi thành công qua quy trình Đổi ca (HR / Quản lý duyệt)
             // để gắn nhãn trực quan trên ma trận tuần và panel nhật ký

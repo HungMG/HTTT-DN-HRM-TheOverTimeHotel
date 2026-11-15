@@ -81,6 +81,7 @@ public static class MauiProgram
 		// quẹt thẻ sẽ rò bộ nhớ socket trên Android.
 		builder.Services.AddSingleton<SupabaseRestClient>();
         builder.Services.AddSingleton<WebAdminApiClient>();
+        builder.Services.AddSingleton<HrSupabaseService>();
 
 		// Ghi nhận vị trí quẹt thẻ để đối chiếu chống gian lận chấm công.
 		builder.Services.AddSingleton<IGeoLocationService, GeoLocationService>();

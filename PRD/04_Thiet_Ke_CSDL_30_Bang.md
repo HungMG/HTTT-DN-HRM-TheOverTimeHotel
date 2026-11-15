@@ -1,6 +1,6 @@
-# PRD 04: Thiết Kế Cơ Sở Dữ Liệu 30 Bảng Chuẩn 3NF (Supabase PostgreSQL)
+# PRD 04: Thiết Kế Cơ Sở Dữ Liệu 38 Bảng Chuẩn 3NF (Supabase PostgreSQL)
 
-> **Tài liệu đặc tả kiến trúc dữ liệu cốt lõi:** Tài liệu này mô tả chi tiết toàn bộ **30 bảng CSDL chuẩn hóa dạng chuẩn 3 (3NF)** đang vận hành trực tiếp trên nền tảng Supabase Cloud (PostgreSQL 17.6), hệ thống bảo mật đa tầng **Row Level Security (RLS)**, các hàm **Stored Functions**, hệ thống **Triggers rào chắn** và cơ chế phân định luồng kiểm soát truy cập giữa **Web Admin Portal** và **Mobile App**.
+> **Tài liệu đặc tả kiến trúc dữ liệu cốt lõi:** Tài liệu này mô tả chi tiết toàn bộ **38 bảng CSDL chuẩn hóa dạng chuẩn 3 (3NF)** đang vận hành trực tiếp trên nền tảng Supabase Cloud (PostgreSQL 17.6), hệ thống bảo mật đa tầng **Row Level Security (RLS)**, các hàm **Stored Functions**, hệ thống **Triggers rào chắn** và cơ chế phân định luồng kiểm soát truy cập giữa **Web Admin Portal** và **Mobile App**.
 
 > **Nguồn đối chiếu & Tiến trình chuẩn hóa mở rộng qua các giai đoạn:**
 > 1. **17 Bảng gốc:** Thiết kế sơ bộ ban đầu cho các nghiệp vụ cốt lõi (Hồ sơ, Hợp đồng, Tài khoản, Phân ca, Chấm công, Đơn từ, Kỳ lương, Cấu hình lương, Phiếu lương).
@@ -8,10 +8,11 @@
 > 3. **25 Bảng (09/10/2026):** Bổ sung bảng thứ 25 `yeu_cau_tai_khoan`, tách riêng bộ phận Công nghệ Thông tin (`ma_phong_ban = 9`) và bổ sung nhóm vai trò thứ 5 (`IT`), thiết lập quy trình kiểm soát cấp tài khoản Mobile App: *HR duyệt HĐLĐ -> IT cấp tài khoản* kèm 4 triggers rào chắn CSDL chống tự cấp và leo quyền.
 > 4. **27 Bảng chính thức (14/10/2026):** Bổ sung 2 bảng `du_an` (Bảng 26) và `phan_cong_du_an` (Bảng 27) phục vụ Phân hệ 9 (Quản lý Dự án & Sự kiện Khách sạn: Tiệc cưới, Hội nghị MICE, Gala Dinner, Đoàn VIP...), hỗ trợ phân công nhân sự và kết chuyển thù lao sự kiện vào bảng lương tháng.
 > 5. **30 Bảng chính thức (20/10/2026):** Bổ sung 3 bảng phục vụ nhóm chức năng 3.0 (Phân ca) và 4.0 (Chấm công) của PRD: `dinh_bien_ca` (Bảng 28 — định biên số người tối thiểu theo ca × chức vụ × bộ phận, phát hiện thiếu người khi xếp ca), `giai_trinh_cham_cong` (Bảng 29 — giải trình sai lệch giờ quẹt thẻ, duyệt 2 cấp Quản lý → HR), `yeu_cau_doi_ca` (Bảng 30 — nhân viên tự nguyện đổi ca trực với đồng nghiệp). Đồng thời mở rộng `cham_cong_trang_thai_check` thêm mã `TRE_VA_SOM` (nhân viên vừa đi trễ vừa về sớm trong cùng một ca).
+> 6. **38 Bảng Hoàn Chỉnh (Tháng 11/2026):** Hoàn thiện 8 bảng chuyên sâu: Thang bảng lương và cấp bậc (`khung_luong_cap_bac`), Lịch sử điều chỉnh lương & phụ cấp theo hợp đồng (`phu_luc_luong`), Định biên nhân sự theo ngày cụ thể (`dinh_bien_ngay`), Chốt & công bố lịch tuần tự động (`cong_bo_lich_tuan`), Định mức nhân sự sự kiện (`nhu_cau_su_kien`), Giờ công thực tế sự kiện (`cong_su_kien`), Quyết toán ngân sách sự kiện (`quyet_toan_su_kien`), và Kế hoạch ngân sách lương tháng được duyệt (`ngan_sach_luong`). Đồng thời chính thức xóa bỏ chức vụ "Giám Sát Ca" (ID = 3) để tinh gọn bộ máy quản trị.
 
 ---
 
-## 1. Danh Mục Tổng Hợp 30 Bảng CSDL
+## 1. Danh Mục Tổng Hợp 38 Bảng CSDL
 
 Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn hóa **dạng chuẩn 3 (3NF)** trên nền tảng Supabase Cloud (PostgreSQL Engine):
 
@@ -19,9 +20,9 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 |:---:|:---|:---|:---|:---|
 | **1** | `phong_ban` | Danh mục các phòng ban, bộ phận khách sạn (FO, HK, F&B, Kỹ thuật, CNTT...) | `ma_phong_ban` | — |
 | **2** | `chuc_vu` | Danh mục vị trí công tác (Bếp trưởng, Lễ tân, Bellman, Trưởng ca, IT Support...) | `ma_chuc_vu` | — |
-| **3** | `nhan_vien` | Hồ sơ lý lịch, thông tin cá nhân, liên hệ (email công vụ + email cá nhân) | `ma_nhan_vien` | `ma_phong_ban`, `ma_chuc_vu` |
-| **4** | `hop_dong` | Hợp đồng lao động pháp lý, lưu thời hạn và mức lương cơ bản | `ma_hop_dong` | `ma_nhan_vien` |
-| **5** | `tai_khoan` | Tài khoản đăng nhập hệ thống, mật khẩu băm, trạng thái kích hoạt boolean | `ma_tai_khoan` | `ma_nhan_vien` (1-1), `ma_vai_tro` |
+| **3** | `nhan_vien` | Hồ sơ lý lịch, thông tin cá nhân, liên hệ (email công vụ + email cá nhân bắt buộc) | `ma_nhan_vien` | `ma_phong_ban`, `ma_chuc_vu` |
+| **4** | `hop_dong` | Hợp đồng lao động pháp lý, lưu thời hạn, hình thức hợp đồng và mức lương cơ bản | `ma_hop_dong` | `ma_nhan_vien` |
+| **5** | `tai_khoan` | Tài khoản đăng nhập hệ thống, mật khẩu băm SHA256, trạng thái kích hoạt boolean | `ma_tai_khoan` | `ma_nhan_vien` (1-1), `ma_vai_tro` |
 | **6** | `vai_tro` | 5 nhóm vai trò chuẩn: Admin, HR, Manager, Employee, IT | `ma_vai_tro` | — |
 | **7** | `quyen` | Danh mục quyền truy cập với mã quyền dạng chuỗi (`ma_quyen_code`) | `ma_quyen` | — |
 | **8** | `vai_tro_quyen` | Bảng trung gian giải quyết quan hệ N - N giữa Vai trò và Quyền (RBAC) | `(ma_vai_tro, ma_quyen)` | `ma_vai_tro`, `ma_quyen` |
@@ -44,9 +45,17 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 | **25** | `nhat_ky_quan_tri` | Nhật ký thao tác quản trị (Audit Log: ai làm gì, lúc nào, giá trị cũ/mới, IP) | `ma_nhat_ky` | `ma_tai_khoan_thuc_hien`, `ma_tai_khoan_bi_tac_dong` |
 | **26** | `du_an` | Danh mục Dự án / Sự kiện Khách sạn (Tiệc cưới, MICE, Gala, Hội nghị, Bảo trì...) | `ma_du_an` | `ma_nguoi_quan_ly` (FK -> `nhan_vien`) |
 | **27** | `phan_cong_du_an` | Phân công nhân sự & Thù lao sự kiện, liên kết kết chuyển lương tháng | `ma_phan_cong` | `ma_du_an`, `ma_nhan_vien`, `ma_chi_tiet` (FK -> `chi_tiet_phieu_luong`) |
-| **28** | `dinh_bien_ca` | Định biên nhân sự tối thiểu cho từng bộ ba Ca × Chức vụ × Bộ phận, làm cơ sở cảnh báo thiếu người khi xếp ca | `ma_dinh_bien` | `ma_ca`, `ma_chuc_vu`, `ma_phong_ban` (NULL = dùng chung) |
+| **28** | `dinh_bien_ca` | Định biên nhân sự tối thiểu cho từng bộ ba Ca × Chức vụ × Bộ phận, cảnh báo thiếu người | `ma_dinh_bien` | `ma_ca`, `ma_chuc_vu`, `ma_phong_ban` (NULL = dùng chung) |
 | **29** | `giai_trinh_cham_cong` | Giải trình sai lệch giờ vào/ra, duyệt 2 cấp Quản lý xác minh → HR xác nhận | `ma_giai_trinh` | `ma_phan_ca`, `ma_nhan_vien`, `ma_quan_ly_xac_minh`, `ma_hr_xac_nhan` |
 | **30** | `yeu_cau_doi_ca` | Yêu cầu đổi ca trực giữa hai nhân viên, kèm trạng thái duyệt và phản hồi | `ma_yeu_cau` | `ma_phan_ca_gui`, `ma_phan_ca_nhan`, `ma_nhan_vien_gui`, `ma_nhan_vien_nhan`, `ma_nguoi_duyet` |
+| **31** | `khung_luong_cap_bac` | Thang bảng lương và dải thu nhập min-max theo nhóm chức vụ, học vấn và thâm niên | `ma_khung_luong` | — |
+| **32** | `phu_luc_luong` | Lịch sử biến động lương cơ bản, chức vụ, bộ phận ký bổ sung theo hợp đồng lao động | `ma_phu_luc` | `ma_hop_dong` (FK -> `hop_dong`) |
+| **33** | `dinh_bien_ngay` | Định biên nhân sự tăng cường linh hoạt theo từng ngày cụ thể (Lễ, Tết, Cao điểm) | `ma_dinh_bien_ngay`| `ma_ca`, `ma_chuc_vu`, `ma_phong_ban` |
+| **34** | `cong_bo_lich_tuan` | Lịch sử khóa sổ và công bố lịch làm việc tuần tự động cho Mobile App | `dau_tuan` | `ma_nguoi_cong_bo` |
+| **35** | `nhu_cau_su_kien` | Định mức nhân sự cần thiết theo từng phòng ban và vai trò trong sự kiện | `ma_nhu_cau` | `ma_du_an` (FK -> `du_an`) |
+| **36** | `cong_su_kien` | Ghi nhận giờ bắt đầu, kết thúc và xác nhận công phục vụ sự kiện thực tế | `ma_cong` | `ma_phan_cong` (FK -> `phan_cong_du_an`) |
+| **37** | `quyet_toan_su_kien` | Quyết toán tổng thù lao sự kiện chuyển sang kỳ lương tháng chi trả | `ma_quyet_toan` | `ma_du_an`, `ma_nhan_vien`, `ma_ky_chi_tra`, `ma_chi_tiet` |
+| **38** | `ngan_sach_luong` | Lập kế hoạch hạn mức và kiểm soát ngân sách quỹ lương theo tháng/năm | `ma_ngan_sach` | `ma_phong_ban`, `nguoi_tao`, `nguoi_duyet` |
 
 ---
 
@@ -59,9 +68,9 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 
 ### Bảng 2: `chuc_vu` (Chức vụ / Vị trí)
 - `ma_chuc_vu` (SERIAL, PK): Mã định danh chức vụ.
-- `ten_chuc_vu` (VARCHAR(100), NOT NULL, UNIQUE): Tên chức danh nghề nghiệp (Bếp trưởng, Lễ tân, Bellman, Trưởng ca, IT Support, IT Manager...).
+- `ten_chuc_vu` (VARCHAR(100), NOT NULL, UNIQUE): Tên chức danh nghề nghiệp (Bếp trưởng, Lễ tân, Bellman, Trưởng Bộ Phận, Kỹ sư, Chuyên viên HR, IT Support, IT Manager...).
 - `mo_ta` (VARCHAR(255), NULL): Mô tả tiêu chuẩn chuyên môn.
-- `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NULL, ON DELETE SET NULL): Phòng ban trực thuộc (để `NULL` nếu là chức danh chung trải nhiều bộ phận như Trưởng Bộ Phận, Giám Sát Ca).
+- `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NULL, ON DELETE SET NULL): Phòng ban trực thuộc (để `NULL` nếu là chức danh chung trải nhiều bộ phận như Trưởng Bộ Phận. **Lưu ý nghiệp vụ:** Chức vụ "Giám Sát Ca" ID = 3 cũ đã chính thức giải thể theo migration `20261106_remove_giam_sat_ca_position.sql` để tinh gọn quản trị 2 cấp: Trưởng Bộ Phận và Nhân Viên).
 - `che_do_lam_viec` (VARCHAR(50), NOT NULL, DEFAULT 'CA_247'): Chế độ làm việc chuẩn (`CA_247` hoặc `HANH_CHINH`).
 
 ### Bảng 3: `nhan_vien` (Hồ sơ nhân viên)
@@ -418,25 +427,55 @@ Hệ thống CSDL HRM The OverTime Hotel được thiết kế đạt chuẩn h�
 
 ---
 
-### 2.1. Nhóm 7 Bảng Mở Rộng Chuyên Sâu (Phân Hệ Sự Kiện, Ngân Sách & Vận Hành)
+### 2.1. Nhóm 8 Bảng Mở Rộng Chuyên Sâu (Thang Bảng Lương, Phụ Lục, Sự Kiện & Ngân Sách)
 
-Bên cạnh 30 bảng nghiệp vụ cốt lõi, CSDL Supabase Cloud của khách sạn còn mở rộng thêm **7 bảng chuyên sâu** phục vụ quản lý sự kiện khách sạn 5★ (Phân hệ 9), lập kế hoạch ngân sách quỹ lương (Phân hệ 10) và quản lý công bố lịch ca:
+Bên cạnh 30 bảng nghiệp vụ cốt lõi, CSDL Supabase Cloud của khách sạn hoàn thiện thêm **8 bảng chuyên sâu** phục vụ quản trị thang bảng lương cấp bậc, phụ lục hợp đồng, quản lý sự kiện khách sạn 5★ (Phân hệ 9), lập kế hoạch ngân sách quỹ lương (Phân hệ 10) và quản lý công bố lịch ca:
 
-#### Bảng 31: `dia_diem_su_kien` (Khu vực / Sảnh tổ chức sự kiện)
-- `ma_dia_diem` (SERIAL, PK): Mã định danh địa điểm.
-- `ten_dia_diem` (VARCHAR(150), NOT NULL, UNIQUE): Tên sảnh tiệc / hội trường (Grand Ballroom, Lotus Hall, Rooftop Sky Bar...).
-- `suc_chua` (INT, NOT NULL, CHECK >= 0): Sức chứa tối đa số lượng khách.
-- `dang_su_dung` (BOOLEAN, NOT NULL, DEFAULT TRUE): Trạng thái sẵn sàng tiếp nhận sự kiện.
+#### Bảng 31: `khung_luong_cap_bac` (Thang bảng lương cấp bậc chuẩn hóa)
+- `ma_khung_luong` (SERIAL, PK): Mã định danh thang bảng lương.
+- `nhom_chuc_vu` (VARCHAR(100), NOT NULL): Nhóm chức danh nghề nghiệp (Quản lý, Chuyên viên, Lễ tân, Bếp, Buồng phòng, Phục vụ, An ninh, Kỹ thuật...).
+- `trinh_do` (VARCHAR(50), NULL): Yêu cầu trình độ học vấn / chứng chỉ nghề (Đại học, Cao đẳng, Trung cấp, Chứng chỉ nghề quốc tế...).
+- `tham_nien_tu_thang` (INT, NULL): Mốc thâm niên tối thiểu (tháng).
+- `tham_nien_den_thang` (INT, NULL): Mốc thâm niên tối đa (tháng).
+- `luong_toi_thieu` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Mức lương cơ bản sàn của cấp bậc.
+- `luong_toi_da` (DECIMAL(15,2), NOT NULL, CHECK >= luong_toi_thieu): Mức lương cơ bản trần của cấp bậc.
+- *Nghiệp vụ:* Làm căn cứ đối soát tự động khi HR ký hợp đồng lao động hoặc điều chỉnh phụ lục lương, chống chi vượt khung hoặc trả dưới chuẩn quy định.
 
-#### Bảng 32: `nhu_cau_su_kien` (Định mức nhân sự cần thiết theo sự kiện)
+#### Bảng 32: `phu_luc_luong` (Phụ lục hợp đồng lao động)
+- `ma_phu_luc` (BIGSERIAL, PK): Mã định danh phụ lục hợp đồng.
+- `ma_hop_dong` (INT, FK -> hop_dong.ma_hop_dong, NOT NULL, ON DELETE CASCADE): Hợp đồng gốc được ký phụ lục bổ sung.
+- `ngay_hieu_luc` (DATE, NOT NULL): Ngày mức lương hoặc vị trí mới chính thức áp dụng.
+- `luong_co_ban_moi` (DECIMAL(15,2), NOT NULL, CHECK >= 0): Mức lương cơ bản mới thỏa thuận.
+- `ly_do` (VARCHAR(500), NOT NULL): Căn cứ điều chỉnh (Tăng lương định kỳ, Thăng chức, Bổ nhiệm, Đạt chứng chỉ...).
+- `nguoi_tao` (VARCHAR(100), NOT NULL): Tên cán bộ HR lập phụ lục.
+- `tao_luc` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Mốc thời gian hệ thống ghi nhận.
+- `ma_chuc_vu_moi` (INT, FK -> chuc_vu.ma_chuc_vu, NULL, ON DELETE SET NULL): Chức vụ mới nếu có điều chuyển bổ nhiệm kèm theo (NULL nếu chỉ tăng lương thuần túy).
+- `ma_phong_ban_moi` (INT, FK -> phong_ban.ma_phong_ban, NULL, ON DELETE SET NULL): Phòng ban mới nếu có điều chuyển đơn vị.
+
+#### Bảng 33: `dinh_bien_ngay` (Định biên nhân sự linh hoạt theo ngày cụ thể)
+- `ma_dinh_bien_ngay` (SERIAL, PK): Mã bản ghi định biên ngày.
+- `ngay` (DATE, NOT NULL): Ngày cụ thể áp dụng định biên đặc biệt (ngày lễ, ngày sự kiện cao điểm, cuối tuần).
+- `ma_ca` (INT, FK -> ca_lam_viec.ma_ca, NOT NULL, ON DELETE CASCADE): Ca làm việc áp dụng.
+- `ma_chuc_vu` (INT, FK -> chuc_vu.ma_chuc_vu, NOT NULL, ON DELETE CASCADE): Chức vụ cần tăng cường nhân sự.
+- `so_nguoi_toi_thieu` (INT, NOT NULL, DEFAULT 1, CHECK >= 1): Số nhân sự tối thiểu trong ngày đó.
+- `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NULL, ON DELETE CASCADE): Bộ phận áp dụng (NULL = dùng chung). Dòng đè theo ngày ghi đè lên định mức nền của `dinh_bien_ca`.
+
+#### Bảng 34: `cong_bo_lich_tuan` (Lịch sử công bố lịch phân ca theo tuần)
+- `dau_tuan` (DATE, PK): Ngày thứ Hai đầu tuần công bố lịch.
+- `version` (BIGINT, NOT NULL, DEFAULT 1): Số phiên bản công bố lịch (hỗ trợ tái công bố khi có điều chỉnh đột xuất).
+- `ma_nguoi_cong_bo` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Cán bộ HR hoặc Quản lý thực hiện công bố.
+- `ngay_cong_bo` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm công bố lịch tuần cho Mobile App.
+- `ly_do` (VARCHAR(255), NULL): Ghi chú hoặc lý do tái công bố lịch.
+
+#### Bảng 35: `nhu_cau_su_kien` (Định mức nhân sự cần thiết theo sự kiện)
 - `ma_nhu_cau` (SERIAL, PK): Mã dòng nhu cầu.
 - `ma_du_an` (INT, FK -> du_an.ma_du_an, NOT NULL, ON DELETE CASCADE): Sự kiện cần nhân lực.
-- `ma_phong_ban` (VARCHAR(50), NOT NULL): Bộ phận cung cấp nhân sự (F&B, HK, An ninh...).
-- `vai_tro` (VARCHAR(100), NOT NULL): Vị trí công tác cần bổ sung.
+- `ma_phong_ban` (VARCHAR(50), NOT NULL): Bộ phận cung cấp nhân sự (F&B, HK, An ninh, Tiền sảnh...).
+- `vai_tro` (VARCHAR(100), NOT NULL): Vị trí công tác cần bổ sung phục vụ sự kiện.
 - `so_nguoi` (INT, NOT NULL, CHECK >= 1): Số lượng nhân sự cần thiết.
 - `la_mau` (BOOLEAN, NOT NULL, DEFAULT FALSE): Đánh dấu định mức mẫu cho các sự kiện cùng loại.
 
-#### Bảng 33: `cong_su_kien` (Ghi nhận công sự kiện thực tế)
+#### Bảng 36: `cong_su_kien` (Ghi nhận công sự kiện thực tế)
 - `ma_cong` (SERIAL, PK): Mã bản ghi công sự kiện.
 - `ma_phan_cong` (INT, FK -> phan_cong_du_an.ma_phan_cong, NOT NULL, ON DELETE CASCADE): Lượt phân công tương ứng.
 - `bat_dau` (TIMESTAMPTZ, NOT NULL): Thời gian bắt đầu làm việc thực tế tại sự kiện.
@@ -444,7 +483,7 @@ Bên cạnh 30 bảng nghiệp vụ cốt lõi, CSDL Supabase Cloud của khách
 - `ma_nguoi_xac_nhan` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Quản lý sự kiện xác nhận giờ công.
 - `ngay_xac_nhan` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Mốc thời gian xác nhận.
 
-#### Bảng 34: `quyet_toan_su_kien` (Quyết toán thù lao sự kiện vào kỳ lương)
+#### Bảng 37: `quyet_toan_su_kien` (Quyết toán thù lao sự kiện vào kỳ lương)
 - `ma_quyet_toan` (SERIAL, PK): Mã quyết toán.
 - `ma_du_an` (INT, FK -> du_an.ma_du_an, NOT NULL, ON DELETE CASCADE): Dự án sự kiện đã hoàn tất.
 - `ma_nhan_vien` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE CASCADE): Nhân sự nhận thù lao.
@@ -452,12 +491,12 @@ Bên cạnh 30 bảng nghiệp vụ cốt lõi, CSDL Supabase Cloud của khách
 - `ma_ky_chi_tra` (INT, FK -> ky_luong.ma_ky_luong, NOT NULL, ON DELETE RESTRICT): Kỳ lương chi trả thù lao.
 - `so_phut` (NUMERIC, NOT NULL, CHECK >= 0): Tổng số phút phục vụ sự kiện thực tế.
 - `so_tien` (NUMERIC, NOT NULL, CHECK >= 0): Số tiền thù lao quyết toán.
-- `can_cu_tinh` (TEXT, NOT NULL): Diễn giải công thức và căn cứ tính thù lao.
+- `can_cu_tinh` (TEXT, NOT NULL): Diễn giải công thức và căn cứ tính thù lao (chuỗi JSON).
 - `ma_chi_tiet` (INT, FK -> chi_tiet_phieu_luong.ma_chi_tiet, NULL, ON DELETE SET NULL): Liên kết sang dòng phụ cấp trên phiếu lương.
 - `ma_nguoi_duyet` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Người duyệt quyết toán.
 - `ngay_duyet` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm duyệt quyết toán.
 
-#### Bảng 35: `ngan_sach_luong` (Lập kế hoạch & kiểm soát ngân sách quỹ lương)
+#### Bảng 38: `ngan_sach_luong` (Lập kế hoạch & kiểm soát ngân sách quỹ lương)
 - `ma_ngan_sach` (UUID, PK, DEFAULT gen_random_uuid()): Mã định danh ngân sách.
 - `version` (BIGINT, NOT NULL, DEFAULT 1): Phiên bản kiểm soát tương tranh.
 - `nam` (INT, NOT NULL): Năm tài chính áp dụng.
@@ -470,21 +509,6 @@ Bên cạnh 30 bảng nghiệp vụ cốt lõi, CSDL Supabase Cloud của khách
 - `nguoi_duyet` (INT, FK -> nhan_vien.ma_nhan_vien, NULL, ON DELETE SET NULL): Ban Giám đốc phê duyệt hạn mức.
 - `ngay_duyet` (TIMESTAMPTZ, NULL): Thời điểm phê duyệt.
 - `ghi_chu` (TEXT, NULL): Thuyết minh ngân sách.
-
-#### Bảng 36: `cong_bo_lich_tuan` (Lịch sử công bố lịch phân ca theo tuần)
-- `dau_tuan` (DATE, PK): Ngày thứ Hai đầu tuần công bố lịch.
-- `version` (BIGINT, NOT NULL, DEFAULT 1): Số phiên bản công bố lịch.
-- `ma_nguoi_cong_bo` (INT, FK -> nhan_vien.ma_nhan_vien, NOT NULL, ON DELETE RESTRICT): Cán bộ HR hoặc Quản lý thực hiện công bố.
-- `ngay_cong_bo` (TIMESTAMPTZ, NOT NULL, DEFAULT CURRENT_TIMESTAMP): Thời điểm công bố lịch tuần cho Mobile App.
-- `ly_do` (VARCHAR(255), NULL): Ghi chú hoặc lý do tái công bố lịch.
-
-#### Bảng 37: `dinh_bien_ngay` (Định biên nhân sự linh hoạt theo ngày cụ thể)
-- `ma_dinh_bien_ngay` (SERIAL, PK): Mã bản ghi định biên ngày.
-- `ngay` (DATE, NOT NULL): Ngày cụ thể áp dụng định biên đặc biệt (ngày lễ, ngày sự kiện cao điểm).
-- `ma_ca` (INT, FK -> ca_lam_viec.ma_ca, NOT NULL, ON DELETE CASCADE): Ca làm việc áp dụng.
-- `ma_chuc_vu` (INT, FK -> chuc_vu.ma_chuc_vu, NOT NULL, ON DELETE CASCADE): Chức vụ cần tăng cường nhân sự.
-- `so_nguoi_toi_thieu` (INT, NOT NULL, DEFAULT 1, CHECK >= 1): Số nhân sự tối thiểu trong ngày đó.
-- `ma_phong_ban` (INT, FK -> phong_ban.ma_phong_ban, NULL, ON DELETE CASCADE): Bộ phận áp dụng (NULL = dùng chung).
 
 ---
 
@@ -525,11 +549,11 @@ Khi ứng dụng di động **The OverTime Hotel Mobile App** (.NET MAUI) kết 
 
 ---
 
-### 3.2. Ma Trận Toàn Bộ Chính Sách RLS Trên 30 Bảng CSDL
+### 3.2. Ma Trận Toàn Bộ Chính Sách RLS Trên 38 Bảng CSDL
 
-Trên Supabase Cloud của khách sạn The OverTime Hotel, **100% các bảng (30/30 bảng)** trong schema `public` đều đã được kích hoạt `ROW LEVEL SECURITY`. Không có bất kỳ bảng nào hoạt động ở trạng thái mở tự do (Unsecured).
+Trên Supabase Cloud của khách sạn The OverTime Hotel, **100% các bảng (38/38 bảng)** trong schema `public` đều đã được kích hoạt `ROW LEVEL SECURITY`. Không có bất kỳ bảng nào hoạt động ở trạng thái mở tự do (Unsecured).
 
-#### Bảng Ma Trận Tổng Hợp Phân Quyền RLS 30 Bảng:
+#### Bảng Ma Trận Tổng Hợp Phân Quyền RLS 38 Bảng:
 
 | STT | Tên Bảng CSDL | Tên Policy RLS | Lệnh Áp Dụng | Đối Tượng Áp Dụng | Điều Kiện Biểu Thức `USING` / `WITH CHECK` |
 |:---:|:---|:---|:---:|:---:|:---|
@@ -563,6 +587,14 @@ Trên Supabase Cloud của khách sạn The OverTime Hotel, **100% các bảng (
 | **28** | `dinh_bien_ca` | `doc_dinh_bien_ca`<br>`ghi_dinh_bien_ca` | SELECT<br>ALL | `authenticated` | • `doc_dinh_bien_ca`: `auth.uid() IS NOT NULL`<br>• `ghi_dinh_bien_ca`: `public.vai_tro_hien_tai() IN (1, 2, 3)` (Chỉ Quản lý/HR/Admin cấu hình định biên). |
 | **29** | `giai_trinh_cham_cong` | `doc_giai_trinh_cham_cong`<br>`them_giai_trinh_cham_cong`<br>`sua_giai_trinh_cham_cong` | SELECT<br>INSERT<br>UPDATE | `authenticated` | • `doc_giai_trinh_cham_cong`: `ma_nhan_vien = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()`<br>• `them_giai_trinh_cham_cong`: `WITH CHECK (ma_nhan_vien = public.nhan_vien_hien_tai())`<br>• `sua_giai_trinh_cham_cong`: Quản lý xác minh cấp 1 và HR xác nhận cấp 2. |
 | **30** | `yeu_cau_doi_ca` | `doc_yeu_cau_doi_ca`<br>`them_yeu_cau_doi_ca`<br>`sua_yeu_cau_doi_ca` | SELECT<br>INSERT<br>UPDATE | `authenticated` | • `doc_yeu_cau_doi_ca`: `ma_nhan_vien_gui = public.nhan_vien_hien_tai() OR ma_nhan_vien_nhan = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()`<br>• `them_yeu_cau_doi_ca`: `WITH CHECK (ma_nhan_vien_gui = public.nhan_vien_hien_tai())`<br>• `sua_yeu_cau_doi_ca`: Người nhận đồng ý (`ma_nhan_vien_nhan = public.nhan_vien_hien_tai()`) hoặc Quản lý phê duyệt (`public.la_quan_ly_hien_tai()`). |
+| **31** | `khung_luong_cap_bac` | `doc_khung_luong_cap_bac` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc thang bảng lương công khai để đối soát. Ghi sửa cấu hình chỉ dành cho Admin/HR qua `service_role`. |
+| **32** | `phu_luc_luong` | `doc_phu_luc_luong` | SELECT | `authenticated` | `EXISTS (SELECT 1 FROM hop_dong hd WHERE hd.ma_hop_dong = phu_luc_luong.ma_hop_dong AND (hd.ma_nhan_vien = public.nhan_vien_hien_tai() OR public.vai_tro_hien_tai() IN (1, 2)))`. Nhân viên chỉ xem phụ lục của chính mình. |
+| **33** | `dinh_bien_ngay` | `doc_dinh_bien_ngay`<br>`ghi_dinh_bien_ngay` | SELECT<br>ALL | `authenticated` | • `doc_dinh_bien_ngay`: `auth.uid() IS NOT NULL`<br>• `ghi_dinh_bien_ngay`: `public.vai_tro_hien_tai() IN (1, 2, 3)` (Quản lý/HR/Admin cấu hình định biên theo ngày). |
+| **34** | `cong_bo_lich_tuan` | `doc_cong_bo_lich_tuan` | SELECT | `authenticated` | `auth.uid() IS NOT NULL`. Đọc trạng thái công bố lịch tuần cho Mobile App. Ghi chốt tuần chỉ dành cho Quản lý/HR. |
+| **35** | `nhu_cau_su_kien` | `doc_nhu_cau_su_kien`<br>`ghi_nhu_cau_su_kien` | SELECT<br>ALL | `authenticated` | • `doc_nhu_cau_su_kien`: `auth.uid() IS NOT NULL`<br>• `ghi_nhu_cau_su_kien`: `public.vai_tro_hien_tai() IN (1, 2, 3)` (Quản lý sự kiện, HR, Admin). |
+| **36** | `cong_su_kien` | `doc_cong_su_kien`<br>`ghi_cong_su_kien` | SELECT<br>ALL | `authenticated` | • `doc_cong_su_kien`: `EXISTS (SELECT 1 FROM phan_cong_du_an pc WHERE pc.ma_phan_cong = cong_su_kien.ma_phan_cong AND (pc.ma_nhan_vien = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()))`<br>• `ghi_cong_su_kien`: Quản lý phụ trách sự kiện xác nhận công. |
+| **37** | `quyet_toan_su_kien` | `doc_quyet_toan_su_kien` | SELECT | `authenticated` | `ma_nhan_vien = public.nhan_vien_hien_tai() OR public.la_quan_ly_hien_tai()`. Nhân viên xem thù lao của mình, Quản lý/HR/Admin xem toàn bộ. |
+| **38** | `ngan_sach_luong` | `doc_ngan_sach_luong` | SELECT | `authenticated` | `public.vai_tro_hien_tai() IN (1, 2, 3)`. Admin, HR và Quản lý bộ phận theo dõi ngân sách quỹ lương. Ghi hạn mức chỉ dành cho Admin và Giám Đốc. |
 
 ---
 
@@ -787,7 +819,7 @@ Nhằm bảo đảm toàn vẹn dữ liệu ở cấp độ phần cứng CSDL (
 
 ---
 
-## 5. Mạng Lưới Quan Hệ Liên Kết & Sơ Đồ Thực Thể (ERD 30 Bảng 3NF)
+## 5. Mạng Lưới Quan Hệ Liên Kết & Sơ Đồ Thực Thể (ERD 38 Bảng 3NF)
 
 ### 5.1. Sơ đồ thực thể quan hệ hoàn chỉnh (Mermaid ERD)
 
@@ -798,6 +830,9 @@ erDiagram
     chuc_vu ||--o{ nhan_vien : "dam nhiem chuc vu"
     nhan_vien ||--o{ hop_dong : "ky ket hop dong"
     nhan_vien ||--o| tai_khoan : "so huu tai khoan 1-1"
+    hop_dong ||--o{ phu_luc_luong : "dieu chinh phu luc"
+    chuc_vu ||--o{ phu_luc_luong : "chuc vu moi bo nhiem"
+    phong_ban ||--o{ phu_luc_luong : "phong ban moi dieu chuyen"
 
     %% PHAN HE 2: TAI KHOAN, RBAC & AUDIT LOG
     vai_tro ||--o{ tai_khoan : "phan bo vai tro"
@@ -818,11 +853,16 @@ erDiagram
     ca_lam_viec ||--o{ phan_ca : "loai ca truc duoc phan"
     nhan_vien ||--o{ phan_ca : "nhan vien duoc xep ca"
     phan_ca ||--o| cham_cong : "quet the vao ra 1-1"
+    nhan_vien ||--o{ cong_bo_lich_tuan : "HR quan ly cong bo tuan"
 
     %% DINH BIEN, GIAI TRINH & DOI CA (PRD 3.4 / 3.5 / 4.5)
     ca_lam_viec ||--o{ dinh_bien_ca : "dinh muc nguoi toi thieu"
     chuc_vu ||--o{ dinh_bien_ca : "theo tung chuc vu"
     phong_ban ||--o{ dinh_bien_ca : "theo tung bo phan (NULL = dung chung)"
+    ca_lam_viec ||--o{ dinh_bien_ngay : "dinh bien rieng theo ngay"
+    chuc_vu ||--o{ dinh_bien_ngay : "chuc vu tang cuong theo ngay"
+    phong_ban ||--o{ dinh_bien_ngay : "bo phan ap dung theo ngay"
+
     phan_ca ||--o{ giai_trinh_cham_cong : "ca bi giai trinh"
     nhan_vien ||--o{ giai_trinh_cham_cong : "nguoi gui giai trinh"
     nhan_vien ||--o{ giai_trinh_cham_cong : "quan ly xac minh cap 1"
@@ -838,7 +878,7 @@ erDiagram
     nhan_vien ||--o{ don_tu : "nhan vien nop don"
     nhan_vien ||--o{ don_tu : "quan ly xet duyet don"
 
-    %% PHAN HE 5: TIEN LUONG & THU CHI 3 CAP
+    %% PHAN HE 5: TIEN LUONG & THU CHI 3 CAP & NGAN SACH
     ky_luong ||--o{ phieu_luong : "thuoc ky tinh luong"
     nhan_vien ||--o{ phieu_luong : "nhan phieu luong"
     phieu_luong ||--o{ chi_tiet_phieu_luong : "chi tiet dong thu chi"
@@ -852,10 +892,21 @@ erDiagram
     chi_tiet_phieu_luong ||--o| chi_tiet_tru_thue_tncn : "tinh thue TNCN luy tien 1-1"
     chi_tiet_phieu_luong ||--o| chi_tiet_tru_vi_pham_tam_ung : "tinh vi pham tam ung 1-1"
 
+    phong_ban ||--o{ ngan_sach_luong : "ngan sach bo phan"
+    nhan_vien ||--o{ ngan_sach_luong : "nguoi lap ke hoach"
+    nhan_vien ||--o{ ngan_sach_luong : "giam doc phe duyet"
+
     %% PHAN HE 9: QUAN LY DU AN & SU KIEN KHACH SAN
     nhan_vien ||--o{ du_an : "quan ly truong ban to chuc"
+    du_an ||--o{ nhu_cau_su_kien : "dinh muc nhan luc su kien"
     du_an ||--o{ phan_cong_du_an : "phan bo vi tri su kien"
     nhan_vien ||--o{ phan_cong_du_an : "nhan vien tham gia su kien"
+    phan_cong_du_an ||--o{ cong_su_kien : "cham cong thuc te su kien"
+    nhan_vien ||--o{ cong_su_kien : "quan ly xac nhan cong"
+    du_an ||--o{ quyet_toan_su_kien : "quyet toan tong the su kien"
+    nhan_vien ||--o{ quyet_toan_su_kien : "nhan su thu huong thu lao"
+    ky_luong ||--o{ quyet_toan_su_kien : "ky luong chi tra"
+    chi_tiet_phieu_luong ||--o| quyet_toan_su_kien : "ket chuyen thù lao vao luong"
     chi_tiet_phieu_luong ||--o| phan_cong_du_an : "ket chuyen thu lao vao luong"
 ```
 
@@ -866,6 +917,9 @@ erDiagram
 | `nhan_vien` | `ma_phong_ban` | `phong_ban(ma_phong_ban)` | N - 1 | RESTRICT | Nhân viên trực thuộc một phòng ban. Không thể xóa phòng ban nếu còn nhân sự. |
 | `nhan_vien` | `ma_chuc_vu` | `chuc_vu(ma_chuc_vu)` | N - 1 | RESTRICT | Nhân viên đảm nhiệm một chức vụ chuyên môn. |
 | `hop_dong` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | HĐLĐ thuộc về nhân viên. Xóa nhân viên xóa hợp đồng liên quan. |
+| `phu_luc_luong` | `ma_hop_dong` | `hop_dong(ma_hop_dong)` | N - 1 | CASCADE | Phụ lục hợp đồng điều chỉnh mức lương/vị trí. Xóa HĐLĐ xóa phụ lục. |
+| `phu_luc_luong` | `ma_chuc_vu_moi` | `chuc_vu(ma_chuc_vu)` | N - 1 | SET NULL | Chức vụ mới khi bổ nhiệm thăng chức. |
+| `phu_luc_luong` | `ma_phong_ban_moi`| `phong_ban(ma_phong_ban)` | N - 1 | SET NULL | Phòng ban mới khi điều chuyển công tác. |
 | `tai_khoan` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | 1 - 1 | CASCADE | Mỗi nhân viên có tối đa 1 tài khoản đăng nhập (UNIQUE). |
 | `tai_khoan` | `ma_vai_tro` | `vai_tro(ma_vai_tro)` | N - 1 | RESTRICT | Tài khoản được phân vào một nhóm vai trò bảo mật. |
 | `vai_tro_quyen` | `ma_vai_tro` | `vai_tro(ma_vai_tro)` | N - 1 | CASCADE | Khóa ghép RBAC: vai trò liên kết quyền. |
@@ -898,15 +952,30 @@ erDiagram
 | `phan_cong_du_an` | `ma_du_an` | `du_an(ma_du_an)` | N - 1 | CASCADE | Dự án sự kiện tiếp nhận nhân sự. Xóa sự kiện xóa phân công. |
 | `phan_cong_du_an` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Nhân sự khách sạn được điều động phục vụ sự kiện. |
 | `phan_cong_du_an` | `ma_chi_tiet` | `chi_tiet_phieu_luong(ma_chi_tiet)` | 1 - 1 | SET NULL | Kết chuyển thù lao sự kiện vào dòng phụ cấp trên phiếu lương tháng. |
+| `nhu_cau_su_kien` | `ma_du_an` | `du_an(ma_du_an)` | N - 1 | CASCADE | Sự kiện tiếp nhận định mức nhân sự. Xóa sự kiện xóa định mức. |
+| `cong_su_kien` | `ma_phan_cong` | `phan_cong_du_an(ma_phan_cong)` | N - 1 | CASCADE | Ghi nhận thời gian làm việc thực tế cho lượt phân công. |
+| `cong_su_kien` | `ma_nguoi_xac_nhan` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Quản lý xác nhận giờ công sự kiện. |
+| `quyet_toan_su_kien` | `ma_du_an` | `du_an(ma_du_an)` | N - 1 | CASCADE | Quyết toán thù lao dự án sự kiện hoàn tất. |
+| `quyet_toan_su_kien` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Nhân sự nhận quyết toán thù lao. |
+| `quyet_toan_su_kien` | `ma_ky_chi_tra` | `ky_luong(ma_ky_luong)` | N - 1 | RESTRICT | Kỳ lương thanh toán thù lao. |
+| `quyet_toan_su_kien` | `ma_chi_tiet` | `chi_tiet_phieu_luong(ma_chi_tiet)` | 1 - 1 | SET NULL | Khóa ngoại liên kết dòng phụ cấp trên phiếu lương. |
+| `quyet_toan_su_kien` | `ma_nguoi_duyet` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Cán bộ duyệt quyết toán. |
+| `cong_bo_lich_tuan` | `ma_nguoi_cong_bo` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Cán bộ HR/Quản lý chốt và công bố lịch tuần. |
 | `dinh_bien_ca` | `ma_ca` | `ca_lam_viec(ma_ca)` | N - 1 | CASCADE | Định biên thuộc một ca mẫu. Xóa ca xóa luôn định biên của ca đó. |
 | `dinh_bien_ca` | `ma_chuc_vu` | `chuc_vu(ma_chuc_vu)` | N - 1 | CASCADE | Định biên đếm số người theo chức vụ chuyên môn. |
-| `dinh_bien_ca` | `ma_phong_ban` | `phong_ban(ma_phong_ban)` | N - 1 | CASCADE | Bộ phận áp dụng; `NULL` là dùng chung mọi bộ phận. Cần thiết cho chức danh trải nhiều bộ phận (Trưởng Bộ Phận, Giám Sát Ca). |
+| `dinh_bien_ca` | `ma_phong_ban` | `phong_ban(ma_phong_ban)` | N - 1 | CASCADE | Bộ phận áp dụng; `NULL` là dùng chung mọi bộ phận. |
+| `dinh_bien_ngay` | `ma_ca` | `ca_lam_viec(ma_ca)` | N - 1 | CASCADE | Định biên tăng cường ngày theo ca. |
+| `dinh_bien_ngay` | `ma_chuc_vu` | `chuc_vu(ma_chuc_vu)` | N - 1 | CASCADE | Chức vụ cần tăng cường trong ngày. |
+| `dinh_bien_ngay` | `ma_phong_ban` | `phong_ban(ma_phong_ban)` | N - 1 | CASCADE | Bộ phận áp dụng định biên ngày (NULL = dùng chung). |
 | `giai_trinh_cham_cong` | `ma_phan_ca` | `phan_ca(ma_phan_ca)` | N - 1 | CASCADE | Giải trình gắn với đúng lượt ca bị sai lệch giờ. |
 | `giai_trinh_cham_cong` | `ma_nhan_vien` | `nhan_vien(ma_nhan_vien)` | N - 1 | CASCADE | Nhân viên đứng tên giải trình. |
-| `giai_trinh_cham_cong` | `ma_quan_ly_xac_minh` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Quản lý cấp 1 xác minh. Xóa hồ sơ quản lý không làm mất giải trình. |
+| `giai_trinh_cham_cong` | `ma_quan_ly_xac_minh` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Quản lý cấp 1 xác minh. |
 | `giai_trinh_cham_cong` | `ma_hr_xac_nhan` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Cán bộ HR xác nhận cấp 2. |
 | `yeu_cau_doi_ca` | `ma_phan_ca_gui` | `phan_ca(ma_phan_ca)` | N - 1 | CASCADE | Lượt ca người gửi nhường lại. |
 | `yeu_cau_doi_ca` | `ma_phan_ca_nhan` | `phan_ca(ma_phan_ca)` | N - 1 | CASCADE | Lượt ca người nhận làm thay. |
 | `yeu_cau_doi_ca` | `ma_nhan_vien_gui` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Người gửi yêu cầu; còn yêu cầu lưu vết thì không xóa được hồ sơ nhân viên. |
 | `yeu_cau_doi_ca` | `ma_nhan_vien_nhan` | `nhan_vien(ma_nhan_vien)` | N - 1 | RESTRICT | Người nhận ca; cùng lý do bảo toàn lịch sử đổi ca. |
 | `yeu_cau_doi_ca` | `ma_nguoi_duyet` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Quản lý / HR ra quyết định duyệt hoặc từ chối. |
+| `ngan_sach_luong` | `ma_phong_ban` | `phong_ban(ma_phong_ban)` | N - 1 | RESTRICT | Bộ phận được cấp hạn mức quỹ lương. |
+| `ngan_sach_luong` | `nguoi_tao` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Người lập dự toán ngân sách. |
+| `ngan_sach_luong` | `nguoi_duyet` | `nhan_vien(ma_nhan_vien)` | N - 1 | SET NULL | Ban Giám đốc phê duyệt dự toán ngân sách. |

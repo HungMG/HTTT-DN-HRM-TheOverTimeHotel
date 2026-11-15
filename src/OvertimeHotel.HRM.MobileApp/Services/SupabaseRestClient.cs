@@ -255,7 +255,8 @@ public sealed class SupabaseRestClient
         // Only this RPC raises reviewed, user-facing business messages.
         if (uri.AbsolutePath.EndsWith("/rpc/hrm_shift_swap", StringComparison.Ordinal)
             || uri.AbsolutePath.EndsWith("/rpc/hrm_shift_swap_partner_options", StringComparison.Ordinal)
-            || uri.AbsolutePath.EndsWith("/rpc/hrm_attendance_explanation", StringComparison.Ordinal))
+            || uri.AbsolutePath.EndsWith("/rpc/hrm_attendance_explanation", StringComparison.Ordinal)
+            || uri.AbsolutePath.EndsWith("/rpc/hrm_hr_overview", StringComparison.Ordinal))
         {
             if (code == "P0001" && !string.IsNullOrWhiteSpace(message))
                 return new InvalidOperationException(message);

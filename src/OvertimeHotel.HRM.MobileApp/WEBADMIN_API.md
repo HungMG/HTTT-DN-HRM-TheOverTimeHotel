@@ -1,11 +1,19 @@
-# Cấu hình API WebAdmin cho mobile
+# Kết nối dữ liệu HR trên mobile
 
-Trang thống kê HR lấy dữ liệu tháng hiện tại từ API WebAdmin và yêu cầu quyền xem báo cáo. Quyền xem báo cáo bao gồm số liệu lương trong thống kê. Khi build, cấu hình URL gốc HTTPS của WebAdmin đã triển khai:
+Trang chủ HR và màn hình Thống kê gọi trực tiếp Supabase qua `SupabaseRestClient`, khóa anon công khai và JWT của người đăng nhập. Không cần host WebAdmin hoặc cấu hình `WebAdminApiUrl` cho hai màn hình này.
+
+- `rpc/hrm_hr_overview?p_view=dashboard`: nhân sự đang làm việc, quân số ca đã công bố, số đơn, hợp đồng sắp hết hạn và sự kiện nhân sự thật.
+- `rpc/hrm_hr_overview?p_view=statistics`: số nhân sự hiện tại, cơ cấu phòng ban, trình độ, thâm niên, chuyên cần tháng hiện tại và tổng quỹ lương đã tính.
+
+Hàm chỉ đọc dành cho HR/Admin có phiên hợp lệ. Dashboard yêu cầu `QL_NHAN_SU`, thống kê yêu cầu `REPORT_VIEW`; hợp đồng và số liệu lương còn kiểm tra quyền tương ứng. Không mở rộng quyền đọc trực tiếp phiếu lương của người khác. Các vai trò khác bị từ chối ngay tại Supabase.
+
+Migration: `src/OvertimeHotel.HRM.Data/migrations/20261115_hr_mobile_overview_rpc.sql`. Có file rollback đi kèm. Kiểm tra CSDL nằm trong `src/OvertimeHotel.HRM.Data/verification/HrMobileOverview/assertions.sql` và được chạy trong transaction cách ly rồi rollback.
+
+Quân số là số ca đã check-in / số ca được xếp hôm nay, không suy diễn thành đủ định biên. Số lương gộp không xác nhận tiền đã chuyển. Khi lỗi tải, xóa dữ liệu cũ và hiện thông báo; không có số liệu mẫu dự phòng.
+
+Kiểm tra service RPC và hai ViewModel (stub nền tảng MAUI, không gọi production):
 
 ```bash
-dotnet build src/OvertimeHotel.HRM.MobileApp/OvertimeHotel.HRM.MobileApp.csproj -c Release -p:WebAdminApiUrl=https://TEN_MAY_CHU_WEBADMIN
+dotnet build verification/HrDashboard/HrDashboard.csproj -m:1
+dotnet run --project verification/HrDashboard --no-build --no-restore
 ```
-
-Thay `TEN_MAY_CHU_WEBADMIN` bằng địa chỉ thật có chứng chỉ HTTPS hợp lệ. Không đặt token hoặc mật khẩu trong URL. Nếu không cấu hình, thống kê báo thiếu cấu hình thay vì hiển thị số mẫu. Trang thống kê cũng cần WebAdmin đang chạy và thiết bị truy cập được địa chỉ này; chế độ demo không có thống kê thật.
-
-Trước khi phát hành, cần kiểm tra cấu hình JWT, kết nối thực tế từ thiết bị, RLS/GRANT trên Supabase để chặn đường ghi trực tiếp vượt qua API, kiểm kê constraint theo `plan.md`, thử migration và 14 kịch bản trên dữ liệu cách ly. Đổi client không tự thay đổi quyền CSDL. Các script migration yêu cầu đặt tên CHECK đã kiểm kê trong cùng phiên PostgreSQL; rollback đổi ca khôi phục CHECK theo kết quả kiểm kê ngày 30/10/2026 và dừng nếu có dữ liệu người nhận cần bảo toàn; phải đối chiếu lại môi trường đích trước khi dùng.

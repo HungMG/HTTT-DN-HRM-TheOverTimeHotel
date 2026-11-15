@@ -26,7 +26,7 @@ namespace OvertimeHotel.HRM.WebAdmin.Services;
 public sealed class BaoCaoReportService
 {
     /// <summary>Thời gian sống của bộ nhớ đệm số liệu báo cáo, tính bằng giây.</summary>
-    private const int CacheSeconds = 60;
+    private const int CacheSeconds = 300;
 
     /// <summary>Danh sách tab hợp lệ; giá trị khác sẽ rơi về tab mặc định.</summary>
     private static readonly string[] ValidTabs =

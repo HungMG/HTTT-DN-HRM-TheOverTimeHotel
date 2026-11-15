@@ -329,8 +329,10 @@ Nhằm đảm bảo tính minh bạch, hạn chế tối đa khiếu nại và s
    - **Đi trễ:** Phạt từ phút thứ 1 (không có dung sai), mức phạt **2.000 VNĐ / phút** (`phut_di_tre * 2.000`). Bất kỳ ca nào đi trễ $> 0$ phút đều bị phạt tiền và làm mất Thưởng chuyên cần (`hasLate = PhutDiTre > 0`).
    - **Về sớm:** Áp dụng dung sai bàn giao ca $\le 15$ phút (miễn phạt). Khi về sớm **quá 15 phút**, phạt **2.000 VNĐ / phút** cho toàn bộ số phút về sớm (`phut_ve_som * 2.000`) và làm mất Thưởng chuyên cần (`hasEarly = PhutVeSom > 15`).
 
-3. **Về sớm và đi trễ trong cùng một ca:**
-   - **Chưa chốt. Đề xuất:** gộp thành **một** lần vi phạm duy nhất, xếp mức phạt theo **tổng số phút vi phạm** (đi trễ + về sớm), tránh phạt kép một ca. **Cần xác minh** với khách sạn.
+3. **Về sớm và đi trễ trong cùng một ca (Đã chuẩn hóa trạng thái `TRE_VA_SOM`):**
+   - Hệ thống tự động phân loại trạng thái chấm công là **`TRE_VA_SOM`** (Trễ và sớm, được chấp nhận từ migration 20261020).
+   - Tiền phạt vi phạm được tính lũy kế theo từng hành vi: `phut_di_tre * 2.000 VNĐ` (phạt từ phút thứ 1) cộng với `phut_ve_som * 2.000 VNĐ` (nếu về sớm quá 15 phút dung sai bàn giao).
+   - Nhân viên phát sinh ca `TRE_VA_SOM` bị tính là vi phạm kỷ luật chuyên cần và không đủ điều kiện nhận Thưởng chuyên cần 500.000 VNĐ trong kỳ lương đó.
 
 4. **Ca làm dở / check-in sai ca:**
    - **Chưa chốt. Đề xuất:** nếu nhân viên check-in hợp lệ nhưng rời ca trước giờ kết thúc dự kiến quá nửa ca, coi như vắng mặt không phép và áp dụng bộ xử lý của mục 2 Tầng 2.

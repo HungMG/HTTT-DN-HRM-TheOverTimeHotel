@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using OvertimeHotel.HRM.Core.Enums;
 using OvertimeHotel.HRM.Core.Models;
 using OvertimeHotel.HRM.Core.Policies;
@@ -85,6 +86,7 @@ public class AccountController : Controller
 
         // Băm mật khẩu theo cùng cơ chế đang dùng trong dữ liệu tài khoản.
         var inputHash = PasswordHasher.Hash(model.Password);
+        var normalizedUser = model.Username.Trim();
 
         // Kiểm tra thông tin tài khoản trên Supabase
         OvertimeHotel.HRM.Core.Models.TaiKhoan? account = null;
@@ -93,12 +95,12 @@ public class AccountController : Controller
             account = await _context.TaiKhoans
                 .Include(t => t.NhanVien)
                 .Include(t => t.VaiTro)
-                .FirstOrDefaultAsync(t => t.TenDangNhap.ToLower() == model.Username.Trim().ToLower() && t.MatKhauBam == inputHash);
+                .FirstOrDefaultAsync(t => (t.TenDangNhap == normalizedUser || EF.Functions.ILike(t.TenDangNhap, normalizedUser)) && t.MatKhauBam == inputHash);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Lỗi kết nối CSDL Supabase khi người dùng {Username} đăng nhập. Chuyển sang cơ chế xác thực tài khoản mẫu.", model.Username);
-            account = GetDevSeedAccounts().FirstOrDefault(t => t.TenDangNhap.ToLower() == model.Username.Trim().ToLower() && t.MatKhauBam == inputHash);
+            account = GetDevSeedAccounts().FirstOrDefault(t => (t.TenDangNhap == normalizedUser || t.TenDangNhap.Equals(normalizedUser, StringComparison.OrdinalIgnoreCase)) && t.MatKhauBam == inputHash);
             if (account == null)
             {
                 var connErr = "Tên đăng nhập hoặc mật khẩu không chính xác (hoặc CSDL Supabase chưa sẵn sàng).";
@@ -205,6 +207,13 @@ public class AccountController : Controller
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
             authProperties);
+
+        // Nạp trước vào cache xác thực phiên để lượt redirect kế tiếp không cần query lại CSDL
+        var memCache = HttpContext.RequestServices.GetService<IMemoryCache>();
+        var issuedSeconds = authProperties.IssuedUtc?.ToUnixTimeSeconds() ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var deptValue = account.NhanVien?.MaPhongBan.ToString() ?? "0";
+        var sessionValidateKey = $"auth:validate:{account.MaTaiKhoan}:{issuedSeconds}:{roleName}:{deptValue}";
+        memCache?.Set(sessionValidateKey, true, TimeSpan.FromMinutes(2));
 
         _logger.LogInformation("Người dùng {Username} ({Role}) đăng nhập thành công vào Web Admin.", account.TenDangNhap, roleName);
 

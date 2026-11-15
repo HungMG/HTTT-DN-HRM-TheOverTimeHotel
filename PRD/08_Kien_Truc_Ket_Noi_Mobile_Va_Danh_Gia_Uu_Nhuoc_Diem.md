@@ -50,7 +50,7 @@ Dưới đây là bản phân tích toàn diện, chi tiết từ mã nguồn đ
 ┌──────────────────────────┐
 │  SUPABASE CLOUD DATABASE │ (Máy chủ Cloud Singapore)
 │    PostgreSQL Engine     │
-│   (30 Bảng Chuẩn 3NF)    │
+│   (38 Bảng Chuẩn 3NF)    │
 └──────────────────────────┘
 ```
 
@@ -112,7 +112,7 @@ Dưới đây là bản phân tích toàn diện, chi tiết từ mã nguồn đ
 │                             │                          │
 │                             ▼                          │
 │  ┌──────────────────────────────────────────────────┐  │
-│  │  PostgreSQL Database Engine (30 Bảng Chuẩn 3NF)  │  │
+│  │  PostgreSQL Database Engine (38 Bảng Chuẩn 3NF)  │  │
 │  │  - Lớp bảo vệ: Row Level Security (RLS Policies) │  │
 │  │    (Chỉ cho phép sửa/xem dòng thuộc chính mình)  │  │
 │  │  - Khóa B-Tree: ma_nhan_vien, ma_phan_ca         │  │
@@ -135,7 +135,7 @@ Dưới đây là bản phân tích toàn diện, chi tiết từ mã nguồn đ
    - `src/OvertimeHotel.HRM.Core/Policies/GeofencePolicy.cs`: Thuật toán Haversine đo khoảng cách tọa độ GPS thực tế.
    - `src/OvertimeHotel.HRM.Core/Policies/ContractAttendancePolicy.cs`: Kiểm tra hợp đồng lao động có hiệu lực.
 4. **Tầng bảo vệ an ninh CSDL (Database Security):**
-   - `supabase/migrations/20261005_hon_ho_so_jwt_quyen_theo_vai_tro.sql`: Thu hồi toàn bộ quyền của role `anon`, kích hoạt **RLS** trên toàn bộ 30 bảng, buộc mọi request phải có JWT hợp lệ.
+   - `supabase/migrations/20261005_hon_ho_so_jwt_quyen_theo_vai_tro.sql`: Thu hồi toàn bộ quyền của role `anon`, kích hoạt **RLS** trên toàn bộ 38 bảng, buộc mọi request phải có JWT hợp lệ. Bổ sung stored function `hrm_my_contact` cho phép nhân sự tra cứu danh bạ an toàn.
 
 ### 3.3. Đánh Giá Ưu Điểm & Nhược Điểm Kỹ Thuật
 

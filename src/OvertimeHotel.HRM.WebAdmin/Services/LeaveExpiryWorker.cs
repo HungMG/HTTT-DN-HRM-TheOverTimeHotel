@@ -19,7 +19,7 @@ public sealed class LeaveExpiryWorker(IServiceScopeFactory scopes, ILogger<Leave
                     WHERE trang_thai = 'CHO_DUYET' AND ma_loai_don BETWEEN 1 AND 4
                       AND tu_ngay <= (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
                     """, stoppingToken);
-                if (changed > 0) cache.Invalidate();
+                if (changed > 0) cache.Invalidate("leave-requests");
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
             catch (Exception ex) { logger.LogError(ex, "Không thể cập nhật đơn nghỉ hết hạn; sẽ thử lại."); }

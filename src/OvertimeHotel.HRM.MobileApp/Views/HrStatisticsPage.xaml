@@ -18,7 +18,7 @@
             <ScrollView><VerticalStackLayout Spacing="14" Padding="20">
                 <Label Text="{Binding Error}" IsVisible="{Binding HasError}" TextColor="#B91C1C" />
                 <Border Stroke="#E2E8F0" StrokeShape="RoundRectangle 12" BackgroundColor="White" Padding="16"><VerticalStackLayout Spacing="6">
-                    <Label Text="NHÂN SỰ CUỐI KỲ" FontAttributes="Bold" TextColor="#1E3A8A" />
+                    <Label Text="NHÂN SỰ HIỆN TẠI" FontAttributes="Bold" TextColor="#1E3A8A" />
                     <Label Text="{Binding Summary}" FontSize="18" TextColor="#0F172A" />
                 </VerticalStackLayout></Border>
                 <Border Stroke="#E2E8F0" StrokeShape="RoundRectangle 12" BackgroundColor="White" Padding="16"><VerticalStackLayout Spacing="6">

@@ -34,7 +34,11 @@ public sealed class SalaryPositionWorker(IServiceScopeFactory scopes, SearchList
                     }
                     var changed = await db.SaveChangesAsync(stoppingToken);
                     await tx.CommitAsync(stoppingToken);
-                    if (changed > 0) cache.Invalidate();
+                    if (changed > 0)
+                    {
+                        cache.Invalidate("employees");
+                        cache.Invalidate("contracts");
+                    }
                 });
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -163,46 +164,59 @@ builder.Services.AddAuthentication(options =>
             OnValidatePrincipal = async context =>
             {
                 var userIdStr = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (int.TryParse(userIdStr, out var userId))
+                if (!int.TryParse(userIdStr, out var userId)) return;
+
+                var cache = context.HttpContext.RequestServices.GetService<IMemoryCache>();
+                var issuedUtc = context.Properties.IssuedUtc?.ToUnixTimeSeconds() ?? 0;
+                var roleVal = context.Principal?.FindFirst(ClaimTypes.Role)?.Value ?? "";
+                var deptVal = context.Principal?.FindFirst("DepartmentId")?.Value ?? "0";
+                var sessionCacheKey = $"auth:validate:{userId}:{issuedUtc}:{roleVal}:{deptVal}";
+
+                if (cache != null && cache.TryGetValue<bool>(sessionCacheKey, out var isValid) && isValid)
                 {
-                    var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                    var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).Include(t => t.NhanVien).FirstOrDefaultAsync(t => t.MaTaiKhoan == userId);
-                    if (account == null || !account.TrangThai ||
-                        context.Properties.IssuedUtc == null || context.Properties.IssuedUtc <= account.PhienHopLeSau ||
-                        account.VaiTro?.TenVaiTro != context.Principal?.FindFirst(ClaimTypes.Role)?.Value ||
-                        (account.NhanVien?.MaPhongBan ?? 0).ToString() != context.Principal?.FindFirst("DepartmentId")?.Value)
-                    {
-                        context.RejectPrincipal();
-                        await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                        return;
-                    }
-
-                    var permissions = await dbContext.VaiTroQuyens.AsNoTracking()
-                        .Where(p => p.MaVaiTro == account.MaVaiTro)
-                        .Select(p => p.Quyen!.MaQuyenCode).ToListAsync();
-                    var sessionPermissions = context.Principal!.FindAll(PermissionCodes.ClaimType).Select(c => c.Value).ToHashSet();
-                    if (!sessionPermissions.SetEquals(permissions))
-                    {
-                        context.RejectPrincipal();
-                        await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                        return;
-                    }
-
-                    // Thu hồi phiên làm việc tức thì nếu hợp đồng lao động đã hết hạn
-                    var latestContract = await dbContext.HopDongs
-                        .AsNoTracking()
-                        .Where(h => h.MaNhanVien == account.MaNhanVien)
-                        .OrderByDescending(h => h.NgayBatDau)
-                        .FirstOrDefaultAsync();
-
-                    var today = DateOnly.FromDateTime(DateTime.Today);
-                    if (latestContract != null && latestContract.NgayKetThuc.HasValue && latestContract.NgayKetThuc.Value < today)
-                    {
-                        context.RejectPrincipal();
-                        await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                        return;
-                    }
+                    return; // Đã xác thực hợp lệ gần đây, bỏ qua 3 query CSDL lặp lại
                 }
+
+                var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).Include(t => t.NhanVien).FirstOrDefaultAsync(t => t.MaTaiKhoan == userId);
+                if (account == null || !account.TrangThai ||
+                    context.Properties.IssuedUtc == null || context.Properties.IssuedUtc <= account.PhienHopLeSau ||
+                    account.VaiTro?.TenVaiTro != roleVal ||
+                    (account.NhanVien?.MaPhongBan ?? 0).ToString() != deptVal)
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+
+                var permissions = await dbContext.VaiTroQuyens.AsNoTracking()
+                    .Where(p => p.MaVaiTro == account.MaVaiTro)
+                    .Select(p => p.Quyen!.MaQuyenCode).ToListAsync();
+                var sessionPermissions = context.Principal!.FindAll(PermissionCodes.ClaimType).Select(c => c.Value).ToHashSet();
+                if (!sessionPermissions.SetEquals(permissions))
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+
+                // Thu hồi phiên làm việc tức thì nếu hợp đồng lao động đã hết hạn
+                var latestContract = await dbContext.HopDongs
+                    .AsNoTracking()
+                    .Where(h => h.MaNhanVien == account.MaNhanVien)
+                    .OrderByDescending(h => h.NgayBatDau)
+                    .FirstOrDefaultAsync();
+
+                var today = DateOnly.FromDateTime(DateTime.Today);
+                if (latestContract != null && latestContract.NgayKetThuc.HasValue && latestContract.NgayKetThuc.Value < today)
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+
+                // Lưu kết quả xác thực hợp lệ vào cache trong 2 phút
+                cache?.Set(sessionCacheKey, true, TimeSpan.FromMinutes(2));
             }
         };
     })

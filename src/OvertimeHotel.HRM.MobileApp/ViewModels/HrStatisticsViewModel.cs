@@ -8,7 +8,7 @@ namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 
 public sealed class HrStatisticsViewModel : INotifyPropertyChanged
 {
-    private readonly WebAdminApiClient _api;
+    private readonly HrSupabaseService _api;
     private bool _isRefreshing, _loading;
     private string _selectedPeriod = "Tháng hiện tại", _lastUpdatedText = "Chưa cập nhật", _error = "", _summary = "—", _attendance = "—", _payroll = "—";
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -25,7 +25,7 @@ public sealed class HrStatisticsViewModel : INotifyPropertyChanged
     public string Attendance { get => _attendance; set => Set(ref _attendance, value); }
     public string Payroll { get => _payroll; set => Set(ref _payroll, value); }
     public bool IsRefreshing { get => _isRefreshing; set => Set(ref _isRefreshing, value); }
-    public HrStatisticsViewModel(WebAdminApiClient api)
+    public HrStatisticsViewModel(HrSupabaseService api)
     {
         _api = api;
         BackCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
@@ -37,9 +37,9 @@ public sealed class HrStatisticsViewModel : INotifyPropertyChanged
         _loading = true; IsRefreshing = true; Error = "";
         try
         {
-            var data = await _api.GetAsync<StatisticsResponse>("api/mobile/statistics");
+            var data = await _api.GetStatisticsAsync();
             SelectedPeriod = data.Period;
-            Summary = $"{data.TotalEmployees} nhân viên còn làm việc cuối kỳ";
+            Summary = $"{data.TotalEmployees} nhân viên đang làm việc";
             Attendance = $"Đúng giờ: {data.PunctualRate:0.#}% · {data.AssessedShifts} ca được đánh giá\nTrễ / sớm: {data.ViolationCount} ca · Nghỉ được duyệt: {data.LeaveCount} ca · Thiếu quẹt: {data.MissingPunchCount} ca";
             Payroll = data.PayrollGross.HasValue
                 ? $"Tổng lương đã tính (gộp): {data.PayrollGross:N0} đ\nĐã duyệt: {data.PayrollApproved:N0} đ · Nháp/chờ duyệt: {data.PayrollDraft:N0} đ\nSố đã tính không xác nhận tiền đã chuyển."
@@ -47,7 +47,7 @@ public sealed class HrStatisticsViewModel : INotifyPropertyChanged
             Replace(Departments, data.Departments); Replace(Education, data.Education); Replace(Tenure, data.Tenure);
             LastUpdatedText = $"Cập nhật lúc {DateTime.Now:HH:mm}";
         }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or UnauthorizedAccessException or TaskCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or UnauthorizedAccessException or TaskCanceledException or System.Text.Json.JsonException)
         {
             Error = $"Không thể tải thống kê: {ex.Message}";
             Summary = Attendance = Payroll = "—"; Departments.Clear(); Education.Clear(); Tenure.Clear(); LastUpdatedText = "Chưa cập nhật";

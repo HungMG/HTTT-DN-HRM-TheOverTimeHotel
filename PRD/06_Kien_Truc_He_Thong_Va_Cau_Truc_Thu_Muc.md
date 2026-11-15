@@ -1,7 +1,7 @@
 # PRD 06: Kiến Trúc Hệ Thống & Cấu Trúc Thư Mục Source Code
 
-> **Trạng thái tài liệu:** mô tả **hiện trạng đã triển khai trong mã nguồn** (`src/`) tại tháng 10/2026 kèm **định hướng mở rộng kiến trúc** cho phân hệ Quản lý Dự án & Sự kiện Khách sạn (toàn hệ thống gồm **11 phân hệ chức năng nghiệp vụ** và **30 bảng CSDL chuẩn 3NF**).
-> Mọi khẳng định về tồn tại / không tồn tại bên dưới đều đối chiếu được với file thật; phần nào suy ra từ hạ tầng bên ngoài repo mà chưa kiểm chứng được thì ghi rõ **"cần xác minh"**.
+> **Trạng thái tài liệu:** mô tả **hiện trạng đã triển khai trong mã nguồn** (`src/`) tại tháng 11/2026 kèm **kiến trúc tối ưu hóa hiệu năng cao** (toàn hệ thống gồm **11 phân hệ chức năng nghiệp vụ**, **38 bảng CSDL chuẩn 3NF**, cơ chế **SearchListCache** 64 striped semaphores, bộ nhớ đệm xác thực phiên và **4 Background Workers**).
+> Mọi khẳng định về tồn tại / không tồn tại bên dưới đều đối chiếu được với file thật trong repository.
 
 ---
 
@@ -22,10 +22,13 @@ Nhằm phân định rõ ràng cổng quản trị máy chủ và ứng dụng n
 │       WEB ADMIN PORTAL        │               │       MOBILE APP CLIENT       │
 │     C# ASP.NET Core MVC       │               │       C# .NET MAUI App        │
 │          (.NET 10)            │               │          (.NET 10)            │
+│  - SearchListCache (64 Locks) │               │  - SupabaseRestClient         │
+│  - OnValidatePrincipal Cache  │               │  - Offline Geofence & WiFi    │
+│  - 4 Background Workers       │               │  - PostgREST JSON Mapper      │
 └───────────────┬───────────────┘               └───────────────┬───────────────┘
                 │                                               │
                 │        ┌─────────────────────────────┐        │
-                ├───────►│    OvertimeHotel.HRM.Core   │◄───────┤ (Dùng chung 30 Entities,
+                ├───────►│    OvertimeHotel.HRM.Core   │◄───────┤ (Dùng chung 38 Entities,
                 │        │     Class Library .NET 10   │        │  DTOs, Enums & Policies)
                 │        └─────────────────────────────┘        │
                 ▼                                               ▼
@@ -42,7 +45,7 @@ Nhằm phân định rõ ràng cổng quản trị máy chủ và ứng dụng n
                         ┌───────────────────────────────┐
                         │     SUPABASE CLOUD DATABASE   │
                         │       PostgreSQL Engine       │
-                        │    30 Bảng Chuẩn Hóa 3NF      │
+                        │    38 Bảng Chuẩn Hóa 3NF      │
                         │    + RLS (Row Level Security) │
                         └───────────────────────────────┘
 ```
@@ -84,7 +87,7 @@ Hệ thống Quản lý Nhân sự & Tiền lương The OverTime Hotel được 
 | **8.0** | **Quản Lý Tiền Thưởng** | Quản lý thưởng hiệu quả KPI, thưởng doanh thu buồng phòng/tiệc, thưởng Lễ Tết chuyên cần, phê duyệt danh sách và báo cáo phân bổ quỹ thưởng. | `cau_hinh_khoan_luong` (khoản thưởng), `cau_hinh_tang_ca` |
 | **9.0** | **Quản Lý Dự Án & Sự Kiện Khách Sạn (MỚI)** | Khởi tạo sự kiện/dự án (tiệc cưới VIP, hội nghị MICE, gala dinner), điều động nhân lực liên phòng ban (Task Force), thông báo điều động realtime lên Mobile App, nghiệm thu đánh giá và kết chuyển phụ cấp dự án vào kỳ lương tháng (Gross). | `du_an`, `phan_cong_du_an` |
 | **10.0** | **Báo Cáo & Thống Kê Quản Trị** | Thống kê biến động nhân sự (Turnover Rate), cơ cấu bộ phận, học vấn thâm niên, đối soát ngân sách quỹ lương, chuyên cần vi phạm và báo cáo hiệu quả nhân sự sự kiện. | Tổng hợp liên bảng |
-| **11.0** | **Quản Trị Hệ Thống** | Danh mục cơ cấu tổ chức (phòng ban, chức vụ), cấu hình khung giờ ca 24/7 (độc quyền Admin), thiết lập tham số tỷ lệ định mức, sao lưu và phục hồi CSDL Supabase. | `nhat_ky_quan_tri` (+ toàn bộ 30 bảng) |
+| **11.0** | **Quản Trị Hệ Thống** | Danh mục cơ cấu tổ chức (phòng ban, chức vụ), cấu hình khung giờ ca 24/7 (độc quyền Admin), thiết lập tham số tỷ lệ định mức, sao lưu và phục hồi CSDL Supabase. | `nhat_ky_quan_tri` (+ toàn bộ 38 bảng) |
 
 ---
 
@@ -95,21 +98,27 @@ src/
 ├── OvertimeHotel.HRM.slnx                     # Solution file Visual Studio 2026
 │
 ├── OvertimeHotel.HRM.Core/                    # [DỰ ÁN DÙNG CHUNG - CLASS LIBRARY .NET 10]
-│   ├── Models/                                # 30 Class Entities ánh xạ 30 bảng CSDL chuẩn 3NF
+│   ├── Models/                                # 38 Thực thể CSDL chuẩn hóa 3NF
 │   │   ├── PhongBan.cs            ├── NhatKyQuanTri.cs
 │   │   ├── ChucVu.cs              ├── CauHinhKhoanLuong.cs
 │   │   ├── NhanVien.cs            ├── CauHinhKhauTru.cs
 │   │   ├── HopDong.cs             ├── CauHinhPhuCap.cs
-│   │   ├── TaiKhoan.cs            ├── CauHinhTangCa.cs
-│   │   ├── VaiTro.cs              ├── ChiTietPhieuLuong.cs
-│   │   ├── Quyen.cs               ├── ChiTietTruBaoHiem.cs
-│   │   ├── VaiTroQuyen.cs         ├── ChiTietTruThueTncn.cs
-│   │   ├── YeuCauTaiKhoan.cs      ├── ChiTietTruViPhamTamUng.cs
-│   │   ├── CaLamViec.cs           ├── KyLuong.cs
-│   │   ├── PhanCa.cs              ├── LoaiDon.cs
-│   │   ├── ChamCong.cs            ├── PhieuLuong.cs
-│   │   ├── DonTu.cs               ├── DuAn.cs                 # [MỚI] Entity sự kiện/dự án khách sạn
-│   │   │                          └── PhanCongDuAn.cs         # [MỚI] Entity phân công & thù lao sự kiện
+│   │   ├── KhungLuongCapBac.cs    ├── CauHinhTangCa.cs        # Thang bảng lương cấp bậc
+│   │   ├── PhuLucLuong.cs         ├── ChiTietPhieuLuong.cs    # Phụ lục điều chỉnh lương/vị trí
+│   │   ├── TaiKhoan.cs            ├── ChiTietTruBaoHiem.cs
+│   │   ├── VaiTro.cs              ├── ChiTietTruThueTncn.cs
+│   │   ├── Quyen.cs               ├── ChiTietTruViPhamTamUng.cs
+│   │   ├── VaiTroQuyen.cs         ├── KyLuong.cs
+│   │   ├── YeuCauTaiKhoan.cs      ├── NganSachLuong.cs        # Dự toán ngân sách quỹ lương
+│   │   ├── CaLamViec.cs           ├── LoaiDon.cs
+│   │   ├── PhanCa.cs              ├── PhieuLuong.cs
+│   │   ├── ChamCong.cs            ├── DuAn.cs                 # Entity sự kiện/dự án khách sạn
+│   │   ├── DonTu.cs               ├── PhanCongDuAn.cs         # Entity phân công nhân sự sự kiện
+│   │   ├── CaWorkflowModels.cs    └── EventOperationsModels.cs
+│   │   │   ├── DinhBienCa             ├── NhuCauSuKien        # Định mức nhân lực sự kiện
+│   │   │   ├── DinhBienNgay           ├── CongSuKien          # Chấm công thực tế sự kiện
+│   │   │   ├── GiaiTrinhChamCong      ├── QuyetToanSuKien     # Quyết toán thù lao sự kiện
+│   │   │   └── YeuCauDoiCa            └── CongBoLichTuan      # Chốt công bố lịch tuần
 │   ├── DTOs/                                  # Data Transfer Objects (record bất biến)
 │   │   ├── LoginDto.cs                        # LoginRequest / LoginResponse
 │   │   ├── CheckInDto.cs                      # CheckInRequest / CheckInResponse
@@ -117,74 +126,75 @@ src/
 │   │   ├── LeaveRequestDto.cs                 # Nộp và duyệt đơn
 │   │   ├── PayslipDto.cs                      # Bảng lương tóm tắt & chi tiết
 │   │   └── MonthlyAttendanceDto.cs            # Tổng hợp công tháng
-│   ├── Enums/                                 # Kiểu liệt kê (9 enum)
+│   ├── Enums/                                 # Kiểu liệt kê chuẩn hóa
 │   │   ├── RoleType.cs, ShiftType.cs, LeaveStatus.cs, ContractStatus.cs
 │   │   ├── AttendanceStatus.cs, EmployeeStatus.cs
 │   │   └── PayrollStatus.cs, PeriodStatus.cs, SalaryItemType.cs
 │   ├── Policies/                              # Logic nghiệp vụ dùng chung 2 app
 │   │   ├── LeaveApprovalPolicy.cs             # Quy tắc ai duyệt loại đơn nào
-│   │   ├── AttendanceCalculator.cs            # Chuẩn hoá check-in/check-out
+│   │   ├── AttendanceCalculator.cs            # Chuẩn hoá check-in/check-out & mã TRE_VA_SOM
 │   │   ├── ContractAttendancePolicy.cs        # Ràng buộc HĐLĐ ↔ chấm công / phân ca
 │   │   ├── ShiftSchedulingPolicy.cs           # Khoảng nghỉ ≥ 8h, chống trùng ca
 │   │   ├── ShiftSwapPolicy.cs                 # Điều kiện đổi ca giữa hai nhân viên
 │   │   ├── GeofencePolicy.cs                  # Bán kính GPS & Wi-Fi hợp lệ khi quẹt thẻ
 │   │   ├── AttendanceAccessPolicy.cs          # Ai được xem công của ai
 │   │   ├── ReportPolicy.cs                    # Phân quyền số liệu báo cáo theo vai trò
-│   │   ├── PersonalIncomeTaxCalculator.cs     # Thuế TNCN lũy tiến 5 bậc
+│   │   ├── PersonalIncomeTaxCalculator.cs     # Thuế TNCN lũy tiến 5 bậc (15.5M / 6.2M)
 │   │   ├── HotelEventRules.cs                 # Vòng đời & trạng thái sự kiện
 │   │   └── HotelEventRoleRules.cs             # Ai được thao tác trên sự kiện nào
 │   └── Constants/
-│       └── SalaryConstants.cs                 # 26 ngày công, tỷ lệ BH 10.5%, hệ số OT 1.5/2.0/3.0
+│       └── SalaryConstants.cs                 # 26 công chuẩn, tỷ lệ BH 10.5%, hệ số OT
 │
 ├── OvertimeHotel.HRM.Data/                    # [TẦNG TRUY XUẤT DỮ LIỆU - CHỈ WEBADMIN DÙNG]
 │   ├── Context/
-│   │   ├── AppDbContext.cs                    # EF Core DbContext, cấu hình quan hệ PK/FK (30 DbSet)
-│   │   └── DatabaseSchemaInitializer.cs       # Tự tạo bảng nhật ký admin nếu thiếu
+│   │   ├── AppDbContext.cs                    # EF Core DbContext, cấu hình quan hệ PK/FK (38 DbSet)
+│   │   └── DatabaseSchemaInitializer.cs       # Tự tạo bảng và xác thực schema khởi động
 │   ├── Supabase/
 │   │   ├── SupabaseClientFactory.cs           # Tạo Supabase SDK client (Realtime/Storage)
 │   │   └── SupabaseOptions.cs
 │   ├── Services/
 │   │   ├── IBackupService.cs                  # Interface sao lưu & phục hồi CSDL
-│   │   └── BackupService.cs                   # Xuất/nhập JSON 30 bảng + thống kê
-│   ├── migrations/                            # Script SQL áp dụng tay lên Supabase
-│   ├── database_schema_3nf.sql                # DDL nền 24 bảng chuẩn 3NF (bản gốc)
+│   │   └── BackupService.cs                   # Xuất/nhập JSON toàn bộ 38 bảng + thống kê
+│   ├── migrations/                            # Script SQL áp dụng lên Supabase Cloud
+│   ├── database_schema_3nf.sql                # DDL nền chuẩn 3NF
 │   └── seed_data_24_tables.sql                # Dữ liệu danh mục & tài khoản mẫu
 │
-│   # 6 bảng còn lại được tạo bằng script migration riêng, không nằm trong DDL nền:
-│   #   du_an, phan_cong_du_an      -> migrations/20261015_hotel_events.sql
-│   #   dinh_bien_ca, giai_trinh_cham_cong, yeu_cau_doi_ca
-│   #                              -> supabase/migrations/20261020_bo_sung_chuc_nang_phan_ca_cham_cong.sql
-│
 ├── OvertimeHotel.HRM.WebAdmin/                # [CỔNG QUẢN TRỊ ADMIN - ASP.NET CORE MVC .NET 10]
+│   ├── Services/                              # Tầng dịch vụ nghiệp vụ chuyên trách & tối ưu hóa
+│   │   ├── SearchListCache.cs                 # Cache phân trang danh sách với 64 semaphores & Selective Invalidation
+│   │   ├── SearchCacheInvalidationInterceptor.cs # EF Core Interceptor tự động xóa cache theo tiền tố bảng thay đổi
+│   │   ├── BaoCaoReportService.cs             # Dịch vụ tổng hợp số liệu báo cáo quản trị (cache 300s)
+│   │   ├── EmployeeDeletionService.cs         # Cơ chế ẩn/xóa mềm (Soft Delete) nhân sự an toàn
+│   │   ├── PayrollBudgetService.cs            # Quản trị hạn mức ngân sách lương tháng
+│   │   ├── AttendanceLocationService.cs       # Xác thực tọa độ GPS / BSSID Wi-Fi
+│   │   ├── HotelEventAutoStartWorker.cs       # Background Worker tự động kích hoạt/đóng sự kiện
+│   │   ├── LeaveExpiryWorker.cs               # Background Worker quét hạn nghỉ phép & HĐLĐ
+│   │   ├── SalaryPositionWorker.cs            # Background Worker đồng bộ khung lương & chức vụ
+│   │   └── AuditLogRetentionWorker.cs         # Background Worker lưu trữ nhật ký an ninh định kỳ
 │   ├── Controllers/                           # 21 Controller MVC + 5 API controller
-│   │   ├── HomeController.cs                  # Dashboard & báo cáo KPI
-│   │   ├── NhanVienController.cs              # Hồ sơ nhân viên
+│   │   ├── HomeController.cs                  # Dashboard & báo cáo KPI (cache 5 phút)
+│   │   ├── NhanVienController.cs              # Hồ sơ nhân viên & Contract-First onboarding
 │   │   ├── PhongBanController.cs, ChucVuController.cs, CaLamViecController.cs  # Danh mục
 │   │   ├── HopDongController.cs, PhanCaController.cs                           # HĐ & xếp ca
 │   │   ├── CauHinhLuongController.cs, CauHinhKhoanLuongController.cs           # Tham số lương
-│   │   ├── AccountController.cs, UserAccountsController.cs                     # Tài khoản, nhật ký
+│   │   ├── AccountController.cs, UserAccountsController.cs                     # Tài khoản & Audit Log phân trang DB
 │   │   ├── YeuCauTaiKhoanController.cs        # Tiếp nhận & cấp tài khoản cho bộ phận IT
-│   │   ├── BackupController.cs                # Sao lưu & phục hồi CSDL
+│   │   ├── BackupController.cs                # Sao lưu & phục hồi CSDL 38 bảng
 │   │   ├── ChamCongController.cs              # Nhật ký chấm công 24/7
-│   │   ├── GiaiTrinhChamCongController.cs     # [MỚI] Duyệt giải trình sai lệch giờ quẹt thẻ
-│   │   ├── YeuCauDoiCaController.cs           # [MỚI] Duyệt yêu cầu đổi ca
+│   │   ├── GiaiTrinhChamCongController.cs     # Duyệt giải trình sai lệch giờ quẹt thẻ (2 cấp)
+│   │   ├── YeuCauDoiCaController.cs           # Duyệt yêu cầu đổi ca
 │   │   ├── DonTuController.cs                 # Duyệt 4 loại đơn từ
-│   │   ├── BangLuongController.cs             # Bảng lương tháng
+│   │   ├── BangLuongController.cs             # Bảng lương tháng & xuất PDF
 │   │   ├── BaoCaoController.cs                # Báo cáo & thống kê quản trị
-│   │   ├── AiAssistantController.cs           # Nhúng Trợ lý AI (iframe + vé dữ liệu)
-│   │   ├── SuKienController.cs                # [MỚI] Quản trị sự kiện, điều phối nhân sự, chốt thù lao
-│   │   └── Api/                               # API cho các luồng dữ liệu
-│   │       ├── AttendanceController.cs, LeaveRequestsController.cs
-│   │       └── MobileAuthController.cs, MobileProfileController.cs
-│   ├── Security/                              # Hạ tầng RBAC (policy, permission codes)
+│   │   ├── AiAssistantController.cs           # Nhúng Trợ lý AI (Gemini/OpenAI chatbot)
+│   │   ├── SuKienController.cs                # Quản trị sự kiện, điều phối nhân sự, chốt thù lao
+│   │   └── Api/                               # API PostgREST & Mobile Sync
+│   ├── Security/                              # Hạ tầng RBAC (policy, 17 permission codes)
 │   ├── Models/                                # ViewModel riêng cho từng màn hình Web
 │   ├── Views/                                 # Razor (.cshtml) cho các nhóm chức năng
-│   │   ├── SuKien/                            # [MỚI] Index, Details, Create, Edit, Assignment + 9 partial
-│   │   ├── GiaiTrinhChamCong/                 # [MỚI] Giải trình sai lệch giờ quẹt thẻ (duyệt 2 cấp)
-│   │   └── YeuCauDoiCa/                       # [MỚI] Yêu cầu đổi ca giữa hai nhân viên
-│   ├── wwwroot/                               # css / js / lib (Bootstrap, jQuery, react-bits motion)
-│   ├── appsettings.json                       # Chuỗi kết nối Supabase PostgreSQL + cấu hình Supabase
-│   └── Program.cs                             # Cấu hình DI, Authentication & Authorization
+│   ├── wwwroot/                               # css / js / lib (Bootstrap, jQuery, Toastr)
+│   ├── appsettings.json                       # Chuỗi kết nối Supabase PostgreSQL + Pooler
+│   └── Program.cs                             # DI, OnValidatePrincipal Cache (2 phút), Hosted Services
 │
 └── OvertimeHotel.HRM.MobileApp/               # [ỨNG DỤNG DI ĐỘNG - .NET MAUI .NET 10]
     ├── App.xaml / AppShell.xaml               # Shell + điều hướng tab
@@ -298,44 +308,69 @@ src/
 
 ---
 
-## 4. Cơ Chế Sao Lưu & Phục Hồi CSDL (30 Bảng Chuẩn 3NF)
+## 4. Cơ Chế Sao Lưu & Phục Hồi CSDL (38 Bảng Chuẩn 3NF)
 
-**Hiện trạng đã triển khai — sao lưu thủ công từ trong Web Admin:**
+**Hiện trạng đã triển khai — sao lưu dữ liệu toàn diện từ trong Web Admin:**
 
 * `BackupService` (`Data/Services/BackupService.cs`) nối thẳng PostgreSQL qua EF Core:
-  * `ExportDatabaseToJsonAsync()` — trích xuất dữ liệu của **toàn bộ 30 bảng** (bao gồm danh mục, phân ca, chấm công, đơn từ, bảng lương, nhật ký admin, 2 bảng dự án/sự kiện `du_an`, `phan_cong_du_an` và 3 bảng ca & chấm công mở rộng `dinh_bien_ca`, `giai_trinh_cham_cong`, `yeu_cau_doi_ca`) thành **một file JSON duy nhất** tải về máy quản trị viên.
-  * `RestoreDatabaseFromJsonAsync(json)` — nạp ngược JSON, làm sạch và tái tạo dữ liệu theo thứ tự quan hệ phụ thuộc khóa ngoại (Foreign Key Dependency Graph), đảm bảo không vi phạm ràng buộc toàn vẹn.
-  * `GetTableStatisticsAsync()` — thống kê số lượng bản ghi hiện hữu trên từng bảng trong số 30 bảng.
+  * `ExportDatabaseToJsonAsync()` — trích xuất dữ liệu của **toàn bộ 38 bảng CSDL** (bao gồm danh mục tổ chức, thang bảng lương cấp bậc, phụ lục hợp đồng, phân ca, chấm công, đơn từ, bảng lương 2 tầng, dự án sự kiện, định biên, giải trình, đổi ca, công bố lịch tuần, ngân sách lương và nhật ký kiểm toán) thành **một file JSON duy nhất** tải về máy quản trị viên.
+  * `RestoreDatabaseFromJsonAsync(json)` — nạp ngược JSON, làm sạch và tái tạo dữ liệu theo thứ tự đồ thị quan hệ phụ thuộc khóa ngoại (Foreign Key Dependency Graph), đảm bảo không vi phạm ràng buộc toàn vẹn.
+  * `GetTableStatisticsAsync()` — thống kê số lượng bản ghi hiện hữu trên từng bảng trong số 38 bảng.
 * `BackupController` (`[Authorize(Policy = PermissionCodes.BackupDatabase)]`) là điểm điều khiển duy nhất: `GET /Backup/Export` và `POST /Backup/Restore`.
 * Quyền `SAO_LUU_CSDL` ("Sao lưu & Phục hồi CSDL") được cấp phát độc quyền cho nhóm Quản trị viên (Admin).
 
 **Đặc điểm cần lưu ý khi trình bày:**
 
-* Đây là **sao lưu thủ công theo yêu cầu (On-Demand Manual Backup)**, không phải cơ chế tự động theo lịch (không dùng Cron, không có Background Worker chạy ngầm).
-* Bản sao lưu dạng snapshot JSON nằm trên máy trạm của Admin, không tự động đồng bộ lên bộ nhớ đám mây.
-* Về cơ chế sao lưu hạ tầng Supabase: Gói Supabase Cloud có hỗ trợ backup vật lý hàng ngày (giữ 7 ngày đối với gói Free), tuy nhiên đây là dịch vụ hạ tầng đám mây bên ngoài repo — **cần xác minh trên Dashboard** trước khi khẳng định.
+* Đây là **sao lưu thủ công theo yêu cầu (On-Demand Manual Backup)** thông qua giao diện Web Admin, kết hợp cùng cơ chế sao lưu vật lý tự động hàng ngày của nền tảng Supabase Cloud.
+* Bản sao lưu JSON snapshot giúp di chuyển, nhân bản môi trường kiểm thử (Staging/Dev) hoặc khôi phục cấp tốc khi xảy ra sự cố thao tác dữ liệu.
 
 ---
 
-## 5. Đối Chiếu Luồng Gọi Hàm Thực Tế
+## 5. Đối Chiếu Luồng Gọi Hàm & Tầng Tối Ưu Hóa Hiệu Năng Thực Tế
 
-### 5.1. Luồng thực thi Web Admin (C# Controller → EF Core Direct)
+### 5.1. Luồng thực thi Web Admin (C# Controller → Services & Caching Layer → EF Core)
 
-Kiến trúc triển khai trong `WebAdmin` hiện **không áp dụng mô hình Service/Repository trung gian**:
+Kiến trúc triển khai trong `WebAdmin` vận hành theo mô hình phân tầng kết hợp **Tối ưu hóa bộ nhớ đệm (Caching)** và **Dịch vụ chuyên trách (Domain Services)**:
 
-* Không có thư mục `Services/` hay `Repositories/` trong project `WebAdmin`.
-* **16 Controller MVC tiêm trực tiếp `AppDbContext`** và thực thi truy vấn LINQ:
-  ```text
-  Controller (SuKienController, NhanVienController...)
-     │
-     ▼ (Dependency Injection)
-  AppDbContext (30 DbSet)
-     │
-     ▼ (Npgsql Driver)
-  PostgreSQL Engine (Supabase Cloud)
-  ```
-* **Đặc tính bảo mật:** WebAdmin kết nối PostgreSQL bằng chuỗi kết nối trực tiếp (quyền hạn mức database user), do đó **WebAdmin không chịu sự chi phối của RLS**, toàn bộ logic phân quyền phụ thuộc vào bộ lọc `[Authorize]` và mã quyền trong code C#.
-* Ngoại lệ: `IBackupService`/`BackupService` là service độc lập duy nhất được tách lớp trong `Data`, phục vụ riêng nghiệp vụ JSON backup/restore.
+```text
+HTTP Request (Admin / HR / Manager)
+   │
+   ▼
+CookieAuthentication (OnValidatePrincipal — Cache IMemoryCache 2 phút)
+   │
+   ▼
+MVC Controller (NhanVien, PhanCa, ChamCong, BangLuong, BaoCao...)
+   │
+   ├──► SearchListCache (64 Striped Semaphores, Cache Prefix Invalidation)
+   ├──► BaoCaoReportService / PayrollBudgetService / EmployeeDeletionService
+   │
+   ▼ (EF Core Interceptor: SearchCacheInvalidationInterceptor)
+AppDbContext (38 DbSet)
+   │
+   ▼ (Npgsql Connection Pooler Port 6543)
+PostgreSQL Engine (Supabase Cloud — Singapore)
+```
+
+**Các giải pháp tối ưu hóa hiệu năng cốt lõi đã triển khai:**
+
+1. **Bộ nhớ đệm danh sách đa luồng `SearchListCache`:**
+   - Quản lý cache danh sách phân trang cho các màn hình có mật độ tra cứu cao (`nhanvien`, `contracts`, `phanca`, `attendance`, `leave-requests`, `accounts`, `payroll`).
+   - Sử dụng mảng **64 Striped `SemaphoreSlim`** để chống hiện tượng nghẽn luồng truy cập đồng thời (Cache Stampede).
+   - Cơ chế **Selective Cache Invalidation theo tiền tố (Prefix-based)**: sử dụng `ConcurrentDictionary<string, int> _prefixGenerations`. Khi một nghiệp vụ thay đổi (ví dụ sửa phân ca), hệ thống chỉ tăng thế hệ `phanca` để làm mới danh sách ca mà **không xóa toàn bộ cache của các phân hệ khác**.
+
+2. **Tự động làm mới cache bằng EF Core Interceptor:**
+   - `SearchCacheInvalidationInterceptor` can thiệp vào vòng đời `SaveChanges` / `SaveChangesAsync` của Entity Framework Core.
+   - Khi có thao tác INSERT / UPDATE / DELETE trên thực thể nào, Interceptor tự động nhận diện và gọi hủy cache của đúng nhóm tiền tố tương ứng.
+
+3. **Triệt tiêu độ trễ mạng trong `OnValidatePrincipal`:**
+   - Tại `Program.cs`, kiểm tra tính hợp lệ của phiên đăng nhập (Cookie) được bọc bởi `IMemoryCache` với thời gian sống 2 phút (`auth:validate:{userId}:{roleId}`).
+   - Nhờ đó, người dùng duyệt web mượt mà, **triệt tiêu hoàn toàn 3 truy vấn kiểm tra CSDL sang Singapore trên mỗi lượt click**.
+
+4. **Hệ thống 4 Background Workers (Hosted Services):**
+   - `HotelEventAutoStartWorker`: Chạy nền định kỳ kiểm tra mốc thời gian để tự động chuyển trạng thái sự kiện sang `DANG_DIEN_RA` hoặc `HOAN_THANH`.
+   - `LeaveExpiryWorker`: Định kỳ quét và cập nhật trạng thái hợp đồng hết hạn và số dư phép năm.
+   - `SalaryPositionWorker`: Tự động rà soát đồng bộ bậc lương khi có quyết định bổ nhiệm chức vụ mới.
+   - `AuditLogRetentionWorker`: Quản lý lưu trữ và dọn dẹp nhật ký kiểm toán định kỳ.
 
 ### 5.2. Luồng thực thi Mobile Client (MVVM → PostgREST + RLS)
 

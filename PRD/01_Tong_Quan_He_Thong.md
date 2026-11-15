@@ -194,70 +194,78 @@ Nhằm đáp ứng toàn diện bài toán quản trị nhân lực đặc thù 
 
 ---
 
-## 6. Quy Mô Cơ Sở Dữ Liệu: 30 Bảng Chuẩn Hóa 3NF
+## 6. Quy Mô Cơ Sở Dữ Liệu: 38 Bảng Chuẩn Hóa 3NF
 
-Cơ sở dữ liệu của hệ thống HRM The OverTime Hotel được thiết kế đạt chuẩn hóa **dạng chuẩn 3 (3NF)** trên nền tảng Supabase Cloud (PostgreSQL Engine), bao gồm **30 bảng** được phân nhóm chặt chẽ theo 11 phân hệ chức năng:
+Cơ sở dữ liệu của hệ thống HRM The OverTime Hotel được thiết kế đạt chuẩn hóa **dạng chuẩn 3 (3NF)** trên nền tảng Supabase Cloud (PostgreSQL Engine), bao gồm **38 bảng** được phân nhóm chặt chẽ theo các phân hệ chức năng:
 
 ```text
 +---------------------------------------------------------------------------------------+
-|                 CSDL THE OVERTIME HOTEL HRM - 30 BẢNG CHUẨN 3NF                      |
+|                 CSDL THE OVERTIME HOTEL HRM - 38 BẢNG CHUẨN 3NF                      |
 +---------------------------------------------------------------------------------------+
-| [1]  Nhóm Tổ chức & Nhân sự (4 bảng):                                                 |
-|      - phong_ban, chuc_vu, nhan_vien, hop_dong                                        |
-| [2]  Nhóm Tài khoản & Phân quyền RBAC (5 bảng):                                      |
-|      - tai_khoan, vai_tro, quyen, vai_tro_quyen, yeu_cau_tai_khoan                    |
-| [3]  Nhóm Ca làm & Chấm công 24/7 (6 bảng):                                          |
-|      - ca_lam_viec, phan_ca, cham_cong, dinh_bien_ca, giai_trinh_cham_cong,           |
-|        yeu_cau_doi_ca                                                                 |
-| [4]  Nhóm Đơn từ điện tử (2 bảng):                                                    |
-|      - loai_don, don_tu                                                               |
-| [5]  Nhóm Dự án / Sự kiện Khách sạn (2 bảng):                                         |
-|      - du_an, phan_cong_du_an                                                         |
-| [6]  Nhóm Cấu hình Lương, Phụ cấp & Khấu trừ (5 bảng):                               |
-|      - ky_luong, cau_hinh_khoan_luong, cau_hinh_phu_cap, cau_hinh_khau_tru,          |
-|        cau_hinh_tang_ca                                                               |
-| [7]  Nhóm Phiếu lương & Chi tiết (5 bảng):                                           |
-|      - phieu_luong, chi_tiet_phieu_luong, chi_tiet_tru_bao_hiem,                      |
-|        chi_tiet_tru_thue_tncn, chi_tiet_tru_vi_pham_tam_ung                           |
-| [8]  Nhóm Quản trị & Nhật ký (1 bảng):                                                |
-|      - nhat_ky_quan_tri                                                               |
+| [1]  Nhóm Tổ chức & Nhân sự (6 bảng):                                                 |
+|      - phong_ban, chuc_vu, nhan_vien, hop_dong, khung_luong_cap_bac, phu_luc_luong     |
+| [2]  Nhóm Tài khoản & Phân quyền RBAC (5 bảng):                                       |
+|      - tai_khoan, vai_tro, quyen, vai_tro_quyen, yeu_cau_tai_khoan                     |
+| [3]  Nhóm Ca làm & Chấm công 24/7 (8 bảng):                                           |
+|      - ca_lam_viec, phan_ca, cham_cong, dinh_bien_ca, dinh_bien_ngay,                 |
+|        cong_bo_lich_tuan, giai_trinh_cham_cong, yeu_cau_doi_ca                        |
+| [4]  Nhóm Đơn từ điện tử (2 bảng):                                                     |
+|      - loai_don, don_tu                                                                |
+| [5]  Nhóm Dự án / Sự kiện Khách sạn (5 bảng):                                          |
+|      - du_an, nhu_cau_su_kien, phan_cong_du_an, cong_su_kien, quyet_toan_su_kien      |
+| [6]  Nhóm Cấu hình Lương, Phụ cấp & Khấu trừ (5 bảng):                                |
+|      - ky_luong, cau_hinh_khoan_luong, cau_hinh_phu_cap, cau_hinh_khau_tru,           |
+|        cau_hinh_tang_ca                                                                |
+| [7]  Nhóm Phiếu lương, Ngân sách & Chi tiết (6 bảng):                                  |
+|      - phieu_luong, chi_tiet_phieu_luong, chi_tiet_tru_bao_hiem,                       |
+|        chi_tiet_tru_thue_tncn, chi_tiet_tru_vi_pham_tam_ung, ngan_sach_luong            |
+| [8]  Nhóm Quản trị & Nhật ký (1 bảng):                                                 |
+|      - nhat_ky_quan_tri                                                                |
 +---------------------------------------------------------------------------------------+
 ```
 
-### 6.1. Danh Mục Tổng Hợp 30 Bảng CSDL
+### 6.1. Danh Mục Tổng Hợp 38 Bảng CSDL
 
 | STT | Tên Bảng | Phân Hệ Nghiệp Vụ Tương Ứng | Khóa Chính (PK) | Khóa Ngoại (FK) & Quan Hệ Nghiệp Vụ |
 |:---:|:---|:---|:---|:---|
 | **1** | `phong_ban` | Phân hệ 1 & 11 | `ma_phong_ban` | Danh mục đơn vị tổ chức trong khách sạn. |
-| **2** | `chuc_vu` | Phân hệ 1 & 11 | `ma_chuc_vu` | Danh mục chức danh chuyên môn. |
+| **2** | `chuc_vu` | Phân hệ 1 & 11 | `ma_chuc_vu` | Danh mục chức danh chuyên môn (Giám Sát Ca đã giải thể). |
 | **3** | `nhan_vien` | Phân hệ 1 | `ma_nhan_vien` | FK -> `phong_ban`, `chuc_vu`. Hồ sơ lý lịch nhân sự. |
 | **4** | `hop_dong` | Phân hệ 1 | `ma_hop_dong` | FK -> `nhan_vien`. Hợp đồng pháp lý và lương cơ bản. |
-| **5** | `tai_khoan` | Phân hệ 2 | `ma_tai_khoan` | FK -> `nhan_vien` (1-1), `vai_tro`. Tài khoản Web Admin. |
-| **6** | `vai_tro` | Phân hệ 2 | `ma_vai_tro` | 5 nhóm vai trò chuẩn (Admin, HR, Manager, Employee, IT). |
-| **7** | `quyen` | Phân hệ 2 | `ma_quyen` | 17 mã quyền hệ thống (`PermissionCodes`). |
-| **8** | `vai_tro_quyen` | Phân hệ 2 | `(ma_vai_tro, ma_quyen)` | FK -> `vai_tro`, `quyen`. Bảng gán quyền cho vai trò (RBAC). |
-| **9** | `yeu_cau_tai_khoan` | Phân hệ 2 | `ma_yeu_cau` | FK -> `nhan_vien`, `hop_dong`, `vai_tro`, `tai_khoan`. Quy trình HR gửi -> IT cấp. |
-| **10** | `ca_lam_viec` | Phân hệ 3 | `ma_ca` | Danh mục 3 ca chuẩn 24/7 (Sáng, Chiều, Đêm). |
-| **11** | `phan_ca` | Phân hệ 3 | `ma_phan_ca` | FK -> `nhan_vien`, `ca_lam_viec`. Lịch xếp ca tuần/tháng. |
-| **12** | `cham_cong` | Phân hệ 4 | `ma_cham_cong` | FK -> `phan_ca` (1-1). Quẹt thẻ check-in/out, GPS/Wifi, trễ/sớm, OT. |
-| **13** | `loai_don` | Phân hệ 5 | `ma_loai_don` | 4 loại đơn: Phép năm, Nghỉ ốm, Thai sản, Thôi việc. |
-| **14** | `don_tu` | Phân hệ 5 | `ma_don` | FK -> `nhan_vien`, `loai_don`, `nguoi_duyet`. Quản lý xét duyệt đơn. |
-| **15** | `du_an` | Phân hệ 9 | `ma_du_an` | FK -> `nhan_vien` (người quản lý). Sự kiện tiệc cưới, MICE, Gala. |
-| **16** | `phan_cong_du_an` | Phân hệ 9 | `ma_phan_cong` | FK -> `du_an`, `nhan_vien`. Điều động Đội đặc nhiệm Task Force. |
-| **17** | `ky_luong` | Phân hệ 6 | `ma_ky_luong` | Chu kỳ khóa sổ tính lương theo tháng (Tháng/Năm). |
-| **18** | `cau_hinh_khoan_luong` | Phân hệ 6, 7, 8 | `ma_khoan` | Định mức phụ cấp, tiền thưởng và các khoản khấu trừ. |
-| **19** | `cau_hinh_phu_cap` | Phân hệ 7 | `ma_phu_cap` | Tham số phụ cấp ca đêm, ăn ca, kèm cờ chịu thuế TNCN. |
-| **20** | `cau_hinh_khau_tru` | Phân hệ 6 | `ma_khoan_tru` | Tham số khoản khấu trừ (BHXH, BHYT, thuế, phạt). |
-| **21** | `cau_hinh_tang_ca` | Phân hệ 4 & 6 | `ma_loai_ot` | Danh mục loại tăng ca và hệ số lương OT (1.5, 2.0, 3.0). |
-| **22** | `phieu_luong` | Phân hệ 6 | `ma_phieu_luong` | FK -> `nhan_vien`, `ky_luong`. Tổng hợp Gross, Khấu trừ, Net. |
-| **23** | `chi_tiet_phieu_luong` | Phân hệ 6 | `ma_chi_tiet` | FK -> `phieu_luong`, `cau_hinh_khoan_luong`. Bản ghi chi tiết thu chi. |
-| **24** | `chi_tiet_tru_bao_hiem` | Phân hệ 6 | `ma_chi_tiet_bh` | FK -> `chi_tiet_phieu_luong` (1-1). Tách 3 khoản BHXH, BHYT, BHTN. |
-| **25** | `chi_tiet_tru_thue_tncn` | Phân hệ 6 | `ma_chi_tiet_thue` | FK -> `chi_tiet_phieu_luong` (1-1). Tính thuế theo biểu lũy tiến từng phần. |
-| **26** | `chi_tiet_tru_vi_pham_tam_ung` | Phân hệ 6 | `ma_chi_tiet_vp` | FK -> `chi_tiet_phieu_luong` (1-1). Khấu trừ vi phạm trễ/sớm/bỏ ca và khấu trừ khác (bỏ tạm ứng). |
-| **27** | `nhat_ky_quan_tri` | Phân hệ 11 | `ma_nhat_ky` | FK -> `tai_khoan`. Nhật ký kiểm toán thao tác hệ thống (Audit Log). |
-| **28** | `dinh_bien_ca` | Phân hệ 3 | `ma_dinh_bien` | FK -> `ca_lam_viec`, `chuc_vu`. Số người tối thiểu mỗi ca × chức vụ để cảnh báo thiếu người khi xếp ca. |
-| **29** | `giai_trinh_cham_cong` | Phân hệ 3 & 4 | `ma_giai_trinh` | FK -> `phan_ca`, `nhan_vien` (người gửi, quản lý xác minh, HR xác nhận). Giải trình sai lệch giờ quẹt thẻ, duyệt 2 cấp. |
-| **30** | `yeu_cau_doi_ca` | Phân hệ 3 & 4 | `ma_yeu_cau` | FK -> `phan_ca` (ca nhường, ca nhận), `nhan_vien` (người gửi, người nhận, người duyệt). Yêu cầu đổi ca trực giữa nhân viên. |
+| **5** | `khung_luong_cap_bac` | Phân hệ 1 & 6 | `ma_khung_luong` | Thang bảng lương và dải thu nhập min-max theo nhóm chức vụ. |
+| **6** | `phu_luc_luong` | Phân hệ 1 & 6 | `ma_phu_luc` | FK -> `hop_dong`, `chuc_vu`, `phong_ban`. Phụ lục điều chỉnh lương/vị trí. |
+| **7** | `tai_khoan` | Phân hệ 2 | `ma_tai_khoan` | FK -> `nhan_vien` (1-1), `vai_tro`. Tài khoản Web Admin & Mobile. |
+| **8** | `vai_tro` | Phân hệ 2 | `ma_vai_tro` | 5 nhóm vai trò chuẩn (Admin, HR, Manager, Employee, IT). |
+| **9** | `quyen` | Phân hệ 2 | `ma_quyen` | 17 mã quyền hệ thống (`PermissionCodes`). |
+| **10** | `vai_tro_quyen` | Phân hệ 2 | `(ma_vai_tro, ma_quyen)` | FK -> `vai_tro`, `quyen`. Bảng gán quyền cho vai trò (RBAC). |
+| **11** | `yeu_cau_tai_khoan` | Phân hệ 2 | `ma_yeu_cau` | FK -> `nhan_vien`, `hop_dong`, `vai_tro`, `tai_khoan`. Quy trình HR gửi -> IT cấp. |
+| **12** | `ca_lam_viec` | Phân hệ 3 | `ma_ca` | Danh mục 3 ca chuẩn 24/7 (Sáng, Chiều, Đêm). |
+| **13** | `phan_ca` | Phân hệ 3 | `ma_phan_ca` | FK -> `nhan_vien`, `ca_lam_viec`. Lịch xếp ca tuần/tháng. |
+| **14** | `cham_cong` | Phân hệ 4 | `ma_cham_cong` | FK -> `phan_ca` (1-1). Quẹt thẻ check-in/out, GPS/Wifi, trễ/sớm, OT, TRE_VA_SOM. |
+| **15** | `dinh_bien_ca` | Phân hệ 3 | `ma_dinh_bien` | FK -> `ca_lam_viec`, `chuc_vu`, `phong_ban`. Định biên tối thiểu ca × chức vụ × bộ phận. |
+| **16** | `dinh_bien_ngay` | Phân hệ 3 | `ma_dinh_bien_ngay` | FK -> `ca_lam_viec`, `chuc_vu`, `phong_ban`. Định biên linh hoạt theo ngày cao điểm. |
+| **17** | `cong_bo_lich_tuan` | Phân hệ 3 | `dau_tuan` | FK -> `nhan_vien`. Lịch sử khóa và công bố lịch tuần cho Mobile App. |
+| **18** | `giai_trinh_cham_cong` | Phân hệ 3 & 4 | `ma_giai_trinh` | FK -> `phan_ca`, `nhan_vien`. Giải trình sai lệch giờ quẹt thẻ, duyệt 2 cấp. |
+| **19** | `yeu_cau_doi_ca` | Phân hệ 3 & 4 | `ma_yeu_cau` | FK -> `phan_ca` (ca nhường, ca nhận), `nhan_vien`. Đổi ca trực giữa nhân viên. |
+| **20** | `loai_don` | Phân hệ 5 | `ma_loai_don` | 4 loại đơn: Phép năm, Nghỉ ốm, Thai sản, Thôi việc. |
+| **21** | `don_tu` | Phân hệ 5 | `ma_don` | FK -> `nhan_vien`, `loai_don`, `nguoi_duyet`. Quản lý xét duyệt đơn. |
+| **22** | `du_an` | Phân hệ 9 | `ma_du_an` | FK -> `nhan_vien` (người quản lý). Sự kiện tiệc cưới, MICE, Gala. |
+| **23** | `nhu_cau_su_kien` | Phân hệ 9 | `ma_nhu_cau` | FK -> `du_an`. Định mức nhân sự theo bộ phận cần cho sự kiện. |
+| **24** | `phan_cong_du_an` | Phân hệ 9 | `ma_phan_cong` | FK -> `du_an`, `nhan_vien`, `chi_tiet_phieu_luong`. Điều động Task Force sự kiện. |
+| **25** | `cong_su_kien` | Phân hệ 9 | `ma_cong` | FK -> `phan_cong_du_an`, `nhan_vien`. Xác nhận giờ công sự kiện thực tế. |
+| **26** | `quyet_toan_su_kien` | Phân hệ 9 | `ma_quyet_toan` | FK -> `du_an`, `nhan_vien`, `ky_luong`. Quyết toán thù lao sự kiện vào lương. |
+| **27** | `ky_luong` | Phân hệ 6 | `ma_ky_luong` | Chu kỳ khóa sổ tính lương theo tháng (Tháng/Năm). |
+| **28** | `cau_hinh_khoan_luong` | Phân hệ 6, 7, 8 | `ma_khoan` | Định mức phụ cấp, tiền thưởng và các khoản khấu trừ (Legacy Bonus). |
+| **29** | `cau_hinh_phu_cap` | Phân hệ 7 | `ma_phu_cap` | Tham số phụ cấp ca đêm, ăn ca, kèm cờ chịu thuế TNCN. |
+| **30** | `cau_hinh_khau_tru` | Phân hệ 6 | `ma_khoan_tru` | Tham số khoản khấu trừ (BHXH, BHYT, thuế, phạt). |
+| **31** | `cau_hinh_tang_ca` | Phân hệ 4 & 6 | `ma_loai_ot` | Danh mục loại tăng ca và hệ số lương OT (1.5, 2.0, 3.0). |
+| **32** | `phieu_luong` | Phân hệ 6 | `ma_phieu_luong` | FK -> `nhan_vien`, `ky_luong`. Tổng hợp Gross, Khấu trừ, Net. |
+| **33** | `chi_tiet_phieu_luong` | Phân hệ 6 | `ma_chi_tiet` | FK -> `phieu_luong`, `cau_hinh_khoan_luong`. Bản ghi chi tiết thu chi. |
+| **34** | `chi_tiet_tru_bao_hiem` | Phân hệ 6 | `ma_chi_tiet_bh` | FK -> `chi_tiet_phieu_luong` (1-1). Tách 3 khoản BHXH, BHYT, BHTN. |
+| **35** | `chi_tiet_tru_thue_tncn` | Phân hệ 6 | `ma_chi_tiet_thue` | FK -> `chi_tiet_phieu_luong` (1-1). Tính thuế theo biểu lũy tiến từng phần. |
+| **36** | `chi_tiet_tru_vi_pham_tam_ung` | Phân hệ 6 | `ma_chi_tiet_vp` | FK -> `chi_tiet_phieu_luong` (1-1). Khấu trừ vi phạm trễ/sớm/bỏ ca và khấu trừ khác. |
+| **37** | `ngan_sach_luong` | Phân hệ 10 & 14 | `ma_ngan_sach` | FK -> `phong_ban`, `nhan_vien`. Kế hoạch hạn mức ngân sách lương tháng. |
+| **38** | `nhat_ky_quan_tri` | Phân hệ 11 | `ma_nhat_ky` | FK -> `tai_khoan`. Nhật ký kiểm toán thao tác hệ thống (Audit Log). |
 
 ### 6.2. Đặc Tả 3 Bảng Mới Cho Phân Hệ Ca Làm & Chấm Công
 
@@ -334,7 +342,7 @@ Quản lý việc điều động nhân sự liên phòng ban và xác định m
 
 | Nhóm Yêu Cầu | Tiêu Chí Đo Lường | Chỉ Số Định Lượng Cam Kết | Giải Pháp Kỹ Thuật Đảm Bảo |
 |:---|:---|:---:|:---|
-| **Hiệu Năng (Performance)** | Thời gian phản hồi API Web & Mobile | **p95 < 500ms** (95% các yêu cầu phản hồi dưới 0.5 giây) | Tối ưu hóa truy vấn EF Core 10 / Npgsql; lập chỉ mục Index B-Tree trên các cột khóa ngoại và bộ lọc thường xuyên; kết nối Supabase qua Connection Pooling. |
+| **Hiệu Năng (Performance)** | Thời gian phản hồi API Web & Mobile | **p95 < 300ms** (95% các yêu cầu phản hồi dưới 0.3 giây) | Tối ưu hóa truy vấn EF Core 10 / Npgsql; lập chỉ mục Index B-Tree chuyên sâu; kết nối Supabase qua PgBouncer Connection Pooling; bộ nhớ đệm `SearchListCache` dạng Singleton với 64 Striped Semaphores và Selective Invalidation theo tiền tố (Prefix); đệm xác thực phiên làm việc `OnValidatePrincipal` (2 phút) giảm tải round-trip mạng tới Supabase Cloud. |
 | | Tốc độ tính lương tự động hàng loạt | **< 5 giây** cho toàn bộ 500+ nhân sự khách sạn | Thực thi thuật toán tính toán Gross -> Net tối ưu trên luồng xử lý nền (Background Task), xử lý dữ liệu theo lô (Batch Processing). |
 | | Tốc độ xuất phiếu lương PDF | **< 1.5 giây / phiếu** | Sử dụng QuestPDF Engine với kiến trúc layout mã hóa tĩnh, tối ưu hóa bộ nhớ đệm và streaming trực tiếp. |
 | **Độ Chính Xác Tài Chính (Financial Accuracy)** | Độ chính xác phép tính tiền tệ | **100% Tuyệt đối** (Sai số = 0) | Sử dụng kiểu dữ liệu `decimal` trong C# .NET 10 và `numeric(18,2)` trong PostgreSQL Supabase; **nghiêm cấm tuyệt đối** sử dụng `float` hoặc `double` để triệt tiêu hoàn toàn sai số làm tròn dấu phẩy động. |

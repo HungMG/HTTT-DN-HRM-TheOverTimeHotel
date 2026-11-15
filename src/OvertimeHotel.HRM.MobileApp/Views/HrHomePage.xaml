@@ -41,7 +41,7 @@
                                     HorizontalOptions="End"
                                     VerticalOptions="Start"
                                     Margin="0,0,2,0">
-                                <Label Text="3"
+                                <Label Text="{Binding PendingLeaveCount}"
                                        TextColor="#FFFFFF"
                                        FontSize="9"
                                        FontFamily="SegoeUIBold"
@@ -281,6 +281,8 @@
                         </VerticalStackLayout>
                     </VerticalStackLayout>
 
+                    <Label Text="{Binding LoadError}" TextColor="#B91C1C" FontSize="12" />
+
                     <!-- ═══ KHỐI 4 · QUÂN SỐ THEO CA TRỰC HÔM NAY (LIVE SHIFT COVERAGE 24/7) ═══ -->
                     <VerticalStackLayout Spacing="8">
                         <Grid ColumnDefinitions="*,Auto">
@@ -428,7 +430,7 @@
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalOptions="Center">
                             <Label Grid.Column="0" Text="✅" FontSize="16" VerticalOptions="Center" />
                             <Label Grid.Column="1"
-                                   Text="Không có đơn chờ duyệt · Bạn đã xử lý xong toàn bộ đơn"
+                                   Text="{Binding PendingLeaveSub}"
                                    TextColor="#15803D"
                                    FontSize="12"
                                    FontFamily="SegoeUIBold"
