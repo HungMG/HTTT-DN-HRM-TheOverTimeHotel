@@ -632,10 +632,13 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         }
 
         // Immutable salary bases on the payslip, including zero-pay segments, for later historical review.
-        details.Single(d => d.MaKhoanTru == 1).GhiChu += "; Căn cứ lương: " + string.Join(" | ", salarySegments.Select(segment =>
+        var insuranceItem = details.Single(d => d.MaKhoanTru == 1);
+        var canCuText = "; Căn cứ lương: " + string.Join(" | ", salarySegments.Select(segment =>
             $"{segment.From:dd/MM/yyyy}–{segment.To:dd/MM/yyyy}: HĐ #{segment.Salary.Contract.MaHopDong}" +
             (segment.Salary.Amendment is { } appendix ? $", PL #{appendix.MaPhuLuc}" : "") +
             $", {segment.Salary.MonthlySalary:N0}đ/tháng, CV #{segment.Salary.PositionId}, PB #{segment.Salary.DepartmentId}"));
+        var combinedGhiChu = (insuranceItem.GhiChu ?? "") + canCuText;
+        insuranceItem.GhiChu = combinedGhiChu.Length > 950 ? combinedGhiChu[..947] + "..." : combinedGhiChu;
 
         // 9. Phạt vi phạm kỷ luật & chấm công (Bao gồm Bỏ ca 200k)
         var fineDetails = new List<ChiTietTruViPhamTamUng>();

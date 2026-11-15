@@ -230,7 +230,7 @@ CREATE TABLE IF NOT EXISTS CHI_TIET_PHIEU_LUONG (
     loai_khoan VARCHAR(30) NOT NULL CHECK (loai_khoan IN ('TANG_CA', 'PHU_CAP', 'THUONG', 'KHAU_TRU')),
     ten_khoan_luu VARCHAR(150) NOT NULL,
     so_tien DECIMAL(15,2) NOT NULL,
-    ghi_chu VARCHAR(255)
+    ghi_chu VARCHAR(1000)
 );
 
 -- 21. BẢNG CHI_TIET_TRU_BAO_HIEM (Chi tiết khấu trừ bảo hiểm bắt buộc - Bảng con 1)

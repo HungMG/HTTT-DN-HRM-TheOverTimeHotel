@@ -79,6 +79,9 @@ public static class DatabaseSchemaInitializer
             ALTER TABLE nhan_vien
                 ADD COLUMN IF NOT EXISTS so_nguoi_phu_thuoc INT NOT NULL DEFAULT 0;
 
+            ALTER TABLE chi_tiet_phieu_luong
+                ALTER COLUMN ghi_chu TYPE VARCHAR(1000);
+
             """;
 
         return context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
