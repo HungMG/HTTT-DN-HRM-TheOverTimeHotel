@@ -655,3 +655,82 @@
   .salary-bands-table th:first-child { width: 25%; }
   .salary-bands-table th:nth-child(2) { width: 32%; }
 }
+
+/* ==========================================================================
+   POPUP & DIALOG GIAO DIỆN CHUẨN KHÁCH SẠN HOÀNG GIA (THE OVERTIME HOTEL)
+   ========================================================================== */
+.account-popup-stack {
+  z-index: 1110 !important;
+}
+
+.payroll-confirm-dialog {
+  width: min(460px, calc(100vw - 32px));
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  box-shadow: 0 32px 90px rgba(15, 23, 42, 0.35);
+  overflow: visible;
+  z-index: 1120;
+}
+.payroll-confirm-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.payroll-confirm-dialog .account-confirm-card {
+  position: relative;
+  padding: 32px 28px 28px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  text-align: center;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.15);
+}
+.payroll-confirm-dialog .account-confirm-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 1.75rem;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+}
+.payroll-confirm-dialog .account-confirm-icon.is-primary {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  color: #fbbf24;
+  border: 2px solid rgba(251, 191, 36, 0.6);
+}
+.payroll-confirm-dialog .account-confirm-icon.is-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c2b 100%);
+  color: #ffffff;
+  border: 2px solid rgba(254, 202, 202, 0.6);
+}
+.payroll-confirm-dialog .account-confirm-icon.is-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  border: 2px solid rgba(254, 243, 199, 0.6);
+}
+.payroll-confirm-dialog .account-confirm-icon.is-success {
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  color: #ffffff;
+  border: 2px solid rgba(209, 250, 229, 0.6);
+}
+.payroll-confirm-dialog .account-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 12px;
+  margin-top: 22px;
+}
+.payroll-confirm-dialog .account-confirm-actions button {
+  min-height: 44px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}

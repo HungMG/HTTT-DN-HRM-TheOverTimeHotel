@@ -7,6 +7,261 @@
     var DETAIL_PARTIAL_URL = "/BangLuong/DetailPartial";
 
     // ------------------------------------------------------------------
+    // TOAST POPUP THÔNG BÁO HOÀNG GIA (THE OVERTIME HOTEL)
+    // ------------------------------------------------------------------
+    function initPayrollToasts() {
+        var toastStack = document.querySelector(".account-popup-stack");
+        if (!toastStack) {
+            toastStack = document.createElement("div");
+            toastStack.className = "account-popup-stack";
+            toastStack.setAttribute("aria-live", "polite");
+            toastStack.setAttribute("aria-atomic", "true");
+            document.body.appendChild(toastStack);
+        }
+
+        function activateToast(toast) {
+            if (toast._activated) return;
+            toast._activated = true;
+            var closeTimer;
+            var closeBtn = toast.querySelector("[data-account-toast-close]");
+            function closeToast() {
+                window.clearTimeout(closeTimer);
+                toast.classList.remove("is-visible");
+                toast.classList.add("is-leaving");
+                window.setTimeout(function () {
+                    toast.remove();
+                }, 260);
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener("click", closeToast);
+            }
+            window.requestAnimationFrame(function () {
+                toast.classList.add("is-visible");
+            });
+            closeTimer = window.setTimeout(closeToast, 5200);
+        }
+
+        document.querySelectorAll("[data-account-toast]").forEach(activateToast);
+
+        function showToast(message, type) {
+            if (!message) return;
+            type = type || "success";
+            var isSuccess = type === "success";
+
+            var toast = document.createElement("div");
+            toast.className = "account-popup account-popup--" + (isSuccess ? "success" : "danger");
+            toast.setAttribute("data-account-toast", "");
+            toast.setAttribute("role", isSuccess ? "status" : "alert");
+
+            var iconWrap = document.createElement("div");
+            iconWrap.className = "account-popup-icon";
+            var icon = document.createElement("i");
+            icon.className = isSuccess ? "bi bi-check2" : "bi bi-exclamation-lg";
+            iconWrap.appendChild(icon);
+
+            var copy = document.createElement("div");
+            copy.className = "account-popup-copy";
+            var label = document.createElement("small");
+            label.textContent = isSuccess ? "Thao tác thành công" : "Không thể thực hiện";
+            var text = document.createElement("strong");
+            text.textContent = message;
+            copy.appendChild(label);
+            copy.appendChild(text);
+
+            var close = document.createElement("button");
+            close.type = "button";
+            close.setAttribute("data-account-toast-close", "");
+            close.setAttribute("aria-label", "Đóng thông báo");
+            var closeIcon = document.createElement("i");
+            closeIcon.className = "bi bi-x-lg";
+            close.appendChild(closeIcon);
+
+            var progress = document.createElement("span");
+            progress.className = "account-popup-progress";
+
+            toast.appendChild(iconWrap);
+            toast.appendChild(copy);
+            toast.appendChild(close);
+            toast.appendChild(progress);
+
+            toastStack.prepend(toast);
+            activateToast(toast);
+        }
+
+        function checkDetailToasts(scope) {
+            if (!scope) return;
+            var detailToasts = scope.querySelectorAll("[data-detail-toast]");
+            detailToasts.forEach(function (dt) {
+                var tType = dt.getAttribute("data-detail-toast") || "success";
+                var tMsg = dt.getAttribute("data-detail-message");
+                if (tMsg) {
+                    showToast(tMsg, tType);
+                }
+                dt.remove();
+            });
+        }
+
+        checkDetailToasts(document);
+
+        window.PayrollUI = window.PayrollUI || {};
+        window.PayrollUI.showToast = showToast;
+        window.PayrollUI.checkDetailToasts = checkDetailToasts;
+    }
+
+    // ------------------------------------------------------------------
+    // HỘP THOẠI XÁC NHẬN CHUẨN HOÀNG GIA (THE OVERTIME HOTEL CONFIRM DIALOG)
+    // ------------------------------------------------------------------
+    function initPayrollConfirmations() {
+        var dialog = document.getElementById("payrollConfirmDialog");
+        if (!dialog) return;
+
+        var iconEl = document.getElementById("payrollConfirmIcon");
+        var eyebrowEl = document.getElementById("payrollConfirmEyebrow");
+        var titleEl = document.getElementById("payrollConfirmTitle");
+        var messageEl = document.getElementById("payrollConfirmMessage");
+        var submitBtn = document.getElementById("payrollConfirmSubmitBtn");
+
+        var pendingResolve = null;
+
+        function closeDialog(result) {
+            if (dialog.open) {
+                dialog.close();
+            }
+            if (pendingResolve) {
+                var resolve = pendingResolve;
+                pendingResolve = null;
+                resolve(result);
+            }
+        }
+
+        function showConfirm(options) {
+            options = options || {};
+            var title = options.title || "Xác nhận thao tác";
+            var message = options.message || "Bạn có chắc chắn muốn thực hiện hành động này?";
+            var eyebrow = options.eyebrow || "XÁC NHẬN THAO TÁC";
+            var variant = options.variant || "primary";
+            var iconClass = options.icon || "bi-question-circle";
+            var btnText = options.btnText || "Xác nhận";
+
+            if (titleEl) titleEl.textContent = title;
+            if (messageEl) messageEl.textContent = message;
+            if (eyebrowEl) eyebrowEl.textContent = eyebrow;
+
+            if (iconEl) {
+                iconEl.className = "account-confirm-icon is-" + variant;
+                iconEl.innerHTML = '<i class="bi ' + iconClass + '"></i>';
+            }
+
+            if (submitBtn) {
+                var submitSpan = submitBtn.querySelector("span");
+                if (submitSpan) submitSpan.textContent = btnText;
+                else submitBtn.textContent = btnText;
+
+                submitBtn.className = "btn rounded-pill px-4 fw-bold";
+                if (variant === "danger") {
+                    submitBtn.classList.add("btn-danger");
+                } else if (variant === "warning") {
+                    submitBtn.classList.add("btn-warning", "text-dark");
+                } else if (variant === "success") {
+                    submitBtn.classList.add("btn-success");
+                } else {
+                    submitBtn.classList.add("btn-primary");
+                }
+            }
+
+            if (eyebrowEl) {
+                if (variant === "danger") eyebrowEl.style.color = "#b91c2b";
+                else if (variant === "warning") eyebrowEl.style.color = "#d97706";
+                else if (variant === "success") eyebrowEl.style.color = "#047857";
+                else eyebrowEl.style.color = "#3155a6";
+            }
+
+            return new Promise(function (resolve) {
+                pendingResolve = resolve;
+                if (typeof dialog.showModal === "function") {
+                    dialog.showModal();
+                } else {
+                    var fallback = window.confirm(title + "\n\n" + message);
+                    resolve(fallback);
+                    pendingResolve = null;
+                }
+            });
+        }
+
+        dialog.querySelectorAll("[data-payroll-confirm-cancel]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                closeDialog(false);
+            });
+        });
+
+        if (submitBtn) {
+            submitBtn.addEventListener("click", function () {
+                closeDialog(true);
+            });
+        }
+
+        dialog.addEventListener("click", function (event) {
+            if (event.target === dialog) {
+                closeDialog(false);
+            }
+        });
+
+        dialog.addEventListener("cancel", function () {
+            closeDialog(false);
+        });
+
+        window.PayrollUI = window.PayrollUI || {};
+        window.PayrollUI.confirm = showConfirm;
+
+        document.addEventListener("click", function (event) {
+            var trigger = event.target.closest("[data-confirm-title]");
+            if (!trigger) return;
+
+            if (trigger._isConfirmed) {
+                delete trigger._isConfirmed;
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+
+            var title = trigger.getAttribute("data-confirm-title");
+            var message = trigger.getAttribute("data-confirm-message");
+            var eyebrow = trigger.getAttribute("data-confirm-eyebrow");
+            var variant = trigger.getAttribute("data-confirm-variant");
+            var icon = trigger.getAttribute("data-confirm-icon");
+            var btnText = trigger.getAttribute("data-confirm-btn");
+
+            showConfirm({
+                title: title,
+                message: message,
+                eyebrow: eyebrow,
+                variant: variant,
+                icon: icon,
+                btnText: btnText
+            }).then(function (confirmed) {
+                if (confirmed) {
+                    trigger._isConfirmed = true;
+                    var form = trigger.closest("form");
+                    if (form && (trigger.type === "submit" || trigger.tagName === "BUTTON")) {
+                        if (typeof form.requestSubmit === "function") {
+                            form.requestSubmit(trigger);
+                        } else {
+                            form.submit();
+                        }
+                    } else if (trigger.tagName === "A" && trigger.href) {
+                        window.location.href = trigger.href;
+                    } else {
+                        trigger.click();
+                    }
+                }
+            });
+        }, true);
+    }
+
+    // ------------------------------------------------------------------
     // LỌC / TÌM KIẾM TẠI CHỖ: chỉ nạp lại khối danh sách lương bên dưới.
     // Header, breadcrumb, stepper, thẻ KPI và chính bộ lọc giữ nguyên —
     // không có lần reload toàn trang nào (rule 4 coding-style).
@@ -317,6 +572,9 @@
                     body.hidden = false;
                     loading.hidden = true;
                     activeRequest = null;
+                    if (window.PayrollUI && typeof window.PayrollUI.checkDetailToasts === "function") {
+                        window.PayrollUI.checkDetailToasts(body);
+                    }
                 })
                 .catch(function (err) {
                     if (err && err.name === "AbortError") return;
@@ -356,11 +614,15 @@
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function () {
+            initPayrollToasts();
+            initPayrollConfirmations();
             initListRefresh();
             initTabSwitching();
             initModal();
         });
     } else {
+        initPayrollToasts();
+        initPayrollConfirmations();
         initListRefresh();
         initTabSwitching();
         initModal();

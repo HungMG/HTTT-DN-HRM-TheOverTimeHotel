@@ -5,22 +5,14 @@
     var tabBase = $"payslip-tab-{Model.MaPhieuLuong}";
 }
 
-<!-- THÔNG BÁO FLASH MESSAGE -->
+<!-- THÔNG BÁO FLASH MESSAGE CHO TOAST POPUP -->
 @if (!string.IsNullOrEmpty(Model.SuccessMessage))
 {
-    <div class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-3" role="alert">
-        <i class="bi bi-check-circle-fill fs-5 text-success"></i>
-        <div>@Model.SuccessMessage</div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
-    </div>
+    <div class="d-none" data-detail-toast="success" data-detail-message="@Model.SuccessMessage"></div>
 }
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
 {
-    <div class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-3" role="alert">
-        <i class="bi bi-exclamation-triangle-fill fs-5 text-danger"></i>
-        <div>@Model.ErrorMessage</div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
-    </div>
+    <div class="d-none" data-detail-toast="danger" data-detail-message="@Model.ErrorMessage"></div>
 }
 
 <!-- HÀNG TAB: chuyển tab tại chỗ, không nạp lại trang (Zero Full-Page Reload) -->
@@ -320,7 +312,13 @@
                                                 <input type="hidden" name="chiTietId" value="@pc.MaChiTiet" />
                                                 <input type="hidden" name="phieuLuongId" value="@Model.MaPhieuLuong" />
                                                 <input type="hidden" name="returnUrl" value="@Url.Action("Detail", "BangLuong", new { id = Model.MaPhieuLuong })" />
-                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng điều chỉnh" onclick="return confirm('Xóa dòng điều chỉnh này?');">
+                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng điều chỉnh"
+                                                        data-confirm-title="Xóa dòng điều chỉnh này?"
+                                                        data-confirm-message="Khoản phụ cấp '@pc.TenKhoan' (@pc.SoTien.ToString("N0")đ) sẽ bị xóa khỏi phiếu lương."
+                                                        data-confirm-eyebrow="XÓA ĐIỀU CHỈNH"
+                                                        data-confirm-variant="danger"
+                                                        data-confirm-icon="bi-trash3"
+                                                        data-confirm-btn="Xóa dòng">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
@@ -406,7 +404,13 @@
                                                 <input type="hidden" name="chiTietId" value="@bn.MaChiTiet" />
                                                 <input type="hidden" name="phieuLuongId" value="@Model.MaPhieuLuong" />
                                                 <input type="hidden" name="returnUrl" value="@Url.Action("Detail", "BangLuong", new { id = Model.MaPhieuLuong })" />
-                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng điều chỉnh" onclick="return confirm('Xóa khoản thưởng này?');">
+                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng điều chỉnh"
+                                                        data-confirm-title="Xóa khoản thưởng này?"
+                                                        data-confirm-message="Khoản thưởng '@bn.TenKhoan' (@bn.SoTien.ToString("N0")đ) sẽ bị xóa khỏi phiếu lương."
+                                                        data-confirm-eyebrow="XÓA KHOẢN THƯỞNG"
+                                                        data-confirm-variant="danger"
+                                                        data-confirm-icon="bi-trash3"
+                                                        data-confirm-btn="Xóa khoản">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
@@ -536,7 +540,13 @@
                                                 <input type="hidden" name="chiTietId" value="@ad.MaChiTiet" />
                                                 <input type="hidden" name="phieuLuongId" value="@Model.MaPhieuLuong" />
                                                 <input type="hidden" name="returnUrl" value="@Url.Action("Detail", "BangLuong", new { id = Model.MaPhieuLuong })" />
-                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng khấu trừ" onclick="return confirm('Xóa dòng khấu trừ này?');">
+                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Xóa dòng khấu trừ"
+                                                        data-confirm-title="Xóa khoản khấu trừ này?"
+                                                        data-confirm-message="Khoản khấu trừ '@ad.TenKhoan' (@ad.SoTien.ToString("N0")đ) sẽ được hủy bỏ khỏi phiếu lương."
+                                                        data-confirm-eyebrow="XÓA KHẤU TRỪ"
+                                                        data-confirm-variant="danger"
+                                                        data-confirm-icon="bi-trash3"
+                                                        data-confirm-btn="Xóa khấu trừ">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
@@ -575,7 +585,13 @@
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@Model.MaPhieuLuong" />
                             <input type="hidden" name="returnUrl" value="@Url.Action("Detail", "BangLuong", new { id = Model.MaPhieuLuong })" />
-                            <button type="submit" class="btn btn-outline-primary rounded-pill px-3 btn-sm shadow-xs" onclick="return confirm('Tính lại toàn bộ số liệu công, tăng ca và sự kiện của nhân viên này?');">
+                            <button type="submit" class="btn btn-outline-primary rounded-pill px-3 btn-sm shadow-xs"
+                                    data-confirm-title="Tính lại phiếu lương @Model.HoTen?"
+                                    data-confirm-message="Hệ thống sẽ làm mới lại công, tăng ca, bảo hiểm và sự kiện từ dữ liệu gốc của kỳ."
+                                    data-confirm-eyebrow="TÍNH LẠI PHIẾU LƯƠNG"
+                                    data-confirm-variant="primary"
+                                    data-confirm-icon="bi-arrow-clockwise"
+                                    data-confirm-btn="Tính lại ngay">
                                 <i class="bi bi-arrow-clockwise me-1"></i> Tính lại phiếu này
                             </button>
                         </form>

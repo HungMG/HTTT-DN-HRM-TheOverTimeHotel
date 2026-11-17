@@ -6,6 +6,34 @@
 <link rel="stylesheet" href="~/css/payroll.css" asp-append-version="true" />
 <div class="container-fluid px-3 px-md-4 py-3 payroll-workspace">
 
+    <!-- TOAST POPUP THÔNG BÁO CHUẨN HOÀNG GIA (THE OVERTIME HOTEL) -->
+    <div class="account-popup-stack" aria-live="polite" aria-atomic="true">
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div class="account-popup account-popup--success" data-account-toast role="status">
+                <div class="account-popup-icon"><i class="bi bi-check2"></i></div>
+                <div class="account-popup-copy">
+                    <small>Thao tác thành công</small>
+                    <strong>@Model.SuccessMessage</strong>
+                </div>
+                <button type="button" data-account-toast-close aria-label="Đóng thông báo"><i class="bi bi-x-lg"></i></button>
+                <span class="account-popup-progress"></span>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="account-popup account-popup--danger" data-account-toast role="alert">
+                <div class="account-popup-icon"><i class="bi bi-exclamation-lg"></i></div>
+                <div class="account-popup-copy">
+                    <small>Không thể thực hiện</small>
+                    <strong>@Model.ErrorMessage</strong>
+                </div>
+                <button type="button" data-account-toast-close aria-label="Đóng thông báo"><i class="bi bi-x-lg"></i></button>
+                <span class="account-popup-progress"></span>
+            </div>
+        }
+    </div>
+
     <!-- THANH ĐIỀU HƯỚNG & HÀNH ĐỘNG -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div class="d-flex align-items-center gap-3">
@@ -35,7 +63,13 @@
                 <form method="post" asp-action="RecalculateEmployee" class="d-inline">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@Model.MaPhieuLuong" />
-                    <button type="submit" class="btn btn-outline-primary rounded-pill px-3 shadow-xs" onclick="return confirm('Tính lại toàn bộ số liệu công, tăng ca và khấu trừ của nhân viên này?');">
+                    <button type="submit" class="btn btn-outline-primary rounded-pill px-3 shadow-xs"
+                            data-confirm-title="Tính lại phiếu lương @Model.HoTen?"
+                            data-confirm-message="Hệ thống sẽ làm mới lại công, tăng ca, bảo hiểm và khấu trừ từ dữ liệu gốc của kỳ."
+                            data-confirm-eyebrow="TÍNH LẠI PHIẾU LƯƠNG"
+                            data-confirm-variant="primary"
+                            data-confirm-icon="bi-arrow-clockwise"
+                            data-confirm-btn="Tính lại ngay">
                         <i class="bi bi-arrow-clockwise me-1"></i> Tính lại phiếu này
                     </button>
                 </form>
@@ -49,6 +83,23 @@
     </div>
 
 </div>
+
+<!-- DIALOG XÁC NHẬN CHUẨN HOÀNG GIA (THE OVERTIME HOTEL) -->
+<dialog class="account-confirm-dialog payroll-confirm-dialog" id="payrollConfirmDialog">
+    <div class="account-confirm-card">
+        <button type="button" class="account-confirm-close" data-payroll-confirm-cancel aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+        <div class="account-confirm-icon is-primary" id="payrollConfirmIcon"><i class="bi bi-question-circle"></i></div>
+        <small id="payrollConfirmEyebrow" style="color: #3155a6; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;">XÁC NHẬN THAO TÁC</small>
+        <h2 id="payrollConfirmTitle" style="margin: 8px 0; color: #172554; font-size: 1.25rem; font-weight: 750;">Xác nhận</h2>
+        <p id="payrollConfirmMessage" style="margin: 0 auto 18px; max-width: 360px; color: #64748b; font-size: 0.88rem; line-height: 1.55;">Bạn có chắc chắn muốn thực hiện hành động này?</p>
+        <div class="account-confirm-actions" style="margin-top: 18px;">
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-payroll-confirm-cancel>Hủy bỏ</button>
+            <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" id="payrollConfirmSubmitBtn">
+                <i class="bi bi-check2"></i><span>Xác nhận</span>
+            </button>
+        </div>
+    </div>
+</dialog>
 
 @section Scripts {
     <script src="~/js/payroll.js" asp-append-version="true"></script>

@@ -8,23 +8,33 @@
 
 <div class="container-fluid px-3 px-md-4 py-3">
 
-    <!-- THÔNG BÁO FLASH MESSAGE -->
-    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
-    {
-        <div class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
-            <i class="bi bi-check-circle-fill fs-5 text-success"></i>
-            <div>@Model.SuccessMessage</div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
-        </div>
-    }
-    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-    {
-        <div class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill fs-5 text-danger"></i>
-            <div>@Model.ErrorMessage</div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
-        </div>
-    }
+    <!-- TOAST POPUP THÔNG BÁO CHUẨN HOÀNG GIA (THE OVERTIME HOTEL) -->
+    <div class="account-popup-stack" aria-live="polite" aria-atomic="true">
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div class="account-popup account-popup--success" data-account-toast role="status">
+                <div class="account-popup-icon"><i class="bi bi-check2"></i></div>
+                <div class="account-popup-copy">
+                    <small>Thao tác thành công</small>
+                    <strong>@Model.SuccessMessage</strong>
+                </div>
+                <button type="button" data-account-toast-close aria-label="Đóng thông báo"><i class="bi bi-x-lg"></i></button>
+                <span class="account-popup-progress"></span>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="account-popup account-popup--danger" data-account-toast role="alert">
+                <div class="account-popup-icon"><i class="bi bi-exclamation-lg"></i></div>
+                <div class="account-popup-copy">
+                    <small>Không thể thực hiện</small>
+                    <strong>@Model.ErrorMessage</strong>
+                </div>
+                <button type="button" data-account-toast-close aria-label="Đóng thông báo"><i class="bi bi-x-lg"></i></button>
+                <span class="account-popup-progress"></span>
+            </div>
+        }
+    </div>
 
     <!-- 1. ĐẦU TRANG: MỘT TIÊU ĐỀ DUY NHẤT + BỘ CHỌN KỲ LƯƠNG -->
     <div class="payroll-page-head">
@@ -256,7 +266,13 @@
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="thang" value="@Model.SelectedThang" />
                             <input type="hidden" name="nam" value="@Model.SelectedNam" />
-                            <button type="submit" class="btn btn-outline-dark rounded-pill px-3 shadow-xs" onclick="return confirm('Chạy tính toán tự động sẽ làm mới số liệu công, phụ cấp và thưởng của kỳ lương này. Tiếp tục?');">
+                            <button type="submit" class="btn btn-outline-dark rounded-pill px-3 shadow-xs"
+                                    data-confirm-title="@(Model.Items.Count > 0 ? "Tính lại bảng lương?" : "Chạy tính tự động?")"
+                                    data-confirm-message="Hệ thống sẽ tổng hợp lại toàn bộ dữ liệu chấm công, tăng ca, phụ cấp hợp đồng và sự kiện cho kỳ lương này."
+                                    data-confirm-eyebrow="TỔNG HỢP LƯƠNG"
+                                    data-confirm-variant="primary"
+                                    data-confirm-icon="bi-arrow-repeat"
+                                    data-confirm-btn="Tiếp tục tính">
                                 <i class="bi bi-arrow-repeat me-1"></i>
                                 @(Model.Items.Count > 0 ? "Tính lại bảng lương" : "Chạy tính tự động")
                             </button>
@@ -280,7 +296,13 @@
                             <input type="hidden" name="maKyLuong" value="@Model.CurrentPeriod!.MaKyLuong" />
                             <input type="hidden" name="thang" value="@Model.SelectedThang" />
                             <input type="hidden" name="nam" value="@Model.SelectedNam" />
-                            <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="return confirm('Xác nhận HR đã kiểm tra, đối chiếu kỹ bảng lương và gửi Ban Giám Đốc phê duyệt?');">
+                            <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm"
+                                    data-confirm-title="Trình duyệt bảng lương?"
+                                    data-confirm-message="Xác nhận HR đã kiểm tra, đối chiếu kỹ bảng lương và gửi Ban Giám Đốc phê duyệt."
+                                    data-confirm-eyebrow="TRÌNH DUYỆT BAN GIÁM ĐỐC"
+                                    data-confirm-variant="primary"
+                                    data-confirm-icon="bi-send-check"
+                                    data-confirm-btn="Xác nhận gửi duyệt">
                                 <i class="bi bi-send-check-fill me-1"></i> @(status == "TU_CHOI" ? "Gửi duyệt lại cho Sếp" : (isDraftReview ? "Chốt & Gửi duyệt cho Sếp" : "Gửi duyệt cho Sếp"))
                             </button>
                         </form>
@@ -294,7 +316,13 @@
                             <input type="hidden" name="maKyLuong" value="@Model.CurrentPeriod!.MaKyLuong" />
                             <input type="hidden" name="thang" value="@Model.SelectedThang" />
                             <input type="hidden" name="nam" value="@Model.SelectedNam" />
-                            <button type="submit" class="btn btn-success rounded-pill px-4 shadow-sm" onclick="return confirm('Bạn có chắc chắn muốn PHÊ DUYỆT bảng lương tháng này không?');">
+                            <button type="submit" class="btn btn-success rounded-pill px-4 shadow-sm"
+                                    data-confirm-title="Phê duyệt bảng lương chính thức?"
+                                    data-confirm-message="Ban Giám Đốc phê duyệt số liệu chi trả lương cho toàn bộ nhân viên trong kỳ. Kỳ lương sẽ sẵn sàng để HR khóa sổ."
+                                    data-confirm-eyebrow="BAN GIÁM ĐỐC PHÊ DUYỆT"
+                                    data-confirm-variant="success"
+                                    data-confirm-icon="bi-check2-circle"
+                                    data-confirm-btn="Phê duyệt ngay">
                                 <i class="bi bi-check2-circle me-1"></i> Phê duyệt bảng lương
                             </button>
                         </form>
@@ -312,7 +340,13 @@
                             <input type="hidden" name="maKyLuong" value="@Model.CurrentPeriod!.MaKyLuong" />
                             <input type="hidden" name="thang" value="@Model.SelectedThang" />
                             <input type="hidden" name="nam" value="@Model.SelectedNam" />
-                            <button type="submit" class="btn btn-warning text-dark fw-bold rounded-pill px-4 shadow-sm" onclick="return confirm('CẢNH BÁO: Khóa sổ bảng lương sẽ đóng băng vĩnh viễn dữ liệu tài chính của kỳ lương này. Tiếp tục?');">
+                            <button type="submit" class="btn btn-warning text-dark fw-bold rounded-pill px-4 shadow-sm"
+                                    data-confirm-title="Khóa sổ vĩnh viễn kỳ lương?"
+                                    data-confirm-message="CẢNH BÁO: Khóa sổ bảng lương sẽ đóng băng vĩnh viễn dữ liệu tài chính của kỳ lương này. Tiếp tục?"
+                                    data-confirm-eyebrow="ĐÓNG BĂNG TÀI CHÍNH"
+                                    data-confirm-variant="warning"
+                                    data-confirm-icon="bi-lock-fill"
+                                    data-confirm-btn="Xác nhận khóa sổ">
                                 <i class="bi bi-lock-fill me-1"></i> Khóa bảng lương
                             </button>
                         </form>
@@ -326,7 +360,13 @@
                             <input type="hidden" name="maKyLuong" value="@Model.CurrentPeriod!.MaKyLuong" />
                             <input type="hidden" name="thang" value="@Model.SelectedThang" />
                             <input type="hidden" name="nam" value="@Model.SelectedNam" />
-                            <button type="submit" class="btn btn-primary rounded-pill px-3 shadow-sm" onclick="return confirm('Gửi lại phiếu lương chính thức cho tất cả nhân viên trong kỳ?');">
+                            <button type="submit" class="btn btn-primary rounded-pill px-3 shadow-sm"
+                                    data-confirm-title="Gửi lại phiếu lương chính thức?"
+                                    data-confirm-message="Hệ thống sẽ gửi lại thông báo phiếu lương chính thức đến toàn bộ nhân viên qua Mobile App."
+                                    data-confirm-eyebrow="THÔNG BÁO NHÂN VIÊN"
+                                    data-confirm-variant="primary"
+                                    data-confirm-icon="bi-send-check"
+                                    data-confirm-btn="Gửi thông báo">
                                 <i class="bi bi-send-check-fill me-1"></i> @(Model.ArePayslipsPublished ? "Gửi lại phiếu tới App" : "Gửi phiếu tới App")
                             </button>
                         </form>
@@ -575,7 +615,13 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@row.MaPhieuLuong" />
                                                 <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                                                <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0.5" title="Tính lại phiếu lương nhân viên này" onclick="return confirm('Tính lại số liệu chấm công, sự kiện và khấu trừ của nhân viên này?');">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0.5" title="Tính lại phiếu lương nhân viên này"
+                                                        data-confirm-title="Tính lại phiếu lương?"
+                                                        data-confirm-message="Tính lại số liệu chấm công, sự kiện và khấu trừ của nhân viên @row.HoTen (@($"NV{row.MaNhanVien:D4}"))."
+                                                        data-confirm-eyebrow="TÍNH LẠI PHIẾU LƯƠNG"
+                                                        data-confirm-variant="primary"
+                                                        data-confirm-icon="bi-arrow-clockwise"
+                                                        data-confirm-btn="Tính lại">
                                                     <i class="bi bi-arrow-clockwise"></i>
                                                 </button>
                                             </form>
@@ -619,37 +665,65 @@
     }
 </div>
 
+<!-- DIALOG XÁC NHẬN CHUẨN HOÀNG GIA (THE OVERTIME HOTEL) -->
+<dialog class="account-confirm-dialog payroll-confirm-dialog" id="payrollConfirmDialog">
+    <div class="account-confirm-card">
+        <button type="button" class="account-confirm-close" data-payroll-confirm-cancel aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+        <div class="account-confirm-icon is-primary" id="payrollConfirmIcon"><i class="bi bi-question-circle"></i></div>
+        <small id="payrollConfirmEyebrow" style="color: #3155a6; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;">XÁC NHẬN THAO TÁC</small>
+        <h2 id="payrollConfirmTitle" style="margin: 8px 0; color: #172554; font-size: 1.25rem; font-weight: 750;">Xác nhận</h2>
+        <p id="payrollConfirmMessage" style="margin: 0 auto 18px; max-width: 360px; color: #64748b; font-size: 0.88rem; line-height: 1.55;">Bạn có chắc chắn muốn thực hiện hành động này?</p>
+        <div class="account-confirm-actions" style="margin-top: 18px;">
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-payroll-confirm-cancel>Hủy bỏ</button>
+            <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" id="payrollConfirmSubmitBtn">
+                <i class="bi bi-check2"></i><span>Xác nhận</span>
+            </button>
+        </div>
+    </div>
+</dialog>
+
 <!-- MODAL SẾP TỪ CHỐI DUYỆT BẢNG LƯƠNG -->
 @if (Model.CanApprove && Model.CurrentPeriod != null)
 {
     <div class="modal fade" id="rejectPayrollModal" tabindex="-1" aria-labelledby="rejectPayrollModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
                 <form method="post" asp-action="Reject">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="MaKyLuong" value="@Model.CurrentPeriod.MaKyLuong" />
                     <input type="hidden" name="thang" value="@Model.SelectedThang" />
                     <input type="hidden" name="nam" value="@Model.SelectedNam" />
 
-                    <div class="modal-header border-bottom-0 pb-0">
-                        <h5 class="modal-title fw-bold text-danger d-flex align-items-center gap-2" id="rejectPayrollModalLabel">
-                            <i class="bi bi-exclamation-triangle-fill"></i> Từ chối duyệt bảng lương
-                        </h5>
+                    <div class="modal-header border-bottom bg-light px-4 py-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center text-danger flex-shrink-0" style="width: 42px; height: 42px;">
+                                <i class="bi bi-x-circle-fill fs-5"></i>
+                            </div>
+                            <div>
+                                <h5 class="modal-title fw-bold text-dark font-serif mb-0" id="rejectPayrollModalLabel">
+                                    Từ chối duyệt bảng lương
+                                </h5>
+                                <div class="text-muted small" style="font-size: 0.78rem;">Kỳ lương Tháng @Model.SelectedThang:D2/@Model.SelectedNam</div>
+                            </div>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                     </div>
-                    <div class="modal-body py-3">
-                        <p class="text-muted small">
-                            Bảng lương sẽ được hoàn trả về cho bộ phận Nhân sự (HR) để kiểm tra, đối chiếu lại công thức hoặc bổ sung dữ liệu chấm công / phụ cấp.
-                        </p>
+                    <div class="modal-body p-4">
+                        <div class="alert alert-danger bg-danger bg-opacity-10 border-0 rounded-3 mb-3 d-flex align-items-start gap-2">
+                            <i class="bi bi-info-circle-fill text-danger fs-5 mt-0.5"></i>
+                            <div class="small text-dark">
+                                Bảng lương sẽ được hoàn trả về cho bộ phận Nhân sự (HR) để kiểm tra, đối chiếu lại công thức hoặc bổ sung dữ liệu chấm công / phụ cấp.
+                            </div>
+                        </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Lý do từ chối <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold text-dark">Lý do từ chối <span class="text-danger">*</span></label>
                             <textarea name="LyDo" class="form-control rounded-3" rows="4" placeholder="Ví dụ: Cần đối chiếu lại số giờ tăng ca của bộ phận Lễ tân ngày 15/09..." required minlength="5" maxlength="500"></textarea>
                             <div class="form-text">Ghi rõ sai sót hoặc chỉ dẫn để HR chỉnh sửa chính xác.</div>
                         </div>
                     </div>
-                    <div class="modal-footer border-top-0 pt-0">
-                        <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-danger rounded-pill px-4">
+                    <div class="modal-footer border-top bg-light px-4 py-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-semibold">
                             <i class="bi bi-x-circle me-1"></i> Xác nhận từ chối
                         </button>
                     </div>
@@ -664,26 +738,32 @@
 {
     <div class="modal fade" id="publishDraftModal" tabindex="-1" aria-labelledby="publishDraftModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
                 <form method="post" asp-action="PublishDraft">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="MaKyLuong" value="@Model.CurrentPeriod.MaKyLuong" />
                     <input type="hidden" name="Thang" value="@Model.SelectedThang" />
                     <input type="hidden" name="Nam" value="@Model.SelectedNam" />
 
-                    <div class="modal-header border-bottom-0 pb-0">
-                        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="publishDraftModalLabel">
-                            <i class="bi bi-send-exclamation-fill text-warning"></i> Phát hành phiếu lương nháp cho NV
-                        </h5>
+                    <div class="modal-header border-bottom bg-light px-4 py-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-warning bg-opacity-15 d-flex align-items-center justify-content-center text-warning flex-shrink-0" style="width: 42px; height: 42px;">
+                                <i class="bi bi-send-exclamation-fill fs-5 text-warning"></i>
+                            </div>
+                            <div>
+                                <h5 class="modal-title fw-bold text-dark font-serif mb-0" id="publishDraftModalLabel">
+                                    Phát hành phiếu lương nháp cho NV
+                                </h5>
+                                <div class="text-muted small" style="font-size: 0.78rem;">Kỳ lương Tháng @Model.SelectedThang:D2/@Model.SelectedNam</div>
+                            </div>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                     </div>
-                    <div class="modal-body py-3">
-                        <div class="alert alert-warning border-0 bg-warning bg-opacity-10 rounded-3 mb-3">
-                            <div class="d-flex gap-2">
-                                <i class="bi bi-info-circle-fill text-warning fs-5"></i>
-                                <div class="small text-dark">
-                                    Phiếu lương sẽ được hiển thị với trạng thái <strong>BẢN NHÁP (ĐANG ĐỐI SOÁT)</strong> trên Mobile App của nhân viên. Nhân viên có thể xem chi tiết số giờ công, phụ cấp, tăng ca và gửi đơn giải trình nếu phát hiện sai lệch.
-                                </div>
+                    <div class="modal-body p-4">
+                        <div class="alert alert-warning border-0 bg-warning bg-opacity-10 rounded-3 mb-3 d-flex align-items-start gap-2">
+                            <i class="bi bi-info-circle-fill text-warning fs-5 mt-0.5"></i>
+                            <div class="small text-dark">
+                                Phiếu lương sẽ được hiển thị với trạng thái <strong>BẢN NHÁP (ĐANG ĐỐI SOÁT)</strong> trên Mobile App của nhân viên. Nhân viên có thể xem chi tiết số giờ công, phụ cấp, tăng ca và gửi đơn giải trình nếu phát hiện sai lệch.
                             </div>
                         </div>
 
@@ -702,9 +782,9 @@
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer border-top-0 pt-0">
-                        <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-warning rounded-pill px-4 text-dark fw-semibold">
+                    <div class="modal-footer border-top bg-light px-4 py-3">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-warning rounded-pill px-4 text-dark fw-bold">
                             <i class="bi bi-send-fill me-1"></i> Xác nhận phát hành nháp
                         </button>
                     </div>
