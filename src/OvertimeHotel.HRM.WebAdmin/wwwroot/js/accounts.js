@@ -187,7 +187,10 @@
     document.addEventListener("click", (event) => {
         const button = event.target.closest("[data-account-audit-open]");
         if (!button) return;
-        if (auditDialog && !auditDialog.open) auditDialog.showModal();
+        if (auditDialog && !auditDialog.open) {
+            auditDialog.showModal();
+            void loadAuditLogs();
+        }
     });
 
     auditDialog?.querySelectorAll("[data-account-audit-close]").forEach((button) => button.addEventListener("click", () => auditDialog.close()));

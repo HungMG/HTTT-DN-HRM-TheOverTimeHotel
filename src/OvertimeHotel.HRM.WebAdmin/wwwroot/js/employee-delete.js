@@ -37,7 +37,7 @@
         error.classList.add('d-none');
         submit.disabled = false;
         dialog.show();
-    });
+    }, true);
     modal.addEventListener('shown.bs.modal', () => form.querySelector('[data-delete-cancel]').focus());
     modal.addEventListener('hide.bs.modal', event => { if (saving) event.preventDefault(); });
     modal.addEventListener('hidden.bs.modal', () => { trigger?.focus(); });

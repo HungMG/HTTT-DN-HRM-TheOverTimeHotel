@@ -158,7 +158,7 @@ public class PhanCaController : Controller
             model.DanhSachNhanVien = await this.SearchDataAsync(empCacheKey, () =>
             {
                 var empQuery = _context.NhanViens.AsNoTracking()
-                    .AsSplitQuery()
+                    .AsSingleQuery()
                     .Include(n => n.PhongBan)
                     .Include(n => n.ChucVu)
                     .Include(n => n.HopDongs)

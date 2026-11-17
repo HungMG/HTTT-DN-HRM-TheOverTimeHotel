@@ -123,6 +123,10 @@
 </div>
 
 <!-- MODAL THÊM NHÂN VIÊN MỚI -->
+<div class="alert alert-success d-none" role="status" tabindex="-1" data-employee-create-notice></div>
+<template data-employee-create-template>
+    @await Html.PartialAsync("_EmployeeForm", Model.CreateEmployeeForm)
+</template>
 <div class="modal fade" id="createEmployeeModal" tabindex="-1" aria-labelledby="createEmployeeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -141,6 +145,40 @@
                 <button type="submit" form="employeeActiveForm" class="btn btn-primary rounded-pill px-4 fw-bold" data-employee-create-submit disabled>Lưu hồ sơ nhân viên</button>
             </div>
 
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CHỈNH SỬA NHÂN VIÊN -->
+<div class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-white border-bottom py-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                        <i class="bi bi-pencil-square fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="text-uppercase small text-primary fw-bold" style="font-size: 0.72rem; letter-spacing: 0.5px;">Hồ sơ nhân sự khách sạn</div>
+                        <h2 class="modal-title h5 mb-0 font-serif" id="editEmployeeModalLabel">Chỉnh sửa hồ sơ nhân viên</h2>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body overflow-auto p-4">
+                <div id="employeeEditFormPanel" aria-live="polite">
+                    <div class="text-center py-5 text-muted">
+                        <div class="spinner-border text-primary mb-2" role="status"><span class="visually-hidden">Đang tải...</span></div>
+                        <div class="small">Đang tải biểu mẫu chỉnh sửa...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer flex-shrink-0 bg-light border-top py-3 px-4">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" form="employeeEditActiveForm" class="btn btn-primary rounded-pill px-4 fw-bold" data-employee-edit-submit disabled>
+                    <i class="bi bi-check2 me-1"></i>Lưu thay đổi
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -235,6 +273,7 @@
 
 @section Scripts {
     <script src="~/js/employee-create-modal.js" asp-append-version="true"></script>
+    <script src="~/js/employee-edit-modal.js" asp-append-version="true"></script>
     <script src="~/js/entry-validation.js" asp-append-version="true"></script>
 <script src="~/js/employee-hide.js" asp-append-version="true"></script>
 <script src="~/js/employee-delete.js" asp-append-version="true"></script>
@@ -495,6 +534,8 @@
             }
         });
     }
+
+    window.loadEmployeeTable = loadEmployeeTable;
 
     function goToEmployeePage(page, event) {
         if (event) {

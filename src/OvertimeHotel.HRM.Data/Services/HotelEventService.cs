@@ -77,7 +77,11 @@ public async Task<IReadOnlyList<DuAn>> ListAsync(EventActor actor, DateTimeOffse
         actor = await CurrentActor(actor);
         from = from.ToUniversalTime();
         to = to.ToUniversalTime();
-        return await Scoped(Events.AsNoTracking(), actor)
+        // Calendar and weekly demand need staffing and departments, not payroll/contract histories.
+        var calendar = db.DuAns.AsNoTracking().AsSplitQuery()
+            .Include(e => e.NhuCaus)
+            .Include(e => e.PhanCongs).ThenInclude(p => p.NhanVien).ThenInclude(n => n!.PhongBan);
+        return await Scoped(calendar, actor)
             .Where(e => e.NgayBatDau < to
                 && (e.KetThucThucTe ?? e.NgayKetThuc) > from).OrderBy(e => e.NgayBatDau).ToListAsync();
     }
