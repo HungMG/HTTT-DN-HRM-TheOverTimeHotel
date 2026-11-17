@@ -359,7 +359,11 @@ public sealed class NativePayslipPdfExportService : IPayslipPdfExportService
         paint.Color = AndroidColor.ParseColor("#94A3B8");
         paint.TextAlign = AndroidPaint.Align.Center;
         canvas.DrawText("Phiếu lương điện tử được bảo mật và xác thực bởi Ban Giám Đốc và Bộ phận Kế toán The OverTime Hotel.", (left + right) / 2f, 794f, paint);
-        canvas.DrawText($"Trạng thái: Đã chốt & ban hành chính thức • Ngày tạo: {DateTime.Now:dd/MM/yyyy HH:mm}", (left + right) / 2f, 806f, paint);
+        var isOfficial = !summary.IsDraft && summary.TrangThai == "DA_THANH_TOAN";
+        var statusLabel = isOfficial
+            ? "Trạng thái: Đã khóa sổ & ban hành chính thức"
+            : "Trạng thái: BẢN NHÁP ĐỐI SOÁT (Chưa khóa sổ chính thức)";
+        canvas.DrawText($"{statusLabel} • Ngày tạo: {DateTime.Now:dd/MM/yyyy HH:mm}", (left + right) / 2f, 806f, paint);
         paint.TextAlign = AndroidPaint.Align.Left;
 
         pdfDoc.FinishPage(page);
