@@ -1209,7 +1209,10 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         };
 
         _context.ChiTietPhieuLuongs.Add(detail);
-        payslip.ChiTietPhieuLuongs.Add(detail);
+        if (!payslip.ChiTietPhieuLuongs.Contains(detail))
+        {
+            payslip.ChiTietPhieuLuongs.Add(detail);
+        }
 
         // Cập nhật lại các tổng
         var config = await LoadPayrollConfigAsync(cancellationToken);
@@ -1256,7 +1259,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
         var payslip = item.PhieuLuong;
         _context.ChiTietPhieuLuongs.Remove(item);
-        payslip.ChiTietPhieuLuongs.Remove(item);
+        while (payslip.ChiTietPhieuLuongs.Remove(item)) { }
 
         var config = await LoadPayrollConfigAsync(cancellationToken);
         RecalculateTotals(payslip, config);
@@ -1276,25 +1279,26 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
 
     private static void RecalculateTotals(PhieuLuong payslip, PayrollConfigContext? config = null)
     {
-        payslip.TongPhuCap = payslip.ChiTietPhieuLuongs.Where(c => c.LoaiKhoan == "PHU_CAP").Sum(c => c.SoTien);
-        payslip.TongThuong = payslip.ChiTietPhieuLuongs.Where(c => c.LoaiKhoan == "THUONG").Sum(c => c.SoTien);
+        var details = payslip.ChiTietPhieuLuongs.Distinct().ToList();
+        payslip.TongPhuCap = details.Where(c => c.LoaiKhoan == "PHU_CAP").Sum(c => c.SoTien);
+        payslip.TongThuong = details.Where(c => c.LoaiKhoan == "THUONG").Sum(c => c.SoTien);
 
         var tongGross = payslip.TienLuongCong + payslip.TienTangCa + payslip.TongPhuCap + payslip.TongThuong;
 
         // Cập nhật lại thuế TNCN nếu có dòng thuế
-        var taxItem = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaKhoanTru == 4);
-        var tongBh = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaKhoanTru == 1)?.SoTien ?? 0m;
+        var taxItem = details.FirstOrDefault(c => c.MaKhoanTru == 4);
+        var tongBh = details.FirstOrDefault(c => c.MaKhoanTru == 1)?.SoTien ?? 0m;
 
         if (taxItem != null)
         {
-            var tienAnCa = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaPhuCap == 1)?.SoTien ?? 0m;
-            var tienDocHai = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaPhuCap == 4)?.SoTien ?? 0m;
-            var tienLamNgayLe = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaPhuCap == 5 || (c.LoaiKhoan == "PHU_CAP" && c.TenKhoanLuu.Contains("ngày Lễ")))?.SoTien ?? 0m;
-            var tienCaDem = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 4 || (c.LoaiKhoan == "PHU_CAP" && c.TenKhoanLuu.Contains("ca đêm")))?.SoTien ?? 0m;
+            var tienAnCa = details.FirstOrDefault(c => c.MaPhuCap == 1)?.SoTien ?? 0m;
+            var tienDocHai = details.FirstOrDefault(c => c.MaPhuCap == 4)?.SoTien ?? 0m;
+            var tienLamNgayLe = details.FirstOrDefault(c => c.MaPhuCap == 5 || (c.LoaiKhoan == "PHU_CAP" && c.TenKhoanLuu.Contains("ngày Lễ")))?.SoTien ?? 0m;
+            var tienCaDem = details.FirstOrDefault(c => c.MaLoaiOt == 4 || (c.LoaiKhoan == "PHU_CAP" && c.TenKhoanLuu.Contains("ca đêm")))?.SoTien ?? 0m;
 
-            var tienOtNormal = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 1 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
-            var tienOtWeekend = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 2 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
-            var tienOtHoliday = payslip.ChiTietPhieuLuongs.FirstOrDefault(c => c.MaLoaiOt == 3 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
+            var tienOtNormal = details.FirstOrDefault(c => c.MaLoaiOt == 1 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
+            var tienOtWeekend = details.FirstOrDefault(c => c.MaLoaiOt == 2 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
+            var tienOtHoliday = details.FirstOrDefault(c => c.MaLoaiOt == 3 && c.LoaiKhoan == "TANG_CA")?.SoTien ?? 0m;
 
             var normalRate = config?.OtNormalRate ?? SalaryConstants.OVERTIME_NORMAL_RATE;
             var weekendRate = config?.OtWeekendRate ?? SalaryConstants.OVERTIME_WEEKEND_RATE;
@@ -1331,7 +1335,7 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             }
         }
 
-        payslip.TongKhauTru = payslip.ChiTietPhieuLuongs.Where(c => c.LoaiKhoan == "KHAU_TRU").Sum(c => c.SoTien);
+        payslip.TongKhauTru = details.Where(c => c.LoaiKhoan == "KHAU_TRU").Sum(c => c.SoTien);
         payslip.ThucNhan = tongGross - payslip.TongKhauTru;
     }
 
