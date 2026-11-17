@@ -788,6 +788,49 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             .Select(p => p.MaPhieuLuong)
             .ToListAsync(cancellationToken);
 
+        // Lưu lại các khoản điều chỉnh thủ công của HR trước đó (theo từng nhân viên) để bảo toàn khi tính lại bảng lương
+        var existingSettlementDetailIds = await _context.QuyetToanSuKiens
+            .Where(q => q.MaChiTiet.HasValue && q.MaKyChiTra == period.MaKyLuong)
+            .Select(q => q.MaChiTiet!.Value)
+            .ToListAsync(cancellationToken);
+
+        var oldDetails = oldPayslipIds.Count > 0
+            ? await _context.ChiTietPhieuLuongs
+                .AsNoTracking()
+                .Where(c => oldPayslipIds.Contains(c.MaPhieuLuong))
+                .Select(c => new
+                {
+                    c.MaChiTiet,
+                    c.MaKhoan,
+                    c.MaPhuCap,
+                    c.MaLoaiOt,
+                    c.MaKhoanTru,
+                    c.LoaiKhoan,
+                    c.LoaiKhoanLuu,
+                    c.TenKhoanLuu,
+                    c.SoTien,
+                    c.GhiChu,
+                    MaNhanVien = c.PhieuLuong!.MaNhanVien
+                })
+                .ToListAsync(cancellationToken)
+            : [];
+
+        var manualAdjustmentsByEmployee = oldDetails
+            .Where(c => c.MaKhoan == null
+                     && c.MaPhuCap == null
+                     && c.MaLoaiOt == null
+                     && (c.MaKhoanTru == null || (c.MaKhoanTru != 1 && c.MaKhoanTru != 4 && c.MaKhoanTru != 5))
+                     && !existingSettlementDetailIds.Contains(c.MaChiTiet))
+            .GroupBy(c => c.MaNhanVien)
+            .ToDictionary(g => g.Key, g => g.Select(c => new ChiTietPhieuLuong
+            {
+                LoaiKhoan = c.LoaiKhoan,
+                LoaiKhoanLuu = c.LoaiKhoanLuu,
+                TenKhoanLuu = c.TenKhoanLuu,
+                SoTien = c.SoTien,
+                GhiChu = c.GhiChu
+            }).ToList());
+
         if (oldPayslipIds.Count > 0)
         {
             var oldDetailIds = await _context.ChiTietPhieuLuongs
@@ -868,6 +911,23 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
                 nv, salarySegments, period, empShifts, empLeaves, empSettlements, config,
                 out var empSettlementsToLink);
 
+            // Bảo toàn các khoản điều chỉnh thủ công của HR trước đó cho nhân viên này
+            if (manualAdjustmentsByEmployee.TryGetValue(nv.MaNhanVien, out var adjustments))
+            {
+                foreach (var adj in adjustments)
+                {
+                    payslip.ChiTietPhieuLuongs.Add(new ChiTietPhieuLuong
+                    {
+                        LoaiKhoan = adj.LoaiKhoan,
+                        LoaiKhoanLuu = adj.LoaiKhoanLuu,
+                        TenKhoanLuu = adj.TenKhoanLuu,
+                        SoTien = adj.SoTien,
+                        GhiChu = adj.GhiChu
+                    });
+                }
+                RecalculateTotals(payslip, config);
+            }
+
             newPayslips.Add(payslip);
             settlementsToLink.AddRange(empSettlementsToLink);
         }
@@ -877,7 +937,25 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
             var eventDetails = group.Select(q => (Settlement: q, Detail: SettlementDetail(q))).ToList();
             var emp = employees.FirstOrDefault(e => e.MaNhanVien == group.Key);
             var soNguoiPhuThuoc = emp?.SoNguoiPhuThuoc ?? 0;
-            newPayslips.Add(BonusOnlyPayslip(period.MaKyLuong, group.Key, soNguoiPhuThuoc, eventDetails.Select(x => x.Detail).ToList()));
+            var bonusSlip = BonusOnlyPayslip(period.MaKyLuong, group.Key, soNguoiPhuThuoc, eventDetails.Select(x => x.Detail).ToList());
+
+            if (manualAdjustmentsByEmployee.TryGetValue(group.Key, out var adjustments))
+            {
+                foreach (var adj in adjustments)
+                {
+                    bonusSlip.ChiTietPhieuLuongs.Add(new ChiTietPhieuLuong
+                    {
+                        LoaiKhoan = adj.LoaiKhoan,
+                        LoaiKhoanLuu = adj.LoaiKhoanLuu,
+                        TenKhoanLuu = adj.TenKhoanLuu,
+                        SoTien = adj.SoTien,
+                        GhiChu = adj.GhiChu
+                    });
+                }
+                RecalculateTotals(bonusSlip, config);
+            }
+
+            newPayslips.Add(bonusSlip);
             settlementsToLink.AddRange(eventDetails);
         }
 

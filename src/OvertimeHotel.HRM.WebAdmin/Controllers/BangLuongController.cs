@@ -563,7 +563,7 @@ public class BangLuongController(
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Adjust(AdjustSalaryItemInput input, string? returnUrl = null)
     {
-        var tab = input.LoaiKhoan == "KHAU_TRU" ? "khautru" : "thunhap";
+        var tab = "tongquan";
         if (!IsHR)
         {
             TempData["Error"] = "Chỉ tài khoản Chuyên viên Nhân sự (HR) mới có quyền kiểm tra, đối soát và điều chỉnh số liệu bảng lương nháp.";
