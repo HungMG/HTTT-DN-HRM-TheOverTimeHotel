@@ -36,6 +36,9 @@
       el.classList.remove('is-selected');
     });
     cell.classList.add('is-selected');
+    if (window.phancaCalendarData && dateStr !== window.phancaCalendarData.selectedDate) {
+      window.phancaWeekContextStale = true;
+    }
 
     // Cập nhật URL qua history.pushState để có thể copy link mà không reload trang
     var currentUrl = new URL(window.location.href);
@@ -277,6 +280,13 @@
 
   // Nạp tháng In-Place không làm tải lại trang
   window.loadCalendarMonthInPlace = function (year, month, selectedDate) {
+    var activeTab = localStorage.getItem('overtime_phanca_active_tab') || 'calendar';
+    // Matrix data and its editing handlers are rendered for one week. Reload the
+    // complete page for non-calendar views so they cannot retain a previous week.
+    if (activeTab !== 'calendar') {
+      navigateSchedule(year, month, selectedDate, activeTab);
+      return;
+    }
     var overlay = document.getElementById('workspaceLoadingOverlay');
     if (overlay) overlay.classList.remove('d-none');
 
@@ -299,7 +309,12 @@
 
         if (newSchedule && curSchedule) {
           curSchedule.innerHTML = newSchedule.innerHTML;
+          // Other scripts still hold the week data rendered with the full page.
+          window.phancaWeekContextStale = true;
         }
+        var newWeekFilter = doc.getElementById('matrixWeekFilter');
+        var currentWeekFilter = document.getElementById('matrixWeekFilter');
+        if (newWeekFilter && currentWeekFilter) currentWeekFilter.replaceWith(newWeekFilter);
 
         // Cập nhật script data
         var newScript = doc.getElementById('phancaCalendarDataScript');
@@ -320,6 +335,27 @@
       .finally(function () {
         if (overlay) overlay.classList.add('d-none');
       });
+  };
+
+  function navigateSchedule(year, month, selectedDate, mode) {
+    var url = new URL('/PhanCa', window.location.origin);
+    url.searchParams.set('year', String(year));
+    url.searchParams.set('month', String(month));
+    if (selectedDate) url.searchParams.set('selectedDate', selectedDate);
+    url.searchParams.set('viewMode', mode);
+    var department = document.getElementById('filterPhongBan')?.value;
+    var shift = document.getElementById('filterCa')?.value;
+    if (department) url.searchParams.set('phongBanId', department);
+    if (shift) url.searchParams.set('caId', shift);
+    window.location.assign(url.toString());
+  }
+
+  window.selectMatrixWeek = function (dateStr) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+    var data = window.phancaCalendarData;
+    if (!data) return;
+    localStorage.setItem('overtime_phanca_active_tab', 'matrix');
+    navigateSchedule(data.year, data.month, dateStr, 'matrix');
   };
 
   // Thanh công cụ tháng nằm ngoài #scheduleContentWrapper nên không tự cập nhật khi nạp cục bộ.
@@ -381,6 +417,12 @@
   // Chuyển đổi tab chế độ xem (Cuốn Lịch | Ma Trận | Danh Sách | Nhu Cầu Sự Kiện)
   function bindViewModeTabs() {
     window.switchCalendarViewTab = function (mode) {
+      if (mode !== 'calendar' && window.phancaWeekContextStale && window.phancaCalendarData) {
+        localStorage.setItem('overtime_phanca_active_tab', mode);
+        var selectedDate = new URL(window.location.href).searchParams.get('selectedDate') || window.phancaCalendarData.selectedDate;
+        navigateSchedule(window.phancaCalendarData.year, window.phancaCalendarData.month, selectedDate, mode);
+        return;
+      }
       var calendarContainer = document.getElementById('viewCalendarContainer');
       var matrixContainer = document.getElementById('viewMatrixContainer');
       var listContainer = document.getElementById('viewListContainer');
@@ -399,6 +441,11 @@
       if (matrixContainer) matrixContainer.classList.add('d-none');
       if (listContainer) listContainer.classList.add('d-none');
       if (eventDemandContainer) eventDemandContainer.classList.add('d-none');
+      var weekFilter = document.getElementById('matrixWeekFilter');
+      if (weekFilter) {
+        weekFilter.classList.toggle('d-none', mode !== 'matrix');
+        weekFilter.classList.toggle('d-flex', mode === 'matrix');
+      }
 
       if (mode === 'matrix') {
         if (matrixContainer) matrixContainer.classList.remove('d-none');
@@ -415,6 +462,10 @@
       }
 
       localStorage.setItem('overtime_phanca_active_tab', mode);
+      localStorage.setItem('overtime_phanca_view_mode', mode);
+      var currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('viewMode', mode);
+      window.history.replaceState(window.history.state, '', currentUrl.toString());
     };
 
     var savedTab = localStorage.getItem('overtime_phanca_active_tab') || 'calendar';

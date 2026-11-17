@@ -25,6 +25,9 @@
     var prevMonthDate = calMonthStart.AddMonths(-1);
     var nextMonthDate = calMonthStart.AddMonths(1);
     int totalCalCells = (calGridStart.AddDays(34) < calMonthEnd) ? 42 : 35;
+    var filterMonthStart = new DateOnly(Model.Year, Model.Month, 1);
+    var filterMonthEnd = filterMonthStart.AddMonths(1).AddDays(-1);
+    var filterFirstWeek = filterMonthStart.AddDays(-(((int)filterMonthStart.DayOfWeek + 6) % 7));
 }
 
 <link rel="stylesheet" href="~/css/phanca-calendar.css" asp-append-version="true" />
@@ -845,7 +848,19 @@
                 </div>
 
                 <!-- BỘ LỌC TÌM KIẾM NHỎ GỌN (THAY CHO KHUNG BỘ LỌC TO RỜI RẠC) -->
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <div id="matrixWeekFilter" class="d-none align-items-center gap-2">
+                        <label for="matrixWeekSelect" class="small fw-semibold text-secondary mb-0">Tuần</label>
+                        <select id="matrixWeekSelect" class="form-select form-select-sm py-1" style="width: 190px; font-size: 0.76rem;" onchange="selectMatrixWeek(this.value)" aria-label="Chọn tuần trong tháng">
+                            @for (var weekStartInMonth = filterFirstWeek; weekStartInMonth <= filterMonthEnd; weekStartInMonth = weekStartInMonth.AddDays(7))
+                            {
+                                var selectedDayInMonth = weekStartInMonth < filterMonthStart ? filterMonthStart : weekStartInMonth;
+                                var weekEndInMonth = weekStartInMonth.AddDays(6);
+                                var weekNumber = (weekStartInMonth.DayNumber - filterFirstWeek.DayNumber) / 7 + 1;
+                                <option value="@selectedDayInMonth.ToString("yyyy-MM-dd")" selected="@(weekStartInMonth == Model.WeekStart)">Tuần @weekNumber · @weekStartInMonth.ToString("dd/MM") – @weekEndInMonth.ToString("dd/MM")</option>
+                            }
+                        </select>
+                    </div>
                     <div class="input-group input-group-sm" style="width: 200px;">
                         <span class="input-group-text bg-white border-end-0 py-0"><i class="bi bi-search text-muted small"></i></span>
                         <input type="text" id="filterKeyword" class="form-control border-start-0 py-1" style="font-size: 0.76rem;"
@@ -2917,6 +2932,12 @@
             }
         });
 
+        const weekFilter = document.getElementById('matrixWeekFilter');
+        if (weekFilter) {
+            weekFilter.classList.toggle('d-none', mode !== 'matrix');
+            weekFilter.classList.toggle('d-flex', mode === 'matrix');
+        }
+
         localStorage.setItem('overtime_phanca_active_tab', mode);
         localStorage.setItem('overtime_phanca_view_mode', mode);
     }
@@ -4755,7 +4776,9 @@
 
     // Khởi tạo & Kích hoạt lần đầu tải trang
     document.addEventListener('DOMContentLoaded', function () {
-        const savedMode = localStorage.getItem('overtime_phanca_active_tab') || 'calendar';
+        const requestedMode = new URLSearchParams(window.location.search).get('viewMode');
+        const savedMode = ['calendar', 'matrix', 'list', 'eventDemand'].includes(requestedMode)
+            ? requestedMode : (localStorage.getItem('overtime_phanca_active_tab') || 'calendar');
         switchViewMode(savedMode);
 
         // Render bộ lịch tháng tương tác trong modal
