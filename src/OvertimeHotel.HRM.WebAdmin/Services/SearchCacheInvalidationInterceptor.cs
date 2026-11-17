@@ -30,7 +30,7 @@ public sealed class SearchCacheSaveInterceptor(SearchListCache cache, SearchCach
         if (entities.Contains("ChamCong") || entities.Contains("GiaiTrinhChamCong")) { cache.Invalidate("attendance"); cache.Invalidate("giai-trinh"); cache.Invalidate("attendance-explanations"); matched = true; }
         if (entities.Contains("DonTu") || entities.Contains("LoaiDon")) { cache.Invalidate("leave-requests"); matched = true; }
         if (entities.Contains("TaiKhoan") || entities.Contains("VaiTro") || entities.Contains("YeuCauTaiKhoan")) { cache.Invalidate("accounts"); cache.Invalidate("account-requests"); matched = true; }
-        if (entities.Contains("BangLuong") || entities.Contains("PhieuLuong") || entities.Contains("ChiTietBangLuong")) { cache.Invalidate("payroll"); cache.Invalidate("payroll-config"); matched = true; }
+        if (entities.Contains("KyLuong") || entities.Contains("BangLuong") || entities.Contains("PhieuLuong") || entities.Contains("ChiTietPhieuLuong") || entities.Contains("ChiTietBangLuong")) { cache.Invalidate("payroll"); cache.Invalidate("payroll-config"); matched = true; }
         if (entities.Contains("PhongBan")) { cache.Invalidate("departments"); cache.Invalidate("employees"); cache.Invalidate("contracts"); matched = true; }
         if (entities.Contains("ChucVu")) { cache.Invalidate("positions"); cache.Invalidate("employees"); cache.Invalidate("contracts"); matched = true; }
         if (entities.Contains("CaLamViec")) { cache.Invalidate("shifts"); cache.Invalidate("phanca"); cache.Invalidate("attendance"); matched = true; }
@@ -71,7 +71,7 @@ public sealed class SearchCacheCommandInterceptor(SearchListCache cache, SearchC
             if (text.Contains("cham_cong", StringComparison.OrdinalIgnoreCase) || text.Contains("giai_trinh", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("attendance"); cache.Invalidate("giai-trinh"); cache.Invalidate("attendance-explanations"); matched = true; }
             if (text.Contains("don_tu", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("leave-requests"); matched = true; }
             if (text.Contains("tai_khoan", StringComparison.OrdinalIgnoreCase) || text.Contains("vai_tro", StringComparison.OrdinalIgnoreCase) || text.Contains("yeu_cau_tai_khoan", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("accounts"); cache.Invalidate("account-requests"); matched = true; }
-            if (text.Contains("bang_luong", StringComparison.OrdinalIgnoreCase) || text.Contains("phieu_luong", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("payroll"); cache.Invalidate("payroll-config"); matched = true; }
+            if (text.Contains("ky_luong", StringComparison.OrdinalIgnoreCase) || text.Contains("bang_luong", StringComparison.OrdinalIgnoreCase) || text.Contains("phieu_luong", StringComparison.OrdinalIgnoreCase) || text.Contains("chi_tiet_phieu_luong", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("payroll"); cache.Invalidate("payroll-config"); matched = true; }
 
             if (!matched)
             {

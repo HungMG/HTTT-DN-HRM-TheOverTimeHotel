@@ -150,7 +150,13 @@
                       (Model.Items.Count > 0 ? "Kỳ lương mở - Đang kiểm tra (MO)" : "Kỳ lương mở - Chưa tính (MO)"))))))
                 </span>
 
-                @if (Model.IsHR)
+                @if (Model.IsAdminOrBoss && Model.IsHR)
+                {
+                    <span class="badge bg-danger bg-opacity-75 rounded-pill px-2 py-1">
+                        <i class="bi bi-shield-shaded me-1"></i>Vai trò: Quản trị viên (Toàn quyền HR &amp; Phê duyệt)
+                    </span>
+                }
+                else if (Model.IsHR)
                 {
                     <span class="badge bg-primary bg-opacity-75 rounded-pill px-2 py-1">
                         <i class="bi bi-person-badge me-1"></i>Vai trò: HR (Kiểm tra &amp; Gửi duyệt)

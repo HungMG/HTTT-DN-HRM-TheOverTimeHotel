@@ -4,8 +4,8 @@ namespace OvertimeHotel.HRM.WebAdmin.Security;
 
 public static class PayrollAuthorization
 {
-    public static bool CanManage(ClaimsPrincipal user) => !user.IsInRole("Manager") && user.HasPermission(PermissionCodes.CalculatePayroll);
-    public static bool CanApprove(ClaimsPrincipal user) => user.HasPermission(PermissionCodes.ApprovePayroll);
+    public static bool CanManage(ClaimsPrincipal user) => !user.IsInRole("Manager") && (user.HasPermission(PermissionCodes.CalculatePayroll) || user.IsInRole("Admin"));
+    public static bool CanApprove(ClaimsPrincipal user) => user.HasPermission(PermissionCodes.ApprovePayroll) || user.IsInRole("Admin");
 
     public static bool CanAccess(ClaimsPrincipal user, string? action)
     {
