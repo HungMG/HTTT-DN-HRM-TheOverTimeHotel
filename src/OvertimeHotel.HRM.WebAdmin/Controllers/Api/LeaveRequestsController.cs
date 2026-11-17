@@ -60,7 +60,8 @@ public class LeaveRequestsController : ControllerBase
         var (account, errorResult) = await GetCurrentAccountAsync();
         if (errorResult != null) return errorResult;
 
-        var role = ItMobileAccessPolicy.IsItHead(account!.VaiTro?.TenVaiTro, account.NhanVien?.MaChucVu)
+        var role = ItMobileAccessPolicy.IsItHead(account!.VaiTro?.TenVaiTro, account.NhanVien?.MaChucVu) &&
+            await _context.Database.SqlQuery<bool>($"SELECT public.hrm_it_head_access({account.MaNhanVien}) AS \"Value\"").SingleAsync()
             ? "Manager" : account.VaiTro?.TenVaiTro;
         var normalizedRole = LeaveApprovalPolicy.NormalizeRole(role);
         var deptId = account.NhanVien?.MaPhongBan;
@@ -201,7 +202,8 @@ public class LeaveRequestsController : ControllerBase
         var (account, errorResult) = await GetCurrentAccountAsync();
         if (errorResult != null) return errorResult;
 
-        var role = ItMobileAccessPolicy.IsItHead(account!.VaiTro?.TenVaiTro, account.NhanVien?.MaChucVu)
+        var role = ItMobileAccessPolicy.IsItHead(account!.VaiTro?.TenVaiTro, account.NhanVien?.MaChucVu) &&
+            await _context.Database.SqlQuery<bool>($"SELECT public.hrm_it_head_access({account.MaNhanVien}) AS \"Value\"").SingleAsync()
             ? "Manager" : account.VaiTro?.TenVaiTro;
         var deptId = account.NhanVien?.MaPhongBan;
         var reviewerEmployeeId = account.MaNhanVien;

@@ -27,11 +27,13 @@ BEGIN
           (9, ARRAY['Nhân viên An ninh (Security Guard)']),
           (10, ARRAY['Chuyên viên Nhân sự & Tiền lương (HR & Payroll)']),
           (11, ARRAY['Quản trị hệ thống CNTT (IT Support)']),
-          (12, ARRAY['Trưởng bộ phận CNTT (IT Manager)']),
           (13, ARRAY['Nhân viên Bếp (Kitchen Staff)'])
         ) expected(id, names) LEFT JOIN public.chuc_vu cv ON cv.ma_chuc_vu=expected.id
         WHERE cv.ma_chuc_vu IS NULL OR NOT (cv.ten_chuc_vu=ANY(expected.names))
     ) THEN RAISE EXCEPTION 'Position IDs/names drifted; review target catalog before migration'; END IF;
+    IF EXISTS (SELECT FROM public.chuc_vu WHERE ma_chuc_vu=12 AND ten_chuc_vu <> 'Trưởng bộ phận CNTT (IT Manager)') THEN
+        RAISE EXCEPTION 'Legacy IT head position ID 12 has a different meaning';
+    END IF;
 END $$;
 
 ALTER TABLE public.chuc_vu ADD COLUMN nhom_luong varchar(20),

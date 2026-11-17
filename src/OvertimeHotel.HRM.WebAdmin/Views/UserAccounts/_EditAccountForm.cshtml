@@ -1,0 +1,204 @@
+@model EditAccountViewModel
+@{
+    var isPopup = ViewData["EditPopup"] is true;
+}
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger border-0 shadow-sm rounded-4 d-flex align-items-start gap-3 p-3 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5 text-danger flex-shrink-0 mt-0.5"></i>
+        <div class="flex-grow-1">
+            <div class="fw-bold text-dark small mb-1">Chưa thể lưu thay đổi</div>
+            <div asp-validation-summary="ModelOnly" class="small text-danger"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<form asp-action="Edit" asp-route-id="@Model.AccountId" asp-route-popup="@(isPopup ? true : null)" method="post" id="editAccountForm">
+    @Html.AntiForgeryToken()
+    <input asp-for="AccountId" type="hidden" />
+    <input asp-for="EmployeeId" type="hidden" />
+    <input asp-for="EmployeeName" type="hidden" />
+    <input asp-for="EmployeeEmail" type="hidden" />
+
+    <div class="row g-4">
+        <!-- CỘT CHÍNH: FORM THIẾT LẬP -->
+        <div class="col-12">
+            <!-- CARD TÓM TẮT NHÂN SỰ LIÊN KẾT -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="account-avatar flex-shrink-0" style="width: 48px; height: 48px; font-size: 1.2rem;">
+                                @(Model.EmployeeName.Length > 0 ? Model.EmployeeName[..1].ToUpperInvariant() : "N")
+                            </div>
+                            <div>
+                                <div class="text-uppercase text-secondary fw-bold" style="font-size: 0.68rem; letter-spacing: 0.5px;">Nhân sự liên kết</div>
+                                <h5 class="mb-0 fw-bold text-dark font-serif" style="font-size: 1.05rem;">@Model.EmployeeName</h5>
+                                <small class="text-muted d-flex align-items-center flex-wrap gap-2 mt-1" style="font-size: 0.75rem;">
+                                    <span><i class="bi bi-envelope me-2 text-primary"></i>@(string.IsNullOrWhiteSpace(Model.EmployeeEmail) ? "Chưa có email" : Model.EmployeeEmail)</span>
+                                    <span class="opacity-50">·</span>
+                                    <span><i class="bi bi-person-badge me-2 text-secondary"></i>Mã hồ sơ #@Model.EmployeeId</span>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5 d-inline-flex align-items-center gap-1.5" style="font-size: 0.75rem;">
+                                <i class="bi bi-fingerprint me-1 text-primary"></i>ID: #@Model.AccountId.ToString("D3")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KHỐI 1: THÔNG TIN TÀI KHOẢN & VAI TRÒ -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white border-bottom luxury-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0 me-1" style="width: 42px; height: 42px; font-size: 1.2rem;">
+                            <i class="bi bi-sliders"></i>
+                        </span>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.96rem;">01. Định Danh Đăng Nhập &amp; Phân Cấp Vai Trò</h6>
+                            <small class="text-muted" style="font-size: 0.74rem;">Cập nhật tên tài khoản (vai trò được khóa cố định theo hồ sơ)</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5" style="font-size: 0.72rem;">Bước 1/3</span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6 col-12">
+                            <label asp-for="Username" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                Tên đăng nhập <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 font-monospace fw-bold px-3">@@</span>
+                                <input asp-for="Username" class="form-control border-start-0 py-2 ps-3 rounded-end-3" placeholder="Ví dụ: nv.nguyenvana" autocomplete="off" id="Username" />
+                            </div>
+                            <span asp-validation-for="Username" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <label asp-for="RoleId" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                Vai trò (RBAC)
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
+                                    <i class="bi bi-shield-lock-fill"></i>
+                                </span>
+                                <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select border-start-0 py-2 ps-3 rounded-end-3" id="RoleId" disabled aria-describedby="roleLockedHelp"></select>
+                                <input type="hidden" name="RoleId" value="@Model.RoleId" />
+                            </div>
+                            <small class="text-muted d-block mt-1" id="roleLockedHelp" style="font-size: 0.72rem;">
+                                Vai trò được khóa trong màn hình sửa tài khoản.
+                            </small>
+                            <span asp-validation-for="RoleId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KHỐI 2: ĐẶT LẠI MẬT KHẨU -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white border-bottom luxury-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="rounded-circle bg-warning bg-opacity-10 text-warning-emphasis d-flex align-items-center justify-content-center flex-shrink-0 me-1" style="width: 42px; height: 42px; font-size: 1.2rem;">
+                            <i class="bi bi-shield-lock-fill" style="color: #b45309;"></i>
+                        </span>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.96rem;">02. Đặt Lại Mật Khẩu (Tùy Chọn)</h6>
+                            <small class="text-muted" style="font-size: 0.74rem;">Để trống cả hai trường nếu muốn giữ nguyên mật khẩu hiện tại</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5" style="font-size: 0.72rem;">Bước 2/3</span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="p-3 mb-3 rounded-3 bg-light border small text-muted d-flex align-items-center gap-2" style="font-size: 0.75rem;">
+                        <i class="bi bi-info-circle-fill text-primary flex-shrink-0 me-1"></i>
+                        <span>Chỉ nhập khi người dùng yêu cầu cấp lại mật khẩu hoặc đổi mật khẩu định kỳ.</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-12">
+                            <label asp-for="NewPassword" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                Mật khẩu mới
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
+                                    <i class="bi bi-lock-fill"></i>
+                                </span>
+                                <input asp-for="NewPassword" type="password" class="form-control border-start-0 border-end-0 py-2 ps-3 password-field" autocomplete="new-password" placeholder="Nhập mật khẩu mới..." />
+                                <button type="button" class="btn btn-outline-secondary border-start-0 rounded-end-3 password-toggle" aria-label="Hiện/ẩn mật khẩu">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="NewPassword" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <label asp-for="ConfirmNewPassword" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                Xác nhận mật khẩu mới
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3 px-3">
+                                    <i class="bi bi-shield-check"></i>
+                                </span>
+                                <input asp-for="ConfirmNewPassword" type="password" class="form-control border-start-0 border-end-0 py-2 ps-3 password-field" autocomplete="new-password" placeholder="Xác nhận lại mật khẩu..." />
+                                <button type="button" class="btn btn-outline-secondary border-start-0 rounded-end-3 password-toggle" aria-label="Hiện/ẩn mật khẩu">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="ConfirmNewPassword" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KHỐI 3: LÝ DO THAY ĐỔI & AUDIT LOG -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white border-bottom luxury-card-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="rounded-circle bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center flex-shrink-0 me-1" style="width: 42px; height: 42px; font-size: 1.2rem;">
+                            <i class="bi bi-journal-text"></i>
+                        </span>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark font-serif" style="font-size: 0.96rem;">03. Lý Do Điều Chỉnh &amp; Kiểm Toán Hệ Thống</h6>
+                            <small class="text-muted" style="font-size: 0.74rem;">Bắt buộc khi có sự thay đổi tên đăng nhập hoặc mật khẩu</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5" style="font-size: 0.72rem;">Bước 3/3</span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-2">
+                        <label asp-for="ChangeReason" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                            Lý do thay đổi <span class="text-danger">*</span>
+                        </label>
+                        <textarea asp-for="ChangeReason" rows="2" class="form-control rounded-3 p-3" placeholder="Ví dụ: Điều chuyển nhân sự sang vai trò Quản lý ca trực hoặc cấp lại mật khẩu mới..."></textarea>
+                        <span asp-validation-for="ChangeReason" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                            <i class="bi bi-shield-check text-success me-2"></i> Lý do này sẽ được lưu cố định vào Nhật ký kiểm toán quản trị (Audit Trail).
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CỤM NÚT THAO TÁC CUỐI FORM -->
+            <div class="d-flex align-items-center justify-content-between gap-3 pt-2">
+                @if (isPopup)
+                {
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4 py-2.5 fw-semibold hover-lift d-inline-flex align-items-center gap-2" data-bs-dismiss="modal" style="font-size: 0.85rem;">
+                        <i class="bi bi-x-circle fs-6"></i> Hủy bỏ
+                    </button>
+                }
+                else
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 py-2.5 fw-semibold hover-lift d-inline-flex align-items-center gap-2" style="font-size: 0.85rem;">
+                        <i class="bi bi-x-circle fs-6"></i> Hủy bỏ
+                    </a>
+                }
+                <button type="submit" class="btn btn-hotel-primary rounded-pill px-4 py-2.5 fw-bold shadow-sm hover-lift d-flex align-items-center gap-2" data-edit-account-submit style="font-size: 0.85rem;">
+                    <i class="bi bi-check2-circle fs-6"></i> Lưu Thay Đổi
+                </button>
+            </div>
+        </div>
+
+    </div>
+</form>

@@ -1,0 +1,54 @@
+@model AccountDetailViewModel
+@{
+    var roleName = Model.RoleName switch
+    {
+        "Admin" => "Quản trị viên",
+        "HR" => "Nhân sự",
+        "Manager" => "Quản lý",
+        "Employee" => "Nhân viên",
+        "IT" => "Công nghệ thông tin (IT)",
+        _ => Model.RoleName
+    };
+    var initials = string.Join("", Model.EmployeeName.Split(' ', StringSplitOptions.RemoveEmptyEntries).TakeLast(2).Select(part => part[..1].ToUpperInvariant()));
+    if (string.IsNullOrEmpty(initials)) initials = "NV";
+}
+<div class="account-detail">
+    <div class="account-detail-identity">
+        <div class="account-detail-avatar" aria-hidden="true">@initials</div>
+        <div class="account-detail-person">
+            <span class="account-detail-eyebrow">HỒ SƠ TÀI KHOẢN</span>
+            <h3>@Model.EmployeeName</h3>
+            <div class="account-detail-subline">
+                <span class="account-detail-username">@@@Model.Username</span>
+                <span class="account-detail-dot" aria-hidden="true"></span>
+                <span>Mã NV #@Model.EmployeeId</span>
+            </div>
+        </div>
+        <span class="account-detail-status @(Model.IsActive ? "is-active" : "is-locked")"><span aria-hidden="true"></span>@(Model.IsActive ? "Đang hoạt động" : "Đã khóa")</span>
+    </div>
+
+    <div class="account-detail-body">
+        <section class="account-detail-section" aria-labelledby="accountDetailWorkTitle">
+            <div class="account-detail-section-heading">
+                <span class="account-detail-icon"><i class="bi bi-building" aria-hidden="true"></i></span>
+                <div><h4 id="accountDetailWorkTitle">Thông tin công việc</h4><p>Vị trí và đơn vị hiện tại</p></div>
+            </div>
+            <dl class="account-detail-grid">
+                <div><dt>PHÒNG BAN</dt><dd>@Model.Department</dd></div>
+                <div><dt>CHỨC VỤ</dt><dd>@Model.Position</dd></div>
+            </dl>
+        </section>
+
+        <section class="account-detail-section account-detail-section--login" aria-labelledby="accountDetailLoginTitle">
+            <div class="account-detail-section-heading">
+                <span class="account-detail-icon account-detail-icon--gold"><i class="bi bi-shield-lock" aria-hidden="true"></i></span>
+                <div><h4 id="accountDetailLoginTitle">Thông tin đăng nhập</h4><p>Vai trò và liên hệ tài khoản</p></div>
+            </div>
+            <dl class="account-detail-list">
+                <div><dt>Vai trò tài khoản</dt><dd><span class="account-detail-role">@roleName</span></dd></div>
+                <div><dt>Email công vụ</dt><dd class="account-detail-email">@(string.IsNullOrWhiteSpace(Model.Email) ? "Chưa có" : Model.Email)</dd></div>
+                <div><dt>Mã tài khoản</dt><dd>#@Model.AccountId</dd></div>
+            </dl>
+        </section>
+    </div>
+</div>

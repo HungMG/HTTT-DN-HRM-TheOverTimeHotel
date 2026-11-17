@@ -23,7 +23,7 @@ SET ten_phong_ban = EXCLUDED.ten_phong_ban, mo_ta = EXCLUDED.mo_ta;
 -- Cập nhật sequence của bảng phong_ban
 SELECT setval('phong_ban_ma_phong_ban_seq', (SELECT MAX(ma_phong_ban) FROM PHONG_BAN));
 
--- 2. NẠP BẢNG CHUC_VU (12 Chức danh nghề nghiệp)
+-- 2. NẠP BẢNG CHUC_VU (trưởng bộ phận dùng chung cho cả CNTT)
 INSERT INTO CHUC_VU (ma_chuc_vu, ten_chuc_vu, mo_ta) VALUES
 (1, 'Tổng Giám Đốc (GM)', 'Điều hành toàn diện các hoạt động khách sạn'),
 (2, 'Trưởng Bộ Phận (Department Head)', 'Quản lý điều hành và phân công ca kíp bộ phận'),
@@ -35,7 +35,6 @@ INSERT INTO CHUC_VU (ma_chuc_vu, ten_chuc_vu, mo_ta) VALUES
 (9, 'Nhân viên An ninh (Security Guard)', 'Trực cổng, tuần tra khuôn viên, phòng chống cháy nổ'),
 (10, 'Chuyên viên Nhân sự & Tiền lương (HR & Payroll)', 'Quản lý hồ sơ, chấm công, tính lương và bảo hiểm'),
 (11, 'Quản trị hệ thống CNTT (IT Support)', 'Hỗ trợ người dùng, bảo trì phần mềm và CẤP PHÁT TÀI KHOẢN ĐĂNG NHẬP'),
-(12, 'Trưởng bộ phận CNTT (IT Manager)', 'Điều hành bộ phận CNTT, phê duyệt và quản lý tài khoản đăng nhập'),
 (13, 'Nhân viên Bếp (Kitchen Staff)', 'Sơ chế nguyên liệu, hỗ trợ nấu nướng và vệ sinh khu vực bếp')
 ON CONFLICT (ma_chuc_vu) DO UPDATE
 SET ten_chuc_vu = EXCLUDED.ten_chuc_vu, mo_ta = EXCLUDED.mo_ta;

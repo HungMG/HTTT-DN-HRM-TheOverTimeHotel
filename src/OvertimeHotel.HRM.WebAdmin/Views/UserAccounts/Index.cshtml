@@ -134,7 +134,7 @@
             <input type="hidden" name="auditTo" value="@(Model.AuditTo?.ToString("yyyy-MM-dd"))" />
             <input type="hidden" name="page" value="@Model.PageNumber" data-account-page-input />
 
-            <div class="col-12 col-md-5 col-lg-5">
+            <div class="col-12 col-md-6 col-lg-4">
                 <label asp-for="Keyword" class="form-label small fw-bold text-secondary mb-1">
                     <i class="bi bi-search me-1 text-primary"></i>Tìm kiếm tài khoản
                 </label>
@@ -144,12 +144,21 @@
                 </div>
             </div>
 
-            <div class="col-6 col-md-3 col-lg-3">
+            <div class="col-6 col-md-3 col-lg-2">
                 <label asp-for="RoleId" class="form-label small fw-bold text-secondary mb-1">
                     <i class="bi bi-person-badge me-1 text-primary"></i>Vai trò (RBAC)
                 </label>
                 <select asp-for="RoleId" asp-items="Model.RoleOptions" class="form-select" data-account-role-select>
                     <option value="">-- Tất cả vai trò --</option>
+                </select>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg-2">
+                <label asp-for="DepartmentId" class="form-label small fw-bold text-secondary mb-1">
+                    <i class="bi bi-building me-1 text-primary"></i>Phòng ban
+                </label>
+                <select asp-for="DepartmentId" asp-items="Model.DepartmentOptions" class="form-select" data-account-department-select>
+                    <option value="">-- Tất cả phòng ban --</option>
                 </select>
             </div>
 
@@ -314,6 +323,33 @@
     </div>
 </dialog>
 
+<div class="modal fade" id="accountDetailsModal" tabindex="-1" aria-labelledby="accountDetailsModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable account-detail-dialog">
+        <div class="modal-content account-detail-modal border-0 shadow-lg">
+            <div class="modal-header account-detail-header">
+                <div><span class="account-detail-header-label">THE OVERTIME HOTEL</span><h2 class="modal-title" id="accountDetailsModalTitle">Thông tin tài khoản</h2></div>
+                <button type="button" class="account-detail-dismiss" data-bs-dismiss="modal" aria-label="Đóng"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+            <div class="modal-body p-0" id="accountDetailsModalContent" aria-live="polite"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-bottom bg-white">
+                <div>
+                    <h2 class="modal-title fs-5 fw-bold font-serif mb-0" id="editAccountModalTitle">Chỉnh Sửa Tài Khoản</h2>
+                    <small class="text-muted" id="editAccountModalSubtitle">Điều chỉnh thông tin đăng nhập và đặt lại mật khẩu</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body bg-light p-4" id="editAccountModalContent" aria-live="polite"></div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="rolePermissionsModal" tabindex="-1" aria-labelledby="rolePermissionsTitle" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content rounded-4">
@@ -327,6 +363,8 @@
 </div>
 
 @section Scripts {
+    <script src="~/js/account-details-modal.js" asp-append-version="true"></script>
+    <script src="~/js/edit-account-modal.js" asp-append-version="true"></script>
     <script src="~/js/role-permissions.js" asp-append-version="true"></script>
     <script src="~/js/role-permissions-modal.js" asp-append-version="true"></script>
 }

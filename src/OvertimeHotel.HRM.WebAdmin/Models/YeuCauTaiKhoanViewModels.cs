@@ -39,6 +39,15 @@ public class YeuCauTaiKhoanIndexViewModel
     public bool CanSubmitRequest { get; set; }
 }
 
+public class ItHeadGrantCandidateViewModel
+{
+    public int AccountId { get; set; }
+    public int EmployeeId { get; set; }
+    public string EmployeeName { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string? Email { get; set; }
+}
+
 public class YeuCauTaiKhoanListItemViewModel
 {
     public int RequestId { get; set; }
@@ -73,6 +82,8 @@ public class YeuCauTaiKhoanListItemViewModel
 /// </summary>
 public class CreateYeuCauTaiKhoanViewModel
 {
+    public IReadOnlyList<ItHeadGrantCandidateViewModel> PendingItHeadGrants { get; set; } = [];
+
     [Display(Name = "Nhân viên")]
     [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn nhân viên cần cấp tài khoản.")]
     public int EmployeeId { get; set; }

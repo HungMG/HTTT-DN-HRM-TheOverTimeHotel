@@ -153,6 +153,7 @@ public class YeuCauTaiKhoanController : Controller
             CanSubmitRequest = LeaveApprovalPolicy.CanSubmitAccountRequest(role)
         };
 
+
         if (IsAjaxRequest())
         {
             Response.Headers["X-Total-Requests"] = model.TotalRequests.ToString();
@@ -238,6 +239,7 @@ public class YeuCauTaiKhoanController : Controller
 
         var model = new CreateYeuCauTaiKhoanViewModel { IsPopup = popup, EmployeeId = employeeId ?? 0 };
         await LoadCreateOptionsAsync(model);
+        if (popup) await LoadItHeadCandidatesAsync(model);
         return popup ? PartialView("_CreateRequestPopup", model) : View(model);
     }
 
@@ -970,6 +972,45 @@ public class YeuCauTaiKhoanController : Controller
                 model.RoleId = defaultRole == null ? 0 : int.Parse(defaultRole.Value!);
             }
         }
+    }
+
+    private async Task LoadItHeadCandidatesAsync(CreateYeuCauTaiKhoanViewModel model)
+    {
+        if (User.IsInRole("IT") && GetCurrentAccountId() is int currentAccountId)
+        {
+            var actor = await _context.TaiKhoans.AsNoTracking().Include(a => a.NhanVien)
+                .FirstOrDefaultAsync(a => a.MaTaiKhoan == currentAccountId && a.TrangThai);
+            if (actor?.NhanVien?.MaPhongBan is int departmentId && actor.NhanVien.MaChucVu == 2 &&
+                await _context.Database.SqlQuery<bool>($"SELECT public.hrm_it_head_access({actor.MaNhanVien}) AS \"Value\"").SingleAsync())
+            {
+                var departmentName = await _context.PhongBans.Where(p => p.MaPhongBan == departmentId)
+                    .Select(p => p.TenPhongBan).FirstOrDefaultAsync();
+                var canGrantItHead = !string.IsNullOrWhiteSpace(departmentName) &&
+                    (departmentName.Contains("công nghệ thông tin", StringComparison.OrdinalIgnoreCase) ||
+                     departmentName.Contains("CNTT", StringComparison.OrdinalIgnoreCase) ||
+                     departmentName.Contains("information technology", StringComparison.OrdinalIgnoreCase));
+                if (canGrantItHead)
+                {
+                    model.PendingItHeadGrants = await _context.Database.SqlQuery<ItHeadGrantCandidateViewModel>($"""
+                        SELECT t.ma_tai_khoan AS "AccountId", n.ma_nhan_vien AS "EmployeeId", concat_ws(' ', n.ho, n.ten) AS "EmployeeName",
+                               t.ten_dang_nhap AS "Username", n.email AS "Email"
+                        FROM public.tai_khoan t JOIN public.nhan_vien n USING(ma_nhan_vien)
+                        JOIN public.vai_tro v USING(ma_vai_tro)
+                        WHERE t.trang_thai AND t.ma_tai_khoan <> {currentAccountId}
+                          AND v.ten_vai_tro='IT' AND n.trang_thai='DANG_LAM'
+                          AND n.ma_phong_ban={departmentId} AND n.ma_chuc_vu=2
+                          AND NOT public.hrm_it_head_access(n.ma_nhan_vien)
+                          AND EXISTS (SELECT 1 FROM public.phu_luc_luong p
+                              WHERE p.ma_phu_luc=public.hrm_it_head_position_event(n.ma_nhan_vien) AND p.ma_chuc_vu_moi=2)
+                          AND EXISTS (SELECT 1 FROM public.hop_dong h WHERE h.ma_nhan_vien=n.ma_nhan_vien
+                              AND h.trang_thai='HIEU_LUC' AND h.ngay_bat_dau<=CURRENT_DATE
+                              AND (h.ngay_ket_thuc IS NULL OR h.ngay_ket_thuc>=CURRENT_DATE))
+                        ORDER BY n.ho,n.ten,n.ma_nhan_vien
+                        """).ToListAsync();
+                }
+            }
+        }
+
     }
 
     // =====================================================================

@@ -126,7 +126,8 @@ public class AuthService : IAuthService
         var token = await GetTokenAsync();
         if (string.IsNullOrWhiteSpace(token)) throw new UnauthorizedAccessException("Phiên đăng nhập đã hết hạn.");
         var permissions = await LoadPermissionsAsync(token);
-        if (ReferenceEquals(user, CurrentUser)) user.Permissions = permissions;
+        var itHeadAccess = await LoadItHeadAccessAsync(token);
+        if (ReferenceEquals(user, CurrentUser)) { user.Permissions = permissions; user.HasItHeadAccess = itHeadAccess; }
     }
 
     private async Task<HashSet<string>> LoadPermissionsAsync(string token)
@@ -138,6 +139,16 @@ public class AuthService : IAuthService
         response.EnsureSuccessStatusCode();
         return JsonSerializer.Deserialize<HashSet<string>>(await response.Content.ReadAsStringAsync())
             ?? throw new InvalidOperationException("Không tải được quyền truy cập.");
+    }
+
+    private async Task<bool> LoadItHeadAccessAsync(string token)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "rpc/hrm_is_it_head");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        using var response = await _restClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return JsonSerializer.Deserialize<bool>(await response.Content.ReadAsStringAsync());
     }
 
     public async Task<LoginResponse> LoginAsync(string username, string password, bool rememberMe = true)
@@ -326,6 +337,7 @@ public class AuthService : IAuthService
         {
             Token = token,
             Permissions = await LoadPermissionsAsync(token),
+            HasItHeadAccess = await LoadItHeadAccessAsync(token),
             IsLoggedIn = true,
             ThoiGianDangNhap = DateTime.UtcNow,
 

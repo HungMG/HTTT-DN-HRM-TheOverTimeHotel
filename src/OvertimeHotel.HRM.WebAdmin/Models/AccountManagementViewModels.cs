@@ -7,6 +7,7 @@ public class AccountIndexViewModel
 {
     public string? Keyword { get; set; }
     public int? RoleId { get; set; }
+    public int? DepartmentId { get; set; }
     public bool? IsActive { get; set; }
     public DateOnly? AuditFrom { get; set; }
     public DateOnly? AuditTo { get; set; }
@@ -15,6 +16,7 @@ public class AccountIndexViewModel
     public int ActiveAccounts { get; set; }
     public int LockedAccounts { get; set; }
     public int AdminAccounts { get; set; }
+    public int ItHeadAccountCount { get; set; }
     public int TotalFilteredAccounts { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 7;
@@ -25,6 +27,7 @@ public class AccountIndexViewModel
     public int TotalAuditPages { get; set; } = 1;
     public IReadOnlyList<AccountListItemViewModel> Accounts { get; set; } = [];
     public IReadOnlyList<SelectListItem> RoleOptions { get; set; } = [];
+    public IReadOnlyList<SelectListItem> DepartmentOptions { get; set; } = [];
     public IReadOnlyList<AdminAuditLogViewModel> AuditLogs { get; set; } = [];
     public bool AuditLogAvailable { get; set; } = true;
 }
@@ -33,9 +36,23 @@ public class AccountListItemViewModel
 {
     public int AccountId { get; set; }
     public int EmployeeId { get; set; }
+    public int? DepartmentId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string EmployeeName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public string Department { get; set; } = string.Empty;
+    public string Position { get; set; } = string.Empty;
+    public string RoleName { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+}
+
+public class AccountDetailViewModel
+{
+    public int AccountId { get; set; }
+    public int EmployeeId { get; set; }
+    public string EmployeeName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
     public string Department { get; set; } = string.Empty;
     public string Position { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;

@@ -288,11 +288,12 @@ builder.Services.AddAuthentication(options =>
                         // Mobile rights follow the appropriate live role grants; Web IT rights stay unchanged.
                         if (account.VaiTro?.TenVaiTro == "IT")
                         {
-                            var isHead = ItMobileAccessPolicy.IsItHead(account.VaiTro.TenVaiTro, account.NhanVien?.MaChucVu);
+                            var isHead = ItMobileAccessPolicy.IsItHead(account.VaiTro.TenVaiTro, account.NhanVien?.MaChucVu)
+                                && await dbContext.Database.SqlQuery<bool>($"SELECT public.hrm_it_head_access({account.MaNhanVien}) AS \"Value\"").SingleAsync();
                             var inheritedCodes = isHead ? ItMobileAccessPolicy.ManagerMobilePermissions :
                                 [PermissionCodes.MobileCheckIn, PermissionCodes.SubmitRequest];
                             var inheritedRole = isHead ? "Manager" : "Employee";
-                            codes.RemoveAll(inheritedCodes.Contains);
+                            codes.RemoveAll(ItMobileAccessPolicy.ManagerMobilePermissions.Contains);
                             var grants = await dbContext.VaiTroQuyens.AsNoTracking()
                                 .Where(vq => vq.VaiTro != null && vq.VaiTro.TenVaiTro == inheritedRole && vq.Quyen != null
                                     && inheritedCodes.Contains(vq.Quyen.MaQuyenCode))

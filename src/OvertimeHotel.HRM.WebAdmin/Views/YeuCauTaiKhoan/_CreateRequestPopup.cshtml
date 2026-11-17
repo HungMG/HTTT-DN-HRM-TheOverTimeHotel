@@ -18,6 +18,9 @@
     <div class="alert alert-warning" role="alert" data-role-restriction hidden>
         Không thể gửi yêu cầu cho vai trò này. HR được yêu cầu cấp tài khoản Nhân viên và Quản lý; vui lòng liên hệ IT cho các vai trò khác.
     </div>
+    <div class="alert alert-info" role="status" data-it-head-notice hidden>
+        Nhân viên đã có tài khoản IT. Cấp quyền trưởng bộ phận cho tài khoản hiện tại; không tạo tài khoản mới.
+    </div>
 
     <!-- KHỐI 1: NHÂN SỰ & CĂN CỨ HỢP ĐỒNG -->
     <div class="card border-0 bg-light rounded-3 p-3 mb-3">
@@ -55,15 +58,19 @@
                         <i class="bi bi-person-fill"></i>
                     </span>
                     <select asp-for="EmployeeId" class="form-select border-start-0 py-2 ps-2 rounded-end-3" id="popupEmployeeId">
-                        <option value="">-- Chọn nhân viên chưa có tài khoản --</option>
+                        <option value="">-- Chọn nhân viên --</option>
                         @foreach (var opt in Model.EmployeeOptions)
                         {
                             <option value="@opt.Value" selected="@opt.Selected">@opt.Text</option>
                         }
+                        @foreach (var candidate in Model.PendingItHeadGrants)
+                        {
+                            <option value="@candidate.EmployeeId" data-it-head-account="@candidate.AccountId" data-it-head-username="@candidate.Username">@candidate.EmployeeName · @candidate.Email · Thăng chức trưởng bộ phận IT</option>
+                        }
                     </select>
                 </div>
                 <span asp-validation-for="EmployeeId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
-                @if (Model.EmployeeOptions.Count == 0)
+                @if (Model.EmployeeOptions.Count == 0 && Model.PendingItHeadGrants.Count == 0)
                 {
                     <div class="p-2 mt-2 rounded-2 bg-warning bg-opacity-10 border border-warning-subtle text-warning-emphasis small d-flex align-items-center gap-2" style="font-size: 0.75rem;">
                         <i class="bi bi-info-circle-fill flex-shrink-0"></i>
@@ -168,7 +175,7 @@
         <button type="button" class="btn btn-outline-secondary rounded-pill px-3.5 py-2 fw-semibold" data-bs-dismiss="modal" style="font-size: 0.84rem;">
             Hủy bỏ
         </button>
-        <button type="submit" id="popupBtnSubmit" class="btn btn-hotel-primary rounded-pill px-4 py-2 fw-bold text-white shadow-sm d-flex align-items-center gap-2" disabled="@(Model.EmployeeOptions.Count == 0)" style="font-size: 0.84rem;">
+        <button type="submit" id="popupBtnSubmit" class="btn btn-hotel-primary rounded-pill px-4 py-2 fw-bold text-white shadow-sm d-flex align-items-center gap-2" disabled="@(Model.EmployeeOptions.Count == 0 && Model.PendingItHeadGrants.Count == 0)" style="font-size: 0.84rem;">
             <i class="bi bi-send-fill fs-6"></i> @(User.HasPermission(PermissionCodes.ProvisionMobileAccount) ? "Cấp tài khoản" : "Gửi yêu cầu cấp tài khoản")
         </button>
     </div>

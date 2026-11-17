@@ -808,6 +808,17 @@
         void loadAccountsTable();
     });
 
+    document.addEventListener("account:updated", (event) => {
+        const detail = event.detail || {};
+        showToast(detail.message || "Đã cập nhật tài khoản.", "success");
+        if (detail.changed !== false) {
+            void loadAccountsTable(null, false);
+            if (auditFilter) {
+                auditFilter.requestSubmit();
+            }
+        }
+    });
+
     // Khởi tạo ban đầu
     bindToggleForms();
 })();

@@ -37,7 +37,7 @@ public class UserAccountsController : Controller
 
     [HttpGet]
     [Authorize(Policy = PermissionCodes.ManageAccounts)]
-    public async Task<IActionResult> Index(string? keyword, int? roleId, bool? isActive, DateOnly? auditFrom, DateOnly? auditTo, int page = 1, int auditPage = 1)
+    public async Task<IActionResult> Index(string? keyword, int? roleId, bool? isActive, DateOnly? auditFrom, DateOnly? auditTo, int page = 1, int auditPage = 1, int? departmentId = null)
     {
         var normalizedKeyword = keyword?.Trim();
         var auditDateValidationMessage = GetAuditDateValidationMessage(auditFrom, auditTo);
@@ -73,6 +73,9 @@ public class UserAccountsController : Controller
                 query = query.Where(account => account.TrangThai == isActive.Value);
             }
 
+            if (departmentId.HasValue)
+                query = query.Where(account => account.NhanVien != null && account.NhanVien.MaPhongBan == departmentId.Value);
+
             var totalFilteredAccounts = query.Count();
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalFilteredAccounts / (double)AccountPageSize));
             var pageNumber = Math.Clamp(page, 1, totalPages);
@@ -85,6 +88,7 @@ public class UserAccountsController : Controller
                 {
                     AccountId = account.MaTaiKhoan,
                     EmployeeId = account.MaNhanVien,
+                    DepartmentId = account.NhanVien == null ? null : account.NhanVien.MaPhongBan,
                     Username = account.TenDangNhap,
                     EmployeeName = account.NhanVien == null
                         ? "Chưa liên kết nhân viên"
@@ -102,6 +106,8 @@ public class UserAccountsController : Controller
                 .ToList();
 
             var roleOptions = await GetRoleOptionsAsync(roleId);
+            var departmentOptions = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan)
+                .Select(p => new SelectListItem { Value = p.MaPhongBan.ToString(), Text = p.TenPhongBan, Selected = p.MaPhongBan == departmentId }).ToListAsync();
             var auditLogPage = new AuditLogPageResult([], 0, 1, 1);
             var auditLogAvailable = true;
             try
@@ -121,16 +127,19 @@ public class UserAccountsController : Controller
             {
                 Keyword = normalizedKeyword,
                 RoleId = roleId,
+                DepartmentId = departmentId,
                 IsActive = isActive,
                 AuditFrom = auditFrom,
                 AuditTo = auditTo,
                 AuditDateValidationMessage = auditDateValidationMessage,
                 Accounts = accounts,
                 RoleOptions = roleOptions,
+                DepartmentOptions = departmentOptions,
                 TotalAccounts = allAccounts.Count,
                 ActiveAccounts = allAccounts.Count(account => account.TrangThai),
                 LockedAccounts = allAccounts.Count(account => !account.TrangThai),
                 AdminAccounts = allAccounts.Count(account => account.VaiTro != null && account.VaiTro.TenVaiTro == "Admin"),
+                ItHeadAccountCount = allAccounts.Count(account => AccountDeletionPolicy.IsItDepartmentHead(account.NhanVien?.PhongBan?.TenPhongBan, account.NhanVien?.ChucVu?.TenChucVu)),
                 TotalFilteredAccounts = totalFilteredAccounts,
                 PageNumber = pageNumber,
                 PageSize = AccountPageSize,
@@ -159,6 +168,9 @@ public class UserAccountsController : Controller
         {
             _logger.LogError(ex, "Không thể kết nối CSDL khi tải danh sách tài khoản. Chuyển sang hiển thị danh sách tài khoản mẫu.");
             var fallbackAccounts = GetDevSeedAccountList();
+            var fallbackDepartmentOptions = fallbackAccounts.Where(a => a.DepartmentId.HasValue)
+                .GroupBy(a => new { a.DepartmentId, a.Department }).OrderBy(g => g.Key.Department)
+                .Select(g => new SelectListItem { Value = g.Key.DepartmentId!.Value.ToString(), Text = g.Key.Department, Selected = g.Key.DepartmentId == departmentId }).ToList();
             if (!string.IsNullOrWhiteSpace(normalizedKeyword))
             {
                 var kw = normalizedKeyword.ToLower();
@@ -182,6 +194,8 @@ public class UserAccountsController : Controller
             {
                 fallbackAccounts = fallbackAccounts.Where(a => a.IsActive == isActive.Value).ToList();
             }
+            if (departmentId.HasValue)
+                fallbackAccounts = fallbackAccounts.Where(a => a.DepartmentId == departmentId).ToList();
 
             var fallbackTotalAccounts = fallbackAccounts.Count;
             var fallbackTotalPages = Math.Max(1, (int)Math.Ceiling(fallbackTotalAccounts / (double)AccountPageSize));
@@ -195,12 +209,14 @@ public class UserAccountsController : Controller
             {
                 Keyword = normalizedKeyword,
                 RoleId = roleId,
+                DepartmentId = departmentId,
                 IsActive = isActive,
                 AuditFrom = auditFrom,
                 AuditTo = auditTo,
                 AuditDateValidationMessage = auditDateValidationMessage,
                 Accounts = fallbackPageAccounts,
                 RoleOptions = GetDefaultRoleOptions(roleId),
+                DepartmentOptions = fallbackDepartmentOptions,
                 TotalAccounts = 4,
                 ActiveAccounts = 4,
                 LockedAccounts = 0,
@@ -262,6 +278,59 @@ public class UserAccountsController : Controller
         };
         ViewData["RolePopup"] = popup;
         return popup ? PartialView("_RolePermissionsForm", model) : View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
+    public async Task<IActionResult> GrantItHead(int id)
+    {
+        var actorId = GetCurrentAccountId();
+        if (!actorId.HasValue || actorId == id || !User.IsInRole("IT"))
+            return ItHeadGrantFailure("Chỉ trưởng bộ phận IT được cấp quyền cho tài khoản khác.", StatusCodes.Status403Forbidden);
+        try
+        {
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var actor = await _context.TaiKhoans.Include(a => a.NhanVien).FirstOrDefaultAsync(a => a.MaTaiKhoan == actorId);
+            var target = await _context.TaiKhoans.Include(a => a.NhanVien).Include(a => a.VaiTro).FirstOrDefaultAsync(a => a.MaTaiKhoan == id);
+            if (actor?.NhanVien == null || target?.NhanVien == null || !actor.TrangThai || !target.TrangThai ||
+                target.VaiTro?.TenVaiTro != "IT" || target.NhanVien.TrangThai != "DANG_LAM" ||
+                target.NhanVien.MaChucVu != 2 || !actor.NhanVien.MaPhongBan.HasValue ||
+                actor.NhanVien.MaPhongBan != target.NhanVien.MaPhongBan ||
+                !await _context.Database.SqlQuery<bool>($"SELECT public.hrm_it_head_access({actor.MaNhanVien}) AS \"Value\"").SingleAsync())
+                return ItHeadGrantFailure("Tài khoản hoặc chức vụ không đủ điều kiện cấp quyền trưởng bộ phận IT.", StatusCodes.Status403Forbidden);
+            var departmentName = await _context.PhongBans.Where(p => p.MaPhongBan == actor.NhanVien.MaPhongBan)
+                .Select(p => p.TenPhongBan).FirstOrDefaultAsync();
+            if (string.IsNullOrWhiteSpace(departmentName) ||
+                !(departmentName.Contains("công nghệ thông tin", StringComparison.OrdinalIgnoreCase) ||
+                  departmentName.Contains("CNTT", StringComparison.OrdinalIgnoreCase) ||
+                  departmentName.Contains("information technology", StringComparison.OrdinalIgnoreCase)))
+                return ItHeadGrantFailure("Chỉ trưởng bộ phận CNTT được cấp quyền này.", StatusCodes.Status403Forbidden);
+            var eventId = await _context.Database.SqlQuery<long?>($"SELECT public.hrm_it_head_position_event({target.MaNhanVien}) AS \"Value\"").SingleAsync();
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            if (!eventId.HasValue || !await _context.PhuLucLuongs.AnyAsync(p => p.MaPhuLuc == eventId && p.MaChucVuMoi == 2) ||
+                !await _context.HopDongs.AnyAsync(h => h.MaNhanVien == target.MaNhanVien && h.TrangThai == "HIEU_LUC" &&
+                    h.NgayBatDau <= today && (!h.NgayKetThuc.HasValue || h.NgayKetThuc >= today)))
+                return ItHeadGrantFailure("Cần có phụ lục bổ nhiệm trưởng bộ phận đã có hiệu lực.");
+            if (await _context.Database.SqlQuery<bool>($"SELECT public.hrm_it_head_access({target.MaNhanVien}) AS \"Value\"").SingleAsync())
+                return ItHeadGrantFailure("Tài khoản đã có quyền trưởng bộ phận IT.");
+            await _context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO public.it_head_grant (ma_nhan_vien, ma_phu_luc, ma_nguoi_cap) VALUES ({target.MaNhanVien}, {eventId.Value}, {actorId.Value}) ON CONFLICT (ma_nhan_vien) DO UPDATE SET ma_phu_luc=EXCLUDED.ma_phu_luc, ma_nguoi_cap=EXCLUDED.ma_nguoi_cap, thoi_gian_cap=now()");
+            _context.NhatKyQuanTris.Add(CreateAuditLog(id, target.TenDangNhap, "GRANT_IT_HEAD", "Cấp quyền trưởng bộ phận IT theo phụ lục đã có hiệu lực.", "IT", "IT và quyền trưởng bộ phận", $"Phụ lục #{eventId.Value}"));
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            if (string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+                return Json(new { success = true, message = $"Đã cấp quyền trưởng bộ phận IT cho {target.TenDangNhap}." });
+            TempData["Success"] = $"Đã cấp quyền trưởng bộ phận IT cho {target.TenDangNhap}.";
+            return RedirectToAction("Index", "YeuCauTaiKhoan");
+            });
+        }
+        catch (Exception ex) when (ex is DbUpdateException or Npgsql.PostgresException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Không thể cấp quyền trưởng bộ phận IT cho tài khoản {AccountId}", id);
+            return ItHeadGrantFailure("Không thể cấp quyền; kiểm tra cập nhật cơ sở dữ liệu và thử lại.");
+        }
     }
 
     [HttpPost]
@@ -330,7 +399,28 @@ public class UserAccountsController : Controller
 
     [HttpGet]
     [Authorize(Policy = PermissionCodes.ManageAccounts)]
-    public async Task<IActionResult> Edit(int id)
+    public async Task<IActionResult> Details(int id)
+    {
+        var account = await _context.TaiKhoans.AsNoTracking()
+            .Where(a => a.MaTaiKhoan == id)
+            .Select(a => new AccountDetailViewModel
+            {
+                AccountId = a.MaTaiKhoan,
+                EmployeeId = a.MaNhanVien,
+                EmployeeName = a.NhanVien == null ? "Chưa liên kết nhân viên" : (a.NhanVien.Ho + " " + a.NhanVien.Ten).Trim(),
+                Email = a.NhanVien == null ? "" : a.NhanVien.EmailCongVu,
+                Username = a.TenDangNhap,
+                Department = a.NhanVien == null || a.NhanVien.PhongBan == null ? "Chưa xác định" : a.NhanVien.PhongBan.TenPhongBan,
+                Position = a.NhanVien == null || a.NhanVien.ChucVu == null ? "Chưa xác định" : a.NhanVien.ChucVu.TenChucVu,
+                RoleName = a.VaiTro == null ? "Chưa cấp" : a.VaiTro.TenVaiTro,
+                IsActive = a.TrangThai
+            }).SingleOrDefaultAsync();
+        return account == null ? NotFound() : PartialView("_AccountDetail", account);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = PermissionCodes.ManageAccounts)]
+    public async Task<IActionResult> Edit(int id, bool popup = false)
     {
         var account = await _context.TaiKhoans
             .AsNoTracking()
@@ -357,13 +447,14 @@ public class UserAccountsController : Controller
             PermissionOptions = await GetRolePermissionOptionsAsync(account.MaVaiTro)
         };
 
-        return View(model);
+        ViewData["EditPopup"] = popup;
+        return popup ? PartialView("_EditAccountForm", model) : View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PermissionCodes.ManageAccounts)]
-    public async Task<IActionResult> Edit(int id, EditAccountViewModel model)
+    public async Task<IActionResult> Edit(int id, EditAccountViewModel model, bool popup = false)
     {
         if (id != model.AccountId)
         {
@@ -388,10 +479,12 @@ public class UserAccountsController : Controller
         model.EmployeeEmail = account.NhanVien?.EmailCongVu ?? string.Empty;
         model.IsActive = account.TrangThai;
 
-        var requestedRole = await _context.VaiTros.AsNoTracking().FirstOrDefaultAsync(role => role.MaVaiTro == model.RoleId);
-        if (requestedRole == null || !SupportedRoles.Contains(requestedRole.TenVaiTro) ||
-            (model.RoleId != account.MaVaiTro && (requestedRole.TenVaiTro == "IT" || account.VaiTro?.TenVaiTro == "IT")))
-            ModelState.AddModelError(nameof(model.RoleId), "Không thể thay đổi vai trò IT.");
+        if (model.RoleId != account.MaVaiTro)
+        {
+            ModelState.Remove(nameof(model.RoleId));
+            ModelState.AddModelError(string.Empty, "Không thể thay đổi vai trò khi sửa tài khoản.");
+            model.RoleId = account.MaVaiTro;
+        }
 
         var oldUsername = account.TenDangNhap;
 
@@ -409,22 +502,32 @@ public class UserAccountsController : Controller
 
         var usernameChanged = !string.Equals(oldUsername, model.Username, StringComparison.Ordinal);
         var passwordChanged = !string.IsNullOrWhiteSpace(model.NewPassword);
-        var roleChanged = model.RoleId != account.MaVaiTro;
-        var hasChanges = usernameChanged || passwordChanged || roleChanged;
+        var hasChanges = usernameChanged || passwordChanged;
 
         if (hasChanges && string.IsNullOrWhiteSpace(model.ChangeReason))
         {
             ModelState.AddModelError(nameof(model.ChangeReason), "Vui lòng nhập lý do thay đổi để lưu nhật ký quản trị.");
         }
 
+        ViewData["EditPopup"] = popup;
+
         if (!ModelState.IsValid)
         {
             model.RoleOptions = await GetRoleOptionsAsync(model.RoleId);
+            if (popup)
+            {
+                Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+                return PartialView("_EditAccountForm", model);
+            }
             return View(model);
         }
 
         if (!hasChanges)
         {
+            if (popup)
+            {
+                return Json(new { success = true, changed = false, message = "Không có thông tin nào thay đổi." });
+            }
             TempData["Success"] = "Không có thông tin nào thay đổi.";
             return RedirectToAction(nameof(Index));
         }
@@ -432,14 +535,6 @@ public class UserAccountsController : Controller
         var oldValues = new List<string>();
         var newValues = new List<string>();
         var changedFields = new List<string>();
-
-        if (roleChanged)
-        {
-            oldValues.Add($"Vai trò: {account.VaiTro?.TenVaiTro}");
-            newValues.Add($"Vai trò: {requestedRole!.TenVaiTro}");
-            changedFields.Add("vai trò");
-            account.MaVaiTro = model.RoleId;
-        }
 
         if (usernameChanged)
         {
@@ -473,7 +568,21 @@ public class UserAccountsController : Controller
                 model.ChangeReason));
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = $"Đã cập nhật tài khoản '{account.TenDangNhap}'.";
+            var successMessage = $"Đã cập nhật tài khoản '{account.TenDangNhap}'.";
+            if (popup)
+            {
+                return Json(new
+                {
+                    success = true,
+                    changed = true,
+                    accountId = account.MaTaiKhoan,
+                    username = account.TenDangNhap,
+                    roleId = account.MaVaiTro,
+                    roleName = account.VaiTro?.TenVaiTro,
+                    message = successMessage
+                });
+            }
+            TempData["Success"] = successMessage;
             return RedirectToAction(nameof(Index));
         }
         catch (DbUpdateException ex)
@@ -481,6 +590,11 @@ public class UserAccountsController : Controller
             _logger.LogError(ex, "Không thể cập nhật tài khoản {AccountId}.", account.MaTaiKhoan);
             ModelState.AddModelError(string.Empty, "Không thể cập nhật tài khoản do dữ liệu bị trùng hoặc kết nối CSDL gặp lỗi.");
             model.RoleOptions = await GetRoleOptionsAsync(model.RoleId);
+            if (popup)
+            {
+                Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+                return PartialView("_EditAccountForm", model);
+            }
             return View(model);
         }
     }
@@ -503,13 +617,22 @@ public class UserAccountsController : Controller
         if (string.IsNullOrWhiteSpace(reason) || reason.Length > 500)
             return ToggleStatusFailure("Vui lòng nhập lý do xóa tài khoản, tối đa 500 ký tự.");
 
+        // Serialize the entire deletion, including Supabase Auth removal, so two
+        // simultaneous requests cannot both delete the final IT heads.
+        await using var deletionLock = await new AccountRequestLock(_context).TryAcquireAsync(int.MinValue, HttpContext.RequestAborted);
+        if (deletionLock == null)
+            return ToggleStatusFailure("Một tài khoản khác đang được xóa. Vui lòng thử lại.", StatusCodes.Status409Conflict);
+
         var account = await _context.TaiKhoans.Include(a => a.VaiTro)
             .Include(a => a.NhanVien)!.ThenInclude(n => n!.ChucVu)
             .Include(a => a.NhanVien)!.ThenInclude(n => n!.PhongBan)
             .FirstOrDefaultAsync(a => a.MaTaiKhoan == id);
         if (account == null) return ToggleStatusFailure("Không tìm thấy tài khoản.", StatusCodes.Status404NotFound);
+        var allHeads = await _context.TaiKhoans.AsNoTracking().Include(a => a.NhanVien)!.ThenInclude(n => n!.PhongBan)
+            .Include(a => a.NhanVien)!.ThenInclude(n => n!.ChucVu).ToListAsync();
+        var itHeadCount = allHeads.Count(a => AccountDeletionPolicy.IsItDepartmentHead(a.NhanVien?.PhongBan?.TenPhongBan, a.NhanVien?.ChucVu?.TenChucVu));
         var denied = AccountDeletionPolicy.GetDenial(User.FindFirstValue(ClaimTypes.Role), GetCurrentAccountId(), id,
-            account.VaiTro?.TenVaiTro, account.NhanVien?.PhongBan?.TenPhongBan, account.NhanVien?.ChucVu?.TenChucVu);
+            account.VaiTro?.TenVaiTro, account.NhanVien?.PhongBan?.TenPhongBan, account.NhanVien?.ChucVu?.TenChucVu, itHeadCount);
         if (denied != null) return ToggleStatusFailure(denied, StatusCodes.Status403Forbidden);
 
         var email = account.NhanVien?.EmailCongVu?.Trim();
@@ -933,6 +1056,14 @@ public class UserAccountsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    private IActionResult ItHeadGrantFailure(string message, int statusCode = StatusCodes.Status400BadRequest)
+    {
+        if (string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+            return StatusCode(statusCode, new { success = false, message });
+        TempData["Error"] = message;
+        return RedirectToAction("Index", "YeuCauTaiKhoan");
+    }
+
     private int? GetCurrentAccountId()
     {
         var claimValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -956,6 +1087,7 @@ public class UserAccountsController : Controller
                 EmployeeName = "Nguyễn Đình Cường",
                 Email = "cuong.nguyen@overtimehotel.com",
                 Department = "Ban Giám Đốc",
+                DepartmentId = 1,
                 Position = "Tổng Giám Đốc",
                 RoleName = "Admin",
                 IsActive = true
@@ -968,6 +1100,7 @@ public class UserAccountsController : Controller
                 EmployeeName = "Võ Huỳnh Minh Sang",
                 Email = "sang.vo@overtimehotel.com",
                 Department = "Phòng Nhân Sự",
+                DepartmentId = 7,
                 Position = "Trưởng Phòng Nhân Sự",
                 RoleName = "HR",
                 IsActive = true
@@ -980,6 +1113,7 @@ public class UserAccountsController : Controller
                 EmployeeName = "Nguyễn Hoàng Long",
                 Email = "long.nguyen@overtimehotel.com",
                 Department = "Bộ Phận Tiền Sảnh",
+                DepartmentId = 2,
                 Position = "Trưởng Bộ Phận Tiền Sảnh",
                 RoleName = "Manager",
                 IsActive = true
@@ -992,6 +1126,7 @@ public class UserAccountsController : Controller
                 EmployeeName = "Châu Quốc Bảo",
                 Email = "bao.chau@overtimehotel.com",
                 Department = "Bộ Phận Tiền Sảnh",
+                DepartmentId = 2,
                 Position = "Trưởng Bộ Phận",
                 RoleName = "Manager",
                 IsActive = true
@@ -1004,6 +1139,7 @@ public class UserAccountsController : Controller
                 EmployeeName = "Dương Thùy Linh",
                 Email = "linh.duong@overtimehotel.com",
                 Department = "Bộ Phận Tiền Sảnh",
+                DepartmentId = 2,
                 Position = "Nhân Viên Lễ Tân",
                 RoleName = "Employee",
                 IsActive = true

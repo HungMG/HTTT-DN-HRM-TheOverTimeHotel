@@ -76,12 +76,12 @@
                     rowIndex++;
                     var (roleClass, roleIcon, roleDisplayName) = GetRoleBadgeInfo(account.RoleName);
                     var isCurrentAccount = account.AccountId == currentAccountId;
-                    <tr class="@(!account.IsActive ? "is-locked table-light" : null)" style="--row-delay: @(rowIndex * 30)ms" data-account-row="@account.AccountId">
+                    <tr class="@(!account.IsActive ? "is-locked table-light" : null)" style="--row-delay: @(rowIndex * 30)ms; cursor: pointer" data-account-row="@account.AccountId" data-account-details-url="@Url.Action("Details", "UserAccounts", new { id = account.AccountId })" tabindex="0" aria-label="Xem thông tin tài khoản @account.EmployeeName">
                         <td class="ps-3 py-2.5">
                             <div class="d-flex align-items-center gap-3">
                                 <div class="account-avatar flex-shrink-0">@(account.EmployeeName.Length > 0 ? account.EmployeeName[..1].ToUpperInvariant() : "N")</div>
                                 <div>
-                                    <div class="fw-bold text-dark font-serif" style="font-size: 0.88rem;">@account.EmployeeName</div>
+                                    <button type="button" class="btn btn-link p-0 fw-bold text-dark font-serif text-start text-decoration-none" style="font-size: 0.88rem;" data-account-details-open>@account.EmployeeName</button>
                                     <div class="small text-muted font-sans" style="font-size: 0.75rem;">@account.Email</div>
                                 </div>
                             </div>
@@ -111,9 +111,9 @@
                         </td>
                         <td class="pe-3 py-2.5 text-end">
                             <div class="d-inline-flex align-items-center gap-2">
-                                <a asp-action="Edit" asp-route-id="@account.AccountId" class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1 hover-lift" title="Chỉnh sửa tài khoản" style="font-size: 0.78rem;">
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2 py-1 hover-lift" data-account-edit-open data-account-edit-url="@Url.Action("Edit", "UserAccounts", new { id = account.AccountId })" data-account-name="@account.EmployeeName" title="Chỉnh sửa tài khoản" style="font-size: 0.78rem;">
                                     <i class="bi bi-pencil-square text-primary"></i> Sửa
-                                </a>
+                                </button>
                                 <form asp-action="ToggleStatus" asp-route-id="@account.AccountId" method="post"
                                       class="account-toggle-form d-inline"
                                       data-account-id="@account.AccountId"
@@ -125,7 +125,7 @@
                                         <i class="bi @(account.IsActive ? "bi-lock-fill" : "bi-unlock-fill") me-1"></i>@(account.IsActive ? "Khóa" : "Mở")
                                     </button>
                                 </form>
-                                @if (AccountDeletionPolicy.GetDenial(User.FindFirstValue(ClaimTypes.Role), currentAccountId, account.AccountId, account.RoleName, account.Department, account.Position) == null)
+                                @if (AccountDeletionPolicy.GetDenial(User.FindFirstValue(ClaimTypes.Role), currentAccountId, account.AccountId, account.RoleName, account.Department, account.Position, Model.ItHeadAccountCount) == null)
                                 {
                                     <form asp-action="DeleteAccount" asp-route-id="@account.AccountId" method="post"
                                           class="account-delete-form d-inline" data-account-id="@account.AccountId"

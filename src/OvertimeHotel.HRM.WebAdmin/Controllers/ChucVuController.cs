@@ -40,7 +40,7 @@ public class ChucVuController : Controller
 
             if (departmentId is > 0)
             {
-                query = query.Where(x => x.MaPhongBan == departmentId.Value);
+                query = query.Where(x => x.MaPhongBan == departmentId.Value || x.MaPhongBan == null);
             }
 
             if (!string.IsNullOrWhiteSpace(keyword))

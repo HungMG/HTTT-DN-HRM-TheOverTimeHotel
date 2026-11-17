@@ -23,7 +23,8 @@ public class UserSession
     public bool IsLoggedIn { get; set; }
     public DateTime ThoiGianDangNhap { get; set; } = DateTime.UtcNow;
 
-    public bool IsItHead => ItMobileAccessPolicy.IsItHead(TenVaiTro, MaChucVu);
+    public bool HasItHeadAccess { get; set; }
+    public bool IsItHead => HasItHeadAccess && ItMobileAccessPolicy.IsItHead(TenVaiTro, MaChucVu);
     public string MobileRole => IsItHead ? "Manager" : TenVaiTro;
     public bool IsManager => LeaveApprovalPolicy.IsManager(MobileRole);
     public bool IsHR => LeaveApprovalPolicy.IsHR(TenVaiTro);

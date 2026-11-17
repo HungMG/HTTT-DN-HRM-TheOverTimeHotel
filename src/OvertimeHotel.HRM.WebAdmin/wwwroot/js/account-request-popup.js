@@ -13,6 +13,8 @@ window.initAccountRequestPopup = (container, onSuccess, onError) => {
                 const roleRestriction = container.querySelector("[data-role-restriction]");
                 const roleFilter = container.querySelector("[data-role-filter]");
                 const roleFilterEmpty = container.querySelector("[data-role-filter-empty]");
+                const itHeadNotice = container.querySelector("[data-it-head-notice]");
+                const selectedItHead = () => empSelect?.selectedOptions[0]?.dataset.itHeadAccount || "";
 
                 let roleMap = {};
                 try {
@@ -67,6 +69,7 @@ window.initAccountRequestPopup = (container, onSuccess, onError) => {
                         roleDisplay = info.roleDisplayName || info.RoleDisplayName || "";
                         roleName = info.roleName || info.RoleName || "";
                     }
+                    if (selectedItHead()) roleDisplay = "Trưởng bộ phận IT (giữ vai trò IT)";
 
                     const restricted = form?.dataset?.employeeOnly === "true" && roleName && roleName !== "Employee" &&
                         !(roleName === "Manager" && form?.dataset?.managerAllowed === "true");
@@ -165,8 +168,9 @@ window.initAccountRequestPopup = (container, onSuccess, onError) => {
                     for (const option of empSelect.options) {
                         if (!option.value) continue;
                         const info = roleMap[option.value];
-                        const name = info?.roleName || info?.RoleName || "";
-                        const matches = !roleFilter.value || name === roleFilter.value;
+                        const name = option.dataset.itHeadAccount ? "Manager" : (info?.roleName || info?.RoleName || "");
+                        const matches = !roleFilter.value || name === roleFilter.value ||
+                            (option.dataset.itHeadAccount && roleFilter.value === "IT");
                         option.hidden = !matches;
                         option.disabled = !matches;
                         if (matches) visibleCount++;
@@ -175,7 +179,8 @@ window.initAccountRequestPopup = (container, onSuccess, onError) => {
                     const selected = Array.from(empSelect.options).find(option => option.value === empSelect.value);
                     if (selected?.disabled) {
                         empSelect.value = "";
-                        if (usernameInput) usernameInput.value = "";
+                        if (usernameInput) { usernameInput.value = ""; usernameInput.readOnly = false; }
+                        if (itHeadNotice) itHeadNotice.hidden = true;
                     }
                     filterContracts();
                 };
@@ -183,8 +188,14 @@ window.initAccountRequestPopup = (container, onSuccess, onError) => {
                 roleFilter?.addEventListener("change", filterEmployees);
 
                 empSelect?.addEventListener("change", () => {
-                    if (usernameInput) usernameInput.value = "";
-                    suggestUsername();
+                    const option = empSelect.selectedOptions[0];
+                    const isItHead = !!selectedItHead();
+                    if (usernameInput) {
+                        usernameInput.value = isItHead ? (option.dataset.itHeadUsername || "") : "";
+                        usernameInput.readOnly = isItHead;
+                    }
+                    if (itHeadNotice) itHeadNotice.hidden = !isItHead;
+                    if (!isItHead) suggestUsername();
                     filterContracts();
                 });
 
@@ -199,7 +210,8 @@ window.initAccountRequestPopup = (container, onSuccess, onError) => {
                     e.preventDefault();
                     if (submitBtn) submitBtn.disabled = true;
                     try {
-                        const response = await fetch(form.action, {
+                        const accountId = selectedItHead();
+                        const response = await fetch(accountId ? `/UserAccounts/GrantItHead/${encodeURIComponent(accountId)}` : form.action, {
                             method: "POST",
                             headers: { "X-Requested-With": "XMLHttpRequest" },
                             body: new FormData(form)
