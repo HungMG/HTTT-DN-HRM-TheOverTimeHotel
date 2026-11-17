@@ -886,6 +886,9 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
         period.NgayGuiDuyet = null;
         period.NgayDuyet = null;
         period.LyDoTuChoi = null;
+        period.NgayPhatHanhNhap = null;
+        period.NguoiPhatHanhNhap = null;
+        period.HanPhanHoiNhap = null;
 
         // Lưu trước để có ID chi tiết phiếu lương
         await _context.SaveChangesAsync(cancellationToken);
