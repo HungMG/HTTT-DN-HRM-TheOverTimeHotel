@@ -104,6 +104,7 @@ public class CreateYeuCauTaiKhoanViewModel
     public int RoleId { get; set; }
 
     public bool IsPopup { get; set; }
+    public int? ProfileEmployeeId { get; set; }
 
     public IReadOnlyList<SelectListItem> EmployeeOptions { get; set; } = [];
     public IReadOnlyList<SelectListItem> RoleOptions { get; set; } = [];

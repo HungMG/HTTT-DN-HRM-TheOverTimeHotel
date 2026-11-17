@@ -237,7 +237,7 @@ public class YeuCauTaiKhoanController : Controller
                 return PartialView("_AccountRequestUnavailable");
         }
 
-        var model = new CreateYeuCauTaiKhoanViewModel { IsPopup = popup, EmployeeId = employeeId ?? 0 };
+        var model = new CreateYeuCauTaiKhoanViewModel { IsPopup = popup, EmployeeId = employeeId ?? 0, ProfileEmployeeId = popup && employeeId > 0 ? employeeId : null };
         await LoadCreateOptionsAsync(model);
         if (popup) await LoadItHeadCandidatesAsync(model);
         return popup ? PartialView("_CreateRequestPopup", model) : View(model);
@@ -246,7 +246,7 @@ public class YeuCauTaiKhoanController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = "AccountRequestCreate")]
-    public async Task<IActionResult> Create(CreateYeuCauTaiKhoanViewModel model, bool popup = false)
+    public async Task<IActionResult> Create(CreateYeuCauTaiKhoanViewModel model, bool popup = false, int? profileEmployeeId = null)
     {
         var role = GetCurrentRoleName();
         if (!User.HasPermission(PermissionCodes.ManageEmployees) && !User.HasPermission(PermissionCodes.ProvisionMobileAccount))
@@ -259,6 +259,13 @@ public class YeuCauTaiKhoanController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        model.ProfileEmployeeId = popup && profileEmployeeId > 0 ? profileEmployeeId : null;
+        if (model.ProfileEmployeeId.HasValue)
+        {
+            model.EmployeeId = model.ProfileEmployeeId.Value;
+            ModelState.Remove(nameof(model.EmployeeId));
+        }
+
         model.Username = NormalizeUsername(model.Username);
 
         var senderEmployeeId = GetCurrentEmployeeId();
@@ -266,6 +273,7 @@ public class YeuCauTaiKhoanController : Controller
         {
             ModelState.AddModelError(string.Empty, "Không xác định được nhân viên đang đăng nhập. Vui lòng đăng nhập lại.");
             await LoadCreateOptionsAsync(model);
+            if (popup) await LoadItHeadCandidatesAsync(model);
             if (popup || string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
             {
                 return PartialView("_CreateRequestPopup", model);
@@ -363,6 +371,7 @@ public class YeuCauTaiKhoanController : Controller
         if (!ModelState.IsValid)
         {
             await LoadCreateOptionsAsync(model);
+            if (popup) await LoadItHeadCandidatesAsync(model);
             if (popup || string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
             {
                 return PartialView("_CreateRequestPopup", model);
@@ -407,6 +416,7 @@ public class YeuCauTaiKhoanController : Controller
         {
             ModelState.AddModelError(nameof(model.EmployeeId), "Nhân viên này đang có yêu cầu cấp tài khoản chờ hoặc đang được xử lý.");
             await LoadCreateOptionsAsync(model);
+            if (popup) await LoadItHeadCandidatesAsync(model);
             if (popup || string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
             {
                 return PartialView("_CreateRequestPopup", model);

@@ -1,7 +1,7 @@
 @using OvertimeHotel.HRM.WebAdmin.Security
 @model CreateYeuCauTaiKhoanViewModel
 
-<form asp-action="Create" asp-route-popup="true" method="post" id="createRequestPopupForm" data-create-request-form data-employee-only="@((!User.HasPermission(PermissionCodes.ProvisionMobileAccount)).ToString().ToLowerInvariant())" data-manager-allowed="@(User.IsInRole("HR").ToString().ToLowerInvariant())">
+<form asp-action="Create" asp-route-popup="true" asp-route-profileEmployeeId="@Model.ProfileEmployeeId" method="post" id="createRequestPopupForm" data-create-request-form data-employee-only="@((!User.HasPermission(PermissionCodes.ProvisionMobileAccount)).ToString().ToLowerInvariant())" data-manager-allowed="@(User.IsInRole("HR").ToString().ToLowerInvariant())">
     @Html.AntiForgeryToken()
 
     @if (!ViewData.ModelState.IsValid)
@@ -33,7 +33,7 @@
         </div>
 
         <div class="row g-3">
-            @if (User.HasPermission(PermissionCodes.ProvisionMobileAccount))
+            @if (User.HasPermission(PermissionCodes.ProvisionMobileAccount) && !Model.ProfileEmployeeId.HasValue)
             {
                 <div class="col-12">
                     <label for="popupRoleFilter" class="form-label text-uppercase text-secondary fw-bold small mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Lọc theo vai trò cần cấp</label>
@@ -57,17 +57,36 @@
                     <span class="input-group-text bg-white border-end-0 text-muted px-2.5">
                         <i class="bi bi-person-fill"></i>
                     </span>
-                    <select asp-for="EmployeeId" class="form-select border-start-0 py-2 ps-2 rounded-end-3" id="popupEmployeeId">
-                        <option value="">-- Chọn nhân viên --</option>
-                        @foreach (var opt in Model.EmployeeOptions)
-                        {
-                            <option value="@opt.Value" selected="@opt.Selected">@opt.Text</option>
-                        }
-                        @foreach (var candidate in Model.PendingItHeadGrants)
-                        {
-                            <option value="@candidate.EmployeeId" data-it-head-account="@candidate.AccountId" data-it-head-username="@candidate.Username">@candidate.EmployeeName · @candidate.Email · Thăng chức trưởng bộ phận IT</option>
-                        }
-                    </select>
+                    @if (Model.ProfileEmployeeId.HasValue)
+                    {
+                        var employee = Model.EmployeeOptions.FirstOrDefault(option => option.Value == Model.ProfileEmployeeId.Value.ToString());
+                        var itHead = Model.PendingItHeadGrants.FirstOrDefault(candidate => candidate.EmployeeId == Model.ProfileEmployeeId.Value);
+                        <select class="form-select border-start-0 py-2 ps-2 rounded-end-3" id="popupEmployeeId" disabled aria-label="Nhân viên theo hồ sơ đang mở">
+                            @if (itHead != null)
+                            {
+                                <option value="@itHead.EmployeeId" data-it-head-account="@itHead.AccountId" data-it-head-username="@itHead.Username">@itHead.EmployeeName · @itHead.Email · Thăng chức trưởng bộ phận IT</option>
+                            }
+                            else
+                            {
+                                <option value="@Model.ProfileEmployeeId">@(employee?.Text ?? $"Nhân viên #{Model.ProfileEmployeeId}")</option>
+                            }
+                        </select>
+                        <input type="hidden" asp-for="EmployeeId" />
+                    }
+                    else
+                    {
+                        <select asp-for="EmployeeId" class="form-select border-start-0 py-2 ps-2 rounded-end-3" id="popupEmployeeId">
+                            <option value="">-- Chọn nhân viên --</option>
+                            @foreach (var opt in Model.EmployeeOptions)
+                            {
+                                <option value="@opt.Value" selected="@opt.Selected">@opt.Text</option>
+                            }
+                            @foreach (var candidate in Model.PendingItHeadGrants)
+                            {
+                                <option value="@candidate.EmployeeId" data-it-head-account="@candidate.AccountId" data-it-head-username="@candidate.Username">@candidate.EmployeeName · @candidate.Email · Thăng chức trưởng bộ phận IT</option>
+                            }
+                        </select>
+                    }
                 </div>
                 <span asp-validation-for="EmployeeId" class="text-danger small d-block mt-1" style="font-size: 0.75rem;"></span>
                 @if (Model.EmployeeOptions.Count == 0 && Model.PendingItHeadGrants.Count == 0)
