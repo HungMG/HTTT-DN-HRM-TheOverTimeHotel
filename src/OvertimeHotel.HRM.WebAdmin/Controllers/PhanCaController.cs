@@ -402,6 +402,12 @@ public class PhanCaController : Controller
 
             foreach (var shiftGroup in model.SelectedAgenda.Shifts)
             {
+                // Bỏ qua ca hành chính — định biên 24/7 chỉ áp dụng cho 3 ca trực xoay (Sáng, Chiều, Đêm)
+                if (shiftGroup.LoaiCa == ShiftWorkModes.HANH_CHINH)
+                {
+                    continue;
+                }
+
                 var mucNenCuaCa = dinhBienTheoCa.Where(d => d.MaCa == shiftGroup.MaCa).ToList();
                 var mucNgayCuaCa = dinhBienNgayTheoCa.Where(d => d.MaCa == shiftGroup.MaCa).ToList();
 
@@ -467,7 +473,9 @@ public class PhanCaController : Controller
                 }
             }
 
-            model.TongCaThieuDinhBien = model.SelectedAgenda.Shifts.Count(s => s.ThieuDinhBien);
+            model.TongCaThieuDinhBien = model.SelectedAgenda.Shifts
+                .Where(s => s.LoaiCa != ShiftWorkModes.HANH_CHINH)
+                .Count(s => s.ThieuDinhBien);
 
             // 8c. Dữ liệu cho popup cấu hình định biên (PRD 3.5).
             // Dựng theo danh mục chức vụ × bộ phận: chức danh gắn cứng một bộ phận
@@ -569,16 +577,25 @@ public class PhanCaController : Controller
                 });
             }
 
+            // CHỈ HR VÀ ADMIN MỚI CÓ QUYỀN SỬA ĐỊNH BIÊN CA. QUẢN LÝ BỘ PHẬN CHỈ ĐƯỢC XEM.
+            var isHrOrAdmin = !User.IsInRole("Manager") && (User.IsInRole("Admin") || User.IsInRole("HR"));
+
+            // Chỉ định biên cho 3 ca trực xoay 24/7 (Sáng, Chiều, Đêm), loại bỏ ca hành chính
+            var danhSachCaDinhBien = model.DanhSachCa
+                .Where(c => c.LoaiCa != ShiftWorkModes.HANH_CHINH)
+                .OrderBy(c => c.GioBatDau)
+                .ToList();
+
             model.DinhBien = new DinhBienModalViewModel
             {
                 Ngay = model.SelectedDate,
                 WeekStart = weekStart,
                 WeekEnd = weekEnd,
                 WeekDays = weekDayOptions,
-                DanhSachCa = model.DanhSachCa,
+                DanhSachCa = danhSachCaDinhBien,
                 DanhSachPhongBan = danhSachPhongBan,
                 ReturnWeek = weekStart.ToString("yyyy-MM-dd"),
-                CoQuyenSua = User.HasPermission(PermissionCodes.AssignShifts),
+                CoQuyenSua = isHrOrAdmin,
                 Rows = rowDefs.Select(r => new DinhBienMatrixRow
                 {
                     MaChucVu = r.MaChucVu,
@@ -1356,6 +1373,14 @@ public class PhanCaController : Controller
     {
         var returnUrl = Url.Action(nameof(Index), new { week = input.ReturnWeek, openDinhBienModal = true });
 
+        // CHỈ HR VÀ ADMIN MỚI CÓ QUYỀN THIẾT LẬP ĐỊNH BIÊN CA. QUẢN LÝ BỘ PHẬN CHỈ ĐƯỢC XEM.
+        var isHrOrAdmin = !User.IsInRole("Manager") && (User.IsInRole("Admin") || User.IsInRole("HR"));
+        if (!isHrOrAdmin)
+        {
+            TempData["Error"] = "Chỉ Quản trị viên (Admin) và Phòng Nhân sự (HR) mới có quyền thiết lập định biên ca. Quản lý bộ phận chỉ có quyền xem.";
+            return SafeRedirect(returnUrl);
+        }
+
         DateOnly? ngayApDung = null;
         if (!string.IsNullOrWhiteSpace(input.Ngay))
         {
@@ -1367,9 +1392,9 @@ public class PhanCaController : Controller
             ngayApDung = parsed;
         }
 
-        // Mã ca / chức vụ phải tồn tại thật. Lọc trước để không gửi rác xuống
-        // CSDL rồi nhận lỗi khoá ngoại khó hiểu cho người dùng.
+        // Mã ca / chức vụ phải tồn tại thật. Chỉ chấp nhận các ca xoay 24/7, loại bỏ ca hành chính.
         var hopLeCa = (await _context.CaLamViecs.AsNoTracking()
+            .Where(c => c.LoaiCa != ShiftWorkModes.HANH_CHINH)
             .Select(c => c.MaCa).ToListAsync()).ToHashSet();
         var hopLeChucVu = (await _context.ChucVus.AsNoTracking()
             .Select(c => c.MaChucVu).ToListAsync()).ToHashSet();
@@ -1378,26 +1403,13 @@ public class PhanCaController : Controller
         var hopLePhongBan = (await _context.PhongBans.AsNoTracking()
             .Select(p => p.MaPhongBan).ToListAsync()).ToHashSet();
 
-        // PHẠM VI BỘ PHẬN: Quản lý chỉ đặt định biên cho bộ phận mình. Ô "dùng chung
-        // mọi bộ phận" (ma_phong_ban NULL) là mức toàn khách sạn — để Quản lý sửa
-        // nghĩa là họ âm thầm đổi định biên của mọi bộ phận khác. Bỏ các ô đó thay
-        // vì ghi đè chúng về bộ phận của họ: payload là dữ liệu client gửi lên.
-        var phamViDinhBienId = User.GetManagedDepartmentScope();
-
         var cells = input.Cells
             .Where(c => hopLeCa.Contains(c.MaCa)
                 && hopLeChucVu.Contains(c.MaChucVu)
-                && (c.MaPhongBan == null || hopLePhongBan.Contains(c.MaPhongBan.Value))
-                && (!phamViDinhBienId.HasValue || c.MaPhongBan == phamViDinhBienId.Value))
+                && (c.MaPhongBan == null || hopLePhongBan.Contains(c.MaPhongBan.Value)))
             .GroupBy(c => new { c.MaCa, c.MaChucVu, c.MaPhongBan })
             .Select(g => g.Last())
             .ToList();
-
-        if (phamViDinhBienId.HasValue && cells.Count == 0)
-        {
-            TempData["Warning"] = "Bạn chỉ được đặt định biên cho bộ phận mình phụ trách.";
-            return SafeRedirect(returnUrl);
-        }
 
         if (cells.Count == 0)
         {
@@ -1480,9 +1492,14 @@ public class PhanCaController : Controller
         var dinhBienNgay = await DocDinhBienNgayAsync(parsedDate);
         var phamViId = GetManagerDepartmentScope();
 
+        // Chỉ xét các ca trực xoay 24/7, loại bỏ ca hành chính
+        var caXoayIds = (await _context.CaLamViecs.AsNoTracking()
+            .Where(c => c.LoaiCa != ShiftWorkModes.HANH_CHINH)
+            .Select(c => c.MaCa).ToListAsync()).ToHashSet();
+
         var shiftsQuery = _context.PhanCas.AsNoTracking()
             .Include(p => p.NhanVien)
-            .Where(p => p.NgayLamViec == parsedDate && p.TrangThai != "VANG_MAT");
+            .Where(p => p.NgayLamViec == parsedDate && p.TrangThai != "VANG_MAT" && caXoayIds.Contains(p.MaCa));
 
         if (phamViId.HasValue)
         {
@@ -1492,7 +1509,7 @@ public class PhanCaController : Controller
         var shiftsInDay = await shiftsQuery.ToListAsync();
 
         var items = dinhBienNgay
-            .Where(d => !phamViId.HasValue || d.MaPhongBan == phamViId.Value)
+            .Where(d => caXoayIds.Contains(d.MaCa) && (!phamViId.HasValue || d.MaPhongBan == phamViId.Value))
             .Select(d => new
             {
                 maCa = d.MaCa,

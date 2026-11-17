@@ -4411,10 +4411,156 @@
     }
 
     function renderDinhBienGrid() {
-        document.querySelectorAll('.dinh-bien-input').forEach(function (input) {
-            input.value = dinhBienOriginalValue(input) || '';
+        document.querySelectorAll('.dinh-bien-cell').forEach(function (cell) {
+            const input = cell.querySelector('.dinh-bien-input');
+            const numSpan = cell.querySelector('.dinh-bien-display-num');
+            const mucNen = parseInt(cell.dataset.mucNen || '0', 10);
+            const mucNgay = parseInt(cell.dataset.mucNgay || '0', 10);
+            const hienCo = parseInt(cell.dataset.hienCo || '0', 10);
+
+            const val = dinhBienMode === 'nen' ? mucNen : (mucNgay > 0 ? mucNgay : mucNen);
+
+            if (input) {
+                input.value = val || '';
+            }
+            if (numSpan) {
+                numSpan.textContent = val > 0 ? val : '—';
+            }
+
+            // Cập nhật badge so sánh nhân sự
+            const countSpan = cell.querySelector('.dinh-bien-hien-co');
+            if (countSpan) {
+                if (val > 0 && hienCo >= val) {
+                    countSpan.className = 'badge rounded-pill px-1.5 py-0.5 bg-success-subtle text-success border border-success-subtle dinh-bien-hien-co d-inline-flex align-items-center gap-0.5';
+                    countSpan.innerHTML = '<i class="bi bi-check-circle-fill"></i> Có ' + hienCo;
+                    countSpan.title = 'Đã đủ định biên (' + hienCo + '/' + val + ')';
+                } else if (val > 0 && hienCo < val) {
+                    countSpan.className = 'badge rounded-pill px-1.5 py-0.5 bg-danger-subtle text-danger border border-danger-subtle dinh-bien-hien-co d-inline-flex align-items-center gap-0.5';
+                    countSpan.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Cần thêm ' + (val - hienCo);
+                    countSpan.title = 'Thiếu ' + (val - hienCo) + ' người (hiện có ' + hienCo + '/' + val + ')';
+                } else {
+                    countSpan.className = 'badge rounded-pill px-1.5 py-0.5 bg-light text-muted border dinh-bien-hien-co';
+                    countSpan.textContent = 'Có ' + hienCo;
+                    countSpan.title = 'Hiện có ' + hienCo + ' người trực';
+                }
+            }
         });
+
         updateDinhBienFooter();
+        renderDayDemandAlerts();
+    }
+
+    function renderDayDemandAlerts() {
+        const container = document.getElementById('dinhBienDayAlertsContainer');
+        if (!container) return;
+
+        if (dinhBienMode !== 'ngay') {
+            container.classList.add('d-none');
+            container.innerHTML = '';
+            return;
+        }
+
+        const form = document.getElementById('formDinhBien');
+        const dateStr = form ? form.dataset.ngay : currentDinhBienDate;
+        const formattedDate = dateStr ? dateStr.split('-').reverse().join('/') : '';
+
+        const neededPositions = [];
+        let totalShortage = 0;
+
+        document.querySelectorAll('.dinh-bien-cell').forEach(function (cell) {
+            const tenCa = cell.dataset.tenCa || 'Ca trực';
+            const tenChucVu = cell.dataset.tenChucVu || '';
+            const tenPhongBan = cell.dataset.tenPhongBan || '';
+            const mucNen = parseInt(cell.dataset.mucNen || '0', 10);
+            const mucNgay = parseInt(cell.dataset.mucNgay || '0', 10);
+            const hienCo = parseInt(cell.dataset.hienCo || '0', 10);
+
+            const mucHienTai = mucNgay > 0 ? mucNgay : mucNen;
+            const isBoosted = mucNgay > 0 && mucNgay > mucNen;
+            const shortage = Math.max(0, mucHienTai - hienCo);
+
+            if (shortage > 0 && mucHienTai > 0) {
+                totalShortage += shortage;
+                neededPositions.push({
+                    tenCa: tenCa,
+                    tenChucVu: tenChucVu,
+                    tenPhongBan: tenPhongBan,
+                    mucNen: mucNen,
+                    mucNgay: mucNgay,
+                    mucHienTai: mucHienTai,
+                    hienCo: hienCo,
+                    shortage: shortage,
+                    isBoosted: isBoosted
+                });
+            }
+        });
+
+        container.classList.remove('d-none');
+
+        let html = '';
+        if (neededPositions.length > 0) {
+            html += '<div class="card border-0 rounded-3 shadow-xs overflow-hidden" style="border: 1px solid #fed7aa !important; background: #fffaf5;">' +
+                '<div class="card-header py-2 px-3 d-flex align-items-center justify-content-between" style="background: #fff7ed; border-bottom: 1px solid #fed7aa;">' +
+                '<div class="d-flex align-items-center gap-2">' +
+                '<div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px; background: #ea580c; color: white;">' +
+                '<i class="bi bi-person-fill-exclamation fs-6"></i>' +
+                '</div>' +
+                '<div>' +
+                '<div class="fw-bold text-dark" style="font-size: 0.82rem;">' +
+                'Nhu cầu nhân sự ngày ' + formattedDate + ': <span class="text-danger fw-bolder">Cần bố trí thêm ' + totalShortage + ' người</span>' +
+                '</div>' +
+                '<div class="text-muted" style="font-size: 0.7rem;">' +
+                'Có ' + neededPositions.length + ' vị trí ca trực chưa đủ số người tối thiểu theo định biên vận hành' +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '<span class="badge bg-danger rounded-pill px-2.5 py-1" style="font-size: 0.72rem;">Thiếu ' + totalShortage + ' nhân sự</span>' +
+                '</div>' +
+                '<div class="p-2.5" style="max-height: 200px; overflow-y: auto;">' +
+                '<div class="d-flex flex-column gap-1.5">';
+
+            neededPositions.forEach(function (item) {
+                const shiftBadge = item.tenCa.includes('Sáng')
+                    ? '<span class="badge" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.68rem;">☀️ ' + item.tenCa + '</span>'
+                    : item.tenCa.includes('Chiều')
+                    ? '<span class="badge" style="background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; font-size: 0.68rem;">🌇 ' + item.tenCa + '</span>'
+                    : '<span class="badge" style="background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; font-size: 0.68rem;">🌙 ' + item.tenCa + '</span>';
+
+                const boostNote = item.isBoosted
+                    ? '<span class="badge bg-warning text-dark ms-1" style="font-size: 0.62rem;" title="Ngày thường: ' + item.mucNen + ' người">Tăng cường +' + (item.mucNgay - item.mucNen) + '</span>'
+                    : '';
+
+                html += '<div class="d-flex align-items-center justify-content-between p-2 rounded-2 bg-white border shadow-2xs">' +
+                    '<div class="d-flex align-items-center gap-2">' +
+                    shiftBadge +
+                    '<div>' +
+                    '<span class="fw-bold text-dark" style="font-size: 0.8rem;">' + item.tenChucVu + '</span>' +
+                    '<span class="text-muted small ms-1" style="font-size: 0.72rem;">(' + item.tenPhongBan + ')</span>' +
+                    boostNote +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="d-flex align-items-center gap-2">' +
+                    '<span class="text-muted small" style="font-size: 0.73rem;">Đã xếp: <strong>' + item.hienCo + '/' + item.mucHienTai + '</strong></span>' +
+                    '<span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold rounded-pill px-2 py-1" style="font-size: 0.72rem;">' +
+                    '<i class="bi bi-plus-circle me-1"></i>Cần thêm ' + item.shortage + ' người' +
+                    '</span>' +
+                    '</div>' +
+                    '</div>';
+            });
+
+            html += '</div></div></div>';
+        } else {
+            html = '<div class="alert border-0 rounded-3 shadow-2xs d-flex align-items-center justify-content-between py-2 px-3" ' +
+                'style="background: #f0fdf4; border-left: 4px solid #16a34a !important; color: #166534; font-size: 0.76rem;">' +
+                '<div class="d-flex align-items-center gap-2">' +
+                '<i class="bi bi-check-circle-fill fs-5 text-success"></i>' +
+                '<div><strong>Trạng thái ngày ' + formattedDate + ':</strong> Đã bố trí đủ nhân sự cho toàn bộ các ca trực theo định mức vận hành.</div>' +
+                '</div>' +
+                '<span class="badge bg-success rounded-pill px-2.5 py-1" style="font-size: 0.7rem;">100% Đủ định biên</span>' +
+                '</div>';
+        }
+
+        container.innerHTML = html;
     }
 
     function updateDinhBienFooter() {
@@ -4504,22 +4650,25 @@
                     hienCoMap.set(key, item.soLuong);
                 });
 
-                document.querySelectorAll('.dinh-bien-input').forEach(function (input) {
-                    const key = `${input.dataset.maCa}_${input.dataset.maChucVu}_${input.dataset.maPhongBan ?? ''}`;
+                document.querySelectorAll('.dinh-bien-cell').forEach(function (cell) {
+                    const key = `${cell.dataset.maCa}_${cell.dataset.maChucVu}_${cell.dataset.maPhongBan ?? ''}`;
                     const mucNgay = dayOverridesMap.has(key) ? dayOverridesMap.get(key) : 0;
                     const hienCo = hienCoMap.has(key) ? hienCoMap.get(key) : 0;
 
-                    input.dataset.mucNgay = mucNgay;
-                    input.dataset.coRiengNgay = mucNgay > 0 ? '1' : '0';
-                    input.classList.toggle('has-day-override', mucNgay > 0);
+                    cell.dataset.mucNgay = mucNgay;
+                    cell.dataset.coRiengNgay = mucNgay > 0 ? '1' : '0';
+                    cell.dataset.hienCo = hienCo;
 
                     // Cập nhật badge riêng
-                    const container = input.closest('td');
-                    if (container) {
-                        const badge = container.querySelector('.dinh-bien-day-badge');
-                        if (badge) badge.classList.toggle('d-none', mucNgay <= 0);
-                        const countSpan = container.querySelector('.dinh-bien-hien-co');
-                        if (countSpan) countSpan.textContent = 'có ' + hienCo;
+                    const badge = cell.querySelector('.dinh-bien-day-badge');
+                    if (badge) badge.classList.toggle('d-none', mucNgay <= 0);
+
+                    const input = cell.querySelector('.dinh-bien-input');
+                    if (input) {
+                        input.dataset.mucNgay = mucNgay;
+                        input.dataset.coRiengNgay = mucNgay > 0 ? '1' : '0';
+                        input.dataset.hienCo = hienCo;
+                        input.classList.toggle('has-day-override', mucNgay > 0);
                     }
                 });
             }
@@ -4614,6 +4763,13 @@
 
         // Nạp sẵn lưới định biên ở chế độ mức chung, để lần mở đầu tiên đã đúng số.
         renderDinhBienGrid();
+
+        // Cập nhật huy hiệu đủ/thiếu theo thời gian thực khi người dùng gõ số định biên
+        document.addEventListener('input', function (e) {
+            if (e.target && e.target.classList && e.target.classList.contains('dinh-bien-input')) {
+                updateDinhBienCellBadge(e.target);
+            }
+        });
 
         // Tự động mở popup Quản lý mẫu ca nếu có query openShiftModal=true
         const urlParams = new URLSearchParams(window.location.search);
