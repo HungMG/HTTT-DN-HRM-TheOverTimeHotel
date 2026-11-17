@@ -179,7 +179,56 @@
         }
     }
 
-    function init() {
+    // ------------------------------------------------------------------
+    // CHUYỂN TAB PHIẾU LƯƠNG: hỗ trợ cả trên trang chi tiết lẫn popup modal.
+    // ------------------------------------------------------------------
+    function switchPayslipTab(tab) {
+        if (!tab) return;
+        var tabList = tab.closest(".payslip-tabs");
+        if (!tabList) return;
+        var target = tab.getAttribute("aria-controls");
+        var scope = tab.closest(".payslip-detail-body") || tab.closest("#payslipDetailModal") || document;
+        var pane = target ? scope.querySelector("#" + CSS.escape(target)) : null;
+        if (!pane) return;
+
+        tabList.querySelectorAll(".payslip-tab").forEach(function (t) {
+            var active = t === tab;
+            t.classList.toggle("is-active", active);
+            t.setAttribute("aria-selected", active ? "true" : "false");
+            t.tabIndex = active ? 0 : -1;
+        });
+
+        var panesContainer = scope.querySelector(".payslip-tab-panes");
+        if (panesContainer) {
+            panesContainer.querySelectorAll(".payslip-pane").forEach(function (p) {
+                var active = p === pane;
+                p.classList.toggle("is-active", active);
+                if (active) p.removeAttribute("hidden");
+                else p.setAttribute("hidden", "");
+            });
+        }
+    }
+
+    function initTabSwitching() {
+        document.addEventListener("click", function (event) {
+            var tab = event.target.closest(".payslip-tab");
+            if (!tab) return;
+            event.preventDefault();
+            switchPayslipTab(tab);
+        });
+
+        // Tự động kích hoạt tab nếu trên URL có tham số ?tab=... hoặc #...
+        var urlParams = new URLSearchParams(window.location.search);
+        var tabKey = urlParams.get("tab") || (window.location.hash ? window.location.hash.replace("#", "") : "");
+        if (tabKey) {
+            var targetTab = document.querySelector(".payslip-tab[data-payslip-tab='" + CSS.escape(tabKey) + "']");
+            if (targetTab) {
+                switchPayslipTab(targetTab);
+            }
+        }
+    }
+
+    function initModal() {
         var modal = document.getElementById("payslipDetailModal");
         if (!modal) return;
 
@@ -292,28 +341,6 @@
             if (href) window.open(href, "_blank", "noopener");
         });
 
-        // Chuyển tab tại chỗ trong popup.
-        modal.addEventListener("click", function (event) {
-            var tab = event.target.closest(".payslip-tab");
-            if (!tab) return;
-            var target = tab.getAttribute("aria-controls");
-            var pane = target ? modal.querySelector("#" + CSS.escape(target)) : null;
-            if (!pane) return;
-
-            modal.querySelectorAll(".payslip-tab").forEach(function (t) {
-                var active = t === tab;
-                t.classList.toggle("is-active", active);
-                t.setAttribute("aria-selected", active ? "true" : "false");
-                t.tabIndex = active ? 0 : -1;
-            });
-            modal.querySelectorAll(".payslip-pane").forEach(function (p) {
-                var active = p === pane;
-                p.classList.toggle("is-active", active);
-                if (active) p.removeAttribute("hidden");
-                else p.setAttribute("hidden", "");
-            });
-        });
-
         // Đóng popup thì xả nội dung để lần mở sau nạp lại số liệu mới.
         modal.addEventListener("hidden.bs.modal", function () {
             if (activeRequest) {
@@ -330,10 +357,12 @@
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function () {
             initListRefresh();
-            init();
+            initTabSwitching();
+            initModal();
         });
     } else {
         initListRefresh();
-        init();
+        initTabSwitching();
+        initModal();
     }
 })();

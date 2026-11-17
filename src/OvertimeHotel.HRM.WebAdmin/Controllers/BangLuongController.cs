@@ -563,16 +563,17 @@ public class BangLuongController(
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Adjust(AdjustSalaryItemInput input, string? returnUrl = null)
     {
+        var tab = input.LoaiKhoan == "KHAU_TRU" ? "khautru" : "thunhap";
         if (!IsHR)
         {
             TempData["Error"] = "Chỉ tài khoản Chuyên viên Nhân sự (HR) mới có quyền kiểm tra, đối soát và điều chỉnh số liệu bảng lương nháp.";
-            return RedirectBack(returnUrl, input.MaPhieuLuong);
+            return RedirectBack(returnUrl, input.MaPhieuLuong, tab);
         }
 
         if (!ModelState.IsValid)
         {
             TempData["Error"] = "Dữ liệu điều chỉnh không hợp lệ. Vui lòng kiểm tra lại.";
-            return RedirectBack(returnUrl, input.MaPhieuLuong);
+            return RedirectBack(returnUrl, input.MaPhieuLuong, tab);
         }
 
         try
@@ -594,7 +595,7 @@ public class BangLuongController(
             TempData["Error"] = $"Không thể điều chỉnh: {ex.Message}";
         }
 
-        return RedirectBack(returnUrl, input.MaPhieuLuong);
+        return RedirectBack(returnUrl, input.MaPhieuLuong, tab);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -643,11 +644,20 @@ public class BangLuongController(
         return RedirectBack(returnUrl, id);
     }
 
-    private IActionResult RedirectBack(string? returnUrl, int phieuLuongId)
+    private IActionResult RedirectBack(string? returnUrl, int phieuLuongId, string? tab = null)
     {
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
         {
+            if (!string.IsNullOrEmpty(tab) && !returnUrl.Contains("tab="))
+            {
+                var sep = returnUrl.Contains('?') ? "&" : "?";
+                return Redirect(returnUrl + sep + "tab=" + tab);
+            }
             return Redirect(returnUrl);
+        }
+        if (!string.IsNullOrEmpty(tab))
+        {
+            return RedirectToAction(nameof(Detail), new { id = phieuLuongId, tab });
         }
         return RedirectToAction(nameof(Detail), new { id = phieuLuongId });
     }
