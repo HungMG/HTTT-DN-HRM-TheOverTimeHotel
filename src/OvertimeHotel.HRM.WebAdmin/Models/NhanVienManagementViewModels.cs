@@ -41,11 +41,18 @@ public class EmployeeListItemViewModel
         };
 }
 
+public sealed record EmployeePrintDepartment(string Name, IReadOnlyList<NhanVien> Employees);
+public sealed record EmployeePrintViewModel(IReadOnlyList<EmployeePrintDepartment> Departments,
+    int DepartmentCount, int EmployeeCount, DateTime PrintedAt);
+
 public class NhanVienProfileModalViewModel
 {
     public NhanVien Employee { get; init; } = new();
     public HopDong? LatestContract { get; init; }
     public IReadOnlyList<HopDong> ContractHistory { get; init; } = [];
+    public OvertimeHotel.HRM.Core.Policies.EffectiveSalary? CurrentSalary { get; init; }
+    public string? SalaryError { get; init; }
+    public IReadOnlyList<EmployeeSalaryHistoryItem> SalaryHistory { get; init; } = [];
     public TaiKhoan? Account { get; init; }
     public int? ContractDaysRemaining { get; init; }
     public string ContractState { get; init; } = "CHUA_CO";
@@ -54,6 +61,9 @@ public class NhanVienProfileModalViewModel
     public int TenureYears => TenureMonths / 12;
     public int TenureMonths => OvertimeHotel.HRM.Core.Policies.ReportPolicy.TenureMonths(Employee.NgayVaoLam, DateOnly.FromDateTime(DateTime.Today), Employee.NgayThoiViec);
 }
+
+public sealed record EmployeeSalaryHistoryItem(DateOnly EffectiveDate, decimal Salary, int ContractId,
+    string ContractNumber, long? AmendmentId, string Reason, string PositionName, string State);
 
 public class NhanVienFormViewModel
 {

@@ -193,4 +193,75 @@ Check("AI contract lookup distinguishes original from effective salary",()=>
     Equal(DateOnly.FromDateTime(DateTime.Today),active.NgayThamChieuLuong);
     Equal<decimal?>(null,digest.Contract!.DanhSach.Single(c=>c.MaHopDong==1).LuongHieuLuc);
 });
+Check("Employee profile uses effective salary, preserves promotion history and excludes future raises", () =>
+{
+    using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+        .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+    var month = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+    var contract = Contract(901, 10_000_000m, month.AddMonths(-3));
+    contract.MaNhanVien = 901;
+    contract.MaChucVuKyKet = 1;
+    contract.PhuLucLuongs = [
+        new() { MaPhuLuc = 901, NgayHieuLuc = month.AddMonths(-1), LuongCoBanMoi = 12_000_000m, MaChucVuMoi = 2, LyDo = "Thăng chức" },
+        new() { MaPhuLuc = 902, NgayHieuLuc = month.AddMonths(1), LuongCoBanMoi = 15_000_000m, LyDo = "Điều chỉnh" }];
+    db.ChucVus.AddRange(new ChucVu { MaChucVu = 1, TenChucVu = "Nhân viên" }, new ChucVu { MaChucVu = 2, TenChucVu = "Trưởng bộ phận" });
+    db.NhanViens.Add(new NhanVien { MaNhanVien = 901, Ho = "Kiểm", Ten = "Thử", HopDongs = [contract] });
+    db.SaveChanges();
+    var controller = new OvertimeHotel.HRM.WebAdmin.Controllers.NhanVienController(db,
+        NullLogger<OvertimeHotel.HRM.WebAdmin.Controllers.NhanVienController>.Instance);
+    NhanVienProfileModalViewModel Profile() => (NhanVienProfileModalViewModel)
+        ((PartialViewResult)controller.ProfileModal(901).GetAwaiter().GetResult()).Model!;
+    var profile = Profile();
+    Equal<string?>(null, profile.SalaryError);
+    Equal(12_000_000m, profile.CurrentSalary!.MonthlySalary);
+    Equal(10_000_000m, profile.LatestContract!.LuongCoBan);
+    Equal(3, profile.SalaryHistory.Count);
+    Equal(1, profile.SalaryHistory.Count(x => x.State == "CURRENT"));
+    Equal(15_000_000m, profile.SalaryHistory.Single(x => x.State == "UPCOMING").Salary);
+    Equal("Trưởng bộ phận", profile.SalaryHistory.Single(x => x.State == "UPCOMING").PositionName);
+    // Future renewal must not replace today's contract or salary.
+    var renewal = Contract(902, 20_000_000m, month.AddMonths(2));
+    renewal.MaNhanVien = 901;
+    contract.NgayKetThuc = renewal.NgayBatDau.AddDays(-1);
+    db.HopDongs.Add(renewal);
+    db.SaveChanges();
+    Equal(12_000_000m, Profile().CurrentSalary!.MonthlySalary);
+    // An ambiguous salary produces a visible error instead of a guessed amount.
+    db.PhuLucLuongs.Add(new PhuLucLuong { MaPhuLuc = 903, MaHopDong = 901,
+        NgayHieuLuc = month.AddMonths(-1), LuongCoBanMoi = 13_000_000m });
+    db.SaveChanges();
+    profile = Profile();
+    Equal(true, profile.SalaryError != null);
+    Equal<EffectiveSalary?>(null, profile.CurrentSalary);
+    Equal(0, profile.SalaryHistory.Count);
+    db.PhuLucLuongs.RemoveRange(db.PhuLucLuongs);
+    db.SaveChanges();
+    db.HopDongs.RemoveRange(db.HopDongs);
+    db.SaveChanges();
+    profile = Profile();
+    Equal<string?>(null, profile.SalaryError);
+    Equal<EffectiveSalary?>(null, profile.CurrentSalary);
+    Equal(0, profile.SalaryHistory.Count);
+});
+Check("Employee print includes every department and all eligible employees without pagination", () =>
+{
+    using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+        .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+    for (var id = 1; id <= 9; id++) db.PhongBans.Add(new PhongBan { MaPhongBan = id, TenPhongBan = $"Phòng {id}" });
+    for (var id = 1; id <= 55; id++) db.NhanViens.Add(new NhanVien { MaNhanVien = id, Ho = "Nhân viên", Ten = $"Thử {id:D2}",
+        MaPhongBan = id <= 52 ? 1 : 2, TrangThai = id == 55 ? "NGHI_PHEP" : "DANG_LAM" });
+    db.NhanViens.AddRange(new NhanVien { MaNhanVien = 56, Ten = "Thôi việc", MaPhongBan = 1, TrangThai = "DA_THOI_VIEC" },
+        new NhanVien { MaNhanVien = 57, Ten = "Chưa hoàn tất", MaPhongBan = 1, IsProfileComplete = false },
+        new NhanVien { MaNhanVien = 58, Ten = "Chưa phân phòng", TrangThai = "CHO_HOP_DONG" });
+    db.SaveChanges();
+    var controller = new OvertimeHotel.HRM.WebAdmin.Controllers.NhanVienController(db,
+        NullLogger<OvertimeHotel.HRM.WebAdmin.Controllers.NhanVienController>.Instance);
+    var model = (EmployeePrintViewModel)((ViewResult)controller.Print().GetAwaiter().GetResult()).Model!;
+    Equal(9, model.DepartmentCount);
+    Equal(56, model.EmployeeCount);
+    Equal(52, model.Departments.Single(x => x.Name == "Phòng 1").Employees.Count);
+    Equal(7, model.Departments.Count(x => x.Employees.Count == 0));
+    Equal(1, model.Departments.Single(x => x.Name == "Chưa phân phòng ban").Employees.Count);
+    Equal(56, model.Departments.SelectMany(x => x.Employees).Select(x => x.MaNhanVien).Distinct().Count());
+});
 Console.WriteLine($"{passed}/{passed} checks passed. Pure local/in-memory data; no external database operations.");

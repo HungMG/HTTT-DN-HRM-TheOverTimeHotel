@@ -316,6 +316,10 @@
             <span class="tab-chip tab-chip--muted">Chưa có</span>
         }
     </button>
+    <button class="profile-tab-item" id="tab-salary-btn" data-bs-toggle="pill" data-bs-target="#tab-salary-pane" type="button" role="tab" aria-controls="tab-salary-pane" aria-selected="false">
+        <i class="bi bi-cash-stack tab-icon" aria-hidden="true"></i>
+        <span class="tab-label">Lương &amp; lịch sử điều chỉnh</span>
+    </button>
     <button class="profile-tab-item" id="tab-account-btn" data-bs-toggle="pill" data-bs-target="#tab-account-pane" type="button" role="tab" aria-controls="tab-account-pane" aria-selected="false">
         <i class="bi bi-shield-check tab-icon"></i>
         <span class="tab-label">Tài Khoản &amp; Quyền</span>
@@ -497,7 +501,7 @@
                         <strong class="text-dark">@ContractTypes.ToDisplayName(contract.LoaiHopDong)</strong>
                     </div>
                     <div class="col-sm-6 col-md-3">
-                        <span class="text-muted d-block">Lương cơ bản:</span>
+                        <span class="text-muted d-block">Lương cơ bản khi ký:</span>
                         <strong class="text-primary fs-6 font-monospace">@contract.LuongCoBan.ToString("N0") đ</strong>
                     </div>
                     <div class="col-sm-6 col-md-3">
@@ -559,6 +563,10 @@
                 </a>
             </div>
         }
+    </div>
+
+    <div class="tab-pane fade" id="tab-salary-pane" role="tabpanel" aria-labelledby="tab-salary-btn" tabindex="0">
+        <partial name="_EmployeeSalaryTab" model="Model" />
     </div>
 
     <!-- 3. TAB TÀI KHOẢN & PHÂN QUYỀN RBAC -->

@@ -1,0 +1,101 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.EmployeePrintViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Danh sách nhân viên theo phòng ban · The OverTime Hotel</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 24px; color: #172554; background: #f1f5f9; font: 14px/1.5 Arial, sans-serif; }
+        main { max-width: 1120px; margin: auto; padding: 32px; background: white; }
+        h1 { font-size: 24px; margin: 4px 0 12px; }
+        h2 { font-size: 18px; margin: 28px 0 4px; break-after: avoid; }
+        p { margin: 4px 0; }
+        .muted { color: #475569; }
+        .toolbar { max-width: 1120px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        button { padding: 10px 20px; border: 0; border-radius: 6px; background: #1e3a8a; color: white; font: inherit; cursor: pointer; }
+        button:hover { background: #172554; }
+        button:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+        .department-count { margin-bottom: 12px; break-after: avoid; }
+        .table-scroll { overflow-x: auto; }
+        table { width: 100%; min-width: 760px; border-collapse: collapse; color: #0f172a; font-size: 13px; }
+        th, td { border: 1px solid #94a3b8; padding: 8px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+        th { background: #e2e8f0; font-weight: bold; }
+        .number { text-align: center; white-space: nowrap; }
+        .total { margin-top: 28px; padding-top: 12px; border-top: 2px solid #1e3a8a; font-weight: bold; }
+        @@page { size: A4 landscape; margin: 12mm; }
+        @@media print {
+            body { padding: 0; background: white; font-size: 10pt; }
+            main { max-width: none; padding: 0; }
+            .toolbar { display: none; }
+            .table-scroll { overflow: visible; }
+            table { min-width: 0; font-size: 9pt; }
+            thead { display: table-header-group; }
+            tr { break-inside: avoid; }
+            h2 { margin-top: 18pt; }
+            .total { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button type="button" onclick="window.print()">In danh sách / Lưu PDF</button>
+        <span class="muted">Khổ A4 ngang · Toàn bộ phòng ban, không giới hạn phân trang</span>
+    </div>
+    <main>
+        <header>
+            <strong>THE OVERTIME HOTEL</strong>
+            <h1>Danh sách nhân viên theo phòng ban</h1>
+            <p>@Model.DepartmentCount phòng ban · @Model.EmployeeCount nhân viên · Lập lúc @Model.PrintedAt.ToString("HH:mm dd/MM/yyyy")</p>
+            <p class="muted">Phạm vi: hồ sơ đã hoàn tất, chưa thôi việc. Bao gồm nhân viên đang nghỉ phép và chờ hợp đồng.</p>
+        </header>
+        @foreach (var department in Model.Departments)
+        {
+            <section data-print-department>
+                <h2>@department.Name</h2>
+                <p class="department-count">Tổng số: <strong>@department.Employees.Count nhân viên</strong></p>
+                @if (department.Employees.Count == 0)
+                {
+                    <p class="muted">Chưa có nhân viên.</p>
+                }
+                else
+                {
+                    <div class="table-scroll">
+                        <table>
+                            <caption style="text-align:left" class="muted">Nhân viên thuộc @department.Name</caption>
+                            <thead><tr><th scope="col">STT</th><th scope="col">Mã NV</th><th scope="col">Họ và tên</th><th scope="col">Chức vụ</th><th scope="col">Ngày vào làm</th><th scope="col">Liên hệ công việc</th><th scope="col">Trạng thái</th></tr></thead>
+                            <tbody>
+                                @for (var i = 0; i < department.Employees.Count; i++)
+                                {
+                                    var employee = department.Employees[i];
+                                    var state = employee.TrangThai switch
+                                    {
+                                        "DANG_LAM" => "Đang làm việc",
+                                        "NGHI_PHEP" => "Nghỉ phép",
+                                        "CHO_HOP_DONG" => "Chờ hợp đồng",
+                                        _ => employee.TrangThai
+                                    };
+                                    <tr data-print-employee="@employee.MaNhanVien">
+                                        <td class="number">@(i + 1)</td>
+                                        <td class="number">NV-@employee.MaNhanVien</td>
+                                        <td>@employee.HoTen</td>
+                                        <td>@(employee.ChucVu?.TenChucVu ?? "Chưa phân chức vụ")</td>
+                                        <td>@(employee.NgayVaoLam?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td>@employee.EmailCongVu<br />@employee.DienThoai</td>
+                                        <td>@state</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+        <p class="total">Tổng cộng: @Model.DepartmentCount phòng ban · @Model.EmployeeCount nhân viên</p>
+    </main>
+</body>
+</html>

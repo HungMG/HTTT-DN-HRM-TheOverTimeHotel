@@ -204,6 +204,54 @@ public sealed class EmployeesFixtureController(AppDbContext db) : Controller
     private NhanVienController Real() => new(db, NullLogger<NhanVienController>.Instance)
         { ControllerContext = ControllerContext, TempData = TempData, Url = Url };
 
+    [HttpGet("Print")]
+    public async Task<IActionResult> Print()
+    {
+        var result = (ViewResult)await Real().Print();
+        result.ViewName = "/Views/NhanVien/Print.cshtml";
+        return result;
+    }
+
+    [HttpGet("/fixture/print-employees")]
+    public async Task<IActionResult> PrintEmployees()
+    {
+        if (!await db.NhanViens.AnyAsync(x => x.MaNhanVien == 1000))
+        {
+            for (var id = 3; id <= 9; id++) db.PhongBans.Add(new PhongBan { MaPhongBan = id, TenPhongBan = $"Phòng thử {id}" });
+            for (var i = 0; i < 55; i++) db.NhanViens.Add(new NhanVien { MaNhanVien = 1000 + i, Ho = "Nhân viên", Ten = $"Thử {i:D2}",
+                MaPhongBan = i < 52 ? 2 : 3, MaChucVu = 4, TrangThai = "DANG_LAM", IsProfileComplete = true });
+            db.NhanViens.AddRange(new NhanVien { MaNhanVien = 1100, Ho = "Đã", Ten = "Thôi việc", MaPhongBan = 2, TrangThai = "DA_THOI_VIEC" },
+                new NhanVien { MaNhanVien = 1101, Ho = "Chưa", Ten = "Hoàn tất", MaPhongBan = 2, IsProfileComplete = false });
+            await db.SaveChangesAsync();
+        }
+        return await Print();
+    }
+
+    [HttpGet("ProfileModal/{id}")]
+    public async Task<IActionResult> ProfileModal(int id)
+    {
+        var result = await Real().ProfileModal(id);
+        if (result is PartialViewResult view) view.ViewName = "/Views/NhanVien/_EmployeeProfileModalContent.cshtml";
+        return result;
+    }
+
+    [HttpGet("/fixture/salary-profile")]
+    public async Task<IActionResult> SalaryProfile()
+    {
+        if (!await db.NhanViens.AnyAsync(x => x.MaNhanVien == 900))
+        {
+            var month = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1);
+            db.NhanViens.Add(new NhanVien { MaNhanVien = 900, Ho = "Kiểm thử", Ten = "Lương", MaPhongBan = 2, MaChucVu = 2,
+                TrangThai = "DANG_LAM", HopDongs = [new HopDong { MaHopDong = 900, SoHopDong = "HD-TEST-LUONG", NgayBatDau = month.AddMonths(-3),
+                LuongCoBan = 10_000_000m, MaChucVuKyKet = 4, PhuLucLuongs = [
+                    new PhuLucLuong { MaPhuLuc = 900, NgayHieuLuc = month.AddMonths(-1), LuongCoBanMoi = 12_000_000m, MaChucVuMoi = 2, LyDo = "Thăng chức" },
+                    new PhuLucLuong { MaPhuLuc = 901, NgayHieuLuc = month.AddMonths(1), LuongCoBanMoi = 15_000_000m, LyDo = "Điều chỉnh sắp tới" }]
+                }] });
+            await db.SaveChangesAsync();
+        }
+        return await ProfileModal(900);
+    }
+
     [HttpGet("Create")]
     public Task<IActionResult> Create(string entryMode = "FROM_CONTRACT", int? contractId = null)
         => Real().Create(entryMode, contractId);

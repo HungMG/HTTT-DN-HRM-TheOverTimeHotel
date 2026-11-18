@@ -605,6 +605,24 @@ public class NhanVienController : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> Print()
+    {
+        var departments = await _context.PhongBans.AsNoTracking()
+            .OrderBy(p => p.TenPhongBan).ToListAsync();
+        var employees = await _context.NhanViens.AsNoTracking()
+            .Where(e => e.IsProfileComplete && e.TrangThai != "DA_THOI_VIEC")
+            .Include(e => e.ChucVu).OrderBy(e => e.Ten).ThenBy(e => e.Ho).ThenBy(e => e.MaNhanVien)
+            .ToListAsync();
+        var byDepartment = employees.ToLookup(e => e.MaPhongBan);
+        var groups = departments.Select(p => new EmployeePrintDepartment(p.TenPhongBan,
+            byDepartment[p.MaPhongBan].ToList())).ToList();
+        var departmentIds = departments.Select(p => p.MaPhongBan).ToHashSet();
+        var unassigned = employees.Where(e => !e.MaPhongBan.HasValue || !departmentIds.Contains(e.MaPhongBan.Value)).ToList();
+        if (unassigned.Count > 0) groups.Add(new("Chưa phân phòng ban", unassigned));
+        return View(new EmployeePrintViewModel(groups, departments.Count, employees.Count, DateTime.Now));
+    }
+
+    [HttpGet]
     public async Task<IActionResult> ProfileModal(int id)
     {
         var employee = await _context.NhanViens
@@ -612,6 +630,7 @@ public class NhanVienController : Controller
             .Include(e => e.PhongBan)
             .Include(e => e.ChucVu)
             .Include(e => e.HopDongs)
+                .ThenInclude(h => h.PhuLucLuongs)
             .Include(e => e.TaiKhoan)
                 .ThenInclude(t => t!.VaiTro)
             .Include(e => e.YeuCauTaiKhoanCuaNhanVien)
@@ -630,6 +649,43 @@ public class NhanVienController : Controller
             : (int?)null;
         var contractState = GetContractState(latestContract, daysRemaining);
 
+        EffectiveSalary? currentSalary = null;
+        string? salaryError = null;
+        var salaryHistory = new List<EmployeeSalaryHistoryItem>();
+        var positions = await _context.ChucVus.AsNoTracking()
+            .ToDictionaryAsync(p => p.MaChucVu, p => p.TenChucVu);
+        try
+        {
+            currentSalary = EffectiveSalaryResolver.Resolve(contracts, today);
+            foreach (var agreement in contracts)
+            {
+                var changes = new[] { (Date: agreement.NgayBatDau, Amendment: (PhuLucLuong?)null) }
+                    .Concat(agreement.PhuLucLuongs.Select(p => (Date: p.NgayHieuLuc, Amendment: (PhuLucLuong?)p)));
+                foreach (var change in changes)
+                {
+                    var effective = EffectiveSalaryResolver.Resolve(contracts, change.Date);
+                    var applies = effective?.Contract.MaHopDong == agreement.MaHopDong
+                        && effective?.Amendment?.MaPhuLuc == change.Amendment?.MaPhuLuc;
+                    var isCurrent = currentSalary?.Contract.MaHopDong == agreement.MaHopDong
+                        && currentSalary?.Amendment?.MaPhuLuc == change.Amendment?.MaPhuLuc;
+                    var positionId = agreement.PhuLucLuongs
+                        .Where(p => p.NgayHieuLuc <= change.Date && p.MaChucVuMoi.HasValue)
+                        .OrderByDescending(p => p.NgayHieuLuc).FirstOrDefault()?.MaChucVuMoi
+                        ?? agreement.MaChucVuKyKet;
+                    salaryHistory.Add(new(change.Date, change.Amendment?.LuongCoBanMoi ?? agreement.LuongCoBan,
+                        agreement.MaHopDong, agreement.SoHopDong, change.Amendment?.MaPhuLuc,
+                        change.Amendment?.LyDo ?? "Ký hợp đồng", positions.GetValueOrDefault(positionId ?? 0) ?? "Chưa lưu chức vụ",
+                        isCurrent ? "CURRENT" : change.Date > today && applies ? "UPCOMING" : change.Date > today ? "INACTIVE" : "HISTORY"));
+                }
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Cannot resolve salary for employee {EmployeeId}", id);
+            salaryError = "Chưa xác định được lương áp dụng. Vui lòng đối soát ngày hiệu lực của hợp đồng và phụ lục.";
+            salaryHistory.Clear();
+        }
+
         var model = new NhanVienProfileModalViewModel
         {
             Employee = employee,
@@ -637,7 +693,10 @@ public class NhanVienController : Controller
             ContractHistory = contracts,
             Account = employee.TaiKhoan,
             ContractDaysRemaining = daysRemaining,
-            ContractState = contractState
+            ContractState = contractState,
+            CurrentSalary = salaryError == null ? currentSalary : null,
+            SalaryError = salaryError,
+            SalaryHistory = salaryHistory.OrderByDescending(x => x.EffectiveDate).ToList()
         };
 
         return PartialView("_EmployeeProfileModalContent", model);

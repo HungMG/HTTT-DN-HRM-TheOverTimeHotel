@@ -1,0 +1,80 @@
+@model OvertimeHotel.HRM.WebAdmin.Models.NhanVienProfileModalViewModel
+@{
+    var current = Model.CurrentSalary;
+    var upcoming = Model.SalaryHistory.Where(x => x.State == "UPCOMING").OrderBy(x => x.EffectiveDate).FirstOrDefault();
+}
+@if (Model.SalaryError != null)
+{
+    <div class="alert alert-warning" role="alert">@Model.SalaryError</div>
+}
+else
+{
+    <div class="border rounded-4 p-4 mb-4 bg-white">
+        <h6 class="fw-bold text-primary mb-3">Lương cơ bản đang áp dụng</h6>
+        @if (current != null)
+        {
+            <p class="fs-4 fw-bold text-primary mb-2" data-current-salary>@current.MonthlySalary.ToString("N0") đ<span class="fs-6 fw-normal text-secondary"> / tháng</span></p>
+            <p class="small mb-2">Áp dụng từ <strong>@((current.Amendment?.NgayHieuLuc ?? current.Contract.NgayBatDau).ToString("dd/MM/yyyy"))</strong>.</p>
+            <p class="small text-secondary mb-3">
+                Căn cứ: @current.Contract.SoHopDong@(current.Amendment != null ? $" · Phụ lục #{current.Amendment.MaPhuLuc}" : " · Lương khi ký hợp đồng")
+            </p>
+            <a asp-controller="HopDong" asp-action="Index" asp-route-employeeId="@Model.Employee.MaNhanVien" asp-route-keyword="@current.Contract.SoHopDong" class="btn btn-sm btn-outline-primary">Xem hợp đồng &amp; phụ lục</a>
+        }
+        else
+        {
+            <p class="text-secondary mb-0" data-no-current-salary>Chưa có mức lương áp dụng hôm nay. Vui lòng kiểm tra thời hạn hợp đồng.</p>
+        }
+    </div>
+    @if (upcoming != null)
+    {
+        <div class="alert alert-info mb-4" role="note" data-upcoming-salary>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                <strong>Điều chỉnh sắp tới: @upcoming.Salary.ToString("N0") đ / tháng</strong>
+                <span class="badge bg-secondary">Chưa áp dụng</span>
+            </div>
+            <div class="small">Từ @upcoming.EffectiveDate.ToString("dd/MM/yyyy") · @upcoming.ContractNumber@(upcoming.AmendmentId.HasValue ? $" · Phụ lục #{upcoming.AmendmentId}" : "")</div>
+            <div class="small text-break mt-1">@upcoming.Reason</div>
+        </div>
+    }
+    <h6 class="fw-bold mb-2">Lịch sử mức lương &amp; điều chỉnh</h6>
+    <p class="small text-secondary mb-3">Mức lương tính theo ngày hiệu lực trong kỳ lương. Lịch sử bao gồm lương khi ký hợp đồng và các phụ lục.</p>
+    @if (Model.SalaryHistory.Count == 0)
+    {
+        <p class="text-secondary py-3">Chưa có lịch sử lương.</p>
+    }
+    else
+    {
+        <div class="table-responsive border rounded-3">
+            <table class="table table-sm table-hover align-middle mb-0 small" data-salary-history>
+                <caption class="visually-hidden">Lịch sử mức lương của @Model.Employee.HoTen</caption>
+                <thead class="table-light">
+                    <tr><th scope="col">Ngày hiệu lực</th><th scope="col" class="text-end">Lương cơ bản/tháng</th><th scope="col">Căn cứ</th><th scope="col">Chức vụ</th><th scope="col">Lý do</th><th scope="col">Trạng thái</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.SalaryHistory)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@item.EffectiveDate.ToString("dd/MM/yyyy")</td>
+                            <td class="text-end text-nowrap fw-semibold">@item.Salary.ToString("N0") đ</td>
+                            <td>
+                                <a asp-controller="HopDong" asp-action="Index" asp-route-employeeId="@Model.Employee.MaNhanVien" asp-route-keyword="@item.ContractNumber">@item.ContractNumber</a>
+                                <span class="d-block text-secondary">@(item.AmendmentId.HasValue ? $"Phụ lục #{item.AmendmentId}" : "Hợp đồng gốc")</span>
+                            </td>
+                            <td>@item.PositionName</td>
+                            <td class="text-break">@item.Reason</td>
+                            <td class="text-nowrap">
+                                @switch (item.State)
+                                {
+                                    case "CURRENT": <span class="badge bg-success">Đang áp dụng</span> break;
+                                    case "UPCOMING": <span class="badge bg-secondary">Chưa áp dụng</span> break;
+                                    case "INACTIVE": <span class="text-secondary">Không áp dụng</span> break;
+                                    default: <span class="text-secondary">Lịch sử</span> break;
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
