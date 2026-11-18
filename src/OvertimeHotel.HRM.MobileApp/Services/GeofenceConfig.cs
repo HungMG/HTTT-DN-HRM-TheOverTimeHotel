@@ -27,6 +27,8 @@ public sealed class GeofenceConfig
     /// <summary>Tên file đóng gói — phải khớp <c>MauiAsset</c> trong .csproj.</summary>
     public const string AssetFileName = "appsettings.json";
 
+    public string HotelName { get; init; } = "The OverTime Hotel & Resort";
+    public string Address { get; init; } = "";
     public double HotelLatitude { get; init; } = 10.778848d;
     public double HotelLongitude { get; init; } = 106.687421d;
     public double RadiusMeters { get; init; } = 250d;
@@ -36,7 +38,7 @@ public sealed class GeofenceConfig
     /// Đọc cấu hình toạ độ từ CSDL Supabase Cloud (đồng bộ tức thời khi IT đổi cấu hình),
     /// lưu đệm vào Preferences máy để chạy offline, và dự phòng bằng file appsettings.json.
     /// </summary>
-    public static async Task<GeofenceConfig> LoadAsync(ILogger logger, SupabaseRestClient? rest = null)
+    public static async Task<GeofenceConfig> LoadAsync(ILogger logger, SupabaseRestClient? rest = null, bool force = false)
     {
         ArgumentNullException.ThrowIfNull(logger);
 
@@ -46,16 +48,18 @@ public sealed class GeofenceConfig
             var lastSyncedAt = Preferences.Default.Get("Geofence_SyncedAt", 0L);
             var nowSec = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            // Đồng bộ định kỳ mỗi 5 phút hoặc khi chưa từng đồng bộ
-            if (nowSec - lastSyncedAt > 300 || lastSyncedAt == 0)
+            // Đồng bộ định kỳ mỗi 30 giây hoặc khi force = true
+            if (force || nowSec - lastSyncedAt > 30 || lastSyncedAt == 0)
             {
                 try
                 {
-                    var json = await rest.GetAsync("cau_hinh_cham_cong?select=vi_do,kinh_do,ban_kinh_met,wifi_ssid&order=id.asc&limit=1");
+                    var json = await rest.GetAsync("cau_hinh_cham_cong?select=ten_khach_san,dia_chi,vi_do,kinh_do,ban_kinh_met,wifi_ssid&order=id.asc&limit=1");
                     var rows = PostgrstJson.ParseArray(json);
                     if (rows.Length > 0)
                     {
                         var row = rows[0];
+                        var name = PostgrstJson.ReadString(row, "ten_khach_san") ?? "The OverTime Hotel & Resort";
+                        var address = PostgrstJson.ReadString(row, "dia_chi") ?? "";
                         var lat = (double)PostgrstJson.ReadDecimal(row, "vi_do", 0m);
                         var lng = (double)PostgrstJson.ReadDecimal(row, "kinh_do", 0m);
                         var radius = (double)PostgrstJson.ReadDecimal(row, "ban_kinh_met", 0m);
@@ -63,6 +67,8 @@ public sealed class GeofenceConfig
 
                         if (IsUsableCoordinate(lat, lng))
                         {
+                            Preferences.Default.Set("Geofence_HotelName", name);
+                            Preferences.Default.Set("Geofence_Address", address);
                             Preferences.Default.Set("Geofence_Latitude", lat);
                             Preferences.Default.Set("Geofence_Longitude", lng);
                             Preferences.Default.Set("Geofence_Radius", radius > 0 ? radius : GeofencePolicy.DEFAULT_RADIUS_METERS);
@@ -70,11 +76,13 @@ public sealed class GeofenceConfig
                             Preferences.Default.Set("Geofence_SyncedAt", nowSec);
 
                             logger.LogInformation(
-                                "Đã đồng bộ toạ độ GPS chấm công từ Supabase Cloud: ({Lat}, {Lng}), R={Radius}m, SSID={Wifi}.",
-                                lat, lng, radius, wifi);
+                                "Đã đồng bộ toạ độ GPS chấm công từ Supabase Cloud: {Name} ({Lat}, {Lng}), R={Radius}m, SSID={Wifi}.",
+                                name, lat, lng, radius, wifi);
 
                             return new GeofenceConfig
                             {
+                                HotelName = name,
+                                Address = address,
                                 HotelLatitude = lat,
                                 HotelLongitude = lng,
                                 RadiusMeters = radius > 0 ? radius : GeofencePolicy.DEFAULT_RADIUS_METERS,
@@ -93,6 +101,8 @@ public sealed class GeofenceConfig
         // 2. ƯU TIÊN 2: Đọc cấu hình đã lưu trong Preferences (bản đồng bộ gần nhất khi offline)
         if (Preferences.Default.ContainsKey("Geofence_Latitude"))
         {
+            var cachedName = Preferences.Default.Get("Geofence_HotelName", "The OverTime Hotel & Resort");
+            var cachedAddress = Preferences.Default.Get("Geofence_Address", string.Empty);
             var cachedLat = Preferences.Default.Get("Geofence_Latitude", 0d);
             var cachedLng = Preferences.Default.Get("Geofence_Longitude", 0d);
             var cachedRadius = Preferences.Default.Get("Geofence_Radius", 0d);
@@ -102,6 +112,8 @@ public sealed class GeofenceConfig
             {
                 return new GeofenceConfig
                 {
+                    HotelName = cachedName,
+                    Address = cachedAddress,
                     HotelLatitude = cachedLat,
                     HotelLongitude = cachedLng,
                     RadiusMeters = cachedRadius > 0 ? cachedRadius : GeofencePolicy.DEFAULT_RADIUS_METERS,

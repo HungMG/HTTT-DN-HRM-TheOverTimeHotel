@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
+using OvertimeHotel.HRM.Core.Policies;
 using OvertimeHotel.HRM.MobileApp.Services;
 using Timer = System.Timers.Timer;
 
@@ -10,6 +12,7 @@ namespace OvertimeHotel.HRM.MobileApp.ViewModels;
 /// ViewModel của khối Nhân viên: đồng hồ thời gian thật và bản đồ vị trí quẹt thẻ.
 /// Đồng hồ chạy mỗi giây (timer nhẹ), GPS làm mới mỗi 30 giây để đủ chứng minh
 /// vị trí mà không làm hao pin trong ca làm việc dài.
+/// Tự động đồng bộ vị trí khách sạn và bán kính chấm công do IT cập nhật trên WebAdmin.
 /// </summary>
 public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
 {
@@ -17,6 +20,8 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
     private const int GPS_REFRESH_SECONDS = 30;
 
     private readonly IGeoLocationService _geoLocationService;
+    private readonly SupabaseRestClient? _supabaseRestClient;
+    private readonly ILogger<EmployeeDashboardViewModel>? _logger;
 
     private readonly Timer _clockTimer;
     private readonly Timer _gpsTimer;
@@ -30,9 +35,24 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
     private bool _isGpsBusy;
     private int _secondsUntilGpsRefresh = GPS_REFRESH_SECONDS;
 
-    public EmployeeDashboardViewModel(IGeoLocationService geoLocationService)
+    // Thông tin khu vực chấm công do IT cấu hình trên WebAdmin
+    private string _hotelName = "The OverTime Hotel & Resort";
+    private string _hotelAddress = "";
+    private double _hotelLatitude = 10.778848d;
+    private double _hotelLongitude = 106.687421d;
+    private double _hotelRadiusMeters = 250d;
+    private double? _distanceToHotelMeters;
+    private bool _isWithinGeofence;
+    private string _geofenceStatusText = "Đang kiểm tra phạm vi...";
+
+    public EmployeeDashboardViewModel(
+        IGeoLocationService geoLocationService,
+        SupabaseRestClient? supabaseRestClient = null,
+        ILogger<EmployeeDashboardViewModel>? logger = null)
     {
         _geoLocationService = geoLocationService ?? throw new ArgumentNullException(nameof(geoLocationService));
+        _supabaseRestClient = supabaseRestClient;
+        _logger = logger;
 
         _clockTimer = new Timer { Interval = 1000 };
         _clockTimer.Elapsed += ClockTimer_Elapsed;
@@ -122,6 +142,90 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
     public string GpsRefreshLabel =>
         $"↻ làm mới GPS sau {Math.Max(0, _secondsUntilGpsRefresh)}s";
 
+    #region Thuộc tính vị trí khách sạn (IT cấu hình trên WebAdmin)
+
+    public string HotelName
+    {
+        get => _hotelName;
+        private set => SetProperty(ref _hotelName, value);
+    }
+
+    public string HotelAddress
+    {
+        get => _hotelAddress;
+        private set => SetProperty(ref _hotelAddress, value);
+    }
+
+    public double HotelLatitude
+    {
+        get => _hotelLatitude;
+        private set
+        {
+            if (SetProperty(ref _hotelLatitude, value))
+            {
+                OnPropertyChanged(nameof(HotelCoordinateText));
+                OnPropertyChanged(nameof(HotelSummaryText));
+            }
+        }
+    }
+
+    public double HotelLongitude
+    {
+        get => _hotelLongitude;
+        private set
+        {
+            if (SetProperty(ref _hotelLongitude, value))
+            {
+                OnPropertyChanged(nameof(HotelCoordinateText));
+                OnPropertyChanged(nameof(HotelSummaryText));
+            }
+        }
+    }
+
+    public double HotelRadiusMeters
+    {
+        get => _hotelRadiusMeters;
+        private set
+        {
+            if (SetProperty(ref _hotelRadiusMeters, value))
+            {
+                OnPropertyChanged(nameof(HotelSummaryText));
+            }
+        }
+    }
+
+    public string HotelCoordinateText => $"{_hotelLatitude:F6}, {_hotelLongitude:F6}";
+
+    public string HotelSummaryText => $"{_hotelName} · R={_hotelRadiusMeters:F0}m";
+
+    public double? DistanceToHotelMeters
+    {
+        get => _distanceToHotelMeters;
+        private set => SetProperty(ref _distanceToHotelMeters, value);
+    }
+
+    public bool IsWithinGeofence
+    {
+        get => _isWithinGeofence;
+        private set
+        {
+            if (SetProperty(ref _isWithinGeofence, value))
+            {
+                OnPropertyChanged(nameof(GeofenceStatusColor));
+            }
+        }
+    }
+
+    public string GeofenceStatusText
+    {
+        get => _geofenceStatusText;
+        private set => SetProperty(ref _geofenceStatusText, value);
+    }
+
+    public string GeofenceStatusColor => _isWithinGeofence ? "#059669" : "#DC2626";
+
+    #endregion
+
     #endregion
 
     #region Vòng đời
@@ -186,11 +290,6 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    /// <summary>
-    /// Tên thứ tiếng Việt. Không dùng "dddd" vì định dạng đó phụ thuộc locale của
-    /// thiết bị — máy đang để tiếng Anh sẽ hiện "Sunday" xen giữa giao diện
-    /// tiếng Việt. Ở đây ánh xạ thủ công nên luôn cho kết quả nhất quán.
-    /// </summary>
     private static string VietnameseWeekday(DateTime date) => date.DayOfWeek switch
     {
         DayOfWeek.Monday => "Thứ Hai",
@@ -214,12 +313,25 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
 
         try
         {
+            // 1. Tải cấu hình toạ độ mới nhất từ Supabase Cloud (do IT cập nhật trên WebAdmin)
+            if (_logger != null)
+            {
+                var config = await GeofenceConfig.LoadAsync(_logger, _supabaseRestClient, force: true);
+                HotelName = config.HotelName;
+                HotelAddress = config.Address;
+                HotelLatitude = config.HotelLatitude;
+                HotelLongitude = config.HotelLongitude;
+                HotelRadiusMeters = config.RadiusMeters;
+            }
+
+            // 2. Lấy toạ độ GPS chính xác từ thiết bị
             var raw = await _geoLocationService.GetCurrentCoordinateAsync();
 
             if (string.IsNullOrWhiteSpace(raw))
             {
                 SetHasLocation(false);
                 GpsCoordinateText = "Không lấy được vị trí — hãy bật GPS";
+                GeofenceStatusText = "Chưa nhận được tín hiệu GPS";
                 return;
             }
 
@@ -230,11 +342,10 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
             {
                 SetHasLocation(false);
                 GpsCoordinateText = "Toạ độ không hợp lệ";
+                GeofenceStatusText = "Toạ độ GPS không hợp lệ";
                 return;
             }
 
-            // Phải đi qua property để phát PropertyChanged — gán thẳng vào field
-            // sẽ khiến bản đồ không nhận được toạ độ mới ở các vòng làm mới sau.
             Latitude = lat;
             Longitude = lng;
             SetHasLocation(true);
@@ -242,12 +353,29 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
 
             GpsCoordinateText = string.Create(
                 CultureInfo.InvariantCulture,
-                $"{lat:F4}, {lng:F4}");
+                $"{lat:F6}, {lng:F6}");
+
+            // 3. Tính khoảng cách tới toạ độ khách sạn thực tế từ IT
+            var dist = GeofencePolicy.CalculateDistanceMeters(lat, lng, HotelLatitude, HotelLongitude);
+            DistanceToHotelMeters = dist;
+            IsWithinGeofence = dist <= HotelRadiusMeters;
+
+            if (IsWithinGeofence)
+            {
+                GeofenceStatusText = $"✓ Trong phạm vi chấm công (cách {dist:F0}m / {HotelRadiusMeters:F0}m)";
+            }
+            else
+            {
+                var distStr = dist >= 1000 ? $"{(dist / 1000):F1} km" : $"{dist:F0} m";
+                GeofenceStatusText = $"✕ Ngoài phạm vi (cách {distStr} / bán kính {HotelRadiusMeters:F0}m)";
+            }
         }
         finally
         {
             _isGpsBusy = false;
             OnPropertyChanged(nameof(IsGpsBusy));
+            OnPropertyChanged(nameof(IsGpsLoading));
+            OnPropertyChanged(nameof(GpsRefreshLabel));
         }
     }
 

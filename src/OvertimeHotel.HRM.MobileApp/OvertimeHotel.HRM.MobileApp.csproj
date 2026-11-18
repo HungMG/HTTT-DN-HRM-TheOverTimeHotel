@@ -64,6 +64,15 @@
 			Lệnh: dotnet build -c Release -p:DemoMode=true
 		-->
 		<DefineConstants Condition="'$(DemoMode)' == 'true'">$(DefineConstants);DEMO</DefineConstants>
+
+		<!--
+			Tắt Trimming và AOT trên Android Release để đảm bảo 100% không bị crash lúc khởi động:
+			Tránh lỗi IL Linker cắt tỉa các class Supabase REST/Auth, DTOs và Dependency Injection.
+		-->
+		<PublishTrimmed Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">false</PublishTrimmed>
+		<RunAOTCompilation Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">false</RunAOTCompilation>
+		<AndroidLinkMode Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">None</AndroidLinkMode>
+		<EmbedAssembliesIntoApk Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">true</EmbedAssembliesIntoApk>
 	</PropertyGroup>
 
 	<ItemGroup>

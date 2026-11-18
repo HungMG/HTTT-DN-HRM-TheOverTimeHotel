@@ -12,9 +12,9 @@ public class GeoLocationService : IGeoLocationService
 {
     private readonly ILogger<GeoLocationService> _logger;
 
-    // Độ chính xác trung bình đủ dùng để đối chiếu vị trí trong khuôn viên khách sạn,
-    // vừa đủ nhanh để không bắt người dùng chờ khi quẹt thẻ.
-    private static readonly GeolocationRequest Request = new(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
+    // Ưu tiên độ chính xác cao nhất (vệ tinh GPS) để đối chiếu chuẩn xác với bán kính Geofence khách sạn.
+    private static readonly GeolocationRequest HighAccuracyRequest = new(GeolocationAccuracy.High, TimeSpan.FromSeconds(8));
+    private static readonly GeolocationRequest FallbackRequest = new(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(5));
 
     public GeoLocationService(ILogger<GeoLocationService> logger)
     {
@@ -25,7 +25,17 @@ public class GeoLocationService : IGeoLocationService
     {
         try
         {
-            var location = await Geolocation.GetLocationAsync(Request);
+            // 1. Thử lấy toạ độ độ chính xác cao (GPS chip / High Accuracy)
+            var location = await Geolocation.GetLocationAsync(HighAccuracyRequest);
+
+            // 2. Nếu chưa bắt kịp vệ tinh trong 8s, lấy toạ độ chốt gần nhất từ thiết bị
+            location ??= await Geolocation.GetLastKnownLocationAsync();
+
+            // 3. Dự phòng toạ độ trung bình (Wi-Fi/Cell)
+            if (location is null)
+            {
+                location = await Geolocation.GetLocationAsync(FallbackRequest);
+            }
 
             if (location is null)
             {
@@ -50,7 +60,18 @@ public class GeoLocationService : IGeoLocationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Lỗi không xác định khi lấy toạ độ vị trí.");
+            _logger.LogWarning(ex, "Lỗi khi lấy toạ độ vị trí, thử lùi về vị trí gần nhất.");
+            try
+            {
+                var last = await Geolocation.GetLastKnownLocationAsync();
+                if (last is not null)
+                {
+                    return string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"{last.Latitude:F6},{last.Longitude:F6}");
+                }
+            }
+            catch { }
             return null;
         }
     }
