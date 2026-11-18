@@ -36,7 +36,7 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
         var rows = await LoadRowsAsync(
             "phieu_luong?select=ma_phieu_luong,ma_nhan_vien,luong_co_ban,ngay_cong_thuc_te," +
             "tien_luong_cong,tien_tang_ca,tong_phu_cap,tong_thuong,tong_khau_tru,thuc_nhan," +
-            $"trang_thai,ky_luong(thang,nam,trang_thai,han_phan_hoi_nhap)&ma_nhan_vien=eq.{user.MaNhanVien}" +
+            $"trang_thai,ky_luong(thang,nam,trang_thai,han_phan_hoi_nhap,ngay_khoa_so,ngay_phat_hanh_nhap)&ma_nhan_vien=eq.{user.MaNhanVien}" +
             "&order=ma_phieu_luong.desc",
             cancellationToken);
 
@@ -79,17 +79,42 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
         }).ToArray();
     }
 
-    // RLS limits these rows to the owner and requires draft publication or approval.
-    private static bool IsPayslipPublishedToEmployee(JsonElement row) =>
-        PostgrstJson.ReadString(row, "trang_thai") is "NHAP" or "CHO_DUYET" or "DA_DUYET" or "DA_THANH_TOAN";
+    // Nhân viên chỉ thấy phiếu lương trên app nếu:
+    // 1. Kỳ lương đã khóa sổ chính thức (KHOA_SO / ngay_khoa_so != null / DA_THANH_TOAN).
+    // 2. HOẶC HR đã phát hành bản nháp để đối soát (có ngay_phat_hanh_nhap) và kỳ lương chưa khóa sổ.
+    private static bool IsPayslipPublishedToEmployee(JsonElement row)
+    {
+        var period = PostgrstJson.ReadEmbedded(row, "ky_luong");
+        var periodStatus = period is { } p ? PostgrstJson.ReadString(p, "trang_thai") : string.Empty;
+        var hasNgayKhoaSo = period is { } pk && pk.TryGetProperty("ngay_khoa_so", out var nks)
+                            && nks.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(nks.GetString());
+        var hasDraft = period is { } pd && pd.TryGetProperty("ngay_phat_hanh_nhap", out var npn)
+                       && npn.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(npn.GetString());
+        var slipStatus = PostgrstJson.ReadString(row, "trang_thai");
+
+        var isLocked = string.Equals(periodStatus, "KHOA_SO", StringComparison.OrdinalIgnoreCase)
+                       || hasNgayKhoaSo
+                       || string.Equals(slipStatus, "DA_THANH_TOAN", StringComparison.OrdinalIgnoreCase);
+
+        return isLocked || hasDraft;
+    }
 
     private static PayslipSummaryDto ToSummary(JsonElement row, string employeeName, string dept, string role)
     {
         var period = PostgrstJson.ReadEmbedded(row, "ky_luong");
-        var isDraft = PostgrstJson.ReadString(row, "trang_thai") is "NHAP" or "CHO_DUYET";
+        var periodStatus = period is { } p ? PostgrstJson.ReadString(p, "trang_thai") : string.Empty;
+        var hasNgayKhoaSo = period is { } pk && pk.TryGetProperty("ngay_khoa_so", out var nks)
+                            && nks.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(nks.GetString());
+        var slipStatus = PostgrstJson.ReadString(row, "trang_thai");
+
+        // Kỳ lương CHỈ được coi là chính thức khi đã KHÓA SỔ. Toàn bộ các bước trước khóa sổ đều là bản nháp / chưa khóa sổ.
+        var isLocked = string.Equals(periodStatus, "KHOA_SO", StringComparison.OrdinalIgnoreCase)
+                       || hasNgayKhoaSo
+                       || string.Equals(slipStatus, "DA_THANH_TOAN", StringComparison.OrdinalIgnoreCase);
+        var isDraft = !isLocked;
 
         DateTimeOffset? hanPhanHoi = null;
-        if (period is { } pObj && pObj.TryGetProperty("han_phan_hoi_nhap", out var hVal) && hVal.ValueKind == System.Text.Json.JsonValueKind.String)
+        if (period is { } pObj && pObj.TryGetProperty("han_phan_hoi_nhap", out var hVal) && hVal.ValueKind == JsonValueKind.String)
         {
             if (DateTimeOffset.TryParse(hVal.GetString(), out var dt))
             {
@@ -104,9 +129,9 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
             dept,
             role,
             period is { } value && value.TryGetProperty("thang", out var month) &&
-                month.ValueKind == System.Text.Json.JsonValueKind.Number ? month.GetInt32() : 0,
+                month.ValueKind == JsonValueKind.Number ? month.GetInt32() : 0,
             period is { } named && named.TryGetProperty("nam", out var year) &&
-                year.ValueKind == System.Text.Json.JsonValueKind.Number ? year.GetInt32() : 0,
+                year.ValueKind == JsonValueKind.Number ? year.GetInt32() : 0,
             PostgrstJson.ReadDecimal(row, "luong_co_ban"),
             PostgrstJson.ReadDecimal(row, "ngay_cong_thuc_te"),
             PostgrstJson.ReadDecimal(row, "tien_luong_cong"),
@@ -115,7 +140,7 @@ public sealed class MobilePayslipService(SupabaseRestClient rest, IAuthService a
             PostgrstJson.ReadDecimal(row, "tong_thuong"),
             PostgrstJson.ReadDecimal(row, "tong_khau_tru"),
             PostgrstJson.ReadDecimal(row, "thuc_nhan"),
-            PostgrstJson.ReadString(row, "trang_thai"),
+            slipStatus,
             isDraft,
             hanPhanHoi);
     }

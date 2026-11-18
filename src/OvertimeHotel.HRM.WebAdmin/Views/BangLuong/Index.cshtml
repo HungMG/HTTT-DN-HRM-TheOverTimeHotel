@@ -96,7 +96,7 @@
             ("Bản nháp", "HR đối soát nội bộ"),
             ("Phát hành nháp", "Nhân viên kiểm tra & đối soát"),
             ("Trình duyệt", "Gửi Ban Giám Đốc xem xét"),
-            ("GĐ phê duyệt", "Duyệt thành bản chính thức"),
+            ("GĐ phê duyệt", "Phê duyệt số liệu bảng lương"),
             ("HR khóa sổ", "Đóng băng dữ liệu kỳ lương")
         };
     }
@@ -194,7 +194,7 @@
             else if (isApproved)
             {
                 <div class="small text-muted mt-1">
-                    Phê duyệt bởi: <strong>@Model.CurrentPeriod?.NguoiDuyet</strong> vào lúc @Model.CurrentPeriod?.NgayDuyet?.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM/yyyy HH:mm"). Bảng lương đã chính thức; HR có thể khóa sổ.
+                    Phê duyệt bởi: <strong>@Model.CurrentPeriod?.NguoiDuyet</strong> vào lúc @Model.CurrentPeriod?.NgayDuyet?.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM/yyyy HH:mm"). Bảng lương đã được phê duyệt; chờ HR khóa sổ để ban hành chính thức.
                 </div>
             }
             else if (status == "KHOA_SO")
@@ -323,8 +323,8 @@
                             <input type="hidden" name="thang" value="@Model.SelectedThang" />
                             <input type="hidden" name="nam" value="@Model.SelectedNam" />
                             <button type="submit" class="btn btn-success rounded-pill px-4 shadow-sm"
-                                    data-confirm-title="Phê duyệt bảng lương chính thức?"
-                                    data-confirm-message="Ban Giám Đốc phê duyệt số liệu chi trả lương cho toàn bộ nhân viên trong kỳ. Kỳ lương sẽ sẵn sàng để HR khóa sổ."
+                                    data-confirm-title="Phê duyệt bảng lương?"
+                                    data-confirm-message="Ban Giám Đốc phê duyệt số liệu chi trả lương cho toàn bộ nhân viên trong kỳ. Kỳ lương sẽ sẵn sàng để HR khóa sổ và ban hành chính thức."
                                     data-confirm-eyebrow="BAN GIÁM ĐỐC PHÊ DUYỆT"
                                     data-confirm-variant="success"
                                     data-confirm-icon="bi-check2-circle"

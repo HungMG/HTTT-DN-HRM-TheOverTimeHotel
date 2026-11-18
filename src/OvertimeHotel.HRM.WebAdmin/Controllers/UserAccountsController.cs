@@ -106,13 +106,15 @@ public class UserAccountsController : Controller
                 .ToList();
 
             var roleOptions = await GetRoleOptionsAsync(roleId);
-            var departmentOptions = await _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan)
-                .Select(p => new SelectListItem { Value = p.MaPhongBan.ToString(), Text = p.TenPhongBan, Selected = p.MaPhongBan == departmentId }).ToListAsync();
+            var departments = await this.SearchDataAsync("employees:departments", () =>
+                _context.PhongBans.AsNoTracking().OrderBy(p => p.TenPhongBan).ToListAsync());
+            var departmentOptions = departments.Select(p => new SelectListItem
+                { Value = p.MaPhongBan.ToString(), Text = p.TenPhongBan, Selected = p.MaPhongBan == departmentId }).ToList();
             var auditLogPage = new AuditLogPageResult([], 0, 1, 1);
             var auditLogAvailable = true;
             try
             {
-                if (auditDateValidationMessage == null)
+                if (auditDateValidationMessage == null && (auditFrom.HasValue || auditTo.HasValue || auditPage > 1))
                 {
                     auditLogPage = await GetRecentAuditLogsAsync(auditFrom, auditTo, auditPage);
                 }
@@ -619,21 +621,20 @@ public class UserAccountsController : Controller
 
         // Serialize the entire deletion, including Supabase Auth removal, so two
         // simultaneous requests cannot both delete the final IT heads.
-        await using var deletionLock = await new AccountRequestLock(_context).TryAcquireAsync(int.MinValue, HttpContext.RequestAborted);
+        await using var deletionLock = await new AccountRequestLock(_context).TryAcquireAsync(ItHeadDeletionGuard.LockId, HttpContext.RequestAborted);
         if (deletionLock == null)
-            return ToggleStatusFailure("Một tài khoản khác đang được xóa. Vui lòng thử lại.", StatusCodes.Status409Conflict);
+            return ToggleStatusFailure(ItHeadDeletionGuard.BusyMessage, StatusCodes.Status409Conflict);
 
         var account = await _context.TaiKhoans.Include(a => a.VaiTro)
             .Include(a => a.NhanVien)!.ThenInclude(n => n!.ChucVu)
             .Include(a => a.NhanVien)!.ThenInclude(n => n!.PhongBan)
             .FirstOrDefaultAsync(a => a.MaTaiKhoan == id);
         if (account == null) return ToggleStatusFailure("Không tìm thấy tài khoản.", StatusCodes.Status404NotFound);
-        var allHeads = await _context.TaiKhoans.AsNoTracking().Include(a => a.NhanVien)!.ThenInclude(n => n!.PhongBan)
-            .Include(a => a.NhanVien)!.ThenInclude(n => n!.ChucVu).ToListAsync();
-        var itHeadCount = allHeads.Count(a => AccountDeletionPolicy.IsItDepartmentHead(a.NhanVien?.PhongBan?.TenPhongBan, a.NhanVien?.ChucVu?.TenChucVu));
         var denied = AccountDeletionPolicy.GetDenial(User.FindFirstValue(ClaimTypes.Role), GetCurrentAccountId(), id,
-            account.VaiTro?.TenVaiTro, account.NhanVien?.PhongBan?.TenPhongBan, account.NhanVien?.ChucVu?.TenChucVu, itHeadCount);
+            account.VaiTro?.TenVaiTro, account.NhanVien?.PhongBan?.TenPhongBan, account.NhanVien?.ChucVu?.TenChucVu, int.MaxValue);
         if (denied != null) return ToggleStatusFailure(denied, StatusCodes.Status403Forbidden);
+        var headDenial = await ItHeadDeletionGuard.GetDenialAsync(_context, account.MaNhanVien);
+        if (headDenial != null) return ToggleStatusFailure(headDenial, StatusCodes.Status403Forbidden);
 
         var email = account.NhanVien?.EmailCongVu?.Trim();
         if (string.IsNullOrWhiteSpace(email))

@@ -17,7 +17,7 @@
         }
         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold hover-lift" style="font-size: 0.82rem;" data-account-audit-open aria-haspopup="dialog" aria-controls="accountAuditDialog" aria-label="Mở nhật ký quản trị">
             <i class="bi bi-clock-history me-1 text-primary"></i> Nhật Ký Quản Trị
-            <span class="badge bg-primary text-white rounded-pill ms-1" data-account-audit-trigger-count>@Model.TotalAuditLogs</span>
+            <span class="badge bg-primary text-white rounded-pill ms-1" data-account-audit-trigger-count>@(Model.TotalAuditLogs > 0 ? Model.TotalAuditLogs.ToString() : "—")</span>
         </button>
     </div>
 

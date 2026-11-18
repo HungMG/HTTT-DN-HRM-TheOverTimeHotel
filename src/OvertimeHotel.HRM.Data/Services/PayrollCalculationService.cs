@@ -168,13 +168,11 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
     }
 
     public Task<KyLuong?> GetPeriodWithDetailsAsync(int thang, int nam, CancellationToken cancellationToken = default) =>
-        ExecutePayrollWriteAsync(() => GetPeriodWithDetailsCoreAsync(thang, nam, cancellationToken), cancellationToken);
+        GetPeriodWithDetailsCoreAsync(thang, nam, cancellationToken);
 
     private async Task<KyLuong?> GetPeriodWithDetailsCoreAsync(int thang, int nam, CancellationToken cancellationToken)
     {
-        await DatabaseSchemaInitializer.EnsurePayrollWorkflowSchemaAsync(_context, cancellationToken);
-
-        return await _context.KyLuongs
+        return await _context.KyLuongs.AsNoTracking()
             .Include(k => k.PhieuLuongs)
                 .ThenInclude(p => p.NhanVien)
                     .ThenInclude(n => n!.PhongBan)
@@ -187,13 +185,11 @@ public class PayrollCalculationService(AppDbContext context) : IPayrollCalculati
     }
 
     public Task<List<KyLuong>> GetAllPeriodsAsync(CancellationToken cancellationToken = default) =>
-        ExecutePayrollWriteAsync(() => GetAllPeriodsCoreAsync(cancellationToken), cancellationToken);
+        GetAllPeriodsCoreAsync(cancellationToken);
 
     private async Task<List<KyLuong>> GetAllPeriodsCoreAsync(CancellationToken cancellationToken)
     {
-        await DatabaseSchemaInitializer.EnsurePayrollWorkflowSchemaAsync(_context, cancellationToken);
-
-        return await _context.KyLuongs
+        return await _context.KyLuongs.AsNoTracking()
             .OrderByDescending(k => k.Nam)
             .ThenByDescending(k => k.Thang)
             .ToListAsync(cancellationToken);

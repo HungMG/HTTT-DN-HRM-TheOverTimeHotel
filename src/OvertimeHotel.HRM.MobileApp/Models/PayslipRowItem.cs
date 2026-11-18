@@ -40,31 +40,16 @@ public class PayslipRowItem(PayslipSummaryDto slip)
         : "Đang mở đối soát ý kiến";
 
     public string StatusText => slip.IsDraft
-        ? "Bản nháp · Đối soát"
-        : slip.TrangThai switch
-        {
-            "DA_DUYET" => "Chính thức · Chưa khóa sổ",
-            "DA_THANH_TOAN" => "Đã gửi · Đã chốt",
-            _ => "Đang xử lý"
-        };
+        ? (slip.TrangThai == "DA_DUYET" ? "Bản nháp · Chờ khóa sổ" : "Bản nháp · Đối soát")
+        : (slip.TrangThai == "DA_THANH_TOAN" ? "Chính thức · Đã chốt" : "Đang xử lý");
 
     public string StatusColor => slip.IsDraft
         ? "#B45309"
-        : slip.TrangThai switch
-        {
-            "DA_DUYET" => "#047857",
-            "DA_THANH_TOAN" => "#047857",
-            _ => "#64748B"
-        };
+        : (slip.TrangThai == "DA_THANH_TOAN" ? "#047857" : "#64748B");
 
     public string StatusBackground => slip.IsDraft
         ? "#FEF3C7"
-        : slip.TrangThai switch
-        {
-            "DA_DUYET" => "#ECFDF5",
-            "DA_THANH_TOAN" => "#ECFDF5",
-            _ => "#F1F5F9"
-        };
+        : (slip.TrangThai == "DA_THANH_TOAN" ? "#ECFDF5" : "#F1F5F9");
 
     public static string Format(decimal amount) =>
         amount.ToString("N0", CultureInfo.GetCultureInfo("vi-VN"));

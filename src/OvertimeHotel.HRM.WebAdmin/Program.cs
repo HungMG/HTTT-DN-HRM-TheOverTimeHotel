@@ -464,6 +464,7 @@ if (!string.IsNullOrWhiteSpace(connectionString) && !builder.Configuration.GetVa
     try
     {
         await DatabaseSchemaInitializer.EnsureAdminAuditLogTableAsync(schemaContext);
+        await DatabaseSchemaInitializer.EnsurePayrollWorkflowSchemaAsync(schemaContext);
         await DatabaseSchemaInitializer.EnsureShiftAutoPublishSchemaAsync(schemaContext);
         await DatabaseSchemaInitializer.EnsureContractTerminationSchemaAsync(schemaContext);
         await DatabaseSchemaInitializer.EnsureEmployeePurgeSchemaAsync(schemaContext);

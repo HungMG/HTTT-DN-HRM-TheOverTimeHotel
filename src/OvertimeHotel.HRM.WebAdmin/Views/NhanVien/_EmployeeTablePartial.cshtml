@@ -153,9 +153,9 @@
                             {
                                 <a asp-controller="HopDong" asp-action="Index" asp-route-employeeId="@employee.MaNhanVien" onclick="event.stopPropagation();" class="btn btn-sm btn-outline-primary me-1" title="Lập hợp đồng cho @employee.HoTen">Lập hợp đồng</a>
                             }
-                            <a asp-action="Edit" asp-route-id="@employee.MaNhanVien" onclick="event.stopPropagation();" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hồ sơ">
+                            <button type="button" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hồ sơ" data-employee-edit-open data-employee-edit-url="@Url.Action("Edit", "NhanVien", new { id = employee.MaNhanVien })" data-employee-name="@employee.HoTen">
                                 <i class="bi bi-pencil"></i>
-                            </a>
+                            </button>
                             @if (employee.TrangThai is "DA_THOI_VIEC" or "CHO_HOP_DONG")
                             {
                                 <button type="button" class="btn btn-sm btn-light border rounded-circle text-danger"
@@ -172,7 +172,7 @@
                                 <button type="button" class="btn btn-sm btn-light border rounded-circle text-danger"
                                         style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"
                                         title="Ẩn hồ sơ" aria-label="Ẩn hồ sơ nhân viên @employee.HoTen" aria-haspopup="dialog"
-                                        onclick="event.stopPropagation();" data-employee-hide-name="@employee.HoTen"
+                                        data-employee-hide-name="@employee.HoTen"
                                         data-employee-hide-url="@Url.Action("Delete", "NhanVien", new { id = employee.MaNhanVien })">
                                     <i class="bi bi-trash" aria-hidden="true"></i>
                                 </button>

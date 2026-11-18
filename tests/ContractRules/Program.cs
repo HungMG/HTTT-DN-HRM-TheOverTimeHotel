@@ -467,6 +467,25 @@ await Check("New contract requires personal email", async () =>
     var c=Attach(new HopDongController(db,NullLogger<HopDongController>.Instance));await c.Create(model);
     Require(c.ModelState.ContainsKey("PersonalEmail") && !await db.HopDongs.AnyAsync(),"Missing personal email must prevent contract creation");
 });
+foreach (var (email, valid) in new[] { ("@gmail",false), ("ten@gmail",false), ("ten@",false), ("ten@gmail.",false), ("ten@.com",false), ("ten@congty..vn",false), ("ten nguyen@gmail.com",false), ("ten@gmail.com",true), ("ten@congty.vn",true), ("ten+hr@truong.edu.vn",true) })
+{
+    await Check("Contract email domain " + email, async () =>
+    {
+        await using var db=await Database();var model=Form(today);model.PersonalEmail=email;
+        var c=Attach(new HopDongController(db,NullLogger<HopDongController>.Instance));await c.Create(model);
+        Require(c.ModelState.ContainsKey("PersonalEmail") != valid,"Unexpected email validation outcome");
+        if (!valid) Require(!await db.HopDongs.AnyAsync(),"Invalid email contract was saved");
+    });
+    await Check("Profile email domain " + email, async () =>
+    {
+        await using var db=await Database(); var person=await db.NhanViens.SingleAsync();person.IsProfileComplete=false;
+        db.HopDongs.Add(Form(today).Contract);await db.SaveChangesAsync();
+        var model=new NhanVienFormViewModel { ContractId=await db.HopDongs.Select(x=>x.MaHopDong).SingleAsync(), Employee=new() { NgaySinh=new(1990,1,1),GioiTinh="NAM",DienThoai="0912345678",DiaChi="Hà Nội",EmailCaNhan=email } };
+        var c=Attach(new NhanVienController(db,NullLogger<NhanVienController>.Instance));await c.Create(model);
+        Require(c.ModelState.ContainsKey("Employee.EmailCaNhan") != valid,"Unexpected email validation outcome");
+        Require((await db.NhanViens.AsNoTracking().SingleAsync()).IsProfileComplete==valid,"Unexpected profile save outcome");
+    });
+}
 Console.WriteLine($"Contract rules: {passed} passed, {failures.Count} failed.");
 foreach (var failure in failures) Console.WriteLine("FAIL " + failure);
 Environment.ExitCode = failures.Count == 0 ? 0 : 1;

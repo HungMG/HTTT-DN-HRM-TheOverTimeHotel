@@ -1,7 +1,5 @@
 using System.Data;
 using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using OvertimeHotel.HRM.Core.Constants;
@@ -62,6 +60,11 @@ public sealed class EmployeeDeletionService(AppDbContext db, IDataProtectionProv
 
     private async Task<EmployeeDeletionResult> DeleteConfirmedAsync(int id, string expected)
     {
+        await using var deletionLock = db.Database.IsNpgsql()
+            ? await new AccountRequestLock(db).TryAcquireAsync(ItHeadDeletionGuard.LockId, CancellationToken.None)
+            : null;
+        if (db.Database.IsNpgsql() && deletionLock == null)
+            return new(false, ItHeadDeletionGuard.BusyMessage);
         // Keep the checks, appendix removal and cascaded deletion in one transaction.
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         if (db.Database.IsNpgsql())
@@ -78,44 +81,58 @@ public sealed class EmployeeDeletionService(AppDbContext db, IDataProtectionProv
             && (contract.NgayKetThuc == null || contract.NgayKetThuc >= today)))
             return new(false, "Cần chấm dứt hợp đồng trước khi xóa vĩnh viễn nhân viên. Nhân viên còn hợp đồng hiệu lực hoặc chưa đến ngày bắt đầu.");
 
-        var plan = await BuildPlanAsync(id);
-        if (plan == null) return new(false, "Hồ sơ nhân viên không còn tồn tại.");
-        if (!plan.Preview.CanDelete) return new(false, string.Join(" ", plan.Preview.Blockers));
         if (expected != id.ToString(System.Globalization.CultureInfo.InvariantCulture))
             return new(false, "Xác nhận không khớp nhân viên. Hãy tải lại trang trước khi xóa.");
 
+        var headDenial = await ItHeadDeletionGuard.GetDenialAsync(db, id);
+        if (headDenial != null) return new(false, headDenial);
+
+        var plan = await BuildPlanAsync(id, includePreview: false);
+        if (plan == null) return new(false, "Hồ sơ nhân viên không còn tồn tại.");
+        if (!plan.Preview.CanDelete) return new(false, string.Join(" ", plan.Preview.Blockers));
+
         if (db.Database.IsNpgsql())
+        {
             await db.Database.ExecuteSqlInterpolatedAsync($"SELECT set_config('hrm.purge_employee_id', {id.ToString(System.Globalization.CultureInfo.InvariantCulture)}, true)");
+            await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM public.it_head_grant WHERE ma_nhan_vien={id}");
+        }
         foreach (var layer in plan.DeleteLayers)
         {
             foreach (var entity in layer) db.Entry(entity).State = EntityState.Deleted;
-            await db.SaveChangesAsync();
         }
         // Nullable actor references keep the other employee's document, removing only its actor link.
         await db.DuAns.Where(x => x.MaNguoiNghiemThu == id).ExecuteUpdateAsync(set => set.SetProperty(x => x.MaNguoiNghiemThu, (int?)null));
         await db.NganSachLuongs.Where(x => x.NguoiTao == id).ExecuteUpdateAsync(set => set.SetProperty(x => x.NguoiTao, (int?)null).SetProperty(x => x.Version, x => x.Version + 1));
         await db.NganSachLuongs.Where(x => x.NguoiDuyet == id).ExecuteUpdateAsync(set => set.SetProperty(x => x.NguoiDuyet, (int?)null).SetProperty(x => x.Version, x => x.Version + 1));
+        // Flush restricted dependents before employee deletion cascades to contracts.
+        await db.SaveChangesAsync();
         db.Entry(plan.Employee).State = EntityState.Deleted;
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
         return new(true, $"Đã xóa vĩnh viễn nhân viên “{plan.Employee.HoTen}” và dữ liệu liên quan đã xác nhận.");
     }
 
-    private sealed record DeletionPlan(NhanVien Employee, EmployeeDeletionPreview Preview, string Fingerprint, List<List<object>> DeleteLayers);
+    private sealed record DeletionPlan(NhanVien Employee, EmployeeDeletionPreview Preview, List<List<object>> DeleteLayers);
 
-    private async Task<DeletionPlan?> BuildPlanAsync(int id)
+    private async Task<DeletionPlan?> BuildPlanAsync(int id, bool includePreview = true)
     {
-        var employee = await db.NhanViens.AsNoTracking().AsSplitQuery()
-            .Include(e => e.HopDongs).ThenInclude(c => c.PhuLucLuongs)
-            .Include(e => e.TaiKhoan)
-            .Include(e => e.PhanCas).ThenInclude(s => s.ChamCong)
-            .Include(e => e.DonTus)
-            .Include(e => e.YeuCauTaiKhoanCuaNhanVien)
-            .SingleOrDefaultAsync(e => e.MaNhanVien == id);
+        var employeeQuery = db.NhanViens.AsNoTracking();
+        var employee = includePreview
+            ? await employeeQuery.AsSplitQuery()
+                .Include(e => e.HopDongs).ThenInclude(c => c.PhuLucLuongs)
+                .Include(e => e.TaiKhoan)
+                .Include(e => e.PhanCas).ThenInclude(s => s.ChamCong)
+                .Include(e => e.DonTus)
+                .Include(e => e.YeuCauTaiKhoanCuaNhanVien)
+                .SingleOrDefaultAsync(e => e.MaNhanVien == id)
+            : await employeeQuery.AsSingleQuery()
+                .Include(e => e.HopDongs).ThenInclude(c => c.PhuLucLuongs)
+                .SingleOrDefaultAsync(e => e.MaNhanVien == id);
         if (employee == null) return null;
 
         var preview = new EmployeeDeletionPreview { EmployeeId = id, EmployeeName = employee.HoTen };
-        var shiftIds = employee.PhanCas.Select(x => x.MaPhanCa).ToArray();
+        var shiftIds = includePreview ? employee.PhanCas.Select(x => x.MaPhanCa).ToArray()
+            : await db.PhanCas.Where(x => x.MaNhanVien == id).Select(x => x.MaPhanCa).ToArrayAsync();
         var projects = await db.DuAns.AsNoTracking().Where(x => x.MaNguoiQuanLy == id).ToListAsync();
         var projectIds = projects.Select(x => x.MaDuAn).ToArray();
         var assignments = await db.PhanCongDuAns.AsNoTracking().Where(x => x.MaNhanVien == id || projectIds.Contains(x.MaDuAn)
@@ -127,15 +144,10 @@ public sealed class EmployeeDeletionService(AppDbContext db, IDataProtectionProv
             || shiftIds.Contains(x.MaPhanCaGui) || shiftIds.Contains(x.MaPhanCaNhan)).ToListAsync();
         var requests = await db.YeuCauTaiKhoans.AsNoTracking().Where(x => x.MaNhanVien == id || x.MaNguoiGui == id).ToListAsync();
         var explanations = await db.GiaiTrinhChamCongs.AsNoTracking().Where(x => x.MaNhanVien == id || shiftIds.Contains(x.MaPhanCa)).ToListAsync();
-        var payroll = await db.PhieuLuongs.AsNoTracking().Include(x => x.ChiTietPhieuLuongs).Where(x => x.MaNhanVien == id).ToListAsync();
+        var payrollQuery = db.PhieuLuongs.AsNoTracking().Where(x => x.MaNhanVien == id);
+        var payroll = await (includePreview ? payrollQuery.Include(x => x.ChiTietPhieuLuongs) : payrollQuery).ToListAsync();
         var weeks = await db.CongBoLichTuans.AsNoTracking().Where(x => x.MaNguoiCongBo == id).ToListAsync();
         var needs = await db.NhuCauSuKiens.AsNoTracking().Where(x => projectIds.Contains(x.MaDuAn)).ToListAsync();
-        var approvedForms = await db.DonTus.AsNoTracking().Where(x => x.MaNguoiDuyet == id && x.MaNhanVien != id).Select(x => x.MaDon).ToListAsync();
-        var deletedSwapIds = swaps.Select(x => x.MaYeuCau).ToArray();
-        var approvedSwaps = await db.YeuCauDoiCas.AsNoTracking().Where(x => x.MaNguoiDuyet == id && !deletedSwapIds.Contains(x.MaYeuCau)).Select(x => x.MaYeuCau).ToListAsync();
-        var reviewedExplanations = await db.GiaiTrinhChamCongs.AsNoTracking().Where(x => x.MaNhanVien != id && (x.MaQuanLyXacMinh == id || x.MaHrXacNhan == id)).Select(x => x.MaGiaiTrinh).ToListAsync();
-        var budgets = await db.NganSachLuongs.AsNoTracking().Where(x => x.NguoiTao == id || x.NguoiDuyet == id).Select(x => x.MaNganSach).ToListAsync();
-        var acceptedProjects = await db.DuAns.AsNoTracking().Where(x => x.MaNguoiNghiemThu == id).Select(x => x.MaDuAn).ToListAsync();
         var layers = new List<List<object>>
         {
             work.Cast<object>().ToList(), settlements.Cast<object>().ToList(), swaps.Cast<object>().ToList(),
@@ -144,13 +156,18 @@ public sealed class EmployeeDeletionService(AppDbContext db, IDataProtectionProv
             payroll.Cast<object>().ToList(), assignments.Cast<object>().ToList(), needs.Cast<object>().ToList(),
             projects.Cast<object>().ToList(), weeks.Cast<object>().ToList()
         };
-        // Include identities as well as counts: replacing a record also invalidates the preview.
-        var identities = new List<string>();
+        // The confirmation popup does not request counts. Avoid preview-only database reads on purge.
+        if (!includePreview) return new(employee, preview, layers);
+        var approvedForms = await db.DonTus.AsNoTracking().Where(x => x.MaNguoiDuyet == id && x.MaNhanVien != id).Select(x => x.MaDon).ToListAsync();
+        var deletedSwapIds = swaps.Select(x => x.MaYeuCau).ToArray();
+        var approvedSwaps = await db.YeuCauDoiCas.AsNoTracking().Where(x => x.MaNguoiDuyet == id && !deletedSwapIds.Contains(x.MaYeuCau)).Select(x => x.MaYeuCau).ToListAsync();
+        var reviewedExplanations = await db.GiaiTrinhChamCongs.AsNoTracking().Where(x => x.MaNhanVien != id && (x.MaQuanLyXacMinh == id || x.MaHrXacNhan == id)).Select(x => x.MaGiaiTrinh).ToListAsync();
+        var budgets = await db.NganSachLuongs.AsNoTracking().Where(x => x.NguoiTao == id || x.NguoiDuyet == id).Select(x => x.MaNganSach).ToListAsync();
+        var acceptedProjects = await db.DuAns.AsNoTracking().Where(x => x.MaNguoiNghiemThu == id).Select(x => x.MaDuAn).ToListAsync();
         void Impact(string label, IEnumerable<long> keys)
         {
             var ids = keys.Order().ToArray();
             preview.Impacts.Add(new(label, ids.Length));
-            identities.Add(label + ":" + string.Join(',', ids));
         }
         Impact("Hợp đồng (kể cả còn hiệu lực)", employee.HopDongs.Select(x => (long)x.MaHopDong));
         Impact("Phụ lục lương", employee.HopDongs.SelectMany(x => x.PhuLucLuongs).Select(x => x.MaPhuLuc));
@@ -173,14 +190,6 @@ public sealed class EmployeeDeletionService(AppDbContext db, IDataProtectionProv
         preview.Impacts.Add(new("Giải trình người khác: giữ giải trình, gỡ người xác nhận", reviewedExplanations.Count));
         preview.Impacts.Add(new("Ngân sách: giữ bản ghi, gỡ người lập/duyệt", budgets.Count));
         preview.Impacts.Add(new("Sự kiện khác: giữ sự kiện, gỡ người nghiệm thu", acceptedProjects.Count));
-        identities.Add(JsonSerializer.Serialize(new { approvedForms, approvedSwaps, reviewedExplanations, budgets, acceptedProjects,
-            weeks = weeks.Select(x => x.DauTuan), payrollDetails = payroll.SelectMany(x => x.ChiTietPhieuLuongs).Select(x => x.MaChiTiet) }));
-        var snapshot = JsonSerializer.Serialize(new
-        {
-            id, employee.TrangThai, employee.NgayThoiViec, employee.Ho, employee.Ten, identities,
-            contracts = employee.HopDongs.OrderBy(c => c.MaHopDong)
-                .Select(c => new { c.MaHopDong, c.SoHopDong, c.TrangThai, c.NgayBatDau, c.NgayKetThuc })
-        });
-        return new(employee, preview, Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot))), layers);
+        return new(employee, preview, layers);
     }
 }

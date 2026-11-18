@@ -290,9 +290,9 @@
         </label>
         <div class="input-group">
             <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-at text-primary"></i></span>
-            <input asp-for="PersonalEmail" id="@(formIdPrefix + "contractPersonalEmailInput")" type="email" class="form-control border-start-0 font-monospace" placeholder="Ví dụ: nhanvien@gmail.com" required maxlength="100" aria-describedby="@(formIdPrefix + "contractEmailHelp")" />
+            <input asp-for="PersonalEmail" pattern="@OvertimeHotel.HRM.WebAdmin.Models.EmailInputValidation.Pattern" title="@OvertimeHotel.HRM.WebAdmin.Models.EmailInputValidation.Message" data-val="true" data-val-regex="@OvertimeHotel.HRM.WebAdmin.Models.EmailInputValidation.Message" data-val-regex-pattern="@OvertimeHotel.HRM.WebAdmin.Models.EmailInputValidation.Pattern" id="@(formIdPrefix + "contractPersonalEmailInput")" type="email" class="form-control border-start-0 font-monospace" placeholder="Ví dụ: nhanvien@gmail.com" required maxlength="100" aria-describedby="@(formIdPrefix + "contractEmailHelp")" />
         </div>
-        <div id="@(formIdPrefix + "contractEmailHelp")" class="form-text">Nhập email dạng ten@gmail.com, tối đa 100 ký tự.</div>
+        <div id="@(formIdPrefix + "contractEmailHelp")" class="form-text">Nhập email có đuôi tên miền, ví dụ ten@gmail.com hoặc ten@congty.vn; tối đa 100 ký tự.</div>
         <span asp-validation-for="PersonalEmail" class="text-danger small"></span>
     </div>
 </div>

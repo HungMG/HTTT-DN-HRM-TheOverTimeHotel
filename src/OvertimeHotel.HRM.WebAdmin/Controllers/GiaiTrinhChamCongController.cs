@@ -115,13 +115,19 @@ public class GiaiTrinhChamCongController : Controller
         baseQuery = visibleItems.AsQueryable();
 
         // Nạp danh sách ca thuộc sự kiện để phân loại bối cảnh làm việc
-        var eventShiftIds = await _context.PhanCongDuAns
+        var visibleShiftIds = visibleItems.Select(g => g.MaPhanCa).Distinct().ToArray();
+        var eventAssignments = visibleShiftIds.Length == 0 ? [] : await _context.PhanCongDuAns
             .AsNoTracking()
-            .Where(p => p.MaPhanCa.HasValue)
-            .Select(p => p.MaPhanCa!.Value)
-            .Distinct()
-            .ToListAsync();
-        var eventShiftSet = eventShiftIds.ToHashSet();
+            .Where(p => p.MaPhanCa.HasValue && visibleShiftIds.Contains(p.MaPhanCa.Value))
+            .Select(p => new
+            {
+                MaPhanCa = p.MaPhanCa!.Value,
+                p.MaDuAn,
+                TenDuAn = p.DuAn != null ? p.DuAn.TenDuAn : "Sự kiện",
+                LoaiDuAn = p.DuAn != null ? p.DuAn.LoaiDuAn : null,
+                p.VaiTroDuAn
+            }).ToListAsync();
+        var eventShiftSet = eventAssignments.Select(p => p.MaPhanCa).ToHashSet();
 
         var query = baseQuery;
 
@@ -208,25 +214,11 @@ public class GiaiTrinhChamCongController : Controller
 
         // Nạp thông tin sự kiện cho các ca phân công được hiển thị trên trang hiện tại
         var pagedShiftIds = rows.Select(r => r.MaPhanCa).Distinct().ToList();
-        var eventAssignments = await _context.PhanCongDuAns
-            .AsNoTracking()
-            .Include(p => p.DuAn)
-            .Where(p => p.MaPhanCa.HasValue && pagedShiftIds.Contains(p.MaPhanCa.Value))
-            .Select(p => new
-            {
-                MaPhanCa = p.MaPhanCa!.Value,
-                p.MaDuAn,
-                TenDuAn = p.DuAn != null ? p.DuAn.TenDuAn : "Sự kiện",
-                LoaiDuAn = p.DuAn != null ? p.DuAn.LoaiDuAn : null,
-                p.VaiTroDuAn
-            })
-            .ToListAsync();
-
-        var eventMap = eventAssignments
+        var eventMap = eventAssignments.Where(p => pagedShiftIds.Contains(p.MaPhanCa))
             .GroupBy(p => p.MaPhanCa)
             .ToDictionary(g => g.Key, g => g.First());
 
-        var lockedPeriods = await _context.KyLuongs
+        var lockedPeriods = rows.Count == 0 ? [] : await _context.KyLuongs
             .AsNoTracking()
             .Where(k => k.TrangThai == SalaryConstants.PERIOD_LOCKED || k.TrangThai == "DA_THANH_TOAN")
             .Select(k => new { k.Thang, k.Nam, k.TuNgay, k.DenNgay })

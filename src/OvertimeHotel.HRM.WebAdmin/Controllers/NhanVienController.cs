@@ -1,5 +1,4 @@
 using OvertimeHotel.HRM.WebAdmin.Services;
-using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -271,7 +270,7 @@ public class NhanVienController : Controller
             employee.IsProfileComplete = true;
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã thêm hồ sơ nhân viên “{model.Employee.HoTen}”.";
-            if (Request.Headers["X-Employee-Modal"] == "1") return Json(new { success = true });
+            if (Request.Headers["X-Employee-Modal"] == "1") return Json(new { success = true, message = TempData["Success"]?.ToString() });
             return RedirectToAction(nameof(Index));
         }
         catch (DbUpdateException ex)
@@ -296,17 +295,35 @@ public class NhanVienController : Controller
         return View("Create", model);
     }
 
+    private bool IsEmployeeModalRequest()
+    {
+        if (Request == null) return false;
+        if (string.Equals(Request.Query["popup"].ToString(), "true", StringComparison.OrdinalIgnoreCase)) return true;
+        if (Request.Headers.TryGetValue("X-Employee-Modal", out var modalVal) && modalVal.ToString() == "1") return true;
+        if (Request.Headers.TryGetValue("X-Requested-With", out var ajaxVal) && ajaxVal.ToString() == "XMLHttpRequest") return true;
+        return false;
+    }
+
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
         var employee = await _context.NhanViens.AsNoTracking().FirstOrDefaultAsync(item => item.MaNhanVien == id);
-        return employee == null || !employee.IsProfileComplete ? NotFound() : View(await BuildEmployeeFormAsync(new NhanVienFormViewModel { Employee = employee }));
+        if (employee == null || !employee.IsProfileComplete) return NotFound();
+        var model = await BuildEmployeeFormAsync(new NhanVienFormViewModel { Employee = employee });
+        var isModal = IsEmployeeModalRequest();
+        ViewData["EditPopup"] = isModal;
+        if (isModal)
+        {
+            return PartialView("_EmployeeForm", model);
+        }
+        return View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, NhanVienFormViewModel model)
     {
+        var isModal = IsEmployeeModalRequest();
         FormInputMessages.LocalizeBindingErrors(ModelState);
         if (id != model.Employee.MaNhanVien)
             return BadRequest();
@@ -342,7 +359,7 @@ public class NhanVienController : Controller
 
         await ValidateEmployeeAsync(model.Employee, id);
         if (!ModelState.IsValid)
-            return View(await BuildEmployeeFormAsync(model));
+            return await InvalidEditFormAsync(model, isModal);
 
         var employee = await _context.NhanViens.FindAsync(id);
         if (employee == null)
@@ -351,7 +368,7 @@ public class NhanVienController : Controller
         if (!awaitingContract && (employee.MaPhongBan != model.Employee.MaPhongBan || employee.MaChucVu != model.Employee.MaChucVu || employee.NgayVaoLam != model.Employee.NgayVaoLam))
         {
             ModelState.AddModelError(string.Empty, "Đổi chức vụ/phòng ban qua phụ lục hợp đồng; ngày vào làm gốc được giữ để tính thâm niên.");
-            return View(await BuildEmployeeFormAsync(model));
+            return await InvalidEditFormAsync(model, isModal);
         }
         employee.MaPhongBan = model.Employee.MaPhongBan;
         employee.MaChucVu = model.Employee.MaChucVu;
@@ -376,6 +393,10 @@ public class NhanVienController : Controller
         {
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Đã cập nhật hồ sơ “{employee.HoTen}”.";
+            if (isModal)
+            {
+                return Json(new { success = true, message = $"Đã cập nhật hồ sơ “{employee.HoTen}”." });
+            }
             return RedirectToAction(nameof(Index));
         }
         catch (DbUpdateConcurrencyException ex)
@@ -383,14 +404,25 @@ public class NhanVienController : Controller
             _logger.LogWarning(ex, "Hồ sơ nhân viên {EmployeeId} vừa được cập nhật hoặc ký hợp đồng.", id);
             _context.ChangeTracker.Clear();
             ModelState.AddModelError(string.Empty, "Hồ sơ vừa được cập nhật hoặc ký hợp đồng ở phiên khác. Vui lòng tải lại hồ sơ trước khi sửa tiếp.");
-            return View(await BuildEmployeeFormAsync(model));
+            return await InvalidEditFormAsync(model, isModal);
         }
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Không thể cập nhật hồ sơ nhân viên {EmployeeId}.", id);
             ModelState.AddModelError(string.Empty, "Không thể cập nhật hồ sơ. Vui lòng kiểm tra dữ liệu hoặc kết nối CSDL.");
-            return View(await BuildEmployeeFormAsync(model));
+            return await InvalidEditFormAsync(model, isModal);
         }
+    }
+
+    private async Task<IActionResult> InvalidEditFormAsync(NhanVienFormViewModel model, bool isModal)
+    {
+        var viewModel = await BuildEmployeeFormAsync(model);
+        if (isModal)
+        {
+            Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+            return PartialView("_EmployeeForm", viewModel);
+        }
+        return View("Edit", viewModel);
     }
 
     [HttpPost]
@@ -490,7 +522,6 @@ public class NhanVienController : Controller
 
     private async Task ValidateEmployeeAsync(NhanVien model, int? currentId = null)
     {
-        var emailFormat = new EmailAddressAttribute();
         foreach (var (field, label, value, limit) in new (string, string, string?, int)[]
         {
             ("Ho", "Họ", model.Ho, 100),
@@ -533,9 +564,9 @@ public class NhanVienController : Controller
         if (!SupportedEmployeeStatuses.Contains(model.TrangThai)) ModelState.AddModelError("Employee.TrangThai", "Trạng thái nhân viên không hợp lệ.");
         if (!string.IsNullOrWhiteSpace(model.EmailCongVu))
         {
-            if (!emailFormat.IsValid(model.EmailCongVu))
+            if (!EmailInputValidation.IsValid(model.EmailCongVu))
             {
-                ModelState.AddModelError("Employee.EmailCongVu", "Email công vụ không đúng định dạng.");
+                ModelState.AddModelError("Employee.EmailCongVu", EmailInputValidation.Message);
             }
             else if (model.EmailCongVu.Length <= 100 && await _context.NhanViens.AnyAsync(item => item.MaNhanVien != currentId && item.EmailCongVu.ToLower() == model.EmailCongVu.ToLower()))
             {
@@ -543,13 +574,12 @@ public class NhanVienController : Controller
             }
         }
 
-        // Email cá nhân là tuỳ chọn: để trống cũng được, nhưng đã nhập thì phải
-        // đúng định dạng. Không kiểm tra trùng vì CSDL không đặt UNIQUE cho cột này.
+        // Email cá nhân bắt buộc và phải có đuôi tên miền; không kiểm tra trùng.
         if (string.IsNullOrWhiteSpace(model.EmailCaNhan))
             ModelState.AddModelError("Employee.EmailCaNhan", "Vui lòng nhập email cá nhân, ví dụ ten@gmail.com.");
-        else if (!emailFormat.IsValid(model.EmailCaNhan))
+        else if (!EmailInputValidation.IsValid(model.EmailCaNhan))
         {
-            ModelState.AddModelError("Employee.EmailCaNhan", "Email cá nhân không đúng định dạng.");
+            ModelState.AddModelError("Employee.EmailCaNhan", EmailInputValidation.Message);
         }
     }
 

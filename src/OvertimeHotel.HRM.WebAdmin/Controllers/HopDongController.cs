@@ -839,8 +839,8 @@ public partial class HopDongController : Controller
             ModelState.AddModelError("PersonalEmail", "Vui lòng nhập email cá nhân, ví dụ ten@gmail.com.");
         if (model.PersonalEmail?.Trim().Length > 100)
             ModelState.AddModelError("PersonalEmail", "Email cá nhân không được vượt quá 100 ký tự. Ví dụ: ten@gmail.com.");
-        if (!string.IsNullOrWhiteSpace(model.PersonalEmail) && !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(model.PersonalEmail))
-            ModelState.AddModelError("PersonalEmail", "Email cá nhân không đúng định dạng.");
+        if (!string.IsNullOrWhiteSpace(model.PersonalEmail) && !EmailInputValidation.IsValid(model.PersonalEmail.Trim()))
+            ModelState.AddModelError("PersonalEmail", EmailInputValidation.Message);
     }
 
     private static string RemoveDiacritics(string text)

@@ -3,6 +3,7 @@
     if (!modal) return;
     const host = modal.querySelector('#employeeFormPanel');
     const submit = modal.querySelector('[data-employee-create-submit]');
+    const template = document.querySelector('[data-employee-create-template]');
     let form = null;
     let saving = false;
 
@@ -36,6 +37,10 @@
 
     modal.addEventListener('show.bs.modal', async () => {
         if (form) return;
+        if (template) {
+            install(template.innerHTML);
+            return;
+        }
         submit.disabled = true;
         host.textContent = 'Đang tải biểu mẫu…';
         host.setAttribute('aria-busy', 'true');
@@ -54,6 +59,8 @@
         if (event.defaultPrevented) return;
         event.preventDefault();
         if (saving || !form.reportValidity()) return;
+        const submittedForm = form;
+        const contractId = new FormData(form).get('ContractId');
         saving = true;
         submit.disabled = true;
         form.setAttribute('aria-busy', 'true');
@@ -66,9 +73,23 @@
             } else if (response.ok && (response.headers.get('content-type') || '').includes('application/json')) {
                 const result = await response.json();
                 if (!result.success) throw new Error(result.message || 'Không thể lưu hồ sơ.');
-                window.location.reload();
+                // Retire this completed contract from the local form, then refresh only the table.
+                template?.content.querySelectorAll('select[name="ContractId"] option').forEach(option => {
+                    if (option.value === contractId) option.remove();
+                });
+                saving = false;
+                bootstrap.Modal.getOrCreateInstance(modal).hide();
+                form = null;
+                host.replaceChildren();
+                window.loadEmployeeTable?.({ page: 1 }, false);
+                const notice = document.querySelector('[data-employee-create-notice]');
+                if (notice) {
+                    notice.textContent = result.message || 'Đã thêm hồ sơ nhân viên.';
+                    notice.classList.remove('d-none');
+                    notice.focus();
+                }
             } else throw new Error('Không thể lưu hồ sơ. Vui lòng thử lại.');
         } catch (e) { error(e.message || 'Không thể lưu hồ sơ. Vui lòng thử lại.'); }
-        finally { saving = false; submit.disabled = false; form.removeAttribute('aria-busy'); }
+        finally { saving = false; submit.disabled = !form; submittedForm.removeAttribute('aria-busy'); }
     });
 })();
