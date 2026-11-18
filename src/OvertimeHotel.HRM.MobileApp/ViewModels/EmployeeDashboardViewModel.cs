@@ -222,7 +222,7 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
         private set => SetProperty(ref _geofenceStatusText, value);
     }
 
-    public string GeofenceStatusColor => _isWithinGeofence ? "#059669" : "#DC2626";
+    public Color GeofenceStatusColor => _isWithinGeofence ? Color.FromArgb("#059669") : Color.FromArgb("#DC2626");
 
     #endregion
 
