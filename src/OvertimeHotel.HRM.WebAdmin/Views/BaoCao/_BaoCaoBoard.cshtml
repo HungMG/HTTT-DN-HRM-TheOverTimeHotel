@@ -364,22 +364,6 @@
     @if (Model.CanViewPayrollFund)
     {
         <section class="baocao-panel" data-baocao-panel="quy-luong" hidden="@(tab != "quy-luong")">
-            <div class="baocao-note d-block mb-3">
-                <p>@Model.QuyLuong.TrangThaiNganSachDuyet</p>
-                @if (Model.QuyLuong.CoNganSachDuocDuyet)
-                {
-                    <p>Ngân sách được duyệt: <strong>@Model.QuyLuong.NganSachDuocDuyet?.ToString("N0") đ</strong>.
-                        Chênh lệch lương đã duyệt: @Model.QuyLuong.ChenhLechNganSachDuyet?.ToString("N0") đ.
-                        Tỷ lệ: @(Model.QuyLuong.TyLeGiaiNganNganSachDuyet?.ToString("0.#") ?? "Không tính khi ngân sách bằng 0") %.</p>
-                }
-                @if (Model.QuyLuong.NganSachConThieu.Count > 0)
-                {
-                    <details><summary>Các tháng/phòng ban chưa có ngân sách được duyệt (@Model.QuyLuong.NganSachConThieu.Count)</summary>
-                        <ul>@foreach (var item in Model.QuyLuong.NganSachConThieu) { <li>@item</li> }</ul>
-                    </details>
-                }
-                <p class="small mb-0">Số lương đã tính có thể gồm phiếu nháp; duyệt/kết chuyển không đồng nghĩa đã thanh toán.</p>
-            </div>
             <div class="baocao-kpi-grid">
                 <div class="catalog-kpi-card catalog-kpi-card--allowance shadow-sm">
                     <div class="catalog-kpi-icon"><i class="bi bi-wallet2"></i></div>
