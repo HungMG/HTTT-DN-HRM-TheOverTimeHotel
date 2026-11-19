@@ -92,9 +92,7 @@ public partial class HopDongController : Controller
                     PersonalEmail = contract.NhanVien?.EmailCaNhan,
                     DaysRemaining = days,
                     State = ContractState.Classify(contract, today),
-                    IsRenewed = isRenewed,
-                    EmployeeHasOtherContract = allContracts.Any(other => other.MaNhanVien == contract.MaNhanVien && other.MaHopDong != contract.MaHopDong
-                        && other.TrangThai != "DA_CHAM_DUT" && other.TrangThai != "CHAM_DUT" && (!other.NgayKetThuc.HasValue || other.NgayKetThuc.Value >= today))
+                    IsRenewed = isRenewed
                 };
             });
 
@@ -464,7 +462,6 @@ public partial class HopDongController : Controller
     public async Task<IActionResult> Terminate(int id, HopDongTerminateViewModel model)
     {
         var contract = await _context.HopDongs
-            .Include(item => item.NhanVien)
             .FirstOrDefaultAsync(item => item.MaHopDong == id);
         if (contract == null)
             return NotFound();
@@ -513,17 +510,6 @@ public partial class HopDongController : Controller
         contract.LoaiChamDut = model.LoaiChamDut;
         contract.LyDoChamDut = string.IsNullOrWhiteSpace(model.LyDoChamDut) ? null : model.LyDoChamDut.Trim();
 
-        // Nhân viên chỉ nghỉ việc khi không còn hợp đồng nào khác còn hiệu lực hoặc sắp tới.
-        var hasOtherActive = otherContracts.Any(other => !other.NgayKetThuc.HasValue || other.NgayKetThuc.Value >= today);
-        var employee = contract.NhanVien;
-        var employeeLeft = false;
-        if (employee != null && !hasOtherActive)
-        {
-            employee.TrangThai = "DA_THOI_VIEC";
-            employee.NgayThoiViec = endDate;
-            employeeLeft = true;
-        }
-
         try
         {
             await _context.SaveChangesAsync();
@@ -535,7 +521,9 @@ public partial class HopDongController : Controller
         }
 
         var message = $"Đã chấm dứt hợp đồng “{contract.SoHopDong}”." +
-                      (employeeLeft ? " Nhân viên đã chuyển sang trạng thái nghỉ việc." : " Nhân viên vẫn còn hợp đồng khác nên giữ trạng thái đang làm.");
+            (otherContracts.Any(other => ContractState.IsCurrentOrUpcoming(other, today))
+                ? " Nhân viên vẫn còn hợp đồng đang hoặc sắp có hiệu lực."
+                : " Nếu nhân viên nghỉ việc, hãy vào hồ sơ để xác nhận nghỉ việc.");
         return TerminateResult(true, message);
     }
 

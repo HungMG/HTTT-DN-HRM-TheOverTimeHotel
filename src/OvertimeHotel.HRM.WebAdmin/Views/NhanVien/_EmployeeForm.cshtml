@@ -96,13 +96,17 @@
             <select asp-for="Employee.TrangThai" class="form-select" id="Employee_TrangThai">
                 <option value="DANG_LAM">Đang làm việc</option>
                 <option value="NGHI_PHEP">Tạm nghỉ</option>
-                <option value="DA_THOI_VIEC">Đã thôi việc</option>
+                @if (Model.AlreadyResigned)
+                {
+                    <option value="DA_THOI_VIEC">Đã thôi việc</option>
+                }
             </select>
+            <span asp-validation-for="Employee.TrangThai" class="text-danger small d-block"></span>
         </div>
         <div class="col-md-6" id="wrapper_NgayThoiViec">
             <label asp-for="Employee.NgayThoiViec" class="form-label">Ngày thôi việc</label>
             <input asp-for="Employee.NgayThoiViec" type="date" class="form-control" id="Employee_NgayThoiViec" />
-            <span class="form-text text-muted">Chỉ áp dụng khi nhân viên chấm dứt hợp đồng lao động.</span>
+            <span class="form-text text-muted">Chỉ áp dụng khi hồ sơ ở trạng thái đã nghỉ việc.</span>
         </div>
     }
     else

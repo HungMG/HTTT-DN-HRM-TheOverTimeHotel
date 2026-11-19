@@ -249,13 +249,6 @@
 
         <!-- KHỐI ACTION BÊN PHẢI (CỐ ĐỊNH, KHÔNG BAO GIỜ BỊ ĐẨY XUỐNG HÀNG HAY ĐÈ LÊN ICON) -->
         <div class="flex-shrink-0 text-end ps-2">
-            <button type="button"
-                    class="btn btn-sm btn-light rounded-pill px-3 py-2 fw-semibold shadow-sm text-nowrap d-inline-flex align-items-center gap-1 profile-hero-edit-btn"
-                    data-employee-edit-open
-                    data-employee-edit-url="@Url.Action("Edit", "NhanVien", new { id = emp.MaNhanVien })"
-                    data-employee-name="@emp.HoTen">
-                <i class="bi bi-pencil-square text-primary"></i> Sửa hồ sơ
-            </button>
         </div>
     </div>
 </div>
@@ -284,6 +277,13 @@
                 <i class="bi bi-person-x me-1"></i>Xác nhận thôi việc
             </button>
         </div>
+    </div>
+}
+
+@if (emp.TrangThai is not ("DA_THOI_VIEC" or "CHO_HOP_DONG"))
+{
+    <div class="text-end mb-3">
+        <partial name="_EmployeeResignationAction" model="@(new EmployeeResignationAction(emp, Model.ResignationContracts, false))" />
     </div>
 }
 

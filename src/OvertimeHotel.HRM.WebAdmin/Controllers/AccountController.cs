@@ -1,3 +1,4 @@
+using OvertimeHotel.HRM.WebAdmin.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -124,7 +125,7 @@ public class AccountController : Controller
             return View(model);
         }
 
-        if (!account.TrangThai)
+        if (!account.TrangThai || EmployeeResignationAccountLock.IsResigned(account.NhanVien?.TrangThai))
         {
             var lockedErr = "Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ bộ phận IT / Admin.";
             if (IsAjaxRequest(Request))

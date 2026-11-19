@@ -172,21 +172,30 @@ builder.Services.AddAuthentication(options =>
                 var deptVal = context.Principal?.FindFirst("DepartmentId")?.Value ?? "0";
                 var sessionCacheKey = $"auth:validate:{userId}:{issuedUtc}:{roleVal}:{deptVal}";
 
-                if (cache != null && cache.TryGetValue<bool>(sessionCacheKey, out var isValid) && isValid)
-                {
-                    return; // Đã xác thực hợp lệ gần đây, bỏ qua 3 query CSDL lặp lại
-                }
-
                 var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                var account = await dbContext.TaiKhoans.AsNoTracking().Include(t => t.VaiTro).Include(t => t.NhanVien).FirstOrDefaultAsync(t => t.MaTaiKhoan == userId);
-                if (account == null || !account.TrangThai ||
+                var account = await dbContext.TaiKhoans.AsNoTracking()
+                    .Where(t => t.MaTaiKhoan == userId)
+                    .Select(t => new
+                    {
+                        t.TrangThai, t.PhienHopLeSau, t.MaVaiTro, t.MaNhanVien,
+                        Role = t.VaiTro == null ? null : t.VaiTro.TenVaiTro,
+                        EmployeeStatus = t.NhanVien == null ? null : t.NhanVien.TrangThai,
+                        DepartmentId = t.NhanVien == null ? 0 : (t.NhanVien.MaPhongBan ?? 0)
+                    })
+                    .FirstOrDefaultAsync();
+                if (account == null || !account.TrangThai || EmployeeResignationAccountLock.IsResigned(account.EmployeeStatus) ||
                     context.Properties.IssuedUtc == null || context.Properties.IssuedUtc <= account.PhienHopLeSau ||
-                    account.VaiTro?.TenVaiTro != roleVal ||
-                    (account.NhanVien?.MaPhongBan ?? 0).ToString() != deptVal)
+                    account.Role != roleVal ||
+                    account.DepartmentId.ToString() != deptVal)
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                     return;
+                }
+
+                if (cache != null && cache.TryGetValue<bool>(sessionCacheKey, out var isValid) && isValid)
+                {
+                    return; // Đã kiểm tra trạng thái tài khoản; tái sử dụng kết quả kiểm tra quyền và hợp đồng.
                 }
 
                 var permissions = await dbContext.VaiTroQuyens.AsNoTracking()
@@ -267,7 +276,7 @@ builder.Services.AddAuthentication(options =>
                         return;
                     }
                     var sessionCreated = await dbContext.Database.SqlQuery<DateTimeOffset?>($"SELECT (SELECT created_at FROM auth.sessions WHERE id = {sessionId} AND user_id = {authUserId}) AS \"Value\"").SingleAsync();
-                    if (account == null || !account.TrangThai ||
+                    if (account == null || !account.TrangThai || EmployeeResignationAccountLock.IsResigned(account.NhanVien?.TrangThai) ||
                         SupabaseClaims.GetMaVaiTro(context.Principal) != account.MaVaiTro ||
                         !long.TryParse(issued, out var issuedSeconds) ||
                         issuedSeconds <= account.PhienHopLeSau.ToUnixTimeSeconds() ||

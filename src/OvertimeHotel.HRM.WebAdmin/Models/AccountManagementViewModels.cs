@@ -16,7 +16,6 @@ public class AccountIndexViewModel
     public int ActiveAccounts { get; set; }
     public int LockedAccounts { get; set; }
     public int AdminAccounts { get; set; }
-    public int ItHeadAccountCount { get; set; }
     public int TotalFilteredAccounts { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 7;
@@ -44,6 +43,7 @@ public class AccountListItemViewModel
     public string Position { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    public string? EmployeeStatus { get; set; }
 }
 
 public class AccountDetailViewModel

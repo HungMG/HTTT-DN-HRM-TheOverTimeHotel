@@ -164,7 +164,7 @@
                             </a>
                             @if (item.State != "DA_CHAM_DUT" && !item.IsRenewed)
                             {
-                                <button type="button" data-contract-terminate-url="@Url.Content($"~/HopDong/Terminate/{contract.MaHopDong}")" data-contract-number="@contract.SoHopDong" data-contract-employee="@item.EmployeeName" data-contract-start="@contract.NgayBatDau.ToString("yyyy-MM-dd")" data-contract-end="@(contract.NgayKetThuc?.ToString("yyyy-MM-dd"))" data-contract-state="@item.State" data-contract-has-other="@(item.EmployeeHasOtherContract ? "true" : "false")" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chấm dứt hợp đồng" aria-label="Chấm dứt hợp đồng @contract.SoHopDong">
+                                <button type="button" data-contract-terminate-url="@Url.Content($"~/HopDong/Terminate/{contract.MaHopDong}")" data-contract-number="@contract.SoHopDong" data-contract-employee="@item.EmployeeName" data-contract-start="@contract.NgayBatDau.ToString("yyyy-MM-dd")" data-contract-end="@(contract.NgayKetThuc?.ToString("yyyy-MM-dd"))" data-contract-state="@item.State" class="btn btn-sm btn-light border rounded-circle text-danger" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chấm dứt hợp đồng" aria-label="Chấm dứt hợp đồng @contract.SoHopDong">
                                     <i class="bi bi-person-x"></i>
                                 </button>
                             }

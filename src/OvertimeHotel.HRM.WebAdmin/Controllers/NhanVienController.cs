@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -97,7 +96,8 @@ public class NhanVienController : Controller
                     Employee = employee,
                     LatestContract = contract,
                     ContractDaysRemaining = days,
-                    ContractState = state
+                    ContractState = state,
+                    ResignationContracts = FindResignationContracts(employee.HopDongs, today)
                 };
             });
 
@@ -331,6 +331,7 @@ public class NhanVienController : Controller
 
         // Keep the original joining date tracked throughout validation; a concurrent first signature must reject this edit.
         var original = await _context.NhanViens.FirstAsync(x => x.MaNhanVien == id);
+        model.AlreadyResigned = EmployeeResignationAccountLock.IsResigned(original.TrangThai);
         var awaitingContract = original.TrangThai == "CHO_HOP_DONG" && !await _context.HopDongs.AnyAsync(x => x.MaNhanVien == id);
         if (awaitingContract)
         {
@@ -342,6 +343,9 @@ public class NhanVienController : Controller
             ModelState.AddModelError("Employee.TrangThai", "Nhân viên đã có quá trình làm việc không thể chuyển về hồ sơ chờ ký.");
         Normalize(model.Employee);
         NormalizeEmployeeStatus(model.Employee);
+
+        if (EmployeeResignationAccountLock.IsResigned(model.Employee.TrangThai) && !model.AlreadyResigned)
+            ModelState.AddModelError("Employee.TrangThai", "Hãy dùng nút Đánh dấu nghỉ việc trong hồ sơ nhân viên.");
 
         if (model.Employee.TrangThai != "DA_THOI_VIEC")
         {
@@ -392,10 +396,11 @@ public class NhanVienController : Controller
         try
         {
             await _context.SaveChangesAsync();
-            TempData["Success"] = $"Đã cập nhật hồ sơ “{employee.HoTen}”.";
+            var message = $"Đã cập nhật hồ sơ “{employee.HoTen}”.";
+            TempData["Success"] = message;
             if (isModal)
             {
-                return Json(new { success = true, message = $"Đã cập nhật hồ sơ “{employee.HoTen}”." });
+                return Json(new { success = true, message });
             }
             return RedirectToAction(nameof(Index));
         }
@@ -438,26 +443,42 @@ public class NhanVienController : Controller
         }
         var employee = await _context.NhanViens
             .Include(item => item.TaiKhoan)
-            .Include(item => item.PhieuLuongs)
             .FirstOrDefaultAsync(item => item.MaNhanVien == id);
         if (employee == null)
             return isAjax ? new JsonResult(new { success = false, message = "Không tìm thấy nhân viên." }) { StatusCode = 404 } : NotFound();
 
         if (employee.TrangThai == "CHO_HOP_DONG")
         {
-            return Failure("Hồ sơ chờ ký chưa có quá trình làm việc để thôi việc. Dùng nút Xóa vĩnh viễn để kiểm tra và xác nhận xóa hồ sơ nếu không tiếp nhận nữa.", 409, "CHO_HOP_DONG");
+            return Failure("Hồ sơ chờ ký chưa có quá trình làm việc để đánh dấu nghỉ việc.", 409, "CHO_HOP_DONG");
         }
         if (employee.TrangThai == "DA_THOI_VIEC")
         {
-            return Failure("Hồ sơ đã nghỉ việc. Dùng nút Xóa vĩnh viễn để kiểm tra dữ liệu liên quan.", 409, "DA_THOI_VIEC");
+            return Failure("Hồ sơ đã được đánh dấu nghỉ việc.", 409, "DA_THOI_VIEC");
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var blockingContract = await GetBlockingContractNumberAsync(id);
+        if (blockingContract != null)
+        {
+            if (isAjax)
+            {
+                var contractUrl = User.HasPermission(PermissionCodes.ManageContracts)
+                    ? Url.Action("Index", "HopDong", new { keyword = blockingContract })
+                    : null;
+                return new JsonResult(new { success = false, blockedByContract = true, message = ActiveContractResignationMessage, contractUrl })
+                    { StatusCode = StatusCodes.Status409Conflict };
+            }
+            return Failure(ActiveContractResignationMessage, StatusCodes.Status409Conflict);
         }
 
         try
         {
             employee.TrangThai = "DA_THOI_VIEC";
-            employee.NgayThoiViec = DateOnly.FromDateTime(DateTime.Today);
+            employee.NgayThoiViec = today;
+            var accountLocked = EmployeeResignationAccountLock.Apply(_context, employee, HttpContext);
             await _context.SaveChangesAsync();
-            var message = $"Đã ẩn hồ sơ nhân viên “{employee.HoTen}”. Có thể xem lại trong bộ lọc “Đã nghỉ việc”.";
+            var message = $"Đã ẩn hồ sơ nhân viên “{employee.HoTen}”. Có thể xem lại trong bộ lọc “Đã nghỉ việc”." +
+                (accountLocked ? " Tài khoản liên kết đã được khóa." : "");
             if (isAjax) return Json(new { success = true, message });
             TempData["Success"] = message;
         }
@@ -470,41 +491,18 @@ public class NhanVienController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private EmployeeDeletionService DeletionService => new(_context,
-        HttpContext.RequestServices.GetRequiredService<IDataProtectionProvider>());
+    private const string ActiveContractResignationMessage =
+        "Nhân viên còn hợp đồng đang hoặc sắp có hiệu lực. Vui lòng chấm dứt hợp đồng cần xử lý trước khi đánh dấu nghỉ việc.";
 
-    [HttpGet]
-    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-    public async Task<IActionResult> DeletePreview(int id)
-    {
-        try
-        {
-            var preview = await DeletionService.PreviewAsync(id);
-            return preview == null ? NotFound(new { message = "Hồ sơ nhân viên không còn tồn tại." }) : Json(preview);
-        }
-        catch (Exception ex) when (ex is Npgsql.NpgsqlException or InvalidOperationException)
-        {
-            _logger.LogError(ex, "Không thể kiểm tra xóa nhân viên {EmployeeId}.", id);
-            return StatusCode(503, new { message = "Không thể kiểm tra dữ liệu liên quan. Vui lòng thử lại." });
-        }
-    }
+    private static IReadOnlyList<HopDong> FindResignationContracts(IEnumerable<HopDong> contracts, DateOnly today) =>
+        contracts.Where(contract => ContractState.IsCurrentOrUpcoming(contract, today))
+            .OrderByDescending(contract => contract.NgayBatDau)
+            .ToList();
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeletePermanently(int id, string? confirmationToken, bool confirmed = false)
-    {
-        try
-        {
-            var result = await DeletionService.DeleteAsync(id, confirmationToken, confirmed);
-            return result.Deleted ? Json(new { success = true, message = result.Message })
-                : Conflict(new { success = false, message = result.Message });
-        }
-        catch (Exception ex) when (ex is DbUpdateException or Npgsql.NpgsqlException)
-        {
-            _logger.LogError(ex, "Không thể xóa vĩnh viễn nhân viên {EmployeeId}.", id);
-            return Conflict(new { success = false, message = "Chưa xác nhận được kết quả xóa. Hãy tải lại danh sách và mở lại cảnh báo để kiểm tra dữ liệu liên quan trước khi thử lại." });
-        }
-    }
+    private async Task<string?> GetBlockingContractNumberAsync(int employeeId) =>
+        FindResignationContracts(await _context.HopDongs.AsNoTracking()
+            .Where(contract => contract.MaNhanVien == employeeId).ToListAsync(), DateOnly.FromDateTime(DateTime.Today))
+            .FirstOrDefault()?.SoHopDong;
 
     private async Task<NhanVienFormViewModel> BuildEmployeeFormAsync(NhanVienFormViewModel model)
     {
@@ -694,6 +692,7 @@ public class NhanVienController : Controller
             Account = employee.TaiKhoan,
             ContractDaysRemaining = daysRemaining,
             ContractState = contractState,
+            ResignationContracts = FindResignationContracts(contracts, today),
             CurrentSalary = salaryError == null ? currentSalary : null,
             SalaryError = salaryError,
             SalaryHistory = salaryHistory.OrderByDescending(x => x.EffectiveDate).ToList()

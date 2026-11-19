@@ -32,7 +32,6 @@ public class HopDongListItemViewModel
     public int? DaysRemaining { get; init; }
     public string State { get; init; } = string.Empty;
     public bool IsRenewed { get; init; }
-    public bool EmployeeHasOtherContract { get; init; }
 }
 
 public class HopDongDetailsModalViewModel

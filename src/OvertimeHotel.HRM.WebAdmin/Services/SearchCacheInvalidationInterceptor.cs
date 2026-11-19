@@ -24,7 +24,7 @@ public sealed class SearchCacheSaveInterceptor(SearchListCache cache, SearchCach
             .ToHashSet();
 
         bool matched = false;
-        if (entities.Contains("NhanVien")) { cache.Invalidate("employees"); matched = true; }
+        if (entities.Contains("NhanVien") || entities.Contains("HopDong")) { cache.Invalidate("employees"); matched = true; }
         if (entities.Contains("HopDong") || entities.Contains("PhuLucLuong")) { cache.Invalidate("contracts"); matched = true; }
         if (entities.Contains("PhanCa") || entities.Contains("YeuCauDoiCa") || entities.Contains("DinhBienCa") || entities.Contains("DinhBienNgay")) { cache.Invalidate("phanca"); matched = true; }
         if (entities.Contains("ChamCong") || entities.Contains("GiaiTrinhChamCong")) { cache.Invalidate("attendance"); cache.Invalidate("giai-trinh"); cache.Invalidate("attendance-explanations"); matched = true; }
@@ -65,7 +65,7 @@ public sealed class SearchCacheCommandInterceptor(SearchListCache cache, SearchC
             transactions.MarkDirty(command.Transaction);
             var text = command.CommandText;
             bool matched = false;
-            if (text.Contains("nhan_vien", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("employees"); matched = true; }
+            if (text.Contains("nhan_vien", StringComparison.OrdinalIgnoreCase) || text.Contains("hop_dong", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("employees"); matched = true; }
             if (text.Contains("hop_dong", StringComparison.OrdinalIgnoreCase) || text.Contains("phu_luc_luong", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("contracts"); matched = true; }
             if (text.Contains("phan_ca", StringComparison.OrdinalIgnoreCase) || text.Contains("yeu_cau_doi_ca", StringComparison.OrdinalIgnoreCase) || text.Contains("dinh_bien", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("phanca"); matched = true; }
             if (text.Contains("cham_cong", StringComparison.OrdinalIgnoreCase) || text.Contains("giai_trinh", StringComparison.OrdinalIgnoreCase)) { cache.Invalidate("attendance"); cache.Invalidate("giai-trinh"); cache.Invalidate("attendance-explanations"); matched = true; }

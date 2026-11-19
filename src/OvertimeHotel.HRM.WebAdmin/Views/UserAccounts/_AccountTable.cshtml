@@ -1,6 +1,6 @@
 @model AccountIndexViewModel
 @using System.Security.Claims
-@using OvertimeHotel.HRM.WebAdmin.Security
+@using OvertimeHotel.HRM.WebAdmin.Services
 @{
     var currentAccountId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedId)
         ? parsedId
@@ -76,6 +76,9 @@
                     rowIndex++;
                     var (roleClass, roleIcon, roleDisplayName) = GetRoleBadgeInfo(account.RoleName);
                     var isCurrentAccount = account.AccountId == currentAccountId;
+                    var cannotUnlock = !account.IsActive && EmployeeResignationAccountLock.IsResigned(account.EmployeeStatus);
+                    var toggleTitle = account.IsActive ? "Khóa tài khoản" : cannotUnlock
+                        ? "Nhân viên đã nghỉ việc" : "Mở khóa tài khoản";
                     <tr class="@(!account.IsActive ? "is-locked table-light" : null)" style="--row-delay: @(rowIndex * 30)ms; cursor: pointer" data-account-row="@account.AccountId" data-account-details-url="@Url.Action("Details", "UserAccounts", new { id = account.AccountId })" tabindex="0" aria-label="Xem thông tin tài khoản @account.EmployeeName">
                         <td class="ps-3 py-2.5">
                             <div class="d-flex align-items-center gap-3">
@@ -121,22 +124,10 @@
                                       data-account-mode="@(account.IsActive ? "lock" : "unlock")">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="reason" value="" data-account-reason-value />
-                                    <button type="submit" class="btn btn-sm @(account.IsActive ? "btn-outline-danger" : "btn-outline-success") rounded-3 px-2 py-1 hover-lift" title="@(account.IsActive ? "Khóa tài khoản" : "Mở khóa tài khoản")" disabled="@isCurrentAccount" style="font-size: 0.78rem;">
+                                    <button type="submit" class="btn btn-sm @(account.IsActive ? "btn-outline-danger" : "btn-outline-success") rounded-3 px-2 py-1 hover-lift" title="@toggleTitle" disabled="@(isCurrentAccount || cannotUnlock)" style="font-size: 0.78rem;">
                                         <i class="bi @(account.IsActive ? "bi-lock-fill" : "bi-unlock-fill") me-1"></i>@(account.IsActive ? "Khóa" : "Mở")
                                     </button>
                                 </form>
-                                @if (AccountDeletionPolicy.GetDenial(User.FindFirstValue(ClaimTypes.Role), currentAccountId, account.AccountId, account.RoleName, account.Department, account.Position, int.MaxValue) == null)
-                                {
-                                    <form asp-action="DeleteAccount" asp-route-id="@account.AccountId" method="post"
-                                          class="account-delete-form d-inline" data-account-id="@account.AccountId"
-                                          data-account-name="@account.EmployeeName" data-account-mode="delete">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="reason" value="" data-account-reason-value />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1" title="Xóa tài khoản">
-                                            <i class="bi bi-trash me-1"></i>Xóa
-                                        </button>
-                                    </form>
-                                }
                             </div>
                         </td>
                     </tr>

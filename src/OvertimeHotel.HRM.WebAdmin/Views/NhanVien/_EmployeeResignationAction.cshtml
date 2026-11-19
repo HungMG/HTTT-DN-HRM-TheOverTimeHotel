@@ -1,0 +1,30 @@
+@model EmployeeResignationAction
+@using OvertimeHotel.HRM.WebAdmin.Security
+@{
+    var employee = Model.Employee;
+    if (employee.TrangThai is "DA_THOI_VIEC" or "CHO_HOP_DONG")
+    {
+        return;
+    }
+
+    var contracts = Model.Contracts;
+    var canManageContracts = User.HasPermission(PermissionCodes.ManageContracts);
+    var buttonClass = Model.Compact
+        ? "btn btn-sm btn-light border rounded-circle text-danger d-inline-flex align-items-center justify-content-center"
+        : "btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold";
+    var buttonStyle = Model.Compact ? "width: 32px; height: 32px;" : null;
+    var buttonLabel = Model.Compact ? null : "Đánh dấu nghỉ việc";
+    var label = $"Đánh dấu nghỉ việc cho {employee.HoTen}";
+    var blockingContract = contracts.FirstOrDefault();
+    var contractUrl = canManageContracts && blockingContract != null
+        ? Url.Action("Index", "HopDong", new { keyword = blockingContract.SoHopDong })
+        : null;
+}
+
+<button type="button" class="@buttonClass" style="@buttonStyle" title="Đánh dấu nghỉ việc"
+        aria-label="@label" aria-haspopup="dialog" data-employee-hide-name="@employee.HoTen"
+        data-employee-hide-url="@Url.Action("Delete", "NhanVien", new { id = employee.MaNhanVien })"
+        data-employee-hide-contract-blocked="@(blockingContract != null ? "true" : "false")"
+        data-employee-hide-contract-url="@contractUrl">
+    <i class="bi bi-person-x" aria-hidden="true"></i> @buttonLabel
+</button>

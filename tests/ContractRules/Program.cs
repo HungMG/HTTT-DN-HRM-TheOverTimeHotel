@@ -143,6 +143,54 @@ await Check("Existing contracts can be terminated via Terminate action", async (
     Require(saved.TrangThai == "DA_CHAM_DUT", "Terminate must save DA_CHAM_DUT");
     Require(saved.LoaiChamDut == ContractTerminationTypes.NHAN_VIEN_XIN_NGHI, "Terminate must save reason type");
 });
+foreach (var previousStatus in new[] { "HIEU_LUC", "DA_CHAM_DUT" })
+await Check("Renewed contract and resignation are separate, historical status: " + previousStatus, async () =>
+{
+    await using var db = await Database();
+    await SeedAccount(db);
+    var renewal = Form(today.AddMonths(-1)).Contract;
+    var previous = Form(today.AddYears(-2)).Contract;
+    previous.SoHopDong = "HDLD-PREV";
+    previous.NgayKetThuc = renewal.NgayBatDau.AddDays(-1);
+    previous.TrangThai = previousStatus;
+    db.HopDongs.AddRange(previous, renewal);
+    await db.SaveChangesAsync();
+    db.ChangeTracker.Clear();
+
+    var employees = Attach(new NhanVienController(db, NullLogger<NhanVienController>.Instance));
+    employees.Request.Headers.XRequestedWith = "XMLHttpRequest";
+    var profile = (await employees.ProfileModal(10) as PartialViewResult)?.Model as NhanVienProfileModalViewModel;
+    Require(profile?.ResignationContracts.Select(x => x.MaHopDong).SequenceEqual([renewal.MaHopDong]) == true,
+        "Only the current renewal needs processing");
+    var blocked = await employees.Delete(10) as JsonResult;
+    Require(blocked?.StatusCode == 409 && JsonSerializer.SerializeToElement(blocked.Value).GetProperty("blockedByContract").GetBoolean(),
+        "Resignation must be blocked until the renewal ends");
+
+    var contracts = Attach(new HopDongController(db, NullLogger<HopDongController>.Instance));
+    contracts.Request.Headers.XRequestedWith = "XMLHttpRequest";
+    var terminated = await contracts.Terminate(renewal.MaHopDong, new()
+    {
+        NgayChamDut = today, LoaiChamDut = ContractTerminationTypes.NHAN_VIEN_XIN_NGHI
+    }) as ObjectResult;
+    Require(terminated?.StatusCode == 200, "HR can terminate the current renewal");
+    Require((await db.NhanViens.AsNoTracking().SingleAsync()).TrangThai == "DANG_LAM" &&
+        (await db.TaiKhoans.AsNoTracking().SingleAsync()).TrangThai &&
+        !await db.NhatKyQuanTris.AnyAsync(), "Termination must not resign the employee or lock their account");
+
+    var resigned = await employees.Delete(10) as JsonResult;
+    Require(resigned != null && JsonSerializer.SerializeToElement(resigned.Value).GetProperty("success").GetBoolean(),
+        "HR can confirm resignation after the renewal is terminated");
+    var employee = await db.NhanViens.AsNoTracking().SingleAsync();
+    var account = await db.TaiKhoans.AsNoTracking().SingleAsync();
+    Require(employee.TrangThai == "DA_THOI_VIEC" && employee.NgayThoiViec == today &&
+        !account.TrangThai && account.PhienHopLeSau > DateTimeOffset.UnixEpoch,
+        "Only the second step resigns the employee and revokes the account");
+
+    var history = await db.HopDongs.AsNoTracking().ToListAsync();
+    Require(history.Count == 2 && history.Single(x => x.MaHopDong == renewal.MaHopDong).TrangThai == "DA_CHAM_DUT" &&
+        history.Single(x => x.MaHopDong == previous.MaHopDong).TrangThai == previousStatus,
+        "Both contracts remain in history and the previous contract is unchanged");
+});
 await Check("Employee profile cannot bypass Board position rule", async () =>
 {
     await using var db = await Database();
@@ -445,6 +493,83 @@ await Check("AJAX hide succeeds for active employee", async () =>
     Require(result!=null && JsonSerializer.SerializeToElement(result.Value).GetProperty("success").GetBoolean(), "Confirmed AJAX hide must return success");
     Require((await db.NhanViens.AsNoTracking().SingleAsync()).TrangThai=="DA_THOI_VIEC", "Hide must update existing status");
 });
+await Check("Only the dedicated resignation action locks the account", async () =>
+{
+    await using var db = await Database();
+    await SeedAccount(db);
+    var employeeController = Attach(new NhanVienController(db, NullLogger<NhanVienController>.Instance));
+    employeeController.Request.Headers.XRequestedWith = "XMLHttpRequest";
+    var employee = await db.NhanViens.AsNoTracking().SingleAsync();
+    employee.TrangThai = "DA_THOI_VIEC";
+    employee.NgayThoiViec = today;
+    await employeeController.Edit(10, new() { Employee = employee });
+    Require(employeeController.ModelState.ContainsKey("Employee.TrangThai") &&
+        (await db.NhanViens.AsNoTracking().SingleAsync()).TrangThai == "DANG_LAM" &&
+        (await db.TaiKhoans.AsNoTracking().SingleAsync()).TrangThai,
+        "Editing the profile cannot bypass the resignation action");
+
+    await employeeController.Delete(10);
+
+    var locked = await db.TaiKhoans.AsNoTracking().SingleAsync();
+    Require(!locked.TrangThai && locked.PhienHopLeSau > DateTimeOffset.UnixEpoch, "Linked account must be retained and locked");
+    var audit = await db.NhatKyQuanTris.AsNoTracking().SingleAsync();
+    Require(audit.HanhDong == "LOCK_ACCOUNT" && audit.MaTaiKhoanBiTacDong == locked.MaTaiKhoan, "Lock must be recorded in the audit");
+
+    var accountController = Attach(new UserAccountsController(db, NullLogger<UserAccountsController>.Instance));
+    accountController.Request.Headers.XRequestedWith = "XMLHttpRequest";
+    var result = await accountController.ToggleStatus(locked.MaTaiKhoan, "Test mở khóa") as ObjectResult;
+    Require(result?.StatusCode == 400 && !(await db.TaiKhoans.AsNoTracking().SingleAsync()).TrangThai,
+        "Unable to reactivate the account while the employee is resigned");
+});
+foreach (var (name, start, end, status, blocked) in new (string, DateOnly, DateOnly?, string, bool)[]
+{
+    ("open-ended", today.AddMonths(-1), null, "HIEU_LUC", true),
+    ("ends today", today.AddMonths(-1), today, "HIEU_LUC", true),
+    ("upcoming renewal", today.AddDays(1), today.AddYears(1), "HIEU_LUC", true),
+    ("expired", today.AddMonths(-3), today.AddDays(-1), "HIEU_LUC", false),
+    ("terminated", today.AddMonths(-1), today.AddYears(1), "DA_CHAM_DUT", false)
+})
+await Check("Profile resignation with " + name, async () =>
+{
+    await using var db = await Database();
+    var contract = Form(start).Contract;
+    contract.NgayKetThuc = end;
+    contract.TrangThai = status;
+    db.HopDongs.Add(contract);
+    if (start > today)
+    {
+        var previous = Form(today.AddMonths(-3)).Contract;
+        previous.SoHopDong = "HDLD-CU";
+        previous.NgayKetThuc = today.AddDays(-1);
+        db.HopDongs.Add(previous);
+    }
+    await db.SaveChangesAsync();
+    db.ChangeTracker.Clear();
+
+    var controller = Attach(new NhanVienController(db, NullLogger<NhanVienController>.Instance));
+    var profile = (await controller.ProfileModal(10) as PartialViewResult)?.Model as NhanVienProfileModalViewModel;
+    Require(profile != null && profile.ResignationContracts.Select(x => x.SoHopDong).SequenceEqual(blocked ? [contract.SoHopDong] : Array.Empty<string>()),
+        "Profile must link to the blocking contract when needed");
+
+    if (blocked)
+    {
+        var edited = await db.NhanViens.AsNoTracking().SingleAsync();
+        edited.TrangThai = "DA_THOI_VIEC";
+        edited.NgayThoiViec = today;
+        await controller.Edit(10, new() { Employee = edited });
+        Require(controller.ModelState.ContainsKey("Employee.TrangThai"), "Edit must also reject the status change");
+    }
+
+    controller.Request.Headers.XRequestedWith = "XMLHttpRequest";
+    var result = await controller.Delete(10) as JsonResult;
+    var saved = await db.NhanViens.AsNoTracking().SingleAsync();
+    var savedContract = await db.HopDongs.AsNoTracking().SingleAsync(x => x.SoHopDong == contract.SoHopDong);
+    Require(result != null && JsonSerializer.SerializeToElement(result.Value).GetProperty("success").GetBoolean() == !blocked,
+        "Server must allow resignation only when no contract blocks it");
+    Require(blocked ? saved.TrangThai != "DA_THOI_VIEC" && saved.NgayThoiViec == null
+        : saved.TrangThai == "DA_THOI_VIEC" && saved.NgayThoiViec == today, "Only allowed resignations modify the employee");
+    Require(savedContract.TrangThai == status && savedContract.NgayKetThuc == end, "Profile action must preserve contract history");
+});
 await Check("Direct profile creation is no longer accepted", async () =>
 {
     await using var db=await Database(); var c=Attach(new NhanVienController(db,NullLogger<NhanVienController>.Instance));
@@ -495,6 +620,13 @@ static NhanVienFormViewModel Intake()
     var model = new NhanVienFormViewModel { Employee = new() { Ho="Lê",Ten="Bình",NgaySinh=new(1992,1,1),GioiTinh="NAM",DienThoai="0987654321",DiaChi="Hà Nội",TrinhDo="Đại học",MaPhongBan=2,MaChucVu=25 } };
     model.EntryMode = "DIRECT";
     return model;
+}
+static async Task SeedAccount(AppDbContext db)
+{
+    db.VaiTros.Add(new VaiTro { MaVaiTro = 4, TenVaiTro = "Employee" });
+    db.TaiKhoans.Add(new TaiKhoan { MaTaiKhoan = 12, MaNhanVien = 10, MaVaiTro = 4, TenDangNhap = "account-test" });
+    await db.SaveChangesAsync();
+    db.ChangeTracker.Clear();
 }
 static async Task SeedPending(AppDbContext db)
 {

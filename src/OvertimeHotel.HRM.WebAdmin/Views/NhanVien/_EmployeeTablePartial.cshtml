@@ -1,4 +1,3 @@
-@inject Microsoft.AspNetCore.DataProtection.IDataProtectionProvider EmployeeDeleteProtection
 @model OvertimeHotel.HRM.WebAdmin.Models.NhanVienIndexViewModel
 @{
     Func<int, string> pageUrl = page => Url.Action("Index", new
@@ -66,7 +65,7 @@
                 @foreach (var item in Model.Employees)
                 {
                     var employee = item.Employee;
-                    <tr class="employee-row" style="cursor: pointer;" onclick="if (!event.target.closest('a, button, form, select, input')) openEmployeeProfile(@employee.MaNhanVien)">
+                    <tr class="employee-row" style="cursor: pointer;" onclick="if (!event.target.closest('a, button, form, select, input, details')) openEmployeeProfile(@employee.MaNhanVien)">
                         <td class="text-center font-monospace small fw-bold text-muted">
                             <span class="badge bg-light text-secondary border px-2 py-1 font-monospace">NV-@employee.MaNhanVien</span>
                         </td>
@@ -156,27 +155,7 @@
                             <button type="button" class="btn btn-sm btn-light border rounded-circle me-1 text-secondary" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Chỉnh sửa hồ sơ" data-employee-edit-open data-employee-edit-url="@Url.Action("Edit", "NhanVien", new { id = employee.MaNhanVien })" data-employee-name="@employee.HoTen">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            @if (employee.TrangThai is "DA_THOI_VIEC" or "CHO_HOP_DONG")
-                            {
-                                <button type="button" class="btn btn-sm btn-light border rounded-circle text-danger"
-                                        style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"
-                                        data-employee-delete-name="@employee.HoTen"
-                                        data-employee-delete-token="@OvertimeHotel.HRM.WebAdmin.Services.EmployeeDeletionService.CreateConfirmationToken(EmployeeDeleteProtection, employee.MaNhanVien)"
-                                        data-employee-delete-url="@Url.Action("DeletePermanently", "NhanVien", new { id = employee.MaNhanVien })"
-                                        title="Xóa vĩnh viễn" aria-label="Xóa vĩnh viễn nhân viên @employee.HoTen" aria-haspopup="dialog">
-                                    <i class="bi bi-trash" aria-hidden="true"></i>
-                                </button>
-                            }
-                            else
-                            {
-                                <button type="button" class="btn btn-sm btn-light border rounded-circle text-danger"
-                                        style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"
-                                        title="Ẩn hồ sơ" aria-label="Ẩn hồ sơ nhân viên @employee.HoTen" aria-haspopup="dialog"
-                                        data-employee-hide-name="@employee.HoTen"
-                                        data-employee-hide-url="@Url.Action("Delete", "NhanVien", new { id = employee.MaNhanVien })">
-                                    <i class="bi bi-trash" aria-hidden="true"></i>
-                                </button>
-                            }
+                            <partial name="_EmployeeResignationAction" model="@(new EmployeeResignationAction(employee, item.ResignationContracts, true))" />
                         </td>
                     </tr>
                 }

@@ -4,6 +4,9 @@ namespace OvertimeHotel.HRM.Core.Constants;
 
 public static class ContractState
 {
+    public static bool IsCurrentOrUpcoming(HopDong contract, DateOnly today) =>
+        Classify(contract, today) is "HIEU_LUC" or "SAP_HET_HAN" or "CHUA_HIEU_LUC";
+
     public static string Classify(HopDong? contract, DateOnly today)
     {
         if (contract == null) return "CHUA_CO";

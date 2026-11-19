@@ -17,7 +17,7 @@
 
 <div class="catalog-page employee-workspace">
     <partial name="_CatalogAlerts" />
-    <div class="alert alert-success d-none" role="status" data-employee-delete-notice tabindex="-1"></div>
+    <div class="alert alert-success d-none" role="status" data-employee-hide-notice tabindex="-1"></div>
 
     <!-- 3 MINI KPI SUMMARY STATS -->
     <div class="row g-3 mb-4">
@@ -212,33 +212,6 @@
     </div>
 </div>
 
-<div class="modal fade" id="employeeDeleteModal" tabindex="-1" aria-labelledby="employeeDeleteModalLabel"
-     aria-describedby="employeeDeleteDescription" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content rounded-4">
-            <div class="modal-header">
-                <h2 class="modal-title fs-5" id="employeeDeleteModalLabel">Xóa vĩnh viễn nhân viên</h2>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
-            </div>
-            <form id="employeeDeleteForm" method="post" class="d-flex flex-column overflow-hidden">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="confirmationToken" />
-                <div class="modal-body">
-                    <p id="employeeDeleteDescription">Bạn có chắc chắn muốn xóa vĩnh viễn nhân viên này và các dữ liệu liên quan?</p>
-                    <p class="fw-semibold text-break" data-delete-employee-name></p>
-                    <p class="text-danger">Thao tác không thể hoàn tác. Dữ liệu lương, hợp đồng và dữ liệu phụ thuộc sẽ bị xóa theo; sự kiện do nhân viên quản lý có thể bị xóa cùng dữ liệu người tham gia.</p>
-                    <input type="hidden" name="confirmed" value="true" />
-                    <div class="alert alert-danger d-none" role="alert" data-delete-error></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal" data-delete-cancel>Hủy</button>
-                    <button type="submit" class="btn btn-danger" data-delete-submit>Xác nhận xóa</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <!-- MODAL XÁC NHẬN ẨN HỒ SƠ NHÂN VIÊN -->
 <div class="modal fade" id="employeeHideModal" tabindex="-1" aria-labelledby="employeeHideModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -248,23 +221,27 @@
                     <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
                         <i class="bi bi-eye-slash-fill text-danger fs-5"></i>
                     </div>
-                    <h2 class="modal-title fs-5 mb-0 fw-bold" id="employeeHideModalLabel">Ẩn hồ sơ nhân viên</h2>
+                    <h2 class="modal-title fs-5 mb-0 fw-bold" id="employeeHideModalLabel">Đánh dấu nghỉ việc</h2>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body px-4 py-3">
-                <p class="mb-1">Bạn có chắc chắn muốn ẩn hồ sơ của</p>
+                @Html.AntiForgeryToken()
                 <p class="fw-semibold text-break mb-3" id="employeeHideModalName"></p>
-                <p class="text-muted small mb-0">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Hồ sơ sẽ được đánh dấu <strong>Đã nghỉ việc</strong> và không xuất hiện trong danh sách mặc định. Bạn vẫn có thể xem lại qua bộ lọc trạng thái.
-                </p>
+                <div id="employeeHideConfirmation">
+                    <p class="mb-1">Bạn có chắc chắn muốn đánh dấu nghỉ việc cho nhân viên này?</p>
+                    <p class="text-muted small mb-0">
+                        Hồ sơ sẽ chuyển sang <strong>Đã nghỉ việc</strong> và ẩn khỏi danh sách mặc định. Tài khoản liên kết, nếu có, sẽ bị khóa.
+                    </p>
+                </div>
+                <p class="alert alert-warning d-none mb-0" role="alert" id="employeeHideContractWarning"></p>
                 <div class="alert alert-danger d-none mt-3 mb-0" role="alert" id="employeeHideError"></div>
             </div>
             <div class="modal-footer border-top bg-light">
                 <button type="button" class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal" id="employeeHideCancelBtn">Hủy</button>
+                <a class="btn btn-primary rounded-pill px-4 d-none" id="employeeHideContractLink">Xem hợp đồng</a>
                 <button type="button" class="btn btn-danger rounded-pill px-4 fw-semibold" id="employeeHideConfirmBtn">
-                    <i class="bi bi-eye-slash me-1"></i>Xác nhận ẩn
+                    <i class="bi bi-eye-slash me-1" aria-hidden="true"></i>Xác nhận nghỉ việc
                 </button>
             </div>
         </div>
@@ -276,9 +253,18 @@
     <script src="~/js/employee-edit-modal.js" asp-append-version="true"></script>
     <script src="~/js/entry-validation.js" asp-append-version="true"></script>
 <script src="~/js/employee-hide.js" asp-append-version="true"></script>
-<script src="~/js/employee-delete.js" asp-append-version="true"></script>
 <script src="~/js/account-request-popup.js" asp-append-version="true"></script>
 <script>
+    function hideEmployeeProfileThen(profile, showConfirmation) {
+        const dialog = bootstrap.Modal.getOrCreateInstance(profile);
+        let closing = false;
+        profile.addEventListener('hide.bs.modal', () => { closing = true; }, { once: true });
+        profile.addEventListener('hidden.bs.modal', showConfirmation, { once: true });
+        dialog.hide();
+        // Bootstrap ignores hide() while the opening transition is in progress.
+        if (!closing) profile.addEventListener('shown.bs.modal', () => dialog.hide(), { once: true });
+    }
+
     function openEmployeeProfile(id, message) {
         const modalEl = document.getElementById('employeeProfileModal');
         const modalBody = document.getElementById('employeeProfileModalBody');
@@ -452,7 +438,7 @@
     // =========================================================================
     function loadEmployeeTable(params = {}, shouldPushState = true) {
         const container = document.getElementById('employeeTableContainer');
-        if (!container) return;
+        if (!container) return Promise.resolve(false);
 
         // Xây dựng URL mục tiêu từ URL hiện tại
         const url = new URL(window.location.href);
@@ -489,7 +475,7 @@
         const fetchUrl = new URL(url.toString());
         fetchUrl.searchParams.set('isPartial', 'true');
 
-        fetch(fetchUrl.toString(), {
+        return fetch(fetchUrl.toString(), {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'text/html'
@@ -503,9 +489,8 @@
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = html;
             const newContainer = tempDiv.querySelector('#employeeTableContainer') || tempDiv.firstElementChild;
-            if (newContainer && container) {
-                container.outerHTML = newContainer.outerHTML;
-            }
+            if (!newContainer) throw new Error("Không tìm thấy bảng nhân sự.");
+            container.outerHTML = newContainer.outerHTML;
 
             // Đồng bộ URL mà không reload trang web
             if (shouldPushState) {
@@ -524,6 +509,7 @@
                 const updatedContainer = document.getElementById('employeeTableContainer');
                 if (updatedContainer) window.HotelMotion.applyEntrance(updatedContainer);
             }
+            return true;
         })
         .catch(err => {
             console.error('Lỗi nạp bảng nhân sự:', err);
@@ -532,6 +518,7 @@
                 currentContainer.style.opacity = '1';
                 currentContainer.style.pointerEvents = 'auto';
             }
+            return false;
         });
     }
 

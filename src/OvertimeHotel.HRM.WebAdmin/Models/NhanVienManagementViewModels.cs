@@ -31,6 +31,7 @@ public class EmployeeListItemViewModel
     public HopDong? LatestContract { get; init; }
     public int? ContractDaysRemaining { get; init; }
     public string ContractState { get; init; } = "CHUA_CO";
+    public IReadOnlyList<HopDong> ResignationContracts { get; init; } = [];
     public string AccountStatus => Employee.TaiKhoan != null ? "DA_CAP" :
         Employee.YeuCauTaiKhoanCuaNhanVien.OrderByDescending(request => request.NgayGui)
             .ThenByDescending(request => request.MaYeuCau).FirstOrDefault()?.TrangThai switch
@@ -40,6 +41,8 @@ public class EmployeeListItemViewModel
             _ => "CHUA_CAP"
         };
 }
+
+public sealed record EmployeeResignationAction(NhanVien Employee, IReadOnlyList<HopDong> Contracts, bool Compact);
 
 public sealed record EmployeePrintDepartment(string Name, IReadOnlyList<NhanVien> Employees);
 public sealed record EmployeePrintViewModel(IReadOnlyList<EmployeePrintDepartment> Departments,
@@ -56,6 +59,7 @@ public class NhanVienProfileModalViewModel
     public TaiKhoan? Account { get; init; }
     public int? ContractDaysRemaining { get; init; }
     public string ContractState { get; init; } = "CHUA_CO";
+    public IReadOnlyList<HopDong> ResignationContracts { get; init; } = [];
     public PhongBan? Department => Employee.PhongBan;
     public ChucVu? Position => Employee.ChucVu;
     public int TenureYears => TenureMonths / 12;
@@ -72,6 +76,8 @@ public class NhanVienFormViewModel
     public string EntryMode { get; set; } = "FROM_CONTRACT";
     public int? ContractId { get; set; }
     public IReadOnlyList<HopDong> EligibleContracts { get; set; } = [];
+    [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+    public bool AlreadyResigned { get; set; }
     public NhanVien Employee { get; set; } = new();
     public IReadOnlyList<SelectListItem> DepartmentOptions { get; set; } = [];
     public IReadOnlyList<SelectListItem> PositionOptions { get; set; } = [];
