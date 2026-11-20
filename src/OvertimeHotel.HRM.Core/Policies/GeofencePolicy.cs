@@ -104,7 +104,8 @@ public static class GeofencePolicy
     }
 
     /// <summary>
-    /// Xác thực hai lớp theo PRD 4.1: trong bán kính <b>hoặc</b> đúng Wi-Fi nội bộ.
+    /// Xác thực hai lớp theo cấu hình IT: trong bán kính GPS <b>hoặc</b> đúng Wi-Fi nội bộ.
+    /// Hỗ trợ bật/tắt từng lớp độc lập nhưng không cho phép tắt cả hai lớp cùng lúc.
     /// </summary>
     /// <param name="toaDo">Chuỗi toạ độ thiết bị gửi lên, có thể null khi mất GPS.</param>
     /// <param name="tenWifiHienTai">SSID đang kết nối, null khi không phải Wi-Fi.</param>
@@ -112,18 +113,31 @@ public static class GeofencePolicy
     /// <param name="hotelLongitude">Kinh độ khách sạn lấy từ cấu hình.</param>
     /// <param name="radiusMeters">Bán kính cho phép (mét).</param>
     /// <param name="wifiSsid">SSID nội bộ được chấp nhận.</param>
+    /// <param name="enableGps">Có bật lớp xác thực GPS hay không.</param>
+    /// <param name="enableWifi">Có bật lớp xác thực Wi-Fi hay không.</param>
     public static GeofenceCheckResult Evaluate(
         string? toaDo,
         string? tenWifiHienTai,
         double hotelLatitude,
         double hotelLongitude,
         double radiusMeters = DEFAULT_RADIUS_METERS,
-        string wifiSsid = DEFAULT_WIFI_SSID)
+        string wifiSsid = DEFAULT_WIFI_SSID,
+        bool enableGps = true,
+        bool enableWifi = true)
     {
+        if (!enableGps && !enableWifi)
+        {
+            return new GeofenceCheckResult(
+                false,
+                null,
+                null,
+                "Cấu hình chấm công không hợp lệ: hệ thống phải bật ít nhất một lớp xác thực (GPS hoặc Wi-Fi). Vui lòng liên hệ bộ phận CNTT.");
+        }
+
         // Lớp 1 — GPS. Đây là lớp ưu tiên vì nó chứng minh được vị trí vật lý,
         // còn SSID thì bất kỳ ai đặt tên Wi-Fi trùng cũng qua được.
         double? khoangCach = null;
-        if (TryParseCoordinate(toaDo, out var lat, out var lng))
+        if (enableGps && TryParseCoordinate(toaDo, out var lat, out var lng))
         {
             khoangCach = CalculateDistanceMeters(lat, lng, hotelLatitude, hotelLongitude);
             if (khoangCach.Value <= radiusMeters)
@@ -134,24 +148,35 @@ public static class GeofencePolicy
 
         // Lớp 2 — Wi-Fi nội bộ. So sánh không phân biệt hoa thường vì Android trả
         // SSID kèm dấu nháy kép ở một số dòng máy và đổi hoa thường tuỳ ROM.
-        // Chỉ áp dụng khi wifiSsid được cấu hình (khác rỗng).
-        if (!string.IsNullOrWhiteSpace(wifiSsid) &&
+        // Chỉ áp dụng khi lớp Wi-Fi đang bật và wifiSsid được cấu hình (khác rỗng).
+        if (enableWifi &&
+            !string.IsNullOrWhiteSpace(wifiSsid) &&
             !string.IsNullOrWhiteSpace(tenWifiHienTai) &&
             string.Equals(tenWifiHienTai.Trim().Trim('"'), wifiSsid, StringComparison.OrdinalIgnoreCase))
         {
             return new GeofenceCheckResult(true, "WIFI", khoangCach, null);
         }
 
-        var coWifiConfig = !string.IsNullOrWhiteSpace(wifiSsid);
-        var thongDiep = khoangCach.HasValue
-            ? (coWifiConfig
-                ? string.Create(CultureInfo.InvariantCulture,
-                    $"Bạn đang ở cách khách sạn {khoangCach.Value:F0} m, ngoài phạm vi {radiusMeters:F0} m và không kết nối Wi-Fi \"{wifiSsid}\". Vui lòng di chuyển vào trong khuôn viên khách sạn rồi quẹt lại.")
-                : string.Create(CultureInfo.InvariantCulture,
-                    $"Bạn đang ở cách khách sạn {khoangCach.Value:F0} m, ngoài phạm vi {radiusMeters:F0} m. Vui lòng di chuyển vào trong khuôn viên khách sạn rồi quẹt lại."))
-            : (coWifiConfig
-                ? $"Không xác định được vị trí của bạn và thiết bị không kết nối Wi-Fi \"{wifiSsid}\". Vui lòng bật định vị (GPS) hoặc kết nối Wi-Fi nội bộ rồi quẹt lại."
-                : "Không xác định được vị trí của bạn. Vui lòng bật định vị (GPS) rồi quẹt lại.");
+        var coWifiConfig = enableWifi && !string.IsNullOrWhiteSpace(wifiSsid);
+        string thongDiep;
+        if (!enableGps)
+        {
+            thongDiep = coWifiConfig
+                ? $"Hệ thống đang dùng chấm công qua Wi-Fi nội bộ \"{wifiSsid}\" (GPS đang tắt). Vui lòng kết nối đúng Wi-Fi khách sạn rồi quẹt lại."
+                : "Lớp xác thực Wi-Fi đang bật nhưng chưa cấu hình tên Wi-Fi (SSID). Vui lòng liên hệ bộ phận CNTT.";
+        }
+        else
+        {
+            thongDiep = khoangCach.HasValue
+                ? (coWifiConfig
+                    ? string.Create(CultureInfo.InvariantCulture,
+                        $"Bạn đang ở cách khách sạn {khoangCach.Value:F0} m, ngoài phạm vi {radiusMeters:F0} m và không kết nối Wi-Fi \"{wifiSsid}\". Vui lòng di chuyển vào trong khuôn viên khách sạn rồi quẹt lại.")
+                    : string.Create(CultureInfo.InvariantCulture,
+                        $"Bạn đang ở cách khách sạn {khoangCach.Value:F0} m, ngoài phạm vi {radiusMeters:F0} m. Vui lòng di chuyển vào trong khuôn viên khách sạn rồi quẹt lại."))
+                : (coWifiConfig
+                    ? $"Không xác định được vị trí của bạn và thiết bị không kết nối Wi-Fi \"{wifiSsid}\". Vui lòng bật định vị (GPS) hoặc kết nối Wi-Fi nội bộ rồi quẹt lại."
+                    : "Không xác định được vị trí của bạn. Vui lòng bật định vị (GPS) rồi quẹt lại.");
+        }
 
         return new GeofenceCheckResult(false, null, khoangCach, thongDiep);
     }

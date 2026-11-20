@@ -1,10 +1,12 @@
 {
   "HotelName": "The OverTime Hotel \u0026 Resort",
   "Address": "123 \u0110\u01B0\u1EDDng L\u00EA L\u1EE3i, Ph\u01B0\u1EDDng B\u1EBFn Ngh\u00E9, Qu\u1EADn 1, TP. H\u1ED3 Ch\u00ED Minh",
-  "HotelLatitude": 10.735597069427081,
-  "HotelLongitude": 106.66701646619423,
+  "HotelLatitude": 10.760011951195828,
+  "HotelLongitude": 106.68227975434863,
   "RadiusMeters": 250,
-  "WifiSsid": "La  Kaffe",
-  "LastUpdatedAt": "2026-11-17T06:58:51.7871757+00:00",
+  "WifiSsid": "Poww",
+  "EnableGps": true,
+  "EnableWifi": false,
+  "LastUpdatedAt": "2026-11-20T05:13:56.9269403+00:00",
   "LastUpdatedBy": "it_bao"
 }

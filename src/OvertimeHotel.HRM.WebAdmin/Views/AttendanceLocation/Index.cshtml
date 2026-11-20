@@ -61,8 +61,8 @@
                             <span class="fw-bold text-dark fs-6">
                                 <i class="bi bi-sliders text-primary me-2"></i>Thông số cơ sở &amp; Định vị
                             </span>
-                            <span class="badge bg-light text-muted border">
-                                Lớp 1: GPS · Lớp 2: Wi-Fi
+                            <span class="badge bg-light text-muted border" id="activeLayersBadge">
+                                @(Model.EnableGps && Model.EnableWifi ? "Lớp 1: GPS · Lớp 2: Wi-Fi" : (Model.EnableGps ? "Chỉ lớp GPS" : "Chỉ lớp Wi-Fi"))
                             </span>
                         </div>
                     </div>
@@ -90,8 +90,64 @@
 
                         <hr class="text-muted opacity-25 my-4" />
 
+                        <!-- 1b. Công tắc bật/tắt các lớp xác thực Check-in -->
+                        <div class="p-3 rounded-4 border bg-light-subtle mb-4">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                <div>
+                                    <div class="fw-bold text-dark small">
+                                        <i class="bi bi-layers-half text-primary me-1.5"></i>Bật / Tắt các lớp xác thực Check-in
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.78rem;">
+                                        Bắt buộc bật ít nhất <strong>1 lớp</strong> (không thể tắt đồng thời cả GPS và Wi-Fi).
+                                    </div>
+                                </div>
+                                <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1" style="font-size: 0.72rem;">
+                                    <i class="bi bi-shield-check me-1"></i>Tối thiểu 1 lớp hoạt động
+                                </span>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <div class="p-3 rounded-3 border bg-white h-100 d-flex align-items-center justify-content-between gap-2">
+                                        <div>
+                                            <label class="fw-semibold text-dark small mb-0 d-block" for="toggleEnableGps" style="cursor: pointer;">
+                                                <i class="bi bi-geo-alt-fill text-primary me-1"></i>Lớp 1: Định vị GPS
+                                            </label>
+                                            <span class="text-muted" style="font-size: 0.75rem;">Kiểm tra bán kính quanh khách sạn</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                            <span id="gpsLayerStatusBadge" class="badge @(Model.EnableGps ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary")">
+                                                @(Model.EnableGps ? "Đang bật" : "Đã tắt")
+                                            </span>
+                                            <div class="form-check form-switch m-0">
+                                                <input asp-for="EnableGps" class="form-check-input" type="checkbox" role="switch" id="toggleEnableGps" style="width: 2.6em; height: 1.35em; cursor: pointer;" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="p-3 rounded-3 border bg-white h-100 d-flex align-items-center justify-content-between gap-2">
+                                        <div>
+                                            <label class="fw-semibold text-dark small mb-0 d-block" for="toggleEnableWifi" style="cursor: pointer;">
+                                                <i class="bi bi-wifi text-info me-1"></i>Lớp 2: Wi-Fi nội bộ
+                                            </label>
+                                            <span class="text-muted" style="font-size: 0.75rem;">Kiểm tra tên mạng Wi-Fi (SSID)</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                            <span id="wifiLayerStatusBadge" class="badge @(Model.EnableWifi ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary")">
+                                                @(Model.EnableWifi ? "Đang bật" : "Đã tắt")
+                                            </span>
+                                            <div class="form-check form-switch m-0">
+                                                <input asp-for="EnableWifi" class="form-check-input" type="checkbox" role="switch" id="toggleEnableWifi" style="width: 2.6em; height: 1.35em; cursor: pointer;" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 2. Toạ độ GPS -->
-                        <div class="row g-3 mb-3">
+                        <div id="gpsSettingsGroup" class="row g-3 mb-3 @(Model.EnableGps ? "" : "opacity-50")">
                             <div class="col-sm-6">
                                 <label asp-for="HotelLatitude" class="form-label fw-semibold text-dark small">
                                     Vĩ độ (Latitude) <span class="text-danger">*</span>
@@ -116,7 +172,7 @@
 
                         <!-- 3. Bán kính quét (Radius) & Wi-Fi SSID -->
                         <div class="row g-3 mb-4">
-                            <div class="col-sm-6">
+                            <div id="radiusSettingsGroup" class="col-sm-6 @(Model.EnableGps ? "" : "opacity-50")">
                                 <label asp-for="RadiusMeters" class="form-label fw-semibold text-dark small">
                                     Bán kính cho phép (Mét) <span class="text-danger">*</span>
                                 </label>
@@ -128,16 +184,18 @@
                                 <span asp-validation-for="RadiusMeters" class="text-danger small"></span>
                                 <div class="form-text small">Khuyến nghị từ 100m - 300m bao phủ trọn khuôn viên khách sạn.</div>
                             </div>
-                            <div class="col-sm-6">
+                            <div id="wifiSettingsGroup" class="col-sm-6 @(Model.EnableWifi ? "" : "opacity-50")">
                                 <label asp-for="WifiSsid" class="form-label fw-semibold text-dark small">
-                                    Wi-Fi nội bộ khách sạn (SSID)
+                                    Wi-Fi nội bộ khách sạn (SSID) <span id="wifiRequiredMark" class="text-danger @(Model.EnableWifi ? "" : "d-none")">*</span>
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-wifi"></i></span>
-                                    <input asp-for="WifiSsid" class="form-control border-start-0" placeholder="OverTimeHotel_Staff" />
+                                    <input asp-for="WifiSsid" id="inputWifiSsid" class="form-control border-start-0" placeholder="OverTimeHotel_Staff" />
                                 </div>
                                 <span asp-validation-for="WifiSsid" class="text-danger small"></span>
-                                <div class="form-text small">Lớp xác thực dự phòng khi nhân viên ở tầng hầm/khu vực khuất GPS.</div>
+                                <div class="form-text small" id="wifiHelpText">
+                                    @(Model.EnableWifi ? "Đang áp dụng xác thực qua tên Wi-Fi này." : "Lớp Wi-Fi đang tắt — tên Wi-Fi vẫn được giữ lại khi bật lại.")
+                                </div>
                             </div>
                         </div>
 
@@ -405,5 +463,93 @@
                 badge.innerText = 'BỊ CHẶN (Vượt quá bán kính ' + (distance - radius).toFixed(1) + 'm)';
             }
         });
+
+        // Đồng bộ trạng thái bật/tắt 2 lớp xác thực Check-in (GPS & Wi-Fi) — Không cho phép tắt cả 2
+        (function () {
+            var gpsToggle = document.getElementById('toggleEnableGps');
+            var wifiToggle = document.getElementById('toggleEnableWifi');
+            var gpsBadge = document.getElementById('gpsLayerStatusBadge');
+            var wifiBadge = document.getElementById('wifiLayerStatusBadge');
+            var headerBadge = document.getElementById('activeLayersBadge');
+            var gpsGroup = document.getElementById('gpsSettingsGroup');
+            var radiusGroup = document.getElementById('radiusSettingsGroup');
+            var wifiGroup = document.getElementById('wifiSettingsGroup');
+            var wifiInput = document.getElementById('inputWifiSsid');
+            var wifiRequiredMark = document.getElementById('wifiRequiredMark');
+            var wifiHelpText = document.getElementById('wifiHelpText');
+            var form = document.getElementById('geofenceConfigForm');
+
+            function syncLayerUi() {
+                if (!gpsToggle || !wifiToggle) return;
+                var gpsOn = gpsToggle.checked;
+                var wifiOn = wifiToggle.checked;
+
+                if (gpsBadge) {
+                    gpsBadge.textContent = gpsOn ? 'Đang bật' : 'Đã tắt';
+                    gpsBadge.className = 'badge ' + (gpsOn ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary');
+                }
+                if (wifiBadge) {
+                    wifiBadge.textContent = wifiOn ? 'Đang bật' : 'Đã tắt';
+                    wifiBadge.className = 'badge ' + (wifiOn ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary');
+                }
+                if (headerBadge) {
+                    headerBadge.textContent = (gpsOn && wifiOn)
+                        ? 'Lớp 1: GPS · Lớp 2: Wi-Fi'
+                        : (gpsOn ? 'Chỉ lớp GPS' : 'Chỉ lớp Wi-Fi');
+                }
+
+                gpsGroup?.classList.toggle('opacity-50', !gpsOn);
+                radiusGroup?.classList.toggle('opacity-50', !gpsOn);
+                wifiGroup?.classList.toggle('opacity-50', !wifiOn);
+                wifiRequiredMark?.classList.toggle('d-none', !wifiOn);
+
+                if (wifiHelpText) {
+                    wifiHelpText.textContent = wifiOn
+                        ? 'Đang áp dụng xác thực qua tên Wi-Fi này.'
+                        : 'Lớp Wi-Fi đang tắt — tên Wi-Fi vẫn được giữ lại khi bật lại.';
+                }
+            }
+
+            function guardAtLeastOneLayer(changedInput) {
+                if (!gpsToggle.checked && !wifiToggle.checked) {
+                    changedInput.checked = true;
+                    showLuxuryToast(
+                        'Không thể tắt cả 2 lớp',
+                        'Hệ thống bắt buộc phải bật ít nhất <strong>1 lớp xác thực</strong> (GPS hoặc Wi-Fi).',
+                        'error'
+                    );
+                }
+                syncLayerUi();
+            }
+
+            gpsToggle?.addEventListener('change', function () { guardAtLeastOneLayer(gpsToggle); });
+            wifiToggle?.addEventListener('change', function () { guardAtLeastOneLayer(wifiToggle); });
+
+            form?.addEventListener('submit', function (e) {
+                if (gpsToggle && wifiToggle && !gpsToggle.checked && !wifiToggle.checked) {
+                    e.preventDefault();
+                    gpsToggle.checked = true;
+                    syncLayerUi();
+                    showLuxuryToast(
+                        'Không thể lưu cấu hình',
+                        'Phải bật ít nhất 1 lớp xác thực Check-in (GPS hoặc Wi-Fi).',
+                        'error'
+                    );
+                    return;
+                }
+
+                if (wifiToggle && wifiToggle.checked && wifiInput && !wifiInput.value.trim()) {
+                    e.preventDefault();
+                    wifiInput.focus();
+                    showLuxuryToast(
+                        'Thiếu tên Wi-Fi (SSID)',
+                        'Vui lòng nhập Tên Wi-Fi nội bộ khi đang bật lớp xác thực Wi-Fi.',
+                        'error'
+                    );
+                }
+            });
+
+            syncLayerUi();
+        })();
     </script>
 }

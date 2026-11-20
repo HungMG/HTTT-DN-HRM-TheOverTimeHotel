@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace OvertimeHotel.HRM.WebAdmin.Models;
 
-public class AttendanceLocationViewModel
+public class AttendanceLocationViewModel : IValidatableObject
 {
     [Display(Name = "Tên cơ sở khách sạn")]
     [Required(ErrorMessage = "Vui lòng nhập tên cơ sở khách sạn.")]
@@ -31,8 +31,31 @@ public class AttendanceLocationViewModel
 
     [Display(Name = "Tên Wi-Fi nội bộ (SSID)")]
     [StringLength(64, ErrorMessage = "Tên Wi-Fi tối đa 64 ký tự.")]
-    public string WifiSsid { get; set; } = "OverTimeHotel_Staff";
+    public string? WifiSsid { get; set; } = "OverTimeHotel_Staff";
+
+    [Display(Name = "Bật lớp xác thực GPS")]
+    public bool EnableGps { get; set; } = true;
+
+    [Display(Name = "Bật lớp xác thực Wi-Fi nội bộ")]
+    public bool EnableWifi { get; set; } = true;
 
     public DateTimeOffset? LastUpdatedAt { get; set; }
     public string? LastUpdatedBy { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!EnableGps && !EnableWifi)
+        {
+            yield return new ValidationResult(
+                "Không thể tắt đồng thời cả lớp GPS và lớp Wi-Fi. Hệ thống bắt buộc phải bật ít nhất 1 lớp xác thực chấm công.",
+                [nameof(EnableGps), nameof(EnableWifi)]);
+        }
+
+        if (EnableWifi && string.IsNullOrWhiteSpace(WifiSsid))
+        {
+            yield return new ValidationResult(
+                "Vui lòng nhập Tên Wi-Fi nội bộ (SSID) khi đang bật lớp xác thực Wi-Fi.",
+                [nameof(WifiSsid)]);
+        }
+    }
 }

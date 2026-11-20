@@ -49,6 +49,8 @@ public class AttendanceController : ControllerBase
             hotelLongitude = config.HotelLongitude,
             radiusMeters = config.RadiusMeters,
             wifiSsid = config.WifiSsid,
+            enableGps = config.EnableGps,
+            enableWifi = config.EnableWifi,
             lastUpdatedAt = config.LastUpdatedAt
         });
     }

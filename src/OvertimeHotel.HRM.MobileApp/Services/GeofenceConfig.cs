@@ -33,15 +33,15 @@ public sealed class GeofenceConfig
     public double HotelLongitude { get; init; } = 106.687421d;
     public double RadiusMeters { get; init; } = 250d;
     public string WifiSsid { get; init; } = "";
+    public bool EnableGps { get; init; } = true;
+    public bool EnableWifi { get; init; } = true;
 
     /// <summary>
     /// Đọc cấu hình toạ độ từ CSDL Supabase Cloud (đồng bộ tức thời khi IT đổi cấu hình),
     /// lưu đệm vào Preferences máy để chạy offline, và dự phòng bằng file appsettings.json.
     /// </summary>
-    public static async Task<GeofenceConfig> LoadAsync(ILogger logger, SupabaseRestClient? rest = null, bool force = false)
+    public static async Task<GeofenceConfig> LoadAsync(ILogger? logger, SupabaseRestClient? rest = null, bool force = false)
     {
-        ArgumentNullException.ThrowIfNull(logger);
-
         // 1. ƯU TIÊN 1: Đồng bộ cấu hình mới nhất từ bảng cau_hinh_cham_cong trên Supabase
         if (rest != null)
         {
@@ -53,7 +53,7 @@ public sealed class GeofenceConfig
             {
                 try
                 {
-                    var json = await rest.GetAsync("cau_hinh_cham_cong?select=ten_khach_san,dia_chi,vi_do,kinh_do,ban_kinh_met,wifi_ssid&order=id.asc&limit=1");
+                    var json = await rest.GetAsync("cau_hinh_cham_cong?select=ten_khach_san,dia_chi,vi_do,kinh_do,ban_kinh_met,wifi_ssid,bat_gps,bat_wifi&order=id.asc&limit=1");
                     var rows = PostgrstJson.ParseArray(json);
                     if (rows.Length > 0)
                     {
@@ -64,6 +64,12 @@ public sealed class GeofenceConfig
                         var lng = (double)PostgrstJson.ReadDecimal(row, "kinh_do", 0m);
                         var radius = (double)PostgrstJson.ReadDecimal(row, "ban_kinh_met", 0m);
                         var wifi = PostgrstJson.ReadString(row, "wifi_ssid");
+                        var enableGps = PostgrstJson.ReadBool(row, "bat_gps", fallback: true);
+                        var enableWifi = PostgrstJson.ReadBool(row, "bat_wifi", fallback: true);
+                        if (!enableGps && !enableWifi)
+                        {
+                            enableGps = true;
+                        }
 
                         if (IsUsableCoordinate(lat, lng))
                         {
@@ -73,11 +79,13 @@ public sealed class GeofenceConfig
                             Preferences.Default.Set("Geofence_Longitude", lng);
                             Preferences.Default.Set("Geofence_Radius", radius > 0 ? radius : GeofencePolicy.DEFAULT_RADIUS_METERS);
                             Preferences.Default.Set("Geofence_Wifi", wifi ?? string.Empty);
+                            Preferences.Default.Set("Geofence_EnableGps", enableGps);
+                            Preferences.Default.Set("Geofence_EnableWifi", enableWifi);
                             Preferences.Default.Set("Geofence_SyncedAt", nowSec);
 
-                            logger.LogInformation(
-                                "Đã đồng bộ toạ độ GPS chấm công từ Supabase Cloud: {Name} ({Lat}, {Lng}), R={Radius}m, SSID={Wifi}.",
-                                name, lat, lng, radius, wifi);
+                            logger?.LogInformation(
+                                "Đã đồng bộ cấu hình chấm công từ Supabase Cloud: {Name} ({Lat}, {Lng}), R={Radius}m, SSID={Wifi}, GPS={Gps}, WiFi={WifiOn}.",
+                                name, lat, lng, radius, wifi, enableGps, enableWifi);
 
                             return new GeofenceConfig
                             {
@@ -86,14 +94,16 @@ public sealed class GeofenceConfig
                                 HotelLatitude = lat,
                                 HotelLongitude = lng,
                                 RadiusMeters = radius > 0 ? radius : GeofencePolicy.DEFAULT_RADIUS_METERS,
-                                WifiSsid = wifi ?? string.Empty
+                                WifiSsid = wifi ?? string.Empty,
+                                EnableGps = enableGps,
+                                EnableWifi = enableWifi
                             };
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Chưa đồng bộ được toạ độ từ Supabase Cloud. Lùi về bộ nhớ máy.");
+                    logger?.LogWarning(ex, "Chưa đồng bộ được toạ độ từ Supabase Cloud. Lùi về bộ nhớ máy.");
                 }
             }
         }
@@ -107,6 +117,12 @@ public sealed class GeofenceConfig
             var cachedLng = Preferences.Default.Get("Geofence_Longitude", 0d);
             var cachedRadius = Preferences.Default.Get("Geofence_Radius", 0d);
             var cachedWifi = Preferences.Default.Get("Geofence_Wifi", string.Empty);
+            var cachedEnableGps = Preferences.Default.Get("Geofence_EnableGps", true);
+            var cachedEnableWifi = Preferences.Default.Get("Geofence_EnableWifi", true);
+            if (!cachedEnableGps && !cachedEnableWifi)
+            {
+                cachedEnableGps = true;
+            }
 
             if (IsUsableCoordinate(cachedLat, cachedLng))
             {
@@ -117,7 +133,9 @@ public sealed class GeofenceConfig
                     HotelLatitude = cachedLat,
                     HotelLongitude = cachedLng,
                     RadiusMeters = cachedRadius > 0 ? cachedRadius : GeofencePolicy.DEFAULT_RADIUS_METERS,
-                    WifiSsid = cachedWifi
+                    WifiSsid = cachedWifi,
+                    EnableGps = cachedEnableGps,
+                    EnableWifi = cachedEnableWifi
                 };
             }
         }
@@ -143,8 +161,15 @@ public sealed class GeofenceConfig
 
             if (checkIn is null)
             {
-                logger.LogWarning("File {File} không có mục CheckIn — dùng toạ độ mặc định.", AssetFileName);
+                logger?.LogWarning("File {File} không có mục CheckIn — dùng toạ độ mặc định.", AssetFileName);
                 return new GeofenceConfig();
+            }
+
+            var enableGps = checkIn.EnableGps ?? true;
+            var enableWifi = checkIn.EnableWifi ?? true;
+            if (!enableGps && !enableWifi)
+            {
+                enableGps = true;
             }
 
             var config = new GeofenceConfig
@@ -154,7 +179,9 @@ public sealed class GeofenceConfig
                 RadiusMeters = checkIn.RadiusMeters > 0 ? checkIn.RadiusMeters : GeofencePolicy.DEFAULT_RADIUS_METERS,
                 WifiSsid = string.IsNullOrWhiteSpace(checkIn.WifiSsid)
                     ? GeofencePolicy.DEFAULT_WIFI_SSID
-                    : checkIn.WifiSsid.Trim()
+                    : checkIn.WifiSsid.Trim(),
+                EnableGps = enableGps,
+                EnableWifi = enableWifi
             };
 
             // Toạ độ 0,0 hoặc ngoài miền giá trị = file bị sửa hỏng. Chặn toàn bộ
@@ -162,13 +189,15 @@ public sealed class GeofenceConfig
             // việc lùi về toạ độ mặc định và ghi log.
             if (!IsUsableCoordinate(config.HotelLatitude, config.HotelLongitude))
             {
-                logger.LogWarning(
+                logger?.LogWarning(
                     "Toạ độ khách sạn trong {File} không hợp lệ ({Lat}, {Lng}) — dùng toạ độ mặc định.",
                     AssetFileName, config.HotelLatitude, config.HotelLongitude);
                 return new GeofenceConfig
                 {
                     RadiusMeters = config.RadiusMeters,
-                    WifiSsid = config.WifiSsid
+                    WifiSsid = config.WifiSsid,
+                    EnableGps = config.EnableGps,
+                    EnableWifi = config.EnableWifi
                 };
             }
 
@@ -176,7 +205,7 @@ public sealed class GeofenceConfig
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Không đọc được {File} — dùng toạ độ mặc định của PRD 4.1.", AssetFileName);
+            logger?.LogError(ex, "Không đọc được {File} — dùng toạ độ mặc định của PRD 4.1.", AssetFileName);
             return new GeofenceConfig();
         }
     }
@@ -205,5 +234,11 @@ public sealed class GeofenceConfig
 
         [JsonPropertyName("WifiSsid")]
         public string? WifiSsid { get; init; }
+
+        [JsonPropertyName("EnableGps")]
+        public bool? EnableGps { get; init; }
+
+        [JsonPropertyName("EnableWifi")]
+        public bool? EnableWifi { get; init; }
     }
 }

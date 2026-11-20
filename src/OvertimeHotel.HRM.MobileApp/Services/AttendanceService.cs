@@ -43,13 +43,6 @@ public class AttendanceService : IAttendanceService
     private readonly IGeoLocationService _geoLocationService;
     private readonly ILogger<AttendanceService> _logger;
 
-    /// <summary>
-    /// Cấu hình phạm vi quẹt thẻ, nạp một lần rồi dùng lại. Toạ độ khách sạn
-    /// không đổi trong suốt phiên chạy nên đọc file lại mỗi lần quẹt thẻ là
-    /// thừa — và trên Android, mở stream từ APK khá chậm.
-    /// </summary>
-    private GeofenceConfig? _geofenceConfig;
-
     public bool IsDemoMode => false;
 
     public AttendanceService(
@@ -227,31 +220,37 @@ public class AttendanceService : IAttendanceService
     /// </summary>
     private async Task<GeofenceCheckResult> ValidateLocationAsync(string? toaDo)
     {
-        _geofenceConfig ??= await GeofenceConfig.LoadAsync(_logger, _rest);
+        // Luôn nạp cấu hình mới nhất từ Supabase (tự lùi về Preferences/appsettings khi offline)
+        // để khi IT đổi vị trí hoặc bật/tắt lớp check-in trên WebAdmin, lượt chấm công tiếp theo nhận ngay.
+        var geofenceConfig = await GeofenceConfig.LoadAsync(_logger, _rest, force: true);
 
-        // Chỉ tra SSID khi GPS không đủ kết luận. Đọc SSID trên Android cần quyền
-        // vị trí và mất vài chục mili-giây; khi toạ độ đã nằm trong bán kính thì
-        // lớp thứ hai không thể thay đổi kết quả.
-        if (GeofencePolicy.TryParseCoordinate(toaDo, out var lat, out var lng))
+        // Chỉ tra SSID khi GPS tắt hoặc GPS không đủ kết luận. Đọc SSID trên Android cần
+        // quyền vị trí và mất vài chục mili-giây; khi lớp GPS đang bật và toạ độ đã nằm
+        // trong bán kính thì lớp thứ hai không thể thay đổi kết quả.
+        if (geofenceConfig.EnableGps && GeofencePolicy.TryParseCoordinate(toaDo, out var lat, out var lng))
         {
             var khoangCach = GeofencePolicy.CalculateDistanceMeters(
-                lat, lng, _geofenceConfig.HotelLatitude, _geofenceConfig.HotelLongitude);
+                lat, lng, geofenceConfig.HotelLatitude, geofenceConfig.HotelLongitude);
 
-            if (khoangCach <= _geofenceConfig.RadiusMeters)
+            if (khoangCach <= geofenceConfig.RadiusMeters)
             {
                 return new GeofenceCheckResult(true, "GPS", khoangCach, null);
             }
         }
 
-        var ssid = await _geoLocationService.GetCurrentWifiSsidAsync();
+        var ssid = geofenceConfig.EnableWifi
+            ? await _geoLocationService.GetCurrentWifiSsidAsync()
+            : null;
 
         var result = GeofencePolicy.Evaluate(
             toaDo,
             ssid,
-            _geofenceConfig.HotelLatitude,
-            _geofenceConfig.HotelLongitude,
-            _geofenceConfig.RadiusMeters,
-            _geofenceConfig.WifiSsid);
+            geofenceConfig.HotelLatitude,
+            geofenceConfig.HotelLongitude,
+            geofenceConfig.RadiusMeters,
+            geofenceConfig.WifiSsid,
+            geofenceConfig.EnableGps,
+            geofenceConfig.EnableWifi);
 
         if (!result.IsAllowed)
         {

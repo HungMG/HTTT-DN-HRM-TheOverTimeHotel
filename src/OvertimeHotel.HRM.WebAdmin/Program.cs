@@ -479,6 +479,7 @@ if (!string.IsNullOrWhiteSpace(connectionString) && !builder.Configuration.GetVa
         await DatabaseSchemaInitializer.EnsureEmployeePurgeSchemaAsync(schemaContext);
         await DatabaseSchemaInitializer.EnsureRemoveShiftSupervisorPositionAsync(schemaContext);
         await DatabaseSchemaInitializer.EnsureAttendancePerformanceIndexesAsync(schemaContext);
+        await DatabaseSchemaInitializer.EnsureAttendanceLocationLayersSchemaAsync(schemaContext);
     }
     catch (Exception ex)
     {

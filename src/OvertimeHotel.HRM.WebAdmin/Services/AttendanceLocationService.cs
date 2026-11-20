@@ -34,6 +34,40 @@ public class AttendanceLocationService : IAttendanceLocationService
 
     public async Task<AttendanceLocationViewModel> GetLocationConfigAsync()
     {
+        // 1. Ưu tiên đọc từ CSDL Supabase (nguồn chân lý dùng chung giữa WebAdmin và MobileApp)
+        try
+        {
+            var dbConfig = await _dbContext.Database
+                .SqlQueryRaw<AttendanceLocationViewModel>("""
+                    SELECT
+                        COALESCE(ten_khach_san, '') AS "HotelName",
+                        COALESCE(dia_chi, '') AS "Address",
+                        vi_do AS "HotelLatitude",
+                        kinh_do AS "HotelLongitude",
+                        ban_kinh_met AS "RadiusMeters",
+                        COALESCE(wifi_ssid, '') AS "WifiSsid",
+                        COALESCE(bat_gps, true) AS "EnableGps",
+                        COALESCE(bat_wifi, true) AS "EnableWifi",
+                        cap_nhat_luc AS "LastUpdatedAt",
+                        nguoi_cap_nhat AS "LastUpdatedBy"
+                    FROM public.cau_hinh_cham_cong
+                    WHERE id = 1
+                    LIMIT 1
+                    """)
+                .FirstOrDefaultAsync();
+
+            if (dbConfig != null && !(dbConfig.HotelLatitude == 0d && dbConfig.HotelLongitude == 0d))
+            {
+                EnsureAtLeastOneLayer(dbConfig);
+                return dbConfig;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể đọc cấu hình vị trí từ CSDL Supabase, lùi về file {File}.", ConfigFileName);
+        }
+
+        // 2. Dự phòng: đọc từ file JSON cục bộ
         var filePath = GetConfigFilePath();
 
         await FileLock.WaitAsync();
@@ -45,6 +79,7 @@ public class AttendanceLocationService : IAttendanceLocationService
                 var config = JsonSerializer.Deserialize<AttendanceLocationViewModel>(json);
                 if (config != null)
                 {
+                    EnsureAtLeastOneLayer(config);
                     return config;
                 }
             }
@@ -58,22 +93,28 @@ public class AttendanceLocationService : IAttendanceLocationService
             FileLock.Release();
         }
 
-        // Lùi về cấu hình mặc định trong appsettings.json hoặc hằng số PRD 4.1
+        // 3. Lùi về cấu hình mặc định trong appsettings.json hoặc hằng số PRD 4.1
         var checkInSection = _configuration.GetSection("CheckIn");
         var lat = checkInSection.GetValue<double?>("HotelLatitude") ?? 10.778848;
         var lng = checkInSection.GetValue<double?>("HotelLongitude") ?? 106.687421;
         var radius = checkInSection.GetValue<double?>("RadiusMeters") ?? GeofencePolicy.DEFAULT_RADIUS_METERS;
         var wifi = checkInSection.GetValue<string>("WifiSsid") ?? GeofencePolicy.DEFAULT_WIFI_SSID;
+        var enableGps = checkInSection.GetValue<bool?>("EnableGps") ?? true;
+        var enableWifi = checkInSection.GetValue<bool?>("EnableWifi") ?? true;
 
-        return new AttendanceLocationViewModel
+        var fallback = new AttendanceLocationViewModel
         {
             HotelName = "The OverTime Hotel & Resort",
             Address = "123 Đường Lê Lợi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
             HotelLatitude = lat,
             HotelLongitude = lng,
             RadiusMeters = radius,
-            WifiSsid = string.IsNullOrWhiteSpace(wifi) ? GeofencePolicy.DEFAULT_WIFI_SSID : wifi
+            WifiSsid = string.IsNullOrWhiteSpace(wifi) ? GeofencePolicy.DEFAULT_WIFI_SSID : wifi,
+            EnableGps = enableGps,
+            EnableWifi = enableWifi
         };
+        EnsureAtLeastOneLayer(fallback);
+        return fallback;
     }
 
     public async Task<bool> UpdateLocationConfigAsync(
@@ -84,35 +125,32 @@ public class AttendanceLocationService : IAttendanceLocationService
     {
         ArgumentNullException.ThrowIfNull(model);
 
-        var currentConfig = await GetLocationConfigAsync();
-        var filePath = GetConfigFilePath();
-
-        model.LastUpdatedAt = DateTimeOffset.UtcNow;
-        model.LastUpdatedBy = updatedBy;
-
-        await FileLock.WaitAsync();
-        try
+        if (!model.EnableGps && !model.EnableWifi)
         {
-            var json = JsonSerializer.Serialize(model, JsonOptions);
-            await File.WriteAllTextAsync(filePath, json);
-            _logger.LogInformation("Bộ phận IT {User} đã lưu cấu hình toạ độ chấm công thành công.", updatedBy);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Lỗi khi ghi file cấu hình toạ độ {File}.", ConfigFileName);
+            _logger.LogWarning("Từ chối lưu cấu hình từ {User} vì tắt đồng thời cả GPS và Wi-Fi.", updatedBy);
             return false;
         }
-        finally
+
+        var cleanWifi = model.WifiSsid?.Trim() ?? string.Empty;
+        if (model.EnableWifi && string.IsNullOrWhiteSpace(cleanWifi))
         {
-            FileLock.Release();
+            _logger.LogWarning("Từ chối lưu cấu hình từ {User} vì bật Wi-Fi nhưng bỏ trống SSID.", updatedBy);
+            return false;
         }
 
-        // Ghi nhật ký kiểm toán quản trị & Cập nhật CSDL Supabase để Mobile App nhận tức thời
+        var currentConfig = await GetLocationConfigAsync();
+        var nowUtc = DateTimeOffset.UtcNow;
+
+        model.WifiSsid = cleanWifi;
+        model.LastUpdatedAt = nowUtc;
+        model.LastUpdatedBy = updatedBy;
+
+        // 1. Cập nhật CSDL Supabase & nhật ký quản trị trước để Mobile App nhận tức thời
         try
         {
             await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-                INSERT INTO public.cau_hinh_cham_cong (id, ten_khach_san, dia_chi, vi_do, kinh_do, ban_kinh_met, wifi_ssid, cap_nhat_luc, nguoi_cap_nhat)
-                VALUES (1, {model.HotelName}, {model.Address}, {model.HotelLatitude}, {model.HotelLongitude}, {model.RadiusMeters}, {model.WifiSsid}, {DateTimeOffset.UtcNow}, {updatedBy})
+                INSERT INTO public.cau_hinh_cham_cong (id, ten_khach_san, dia_chi, vi_do, kinh_do, ban_kinh_met, wifi_ssid, bat_gps, bat_wifi, cap_nhat_luc, nguoi_cap_nhat)
+                VALUES (1, {model.HotelName}, {model.Address}, {model.HotelLatitude}, {model.HotelLongitude}, {model.RadiusMeters}, {cleanWifi}, {model.EnableGps}, {model.EnableWifi}, {nowUtc}, {updatedBy})
                 ON CONFLICT (id) DO UPDATE SET
                     ten_khach_san = EXCLUDED.ten_khach_san,
                     dia_chi = EXCLUDED.dia_chi,
@@ -120,6 +158,8 @@ public class AttendanceLocationService : IAttendanceLocationService
                     kinh_do = EXCLUDED.kinh_do,
                     ban_kinh_met = EXCLUDED.ban_kinh_met,
                     wifi_ssid = EXCLUDED.wifi_ssid,
+                    bat_gps = EXCLUDED.bat_gps,
+                    bat_wifi = EXCLUDED.bat_wifi,
                     cap_nhat_luc = EXCLUDED.cap_nhat_luc,
                     nguoi_cap_nhat = EXCLUDED.nguoi_cap_nhat;
                 """);
@@ -131,20 +171,47 @@ public class AttendanceLocationService : IAttendanceLocationService
                 TenNguoiThucHien = updatedBy,
                 TenTaiKhoanBiTacDong = "HE_THONG_GEOFENCE",
                 HanhDong = "CAP_NHAT_VI_TRI_CHAM_CONG",
-                NoiDung = $"Bộ phận CNTT '{updatedBy}' đã cập nhật vị trí định vị và bán kính chấm công của khách sạn.",
-                GiaTriCu = $"Toạ độ: ({currentConfig.HotelLatitude}, {currentConfig.HotelLongitude}); Bán kính: {currentConfig.RadiusMeters}m; SSID: {currentConfig.WifiSsid}",
-                GiaTriMoi = $"Toạ độ: ({model.HotelLatitude}, {model.HotelLongitude}); Bán kính: {model.RadiusMeters}m; SSID: {model.WifiSsid}",
+                NoiDung = $"Bộ phận CNTT '{updatedBy}' đã cập nhật cấu hình vị trí và lớp xác thực chấm công của khách sạn.",
+                GiaTriCu = $"Toạ độ: ({currentConfig.HotelLatitude}, {currentConfig.HotelLongitude}); Bán kính: {currentConfig.RadiusMeters}m; SSID: {currentConfig.WifiSsid}; GPS: {(currentConfig.EnableGps ? "Bật" : "Tắt")}; Wi-Fi: {(currentConfig.EnableWifi ? "Bật" : "Tắt")}",
+                GiaTriMoi = $"Toạ độ: ({model.HotelLatitude}, {model.HotelLongitude}); Bán kính: {model.RadiusMeters}m; SSID: {cleanWifi}; GPS: {(model.EnableGps ? "Bật" : "Tắt")}; Wi-Fi: {(model.EnableWifi ? "Bật" : "Tắt")}",
                 LyDo = "Cập nhật vị trí cơ sở khách sạn phục vụ xác thực chấm công di động",
                 DiaChiIp = ipAddress,
-                ThoiGian = DateTimeOffset.UtcNow
+                ThoiGian = nowUtc
             });
             await _dbContext.SaveChangesAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Không thể ghi nhật ký quản trị hoặc đồng bộ CSDL khi cập nhật vị trí chấm công.");
+            _logger.LogError(ex, "Không thể đồng bộ vị trí chấm công lên CSDL Supabase.");
+            return false;
+        }
+
+        // 2. Đồng bộ bản sao dự phòng ra file JSON cục bộ (không chặn nếu hệ thống tệp chỉ đọc)
+        var filePath = GetConfigFilePath();
+        await FileLock.WaitAsync();
+        try
+        {
+            var json = JsonSerializer.Serialize(model, JsonOptions);
+            await File.WriteAllTextAsync(filePath, json);
+            _logger.LogInformation("Bộ phận IT {User} đã lưu cấu hình toạ độ chấm công thành công.", updatedBy);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Đã cập nhật CSDL Supabase nhưng không thể ghi file dự phòng {File}.", ConfigFileName);
+        }
+        finally
+        {
+            FileLock.Release();
         }
 
         return true;
+    }
+
+    private static void EnsureAtLeastOneLayer(AttendanceLocationViewModel config)
+    {
+        if (!config.EnableGps && !config.EnableWifi)
+        {
+            config.EnableGps = true;
+        }
     }
 }

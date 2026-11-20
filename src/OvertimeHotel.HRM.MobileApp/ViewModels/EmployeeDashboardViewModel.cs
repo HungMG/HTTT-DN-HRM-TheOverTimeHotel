@@ -41,6 +41,9 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
     private double _hotelLatitude = 10.778848d;
     private double _hotelLongitude = 106.687421d;
     private double _hotelRadiusMeters = 250d;
+    private string _hotelWifiSsid = "";
+    private bool _enableGps = true;
+    private bool _enableWifi = true;
     private double? _distanceToHotelMeters;
     private bool _isWithinGeofence;
     private string _geofenceStatusText = "Đang kiểm tra phạm vi...";
@@ -194,9 +197,51 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    public string HotelWifiSsid
+    {
+        get => _hotelWifiSsid;
+        private set
+        {
+            if (SetProperty(ref _hotelWifiSsid, value))
+            {
+                OnPropertyChanged(nameof(HotelSummaryText));
+            }
+        }
+    }
+
+    public bool EnableGps
+    {
+        get => _enableGps;
+        private set
+        {
+            if (SetProperty(ref _enableGps, value))
+            {
+                OnPropertyChanged(nameof(HotelSummaryText));
+            }
+        }
+    }
+
+    public bool EnableWifi
+    {
+        get => _enableWifi;
+        private set
+        {
+            if (SetProperty(ref _enableWifi, value))
+            {
+                OnPropertyChanged(nameof(HotelSummaryText));
+            }
+        }
+    }
+
     public string HotelCoordinateText => $"{_hotelLatitude:F6}, {_hotelLongitude:F6}";
 
-    public string HotelSummaryText => $"{_hotelName} · R={_hotelRadiusMeters:F0}m";
+    public string HotelSummaryText => (_enableGps, _enableWifi) switch
+    {
+        (true, true) => $"{_hotelName} · R={_hotelRadiusMeters:F0}m · Wi-Fi",
+        (true, false) => $"{_hotelName} · Chỉ GPS (R={_hotelRadiusMeters:F0}m)",
+        (false, true) => $"{_hotelName} · Chỉ Wi-Fi ({(string.IsNullOrWhiteSpace(_hotelWifiSsid) ? "chưa đặt SSID" : _hotelWifiSsid)})",
+        _ => $"{_hotelName} · R={_hotelRadiusMeters:F0}m"
+    };
 
     public double? DistanceToHotelMeters
     {
@@ -314,60 +359,86 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
         try
         {
             // 1. Tải cấu hình toạ độ mới nhất từ Supabase Cloud (do IT cập nhật trên WebAdmin)
-            if (_logger != null)
-            {
-                var config = await GeofenceConfig.LoadAsync(_logger, _supabaseRestClient, force: true);
-                HotelName = config.HotelName;
-                HotelAddress = config.Address;
-                HotelLatitude = config.HotelLatitude;
-                HotelLongitude = config.HotelLongitude;
-                HotelRadiusMeters = config.RadiusMeters;
-            }
+            var config = await GeofenceConfig.LoadAsync(_logger, _supabaseRestClient, force: true);
+            HotelName = config.HotelName;
+            HotelAddress = config.Address;
+            HotelLatitude = config.HotelLatitude;
+            HotelLongitude = config.HotelLongitude;
+            HotelRadiusMeters = config.RadiusMeters;
+            HotelWifiSsid = config.WifiSsid;
+            EnableGps = config.EnableGps;
+            EnableWifi = config.EnableWifi;
 
-            // 2. Lấy toạ độ GPS chính xác từ thiết bị
+            // 2. Lấy toạ độ GPS từ thiết bị (vẫn lấy để hiển thị bản đồ nếu có, nhưng chỉ bắt buộc khi lớp GPS bật)
             var raw = await _geoLocationService.GetCurrentCoordinateAsync();
+            var hasValidGps = GeofencePolicy.TryParseCoordinate(raw, out var lat, out var lng);
 
-            if (string.IsNullOrWhiteSpace(raw))
+            if (hasValidGps)
             {
-                SetHasLocation(false);
-                GpsCoordinateText = "Không lấy được vị trí — hãy bật GPS";
-                GeofenceStatusText = "Chưa nhận được tín hiệu GPS";
-                return;
-            }
-
-            var parts = raw.Split(',');
-            if (parts.Length != 2
-                || !double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var lat)
-                || !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var lng))
-            {
-                SetHasLocation(false);
-                GpsCoordinateText = "Toạ độ không hợp lệ";
-                GeofenceStatusText = "Toạ độ GPS không hợp lệ";
-                return;
-            }
-
-            Latitude = lat;
-            Longitude = lng;
-            SetHasLocation(true);
-            _secondsUntilGpsRefresh = GPS_REFRESH_SECONDS;
-
-            GpsCoordinateText = string.Create(
-                CultureInfo.InvariantCulture,
-                $"{lat:F6}, {lng:F6}");
-
-            // 3. Tính khoảng cách tới toạ độ khách sạn thực tế từ IT
-            var dist = GeofencePolicy.CalculateDistanceMeters(lat, lng, HotelLatitude, HotelLongitude);
-            DistanceToHotelMeters = dist;
-            IsWithinGeofence = dist <= HotelRadiusMeters;
-
-            if (IsWithinGeofence)
-            {
-                GeofenceStatusText = $"✓ Trong phạm vi chấm công (cách {dist:F0}m / {HotelRadiusMeters:F0}m)";
+                Latitude = lat;
+                Longitude = lng;
+                SetHasLocation(true);
+                _secondsUntilGpsRefresh = GPS_REFRESH_SECONDS;
+                GpsCoordinateText = string.Create(CultureInfo.InvariantCulture, $"{lat:F6}, {lng:F6}");
+                DistanceToHotelMeters = GeofencePolicy.CalculateDistanceMeters(lat, lng, HotelLatitude, HotelLongitude);
             }
             else
             {
-                var distStr = dist >= 1000 ? $"{(dist / 1000):F1} km" : $"{dist:F0} m";
-                GeofenceStatusText = $"✕ Ngoài phạm vi (cách {distStr} / bán kính {HotelRadiusMeters:F0}m)";
+                SetHasLocation(false);
+                DistanceToHotelMeters = null;
+                GpsCoordinateText = EnableGps
+                    ? (string.IsNullOrWhiteSpace(raw) ? "Không lấy được vị trí — hãy bật GPS" : "Toạ độ không hợp lệ")
+                    : "GPS không bắt buộc (đang xác thực Wi-Fi)";
+            }
+
+            // 3. Đối chiếu trạng thái hợp lệ theo đúng các lớp đang bật
+            var ssid = EnableWifi ? await _geoLocationService.GetCurrentWifiSsidAsync() : null;
+            var eval = GeofencePolicy.Evaluate(
+                hasValidGps ? raw : null,
+                ssid,
+                HotelLatitude,
+                HotelLongitude,
+                HotelRadiusMeters,
+                HotelWifiSsid,
+                EnableGps,
+                EnableWifi);
+
+            IsWithinGeofence = eval.IsAllowed;
+
+            if (!EnableGps && EnableWifi)
+            {
+                GeofenceStatusText = eval.IsAllowed
+                    ? $"✓ Đã kết nối Wi-Fi nội bộ \"{HotelWifiSsid}\" (GPS đang tắt)"
+                    : (string.IsNullOrWhiteSpace(HotelWifiSsid)
+                        ? "✕ Chưa cấu hình tên Wi-Fi nội bộ (GPS đang tắt)"
+                        : $"✕ Chưa kết nối Wi-Fi \"{HotelWifiSsid}\" (GPS đang tắt)");
+            }
+            else if (eval.IsAllowed)
+            {
+                if (eval.Method == "WIFI")
+                {
+                    GeofenceStatusText = hasValidGps && DistanceToHotelMeters.HasValue
+                        ? $"✓ Đúng Wi-Fi \"{HotelWifiSsid}\" (ngoài bán kính {FormatDistance(DistanceToHotelMeters.Value)})"
+                        : $"✓ Đã kết nối Wi-Fi nội bộ \"{HotelWifiSsid}\"";
+                }
+                else
+                {
+                    var dist = DistanceToHotelMeters ?? 0d;
+                    GeofenceStatusText = EnableWifi
+                        ? $"✓ Trong phạm vi chấm công (cách {dist:F0}m / {HotelRadiusMeters:F0}m)"
+                        : $"✓ Trong phạm vi GPS (cách {dist:F0}m / {HotelRadiusMeters:F0}m · Wi-Fi đang tắt)";
+                }
+            }
+            else if (!hasValidGps)
+            {
+                GeofenceStatusText = "Chưa nhận được tín hiệu GPS";
+            }
+            else
+            {
+                var distStr = FormatDistance(DistanceToHotelMeters ?? 0d);
+                GeofenceStatusText = EnableWifi
+                    ? $"✕ Ngoài phạm vi (cách {distStr} / bán kính {HotelRadiusMeters:F0}m)"
+                    : $"✕ Ngoài phạm vi GPS (cách {distStr} / bán kính {HotelRadiusMeters:F0}m · Wi-Fi đang tắt)";
             }
         }
         finally
@@ -378,6 +449,9 @@ public class EmployeeDashboardViewModel : INotifyPropertyChanged, IDisposable
             OnPropertyChanged(nameof(GpsRefreshLabel));
         }
     }
+
+    private static string FormatDistance(double meters) =>
+        meters >= 1000 ? $"{(meters / 1000):F1} km" : $"{meters:F0} m";
 
     #endregion
 
