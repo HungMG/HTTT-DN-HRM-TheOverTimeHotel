@@ -1,6 +1,7 @@
 (function () {
     'use strict';
     const requests = new WeakMap();
+    const lastQuotes = new WeakMap();
     const money = new Intl.NumberFormat('vi-VN');
     const field = (form, contract, amendment) => form.elements[contract] || form.elements[amendment];
 
@@ -24,9 +25,86 @@
         if (!Number.isNaN(min) && min > 0 && val < min) {
             salary.setCustomValidity('Mức lương tối thiểu là ' + money.format(min) + ' VNĐ/tháng.');
         } else if (!Number.isNaN(max) && max > 0 && val > max) {
-            salary.setCustomValidity('Mức lương tối đa là ' + money.format(max) + ' VNĐ/tháng.');
+            salary.setCustomValidity(
+                salary.dataset.customCapActive === 'true'
+                    ? 'Mức lương ngoài khung không được vượt quá lương Tổng Giám Đốc (' + money.format(max) + ' VNĐ/tháng).'
+                    : 'Mức lương tối đa là ' + money.format(max) + ' VNĐ/tháng.'
+            );
         } else {
             salary.setCustomValidity('');
+        }
+    }
+
+    function applyBandLimits(form, data) {
+        const hint = form?.querySelector('[data-salary-band]');
+        const salary = field(form, 'Contract.LuongCoBan', 'salary');
+        if (!hint || !salary || !data) return;
+
+        const amendment = form.matches('[data-salary-amendment-form]');
+        const probation = !amendment && form.elements['Contract.HinhThucHopDong']?.value === 'THU_VIEC';
+        const wrapper = form.querySelector('[data-custom-salary-wrapper]');
+        const toggle = form.querySelector('[data-custom-salary-toggle]');
+        const eligible = !probation && Boolean(data.allowCustomSalary);
+
+        if (wrapper) wrapper.hidden = !eligible;
+        if (toggle) {
+            toggle.disabled = !eligible;
+            if (!eligible) toggle.checked = false;
+        }
+
+        const useCustom = eligible && Boolean(toggle?.checked);
+        const gmCap = Number(data.gmSalaryCap);
+        const customMax = (!Number.isNaN(gmCap) && gmCap > 0) ? Math.max(data.minimum, gmCap) : data.maximum;
+        const effectiveMax = useCustom ? customMax : data.maximum;
+
+        salary.min = String(probation ? data.probationSalary : data.minimum);
+        salary.max = String(probation ? data.probationSalary : effectiveMax);
+        salary.dataset.customCapActive = useCustom ? 'true' : 'false';
+        if (probation) salary.value = formatCommas(data.probationSalary);
+        validateSalaryInput(salary);
+
+        const capSourceLabel = data.gmCapFromSittingDirector
+            ? 'theo lương Tổng Giám Đốc hiện tại'
+            : 'mức tối đa khung Tổng Giám Đốc';
+
+        if (amendment) {
+            const tierName = data.tenureTier || (data.tenureMonths < 12 ? 'Dưới 1 năm' : data.tenureMonths < 36 ? 'Từ 1 đến dưới 3 năm' : 'Từ 3 năm trở lên');
+            const tenureText = data.tenureLabel || (data.tenureMonths + ' tháng');
+            const rangeLabel = useCustom
+                ? `<strong>Ngoài khung cho phép:</strong> <span class="text-primary fw-bold">${money.format(data.minimum)} – ${money.format(effectiveMax)} VNĐ/tháng</span> <span class="text-muted">(${capSourceLabel})</span>`
+                : `<strong>Khung áp dụng:</strong> <span class="text-success fw-bold">${money.format(data.minimum)} – ${money.format(data.maximum)} VNĐ/tháng</span>`;
+            let infoHtml = `<div class="p-2 mt-2 bg-light rounded border border-secondary-subtle">
+                <div class="fw-semibold text-primary"><i class="bi bi-stars me-1"></i>Đề xuất khung lương theo thâm niên:</div>
+                <div class="text-dark small mt-1">• ${rangeLabel}</div>
+                <div class="text-muted small">
+                    • <strong>Thâm niên:</strong> ${tenureText} (Bậc: <strong>${tierName}</strong>)
+                </div>`;
+            const currentSalaryText = data.currentSalary == null
+                ? 'Chưa xác định' : money.format(data.currentSalary) + ' VNĐ/tháng';
+            infoHtml += `<div class="text-muted small">
+                • <strong>Mức lương hiện tại:</strong> ${currentSalaryText}
+            </div>`;
+            infoHtml += `<div class="mt-2 d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-success btn-sm py-0 px-2" style="font-size: 0.8rem;" data-apply-suggested="${data.minimum}">
+                    Điền mức tối thiểu (${money.format(data.minimum)})
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size: 0.8rem;" data-apply-suggested="${data.maximum}">
+                    Điền tối đa khung (${money.format(data.maximum)})
+                </button>
+            </div></div>`;
+            hint.innerHTML = infoHtml;
+
+            hint.querySelectorAll('[data-apply-suggested]').forEach(btn => {
+                btn.addEventListener('click', e => {
+                    e.preventDefault();
+                    salary.value = formatCommas(btn.dataset.applySuggested);
+                    salary.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+            });
+        } else if (useCustom) {
+            hint.textContent = `Lương ngoài khung: ${money.format(data.minimum)} – tối đa ${money.format(effectiveMax)} VNĐ/tháng (${capSourceLabel}) · Thâm niên: ${data.tenureMonths} tháng.`;
+        } else {
+            hint.textContent = 'Khung lương: ' + money.format(data.minimum) + ' – ' + money.format(data.maximum) + ' VNĐ/tháng · Thâm niên: ' + data.tenureMonths + ' tháng.';
         }
     }
 
@@ -45,19 +123,27 @@
         const request = new AbortController();
         requests.set(form, request);
         const salary = field(form, 'Contract.LuongCoBan', 'salary');
-        const probation = form.elements['Contract.HinhThucHopDong']?.value === 'THU_VIEC';
+        const amendment = form.matches('[data-salary-amendment-form]');
+        const probation = !amendment && form.elements['Contract.HinhThucHopDong']?.value === 'THU_VIEC';
         salary.readOnly = probation;
         salary.removeAttribute('max');
+        salary.dataset.customCapActive = 'false';
         salary.min = '1';
         salary.setCustomValidity('');
-        if (probation) salary.value = '';
-        const amendment = form.matches('[data-salary-amendment-form]');
+        if (probation) {
+            salary.value = '';
+            const wrapper = form.querySelector('[data-custom-salary-wrapper]');
+            const toggle = form.querySelector('[data-custom-salary-toggle]');
+            if (wrapper) wrapper.hidden = true;
+            if (toggle) { toggle.checked = false; toggle.disabled = true; }
+        }
         const changingPosition = form.querySelector('[data-amendment-change-position]')?.checked;
         const position = amendment && !changingPosition ? '' : field(form, 'PositionId', 'positionId')?.value;
         const education = field(form, 'TrinhDo', 'education')?.value || '';
         const start = field(form, 'Contract.NgayBatDau', 'effectiveDate')?.value;
         hint.classList.remove('text-danger');
         if ((!position && (!amendment || changingPosition)) || !start || (!amendment && !education)) {
+            lastQuotes.delete(form);
             hint.textContent = amendment ? 'Chọn chức vụ, trình độ và ngày hiệu lực để xem khung lương.' : '';
             return;
         }
@@ -72,49 +158,11 @@
             const data = json ? await response.json() : { message: await response.text() };
             if (requests.get(form) !== request || !form.isConnected) return;
             if (!response.ok) throw new Error(data.message || 'Không thể tra khung lương. Kiểm tra lại dữ liệu.');
-            salary.min = String(probation ? data.probationSalary : data.minimum);
-            salary.max = String(probation ? data.probationSalary : data.maximum);
-            if (probation) salary.value = formatCommas(data.probationSalary);
-            validateSalaryInput(salary);
-
-            if (amendment) {
-                const tierName = data.tenureTier || (data.tenureMonths < 12 ? 'Dưới 1 năm' : data.tenureMonths < 36 ? 'Từ 1 đến dưới 3 năm' : 'Từ 3 năm trở lên');
-                const tenureText = data.tenureLabel || (data.tenureMonths + ' tháng');
-                let infoHtml = `<div class="p-2 mt-2 bg-light rounded border border-secondary-subtle">
-                    <div class="fw-semibold text-primary"><i class="bi bi-stars me-1"></i>Đề xuất khung lương theo thâm niên:</div>
-                    <div class="text-dark small mt-1">
-                        • <strong>Khung áp dụng:</strong> <span class="text-success fw-bold">${money.format(data.minimum)} – ${money.format(data.maximum)} VNĐ/tháng</span>
-                    </div>
-                    <div class="text-muted small">
-                        • <strong>Thâm niên:</strong> ${tenureText} (Bậc: <strong>${tierName}</strong>)
-                    </div>`;
-                const currentSalaryText = data.currentSalary == null
-                    ? 'Chưa xác định' : money.format(data.currentSalary) + ' VNĐ/tháng';
-                infoHtml += `<div class="text-muted small">
-                    • <strong>Mức lương hiện tại:</strong> ${currentSalaryText}
-                </div>`;
-                infoHtml += `<div class="mt-2 d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-success btn-sm py-0 px-2" style="font-size: 0.8rem;" data-apply-suggested="${data.minimum}">
-                        Điền mức tối thiểu (${money.format(data.minimum)})
-                    </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size: 0.8rem;" data-apply-suggested="${data.maximum}">
-                        Điền mức tối đa (${money.format(data.maximum)})
-                    </button>
-                </div></div>`;
-                hint.innerHTML = infoHtml;
-
-                hint.querySelectorAll('[data-apply-suggested]').forEach(btn => {
-                    btn.addEventListener('click', e => {
-                        e.preventDefault();
-                        salary.value = formatCommas(btn.dataset.applySuggested);
-                        salary.dispatchEvent(new Event('input', { bubbles: true }));
-                    });
-                });
-            } else {
-                hint.textContent = 'Khung lương: ' + money.format(data.minimum) + ' – ' + money.format(data.maximum) + ' VNĐ/tháng · Thâm niên: ' + data.tenureMonths + ' tháng.';
-            }
+            lastQuotes.set(form, data);
+            applyBandLimits(form, data);
         } catch (error) {
             if (error.name === 'AbortError' || requests.get(form) !== request) return;
+            lastQuotes.delete(form);
             hint.textContent = error.message || 'Không thể tải khung lương. Vui lòng thử lại.';
             hint.classList.add('text-danger');
             salary.setCustomValidity('Chưa tra được khung lương. Kiểm tra chức vụ, trình độ và ngày hiệu lực.');
@@ -212,6 +260,11 @@
                     event.target.setCustomValidity('');
                 }
             }
+        }
+        if (event.target.matches('[data-custom-salary-toggle]')) {
+            const cachedQuote = lastQuotes.get(form);
+            if (cachedQuote) applyBandLimits(form, cachedQuote);
+            else refresh(form);
         }
         if (event.target.matches('[data-amendment-change-position]')) {
             form.elements.positionId.disabled = !event.target.checked;

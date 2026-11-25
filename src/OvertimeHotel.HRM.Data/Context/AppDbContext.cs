@@ -141,6 +141,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.NgayBatDau).HasColumnName("ngay_bat_dau").IsRequired();
             entity.Property(e => e.NgayKetThuc).HasColumnName("ngay_ket_thuc");
             entity.Property(e => e.LuongCoBan).HasColumnName("luong_co_ban").HasPrecision(15, 2).IsRequired();
+            entity.Property(e => e.LuongNgoaiKhung).HasColumnName("luong_ngoai_khung").HasDefaultValue(false).IsRequired();
             entity.Property(e => e.TrangThai).HasColumnName("trang_thai").HasMaxLength(30).HasDefaultValue("HIEU_LUC").IsRequired();
             entity.Property(e => e.HinhThucHopDong).HasColumnName("hinh_thuc_hop_dong").HasMaxLength(50).HasDefaultValue("CHINH_THUC").IsRequired();
             entity.Property(e => e.LoaiChamDut).HasColumnName("loai_cham_dut").HasMaxLength(30);
@@ -180,6 +181,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.MaHopDong).HasColumnName("ma_hop_dong");
             entity.Property(e => e.NgayHieuLuc).HasColumnName("ngay_hieu_luc");
             entity.Property(e => e.LuongCoBanMoi).HasColumnName("luong_co_ban_moi").HasPrecision(15, 2);
+            entity.Property(e => e.LuongNgoaiKhung).HasColumnName("luong_ngoai_khung").HasDefaultValue(false).IsRequired();
             entity.Property(e => e.LyDo).HasColumnName("ly_do").IsRequired();
             entity.Property(e => e.NguoiTao).HasColumnName("nguoi_tao").HasMaxLength(100).IsRequired();
             entity.Property(e => e.TaoLuc).HasColumnName("tao_luc").HasDefaultValueSql("now()");

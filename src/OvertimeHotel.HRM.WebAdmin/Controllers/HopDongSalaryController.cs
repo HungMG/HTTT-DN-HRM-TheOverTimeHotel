@@ -18,6 +18,60 @@ public partial class HopDongController
         return SalaryBandLookup.Find(bands, group, education, months);
     }
 
+    private async Task<(decimal Cap, bool FromSittingDirector)> ResolveGeneralDirectorSalaryCapAsync(DateOnly date)
+    {
+        var gmPositionIds = await _context.ChucVus.AsNoTracking()
+            .Where(x => x.NhomLuong == "TONG_GIAM_DOC")
+            .Select(x => x.MaChucVu)
+            .ToListAsync();
+        var gmBandMax = await _context.KhungLuongCapBacs.AsNoTracking()
+            .Where(x => x.NhomChucVu == "TONG_GIAM_DOC")
+            .Select(x => (decimal?)x.LuongToiDa)
+            .FirstOrDefaultAsync() ?? 40_000_000m;
+
+        if (gmPositionIds.Count == 0)
+            return (gmBandMax, false);
+
+        var gmSet = gmPositionIds.ToHashSet();
+        var candidates = await _context.NhanViens.AsNoTracking()
+            .Include(n => n.HopDongs)
+                .ThenInclude(h => h.PhuLucLuongs)
+            .Where(n => n.TrangThai != "DA_THOI_VIEC"
+                && ((n.MaChucVu.HasValue && gmSet.Contains(n.MaChucVu.Value))
+                    || n.HopDongs.Any(h => (h.MaChucVuKyKet.HasValue && gmSet.Contains(h.MaChucVuKyKet.Value))
+                        || h.PhuLucLuongs.Any(p => p.MaChucVuMoi.HasValue && gmSet.Contains(p.MaChucVuMoi.Value)))))
+            .ToListAsync();
+
+        decimal? FindDirectorSalaryOn(DateOnly targetDate)
+        {
+            if (targetDate == default) return null;
+            decimal? found = null;
+            foreach (var emp in candidates)
+            {
+                if (emp.NgayThoiViec.HasValue && emp.NgayThoiViec.Value < targetDate) continue;
+                try
+                {
+                    var resolved = EffectiveSalaryResolver.Resolve(emp.HopDongs, targetDate);
+                    if (resolved == null) continue;
+                    var posId = resolved.PositionId ?? emp.MaChucVu;
+                    if (posId.HasValue && gmSet.Contains(posId.Value) && resolved.MonthlySalary > 0)
+                        found = found.HasValue ? Math.Max(found.Value, resolved.MonthlySalary) : resolved.MonthlySalary;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex, "Không thể xác định lương Tổng Giám Đốc #{EmployeeId} tại ngày {Date}.", emp.MaNhanVien, targetDate);
+                }
+            }
+            return found;
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var sittingSalary = FindDirectorSalaryOn(date) ?? FindDirectorSalaryOn(today);
+        return sittingSalary.HasValue
+            ? (sittingSalary.Value, true)
+            : (gmBandMax, false);
+    }
+
     [HttpGet]
     public async Task<IActionResult> SalaryQuote(int? positionId, string? education, DateOnly startDate, int? employeeId)
     {
@@ -33,6 +87,13 @@ public partial class HopDongController
         var joined = employee?.NgayVaoLam ?? startDate;
         var band = await FindBandAsync(positionId, education, joined, startDate);
         if (band == null) return BadRequest(new { message = "Chọn chức vụ, trình độ hợp lệ và ngày bắt đầu để xác định khung lương." });
+
+        var positionGroup = await _context.ChucVus.AsNoTracking()
+            .Where(x => x.MaChucVu == positionId)
+            .Select(x => x.NhomLuong)
+            .FirstOrDefaultAsync();
+        var allowCustomSalary = positionGroup is "NHAN_VIEN" or "QUAN_LY";
+        var (gmSalaryCap, gmCapFromSittingDirector) = await ResolveGeneralDirectorSalaryCapAsync(startDate);
 
         var tenureMonths = ReportPolicy.TenureMonths(joined, startDate);
         var years = tenureMonths / 12;
@@ -67,7 +128,11 @@ public partial class HopDongController
             tenureMonths,
             tenureLabel,
             tenureTier,
-            currentSalary
+            currentSalary,
+            positionGroup,
+            allowCustomSalary,
+            gmSalaryCap,
+            gmCapFromSittingDirector
         });
     }
 
@@ -88,15 +153,35 @@ public partial class HopDongController
                 ModelState.AddModelError(nameof(model.TrinhDo), "Trình độ chuyên môn không được vượt quá 50 ký tự.");
         }
         var band = await FindBandAsync(model.PositionId, model.TrinhDo, employee?.NgayVaoLam ?? model.Contract.NgayBatDau, model.Contract.NgayBatDau);
+        var positionGroup = model.PositionId.HasValue
+            ? await _context.ChucVus.AsNoTracking().Where(x => x.MaChucVu == model.PositionId.Value).Select(x => x.NhomLuong).FirstOrDefaultAsync()
+            : null;
         if (band == null) ModelState.AddModelError(nameof(model.TrinhDo), "Chưa xác định được khung lương; kiểm tra chức vụ, trình độ và ngày vào làm.");
         else if (model.Contract.HinhThucHopDong == "THU_VIEC")
         {
+            model.Contract.LuongNgoaiKhung = false;
             if (model.Contract.NgayBatDau != DateOnly.FromDateTime(DateTime.Today))
                 ModelState.AddModelError("Contract.NgayBatDau", "Hợp đồng thử việc mới bắt đầu từ hôm nay.");
             else model.Contract.NgayKetThuc = model.Contract.NgayBatDau.AddMonths(2).AddDays(-1);
             model.Contract.LuongCoBan = band.LuongToiThieu * .85m;
             ModelState.Remove("Contract.LuongCoBan");
             ModelState.Remove("Contract.NgayKetThuc");
+            ModelState.Remove("Contract.LuongNgoaiKhung");
+        }
+        else if (model.Contract.LuongNgoaiKhung)
+        {
+            if (positionGroup is not ("NHAN_VIEN" or "QUAN_LY"))
+            {
+                ModelState.AddModelError("Contract.LuongNgoaiKhung", "Điều chỉnh lương ngoài khung chỉ áp dụng cho chức vụ nhóm Nhân viên hoặc Quản lý.");
+            }
+            else
+            {
+                var (gmCap, _) = await ResolveGeneralDirectorSalaryCapAsync(model.Contract.NgayBatDau);
+                if (model.Contract.LuongCoBan < band.LuongToiThieu)
+                    ModelState.AddModelError("Contract.LuongCoBan", $"Lương ngoài khung phải từ mức tối thiểu {band.LuongToiThieu:N0} đ/tháng trở lên.");
+                else if (model.Contract.LuongCoBan > gmCap)
+                    ModelState.AddModelError("Contract.LuongCoBan", $"Lương ngoài khung không được vượt quá lương Tổng Giám Đốc ({gmCap:N0} đ/tháng).");
+            }
         }
         else if (model.Contract.LuongCoBan < band.LuongToiThieu || model.Contract.LuongCoBan > band.LuongToiDa)
             ModelState.AddModelError("Contract.LuongCoBan", $"Lương phải nằm trong khoảng {band.LuongToiThieu:N0}–{band.LuongToiDa:N0} đ/tháng.");
@@ -108,11 +193,11 @@ public partial class HopDongController
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddSalaryAmendment(int contractId, DateOnly effectiveDate, decimal salary, string? reason, int? departmentId, int? positionId, bool confirmBaseline = false)
+    public async Task<IActionResult> AddSalaryAmendment(int contractId, DateOnly effectiveDate, decimal salary, string? reason, int? departmentId, int? positionId, bool confirmBaseline = false, bool allowCustomSalary = false)
         => await _context.Database.CreateExecutionStrategy().ExecuteAsync(() =>
-            AddSalaryAmendmentCore(contractId, effectiveDate, salary, reason, departmentId, positionId, confirmBaseline));
+            AddSalaryAmendmentCore(contractId, effectiveDate, salary, reason, departmentId, positionId, confirmBaseline, allowCustomSalary));
 
-    private async Task<IActionResult> AddSalaryAmendmentCore(int contractId, DateOnly effectiveDate, decimal salary, string? reason, int? departmentId, int? positionId, bool confirmBaseline)
+    private async Task<IActionResult> AddSalaryAmendmentCore(int contractId, DateOnly effectiveDate, decimal salary, string? reason, int? departmentId, int? positionId, bool confirmBaseline, bool allowCustomSalary)
     {
         if (Request.HasFormContentType && Request.Form.TryGetValue("salary", out var rawSalary))
         {
@@ -143,8 +228,24 @@ public partial class HopDongController
         departmentId ??= previous?.MaPhongBanMoi ?? contract.MaPhongBanKyKet ?? employee.MaPhongBan;
         var department = await _context.PhongBans.FindAsync(departmentId);
         if (!await _context.ChucVus.Where(OrganizationPositionPolicy.ForDepartment(department)).AnyAsync(x => x.MaChucVu == positionId)) return BadRequest("Chức vụ không thuộc phòng ban đã chọn.");
+        var targetGroup = await _context.ChucVus.AsNoTracking().Where(x => x.MaChucVu == positionId).Select(x => x.NhomLuong).FirstOrDefaultAsync();
         var band = await FindBandAsync(positionId, employee.TrinhDo, employee.NgayVaoLam.Value, effectiveDate);
-        if (band == null || salary < band.LuongToiThieu || salary > band.LuongToiDa) return BadRequest("Mức lương mới phải nằm trong khung của nhân viên tại ngày hiệu lực.");
+        if (band == null) return BadRequest("Mức lương mới phải nằm trong khung của nhân viên tại ngày hiệu lực.");
+        var isCustomAmendment = allowCustomSalary;
+        if (isCustomAmendment)
+        {
+            if (targetGroup is not ("NHAN_VIEN" or "QUAN_LY"))
+                return BadRequest("Điều chỉnh lương ngoài khung chỉ áp dụng cho chức vụ nhóm Nhân viên hoặc Quản lý.");
+            var (gmCap, _) = await ResolveGeneralDirectorSalaryCapAsync(effectiveDate);
+            if (salary < band.LuongToiThieu)
+                return BadRequest($"Mức lương ngoài khung phải từ mức tối thiểu {band.LuongToiThieu:N0} đ/tháng trở lên.");
+            if (salary > gmCap)
+                return BadRequest($"Mức lương ngoài khung không được vượt quá lương Tổng Giám Đốc ({gmCap:N0} đ/tháng).");
+        }
+        else if (salary < band.LuongToiThieu || salary > band.LuongToiDa)
+        {
+            return BadRequest("Mức lương mới phải nằm trong khung của nhân viên tại ngày hiệu lực.");
+        }
         var oldPosition = previous?.MaChucVuMoi ?? contract.MaChucVuKyKet ?? employee.MaChucVu;
         var oldDepartment = previous?.MaPhongBanMoi ?? contract.MaPhongBanKyKet ?? employee.MaPhongBan;
         var moving = oldPosition != positionId || oldDepartment != departmentId;
@@ -159,7 +260,7 @@ public partial class HopDongController
             contract.TrinhDoKyKet = employee.TrinhDo;
             await _context.SaveChangesAsync();
         }
-        _context.PhuLucLuongs.Add(new PhuLucLuong { MaHopDong = contractId, NgayHieuLuc = effectiveDate, LuongCoBanMoi = salary, LyDo = reason.Trim(), NguoiTao = User.Identity?.Name ?? "HR", TaoLuc = DateTimeOffset.UtcNow, MaChucVuMoi = moving ? positionId : null, MaPhongBanMoi = moving ? departmentId : null });
+        _context.PhuLucLuongs.Add(new PhuLucLuong { MaHopDong = contractId, NgayHieuLuc = effectiveDate, LuongCoBanMoi = salary, LuongNgoaiKhung = isCustomAmendment, LyDo = reason.Trim(), NguoiTao = User.Identity?.Name ?? "HR", TaoLuc = DateTimeOffset.UtcNow, MaChucVuMoi = moving ? positionId : null, MaPhongBanMoi = moving ? departmentId : null });
         await _context.SaveChangesAsync();
         if (moving && effectiveDate <= today)
         {
@@ -199,10 +300,13 @@ public partial class HopDongController
             && (contract.NgayKetThuc == null || contract.NgayKetThuc >= today);
 
         decimal? currentSalary = null;
+        bool currentIsCustomSalary = contract.LuongNgoaiKhung;
         try
         {
             var effective = EffectiveSalaryResolver.Resolve(new[] { contract }, today);
             currentSalary = effective?.MonthlySalary;
+            if (effective?.Amendment != null)
+                currentIsCustomSalary = effective.Amendment.LuongNgoaiKhung;
         }
         catch (InvalidOperationException ex)
         {
@@ -216,10 +320,11 @@ public partial class HopDongController
             EmployeeName = contract.NhanVien.HoTen, Education = contract.NhanVien.TrinhDo,
             PositionId = contract.NhanVien.MaChucVu, DepartmentId = contract.NhanVien.MaPhongBan,
             CurrentSalary = currentSalary,
+            AllowCustomSalary = currentIsCustomSalary,
             DefaultEffectiveDate = defaultDate,
             NextMonthOutsideContract = eligibleContract && outsideContract,
             CanAdd = eligibleContract && !outsideContract,
-            Items = contract.PhuLucLuongs.OrderByDescending(x => x.NgayHieuLuc).Select(x => new HopDongSalaryAmendmentItemViewModel { EffectiveDate = x.NgayHieuLuc, Salary = x.LuongCoBanMoi, Reason = x.LyDo, PositionName = positions.FirstOrDefault(p => p.MaChucVu == x.MaChucVuMoi)?.TenChucVu ?? "Giữ nguyên" }).ToList(),
+            Items = contract.PhuLucLuongs.OrderByDescending(x => x.NgayHieuLuc).Select(x => new HopDongSalaryAmendmentItemViewModel { EffectiveDate = x.NgayHieuLuc, Salary = x.LuongCoBanMoi, AllowCustomSalary = x.LuongNgoaiKhung, Reason = x.LyDo, PositionName = positions.FirstOrDefault(p => p.MaChucVu == x.MaChucVuMoi)?.TenChucVu ?? "Giữ nguyên" }).ToList(),
             DepartmentOptions = departments.Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(x.TenPhongBan, x.MaPhongBan.ToString())).ToList(),
             PositionOptions = positions.Where(OrganizationPositionPolicy.ForDepartment(departments.FirstOrDefault(d => d.MaPhongBan == contract.NhanVien.MaPhongBan)).Compile()).Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(x.TenChucVu, x.MaChucVu.ToString())).ToList()
         });
@@ -280,7 +385,9 @@ public partial class HopDongController
             var band = employee.NgayVaoLam > today ? null : SalaryBandLookup.Find(bands, group, employee.TrinhDo, tenure);
             var salary = effective.MonthlySalary;
             var reason = band == null ? "Đã đến mốc thâm niên; cần xác minh trình độ hoặc nhóm chức vụ để xác định khung lương mới."
-                : "Đã đến mốc thâm niên xét lương; HR thỏa thuận mức lương trong khung mới trước khi lập phụ lục.";
+                : (contract.LuongNgoaiKhung || effective.Amendment?.LuongNgoaiKhung == true)
+                    ? "Hợp đồng đang áp dụng lương thỏa thuận ngoài khung; HR đối chiếu trần Tổng Giám Đốc nếu điều chỉnh."
+                    : "Đã đến mốc thâm niên xét lương; HR thỏa thuận mức lương trong khung mới trước khi lập phụ lục.";
             result.Add(new SalaryReviewItem(contract.MaHopDong, employee.HoTen, tenure, salary, band?.LuongToiThieu, band?.LuongToiDa, reason));
         }
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")

@@ -212,7 +212,13 @@
 
                 <div class="contract-prop-row">
                     <span class="text-muted small">Lương gốc hợp đồng:</span>
-                    <strong class="text-primary fs-5 font-monospace">@contract.LuongCoBan.ToString("N0") VNĐ</strong>
+                    <div>
+                        <strong class="text-primary fs-5 font-monospace">@contract.LuongCoBan.ToString("N0") VNĐ</strong>
+                        @if (contract.LuongNgoaiKhung)
+                        {
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1">Ngoài khung</span>
+                        }
+                    </div>
                 </div>
                 <div class="contract-prop-row">
                     <span class="text-muted small">Kỳ hạn chi trả:</span>

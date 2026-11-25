@@ -250,6 +250,18 @@
         <div id="@(formIdPrefix + "contractSalaryBand")" class="form-text" data-salary-band role="status" aria-live="polite"></div>
         <div class="form-text">Chính thức: nhập mức đã thỏa thuận trong khung. Thử việc: tự tính 85% mức tối thiểu.</div>
         <span asp-validation-for="Contract.LuongCoBan" class="text-danger small"></span>
+        <div class="mt-2 p-2 bg-light rounded-3 border border-dashed" data-custom-salary-wrapper hidden="@isProbation">
+            <div class="form-check mb-0">
+                <input class="form-check-input" type="checkbox" asp-for="Contract.LuongNgoaiKhung" id="@(formIdPrefix + "contractLuongNgoaiKhung")" data-custom-salary-toggle />
+                <label class="form-check-label small fw-semibold text-dark" for="@(formIdPrefix + "contractLuongNgoaiKhung")">
+                    Được điều chỉnh lương ngoài khung (Chính thức)
+                </label>
+            </div>
+            <div class="text-muted small ms-4" style="font-size: 0.76rem;" data-custom-salary-hint>
+                Chỉ áp dụng cho hợp đồng chính thức nhóm Nhân viên / Quản lý; mức lương &ge; sàn khung và &le; lương Tổng Giám Đốc.
+            </div>
+            <span asp-validation-for="Contract.LuongNgoaiKhung" class="text-danger small"></span>
+        </div>
     </div>
 </div>
 

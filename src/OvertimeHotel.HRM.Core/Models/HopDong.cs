@@ -9,6 +9,8 @@ public class HopDong
     public DateOnly NgayBatDau { get; set; }
     public DateOnly? NgayKetThuc { get; set; }
     public decimal LuongCoBan { get; set; }
+    /// <summary>Cho phép thỏa thuận lương chính thức vượt khung cấp bậc nhưng không vượt lương Tổng Giám Đốc.</summary>
+    public bool LuongNgoaiKhung { get; set; }
     public string TrangThai { get; set; } = "HIEU_LUC";
     public string HinhThucHopDong { get; set; } = "CHINH_THUC";
     // Null on legacy contracts: no inferred backfill of historical position/education.

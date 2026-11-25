@@ -6,6 +6,8 @@ public class PhuLucLuong
     public int MaHopDong { get; set; }
     public DateOnly NgayHieuLuc { get; set; }
     public decimal LuongCoBanMoi { get; set; }
+    /// <summary>Phụ lục áp dụng thỏa thuận lương ngoài khung (chỉ hợp đồng chính thức Nhân viên/Quản lý).</summary>
+    public bool LuongNgoaiKhung { get; set; }
     public string LyDo { get; set; } = string.Empty;
     public string NguoiTao { get; set; } = string.Empty;
     public DateTimeOffset TaoLuc { get; set; } = DateTimeOffset.UtcNow;

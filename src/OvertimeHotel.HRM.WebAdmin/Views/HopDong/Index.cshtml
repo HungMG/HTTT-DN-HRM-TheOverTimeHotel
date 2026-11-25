@@ -652,6 +652,10 @@
         if (salaryInput && luongCoBanCu) {
             salaryInput.value = window.SalaryContract?.formatCommas ? window.SalaryContract.formatCommas(luongCoBanCu) : String(luongCoBanCu).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
+        const customSalaryToggle = modalEl.querySelector('#contractLuongNgoaiKhung');
+        if (customSalaryToggle) {
+            customSalaryToggle.checked = false;
+        }
 
         // 10. Đổi text nút Submit thành "Lưu gia hạn hợp đồng"
         const submitBtn = modalEl.querySelector('button[type="submit"]');

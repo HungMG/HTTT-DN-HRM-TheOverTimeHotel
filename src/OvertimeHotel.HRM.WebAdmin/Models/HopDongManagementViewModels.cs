@@ -64,6 +64,7 @@ public class HopDongSalaryAmendmentsViewModel
     public int? PositionId { get; init; }
     public int? DepartmentId { get; init; }
     public decimal? CurrentSalary { get; init; }
+    public bool AllowCustomSalary { get; init; }
     public DateOnly DefaultEffectiveDate { get; init; } = new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(1);
     public bool NextMonthOutsideContract { get; init; }
     public bool CanAdd { get; init; } = true;
@@ -77,6 +78,7 @@ public class HopDongSalaryAmendmentItemViewModel
 {
     public DateOnly EffectiveDate { get; init; }
     public decimal Salary { get; init; }
+    public bool AllowCustomSalary { get; init; }
     public string Reason { get; init; } = string.Empty;
     public string PositionName { get; init; } = string.Empty;
 }

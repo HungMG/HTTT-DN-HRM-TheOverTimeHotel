@@ -24,7 +24,18 @@ else
             <tbody>
                 @foreach (var item in Model.Items)
                 {
-                    <tr><td class="text-nowrap">@item.EffectiveDate.ToString("dd/MM/yyyy")</td><td class="text-end text-nowrap font-monospace fw-semibold">@item.Salary.ToString("N0")</td><td>@item.PositionName</td><td>@item.Reason</td></tr>
+                    <tr>
+                        <td class="text-nowrap">@item.EffectiveDate.ToString("dd/MM/yyyy")</td>
+                        <td class="text-end text-nowrap font-monospace fw-semibold">
+                            @item.Salary.ToString("N0")
+                            @if (item.AllowCustomSalary)
+                            {
+                                <span class="badge bg-warning-subtle text-warning-emphasis border ms-1">Ngoài khung</span>
+                            }
+                        </td>
+                        <td>@item.PositionName</td>
+                        <td>@item.Reason</td>
+                    </tr>
                 }
             </tbody>
         </table>
@@ -67,6 +78,13 @@ else
                                aria-describedby="@(prefix + "band")" />
                     </div>
                     <div id="@(prefix + "band")" class="form-text mt-1" role="status" aria-live="polite" data-salary-band>Chọn ngày hiệu lực để xem khung lương.</div>
+                    <div class="mt-2 p-2 bg-light rounded border border-dashed" data-custom-salary-wrapper>
+                        <div class="form-check mb-0">
+                            <input id="@(prefix + "customSalary")" name="allowCustomSalary" type="checkbox" value="true" class="form-check-input" data-custom-salary-toggle checked="@Model.AllowCustomSalary" />
+                            <label for="@(prefix + "customSalary")" class="form-check-label small fw-semibold">Điều chỉnh lương ngoài khung</label>
+                        </div>
+                        <div class="form-text small" data-custom-salary-hint>Chỉ áp dụng nhóm Nhân viên / Quản lý; mức lương &ge; sàn khung và &le; lương Tổng Giám Đốc.</div>
+                    </div>
                 </div>
                 <div class="col-12">
                     <div class="form-check">

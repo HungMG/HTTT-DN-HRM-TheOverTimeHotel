@@ -350,6 +350,7 @@ public partial class HopDongController : Controller
             {
                 sameDayPromotionContract.LoaiHopDong, sameDayPromotionContract.HinhThucHopDong,
                 sameDayPromotionContract.NgayBatDau, sameDayPromotionContract.NgayKetThuc, sameDayPromotionContract.LuongCoBan,
+                sameDayPromotionContract.LuongNgoaiKhung,
                 employee!.MaPhongBan, employee.MaChucVu
             });
             if (employee != null)
@@ -391,6 +392,7 @@ public partial class HopDongController : Controller
                 sameDayPromotionContract.HinhThucHopDong = model.Contract.HinhThucHopDong;
                 sameDayPromotionContract.NgayKetThuc = model.Contract.NgayKetThuc;
                 sameDayPromotionContract.LuongCoBan = model.Contract.LuongCoBan;
+                sameDayPromotionContract.LuongNgoaiKhung = model.Contract.LuongNgoaiKhung;
                 model.Contract = sameDayPromotionContract;
                 int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var actorId);
                 _context.NhatKyQuanTris.Add(new NhatKyQuanTri
@@ -406,6 +408,7 @@ public partial class HopDongController : Controller
                     {
                         sameDayPromotionContract.LoaiHopDong, sameDayPromotionContract.HinhThucHopDong,
                         sameDayPromotionContract.NgayBatDau, sameDayPromotionContract.NgayKetThuc, sameDayPromotionContract.LuongCoBan,
+                        sameDayPromotionContract.LuongNgoaiKhung,
                         employee!.MaPhongBan, employee.MaChucVu
                     }),
                     ThoiGian = DateTimeOffset.UtcNow
